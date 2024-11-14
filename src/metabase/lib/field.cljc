@@ -366,11 +366,13 @@
   (lib.temporal-bucket/available-temporal-buckets-for-type
    ((some-fn :effective-type :base-type) field-metadata)
    ;; `:ineherited-temporal-unit` being set means field was bucketed on former stage. For this case, make the default nil
-   ;; for next bucketing attempt (of already bucketed) field eg. through BreakoutPopover on FE.
-   (when (or (nil? (:inherited-temporal-unit field-metadata))
-             (= :default (:inherited-temporal-unit field-metadata)))
+   ;; for next bucketing attempt (of already bucketed) field eg. through BreakoutPopover on FE, by setting `:inherited`
+   ;; default unit.
+   (if (or (nil? (:inherited-temporal-unit field-metadata))
+           (= :default (:inherited-temporal-unit field-metadata)))
      (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
-         :month))
+         :month)
+     :inherited)
    (::temporal-unit field-metadata)))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------

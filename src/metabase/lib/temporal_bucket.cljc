@@ -229,11 +229,12 @@
   #{})
 
 (defn- mark-unit [options option-key unit]
-  (mapv (fn [option]
-          (cond-> option
-            (contains? option option-key) (dissoc option option-key)
-            (= (:unit option) unit)       (assoc option-key true)))
-        options))
+  (cond->> options
+     (some #(= (:unit %) unit) options)
+     (mapv (fn [option]
+             (cond-> option
+               (contains? option option-key) (dissoc option option-key)
+               (= (:unit option) unit)       (assoc option-key true))))))
 
 (defn available-temporal-buckets-for-type
   "Given the type of this column and nillable `default-unit` and `selected-unit`s, return the correct list of buckets."
@@ -242,8 +243,14 @@
                         (isa? column-type :type/DateTime) datetime-bucket-options
                         (isa? column-type :type/Date)     date-bucket-options
                         (isa? column-type :type/Time)     time-bucket-options
-                        :else                             [])]
-    (cond-> (mark-unit options :default default-unit)
+                        :else                             [])
+        fallback-unit (if (isa? column-type :type/Time)
+                        :hour
+                        :month)
+        default-unit  (or default-unit fallback-unit)]
+    (cond-> options
+      (= :inherited default-unit) (->> (mapv #(dissoc % :default)))
+      default-unit  (mark-unit :default  default-unit)
       selected-unit (mark-unit :selected selected-unit))))
 
 (mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
