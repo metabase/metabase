@@ -458,7 +458,7 @@ describe("scenarios > question > settings", () => {
         cy.findByLabelText(/Where do you want to save this/).click();
       });
       pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
-      entityPickerModal().findByText("Save in this collection").click();
+      entityPickerModal().findByText("Select this collection").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
       H.modal().findByText("Yes please!").click();
       H.entityPickerModal().within(() => {
