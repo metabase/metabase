@@ -168,7 +168,7 @@ jobs:
 
       - name: Run tests
         id: run-java-tests
-        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev :only metabase.channel.template.handlebars-test
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

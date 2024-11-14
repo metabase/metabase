@@ -65,8 +65,8 @@
   (testing "reload template if it's changed"
     (with-temp-template! [tmpl-name (u.random/random-name) "Hello {{name}}"]
       (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))
-      (spit (format "test_resources/%s" tmpl-name) "Hello {{name}} updated!")
-      (is (= "Hello Ngoc updated!" (handlebars/render tmpl-name {:name "Ngoc"}))))))
+      (spit (format "test_resources/%s" tmpl-name) "Xin chao {{name}}")
+      (is (= "Xin chao Ngoc" (handlebars/render tmpl-name {:name "Ngoc"}))))))
 
 (deftest atom-template-cache-test
   (let [parser-calls    (atom [])

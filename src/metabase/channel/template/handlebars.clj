@@ -6,7 +6,8 @@
   (:import
    (com.github.jknack.handlebars
     Parser Handlebars Template)
-   (com.github.jknack.handlebars.cache TemplateCache)
+   (com.github.jknack.handlebars.cache
+    ConcurrentMapTemplateCache TemplateCache)
    (com.github.jknack.handlebars.io
     TemplateSource
     ClassPathTemplateLoader)))
@@ -61,7 +62,7 @@
   "Create a new Handlebars instance with a template loader."
   ^Handlebars [loader & {:keys [reload?]}]
   (u/prog1 (doto (Handlebars. loader)
-             (.with ^TemplateCache (make-atom-template-cache false)))
+             (.with ^TemplateCache (ConcurrentMapTemplateCache.)))
     (when reload?
       (.setReload (.getCache <>) true))))
 
