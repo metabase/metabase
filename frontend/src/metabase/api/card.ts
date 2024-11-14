@@ -233,6 +233,7 @@ export const cardApi = Api.injectEndpoints({
           method: "GET",
           url: `/api/card/${id}/dashboards`,
         }),
+        forceRefetch: () => true,
       }),
     };
   },

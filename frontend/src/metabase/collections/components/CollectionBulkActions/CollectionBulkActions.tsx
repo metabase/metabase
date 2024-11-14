@@ -47,7 +47,7 @@ export const CollectionBulkActions = memo(
     const [rememberedDestination, setRememberedDestination] =
       useState<Destination | null>(null);
 
-    const isVisible = selected.length > 0;
+    const isVisible = selected.length > 0 && !selectedAction;
 
     const hasSelectedItems = useMemo(
       () => !!selectedItems && !_.isEmpty(selectedItems),
@@ -109,7 +109,7 @@ export const CollectionBulkActions = memo(
 
           //Otherwise, get the names of the affected dashboards and display the modal
           else {
-            setSelectedAction(null);
+            setSelectedAction("confirm-move");
             setIsLoading(true);
             const cardDashboards = await getAffectedDashboardsFromMove(
               potentialConfirmCards,
@@ -126,6 +126,7 @@ export const CollectionBulkActions = memo(
             }
             //If no dashboards are actually affected, then do the move without a confirmation modal
             else {
+              setSelectedAction(null);
               await doMove(destination);
             }
           }
