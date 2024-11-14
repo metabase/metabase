@@ -366,12 +366,13 @@
   [_query _stage-number field-metadata]
   (lib.temporal-bucket/available-temporal-buckets-for-type
    ((some-fn :effective-type :base-type) field-metadata)
-   ;; lbrdnk TODO: "Unhairify" following!
-   (if-not (and (some? (:inherited-temporal-unit field-metadata))
-                (not= :default (:inherited-temporal-unit field-metadata)))
+   ;; `:ineherited-temporal-unit` being set means field was bucketed on former stage. For this case make the default nil
+   ;; for next round of bucketing the bucketed to occur only in case user is explicit about that versus pre-bucketing
+   ;; the col for them on opening of eg. BreakoutPopover on FE.
+   (when (or (nil? (:inherited-temporal-unit field-metadata))
+             (= :default (:inherited-temporal-unit field-metadata)))
      (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
-         :month)
-     :just-dont-do-that)
+         :month))
    (::temporal-unit field-metadata)))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
