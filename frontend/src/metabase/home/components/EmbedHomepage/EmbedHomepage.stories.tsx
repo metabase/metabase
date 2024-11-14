@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { StoryObj } from "@storybook/react";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
 
@@ -9,7 +9,7 @@ type Args = Omit<
   hasExampleDashboard: boolean;
 };
 
-const meta: Meta<Args> = {
+export default {
   title: "FEATURES/EmbedHomepage",
   component: EmbedHomepageView,
   parameters: {
@@ -18,7 +18,6 @@ const meta: Meta<Args> = {
     },
   },
 };
-export default meta;
 
 type Story = StoryObj<Args>;
 
