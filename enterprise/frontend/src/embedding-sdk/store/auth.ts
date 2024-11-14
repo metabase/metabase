@@ -5,6 +5,7 @@ import type {
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
+import { bigErrorHeader, bigWarningHeader } from "embedding-sdk/lib/log-utils";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import api from "metabase/lib/api";
@@ -56,8 +57,7 @@ export const initAuth = createAsyncThunk(
         })
       ) {
         console.warn(
-          "%cDetected SDK compatibility issue\n",
-          "color: #FCF0A6; font-size: 16px; font-weight: bold;",
+          ...bigWarningHeader("Detected SDK compatibility issue"),
           `SDK version ${sdkVersion} is not compatible with MB version ${mbVersion}, this might cause issues.`,
         );
       }
@@ -133,11 +133,7 @@ export const refreshTokenAsync = createAsyncThunk(
 
       // The host app may have a lot of logs (and the sdk logs a lot too), so we
       // make a big red error message to make it visible as this is 90% a blocking error
-      console.error(
-        "%cFailed to get auth session\n",
-        "color: #FF2222; font-size: 16px; font-weight: bold;",
-        exception,
-      );
+      console.error(...bigErrorHeader("Failed to get auth session"), exception);
 
       throw exception;
     }
