@@ -1,3 +1,6 @@
+import { push } from "react-router-redux";
+
+import * as Urls from "metabase/lib/urls";
 import { updateQuestion } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import type { MetabotRunQueryReaction } from "metabase-types/api";
@@ -8,10 +11,11 @@ export const runQuery: ReactionHandler<MetabotRunQueryReaction> =
   reaction =>
   async ({ dispatch, getState }) => {
     const question = getQuestion(getState());
-    if (!question) {
-      return;
+    if (question) {
+      const newQuestion = question.setDatasetQuery(reaction.dataset_query);
+      await dispatch(updateQuestion(newQuestion, { run: true }));
+    } else {
+      const url = Urls.newQuestion({ dataset_query: reaction.dataset_query });
+      await dispatch(push(url));
     }
-
-    const newQuestion = question.setDatasetQuery(reaction.dataset_query);
-    await dispatch(updateQuestion(newQuestion, { run: true }));
   };
