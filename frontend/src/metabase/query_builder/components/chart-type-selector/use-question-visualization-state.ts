@@ -16,12 +16,11 @@ import { DEFAULT_VIZ_ORDER } from "./viz-order";
 export type UseChartTypeVisualizationsProps = {
   question?: Question;
   onUpdateQuestion: (question: Question) => void;
-} & GetSensibleVisualizationsProps;
+};
 
-export const useChartTypeVisualizations = ({
+export const useQuestionVisualizationState = ({
   question,
   onUpdateQuestion,
-  result,
 }: UseChartTypeVisualizationsProps) => {
   const selectedVisualization = question?.display() ?? "table";
 
@@ -43,16 +42,9 @@ export const useChartTypeVisualizations = ({
     [onUpdateQuestion, question],
   );
 
-  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
-    () => getSensibleVisualizations({ result }),
-    [result],
-  );
-
   return {
     selectedVisualization,
     updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
   };
 };
 

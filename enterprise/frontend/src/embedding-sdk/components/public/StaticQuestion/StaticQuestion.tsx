@@ -15,13 +15,15 @@ import { useSelector } from "metabase/lib/redux";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import {
   ChartTypeSettings,
-  useChartTypeVisualizations,
+  getSensibleVisualizations,
+  useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
 import type { CardEntityId, CardId, Dataset } from "metabase-types/api";
+import { useMemo } from "react";
 
 export type StaticQuestionProps = {
   questionId: CardId | CardEntityId;
@@ -41,16 +43,16 @@ const StaticQuestionVisualizationSelector = ({
   result,
   onUpdateQuestion,
 }: StaticQuestionVisualizationSelectorProps) => {
-  const {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  } = useChartTypeVisualizations({
-    question,
-    result,
-    onUpdateQuestion,
-  });
+  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
+    () => getSensibleVisualizations({ result }),
+    [result],
+  );
+
+  const { selectedVisualization, updateQuestionVisualization } =
+    useQuestionVisualizationState({
+      question,
+      onUpdateQuestion,
+    });
 
   return (
     <Box w="355px">
