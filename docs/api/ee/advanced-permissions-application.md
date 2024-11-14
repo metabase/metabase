@@ -24,6 +24,14 @@ Do a batch update of Application Permissions by passing a modified graph.
 
 You must be a superuser to do this.
 
+### PARAMS:
+
+-  **`skip-graph`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`force`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`body`** map.
+
 ---
 
 [<< Back to API index](../../api-documentation.md)
