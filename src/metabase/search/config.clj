@@ -128,7 +128,11 @@
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
+   ;; TODO only optional and maybe for tests, clean that up!
+   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
+   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms.u/PathSchema]]
+
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!

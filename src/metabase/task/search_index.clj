@@ -1,26 +1,36 @@
 (ns metabase.task.search-index
+  ;; metabase.search.postgres.ingestion has not been exposed publicly yet, it needs a higher level API
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.search :as search]
+   [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.task :as task]
    [metabase.util.log :as log])
   (:import
-   (org.quartz DisallowConcurrentExecution)))
+   (org.quartz DisallowConcurrentExecution JobDetail Trigger)))
 
 (set! *warn-on-reflection* true)
 
 ;; This is problematic multi-instance deployments, see below.
 (def ^:private recreated? (atom false))
 
-(def job-key
-  "Key used to define and trigger the search-index task."
-  (jobs/key "metabase.task.search-index.job"))
+(def ^:private reindex-stem "metabase.task.search-index.reindex")
+(def ^:private update-stem "metabase.task.search-index.update")
+
+(def reindex-job-key
+  "Key used to define and trigger a job that rebuilds the entire index from scratch."
+  (jobs/key (str reindex-stem ".job")))
+
+(def update-job-key
+  "Key used to define and trigger a job that makes incremental updates to the search index."
+  (jobs/key (str update-stem ".job")))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate Search Index"}
-  SearchIndexing [_ctx]
+  SearchIndexReindex [_ctx]
   (when (search/supports-index?)
     (if (not @recreated?)
       (do (log/info "Recreating search index from the latest schema")
@@ -34,13 +44,50 @@
           (search/reindex!)))
     (log/info "Done indexing.")))
 
-(defmethod task/init! ::SearchIndex [_]
-  (let [job     (jobs/build
-                 (jobs/of-type SearchIndexing)
-                 (jobs/with-identity job-key))
-        trigger (triggers/build
-                 (triggers/with-identity (triggers/key "metabase.task.search-index.trigger"))
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                  (simple/schedule (simple/with-interval-in-hours 1))))]
-    (task/schedule-task! job trigger)))
+(defn- force-scheduled-task! [^JobDetail job ^Trigger trigger]
+  ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
+  #_(task/schedule-task! job trigger)
+  (task/delete-task! (.getKey job) (.getKey trigger))
+  (task/add-job! job)
+  (task/add-trigger! trigger))
+
+(defmethod task/init! ::SearchIndexReindex [_]
+  (let [job         (jobs/build
+                     (jobs/of-type SearchIndexReindex)
+                     (jobs/store-durably)
+                     (jobs/with-identity reindex-job-key))
+        trigger-key (triggers/key (str reindex-stem ".trigger"))
+        trigger     (triggers/build
+                     (triggers/with-identity trigger-key)
+                     (triggers/for-job reindex-job-key)
+                     (triggers/start-now)
+                     (triggers/with-schedule
+                      (simple/schedule (simple/with-interval-in-hours 1))))]
+    (force-scheduled-task! job trigger)))
+
+(jobs/defjob ^{DisallowConcurrentExecution true
+               :doc                        "Keep Search Index updated"}
+  SearchIndexUpdate [_ctx]
+  (when (search/supports-index?)
+    (while true
+      (let [updated-entry-count (search.ingestion/process-next-batch Long/MAX_VALUE 100)]
+        (when (pos? updated-entry-count)
+          (log/infof "Updated %d search index entries" updated-entry-count))))))
+
+(defmethod task/init! ::SearchIndexUpdate [_]
+  (let [job         (jobs/build
+                     (jobs/of-type SearchIndexUpdate)
+                     (jobs/store-durably)
+                     (jobs/with-identity update-job-key))
+        trigger-key (triggers/key (str update-stem ".trigger"))
+        trigger     (triggers/build
+                     (triggers/with-identity trigger-key)
+                     (triggers/for-job update-job-key)
+                     (triggers/start-now)
+                     ;; This schedule is only here to restart the task if it dies for some reason.
+                     (triggers/with-schedule (simple/schedule (simple/with-interval-in-seconds 1))))]
+    (force-scheduled-task! job trigger)))
+
+(comment
+  (task/job-exists? reindex-job-key)
+  (task/job-exists? update-job-key))
