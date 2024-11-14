@@ -92,7 +92,6 @@
    :text                10})
 
 (def ^:private FilterSpec
-  "Map with the various allowed search parameters, used to construct the SQL query."
   [:map {:closed true}
    [:key                               :keyword]
    [:type                              :keyword]
@@ -102,7 +101,6 @@
    [:required-feature {:optional true} :keyword]])
 
 (def ^:private Filter
-  "Map with the various allowed search parameters, used to construct the SQL query."
   [:map {:closed true}
    [:key              :keyword]
    [:type             :keyword]
