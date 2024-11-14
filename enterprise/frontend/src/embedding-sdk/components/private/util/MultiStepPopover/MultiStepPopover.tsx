@@ -2,66 +2,61 @@ import {
   Children,
   type PropsWithChildren,
   type ReactElement,
-  type ReactNode,
   isValidElement,
 } from "react";
 
-import { Paper, Popover, type PopoverProps } from "metabase/ui";
+import { Popover, type PopoverProps } from "metabase/ui";
 
-const Step = ({ children }: StepProps) => {
-  return <Paper className="p-4">{children}</Paper>;
+type StepValue = string | number;
+
+type StepProps = PropsWithChildren<{
+  value: StepValue;
+}>;
+
+const Step = ({ children }: PropsWithChildren<StepProps>) => {
+  return children;
 };
 
-type StepProps = {
-  value: string | number;
-  children: ReactNode;
-};
-
-const isStepElement = (
-  element: ReactElement,
-): element is ReactElement<StepProps> => {
-  return element.type === Step;
-};
-
-type MultiStepPopoverTargetProps = {
-  children: ReactNode;
-};
-
-const Target = ({ children }: MultiStepPopoverTargetProps) => {
+const Target = ({ children }: PropsWithChildren) => {
   return <>{children}</>;
 };
 
-const MultiStepPopover = ({
+type MultiStepPopoverProps = PropsWithChildren<{
+  currentStep: StepValue;
+}>;
+
+const MultiStepPopoverContent = ({
   currentStep,
   children,
   ...popoverProps
-}: PropsWithChildren<{
-  currentStep: string | number;
-}> &
-  PopoverProps) => {
-  const getCurrentStepContent = () => {
-    return (
-      Children.toArray(children)
-        .filter((child): child is ReactElement => isValidElement(child))
-        .find(
-          child => isStepElement(child) && child.props.value === currentStep,
-        )?.props.children || null
+}: MultiStepPopoverProps & PopoverProps) => {
+  const findChild = <T extends ReactElement>(
+    predicate: (child: ReactElement) => child is T,
+  ): T | null => {
+    const child = Children.toArray(children).find(
+      (child): child is T => isValidElement(child) && predicate(child),
     );
+    return child || null;
   };
 
+  const currentStepContent = findChild(
+    (child): child is ReactElement<StepProps> =>
+      child.type === Step && child.props.value === currentStep,
+  )?.props.children;
+
+  const targetElement = findChild(
+    (child): child is ReactElement => child.type === Target,
+  )?.props.children;
+
   return (
-    <Popover {...popoverProps} width={100}>
-      <Popover.Target>
-        {Children.toArray(children)
-          .filter((child): child is ReactElement => isValidElement(child))
-          .find(child => child.type === Target)?.props.children || null}
-      </Popover.Target>
-      <Popover.Dropdown>{getCurrentStepContent()}</Popover.Dropdown>
+    <Popover {...popoverProps}>
+      <Popover.Target>{targetElement}</Popover.Target>;
+      <Popover.Dropdown>{currentStepContent}</Popover.Dropdown>;
     </Popover>
   );
 };
 
-MultiStepPopover.Target = Target;
-MultiStepPopover.Step = Step;
-
-export { MultiStepPopover };
+export const MultiStepPopover = Object.assign(MultiStepPopoverContent, {
+  Step,
+  Target,
+});
