@@ -1,6 +1,6 @@
 {
   "name": "change-query",
-  "description": "Changes a query. Accepts a serialized query and outputs a serialized query. In case of error outputs an error message. The tool does not have any side effects. Use `run-query` tool to actually execute the modified query.",
+  "description": "Changes a query. Accepts a serialized query and outputs a serialized query. In case of error outputs an error message. The tool does not have any side effects. Use `run-query` tool to actually execute the modified query. You must call `get-query-columns` tool first with the provided `query` to get the list of available columns.",
   "parameters": {
     "type": "object",
     "properties": {

@@ -1,0 +1,17 @@
+{
+  "name": "get-query-columns",
+  "description": "Lists available columns for the query. Accepts a serialized query and returns columns serialized as JSON. Can be used to validate and coerce user input.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Serialized query. Should be treated as an opaque string."
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "additionalProperties": false
+  }
+}
