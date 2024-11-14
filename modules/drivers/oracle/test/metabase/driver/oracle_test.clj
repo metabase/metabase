@@ -505,10 +505,10 @@
                  (is (= (t/zoned-date-time (u.date/parse test-date) report-tz)
                         (ffirst (mt/rows (qp/process-query query))))))))))))))
 
-(mt/defdataset d-w-dt
+(mt/defdataset ora-date-db
   ;; date with datetime values
-  [["d_w_dt" [{:field-name "d_w_dt"
-                        :base-type {:native "DATE"}}]
+  [["dtab" [{:field-name "dcol"
+             :base-type {:native "DATE"}}]
     [[(t/offset-date-time 2024 11 5 12 12 12)]
      [(t/offset-date-time 2024 11 6 13 13 13)]]]])
 
@@ -516,13 +516,16 @@
   (mt/test-driver
     :oracle
     (mt/dataset
-      d-w-dt
+      ora-date-db
       (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
         (testing "Synced field is correctly mapped"
           (let [date-field (t2/select-one :model/Field
                                           {:where [:and
-                                                   [:= :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id))]
-                                                   [:= :name "d_w_dt"]]})]
+                                                   [:= :table_id (t2/select-one-fn :id :model/Table
+                                                                                    {:where [:and
+                                                                                             [:= :db_id (mt/id)]
+                                                                                             [:= :name "date_db_dtab"]]})]
+                                                   [:= :name "dcol"]]})]
             (are [key* expected-type] (= expected-type (key* date-field))
               :base_type :type/DateTime
               :database_type "DATE")))
@@ -530,11 +533,11 @@
           (is (= [[2M "2024-11-06T13:13:13Z"]]
                  (mt/rows
                   (mt/run-mbql-query
-                    d_w_dt
-                    {:filter [:= [:field %d_w_dt {:base-type :type/Date :temporal-unit :day}] "2024-11-06"]})))))
+                    dtab
+                    {:filter [:= [:field %dcol {:base-type :type/Date :temporal-unit :day}] "2024-11-06"]})))))
         (testing "Filtering by datetime retuns expected results"
           (is (= [[1M "2024-11-05T12:12:12Z"]]
                  (mt/rows
                   (mt/run-mbql-query
-                    d_w_dt
-                    {:filter [:= [:field %d_w_dt {:base-type :type/Date}] "2024-11-05T12:12:12"]})))))))))
+                    dtab
+                    {:filter [:= [:field %dcol {:base-type :type/Date}] "2024-11-05T12:12:12"]})))))))))
