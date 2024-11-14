@@ -49,6 +49,26 @@ By default, dashboard components take full page height (100vh). You can override
 />
 ```
 
+## Customizing the question layout when clicking on dashboard cards
+
+When clicking on a card in the dashboard, you will be taken to the question for that card.
+
+By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
+
+To customize the question layout, pass a `questionView` prop to the `InteractiveDashboard` component,
+with the custom view as the child component.
+
+```typescript
+<InteractiveQuestion
+  questionId={95}
+  questionView={<QuestionView />}
+/>
+```
+
+The questionView prop accepts a React node that will be rendered in the question view, which
+you can build with namespaced components within the `InteractiveQuestion` component.
+See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example.
+
 ## Example embedded dashboard with `InteractiveDashboard` component
 
 ```typescript
