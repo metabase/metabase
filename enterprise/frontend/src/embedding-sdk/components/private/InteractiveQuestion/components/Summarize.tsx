@@ -2,9 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { match } from "ts-pattern";
 
-import { BadgeList } from "embedding-sdk/components/private/InteractiveQuestion/components/BadgeList";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { MultiStepPopover } from "embedding-sdk/components/private/util/MultiStepPopover";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
 import {
@@ -13,6 +10,11 @@ import {
 } from "metabase/query_builder/utils/get-aggregation-items";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { MultiStepPopover } from "../../util/MultiStepPopover";
+import { useInteractiveQuestionContext } from "../context";
+
+import { BadgeList } from "./util/BadgeList";
 
 export const SummarizeInner = ({
   query,
