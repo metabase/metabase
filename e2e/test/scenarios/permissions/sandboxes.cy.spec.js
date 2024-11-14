@@ -1006,7 +1006,7 @@ describeEE("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
+    it("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
