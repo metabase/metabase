@@ -302,11 +302,10 @@
   [s temporal-unit]
   (str/ends-with? s (str ": " (describe-temporal-unit temporal-unit))))
 
-;; TODO: Elaborate with query stage example.
 (defn ensure-ends-with-temporal-unit
   "Append `temporal-unit` into a string `s` if appropriate.
 
-  Because of UX, `:default` temporal unit is not appended. If `temporal-unit` is already suffix of `s`, do not add it
+  The `:default` temporal unit is not appended. If `temporal-unit` is already suffix of `s`, do not add it
   for the second time. This function may be called multiple times during processing of a query stage."
   [s temporal-unit]
   (if (or (not (string? s)) ; ie. nil or something that definitely should not occur here
@@ -319,20 +318,8 @@
   "Append temporal unit into `column-metadata`'s `:display_name` when appropriate.
 
   This is expected to be called after `:unit` is added into column metadata, ie. in terms of annotate middleware, after
-  the column metadata coming from a driver are merged with result of `column-info`.
-
-  If we have 4 stage query, changing the temporal unit of a column in every stage, we will end up with display name
-  containing all temporal-units. If this turns out to be a problem, ie. users actually do different bucketing of same
-  column on multiple levels and don't like the longer names, then it will be addressed."
+  the column metadata coming from a driver are merged with result of `column-info`."
   [column-metadata]
   (if-some [temporal-unit (:unit column-metadata)]
     (update column-metadata :display_name ensure-ends-with-temporal-unit temporal-unit)
     column-metadata))
-
-;; lbrdnk TODO: Test.
-(defn coarser-truncation-unit
-  "Decide whether `u1` is coarser than `u2`."
-  [u1 u2]
-  (let [u1-index (or (lib.schema.temporal-bucketing/datetime-truncation-unit->order u1) -1)
-        u2-index (or (lib.schema.temporal-bucketing/datetime-truncation-unit->order u2) -1)]
-    (> u1-index  u2-index)))
