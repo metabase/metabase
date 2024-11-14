@@ -76,6 +76,7 @@
 (def ^:private Specification
   [:map {:closed true}
    [:name SearchModel]
+   [:visibility [:enum :all :app-user]]
    [:model :keyword]
    [:attrs Attrs]
    [:search-terms [:sequential {:min 1} :keyword]]
@@ -168,7 +169,7 @@
                (mapcat
                 find-fields-top
                 ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-                (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))
+                (vals (dissoc spec :name :visibility :native-query :where :joins :bookmark :model)))
                (find-fields-expr (:where spec)))))
 
 (defn- replace-qualification [expr from to]
@@ -244,6 +245,7 @@
   [search-model spec]
   `(let [spec# (-> ~spec
                    (assoc :name ~search-model)
+                   (update :visibility #(or % :all))
                    (update :attrs #(merge ~default-attrs %)))]
      (validate-spec! spec#)
      (derive (:model spec#) :hook/search-index)

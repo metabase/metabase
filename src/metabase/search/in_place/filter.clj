@@ -79,7 +79,7 @@
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user?))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user? search-context))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))

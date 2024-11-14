@@ -735,9 +735,10 @@
                            (search! "rom" :rasta))))))
 
           (testing "Sandboxed users do not see indexed entities in search"
-            (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-              (is (= #{}
-                     (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
+            (with-redefs [premium-features/impersonated-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (with-redefs [premium-features/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
   (assoc m
