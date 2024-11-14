@@ -252,7 +252,10 @@
     {:error/message "field options"}
     [:base-type {:optional true} [:maybe ::lib.schema.common/base-type]]
 
-    ;; lbrdnk TODO: Add description.
+    ;; Inherited temporal unit captures the last temporal unit that has been assigned to a field on some of previous
+    ;; stages. That field may have resulted in some column, column into field, etc., passing through query stages.
+    ;; This information is useful eg. for picking default temporal unit for a columnn. If column is a result of
+    ;; a bucketed field, default is don't bin.
     [:inherited-temporal-unit {:optional true} [:maybe ::DateTimeUnit]]
 
     [:source-field
