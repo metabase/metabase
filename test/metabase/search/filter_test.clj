@@ -12,7 +12,7 @@
   metabase.models/keep-me)
 
 (defn- filter-keys []
-  (keys @#'search.filter/context-key->attr))
+  (remove #{:ids} (map :context-key (vals search.config/filters))))
 
 (defn- active-filter-combinations []
   ;; We ignore :archived? as we've moved some of these filters to the `:where` clause as a simplifying optimization.
@@ -79,7 +79,6 @@
                       [:< [:cast :search_index.model_created_at :date] #t"2024-10-02"]
                       ;; depends on whether :content-verification is enabled
                       #_[:= :search_index.verified true]
-                      [:inline [:= 1 1]]
                       [:in :search_index.creator_id [123]]
                       [:= :search_index.database_id 231]
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]
