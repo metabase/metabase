@@ -19,6 +19,8 @@ export const SankeyChart = ({
   settings,
   fontFamily,
   clicked,
+  width,
+  height,
   onVisualizationClick,
 }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
@@ -34,8 +36,9 @@ export const SankeyChart = ({
     [rawSeriesWithRemappings, settings],
   );
   const layout = useMemo(
-    () => getSankeyLayout(chartModel, settings, renderingContext),
-    [chartModel, settings, renderingContext],
+    () =>
+      getSankeyLayout(chartModel, settings, width, height, renderingContext),
+    [chartModel, settings, width, height, renderingContext],
   );
   const option = useMemo(
     () => ({

@@ -28,7 +28,13 @@ export const SankeyChart = ({
   });
 
   const chartModel = getSankeyChartModel(rawSeries, settings);
-  const layout = getSankeyLayout(chartModel, settings, renderingContext);
+  const layout = getSankeyLayout(
+    chartModel,
+    settings,
+    width,
+    height,
+    renderingContext,
+  );
   const option = getSankeyChartOption(
     chartModel,
     layout,

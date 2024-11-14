@@ -26,13 +26,24 @@ const getMostRightNodes = (
 export const getSankeyLayout = (
   chartModel: SankeyChartModel,
   settings: ComputedVisualizationSettings,
+  width: number,
+  height: number,
   renderingContext: RenderingContext,
 ): SankeyChartLayout => {
+  const horizontalPadding = Math.max(
+    width * SANKEY_CHART_STYLE.padding.percent,
+    SANKEY_CHART_STYLE.padding.minPadding,
+  );
+  const verticalPadding = Math.max(
+    height * SANKEY_CHART_STYLE.padding.percent,
+    SANKEY_CHART_STYLE.padding.minPadding,
+  );
+
   const padding = {
-    top: SANKEY_CHART_STYLE.padding.y,
-    right: SANKEY_CHART_STYLE.padding.x,
-    bottom: SANKEY_CHART_STYLE.padding.y,
-    left: SANKEY_CHART_STYLE.padding.x,
+    top: verticalPadding,
+    right: horizontalPadding,
+    bottom: verticalPadding,
+    left: horizontalPadding,
   };
 
   const mostRightNodes = getMostRightNodes(chartModel.data, settings);

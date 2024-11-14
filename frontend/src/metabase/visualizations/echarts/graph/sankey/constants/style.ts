@@ -9,8 +9,8 @@ export const SANKEY_CHART_STYLE = {
     size: 14,
   },
   padding: {
-    x: 24,
-    y: 24,
+    percent: 0.05,
+    minPadding: 24,
   },
   edgeColor: {
     gray: "#81898e", // --mb-base-color-orion-50
