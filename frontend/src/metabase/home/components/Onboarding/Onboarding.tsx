@@ -617,13 +617,9 @@ export const Onboarding = () => {
                 >{t`Get the most out of ${applicationName}`}</Title>
                 <Text>
                   {t`${applicationName} can do a lot. To learn more—about ${applicationName}, data visualization, modeling, and other data topics—check out our `}
-                  {jt`${(
-                    <ExternalLink href={docsLink}>{t`Docs`}</ExternalLink>
-                  )}`}
+                  <ExternalLink href={docsLink}>{t`Docs`}</ExternalLink>
                   {t` and `}
-                  {jt`${(
-                    <ExternalLink href="https://www.metabase.com/learn">{t`Learn`}</ExternalLink>
-                  )}`}
+                  <ExternalLink href="https://www.metabase.com/learn">{t`Learn`}</ExternalLink>
                   {t` sites.`}
                 </Text>
               </Box>
