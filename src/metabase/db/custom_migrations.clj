@@ -1754,7 +1754,7 @@
        (< 1 (count x) 4)
        (= (get x 0) "dimension")))
 
-(defn- update-parameter-mapping-target-stage-numbers
+(defn- update-parameter-mapping-target-dimension
   [parameter-mapping-entry update-fn]
   (let [parameter-mapping (val parameter-mapping-entry)
         target (:target parameter-mapping)
@@ -1783,7 +1783,7 @@
       (update-in [:click_behavior :parameterMapping]
                  (fn [mappings]
                    (into {}
-                         (map #(update-parameter-mapping-target-stage-numbers % update-fn))
+                         (map #(update-parameter-mapping-target-dimension % update-fn))
                          mappings))))))
 
 (defn- update-viz-settings-target-dimensions

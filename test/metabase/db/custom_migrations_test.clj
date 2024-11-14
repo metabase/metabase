@@ -2381,7 +2381,8 @@
             (insert-stage-number-data!)
 
             viz-settings-generator
-            (fn [dimensions]
+            (fn [dimensions]             ; 4 dimensions are consumed
+              ;; crazy as it sounds, the FE uses the JSON encoded form of the dimensions as IDs and keys
               (let [dimension-strs (mapv json/generate-string dimensions)
                     dimension-keys (mapv keyword dimension-strs)]
                 (fn [[target-id0 target-id1 target-id2]]
@@ -2397,9 +2398,10 @@
                      :fieldRef ["aggregation" 0]
                      :name "count"}],
                    :table.pivot_column "end_timestamp",
+                   ;; interesting part starts here (the fields above this are just random stuff from viz settings)
                    :column_settings
                    {:name0
-                    {:click_behavior
+                    {:click_behavior    ; this has two mappings on the column_settings level
                      {:targetId target-id0
                       :parameterMapping
                       {(dimension-keys 0)
@@ -2421,7 +2423,7 @@
                       :linkType "question"
                       :type "link"}}
                     :name1
-                    {:click_behavior
+                    {:click_behavior    ; the target is a dashboard, so the dimension should not change
                      {:targetId target-id1
                       :parameterMapping
                       {(dimension-keys 2)
@@ -2434,7 +2436,7 @@
                         :id (dimension-strs 2)}}
                       :linkType "dashboard"
                       :type "link"}}}
-                   :click_behavior
+                   :click_behavior      ; one mapping on the visualization_settings level
                    {:targetId target-id2
                     :parameterMapping
                     {(dimension-keys 3)
@@ -2457,8 +2459,9 @@
                                                 (cond-> dim
                                                   stage-number (assoc 2 {:stage-number stage-number})))
                                               dimensions
-                                              ;; the penultimate dimension (index 2) is for a dashboard,
-                                              ;; so it should get no stage-number
+                                              ;; The penultimate dimension (index 2) is for a dashboard,
+                                              ;; so it should get no stage-number. The last element is
+                                              ;; moved to the end (index 3).
                                               (-> stage-numbers
                                                   (assoc 2 nil)
                                                   (conj (peek stage-numbers))))]
