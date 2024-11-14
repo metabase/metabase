@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { useSearchQuery } from "metabase/api";
+import { skipToken, useSearchQuery } from "metabase/api";
+import { isNotNull } from "metabase/lib/types";
 import { Loader } from "metabase/ui";
 import { createDataSource } from "metabase/visualizer/utils";
 import type { VisualizerDataSourceId } from "metabase-types/store/visualizer";
@@ -18,24 +19,31 @@ export function SearchResultsList({
   onSelect,
   dataSourceIds,
 }: SearchResultsListProps) {
-  const { data = { data: [] } } = useSearchQuery(
-    {
-      q: search,
-      limit: 10,
-      models: ["card"],
-    },
+  const { data: result = { data: [] } } = useSearchQuery(
+    search.length > 0
+      ? {
+          q: search,
+          limit: 10,
+          models: ["card"],
+        }
+      : skipToken,
     {
       refetchOnMountOrArgChange: true,
     },
   );
 
-  const items = useMemo(
-    () =>
-      Array.isArray(data)
-        ? data.map(item => createDataSource("card", item.id, item.name))
-        : [],
-    [data],
-  );
+  const items = useMemo(() => {
+    if (!Array.isArray(result.data)) {
+      return [];
+    }
+    return result.data
+      .map(item =>
+        typeof item.id === "number"
+          ? createDataSource("card", item.id, item.name)
+          : null,
+      )
+      .filter(isNotNull);
+  }, [result]);
 
   if (items.length === 0) {
     return <Loader />;
