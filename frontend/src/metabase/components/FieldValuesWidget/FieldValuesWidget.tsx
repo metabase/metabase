@@ -1,14 +1,7 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { useMount, usePrevious, useThrottle, useUnmount } from "react-use";
 import { jt, t } from "ttag";
@@ -17,6 +10,7 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { SearchField } from "metabase/components/SearchField";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
@@ -34,8 +28,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import type { SelectItemProps } from "metabase/ui";
-import { Box, Flex, MultiAutocomplete } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -404,20 +397,6 @@ export function FieldValuesWidgetInner({
     return { byLabel, byValue };
   }, [parameter?.values_source_config?.values, options]);
 
-  // Get the label/value options for the current values
-  // This is needed to show the correct display value for the current value in the MultiSelect
-  const valueOptions = useMemo(() => {
-    return value
-      .map(value => {
-        const label = fieldValues.byValue.get(value);
-        if (!label) {
-          return null;
-        }
-        return [value, label];
-      })
-      .filter((entry): entry is FieldValue => Boolean(entry));
-  }, [value, fieldValues]);
-
   function customLabel(value: RowValue): string | undefined {
     return fieldValues.byValue.get(value);
   }
@@ -502,7 +481,11 @@ export function FieldValuesWidgetInner({
       options,
     }) || isSingleValueSearch;
 
-  const valueForLabel = (label: string | number) => {
+  const valueForLabel = (label: RowValue) => {
+    if (label === null) {
+      return null;
+    }
+
     const value = fieldValues.byLabel.get(label?.toString());
 
     if (value) {
@@ -512,7 +495,7 @@ export function FieldValuesWidgetInner({
     return label;
   };
 
-  const parseFreeformValue = (labelOrValue: string | number) => {
+  const parseFreeformValue = (labelOrValue: RowValue) => {
     const value = valueForLabel(labelOrValue);
     return isNumeric(fields[0], parameter)
       ? parseNumberValue(value)
@@ -528,11 +511,10 @@ export function FieldValuesWidgetInner({
     return true;
   };
 
-  const renderStringOption = useCallback(
+  const renderItem = useCallback(
     function (option: FieldValue): {
-      label: string;
       value: string;
-      customlabel?: string;
+      label: string;
     } {
       const value = getValue(option);
       const column = fields[0];
@@ -551,34 +533,8 @@ export function FieldValuesWidgetInner({
       return {
         value: value?.toString() ?? "",
         label,
-        customlabel: getLabel(option),
       };
     },
-    [fields, formatOptions],
-  );
-
-  const CustomItemComponent = useMemo(
-    () =>
-      forwardRef<HTMLDivElement, SelectItemProps & { customlabel?: string }>(
-        function CustomItem(props, ref) {
-          const customlabel =
-            props.value &&
-            renderValue({
-              fields,
-              formatOptions,
-              value: props.value,
-              displayValue: props.customlabel,
-            });
-
-          return (
-            <ItemWrapper
-              ref={ref}
-              {...props}
-              label={customlabel ?? (props.label || "")}
-            />
-          );
-        },
-      ),
     [fields, formatOptions],
   );
 
@@ -621,22 +577,20 @@ export function FieldValuesWidgetInner({
             isLoading={isLoading}
           />
         ) : !isSimpleInput ? (
-          <Box pr="1rem">
-            <MultiAutocomplete
-              data-testid="field-values-multi-autocomplete"
-              onSearchChange={onInputChange}
-              onChange={values => onChange(values.map(parseFreeformValue))}
-              value={value
-                .map(value => value?.toString())
-                .filter((v): v is string => v !== null && v !== undefined)}
-              data={options.concat(valueOptions).map(renderStringOption)}
-              placeholder={tokenFieldPlaceholder}
-              shouldCreate={shouldCreate}
-              autoFocus={autoFocus}
-              icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-              itemComponent={CustomItemComponent}
-            />
-          </Box>
+          <SearchField
+            data-testid="field-values-multi-autocomplete"
+            onInputChange={onInputChange}
+            onChange={values => onChange(values.map(parseFreeformValue))}
+            value={value}
+            options={options}
+            placeholder={tokenFieldPlaceholder}
+            shouldCreate={shouldCreate}
+            autoFocus={autoFocus}
+            prefix={prefix}
+            optionRenderer={optionRenderer}
+            itemRenderer={renderItem}
+            isLoading={isLoading}
+          />
         ) : (
           <TokenField
             prefix={prefix}
@@ -806,13 +760,3 @@ function renderValue({
     />
   );
 }
-
-export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
-  function ItemWrapper({ label, value, ...others }, ref) {
-    return (
-      <div ref={ref} {...others}>
-        {label || value}
-      </div>
-    );
-  },
-);
