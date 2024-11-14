@@ -324,7 +324,24 @@ Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. Th
 
 -  **`id`** value must be an integer greater than zero.
 
--  **`dash-updates`** map where {:name (optional) -> <nullable value must be a non-blank string.>, :description (optional) -> <nullable string>, :caveats (optional) -> <nullable string>, :points_of_interest (optional) -> <nullable string>, :show_in_getting_started (optional) -> <nullable boolean>, :enable_embedding (optional) -> <nullable boolean>, :embedding_params (optional) -> <nullable value must be a valid embedding params map.>, :parameters (optional) -> <nullable sequence of parameter must be a map with :id and :type keys>, :position (optional) -> <nullable value must be an integer greater than zero.>, :width (optional) -> <enum of fixed, full>, :archived (optional) -> <nullable boolean>, :collection_id (optional) -> <nullable value must be an integer greater than zero.>, :collection_position (optional) -> <nullable value must be an integer greater than zero.>, :cache_ttl (optional) -> <nullable value must be an integer greater than zero.>, :dashcards (optional) -> <nullable value must be seq of maps in which ids are unique>, :tabs (optional) -> <nullable value must be seq of maps in which ids are unique>}.
+Request body should have the form:
+
+    {:name (optional) -> <nullable value must be a non-blank string.>,
+     :description (optional) -> <nullable string>,
+     :caveats (optional) -> <nullable string>,
+     :points_of_interest (optional) -> <nullable string>,
+     :show_in_getting_started (optional) -> <nullable boolean>,
+     :enable_embedding (optional) -> <nullable boolean>,
+     :embedding_params (optional) -> <nullable value must be a valid embedding params map.>,
+     :parameters (optional) -> <nullable sequence of parameter must be a map with :id and :type keys>,
+     :position (optional) -> <nullable value must be an integer greater than zero.>,
+     :width (optional) -> <enum of fixed, full>,
+     :archived (optional) -> <nullable boolean>,
+     :collection_id (optional) -> <nullable value must be an integer greater than zero.>,
+     :collection_position (optional) -> <nullable value must be an integer greater than zero.>,
+     :cache_ttl (optional) -> <nullable value must be an integer greater than zero.>,
+     :dashcards (optional) -> <nullable value must be seq of maps in which ids are unique>,
+     :tabs (optional) -> <nullable value must be seq of maps in which ids are unique>}.
 
 ## `PUT /api/dashboard/:id/cards`
 
