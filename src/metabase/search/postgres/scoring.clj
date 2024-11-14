@@ -42,7 +42,7 @@
   "Prefer items whose value is earlier in some list."
   [idx-col len]
   (if (pos? len)
-    [:/ [:- [:inline (dec len)] idx-col] [:inline len]]
+    [:/ [:- [:inline (dec len)] idx-col] [:inline (double len)]]
     [:inline 1]))
 
 (defn- sum-columns [column-names]
