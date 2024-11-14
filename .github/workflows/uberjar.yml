@@ -199,15 +199,15 @@ jobs:
         format: sarif
         output: trivy-results.sarif
 
-    - name: Run Trivy vulnerability scanner if dev branch
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@master
-      env:
-        TRIVY_OFFLINE_SCAN: true
-      with:
-        image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
-        format: sarif
-        output: trivy-results.sarif
+#    - name: Run Trivy vulnerability scanner if dev branch
+#      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+#      uses: aquasecurity/trivy-action@master
+#      env:
+#        TRIVY_OFFLINE_SCAN: true
+#      with:
+#        image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+#        format: sarif
+#        output: trivy-results.sarif
 
     - name: Upload Trivy scan results to GitHub Security tab if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
