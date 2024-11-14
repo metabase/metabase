@@ -798,7 +798,7 @@ describe("scenarios > question > filter", () => {
       tab: "Browse",
       path: ["Our analytics"],
     });
-    entityPickerModal().findByText("Save in this collection").click();
+    entityPickerModal().findByText("Select this collection").click();
     cy.findByTestId("save-question-modal").button("Save").click();
 
     assertOnLegendLabels();

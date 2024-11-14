@@ -543,7 +543,7 @@ describe("issue 23981", () => {
       cy.findByText("Our analytics").should("not.exist");
       cy.log('ensure that "Collections" is not selectable');
       cy.findByText("Collections").should("be.visible").click();
-      cy.button("Save in this collection").should("be.disabled");
+      cy.button("Select this collection").should("be.disabled");
     });
   });
 });

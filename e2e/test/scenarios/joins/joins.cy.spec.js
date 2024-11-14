@@ -78,7 +78,7 @@ describe("scenarios > question > joined questions", () => {
       tab: "Browse",
       path: ["Our analytics"],
     });
-    H.entityPickerModal().findByText("Save in this collection").click();
+    H.entityPickerModal().button("Select this collection").click();
     cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.findByTestId("qb-filters-panel").findByText(
