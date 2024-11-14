@@ -2,15 +2,19 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { match } from "ts-pattern";
 
-import { BadgeList } from "embedding-sdk/components/private/InteractiveQuestion/components/BadgeList";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { MultiStepPopover } from "embedding-sdk/components/private/util/MultiStepPopover";
 import { getBreakoutListItem } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
-import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
-import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks/use-breakout-query-handlers";
+import {
+  type UpdateQueryHookProps,
+  useBreakoutQueryHandlers,
+} from "metabase/query_builder/hooks";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { Box, Button, type ButtonProps, Icon, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { MultiStepPopover } from "../../util/MultiStepPopover";
+import { useInteractiveQuestionContext } from "../context";
+
+import { BadgeList } from "./util/BadgeList";
 
 const BreakoutButton = ({
   query,
