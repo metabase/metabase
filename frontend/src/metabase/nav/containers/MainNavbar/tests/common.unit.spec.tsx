@@ -122,7 +122,8 @@ describe("nav > containers > MainNavbar", () => {
   describe("browse models link", () => {
     it("should render when there are models", async () => {
       await setup({ models: [createMockModelResult()] });
-      const listItem = screen.getByRole("listitem", {
+
+      const listItem = await screen.findByRole("listitem", {
         name: /Browse models/i,
       });
       const link = within(listItem).getByRole("link");
@@ -132,6 +133,12 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should not render when there are no models", async () => {
       await setup({ models: [] });
+
+      expect(
+        await screen.findByRole("listitem", {
+          name: /Browse databases/i,
+        }),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("listitem", { name: /Browse models/i }),
       ).not.toBeInTheDocument();
@@ -142,7 +149,7 @@ describe("nav > containers > MainNavbar", () => {
         models: [createMockModelResult()],
         pathname: "/browse/models",
       });
-      const listItem = screen.getByRole("listitem", {
+      const listItem = await screen.findByRole("listitem", {
         name: /Browse models/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");
