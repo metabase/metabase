@@ -59,15 +59,15 @@ To customize the question layout, pass a `questionView` prop to the `Interactive
 with the custom view as the child component.
 
 ```typescript
-<InteractiveQuestion
-  questionId={95}
-  questionView={<QuestionView />}
-/>
+<InteractiveQuestion questionId={95} questionView={QuestionView} />
+
+// You can use namespaced components to build the question's layout.
+const QuestionView = () => <InteractiveQuestion.Title />
 ```
 
-The questionView prop accepts a React node that will be rendered in the question view, which
+The questionView prop accepts a React component that will be rendered in the question view, which
 you can build with namespaced components within the `InteractiveQuestion` component.
-See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example.
+See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
 
 ## Example embedded dashboard with `InteractiveDashboard` component
 

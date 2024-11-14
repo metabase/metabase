@@ -27,7 +27,15 @@ export type InteractiveDashboardProps = {
   plugins?: SdkPluginsConfig;
   className?: string;
   style?: CSSProperties;
-  questionView?: ReactNode;
+
+  /**
+   * A custom React component to render the question layout.
+   * Use namespaced InteractiveQuestion components to build the layout.
+   *
+   * @todo pass the question context to the question view component,
+   *       once we have a public-facing question context.
+   */
+  renderQuestionView?: () => ReactNode;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -44,7 +52,7 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
   style,
-  questionView,
+  renderQuestionView: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
   const {
     displayOptions,
@@ -84,7 +92,7 @@ const InteractiveDashboardInner = ({
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
         >
-          {questionView}
+          {AdHocQuestionView && <AdHocQuestionView />}
         </InteractiveAdHocQuestion>
       ) : (
         <InteractiveDashboardProvider

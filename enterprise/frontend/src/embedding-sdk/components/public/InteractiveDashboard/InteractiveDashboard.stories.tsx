@@ -1,5 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
+import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
 import {
@@ -27,5 +28,18 @@ export const Default = {
 
   args: {
     dashboardId: DASHBOARD_ID,
+  },
+};
+
+export const WithCustomQuestionLayout = {
+  render: Template,
+
+  args: {
+    questionView: (
+      <div>
+        <InteractiveQuestion.Title />
+        <InteractiveQuestion.Description />
+      </div>
+    ),
   },
 };
