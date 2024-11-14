@@ -589,6 +589,7 @@ export function FieldValuesWidgetInner({
             prefix={prefix}
             optionRenderer={optionRenderer}
             itemRenderer={renderItem}
+            isDashboardFilter={!!parameter}
             isLoading={loadingState === "LOADING"}
           />
         ) : (
