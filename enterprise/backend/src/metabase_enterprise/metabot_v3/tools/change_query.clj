@@ -132,7 +132,7 @@
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
                       (throw (find-operator-error operators operator-name change-type)))
-        clause    (condp = operator
+        clause    (condp = (:short operator)
                     :=  (lib/= column value))]
     (lib/filter query clause)))
 
