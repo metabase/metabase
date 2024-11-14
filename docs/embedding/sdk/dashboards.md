@@ -55,11 +55,11 @@ When clicking on a card in the dashboard, you will be taken to the question for 
 
 By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
 
-To customize the question layout, pass a `questionView` prop to the `InteractiveDashboard` component,
+To customize the question layout, pass a `renderQuestionView` prop to the `InteractiveDashboard` component,
 with the custom view as the child component.
 
 ```typescript
-<InteractiveQuestion questionId={95} questionView={QuestionView} />
+<InteractiveQuestion questionId={95} renderQuestionView={QuestionView} />
 
 // You can use namespaced components to build the question's layout.
 const QuestionView = () => <InteractiveQuestion.Title />
