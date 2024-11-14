@@ -91,7 +91,8 @@
    :view-count          2
    :text                10})
 
-(def ^:private FilterSpec
+(def ^:private FilterDef
+  "A relaxed definition, capturing how we can write the filter - with some fields omitted."
   [:map {:closed true}
    [:key                               :keyword]
    [:type                              :keyword]
@@ -101,6 +102,7 @@
    [:required-feature {:optional true} :keyword]])
 
 (def ^:private Filter
+  "A normalized representation, for the application to leverage."
   [:map {:closed true}
    [:key              :keyword]
    [:type             :keyword]
@@ -110,7 +112,7 @@
    [:required-feature [:maybe :keyword]]])
 
 (mu/defn- build-filter
-  [{k :key t :type :keys [context-key field default-value supported-value? required-feature]} :- FilterSpec] :- Filter
+  [{k :key t :type :keys [context-key field default-value supported-value? required-feature]} :- FilterDef] :- Filter
   {:type             (keyword "metabase.search.filter" (name t))
    :field            (or field (u/->snake_case_en (name k)))
    :context-key      (or context-key k)
