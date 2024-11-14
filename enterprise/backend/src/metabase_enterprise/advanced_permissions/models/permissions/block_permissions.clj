@@ -22,15 +22,17 @@
   run if the current User has unrestricted data permissions from another Group. See the namespace documentation for
   [[metabase.models.collection]] for more details."
   :feature :advanced-permissions
-  [{database-id :database :as query}]
-  (let [{:keys [table-ids card-ids]} (query-perms/query->source-ids query)
+  [{{gtap-perms :gtaps} ::query-perms/perms, database-id :database :as query}]
+  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids query)
         table-permissions            (map (partial data-perms/table-permission-for-user api/*current-user-id*
                                                    :perms/view-data database-id)
                                           table-ids)]
-    ;; Make sure we don't have block permissions for any individual tables in the query
+    ;; Make sure we don't have block permissions for the entire DB or individual tables referenced by the query.
     (or
      (not= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
      (= #{:unrestricted} (set table-permissions))
+     ;; Don't block a query if we have native access implicitly granted to power a sandbox
+     (and native? (= :query-builder-and-native (:perms/create-queries gtap-perms)))
      (throw-block-permissions-exception))
 
     ;; Recursively check block permissions for any Cards referenced by the query
