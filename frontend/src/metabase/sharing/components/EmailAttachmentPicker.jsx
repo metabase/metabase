@@ -5,11 +5,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import { StackedCheckBox } from "metabase/components/StackedCheckBox";
-import CheckBox from "metabase/core/components/CheckBox";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import { Box, Group, Icon, Text } from "metabase/ui";
+import { Box, Checkbox, Group, Icon, Text } from "metabase/ui";
 
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
@@ -269,7 +267,6 @@ export default class EmailAttachmentPicker extends Component {
             </Box>
             <div
               className={cx(
-                CS.textBold,
                 CS.pt1,
                 CS.pb2,
                 CS.flex,
@@ -288,7 +285,8 @@ export default class EmailAttachmentPicker extends Component {
                     CS.borderBottom,
                   )}
                 >
-                  <StackedCheckBox
+                  <Checkbox
+                    variant="stacked"
                     label={t`Questions to attach`}
                     checked={this.areAllSelected(cards, selectedCardIds)}
                     indeterminate={this.areOnlySomeSelected(
@@ -299,22 +297,15 @@ export default class EmailAttachmentPicker extends Component {
                   />
                 </li>
                 {cards.map(card => (
-                  <li
-                    key={card.id}
-                    className={cx(
-                      CS.pb2,
-                      CS.flex,
-                      CS.alignCenter,
-                      CS.cursorPointer,
-                    )}
-                  >
-                    <CheckBox
+                  <li key={card.id}>
+                    <Checkbox
+                      mb="1rem"
+                      mr="0.5rem"
                       checked={selectedCardIds.has(card.id)}
                       label={card.name}
                       onChange={() => {
                         this.onToggleCard(card);
                       }}
-                      className={CS.mr1}
                     />
                   </li>
                 ))}
