@@ -2380,87 +2380,89 @@
                     multi-stage-model-id]}
             (insert-stage-number-data!)
 
-            viz-settings-without-stage-numbers
-            (fn [[target-id0 target-id1 target-id2]]
-              {:table.cell_column "model_id",
-               :table.columns
-               [{:enabled true
-                 :fieldRef ["field" 146 {:base-type "type/Text", :join-alias "People - User"}]
-                 :name "full_name"}
-                {:enabled false
-                 :fieldRef ["field" 191 {:base-type "type/Integer"}]
-                 :name "user_id"}
-                {:enabled true
-                 :fieldRef ["aggregation" 0]
-                 :name "count"}],
-               :table.pivot_column "end_timestamp",
-               :column_settings
-               {:name0
-                {:click_behavior
-                 {:targetId target-id0
-                  :parameterMapping
-                  {:key0
-                   {:source {:type "column"
-                             :id "0"
-                             :name "0"}
-                    :target {:type "dimension",
-                             :id ["[\"dimension\",[\"field\",200,null]]"]
-                             :dimension ["dimension" ["field" 200 nil]]}
-                    :id ["[\"dimension\",[\"field\",200,null]]"]}
-                   :key1
-                   {:source {:type "column"
-                             :id "0"
-                             :name "0"}
-                    :target {:type "dimension",
-                             :id ["[\"dimension\",[\"field\",201,null]]"]
-                             :dimension ["dimension" ["field" 201 nil]]}
-                    :id ["[\"dimension\",[\"field\",201,null]]"]}}
-                  :linkType "question"
-                  :type "link"}}
-                :name1
-                {:click_behavior
-                 {:targetId target-id1
-                  :parameterMapping
-                  {:key2
-                   {:source {:type "column"
-                             :id "0"
-                             :name "0"}
-                    :target {:type "dimension",
-                             :id ["[\"dimension\",[\"field\",202,null]]"]
-                             :dimension ["dimension" ["field" 202 nil]]}
-                    :id ["[\"dimension\",[\"field\",202,null]]"]}}
-                  :linkType "dashboard"
-                  :type "link"}}}
-               :click_behavior
-               {:targetId target-id2
-                :parameterMapping
-                {:key2
-                 {:source {:type "column"
-                           :id "0"
-                           :name "0"}
-                  :target {:type "dimension",
-                           :id ["[\"dimension\",[\"field\",203,null]]"]
-                           :dimension ["dimension" ["field" 203 nil]]}
-                  :id ["[\"dimension\",[\"field\",203,null]]"]}}
-                :linkType "question"
-                :type "link"}})
+            viz-settings-generator
+            (fn [dimensions]
+              (let [dimension-strs (mapv json/generate-string dimensions)
+                    dimension-keys (mapv keyword dimension-strs)]
+                (fn [[target-id0 target-id1 target-id2]]
+                  {:table.cell_column "model_id",
+                   :table.columns
+                   [{:enabled true
+                     :fieldRef ["field" 146 {:base-type "type/Text", :join-alias "People - User"}]
+                     :name "full_name"}
+                    {:enabled false
+                     :fieldRef ["field" 191 {:base-type "type/Integer"}]
+                     :name "user_id"}
+                    {:enabled true
+                     :fieldRef ["aggregation" 0]
+                     :name "count"}],
+                   :table.pivot_column "end_timestamp",
+                   :column_settings
+                   {:name0
+                    {:click_behavior
+                     {:targetId target-id0
+                      :parameterMapping
+                      {(dimension-keys 0)
+                       {:source {:type "column"
+                                 :id "0"
+                                 :name "0"}
+                        :target {:type "dimension",
+                                 :id (dimension-strs 0)
+                                 :dimension (dimensions 0)}
+                        :id (dimension-strs 0)}
+                       (dimension-keys 1)
+                       {:source {:type "column"
+                                 :id "0"
+                                 :name "0"}
+                        :target {:type "dimension",
+                                 :id (dimension-strs 1)
+                                 :dimension (dimensions 1)}
+                        :id (dimension-strs 1)}}
+                      :linkType "question"
+                      :type "link"}}
+                    :name1
+                    {:click_behavior
+                     {:targetId target-id1
+                      :parameterMapping
+                      {(dimension-keys 2)
+                       {:source {:type "column"
+                                 :id "0"
+                                 :name "0"}
+                        :target {:type "dimension",
+                                 :id (dimension-strs 2)
+                                 :dimension (dimensions 2)}
+                        :id (dimension-strs 2)}}
+                      :linkType "dashboard"
+                      :type "link"}}}
+                   :click_behavior
+                   {:targetId target-id2
+                    :parameterMapping
+                    {(dimension-keys 3)
+                     {:source {:type "column"
+                               :id "0"
+                               :name "0"}
+                      :target {:type "dimension",
+                               :id (dimension-strs 3)
+                               :dimension (dimensions 3)}
+                      :id (dimension-strs 3)}}
+                    :linkType "question"
+                    :type "link"}})))
+
+            dimensions (mapv (fn [id] ["dimension" ["field" id nil]]) (range 200 204))
+            viz-settings-without-stage-numbers (viz-settings-generator dimensions)
 
             viz-settings-with-stage-numbers
             (fn [target-ids stage-numbers]
-              (->> (map vector
-                        [[:column_settings :name0 :click_behavior
-                          :parameterMapping :key0
-                          :target :dimension 2 :stage-number]
-                         [:column_settings :name0 :click_behavior
-                          :parameterMapping :key1
-                          :target :dimension 2 :stage-number]
-                         [:click_behavior
-                          :parameterMapping :key2
-                          :target :dimension 2 :stage-number]]
-                        stage-numbers)
-                   (reduce (fn [viz-settings [path stage-number]]
-                             (assoc-in viz-settings path stage-number))
-                           (viz-settings-without-stage-numbers target-ids))))
+              (let [enriched-dimensions (mapv (fn [dim stage-number]
+                                                (cond-> dim
+                                                  stage-number (assoc 2 {:stage-number stage-number})))
+                                              dimensions
+                                              ;; the penultimate dimension (index 2) is for a dashboard,
+                                              ;; so it should get no stage-number
+                                              (-> stage-numbers
+                                                  (assoc 2 nil)
+                                                  (conj (peek stage-numbers))))]
+                ((viz-settings-generator enriched-dimensions) target-ids)))
 
             create-dashcard (fn create-dashcard
                               [card-id targets-or-viz-settings]

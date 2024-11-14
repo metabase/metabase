@@ -1755,12 +1755,21 @@
        (= (get x 0) "dimension")))
 
 (defn- update-parameter-mapping-target-stage-numbers
-  [parameter-mapping update-fn]
-  (let [target (:target parameter-mapping)]
-    (cond-> parameter-mapping
-      (and (= (:type target) "dimension")
-           (-> target :dimension dimension?))
-      (update-in [:target :dimension] update-fn))))
+  [parameter-mapping-entry update-fn]
+  (let [parameter-mapping (val parameter-mapping-entry)
+        target (:target parameter-mapping)
+        dimension (:dimension target)
+        new-dimension (cond-> dimension
+                        (and (= (:type target) "dimension")
+                             (dimension? dimension))
+                        update-fn)]
+    (if (not= new-dimension dimension)
+      (let [new-dimension-str (json/generate-string new-dimension)
+            new-dimension-key (keyword new-dimension-str)]
+        [new-dimension-key (-> parameter-mapping
+                               (assoc :id new-dimension-str)
+                               (update :target assoc :id new-dimension-str :dimension new-dimension))])
+      parameter-mapping-entry)))
 
 (defn- update-column-settings-target-dimensions
   "This can update any map containing :click_behavior and is called with visualization_settings too."
@@ -1772,8 +1781,10 @@
            (= (:linkType click-behavior) "question")
            (-> click-behavior :parameterMapping map?))
       (update-in [:click_behavior :parameterMapping]
-                 update-vals
-                 #(update-parameter-mapping-target-stage-numbers % update-fn)))))
+                 (fn [mappings]
+                   (into {}
+                         (map #(update-parameter-mapping-target-stage-numbers % update-fn))
+                         mappings))))))
 
 (defn- update-viz-settings-target-dimensions
   [viz-settings click-behavior->update-fn]
@@ -1821,7 +1832,7 @@
               id-viz-settings)
 
         card-query-batch-size 1000
-        card-id->last-stage             ; this is expected to make just a few queries
+        card-id->last-stage             ; this is expected to make just a few queries (one in known cases)
         (into {}
               (comp (partition-all card-query-batch-size)
                     (mapcat #(t2/reducible-query {:select [:id :dataset_query [:type :c_type]]
