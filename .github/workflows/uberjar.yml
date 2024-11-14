@@ -184,8 +184,6 @@ jobs:
       uses: aquasecurity/trivy-action@master
       env:
         TRIVY_OFFLINE_SCAN: true
-        TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
-        TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
       with:
         image-ref: docker.io/${{ github.repository_owner }}/metabase-enterprise-head:latest
         format: sarif
@@ -196,8 +194,6 @@ jobs:
       uses: aquasecurity/trivy-action@master
       env:
         TRIVY_OFFLINE_SCAN: true
-        TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
-        TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
       with:
         image-ref: docker.io/${{ github.repository_owner }}/metabase-head:latest
         format: sarif
@@ -208,8 +204,6 @@ jobs:
       uses: aquasecurity/trivy-action@master
       env:
         TRIVY_OFFLINE_SCAN: true
-        TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
-        TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
       with:
         image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
         format: sarif
