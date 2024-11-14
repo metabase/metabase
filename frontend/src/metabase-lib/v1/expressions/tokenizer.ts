@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import type { ErrorWithMessage, Token } from "./types";
+
 export const TOKEN = {
   Operator: 1,
   Number: 2,
@@ -63,7 +65,10 @@ const parseOperator = (expression: string, index: number) => {
   return undefined;
 };
 
-export function tokenize(expression: string) {
+export function tokenize(expression: string): {
+  tokens: Token[];
+  errors: ErrorWithMessage[];
+} {
   const source = expression;
   const length = expression.length;
   let index = 0;
