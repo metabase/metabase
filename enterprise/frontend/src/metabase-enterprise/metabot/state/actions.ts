@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { uuid } from "metabase/lib/uuid";
 import {
@@ -31,18 +32,27 @@ export const {
   setSessionId,
 } = metabot.actions;
 
-export const setVisible = (isVisible: boolean) => (dispatch: Dispatch) => {
-  if (!isVisible) {
-    // reset the conversation history when closing metabot
-    dispatch(
-      EnterpriseApi.internalActions.removeMutationResult({
-        fixedCacheKey: METABOT_TAG,
-      }),
-    );
-  }
+export const setVisible =
+  (isVisible: boolean) => (dispatch: Dispatch, getState: any) => {
+    const currentUser = getCurrentUser(getState());
+    if (!currentUser) {
+      console.error(
+        "Metabot can not be opened while there is no signed in user",
+      );
+      return;
+    }
 
-  dispatch(metabot.actions.setVisible(isVisible));
-};
+    if (!isVisible) {
+      // reset the conversation history when closing metabot
+      dispatch(
+        EnterpriseApi.internalActions.removeMutationResult({
+          fixedCacheKey: METABOT_TAG,
+        }),
+      );
+    }
+
+    dispatch(metabot.actions.setVisible(isVisible));
+  };
 
 export const submitInput = createAsyncThunk(
   "metabase-enterprise/metabot/submitInput",

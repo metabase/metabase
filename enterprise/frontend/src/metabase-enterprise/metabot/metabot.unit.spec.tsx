@@ -6,9 +6,15 @@ import { P, isMatching } from "ts-pattern";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { logout } from "metabase/auth/actions";
+import * as domModule from "metabase/lib/dom";
 import { isUuid, uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import type { User } from "metabase-types/api";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "./components/Metabot";
@@ -26,6 +32,7 @@ function setup(
   options: {
     ui?: React.ReactElement;
     metabotPluginInitialState?: MetabotState;
+    currentUser?: User | null | undefined;
   } | void,
 ) {
   const settings = mockSettings({
@@ -38,6 +45,7 @@ function setup(
 
   const {
     ui = <Metabot />,
+    currentUser = createMockUser(),
     metabotPluginInitialState = {
       ...metabotInitialState,
       sessionId: uuid(),
@@ -48,6 +56,7 @@ function setup(
   return renderWithProviders(<MetabotProvider>{ui}</MetabotProvider>, {
     storeInitialState: createMockState({
       settings,
+      currentUser: currentUser ? currentUser : undefined,
       plugins: {
         metabotPlugin: metabotPluginInitialState,
       },
@@ -215,6 +224,52 @@ describe("metabot", () => {
       await assertVisible();
       act(() => window.history?.pushState(null, "", "/base-path"));
       await assertVisible();
+    });
+
+    // eslint-disable-next-line jest/expect-expect
+    it("should hide metabot when the user logs out", async () => {
+      jest.spyOn(domModule, "reload").mockImplementation(() => {});
+
+      try {
+        const { store } = setup();
+        fetchMock.delete(`path:/api/session`, 200);
+
+        await assertVisible();
+        act(() => {
+          store.dispatch(logout(undefined) as any);
+        });
+        await assertNotVisible();
+      } finally {
+        (domModule.reload as any).mockRestore();
+      }
+    });
+
+    // eslint-disable-next-line jest/expect-expect
+    it("should not show metabot if the is not signed in user", async () => {
+      // suppress expected console error
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(message => {
+          if (
+            message ===
+            "Metabot can not be opened while there is no signed in user"
+          ) {
+            return;
+          }
+          console.error(message);
+        });
+
+      try {
+        const { store } = setup({
+          metabotPluginInitialState: metabotInitialState,
+          currentUser: null,
+        });
+        await assertNotVisible();
+        showMetabot(store.dispatch);
+        await assertNotVisible();
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
     });
   });
 
