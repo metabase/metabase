@@ -14,10 +14,6 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn- operator-info
-  [operator]
-  (-> operator :short name))
-
 (defn- find-column
   [columns column-id]
   (m/find-first #(= (metabot-v3.tools.query/column-id %) column-id) columns))
@@ -29,6 +25,10 @@
                    step-type
                    (json/generate-string (mapv #(metabot-v3.tools.query/column-info query %) columns)))
            {:column column-id}))
+
+(defn- operator-info
+  [operator]
+  (-> operator :short name))
 
 (defn- find-operator
   [operators operator-name]
