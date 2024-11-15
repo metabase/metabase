@@ -10,4 +10,4 @@
   [_tool-name {:keys [source]} _context]
   (let [query             (metabot-v3.tools.query/source-query source)
         columns           (lib/visible-columns query)]
-    {:output (json/generate-string (mapv #(metabot-v3.tools.query/column-info query %) columns))}))
+    {:output (json/generate-string (mapv #(metabot-v3.tools.query/column-info query -1 %) columns))}))

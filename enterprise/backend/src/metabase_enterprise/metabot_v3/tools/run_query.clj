@@ -27,7 +27,7 @@
   [query column-fn column-id step-type]
   (let [groups (into []
                      (mapcat #(map (fn [column] [column %]) (column-fn %)))
-                     (lib/stage-count query))]
+                     (range (lib/stage-count query)))]
     (or (m/find-first (fn [[column]] (= (metabot-v3.tools.query/column-id column) column-id)) groups)
         (throw (ex-info (format "%s is not a correct column for the %s step. Available columns as JSON: %s"
                                 column-id
@@ -52,7 +52,7 @@
   [query operator-fn operator-name step-type]
   (let [groups (into []
                      (mapcat #(map (fn [operator] [operator %]) (operator-fn %)))
-                     (lib/stage-count query))]
+                     (range (lib/stage-count query)))]
     (or (m/find-first (fn [[operator]] (= (metabot-v3.tools.query/operator-name operator) operator-name)) groups)
         (throw (ex-info (format "%s is not a correct operator for the %s step. Available operators as JSON: %s"
                                 operator-name
