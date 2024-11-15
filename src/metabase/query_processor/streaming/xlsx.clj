@@ -599,6 +599,8 @@
         pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
         col-names                   (common/column-titles ordered-cols col-settings format-rows?)
         _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
+        ;; keep the initial area-ref small (only 2 rows) so that adding row and column labels keeps the pivot table
+        ;; object small.
         area-ref                    (AreaReference.
                                      (format "A1:%s2" (CellReference/convertNumToColString (dec (count ordered-cols))))
                                      SpreadsheetVersion/EXCEL2007)
@@ -612,6 +614,7 @@
       (.addColLabel pivot-table idx))
     (doseq [idx pivot-measures]
       (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
+    ;; now that the Pivot Table Rows and Cols are set, we can update the area-ref
     (-> pivot-table
         .getPivotCacheDefinition
         .getCTPivotCacheDefinition

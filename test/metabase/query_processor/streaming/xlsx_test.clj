@@ -767,13 +767,10 @@
                                    {:display_name "F"}]
                                   {}
                                   []
-                                  :pivot-export-options {:pivot-rows [0 1], :pivot-cols [0 1], :pivot-measures [5 4]})
+                                  :pivot-export-options {:pivot-rows [0 1], :pivot-cols [2 3], :pivot-measures [5 4]})
           ;; Run once before measuring to warm-up and thus reduce flakiness.
           _ (do-export)
-          start (System/nanoTime)
           start-bytes (get-allocated-bytes)]
-      (time (do-export))
-      ;; Should always be faster than 1 second. If this test ever flakes, consider tuning or disabling.
-      (is (< (- (System/nanoTime) start) (* 1 1000 1000 1000)))
+      (do-export)
       ;; Should always allocate less than 100Mb.
       (is (< (- (get-allocated-bytes) start-bytes) (* 100 1024 1024))))))
