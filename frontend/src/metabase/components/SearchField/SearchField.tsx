@@ -13,7 +13,7 @@ import _ from "underscore";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { Box, Flex, MultiAutocomplete } from "metabase/ui";
+import { Flex, MultiAutocomplete } from "metabase/ui";
 import type { FieldValue, RowValue } from "metabase-types/api";
 
 import S from "./SearchField.module.css";
@@ -146,13 +146,17 @@ export const SearchField = ({
       />
 
       {shouldShowEmptyState && (
-        <Box pt="lg">
-          <EmptyState message={t`Didn't find anything`} icon="search" />
-        </Box>
+        <Flex pt="md" mih="6rem" align="center" justify="center">
+          <EmptyState
+            className={S.empty}
+            message={t`Didn't find anything`}
+            icon="search"
+          />
+        </Flex>
       )}
 
       {isLoading && (
-        <Flex p="md" align="center" justify="center">
+        <Flex p="md" mih="8rem" align="center" justify="center">
           <LoadingSpinner size={24} />
         </Flex>
       )}

@@ -52,3 +52,7 @@
     background-color: var(--mb-color-background-selected);
   }
 }
+
+.empty {
+  padding-top: 1rem;
+}
