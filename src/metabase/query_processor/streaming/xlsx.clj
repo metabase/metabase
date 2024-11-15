@@ -25,7 +25,8 @@
    (org.apache.poi.ss.usermodel Cell DataConsolidateFunction DataFormat DateUtil Workbook)
    (org.apache.poi.ss.util AreaReference CellRangeAddress CellReference)
    (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)
-   (org.apache.poi.xssf.usermodel XSSFPivotTable XSSFRow XSSFSheet XSSFWorkbook)))
+   (org.apache.poi.xssf.usermodel XSSFPivotTable XSSFRow XSSFSheet XSSFWorkbook)
+   (org.openxmlformats.schemas.spreadsheetml.x2006.main STFieldSortType)))
 
 (set! *warn-on-reflection* true)
 
@@ -576,7 +577,7 @@
 ;; Since we're the ones creating the file, we can lower the ratio to get what we want.
 (ZipSecureFile/setMinInflateRatio 0.001)
 (defn- init-native-pivot
-  [{:keys [pivot-grouping-key] :as pivot-spec}
+  [{:keys [pivot-grouping-key column-sort-order] :as pivot-spec}
    {:keys [ordered-cols col-settings viz-settings format-rows?]}]
   (let [idx-shift                   (fn [indices]
                                       (map (fn [idx]
@@ -614,6 +615,16 @@
       (.addColLabel pivot-table idx))
     (doseq [idx pivot-measures]
       (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
+    (doseq [[idx sort-setting] column-sort-order]
+      (let [setting (case sort-setting
+                      :ascending STFieldSortType/ASCENDING
+                      :descending STFieldSortType/DESCENDING)]
+        (when setting
+          (-> pivot-table
+              .getCTPivotTableDefinition
+              .getPivotFields
+              (.getPivotFieldArray idx)
+              (.setSortType setting))))) 
     ;; now that the Pivot Table Rows and Cols are set, we can update the area-ref
     (-> pivot-table
         .getPivotCacheDefinition

@@ -107,3 +107,38 @@
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;")))))))))))))))
+
+(deftest dump-to-h2-dump-is-attached-dwh-test
+  (testing "dump-to-h2 --dump-plaintext with is_attached_dwh"
+    (let [h2-fixture-db-file @cmd.test-util/fixture-db-file-path
+          db-name            (str "test_" (mt/random-name))]
+      (mt/with-temp-file [h2-file (format "out-%s.db" (mt/random-name))]
+        (mt/test-drivers #{:h2 :postgres :mysql}
+          (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+            (binding [config/*disable-setting-cache*  true
+                      mdb.connection/*application-db* (mdb.connection/application-db
+                                                       driver/*driver*
+                                                       (persistent-data-source driver/*driver* db-name))]
+              (when-not (= driver/*driver* :h2)
+                (tx/create-db! driver/*driver* {:database-name db-name}))
+              (binding [copy/*copy-h2-database-details* true]
+                (load-from-h2/load-from-h2! h2-fixture-db-file)
+                (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+                  (t2/insert! Database {:engine          "h2"
+                                        :name            "normal-db"
+                                        :details         {:db "/tmp/test.db"}
+                                        :is_attached_dwh false})
+                  (t2/insert! Database {:engine          "h2"
+                                        :name            "attached-dwh"
+                                        :details         {:db "/tmp/test.db"}
+                                        :is_attached_dwh true})
+                  (dump-to-h2/dump-to-h2! h2-file {:dump-plaintext? true})))
+              (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file))]
+                (testing "preserves details when is_attached_dwh is not set"
+                  (is (= "{\"db\":\"/tmp/test.db\"}"
+                         (:details (first (jdbc/query {:connection target-conn}
+                                                      "select details from metabase_database where name='normal-db';"))))))
+                (testing "preserves details when is_attached_dwh is not set"
+                  (is (= "{}"
+                         (:details (first (jdbc/query {:connection target-conn}
+                                                      "select details from metabase_database where name='attached-dwh';"))))))))))))))
