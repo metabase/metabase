@@ -1,37 +1,9 @@
 {
-  "name": "run-query",
-  "description": "Executes a query in Metabase. A query has a required data source and an optional list of steps. You must call `get-query-sources` to get list of available data sources and pick one from the list. You must call `get-query-columns` tool with the chosen data source to get the list of available columns.",
+  "name": "change-query",
+  "description": "Changes the current `query` and executes it in Metabase. A query consists of steps. Use `query_columns` for the list of available columns.",
   "parameters": {
     "type": "object",
     "properties": {
-      "source": {
-        "type": "object",
-        "description": "Query data source.",
-        "properties": {
-          "id": {
-            "type": "number",
-            "description": "Data source ID."
-          },
-          "database_id": {
-            "type": "number",
-            "description": "Database ID."
-          },
-          "type": {
-            "type": "string",
-            "description": "Data source type.",
-            "enum": [
-              "table",
-              "model"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "database_id",
-          "type"
-        ],
-        "additionalProperties": false
-      },
       "steps": {
         "type": "array",
         "description": "List of steps to apply to the query.",
@@ -377,7 +349,6 @@
       }
     },
     "required": [
-      "source",
       "steps"
     ],
     "additionalProperties": false
