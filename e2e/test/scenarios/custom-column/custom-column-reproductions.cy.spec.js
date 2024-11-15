@@ -1148,7 +1148,7 @@ describe("issue 49882", () => {
       .focus()
       .should(
         "have.value",
-        'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
+        'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )\n\n',
       );
   });
 
