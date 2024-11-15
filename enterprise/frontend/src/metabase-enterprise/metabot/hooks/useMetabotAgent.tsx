@@ -12,7 +12,7 @@ import {
   getUserMessages,
   setVisible,
   submitInput,
-} from "./state";
+} from "../state";
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
@@ -45,11 +45,14 @@ export const useMetabotAgent = () => {
     confirmationOptions,
     dismissUserMessage: (messageIndex: number) =>
       dispatch(dismissUserMessage(messageIndex)),
-    submitInput: async (message: string) => {
-      const context = getChatContext();
-      const history = sendMessageReq.data?.history || [];
-      await dispatch(submitInput({ message, context, history }));
-    },
+    submitInput: useCallback(
+      async (message: string) => {
+        const context = getChatContext();
+        const history = sendMessageReq.data?.history || [];
+        await dispatch(submitInput({ message, context, history }));
+      },
+      [sendMessageReq, dispatch, getChatContext],
+    ),
     isDoingScience: sendMessageReq.isLoading || isProcessing,
   };
 };

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
+import { PLUGIN_COMMAND_PALETTE } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
@@ -12,7 +13,7 @@ import type { PaletteActionImpl } from "./types";
 export const processResults = (
   results: (string | PaletteActionImpl)[],
 ): (string | PaletteActionImpl)[] => {
-  const groupedResults = _.groupBy(
+  const groupedResults: Record<string, PaletteActionImpl[]> = _.groupBy(
     results.filter((r): r is PaletteActionImpl => !(typeof r === "string")),
     "section",
   );
@@ -23,7 +24,18 @@ export const processResults = (
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
-  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
+  const processedSections = [
+    ...recent,
+    ...actions.slice(0, 6),
+    ...admin,
+    ...search,
+    ...docs,
+  ];
+
+  return PLUGIN_COMMAND_PALETTE.sectionProcessors.reduce(
+    (sections, processSection) => processSection(groupedResults, sections),
+    processedSections,
+  );
 };
 
 export const processSection = (

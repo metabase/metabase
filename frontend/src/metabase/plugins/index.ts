@@ -36,6 +36,7 @@ import type {
 import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
+import type { PaletteActionImpl } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { GroupProps, IconName, IconProps } from "metabase/ui";
@@ -600,4 +601,25 @@ export const PLUGIN_METABOT = {
 
 export const PLUGIN_GO_MENU = {
   getMenuItems: (_dispatch: any) => [] as Array<any>,
+};
+
+export const PLUGIN_COMMAND_PALETTE = {
+  // array of hook fns
+  useRegisterActionsHooks: [] as Array<
+    (params: { searchQuery: string }) => void
+  >,
+  // fns that can take the resulting actions and group them into sections
+  sectionProcessors: [] as Array<
+    (
+      _groupedResults: Record<string, PaletteActionImpl[]>,
+      sections: Array<string | PaletteActionImpl>,
+    ) => Array<string | PaletteActionImpl>
+  >,
+
+  maybeSetNewActiveIndexFns: [] as Array<
+    (
+      processedResults: (string | PaletteActionImpl)[],
+      setActiveIndex: (input: number | ((index: number) => number)) => void,
+    ) => void
+  >,
 };

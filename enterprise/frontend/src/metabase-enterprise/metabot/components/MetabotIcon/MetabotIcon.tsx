@@ -2,7 +2,10 @@ import cx from "classnames";
 
 import Styles from "./MetabotIcon.module.css";
 
-export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
+export const MetabotIcon = ({
+  isLoading,
+  ...props
+}: { isLoading: boolean } & React.SVGProps<SVGSVGElement>) => {
   const dotsStrokeColor = isLoading ? "#88BF4D" : "#509EE3";
   const dotsFillColor = isLoading ? "#88BF4D" : "#CBE2F7";
 
@@ -13,6 +16,7 @@ export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
       viewBox="0 0 33 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      {...props}
     >
       <rect
         x="0.75"

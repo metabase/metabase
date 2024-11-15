@@ -22,10 +22,13 @@ export const Metabot = () => {
     }
 
     return tinykeys(window, {
+      // toggle visibility
       "$mod+b": e => {
         e.preventDefault(); // prevent FF from opening bookmark menu
         setVisible(!visible);
       },
+      // hide when the command palette is opened
+      "$mod+k": () => setVisible(false),
     });
   }, [visible, setVisible, currentUser]);
 

@@ -17,7 +17,7 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_COMMAND_PALETTE } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -292,6 +292,11 @@ export const useCommandPalette = ({
   useRegisterActions(
     hasQuery ? [...adminActions, ...adminSettingsActions] : [],
     [adminActions, adminSettingsActions, hasQuery],
+  );
+
+  // move to enterprise
+  PLUGIN_COMMAND_PALETTE.useRegisterActionsHooks.forEach(hook =>
+    hook({ searchQuery }),
   );
 };
 

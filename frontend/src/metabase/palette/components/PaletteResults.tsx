@@ -5,6 +5,7 @@ import { withRouter } from "react-router";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
+import { PLUGIN_COMMAND_PALETTE } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
@@ -34,6 +35,10 @@ export const PaletteResults = withRouter(
       if (processedResults[0] === t`Search results`) {
         query.setActiveIndex(2);
       }
+
+      PLUGIN_COMMAND_PALETTE.maybeSetNewActiveIndexFns.forEach(fn => {
+        fn(processedResults, query.setActiveIndex);
+      });
     }, [processedResults, query]);
 
     useKeyPressEvent("End", () => {

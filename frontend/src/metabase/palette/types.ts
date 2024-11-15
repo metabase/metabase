@@ -13,8 +13,12 @@ interface PaletteActionExtras {
      * browser interactions to open items in new tabs/windows
      */
     href?: LocationDescriptor | null;
+    /** iconComponent: provide a custom icon */
+    iconComponent?: () => JSX.Element;
     /** iconColor: Color of the icon in the list item*/
     iconColor?: string;
+    /** nameTextStyles: styles to apply to name text */
+    nameTextStyles?: React.CSSProperties;
     /** subtext: text to come after the item name */
     subtext?: string;
   };

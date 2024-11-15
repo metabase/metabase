@@ -43,7 +43,9 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       aria-disabled={item.disabled ? true : false}
     >
       {/** Icon Container */}
-      {icon && (
+      {item.extra?.iconComponent ? <item.extra.iconComponent /> : null}
+
+      {icon && !item.extra?.iconComponent && (
         <Icon
           {...icon}
           style={{
@@ -68,7 +70,12 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
             whiteSpace: "nowrap",
           }}
         >
-          <Text component="span" c="inherit" lh="1rem">
+          <Text
+            component="span"
+            c="inherit"
+            lh="1rem"
+            style={item.extra?.nameTextStyles}
+          >
             {item.name}
           </Text>
           {item.extra?.moderatedStatus && (
