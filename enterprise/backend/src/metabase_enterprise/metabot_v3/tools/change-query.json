@@ -1,12 +1,12 @@
 {
   "name": "change-query",
-  "description": "Changes the current `query` and executes it in Metabase. A query consists of steps. Use `query_columns` for the list of available columns.",
+  "description": "Changes the current `query` and executes it in Metabase. A query consists of changes. Use `query_columns` for the list of available columns.",
   "parameters": {
     "type": "object",
     "properties": {
-      "steps": {
+      "changes": {
         "type": "array",
-        "description": "List of steps to apply to the query.",
+        "description": "List of changes to apply to the query.",
         "items": {
           "anyOf": [
             {
@@ -15,7 +15,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-string-filter step.",
+                  "description": "Type of the add-string-filter change.",
                   "enum": [
                     "add-string-filter"
                   ]
@@ -58,7 +58,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-number-filter step.",
+                  "description": "Type of the add-number-filter change.",
                   "enum": [
                     "add-number-filter"
                   ]
@@ -101,7 +101,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-boolean-filter step.",
+                  "description": "Type of the add-boolean-filter change.",
                   "enum": [
                     "add-boolean-filter"
                   ]
@@ -139,7 +139,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-specific-date-filter step.",
+                  "description": "Type of the add-specific-date-filter change.",
                   "enum": [
                     "add-specific-date-filter"
                   ]
@@ -179,7 +179,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-relative-date-filter step.",
+                  "description": "Type of the add-relative-date-filter change.",
                   "enum": [
                     "add-relative-date-filter"
                   ]
@@ -231,7 +231,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-aggregation step.",
+                  "description": "Type of the add-aggregation change.",
                   "enum": [
                     "add-aggregation"
                   ]
@@ -272,7 +272,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-breakout step.",
+                  "description": "Type of the add-breakout change.",
                   "enum": [
                     "add-breakout"
                   ]
@@ -294,7 +294,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-order-by by step.",
+                  "description": "Type of the add-order-by by change.",
                   "enum": [
                     "add-order-by"
                   ]
@@ -328,7 +328,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-limit step.",
+                  "description": "Type of the add-limit change.",
                   "enum": [
                     "add-limit"
                   ]
@@ -349,7 +349,7 @@
       }
     },
     "required": [
-      "steps"
+      "changes"
     ],
     "additionalProperties": false
   }
