@@ -22,5 +22,5 @@
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database_id source))
         table-or-card     (condp = (-> source :type keyword)
                                  :table (lib.metadata/table metadata-provider (:id source))
-                                 :card  (lib.metadata/card metadata-provider (:id source)))]
+                                 :model (lib.metadata/card metadata-provider (:id source)))]
     (lib/query metadata-provider table-or-card)))
