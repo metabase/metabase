@@ -111,7 +111,7 @@ export const MetabaseProvider = memo(function MetabaseProvider(
   // we need a different store for each test or each storybook story
   const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(undefined);
   if (!storeRef.current) {
-    storeRef.current = getSdkStore();
+    storeRef.current = getSdkStore(props.config);
   }
 
   return (

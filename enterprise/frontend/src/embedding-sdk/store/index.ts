@@ -4,31 +4,42 @@ import type {
   Store,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
+import { merge } from "icepick";
 import { useContext } from "react";
 import { ReactReduxContext, useDispatch, useStore } from "react-redux";
 
-import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
+import type { SDKConfig } from "embedding-sdk/types";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
-import { sdk } from "./reducer";
+import { sdk, sdkInitialState } from "./reducer";
 
 export const sdkReducers = {
   ...mainReducers,
   sdk,
 } as unknown as Record<string, Reducer>;
 
-export const getSdkStore = () =>
-  getStore(sdkReducers, null, {
+export const getSdkStore = (config: SDKConfig) => {
+  const initialState: SdkStoreState = {
+    sdk: merge(sdkInitialState, {
+      fetchRefreshTokenFn: config.fetchRequestToken ?? null,
+      metabaseInstanceUrl: config.metabaseInstanceUrl,
+    } as Partial<SdkState>),
     embed: {
       options: {},
       isEmbeddingSdk: true,
     },
+    // @ts-expect-error -- TODO: we're not populating all the state here, we should fix it
     app: {
       isDndAvailable: false,
     },
-  }) as unknown as Store<SdkStoreState, AnyAction>;
-
+  };
+  return getStore(sdkReducers, null, initialState) as unknown as Store<
+    SdkStoreState,
+    AnyAction
+  >;
+};
 export const useSdkDispatch: () => ThunkDispatch<
   SdkStoreState,
   void,

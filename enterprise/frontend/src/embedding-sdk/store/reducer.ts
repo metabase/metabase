@@ -63,7 +63,7 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
   SET_USAGE_PROBLEM,
 );
 
-const initialState: SdkState = {
+export const sdkInitialState: SdkState = {
   metabaseInstanceUrl: "",
   token: {
     token: null,
@@ -79,7 +79,7 @@ const initialState: SdkState = {
   fetchRefreshTokenFn: null,
 };
 
-export const sdk = createReducer(initialState, builder => {
+export const sdk = createReducer(sdkInitialState, builder => {
   builder.addCase(refreshTokenAsync.pending, state => {
     state.token = { ...state.token, loading: true };
   });
