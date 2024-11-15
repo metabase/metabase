@@ -614,12 +614,14 @@
     (doseq [idx pivot-measures]
       (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
     (doseq [[idx sort-setting] column-sort-order]
-      (-> pivot-table
-          .getCTPivotTableDefinition
-          .getPivotFields
-          (.getPivotFieldArray idx)
-          (.setSortType (sort-setting {:ascending  STFieldSortType/ASCENDING
-                                       :descending STFieldSortType/DESCENDING}))))
+      (let [setting (sort-setting {:ascending  STFieldSortType/ASCENDING
+                                   :descending STFieldSortType/DESCENDING})]
+        (when setting
+          (-> pivot-table
+              .getCTPivotTableDefinition
+              .getPivotFields
+              (.getPivotFieldArray idx)
+              (.setSortType setting)))))
     (let [swb   (-> (SXSSFWorkbook. ^XSSFWorkbook wb)
                     (doto (.setCompressTempFiles true)))
           sheet (spreadsheet/select-sheet "data" swb)]
