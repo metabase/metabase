@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.pivots :as api.pivots]
+   [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.http-client :as client]
@@ -4625,46 +4626,33 @@
 (deftest dashboard-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
-      [Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)
-                                         :database_id   (mt/id)}
-       Card          {card-id-2 :id}    {:dataset_query
-                                         {:type     :query
-                                          :query    {:source-table (str "card__" card-id-1)}
-                                          :database (mt/id)}
-                                         :database_id (mt/id)}
+      [Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
+       Card          {card-id-2 :id}    {:dataset_query {:type     :query
+                                                         :query    {:source-table (str "card__" card-id-1)}}}
        Dashboard     {dashboard-id :id} {}
-       DashboardCard _                  {:dashboard_id dashboard-id,
-                                         :card_id      card-id-2}]
+       DashboardCard _                  {:card_id      card-id-2
+                                         :dashboard_id dashboard-id}]
 
-      (testing "Archive source card"
-        (is (=?
-             {:archived    true
-              :can_delete  true
-              :id          card-id-1
-              :database_id (mt/id)
-              :table_id    (mt/id :products)}
-             (-> (mt/user-http-request :crowberto :put 200 (str "card/" card-id-1) {:archived true})))))
-      (testing "Before delete"
-        (is (=?
-             {:fields     empty?
-              :tables     [{:id (str "card__" card-id-1)}]
-              :databases  [{:id (mt/id) :engine string?}]
-              :cards      empty?
-              :dashboards empty?}
-             (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
-                 ;; The output is so large, these help debugging
-                 (update :fields #(map (fn [x] (select-keys x [:id])) %))
-                 (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-                 (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
-      (testing "Delete source card"
-        (is (nil? (mt/user-http-request :crowberto :delete 204 (str "card/" card-id-1)))))
-      (testing "After delete"
-        (is (= {:databases  []
-                :tables     []
-                :fields     []
-                :cards      []
-                :dashboards []}
-               (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))))
+      (letfn [(query-metadata []
+                (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
+                    (api.test-util/select-query-metadata-keys-for-debugging)))]
+        (api.test-util/before-and-after-deleted-card
+         card-id-1
+         #(testing "Before delete"
+            (is (=?
+                 {:cards      empty?
+                  :fields     empty?
+                  :dashboards empty?
+                  :tables     [{:id (str "card__" card-id-1)}]
+                  :databases  [{:id (mt/id) :engine string?}]}
+                 (query-metadata))))
+         #(testing "After delete"
+            (is (=? {:cards      empty?
+                     :fields     empty?
+                     :dashboards empty?
+                     :tables     empty?
+                     :databases  empty?}
+                    (query-metadata)))))))))
 
 (deftest dashboard-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
