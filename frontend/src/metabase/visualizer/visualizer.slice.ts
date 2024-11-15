@@ -40,6 +40,7 @@ import {
 
 import { cartesianDropHandler } from "./visualizations/cartesian";
 import { funnelDropHandler } from "./visualizations/funnel";
+import { pieDropHandler } from "./visualizations/pie";
 import { pivotDropHandler } from "./visualizations/pivot";
 
 const initialCommonState: VisualizerCommonState = {
@@ -169,6 +170,16 @@ const visualizerHistoryItemSlice = createSlice({
         }
       }
 
+      if (display === "pie") {
+        const metric = createMetricColumn();
+        const dimension = createDimensionColumn();
+        console.log("I am a pie chart");
+        state.settings = {
+          "pie.metric": metric.name,
+          "pie.dimension": dimension.name,
+        };
+      }
+
       if (display === "pivot") {
         state.columns = [
           {
@@ -205,6 +216,8 @@ const visualizerHistoryItemSlice = createSlice({
           funnelDropHandler(state, event);
         } else if (state.display === "pivot") {
           pivotDropHandler(state, event);
+        } else if (state.display === "pie") {
+          pieDropHandler(state, event);
         }
       })
       .addCase(removeDataSource, (state, action) => {

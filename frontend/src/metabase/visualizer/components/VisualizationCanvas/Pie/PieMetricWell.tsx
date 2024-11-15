@@ -7,7 +7,7 @@ import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getSettings,
   getVisualizerDatasetColumns,
-} from "metabase/visualizer/visualizer.slice";
+} from "metabase/visualizer/selectors";
 
 import { WellItem } from "../WellItem";
 
@@ -19,6 +19,8 @@ export function PieMetricWell() {
     id: DROPPABLE_ID.PIE_METRIC,
   });
 
+  console.log(settings["pie.metric"]);
+  console.log(columns);
   const pieMetric = columns.find(col => col.name === settings["pie.metric"]);
   return (
     <Box mt="lg">

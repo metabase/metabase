@@ -7,7 +7,7 @@ import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getSettings,
   getVisualizerDatasetColumns,
-} from "metabase/visualizer/visualizer.slice";
+} from "metabase/visualizer/selectors";
 
 import { WellItem } from "../WellItem";
 
