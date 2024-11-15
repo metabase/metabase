@@ -71,6 +71,7 @@ describe("scenarios > question > joined questions", () => {
     H.assertQueryBuilderRowCount(89);
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
+    cy.findByTestId("qb-header").button("Save").click();
     cy.findByTestId("save-question-modal")
       .findByLabelText(/Where do you want to save this/)
       .click();
