@@ -1116,7 +1116,7 @@ describe("issue 49882", () => {
 
     const moveCursorTo2ndCaseArgument = "{leftarrow}".repeat(6);
     enterCustomColumnDetails({
-      formula: `case([Total] > 200, , "X")${moveCursorTo2ndCaseArgument}[to{enter}`,
+      formula: `case([Total] > 200, , "X")${moveCursorTo2ndCaseArgument}[tot{enter}`,
     });
 
     cy.get(".ace_text-input")
