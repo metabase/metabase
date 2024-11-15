@@ -14,7 +14,7 @@ Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org
 
 Create a component that imports the `MetabaseProvider` and mark it as a React Client component with "use client".
 
-It's fine to leave "use client" in the component even if you're using the Pages Router, but it's not necessary, as the Pages Router doesn't use React Server Components.
+It's fine to leave "use client" in the component even when using the Pages Router, but it's not necessary since the Pages Router doesn't use React Server Components.
 
 ```typescript
 "use client";
@@ -122,7 +122,7 @@ export async function GET() {
 }
 ```
 
-And pass this `config` to `MetabaseProvider`
+Then, pass this `config` to `MetabaseProvider`
 
 ```typescript
 import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
@@ -179,7 +179,7 @@ export default async function handler(
 }
 ```
 
-And pass this `config` to `MetabaseProvider`
+Then, pass this `config` to `MetabaseProvider`
 
 ```ts
 import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
