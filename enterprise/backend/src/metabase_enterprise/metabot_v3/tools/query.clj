@@ -11,10 +11,15 @@
       (:name column)))
 
 (defn column-info
-  "Column info."
-  [query column]
+  "Column id and name."
+  [query stage-number column]
   {:id (column-id column)
-   :name (-> (lib/display-info query column) :long-display-name)})
+   :name (-> (lib/display-info query stage-number column) :long-display-name)})
+
+(defn operator-name
+  "Operator name."
+  [operator]
+  (-> operator :short name))
 
 (defn source-query
   "Creates a query based on the provided data `source`."

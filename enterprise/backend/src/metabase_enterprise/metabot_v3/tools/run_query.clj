@@ -15,32 +15,52 @@
    (clojure.lang ExceptionInfo)))
 
 (defn- find-column
-  [columns column-id]
-  (m/find-first #(= (metabot-v3.tools.query/column-id %) column-id) columns))
+  [query stage-number columns column-id step-type]
+  (or (m/find-first #(= (metabot-v3.tools.query/column-id %) column-id) columns)
+      (ex-info (format "%s is not a correct column for the %s step. Available columns as JSON: %s"
+                       column-id
+                       step-type
+                       (json/generate-string (mapv #(metabot-v3.tools.query/column-info query stage-number %) columns)))
+               {:column-id column-id})))
 
-(defn- find-column-error
-  [query columns column-id step-type]
-  (ex-info (format "%s is not a correct column for the %s step. Available columns as JSON: %s"
-                   column-id
-                   step-type
-                   (json/generate-string (mapv #(metabot-v3.tools.query/column-info query %) columns)))
-           {:column column-id}))
-
-(defn- operator-info
-  [operator]
-  (-> operator :short name))
+(defn- find-column-and-stage
+  [query column-fn column-id step-type]
+  (let [groups (into []
+                     (mapcat #(map (fn [column] [column %]) (column-fn %)))
+                     (lib/stage-count query))]
+    (or (m/find-first (fn [[column]] (= (metabot-v3.tools.query/column-id column) column-id)) groups)
+        (throw (ex-info (format "%s is not a correct column for the %s step. Available columns as JSON: %s"
+                                column-id
+                                step-type
+                                (json/generate-string (mapv (fn [[column stage-number]]
+                                                              (metabot-v3.tools.query/column-info query
+                                                                                                  stage-number
+                                                                                                  column))
+                                                            groups)))
+                        {:column-id column-id})))))
 
 (defn- find-operator
-  [operators operator-name]
-  (m/find-first #(= (operator-info %) operator-name) operators))
-
-(defn- find-operator-error
   [operators operator-name step-type]
-  (ex-info (format "%s is not a correct operator for the %s step. Available operators as JSON: %s"
-                   operator-name
-                   step-type
-                   (json/generate-string (mapv operator-info operators)))
-           {:operator operator-name}))
+  (or (m/find-first #(= (metabot-v3.tools.query/operator-name %) operator-name) operators)
+      (ex-info (format "%s is not a correct operator for the %s step. Available operators as JSON: %s"
+                       operator-name
+                       step-type
+                       (json/generate-string (mapv metabot-v3.tools.query/operator-name operators)))
+               {:operator operator-name})))
+
+(defn- find-operator-and-stage
+  [query operator-fn operator-name step-type]
+  (let [groups (into []
+                     (mapcat #(map (fn [operator] [operator %]) (operator-fn %)))
+                     (lib/stage-count query))]
+    (or (m/find-first (fn [[operator]] (= (metabot-v3.tools.query/operator-name operator) operator-name)) groups)
+        (throw (ex-info (format "%s is not a correct operator for the %s step. Available operators as JSON: %s"
+                                operator-name
+                                step-type
+                                (json/generate-string (mapv (fn [[operator]]
+                                                              (metabot-v3.tools.query/operator-name operator))
+                                                            groups)))
+                        {:operator operator-name})))))
 
 (defn- limit-error
   [limit]
@@ -54,29 +74,33 @@
 
 (defmethod apply-query-step :add-string-filter
   [query {:keys [value], step-type :type, column-id :column_id, operator-name :operator}]
-  (let [columns   (into [] (filter lib.types.isa/string-or-string-like?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id step-type)))
+  (let [query                 (lib/ensure-filter-stage query)
+        [column stage-number] (find-column-and-stage query
+                                                     #(into []
+                                                       (filter lib.types.isa/string-or-string-like?)
+                                                       (lib/filterable-columns query %))
+                                                     column-id step-type)
         operators (lib/filterable-column-operators column)
-        operator  (or (find-operator operators operator-name)
-                      (throw (find-operator-error operators operator-name step-type)))
+        operator  (find-operator operators operator-name step-type)
         clause    (condp = (:short operator)
-                    :=                (lib/= column value)
-                    :!=               (lib/!= column value)
-                    :contains         (lib/contains column value)
-                    :does-not-contain (lib/does-not-contain column value)
-                    :starts-with      (lib/starts-with column value)
-                    :ends-with        (lib/ends-with column value))]
-    (lib/filter query clause)))
+                         :=                (lib/= column value)
+                         :!=               (lib/!= column value)
+                         :contains         (lib/contains column value)
+                         :does-not-contain (lib/does-not-contain column value)
+                         :starts-with      (lib/starts-with column value)
+                         :ends-with        (lib/ends-with column value))]
+    (lib/filter query stage-number clause)))
 
 (defmethod apply-query-step :add-number-filter
   [query {:keys [value], step-type :type, column-id :column_id, operator-name :operator}]
-  (let [columns   (into [] (filter lib.types.isa/numeric?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id step-type)))
+  (let [query                 (lib/ensure-filter-stage query)
+        [column stage-number] (find-column-and-stage query
+                                                     #(into []
+                                                       (filter lib.types.isa/numeric?)
+                                                       (lib/filterable-columns query %))
+                                                     column-id step-type)
         operators (lib/filterable-column-operators column)
-        operator  (or (find-operator operators operator-name)
-                      (throw (find-operator-error operators operator-name step-type)))
+        operator  (find-operator operators operator-name step-type)
         clause    (condp = (:short operator)
                     :=  (lib/= column value)
                     :!= (lib/!= column value)
@@ -84,78 +108,89 @@
                     :>= (lib/>= column value)
                     :<  (lib/< column value)
                     :<= (lib/<= column value))]
-    (lib/filter query clause)))
+    (lib/filter query stage-number clause)))
 
 (defmethod apply-query-step :add-boolean-filter
   [query {:keys [value], step-type :type, column-id :column_id, operator-name :operator}]
-  (let [columns   (into [] (filter lib.types.isa/boolean?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id step-type)))
+  (let [query                 (lib/ensure-filter-stage query)
+        [column stage-number] (find-column-and-stage query
+                                                     #(into []
+                                                       (filter lib.types.isa/boolean?)
+                                                       (lib/filterable-columns query %))
+                                                     column-id step-type)
         operators (lib/filterable-column-operators column)
-        operator  (or (find-operator operators operator-name)
-                      (throw (find-operator-error operators operator-name step-type)))
+        operator  (find-operator operators operator-name step-type)
         clause    (condp = (:short operator)
                     :=  (lib/= column value))]
-    (lib/filter query clause)))
+    (lib/filter query stage-number clause)))
 
 (defmethod apply-query-step :add-specific-date-filter
   [query {:keys [value], step-type :type, column-id :column_id, operator-name :operator}]
-  (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id step-type)))
+  (let [query                 (lib/ensure-filter-stage query)
+        [column stage-number] (find-column-and-stage query
+                                                     #(into []
+                                                       (filter lib.types.isa/date-or-datetime?)
+                                                       (lib/filterable-columns query %))
+                                                     column-id step-type)
         operators (lib/filterable-column-operators column)
-        operator  (or (find-operator operators operator-name)
-                      (throw (find-operator-error operators operator-name step-type)))
+        operator  (find-operator operators operator-name step-type)
         clause    (condp = (:short operator)
                     :=  (lib/= column value)
                     :>  (lib/> column value)
                     :<  (lib/< column value))]
-    (lib/filter query clause)))
+    (lib/filter query stage-number clause)))
 
 (defmethod apply-query-step :add-relative-date-filter
   [query {:keys [direction unit value], step-type :type, column-id :column_id}]
-  (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id step-type)))
+  (let [query                 (lib/ensure-filter-stage query)
+        [column stage-number] (find-column-and-stage query
+                                                     #(into []
+                                                       (filter lib.types.isa/date-or-datetime?)
+                                                       (lib/filterable-columns query %))
+                                                     column-id step-type)
         direction (keyword direction)
         unit      (keyword unit)]
-    (lib/filter query (lib/time-interval column
-                                         (condp = direction
-                                           :last    (- value)
-                                           :current :current
-                                           :next    value)
-                                         unit))))
+    (lib/filter query
+                stage-number
+                (lib/time-interval column
+                                   (condp = direction
+                                     :last    (- value)
+                                     :current :current
+                                     :next    value)
+                                   unit))))
 
 (defmethod apply-query-step :add-aggregation
   [query {step-type :type, operator-name :operator, column-id :column_id}]
-  (let [operators (lib/available-aggregation-operators query)
-        operator  (or (find-operator operators operator-name)
-                      (throw (find-operator-error operators operator-name step-type)))]
+  (let [[operator stage-number] (find-operator-and-stage query
+                                                         #(lib/available-aggregation-operators query %)
+                                                         operator-name
+                                                         step-type)]
     (if (:requires-column? operator)
       (let [columns (lib/aggregation-operator-columns operator)
-            column  (or (find-column columns column-id)
-                        (throw (find-column-error query columns column-id step-type)))]
-        (lib/aggregate query (lib/aggregation-clause operator column)))
-      (lib/aggregate query (lib/aggregation-clause operator)))))
+            column  (find-column query stage-number columns column-id step-type)]
+        (lib/aggregate query stage-number (lib/aggregation-clause operator column)))
+      (lib/aggregate query stage-number (lib/aggregation-clause operator)))))
 
 (defmethod apply-query-step :add-breakout
   [query {step-type :type, column-id :column_id}]
-  (let [columns (lib/breakoutable-columns query)
-        column  (or (find-column columns column-id)
-                    (throw (find-column-error query columns column-id step-type)))
-        bucket  (m/find-first :default (lib/available-temporal-buckets query column))
-        binning (m/find-first :default (lib/available-binning-strategies query column))]
-    (lib/breakout query (cond-> column
-                          bucket  (lib/with-temporal-bucket bucket)
-                          binning (lib/with-binning binning)))))
+  (let [[column stage-number] (find-column-and-stage query
+                                                     #(lib/breakoutable-columns query %)
+                                                     column-id
+                                                     step-type)
+        bucket  (m/find-first :default (lib/available-temporal-buckets query stage-number column))
+        binning (m/find-first :default (lib/available-binning-strategies query stage-number column))]
+    (lib/breakout query stage-number (cond-> column
+                                       bucket  (lib/with-temporal-bucket bucket)
+                                       binning (lib/with-binning binning)))))
 
 (defmethod apply-query-step :add-order-by
   [query {step-type :type, column-id :column_id, direction-name :direction}]
-  (let [columns   (lib/orderable-columns query)
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id step-type)))
+  (let [[column stage-number] (find-column-and-stage query
+                                                     #(lib/orderable-columns query %)
+                                                     column-id
+                                                     step-type)
         direction (when direction-name (keyword direction-name))]
-    (lib/order-by query column direction)))
+    (lib/order-by query stage-number column direction)))
 
 (defmethod apply-query-step :add-limit
   [query {:keys [limit]}]
@@ -182,6 +217,7 @@
      :reactions [{:type  :metabot.reaction/run-query
                   :dataset_query (-> (source-query source)
                                      (apply-query-steps steps)
+                                     (lib/drop-empty-stages)
                                      lib.query/->legacy-MBQL)}]}
     (catch ExceptionInfo e
       (log/debug e "Error in run-query tool")
