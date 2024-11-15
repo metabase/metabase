@@ -11,10 +11,11 @@
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
+   [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
-   [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -150,6 +151,24 @@
   (if (some? id)
     (sql.helpers/where query [:= id :database_id])
     query))
+
+(mu/defn add-collection-join-and-where-clauses
+  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
+  so we can return its `:name`."
+  [honeysql-query :- :map
+   model          :- [:maybe :string]
+   search-ctx     :- SearchContext]
+  (let [collection-id-col      (case model
+                                 "collection"    :collection.id
+                                 "search-index" :search_index.collection_id
+                                 :collection_id)
+        permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
+    (cond-> honeysql-query
+      ;; add a JOIN against Collection *unless* the source table is already Collection
+      (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+      true                      (sql.helpers/where permitted-clause)
+      personal-clause           (sql.helpers/where personal-clause))))
 
 (mu/defn- replace-select :- :map
   "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column, throw an error if
@@ -418,7 +437,7 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (search.permissions/add-collection-join-and-where-clauses "card" search-ctx)
+      (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
       (with-moderated-status "card")))
@@ -430,7 +449,7 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (search.permissions/add-collection-join-and-where-clauses model search-ctx)))
+      (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
@@ -455,7 +474,7 @@
                              [:and
                               [:= :bookmark.collection_id :collection.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (search.permissions/add-collection-join-and-where-clauses model search-ctx)))
+      (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
@@ -469,7 +488,7 @@
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (with-moderated-status "dashboard")
-      (search.permissions/add-collection-join-and-where-clauses model search-ctx)
+      (add-collection-join-and-where-clauses model search-ctx)
       (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
