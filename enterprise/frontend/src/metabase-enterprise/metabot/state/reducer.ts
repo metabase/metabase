@@ -1,5 +1,6 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
+import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
 import type {
   MetabotChatContext,
@@ -9,8 +10,12 @@ import type {
 
 import { sendMessageRequest } from "./actions";
 
+type ConfirmationOptions =
+  | { [key: string]: MetabotReaction[] | undefined }
+  | undefined;
+
 export interface MetabotState {
-  confirmationOptions: Record<string, MetabotReaction[]> | undefined;
+  confirmationOptions: ConfirmationOptions | undefined;
   isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
   lastHistoryValue: MetabotHistory | undefined;
@@ -49,24 +54,20 @@ export const metabot = createSlice({
       state.sessionId = action.payload;
     },
     setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
-      state.visible = visible;
-
-      if (!visible) {
-        state.isProcessing = false;
-        state.userMessages = [];
-        state.confirmationOptions = undefined;
-        state.lastSentContext = undefined;
-        state.lastHistoryValue = undefined;
-        state.sessionId = undefined;
-      } else {
+      if (visible) {
+        state.visible = true;
         state.sessionId = uuid();
+      } else {
+        return metabotInitialState;
       }
     },
     setConfirmationOptions: (
       state,
-      action: PayloadAction<Record<string, MetabotReaction[]> | undefined>,
+      action: PayloadAction<ConfirmationOptions>,
     ) => {
-      state.confirmationOptions = action.payload;
+      // Type cast solves type error of "Type instantiation is excessively deep and possibly infinite."
+      // This approach will be removed in a follow up PR
+      state.confirmationOptions = action.payload as any;
     },
   },
   extraReducers: builder => {
@@ -77,7 +78,8 @@ export const metabot = createSlice({
       })
       .addCase(sendMessageRequest.fulfilled, (state, action) => {
         state.lastHistoryValue = action.payload?.data?.history;
-      });
+      })
+      .addCase(logout.pending, () => metabotInitialState);
   },
 });
 
