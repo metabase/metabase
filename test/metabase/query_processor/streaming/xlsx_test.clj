@@ -680,22 +680,22 @@
     (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
                  {}
                  [["a" "abcdefghijklmnopqrstuvwxyz"]]
-                 assert-non-default-widths))
+                 :parse-fn assert-non-default-widths))
   (testing "Auto-sizing works when the number of rows is at or above the auto-sizing threshold"
     (binding [qp.xlsx/*auto-sizing-threshold* 2]
       (xlsx-export [{:id 0, :name "Col1"}]
                    {}
                    [["abcdef"] ["abcedf"]]
-                   assert-non-default-widths)
+                   :parse-fn assert-non-default-widths)
       (xlsx-export [{:id 0, :name "Col1"}]
                    {}
                    [["abcdef"] ["abcedf"] ["abcdef"]]
-                   assert-non-default-widths)))
+                   :parse-fn assert-non-default-widths)))
   (testing "An auto-sized column does not exceed max-column-width (the width of 255 characters)"
     (let [[col-width] (xlsx-export [{:id 0, :name "Col1"}]
                                    {}
                                    [[(apply str (repeat 256 "0"))]]
-                                   parse-column-widths)]
+                                   :parse-fn parse-column-widths)]
       (is (= 65280 col-width)))))
 
 (deftest poi-tempfiles-test
