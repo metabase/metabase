@@ -193,7 +193,7 @@
     (throw (limit-error limit))))
 
 (defmethod apply-query-change :remove_limit
-  [query]
+  [query _change]
   (lib/limit query nil))
 
 (defn- apply-query-changes
