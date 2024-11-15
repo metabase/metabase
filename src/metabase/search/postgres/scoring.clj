@@ -1,8 +1,11 @@
 (ns metabase.search.postgres.scoring
   (:require
+   [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.search.config :as search.config]))
+   [metabase.search.config :as search.config]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (def ^:private seconds-in-a-day 86400)
 
@@ -22,7 +25,7 @@
   ;; 2/PI * tan^-1 (x/N)
   [:*
    [:/ [:inline 2] [:pi]]
-   [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] [:inline scaling]]]])
+   [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] scaling]]])
 
 (defn inverse-duration
   "Score at item based on the duration between two dates, where less is better."
@@ -74,10 +77,30 @@
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
-(def base-scorers
+(defn- view-count-percentile-query [p-value]
+  (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
+    {:select   [:model [expr :vcp]]
+     :from     [:search_index]
+     :group-by [:model]
+     :having   [:is-not expr nil]}))
+
+(def ^:private view-count-percentiles
+  (memoize/ttl (fn [p-value]
+                 (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
+                            [(keyword model) vcp])))
+               :ttl/threshold (u/hours->ms 1)))
+
+(defn- view-count-expr [const-scaling percentile]
+  (let [views (view-count-percentiles percentile)
+        cases (for [[sm v] views]
+                [[:= :model (name sm)] v])]
+    (atan-size :view_count [:* const-scaling [:greatest 1 (into [:case] cat cases)]])))
+
+(defn base-scorers
   "The default constituents of the search ranking scores."
+  []
   {:text       [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
-   :view-count (atan-size :view_count search.config/view-count-scaling)
+   :view-count (view-count-expr search.config/view-count-scaling search.config/view-count-scaling-percentile)
    :pinned     (truthy :pinned)
    :bookmarked bookmark-score-expr
    :recency    (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
@@ -88,7 +111,7 @@
   "Return the select-item expressions used to calculate the score for each search result."
   metabase-enterprise.search.scoring
   []
-  base-scorers)
+  (base-scorers))
 
 (defn- scorer-select-items [] (select-items (scorers)))
 
