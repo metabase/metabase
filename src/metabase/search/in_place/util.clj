@@ -1,4 +1,4 @@
-(ns metabase.search.util
+(ns metabase.search.in-place.util
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
