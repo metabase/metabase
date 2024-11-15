@@ -13,7 +13,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePreviousDistinct } from "react-use";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -124,7 +124,11 @@ function TabRowInner<T>({
 }
 
 export function TabRow<T>(props: TabRowProps<T>) {
-  const TabRowInnerWithSize = ExplicitSize<TabRowProps<T>>()(TabRowInner);
+  const TabRowInnerWithSize = useMemo(
+    () => ExplicitSize<TabRowProps<T>>()(TabRowInner),
+    [],
+  );
+
   return <TabRowInnerWithSize {...props} />;
 }
 
