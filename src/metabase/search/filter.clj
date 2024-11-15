@@ -3,43 +3,30 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.in-place.filter]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]])
   (:import
    (java.time LocalDate)))
 
-(def ^:private filter->type
-  {:archived?      ::single-value
-   :created-at     ::date-range
-   :created-by     ::list
-   :last-edited-at ::date-range
-   :last-edited-by ::list
-   :table-db-id    ::single-value
-   :verified       ::verified})
-
-(def ^:private context-key->attr
-  {:archived?           :archived
-   :created-at          :created-at
-   :created-by          :creator-id
-   :last-edited-at      :last-edited-at
-   :last-edited-by      :last-editor-id
-   :search-native-query :native-query
-   ;; this actually has nothing to do with tables anymore, as we also filter cards.
-   :table-db-id         :database-id
-   :verified            :verified})
-
-;; TODO dry this alias up with the index hydration code
-(def ^:private field-alias {:created-at :model-created-at})
-
-(def ^:private attr->index-key
-  (into {} (for [k (vals context-key->attr)]
-             [k (keyword (str "search_index." (u/->snake_case_en (name (get field-alias k k)))))])))
-
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
+
+(defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
+  (case visibility
+    :all      true
+    :app-user (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))))
+
+(def ^:private context-key->filter
+  "Map the context keys to their corresponding filters"
+  (reduce-kv (fn [m k {:keys [context-key]}]
+               (assoc m context-key k))
+             {}
+             ;; TODO remove special handling of :id
+             (dissoc search.config/filters :id)))
 
 (defn search-context->applicable-models
   "Returns a set of models that are applicable given the search context.
@@ -48,13 +35,14 @@
   [search-ctx]
   (if (= :search.engine/in-place (:search-engine search-ctx))
     (search.in-place.filter/search-context->applicable-models search-ctx)
-    ;; Archived is an eccentric one - we treat it as false for models that don't map it
-    (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->attr))]
+    ;; Archived is an eccentric one - we treat it as false for models that don't map it, rather than removing them.
+    ;; TODO move this behavior to the spec somehow
+    (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))]
       (into #{}
             (remove nil?)
             (for [search-model (:models search-ctx)
                   :let [spec (search.spec/spec search-model)]]
-              (when (every? (:attrs spec) required)
+              (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
                 (:name spec)))))))
 
 (defn- date-range-filter-clause
@@ -89,18 +77,6 @@
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
 
-(defmethod where-clause* ::verified [_ k v]
-  (assert (true? v) "filter for non-verified cards is not supported")
-  (when (premium-features/has-feature? :content-verification)
-    [:= k v]))
-
-(def ^:private true-clause
-  [:inline [:= 1 1]])
-
-(assert (= (disj (set (keys context-key->attr)) :search-native-query)
-           (set (keys filter->type)))
-        "All filters have been implemented.")
-
 (defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."
   [search-context qry]
@@ -111,14 +87,14 @@
                              [:and
                               [:in :model_id ids]
                               ;; NOTE: we limit id-based search to only a subset of the models
-                              ;; TODO this should just become part of the spec e.g. :search-by-id?
+                              ;; TODO this should just become part of the model spec e.g. :search-by-id?
                               [:in :model ["card" "dataset" "metric" "dashboard" "action"]]]))
-    (reduce (fn [qry [ctx-key attr-key]]
-              (let [v (get search-context ctx-key)]
-                (if (some? v)
-                  (sql.helpers/where qry (or (where-clause* (filter->type ctx-key)
-                                                            (attr->index-key attr-key) v)
-                                             true-clause))
-                  qry)))
+    (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
+              (or (when-some [v (get search-context context-key)]
+                    (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
+                    (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
+                      (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
+                        (sql.helpers/where qry c))))
+                  qry))
             qry
-            (dissoc context-key->attr :search-native-query))))
+            (vals (dissoc search.config/filters :id :native-query)))))

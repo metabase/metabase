@@ -12,28 +12,38 @@
   metabase.models/keep-me)
 
 (defn- filter-keys []
-  (keys @#'search.filter/context-key->attr))
+  (remove #{:ids} (map :context-key (vals search.config/filters))))
 
 (defn- active-filter-combinations []
   ;; We ignore :archived? as we've moved some of these filters to the `:where` clause as a simplifying optimization.
   ;; We ignore :card-db-id as legacy search implements this filter sneakily inside the models themselves.
   (math.combo/subsets (remove #{:archived? :table-db-id} (filter-keys))))
 
-(defn with-all-models [search-ctx]
+(defn- with-all-models [search-ctx]
   (assoc search-ctx :models search.config/all-models))
+
+(defn- with-all-models-and-regular-user [search-ctx]
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false)))
+
+(defn- with-all-models-and-sandboxed-user [search-ctx]
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true)))
 
 (deftest search-context->applicable-models-test
   (testing "All models are relevant if we're not looking in the trash"
     (is (= search.config/all-models
-           (search.filter/search-context->applicable-models (with-all-models {:archived? false})))))
+           (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
 
   (testing "We only search for certain models in the trash"
     (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
-           (search.filter/search-context->applicable-models (with-all-models {:archived? true})))))
+           (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
+
+  (testing "Indexed entities are not visible for sandboxed users"
+    (is (= (disj search.config/all-models "indexed-entity")
+           (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
 
   (doseq [active-filters (active-filter-combinations)]
     (testing (str "Consistent models included when filtering on " (vec active-filters))
-      (let [search-ctx (with-all-models (zipmap active-filters (repeat true)))]
+      (let [search-ctx (with-all-models-and-regular-user (zipmap active-filters (repeat true)))]
         (is (= (search.in-place.filter/search-context->applicable-models search-ctx)
                (search.filter/search-context->applicable-models search-ctx)))))))
 
@@ -69,7 +79,6 @@
                       [:< [:cast :search_index.model_created_at :date] #t"2024-10-02"]
                       ;; depends on whether :content-verification is enabled
                       #_[:= :search_index.verified true]
-                      [:inline [:= 1 1]]
                       [:in :search_index.creator_id [123]]
                       [:= :search_index.database_id 231]
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]

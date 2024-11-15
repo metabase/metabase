@@ -5,6 +5,7 @@
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -90,6 +91,55 @@
    :view-count          2
    :text                10})
 
+(def ^:private FilterDef
+  "A relaxed definition, capturing how we can write the filter - with some fields omitted."
+  [:map {:closed true}
+   [:key                               :keyword]
+   [:type                              :keyword]
+   [:field            {:optional true} :string]
+   [:context-key      {:optional true} :keyword]
+   [:supported-value? {:optional true} ifn?]
+   [:required-feature {:optional true} :keyword]])
+
+(def ^:private Filter
+  "A normalized representation, for the application to leverage."
+  [:map {:closed true}
+   [:key              :keyword]
+   [:type             :keyword]
+   [:field            :string]
+   [:context-key      :keyword]
+   [:supported-value? ifn?]
+   [:required-feature [:maybe :keyword]]])
+
+(mu/defn- build-filter :- Filter
+  [{k :key t :type :keys [context-key field supported-value? required-feature]} :- FilterDef]
+  {:key              k
+   :type             (keyword "metabase.search.filter" (name t))
+   :field            (or field (u/->snake_case_en (name k)))
+   :context-key      (or context-key k)
+   :supported-value? (or supported-value? (constantly true))
+   :required-feature required-feature})
+
+(mu/defn- build-filters :- [:map-of :keyword Filter]
+  [m]
+  (-> (reduce #(assoc-in %1 [%2 :key] %2) m (keys m))
+      (update-vals build-filter)))
+
+(def filters
+  "Specifications for the optional search filters."
+  (build-filters
+   {:archived       {:type :single-value, :context-key :archived?}
+    ;; TODO dry this alias up with the index hydration code
+    :created-at     {:type :date-range, :field "model_created_at"}
+    :creator-id     {:type :list, :context-key :created-by}
+    ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
+    :database-id    {:type :single-value, :context-key :table-db-id}
+    :id             {:type :list, :context-key :ids, :field "model_id"}
+    :last-edited-at {:type :date-range}
+    :last-editor-id {:type :list, :context-key :last-edited-by}
+    :native-query   {:type :native-query, :context-key :search-native-query}
+    :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
+
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   []
@@ -128,7 +178,11 @@
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
+   ;; TODO only optional and maybe for tests, clean that up!
+   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
+   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms.u/PathSchema]]
+
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
