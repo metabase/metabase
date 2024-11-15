@@ -599,9 +599,9 @@
         pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
         col-names                   (common/column-titles ordered-cols col-settings format-rows?)
         _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
-        area-ref                    (AreaReference/getWholeColumn SpreadsheetVersion/EXCEL2007
-                                                                  "A"
-                                                                  (CellReference/convertNumToColString (dec (count ordered-cols))))
+        area-ref                    (AreaReference.
+                                     (format "A1:%s2" (CellReference/convertNumToColString (dec (count ordered-cols))))
+                                     SpreadsheetVersion/EXCEL2007)
         ^XSSFPivotTable pivot-table (.createPivotTable ^XSSFSheet pivot-sheet
                                                        ^AreaReference area-ref
                                                        (CellReference. 0 0)
@@ -612,6 +612,12 @@
       (.addColLabel pivot-table idx))
     (doseq [idx pivot-measures]
       (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
+    (-> pivot-table
+        .getPivotCacheDefinition
+        .getCTPivotCacheDefinition
+        .getCacheSource
+        .getWorksheetSource
+        (.setRef (format "A:%s" (CellReference/convertNumToColString (dec (count ordered-cols))))))
     (let [swb   (-> (SXSSFWorkbook. ^XSSFWorkbook wb)
                     (doto (.setCompressTempFiles true)))
           sheet (spreadsheet/select-sheet "data" swb)]
