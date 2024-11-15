@@ -129,7 +129,7 @@ interface ExpressionEditorTextfieldProps {
     expression: Expression | null,
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
-  onError: (error: ErrorWithMessage | null) => void;
+  onError: (error: ErrorWithMessage | string | null) => void;
   onCommit: (
     expression: Expression | null,
     expressionClause: Lib.ExpressionClause | null,

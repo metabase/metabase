@@ -123,9 +123,9 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     }
   };
 
-  const handleError = (error: ErrorWithMessage | null) => {
+  const handleError = (error: ErrorWithMessage | string | null) => {
     if (error) {
-      setError(error.message);
+      setError(typeof error === "string" ? error : error.message);
     }
   };
 
