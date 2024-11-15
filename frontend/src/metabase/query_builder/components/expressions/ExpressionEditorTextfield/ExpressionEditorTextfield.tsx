@@ -121,7 +121,7 @@ interface ExpressionEditorTextfieldProps {
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
-  startRule: "expression" | "aggregation" | "boolean";
+  startRule?: "expression" | "aggregation" | "boolean";
   expressionIndex?: number;
   width?: number;
   reportTimezone?: string;
@@ -242,7 +242,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
     const {
       expression,
       clause,
-      startRule,
+      startRule = ExpressionEditorTextfieldInner.defaultProps.startRule,
       query,
       stageIndex,
       expressionIndex,
@@ -572,7 +572,13 @@ class ExpressionEditorTextfieldInner extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { query, stageIndex, startRule, name, expressionIndex } = this.props;
+    const {
+      query,
+      stageIndex,
+      startRule = ExpressionEditorTextfieldInner.defaultProps.startRule,
+      name,
+      expressionIndex,
+    } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
@@ -817,6 +823,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
   }
 }
 
-export const ExpressionEditorTextfield = ExplicitSize()(
-  connect(mapStateToProps)(ExpressionEditorTextfieldInner),
-);
+export const ExpressionEditorTextfield =
+  ExplicitSize<ExpressionEditorTextfieldProps>()(
+    connect(mapStateToProps)(ExpressionEditorTextfieldInner),
+  );
