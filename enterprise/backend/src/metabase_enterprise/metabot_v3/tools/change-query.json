@@ -15,9 +15,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-string-filter change.",
+                  "description": "Type of the add_string_filter change.",
                   "enum": [
-                    "add-string-filter"
+                    "add_string_filter"
                   ]
                 },
                 "column_id": {
@@ -58,9 +58,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-number-filter change.",
+                  "description": "Type of the add_number_filter change.",
                   "enum": [
-                    "add-number-filter"
+                    "add_number_filter"
                   ]
                 },
                 "column_id": {
@@ -101,9 +101,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-boolean-filter change.",
+                  "description": "Type of the add_boolean_filter change.",
                   "enum": [
-                    "add-boolean-filter"
+                    "add_boolean_filter"
                   ]
                 },
                 "column_id": {
@@ -139,9 +139,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-specific-date-filter change.",
+                  "description": "Type of the add_specific_date_filter change.",
                   "enum": [
-                    "add-specific-date-filter"
+                    "add_specific_date_filter"
                   ]
                 },
                 "column_id": {
@@ -179,9 +179,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-relative-date-filter change.",
+                  "description": "Type of the add_relative_date_filter change.",
                   "enum": [
-                    "add-relative-date-filter"
+                    "add_relative_date_filter"
                   ]
                 },
                 "column_id": {
@@ -231,9 +231,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of remove-filter change.",
+                  "description": "Type of remove_filter change.",
                   "enum": [
-                    "remove-filter"
+                    "remove_filter"
                   ]
                 },
                 "filter_position": {
@@ -253,9 +253,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-aggregation change.",
+                  "description": "Type of the add_aggregation change.",
                   "enum": [
-                    "add-aggregation"
+                    "add_aggregation"
                   ]
                 },
                 "operator": {
@@ -294,9 +294,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of remove-aggregation change.",
+                  "description": "Type of remove_aggregation change.",
                   "enum": [
-                    "remove-aggregation"
+                    "remove_aggregation"
                   ]
                 },
                 "aggregation_position": {
@@ -316,9 +316,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-breakout change.",
+                  "description": "Type of the add_breakout change.",
                   "enum": [
-                    "add-breakout"
+                    "add_breakout"
                   ]
                 },
                 "column_id": {
@@ -338,9 +338,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of remove-breakout change.",
+                  "description": "Type of remove_breakout change.",
                   "enum": [
-                    "remove-breakout"
+                    "remove_breakout"
                   ]
                 },
                 "breakout_position": {
@@ -360,9 +360,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-order-by by change.",
+                  "description": "Type of the add_order_by by change.",
                   "enum": [
-                    "add-order-by"
+                    "add_order_by"
                   ]
                 },
                 "column_id": {
@@ -394,9 +394,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of remove-order-by change.",
+                  "description": "Type of remove_order_by change.",
                   "enum": [
-                    "remove-order-by"
+                    "remove_order_by"
                   ]
                 },
                 "order_by_position": {
@@ -416,9 +416,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-limit change.",
+                  "description": "Type of the add_limit change.",
                   "enum": [
-                    "add-limit"
+                    "add_limit"
                   ]
                 },
                 "limit": {
@@ -438,9 +438,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of remove-limit change.",
+                  "description": "Type of remove_limit change.",
                   "enum": [
-                    "remove-limit"
+                    "remove_limit"
                   ]
                 }
               },

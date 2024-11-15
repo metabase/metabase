@@ -38,7 +38,7 @@
 
 (defn- find-clause-error
   [clause-position change-type]
-  (ex-info (format "%i is not a valid index for %s change."
+  (ex-info (format "%s is not a valid index for %s change."
                    clause-position
                    change-type)
            {:clause-position clause-position}))
@@ -53,7 +53,7 @@
   (fn [_query change]
     (-> change :type keyword)))
 
-(defmethod apply-query-change :add-string-filter
+(defmethod apply-query-change :add_string_filter
   [query {:keys [value], change-type :type, column-id :column_id, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/string-or-string-like?) (lib/filterable-columns query))
         column    (or (find-column columns column-id)
@@ -70,7 +70,7 @@
                     :ends-with        (lib/ends-with column value))]
     (lib/filter query clause)))
 
-(defmethod apply-query-change :add-number-filter
+(defmethod apply-query-change :add_number_filter
   [query {:keys [value], change-type :type, column-id :column_id, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/numeric?) (lib/filterable-columns query))
         column    (or (find-column columns column-id)
@@ -87,7 +87,7 @@
                     :<= (lib/<= column value))]
     (lib/filter query clause)))
 
-(defmethod apply-query-change :add-boolean-filter
+(defmethod apply-query-change :add_boolean_filter
   [query {:keys [value], change-type :type, column-id :column_id, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/boolean?) (lib/filterable-columns query))
         column    (or (find-column columns column-id)
@@ -99,7 +99,7 @@
                     :=  (lib/= column value))]
     (lib/filter query clause)))
 
-(defmethod apply-query-change :add-specific-date-filter
+(defmethod apply-query-change :add_specific_date_filter
   [query {:keys [value], change-type :type, column-id :column_id, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
         column    (or (find-column columns column-id)
@@ -113,7 +113,7 @@
                     :<  (lib/< column value))]
     (lib/filter query clause)))
 
-(defmethod apply-query-change :add-relative-date-filter
+(defmethod apply-query-change :add_relative_date_filter
   [query {:keys [direction unit value], change-type :type, column-id :column_id}]
   (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
         column    (or (find-column columns column-id)
@@ -127,14 +127,14 @@
                                            :next    value)
                                          unit))))
 
-(defmethod apply-query-change :remove-filter
+(defmethod apply-query-change :remove_filter
   [query {change-type :type, filter-position :filter_position}]
   (let [filters (lib/filters query)
         filter  (or (get filters filter-position)
-                      (throw (find-clause-error filter-position change-type)))]
+                    (throw (find-clause-error filter-position change-type)))]
     (lib/remove-clause query filter)))
 
-(defmethod apply-query-change :add-aggregation
+(defmethod apply-query-change :add_aggregation
   [query {change-type :type, operator-name :operator, column-id :column_id}]
   (let [operators (lib/available-aggregation-operators query)
         operator  (or (find-operator operators operator-name)
@@ -146,14 +146,14 @@
         (lib/aggregate query (lib/aggregation-clause operator column)))
       (lib/aggregate query (lib/aggregation-clause operator)))))
 
-(defmethod apply-query-change :remove-aggregation
+(defmethod apply-query-change :remove_aggregation
   [query {change-type :type, aggregation-position :aggregation_position}]
   (let [aggregations (lib/aggregations query)
         aggregation  (or (get aggregations aggregation-position)
-                      (throw (find-clause-error aggregation-position change-type)))]
+                         (throw (find-clause-error aggregation-position change-type)))]
     (lib/remove-clause query aggregation)))
 
-(defmethod apply-query-change :add-breakout
+(defmethod apply-query-change :add_breakout
   [query {change-type :type, column-id :column_id}]
   (let [columns (lib/breakoutable-columns query)
         column  (or (find-column columns column-id)
@@ -164,14 +164,14 @@
                           bucket  (lib/with-temporal-bucket bucket)
                           binning (lib/with-binning binning)))))
 
-(defmethod apply-query-change :remove-breakout
+(defmethod apply-query-change :remove_breakout
   [query {change-type :type, breakout-position :breakout_position}]
   (let [breakouts (lib/breakouts query)
         breakout  (or (get breakouts breakout-position)
                       (throw (find-clause-error breakout-position change-type)))]
     (lib/remove-clause query breakout)))
 
-(defmethod apply-query-change :add-order-by
+(defmethod apply-query-change :add_order_by
   [query {change-type :type, column-id :column_id, direction-name :direction}]
   (let [columns   (lib/orderable-columns query)
         column    (or (find-column columns column-id)
@@ -179,20 +179,20 @@
         direction (when direction-name (keyword direction-name))]
     (lib/order-by query column direction)))
 
-(defmethod apply-query-change :remove-order-by
+(defmethod apply-query-change :remove_order_by
   [query {change-type :type, order-by-position :order_by_position}]
   (let [order-bys (lib/order-bys query)
         order-by  (or (get order-bys order-by-position)
                       (throw (find-clause-error order-by-position change-type)))]
     (lib/remove-clause query order-by)))
 
-(defmethod apply-query-change :add-limit
+(defmethod apply-query-change :add_limit
   [query {:keys [limit]}]
   (if (not (neg-int? limit))
     (lib/limit query limit)
     (throw (limit-error limit))))
 
-(defmethod apply-query-change :remove-limit
+(defmethod apply-query-change :remove_limit
   [query]
   (lib/limit query nil))
 
