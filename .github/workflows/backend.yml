@@ -168,12 +168,6 @@ jobs:
 
       - name: Run tests
         id: run-java-tests
-        if: matrix.java-version != 21
-        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
-
-      - name: If using Java 21, only run tests on `master`
-        id: run-java-tests-21
-        if: matrix.java-version == 21 && github.ref_name == 'master'
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
       - name: Upload Test Results

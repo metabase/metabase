@@ -39,12 +39,12 @@ export const InputContainer = styled.label<InputContainerProps>`
 `;
 
 export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
-  padding: 0.5rem;
-  font-weight: 700;
-  color: var(--mb-color-text-medium);
-  border-radius: 0.5rem;
+  color: var(--mb-color-text-dark);
+  padding: 0.75rem 0.75rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 4px;
   background-color: var(--mb-color-bg-white);
-  border: 2px solid var(--mb-color-border);
+  font-weight: normal;
 `;
 
 export const ToggleContainer = styled.div`

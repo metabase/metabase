@@ -59,11 +59,16 @@ jobs:
           result-encoding: string
           script: |
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
-            const versionParts = currentVersion.split(".");
+            const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
+            const versionParts = currentVersionWithoutSuffix.split(".");
             versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
             const newVersion = versionParts.join(".");
 
-            return newVersion
+            if (!suffix) {
+              return newVersion;
+            }
+
+            return `${newVersion}-${suffix}`
 
       - name: Append workflow summary
         run: |
@@ -222,7 +227,7 @@ jobs:
 
       - name: Edit PR adding useful information (using Metabase bot app)
         run: |
-          gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
+          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
@@ -249,7 +254,7 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --tag ${{fromJson('{"master": "canary", "release-x.51.x": "51-stable"}')[inputs.branch]}}
+          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable"}')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.51.x`) deployment
         if: ${{ inputs.branch == 'release-x.51.x' }}

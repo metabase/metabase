@@ -22,6 +22,11 @@ type CSVUploadClickedEvent = ValidateEvent<{
   triggered_from: "left-nav";
 }>;
 
+export type DatabaseAddClickedEvent = ValidateEvent<{
+  event: "database_add_clicked";
+  triggered_from: "left-nav" | "db-list";
+}>;
+
 type OnboardingChecklistOpenedEvent = ValidateEvent<{
   event: "onboarding_checklist_opened";
 }>;
@@ -51,6 +56,7 @@ export type NewIFrameCardCreatedEvent = ValidateEvent<{
 
 export type SimpleEvent =
   | CSVUploadClickedEvent
+  | DatabaseAddClickedEvent
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent
