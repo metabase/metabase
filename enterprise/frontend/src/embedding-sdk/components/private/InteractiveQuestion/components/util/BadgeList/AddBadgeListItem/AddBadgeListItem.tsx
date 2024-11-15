@@ -11,9 +11,9 @@ type AddBadgeListItemProps = {
 export const AddBadgeListItem = ({ name, onClick }: AddBadgeListItemProps) => (
   <Badge
     classNames={{
-      root: CS.bgLight,
       inner: CS.cursorPointer,
     }}
+    bg="var(--mb-color-bg-light)"
     tt="capitalize"
     size="lg"
     variant="transparent"
