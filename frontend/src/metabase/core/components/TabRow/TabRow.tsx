@@ -124,6 +124,8 @@ function TabRowInner<T>({
 }
 
 export function TabRow<T>(props: TabRowProps<T>) {
+  // We need to define TabRowInnerWithSize inside TabRow because we need dynamic T type.
+  // useMemo is used to avoid this component being recreated on every render which causes it to lose its state.
   const TabRowInnerWithSize = useMemo(
     () => ExplicitSize<TabRowProps<T>>()(TabRowInner),
     [],
