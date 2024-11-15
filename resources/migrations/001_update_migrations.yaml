@@ -9562,14 +9562,6 @@ databaseChangeLog:
             baseTableName: persisted_info
 
   - changeSet:
-      id: v51.2024-11-15T10:00:00
-      author: adam-james
-      comment: Add graph.max_categories_enabled to bar chart viz-settings, defaulting to false
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateGraphMaxCategoriesEnabledVizSetting"
-
-  - changeSet:
       id: v52.2024-09-05T08:00:00
       author: qnkhuat
       comment: Create the notification table
@@ -10094,6 +10086,14 @@ databaseChangeLog:
                   remarks: the cron schedule for the subscription
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v52.2024-11-15T10:00:00
+      author: adam-james
+      comment: Add graph.max_categories_enabled to bar chart viz-settings, defaulting to false
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateGraphMaxCategoriesEnabledVizSetting"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
