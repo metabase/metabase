@@ -1,15 +1,385 @@
 {
   "name": "run-query",
-  "description": "Executes the query in Metabase. The current query is available in the system prompt as `query`. If the query needs to be modified, pass `query` in `change-query` tool and then pass the modified query here.",
+  "description": "Executes a query in Metabase. A query has a required data source and an optional list of steps. You must call `get-query-sources` to get list of available data sources and pick one from the list. You must call `get-query-columns` tool with the chosen data source to get the list of available columns.",
   "parameters": {
     "type": "object",
     "properties": {
-      "query": {
-        "type": "string",
-        "description": "Serialized query to run. You must treat the query as an opaque string and you must not modify it on your own."
+      "source": {
+        "type": "object",
+        "description": "Query data source.",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Data source ID."
+          },
+          "database_id": {
+            "type": "number",
+            "description": "Database ID."
+          },
+          "type": {
+            "type": "string",
+            "description": "Data source type.",
+            "enum": [
+              "table",
+              "model"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "database_id",
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "steps": {
+        "type": "array",
+        "description": "List of steps to apply to the query.",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "description": "Filter query results by a string column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-string-filter step.",
+                  "enum": [
+                    "add-string-filter"
+                  ]
+                },
+                "column_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "ID of the string column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "String filter operator.",
+                  "enum": [
+                    "=",
+                    "!=",
+                    "contains",
+                    "does-not-contain",
+                    "starts-with",
+                    "ends-with"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "description": "String filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column_id",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a numeric column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-number-filter step.",
+                  "enum": [
+                    "add-number-filter"
+                  ]
+                },
+                "column_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "ID of the numeric column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Numeric filter operator.",
+                  "enum": [
+                    "=",
+                    "!=",
+                    ">",
+                    ">=",
+                    "<",
+                    "<="
+                  ]
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Numeric filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column_id",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a boolean column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-boolean-filter step.",
+                  "enum": [
+                    "add-boolean-filter"
+                  ]
+                },
+                "column_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "ID of the boolean column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Boolean filter operator.",
+                  "enum": [
+                    "="
+                  ]
+                },
+                "value": {
+                  "type": "boolean",
+                  "description": "Boolean filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column_id",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a date column and value. The date value must be a specific date.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-specific-date-filter step.",
+                  "enum": [
+                    "add-specific-date-filter"
+                  ]
+                },
+                "column_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "ID of the date column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Date filter operator.",
+                  "enum": [
+                    "=",
+                    ">",
+                    "<"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Date filter value. Must be a date in ISO 8601 format."
+                }
+              },
+              "required": [
+                "type",
+                "column_id",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a date column and value. Unlike specific-date-filter, the filter range here is a relative to current time. Examples: '1 year ago', 'this week', 'next 3 days'.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-relative-date-filter step.",
+                  "enum": [
+                    "add-relative-date-filter"
+                  ]
+                },
+                "column_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "ID of the date column to apply filter for."
+                },
+                "direction": {
+                  "type": "string",
+                  "description": "Direction of the date interval. Possible values are last, current, next. Last means intervals in the past, like last 30 days. Current means intervals including this moment, like this week. Next means intervals in the future, like next 2 months.",
+                  "enum": [
+                    "last",
+                    "current",
+                    "next"
+                  ]
+                },
+                "value": {
+                  "type": "number",
+                  "description": "How long the date range is, in units of time. Example: for 'last 5 weeks' the value is 5, for 'next 3 years' the value is 3. For current intervals there is no value and it should be set to zero."
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "Unit of time used for the date interval.",
+                  "enum": [
+                    "day",
+                    "week",
+                    "month",
+                    "quarter",
+                    "year"
+                  ]
+                }
+              },
+              "required": [
+                "type",
+                "column_id",
+                "direction",
+                "value",
+                "unit"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Aggregate query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-aggregation step.",
+                  "enum": [
+                    "add-aggregation"
+                  ]
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Aggregation operator.",
+                  "enum": [
+                    "count",
+                    "sum",
+                    "avg",
+                    "distinct",
+                    "cum-sum",
+                    "cum-count",
+                    "stddev",
+                    "min",
+                    "max"
+                  ]
+                },
+                "column_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "ID of an optional column for the selected aggregation operator. If not specified, set it to null."
+                }
+              },
+              "required": [
+                "type",
+                "operator",
+                "column_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Group by, or breakout, query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-breakout step.",
+                  "enum": [
+                    "add-breakout"
+                  ]
+                },
+                "column_id": {
+                  "type": "string",
+                  "description": "ID of the column to apply grouping for."
+                }
+              },
+              "required": [
+                "type",
+                "column_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Sort the query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-order-by by step.",
+                  "enum": [
+                    "add-order-by"
+                  ]
+                },
+                "column_id": {
+                  "type": "string",
+                  "description": "ID of the column to apply sorting for."
+                },
+                "direction": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "description": "Optional sorting direction, either ascending or descending."
+                }
+              },
+              "required": [
+                "type",
+                "column_id",
+                "direction"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Set the row limit for the query.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the add-limit step.",
+                  "enum": [
+                    "add-limit"
+                  ]
+                },
+                "limit": {
+                  "type": "number",
+                  "description": "Row limit."
+                }
+              },
+              "required": [
+                "type",
+                "limit"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
       }
     },
-    "required": ["query"],
+    "required": [
+      "source",
+      "steps"
+    ],
     "additionalProperties": false
   }
 }
