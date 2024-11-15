@@ -128,7 +128,7 @@
                                          unit))))
 
 (defmethod apply-query-change :remove_filter
-  [query {change-type :type, filter-position :filter_position}]
+  [query {change-type :type, filter-position :filter_id}]
   (let [filters (lib/filters query)
         filter  (or (get filters filter-position)
                     (throw (find-clause-error filter-position change-type)))]
@@ -147,7 +147,7 @@
       (lib/aggregate query (lib/aggregation-clause operator)))))
 
 (defmethod apply-query-change :remove_aggregation
-  [query {change-type :type, aggregation-position :aggregation_position}]
+  [query {change-type :type, aggregation-position :aggregation_id}]
   (let [aggregations (lib/aggregations query)
         aggregation  (or (get aggregations aggregation-position)
                          (throw (find-clause-error aggregation-position change-type)))]
@@ -165,7 +165,7 @@
                           binning (lib/with-binning binning)))))
 
 (defmethod apply-query-change :remove_breakout
-  [query {change-type :type, breakout-position :breakout_position}]
+  [query {change-type :type, breakout-position :breakout_id}]
   (let [breakouts (lib/breakouts query)
         breakout  (or (get breakouts breakout-position)
                       (throw (find-clause-error breakout-position change-type)))]
@@ -180,7 +180,7 @@
     (lib/order-by query column direction)))
 
 (defmethod apply-query-change :remove_order_by
-  [query {change-type :type, order-by-position :order_by_position}]
+  [query {change-type :type, order-by-position :order_by_id}]
   (let [order-bys (lib/order-bys query)
         order-by  (or (get order-bys order-by-position)
                       (throw (find-clause-error order-by-position change-type)))]

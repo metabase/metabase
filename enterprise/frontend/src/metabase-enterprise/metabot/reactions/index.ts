@@ -10,7 +10,7 @@ import {
   changeColumnSettings,
   changeDisplayType,
   changeSeriesSettings,
-  changeTableVisualizationSettings,
+  changeTableSettings,
 } from "./visualizations";
 
 export * from "./errors";
@@ -26,8 +26,7 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/change-column-settings": changeColumnSettings,
   "metabot.reaction/change-series-settings": changeSeriesSettings,
   "metabot.reaction/change-display-type": changeDisplayType,
-  "metabot.reaction/change-table-visualization-settings":
-    changeTableVisualizationSettings,
+  "metabot.reaction/change-table-settings": changeTableSettings,
   "metabot.reaction/confirmation": requireUserConfirmation,
   "metabot.reaction/message": showMessage,
   "metabot.reaction/api-call": apiCall,

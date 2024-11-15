@@ -5,13 +5,13 @@
    [metabase.lib.types.isa :as lib.types.isa]))
 
 (defn column-id
-  "Column id."
+  "Query column id."
   [column]
   (or (:lib/desired-column-alias column)
       (:name column)))
 
 (defn column-info
-  "Column id, name, type."
+  "Query column id, name, type."
   [query column]
   {:id (column-id column)
    :name (-> (lib/display-info query column) :long-display-name)
@@ -22,8 +22,14 @@
            (lib.types.isa/string-or-string-like? column) :string
            :else :unknown)})
 
+(defn clause-info
+  "Query clause info."
+  [query clause index]
+  {:id index
+   :name (lib/display-name query clause)})
+
 (defn operator-name
-  "Operator name."
+  "Query operator name."
   [operator]
   (-> operator :short name))
 

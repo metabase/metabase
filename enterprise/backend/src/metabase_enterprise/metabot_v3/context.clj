@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [metabase-enterprise.metabot-v3.tools.query :as metabot-v3.tools.query]
+   [metabase-enterprise.metabot-v3.tools.visualization :as metabot-v3.tools.visualization]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
@@ -54,19 +55,27 @@
 
   This should be a 'sparse' hydration rather than `SELECT * FROM dashboard WHERE id = 1` -- we should only include
   information needed for the LLM to do its thing rather than everything in the world."
-  [{:keys [dataset_query display_type visualization_settings]}]
+  [{:keys [display_type dataset_query dataset_columns]}]
   (merge {}
+         (when display_type
+           {:display_type display_type})
          (when dataset_query
            (let [query (metabot-v3.tools.query/source-query dataset_query)]
              {:query
-              {:filters      (mapv #(lib/display-name query %) (lib/filters query))
-               :aggregations (mapv #(lib/display-name query %) (lib/aggregations query))
-               :breakouts    (mapv #(lib/display-name query %) (lib/breakouts query))
-               :order_bys    (mapv #(lib/display-name query %) (lib/order-bys query))
+              {:filters      (into []
+                                   (map-indexed (fn [i clause] (metabot-v3.tools.query/clause-info query clause i)))
+                                   (lib/filters query))
+               :aggregations (into []
+                                   (map-indexed (fn [i clause] (metabot-v3.tools.query/clause-info query clause i)))
+                                   (lib/aggregations query))
+               :breakouts    (into []
+                                   (map-indexed (fn [i clause] (metabot-v3.tools.query/clause-info query clause i)))
+                                   (lib/breakouts query))
+               :order_bys    (into []
+                                   (map-indexed (fn [i clause] (metabot-v3.tools.query/clause-info query clause i)))
+                                   (lib/order-bys query))
                :limit        (lib/current-limit query)}
               :query_columns (mapv #(metabot-v3.tools.query/column-info query %)
                                    (lib/visible-columns query))}))
-         (when display_type
-           {:display_type display_type})
-         (when visualization_settings
-           {:visualization_settings visualization_settings})))
+         (when dataset_columns
+           {:visualization_columns (mapv metabot-v3.tools.visualization/column-info dataset_columns)})))

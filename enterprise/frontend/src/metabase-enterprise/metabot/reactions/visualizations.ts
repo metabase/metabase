@@ -4,39 +4,30 @@ import {
   updateQuestion,
 } from "metabase/query_builder/actions";
 import { setQuestionDisplayType } from "metabase/query_builder/components/chart-type-selector";
-import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   MetabotChangeChartAppearanceReaction,
   MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
   MetabotChangeSeriesSettingsReaction,
-  MetabotChangeVisiualizationSettingsReaction,
+  MetabotChangeTableSettingsReaction,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import type { ReactionHandler } from "./types";
 
-export const changeTableVisualizationSettings: ReactionHandler<
-  MetabotChangeVisiualizationSettingsReaction
-> =
-  reaction =>
-  async ({ dispatch, getState }) => {
-    const queryResults = getQueryResults(getState());
-    const queryResultCols = queryResults?.[0]?.data?.cols ?? [];
-    const columnNames = queryResultCols.map((col: any) => col.name);
-    const visibleColumnNames = new Set(reaction.visible_columns);
-    const tableColumns = columnNames.map((name: string) => ({
-      name,
-      enabled: visibleColumnNames.has(name),
-    }));
-
+export const changeTableSettings: ReactionHandler<
+  MetabotChangeTableSettingsReaction
+> = reaction => {
+  return async ({ dispatch }) => {
     await dispatch(
       onUpdateVisualizationSettings({
-        "table.columns": tableColumns,
+        "table.columns": reaction.table_columns,
       }),
     );
   };
+};
 
 export const changeDisplayType: ReactionHandler<
   MetabotChangeDisplayTypeReaction

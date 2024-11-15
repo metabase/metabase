@@ -1,6 +1,11 @@
 import type { CardDisplayType } from "./visualization";
 
-import type { ColumnSettings, DatasetQuery, SeriesSettings } from ".";
+import type {
+  ColumnSettings,
+  DatasetQuery,
+  SeriesSettings,
+  TableColumnOrderSetting,
+} from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -54,9 +59,9 @@ export type MetabotChangeDisplayTypeReaction = {
   display_type: CardDisplayType;
 };
 
-export type MetabotChangeVisiualizationSettingsReaction = {
-  type: "metabot.reaction/change-table-visualization-settings";
-  visible_columns: string[];
+export type MetabotChangeTableSettingsReaction = {
+  type: "metabot.reaction/change-table-settings";
+  table_columns: TableColumnOrderSetting[];
 };
 
 export type MetabotConfirmationReaction = {
@@ -131,7 +136,7 @@ export type MetabotReaction =
   | MetabotChangeSeriesSettingsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
-  | MetabotChangeVisiualizationSettingsReaction
+  | MetabotChangeTableSettingsReaction
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction

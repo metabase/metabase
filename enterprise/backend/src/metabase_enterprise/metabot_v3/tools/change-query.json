@@ -193,7 +193,7 @@
                 },
                 "direction": {
                   "type": "string",
-                  "description": "Direction of the date interval. Possible values are last, current, next. Last means intervals in the past, like last 30 days. Current means intervals including this moment, like this week. Next means intervals in the future, like next 2 months.",
+                  "description": "Direction of the date interval. Possible values are `last`, `current`, `next`. Last means intervals in the past, like last 30 days. Current means intervals including this moment, like this week. Next means intervals in the future, like next 2 months.",
                   "enum": [
                     "last",
                     "current",
@@ -236,14 +236,14 @@
                     "remove_filter"
                   ]
                 },
-                "filter_position": {
+                "filter_id": {
                   "type": "number",
-                  "description": "Index of the filter clause to remove. `query.filters` is the list of the current query filters."
+                  "description": "ID of the filter to remove. `query.filters` is the list of the current query filters."
                 }
               },
               "required": [
                 "type",
-                "filter_position"
+                "filter_id"
               ],
               "additionalProperties": false
             },
@@ -299,14 +299,14 @@
                     "remove_aggregation"
                   ]
                 },
-                "aggregation_position": {
+                "aggregation_id": {
                   "type": "number",
-                  "description": "Index of the aggregation clause to remove. `query.aggregations` is the list of the current query aggregations."
+                  "description": "ID of the aggregation to remove. `query.aggregations` is the list of the current query aggregations."
                 }
               },
               "required": [
                 "type",
-                "aggregation_position"
+                "aggregation_id"
               ],
               "additionalProperties": false
             },
@@ -343,14 +343,14 @@
                     "remove_breakout"
                   ]
                 },
-                "breakout_position": {
+                "breakout_id": {
                   "type": "number",
-                  "description": "Index of the breakout clause to remove. `query.breakouts` is the list of the current query breakouts."
+                  "description": "ID of the breakout to remove. `query.breakouts` is the list of the current query breakouts."
                 }
               },
               "required": [
                 "type",
-                "breakout_position"
+                "breakout_id"
               ],
               "additionalProperties": false
             },
@@ -360,7 +360,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add_order_by by change.",
+                  "description": "Type of the add_order_by change.",
                   "enum": [
                     "add_order_by"
                   ]
@@ -399,14 +399,14 @@
                     "remove_order_by"
                   ]
                 },
-                "order_by_position": {
+                "order_by_id": {
                   "type": "number",
-                  "description": "Index of the order_by clause to remove. `query.order_bys` is the list of the current query sorting clauses."
+                  "description": "ID of the order_by clause to remove. `query.order_bys` is the list of the current query sorting clauses."
                 }
               },
               "required": [
                 "type",
-                "order_by_position"
+                "order_by_id"
               ],
               "additionalProperties": false
             },
