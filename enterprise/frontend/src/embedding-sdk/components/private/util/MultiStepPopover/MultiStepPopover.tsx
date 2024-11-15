@@ -50,8 +50,8 @@ const MultiStepPopoverContent = ({
 
   return (
     <Popover {...popoverProps}>
-      <Popover.Target>{targetElement}</Popover.Target>;
-      <Popover.Dropdown>{currentStepContent}</Popover.Dropdown>;
+      <Popover.Target>{targetElement}</Popover.Target>
+      <Popover.Dropdown>{currentStepContent}</Popover.Dropdown>
     </Popover>
   );
 };
