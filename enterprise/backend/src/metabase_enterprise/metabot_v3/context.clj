@@ -2,7 +2,9 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.io :as io]
+   [metabase-enterprise.metabot-v3.tools.query :as metabot-v3.tools.query]
    [metabase.config :as config]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -52,5 +54,17 @@
 
   This should be a 'sparse' hydration rather than `SELECT * FROM dashboard WHERE id = 1` -- we should only include
   information needed for the LLM to do its thing rather than everything in the world."
-  [_context]
-  {})
+  [{:keys [dataset_query visualization_settings]}]
+  (merge {}
+         (when dataset_query
+           (let [query (metabot-v3.tools.query/source-query dataset_query)]
+             {:query
+              {:filters      (mapv #(lib/display-name query %) (lib/filters query))
+               :aggregations (mapv #(lib/display-name query %) (lib/aggregations query))
+               :breakouts    (mapv #(lib/display-name query %) (lib/breakouts query))
+               :order_bys    (mapv #(lib/display-name query %) (lib/order-bys query))
+               :limit        (lib/current-limit query)}
+              :query_columns (mapv #(metabot-v3.tools.query/column-info query %)
+                                   (lib/visible-columns query))}))
+         (when visualization_settings
+           {:visualization_settings visualization_settings})))

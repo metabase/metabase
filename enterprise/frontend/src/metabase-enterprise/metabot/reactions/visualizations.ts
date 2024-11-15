@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import {
   onUpdateVisualizationSettings,
   setUIControls,
@@ -7,7 +5,6 @@ import {
 } from "metabase/query_builder/actions";
 import { setQuestionDisplayType } from "metabase/query_builder/components/chart-type-selector";
 import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
-import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   MetabotChangeChartAppearanceReaction,
@@ -17,8 +14,6 @@ import type {
   MetabotChangeVisiualizationSettingsReaction,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import { stopProcessingAndNotify } from "../state";
 
 import type { ReactionHandler } from "./types";
 
@@ -49,26 +44,16 @@ export const changeDisplayType: ReactionHandler<
   reaction =>
   async ({ dispatch, getState }) => {
     {
-      const display = reaction.display_type;
       const question = getQuestion(getState());
-
       if (!question) {
-        dispatch(
-          stopProcessingAndNotify(
-            t`You have to be viewing a question for me to modify it.`,
-          ),
-        );
         return;
       }
 
-      const newQuestion = setQuestionDisplayType(question, display);
-
-      await dispatch(
-        updateQuestion(newQuestion, {
-          run: true,
-          shouldUpdateUrl: Lib.queryDisplayInfo(newQuestion.query()).isEditable,
-        }),
+      const newQuestion = setQuestionDisplayType(
+        question,
+        reaction.display_type,
       );
+      await dispatch(updateQuestion(newQuestion, { run: true }));
       dispatch(setUIControls({ isShowingRawTable: false }));
     }
   };
