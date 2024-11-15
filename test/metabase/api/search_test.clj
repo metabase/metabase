@@ -313,7 +313,7 @@
   (when (search/supports-index?)
     (testing "It can use an alternate search engine"
       (with-search-items-in-root-collection "test"
-        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext")]
+        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
           (is (= "search.engine/fulltext" (:engine resp))))))))
 

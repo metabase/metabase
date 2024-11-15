@@ -115,7 +115,7 @@
    [java-time.api :as t]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
-   [metabase.search.util :as search.util]
+   [metabase.search.in-place.util :as search.util]
    [metabase.util :as u]))
 
 (defn- matches?
