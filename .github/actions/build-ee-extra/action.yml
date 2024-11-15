@@ -4,7 +4,9 @@ description: Build Metabase Enterprise Edition with extra features
 inputs:
   java-version:
     required: true
-    default: '21'
+    # Use Java 17 to run steps like `jar uf`, otherwise the build fails because it tries to verify every file the JAR
+    # and some have 17+ bytecode for whatever reason... see https://metaboat.slack.com/archives/C5XHN8GLW/p1731504670951389
+    default: '17'
   iam-role:
     description: "The IAM role to assume"
     required: true

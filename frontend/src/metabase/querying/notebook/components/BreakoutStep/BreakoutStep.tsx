@@ -113,7 +113,7 @@ interface BreakoutPopoverProps {
   onClose: () => void;
 }
 
-const BreakoutPopover = ({
+export const BreakoutPopover = ({
   query,
   stageIndex,
   breakout,

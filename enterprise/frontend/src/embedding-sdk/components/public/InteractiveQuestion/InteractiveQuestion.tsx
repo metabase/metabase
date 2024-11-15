@@ -20,6 +20,7 @@ import {
   SummarizeButton,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
+import { Breakout } from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout";
 import {
   InteractiveQuestionProvider,
   type InteractiveQuestionProviderProps,
@@ -111,6 +112,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   ChartTypeSelectorList: typeof ChartTypeSelectorList;
   EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
+  Breakout: typeof Breakout;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -134,6 +136,7 @@ InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeSelectorList = ChartTypeSelectorList;
 
 export { InteractiveQuestion };

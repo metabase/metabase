@@ -10,9 +10,11 @@ title: Embedded analytics SDK - Using the SDK with Next.js
 
 Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org/).
 
-## Using App Router
+## Using App Router and Pages Router
 
 Create a component that imports the `MetabaseProvider` and mark it as a React Client component with "use client".
+
+It's fine to leave "use client" in the component even when using the Pages Router, but it's not necessary since the Pages Router doesn't use React Server Components.
 
 ```typescript
 "use client";
@@ -70,7 +72,11 @@ const DynamicAnalytics = dynamic(
 
 ## Handling authentication
 
-If you authenticate with Metabase using JWT, you can create a Route handler that signs people in to Metabase.
+App Router and Pages Router have different ways to define API routes. If you want to authenticate users from your server with JWT, you can follow the instructions below. But if you want to authenticate with API keys for local development, see [Authenticating locally with API keys](./authentication.md#authenticating-locally-with-api-keys).
+
+### Using App Router
+
+You can create a Route handler that signs people in to Metabase.
 
 Create a new `route.ts` file in your `app/*` directory, for example `app/sso/metabase/route.ts` that corresponds to an endpoint at /sso/metabase.
 
@@ -116,21 +122,19 @@ export async function GET() {
 }
 ```
 
-Pass this `config` to `MetabaseProvider`
+Then, pass this `config` to `MetabaseProvider`
 
 ```typescript
 import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
 const config = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  authProviderUri: "/sso/metabase", // Required: An endpoint in your app that signs people in and returns a token.
+  authProviderUri: "/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 ```
 
-## Using pages router
+### Using Pages Router
 
-This works almost the same as the App Router, but you don't need to mark the component that imports the Metabase SDK components as a React Client component.
-
-If you authenticate with Metabase using JWT, you can create an API route that signs people in to Metabase.
+You can create an API route that signs people in to Metabase.
 
 Create a new `metabase.ts` file in your `pages/api/*` directory, for example `pages/api/sso/metabase.ts` that corresponds to an endpoint at /api/sso/metabase.
 
@@ -175,12 +179,12 @@ export default async function handler(
 }
 ```
 
-And pass this `config` to `MetabaseProvider`
+Then, pass this `config` to `MetabaseProvider`
 
 ```ts
 import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
 const config = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  authProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
+  authProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 ```

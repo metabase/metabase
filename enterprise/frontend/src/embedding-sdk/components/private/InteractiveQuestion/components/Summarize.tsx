@@ -1,88 +1,128 @@
-import { useRef, useState } from "react";
-import { t } from "ttag";
+import { useDisclosure } from "@mantine/hooks";
+import { useMemo, useState } from "react";
+import { match } from "ts-pattern";
 
-import CS from "metabase/css/core/index.css";
+import { AggregationPicker } from "metabase/common/components/AggregationPicker";
+import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
 import {
-  SummarizeAggregationItemList,
-  SummarizeBreakoutColumnList,
-} from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
-import { Button, Divider, Group, Stack } from "metabase/ui";
+  type AggregationItem,
+  getAggregationItems,
+} from "metabase/query_builder/utils/get-aggregation-items";
+import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
+import { MultiStepPopover } from "../../util/MultiStepPopover";
 import { useInteractiveQuestionContext } from "../context";
 
-type SummarizeProps = {
-  onClose: () => void;
-};
+import { BadgeList } from "./util/BadgeList";
 
-export const Summarize = ({ onClose = () => {} }: Partial<SummarizeProps>) => {
-  const { question } = useInteractiveQuestionContext();
+export const SummarizeInner = ({
+  query,
+  onQueryChange,
+  stageIndex,
+}: UpdateQueryHookProps) => {
+  const aggregationItems = useMemo(
+    () => getAggregationItems({ query, stageIndex }),
+    [query, stageIndex],
+  );
 
-  return question && <SummarizeInner question={question} onClose={onClose} />;
-};
-
-const SummarizeInner = ({
-  question,
-  onClose,
-}: {
-  question: Question;
-} & SummarizeProps) => {
-  const { updateQuestion } = useInteractiveQuestionContext();
-
-  const onQueryChange = (query: Lib.Query) =>
-    updateQuestion(question.setQuery(query));
-
-  // save initial question in case we close without making changes
-  const initialQuestion = useRef(question.query());
-
-  const [currentQuery, setCurrentQuery] = useState<Lib.Query>(question.query());
-
-  // yeah we need to change this
-  const stageIndex = Lib.stageCount(currentQuery);
-
-  const onApplyFilter = () => {
-    if (currentQuery) {
-      onQueryChange(currentQuery);
-      onClose();
-    }
+  const handleRemove = (aggregation: Lib.AggregationClause) => {
+    const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
+    onQueryChange(nextQuery);
   };
 
-  const onCloseFilter = () => {
-    if (initialQuestion.current) {
-      onQueryChange(initialQuestion.current);
-    }
-    onClose();
-  };
+  const label = match(aggregationItems.length)
+    .with(0, () => `Summarize`)
+    .with(1, () => `1 summary`)
+    .otherwise(value => `${value} summaries`);
 
-  const hasAggregations = Lib.aggregations(currentQuery, stageIndex).length > 0;
+  const [selectedAggregationItem, setSelectedAggregationItem] =
+    useState<AggregationItem>();
+
+  const [step, setStep] = useState<"picker" | "list">("picker");
+  const [opened, { close, toggle }] = useDisclosure(false, {
+    onOpen: () => {
+      if (aggregationItems.length === 0) {
+        setStep("picker");
+      } else {
+        setStep("list");
+      }
+    },
+  });
 
   return (
-    <Stack className={CS.overflowHidden} h="100%" w="100%">
-      <Stack className={CS.overflowYScroll}>
-        <SummarizeAggregationItemList
-          query={currentQuery}
-          onQueryChange={setCurrentQuery}
+    <MultiStepPopover currentStep={step} opened={opened} onClose={close}>
+      <MultiStepPopover.Target>
+        <Button
+          onClick={toggle}
+          variant={aggregationItems.length === 0 ? "default" : "filled"}
+        >
+          {label}
+        </Button>
+      </MultiStepPopover.Target>
+      <MultiStepPopover.Step value="picker">
+        <AggregationPicker
+          query={query}
           stageIndex={stageIndex}
+          clause={selectedAggregationItem?.aggregation}
+          clauseIndex={selectedAggregationItem?.aggregationIndex}
+          operators={
+            selectedAggregationItem?.operators ??
+            Lib.availableAggregationOperators(query, stageIndex)
+          }
+          allowTemporalComparisons
+          onQueryChange={onQueryChange}
+          onClose={() => setStep("list")}
+          onBack={() => setStep("list")}
         />
-        <Divider my="lg" />
-        {hasAggregations && (
-          <SummarizeBreakoutColumnList
-            query={currentQuery}
-            onQueryChange={setCurrentQuery}
-            stageIndex={stageIndex}
-          />
-        )}
-      </Stack>
+      </MultiStepPopover.Step>
+      <MultiStepPopover.Step value="list">
+        <BadgeList
+          items={aggregationItems.map(item => ({
+            name: item.displayName,
+            item,
+          }))}
+          onSelectItem={item => {
+            setSelectedAggregationItem(item);
+            setStep("picker");
+          }}
+          onAddItem={() => {
+            setStep("picker");
+            setSelectedAggregationItem(undefined);
+          }}
+          onRemoveItem={item => {
+            if (item) {
+              handleRemove(item.aggregation);
+            }
+            if (aggregationItems.length === 1) {
+              close();
+            }
+          }}
+          addButtonLabel={"Add grouping"}
+        />
+      </MultiStepPopover.Step>
+    </MultiStepPopover>
+  );
+};
 
-      <Group>
-        <Button variant="filled" onClick={onApplyFilter}>
-          {t`Apply`}
-        </Button>
-        <Button variant="subtle" color="text-medium" onClick={onCloseFilter}>
-          {t`Close`}
-        </Button>
-      </Group>
-    </Stack>
+export const Summarize = () => {
+  const { question, updateQuestion } = useInteractiveQuestionContext();
+
+  if (!question) {
+    return null;
+  }
+
+  const query = question.query();
+
+  const onQueryChange = (newQuery: Lib.Query) => {
+    updateQuestion(question.setQuery(newQuery), { run: true });
+  };
+
+  return (
+    <SummarizeInner
+      query={query}
+      onQueryChange={onQueryChange}
+      stageIndex={-1}
+    />
   );
 };

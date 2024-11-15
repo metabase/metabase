@@ -39,9 +39,7 @@ const ContentView = ({
     .with("filter", () => (
       <InteractiveQuestion.Filter onClose={onReturnToVisualization} />
     ))
-    .with("summarize", () => (
-      <InteractiveQuestion.Summarize onClose={onReturnToVisualization} />
-    ))
+    .with("summarize", () => <InteractiveQuestion.Summarize />)
     .with("editor", () => (
       <InteractiveQuestion.Editor onApply={onReturnToVisualization} />
     ))
