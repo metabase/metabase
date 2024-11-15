@@ -49,6 +49,9 @@ const theme = defineEmbeddingSdkTheme({
     // Slightly darker background color used for hover and accented elements
     "background-hover": "#F9FBFC",
 
+    // Muted background color used for disabled elements, such as disabled buttons and inputs.
+    "background-disabled": "#F3F5F7",
+
     // Color used for borders
     border: "#EEECEC",
 
