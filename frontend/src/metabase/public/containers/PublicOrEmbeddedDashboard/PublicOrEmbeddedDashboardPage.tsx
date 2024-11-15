@@ -12,8 +12,6 @@ import { useSelector } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
 
-const noop = () => {};
-
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const { location, router } = props;
   const parameterQueryParams = props.location.query;
@@ -71,7 +69,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         parameterQueryParams={parameterQueryParams}
         cardTitled={true}
         locale={locale}
-        navigateToNewCardFromDashboard={noop}
       />
     </>
   );
