@@ -1,12 +1,12 @@
 {
-  "name": "run-query",
-  "description": "Executes a query in Metabase. A query is composed from multiple steps. Use get-query-columns tool to list available columns.",
+  "name": "change-query",
+  "description": "Changes the current `query` and executes it in Metabase. A query consists of changes. Use `query_columns` for the list of available columns.",
   "parameters": {
     "type": "object",
     "properties": {
-      "steps": {
+      "changes": {
         "type": "array",
-        "description": "List of query steps.",
+        "description": "List of changes to apply to the query.",
         "items": {
           "anyOf": [
             {
@@ -15,17 +15,17 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the string filter step.",
+                  "description": "Type of the add_string_filter change.",
                   "enum": [
-                    "string-filter"
+                    "add_string_filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the string column to apply filter for."
+                  "description": "ID of the string column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -46,7 +46,7 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "operator",
                 "value"
               ],
@@ -58,17 +58,17 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the number filter step.",
+                  "description": "Type of the add_number_filter change.",
                   "enum": [
-                    "number-filter"
+                    "add_number_filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the numeric column to apply filter for."
+                  "description": "ID of the numeric column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -89,7 +89,7 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "operator",
                 "value"
               ],
@@ -101,17 +101,17 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the boolean filter step.",
+                  "description": "Type of the add_boolean_filter change.",
                   "enum": [
-                    "boolean-filter"
+                    "add_boolean_filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the boolean column to apply filter for."
+                  "description": "ID of the boolean column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -127,7 +127,7 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "operator",
                 "value"
               ],
@@ -139,17 +139,17 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the date filter step.",
+                  "description": "Type of the add_specific_date_filter change.",
                   "enum": [
-                    "specific-date-filter"
+                    "add_specific_date_filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the date column to apply filter for."
+                  "description": "ID of the date column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -167,7 +167,7 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "operator",
                 "value"
               ],
@@ -175,21 +175,21 @@
             },
             {
               "type": "object",
-              "description": "Filter query results by a date column and value. Unlike date-filter step, the filter range here is a relative to current time. Examples: '1 year ago', 'this week', 'next 3 days'.",
+              "description": "Filter query results by a date column and value. Unlike specific-date-filter, the filter range here is a relative to current time. Examples: '1 year ago', 'this week', 'next 3 days'.",
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the relative date filter step.",
+                  "description": "Type of the add_relative_date_filter change.",
                   "enum": [
-                    "relative-date-filter"
+                    "add_relative_date_filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the date column to apply filter for."
+                  "description": "ID of the date column to apply filter for."
                 },
                 "direction": {
                   "type": "string",
@@ -218,10 +218,32 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "direction",
                 "value",
                 "unit"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Removes a filter.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove_filter change.",
+                  "enum": [
+                    "remove_filter"
+                  ]
+                },
+                "filter_position": {
+                  "type": "number",
+                  "description": "Index of the filter clause to remove. `query.filters` is the list of the current query filters."
+                }
+              },
+              "required": [
+                "type",
+                "filter_position"
               ],
               "additionalProperties": false
             },
@@ -231,9 +253,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the aggregation step.",
+                  "description": "Type of the add_aggregation change.",
                   "enum": [
-                    "aggregation"
+                    "add_aggregation"
                   ]
                 },
                 "operator": {
@@ -251,18 +273,40 @@
                     "max"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Optional column name for the selected aggregation operator. If not specified, set it to null."
+                  "description": "ID of an optional column for the selected aggregation operator. If not specified, set it to null."
                 }
               },
               "required": [
                 "type",
                 "operator",
-                "column"
+                "column_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Removes an aggregation.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove_aggregation change.",
+                  "enum": [
+                    "remove_aggregation"
+                  ]
+                },
+                "aggregation_position": {
+                  "type": "number",
+                  "description": "Index of the aggregation clause to remove. `query.aggregations` is the list of the current query aggregations."
+                }
+              },
+              "required": [
+                "type",
+                "aggregation_position"
               ],
               "additionalProperties": false
             },
@@ -272,19 +316,41 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the breakout step.",
+                  "description": "Type of the add_breakout change.",
                   "enum": [
-                    "breakout"
+                    "add_breakout"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": "string",
-                  "description": "Name of the column to apply grouping for."
+                  "description": "ID of the column to apply grouping for."
                 }
               },
               "required": [
                 "type",
-                "column"
+                "column_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Removes a grouping, or a breakout.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove_breakout change.",
+                  "enum": [
+                    "remove_breakout"
+                  ]
+                },
+                "breakout_position": {
+                  "type": "number",
+                  "description": "Index of the breakout clause to remove. `query.breakouts` is the list of the current query breakouts."
+                }
+              },
+              "required": [
+                "type",
+                "breakout_position"
               ],
               "additionalProperties": false
             },
@@ -294,19 +360,53 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the order by step.",
+                  "description": "Type of the add_order_by by change.",
                   "enum": [
-                    "order_by"
+                    "add_order_by"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": "string",
-                  "description": "Name of the column to apply sorting for."
+                  "description": "ID of the column to apply sorting for."
+                },
+                "direction": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "description": "Optional sorting direction, either ascending or descending."
                 }
               },
               "required": [
                 "type",
-                "column"
+                "column_id",
+                "direction"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Removes a sorting clause.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove_order_by change.",
+                  "enum": [
+                    "remove_order_by"
+                  ]
+                },
+                "order_by_position": {
+                  "type": "number",
+                  "description": "Index of the order_by clause to remove. `query.order_bys` is the list of the current query sorting clauses."
+                }
+              },
+              "required": [
+                "type",
+                "order_by_position"
               ],
               "additionalProperties": false
             },
@@ -316,9 +416,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the row limit step.",
+                  "description": "Type of the add_limit change.",
                   "enum": [
-                    "limit"
+                    "add_limit"
                   ]
                 },
                 "limit": {
@@ -331,13 +431,30 @@
                 "limit"
               ],
               "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Removes a row limit from the query.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove_limit change.",
+                  "enum": [
+                    "remove_limit"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
             }
           ]
         }
       }
     },
     "required": [
-      "steps"
+      "changes"
     ],
     "additionalProperties": false
   }
