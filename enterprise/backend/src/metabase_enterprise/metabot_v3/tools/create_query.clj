@@ -15,4 +15,4 @@
                                 :table (lib.metadata/table metadata-provider (:id source))
                                 :model (lib.metadata/card metadata-provider (:id source)))
                                (lib/query metadata-provider))]
-  {:output (json/generate-string {:query (lib.query/->legacy-MBQL query)})}))
+  {:output (json/generate-string (lib.query/->legacy-MBQL query))}))

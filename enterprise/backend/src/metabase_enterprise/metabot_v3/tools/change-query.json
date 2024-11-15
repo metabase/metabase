@@ -6,7 +6,7 @@
     "properties": {
       "query": {
         "type": "string",
-        "description": "Serialized query. Should be treated as an opaque string."
+        "description": "Serialized query. You must treat the query as an opaque string and you must not modify it on your own."
       },
       "changes": {
         "type": "array",

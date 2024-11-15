@@ -6,7 +6,7 @@
     "properties": {
       "query": {
         "type": "string",
-        "description": "Serialized query to run."
+        "description": "Serialized query to run. You must treat the query as an opaque string and you must not modify it on your own."
       }
     },
     "required": ["query"],

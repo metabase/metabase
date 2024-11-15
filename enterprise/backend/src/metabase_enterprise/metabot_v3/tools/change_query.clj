@@ -17,6 +17,10 @@
   {:id (:lib/desired-column-alias column)
    :name (-> (lib/display-info query column) :long-display-name)})
 
+(defn- operator-info
+  [operator]
+  (-> operator :short name))
+
 (defn- find-column
   [columns column-alias]
   (m/find-first #(= (:lib/desired-column-alias %) column-alias) columns))
@@ -31,14 +35,14 @@
 
 (defn- find-operator
   [operators operator-name]
-  (m/find-first #(= (-> % :short name) operator-name) operators))
+  (m/find-first #(= (operator-info %) operator-name) operators))
 
 (defn- find-operator-error
   [operators operator-name change-type]
   (ex-info (format "%s is not a correct operator for the %s change. Available operators as JSON: %s"
                    operator-name
                    change-type
-                   (json/generate-string (mapv operator-name operators)))
+                   (json/generate-string (mapv operator-info operators)))
            {:operator operator-name}))
 
 (defn- limit-error
@@ -172,8 +176,8 @@
         metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database query))
         query             (lib/query metadata-provider query)]
     (try
-      {:output (json/generate-string {:query (-> (apply-query-changes query changes)
-                                                 lib.query/->legacy-MBQL)})}
+      {:output (json/generate-string (-> (apply-query-changes query changes)
+                                         lib.query/->legacy-MBQL))}
       (catch ExceptionInfo e
         (log/debug e "Error in change-query tool")
-        {:output (json/generate-string {:error (ex-message e)})}))))
+        {:output (ex-message e)}))))
