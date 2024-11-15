@@ -1,9 +1,5 @@
 import { isSdkVersionCompatibleWithMetabaseVersion } from "./version-utils";
 
-jest.mock("../config", () => ({
-  getEmbeddingSdkVersion: jest.fn().mockReturnValue("1.0.0"),
-}));
-
 const expectCompatibility = ({
   mbVersion,
   sdkVersion,
