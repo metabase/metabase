@@ -290,6 +290,26 @@
             },
             {
               "type": "object",
+              "description": "Removes a grouping, or a breakout.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove-breakout change.",
+                  "enum": ["remove-breakout"]
+                },
+                "breakout_position": {
+                  "type": "number",
+                  "description": "Index of the breakout clause to remove. `query.breakouts` is the list of the current query breakouts."
+                }
+              },
+              "required": [
+                "type",
+                "breakout_position"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Sort the query results.",
               "properties": {
                 "type": {

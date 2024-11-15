@@ -22,6 +22,6 @@
 
 (defn source-query
   "Query that metabot works with."
-  [dataset_query]
-  (-> (lib.metadata.jvm/application-database-metadata-provider (:database dataset_query))
-      (lib/query dataset_query)))
+  [dataset-query]
+  (-> (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+      (lib/query dataset-query)))

@@ -54,10 +54,10 @@
 
   This should be a 'sparse' hydration rather than `SELECT * FROM dashboard WHERE id = 1` -- we should only include
   information needed for the LLM to do its thing rather than everything in the world."
-  [{:keys [dataset_query visualization_settings]}]
+  [{dataset-query :dataset_query, visualization-settings :visualization_settings}]
   (merge {}
-         (when dataset_query
-           (let [query (metabot-v3.tools.query/source-query dataset_query)]
+         (when dataset-query
+           (let [query (metabot-v3.tools.query/source-query dataset-query)]
              {:query
               {:filters      (mapv #(lib/display-name query %) (lib/filters query))
                :aggregations (mapv #(lib/display-name query %) (lib/aggregations query))
@@ -66,5 +66,5 @@
                :limit        (lib/current-limit query)}
               :query-columns (mapv #(metabot-v3.tools.query/column-info query %)
                                    (lib/visible-columns query))}))
-         (when visualization_settings
-           {:visualization-settings visualization_settings})))
+         (when visualization-settings
+           {:visualization-settings visualization-settings})))

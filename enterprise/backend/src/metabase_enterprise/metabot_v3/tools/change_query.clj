@@ -143,6 +143,12 @@
                           bucket  (lib/with-temporal-bucket bucket)
                           binning (lib/with-binning binning)))))
 
+(defmethod apply-query-change :remove-breakout
+  [query {breakout-position :breakout_position}]
+  (let [breakouts (lib/breakouts query)
+        breakout  (get breakouts breakout-position)]
+    (lib/remove-clause query breakout)))
+
 (defmethod apply-query-change :add-order-by
   [query {change-type :type, column-id :column_id, direction-name :direction}]
   (let [columns   (lib/orderable-columns query)
@@ -162,13 +168,17 @@
   (reduce apply-query-change query changes))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-query
-  [_tool-name {:keys [changes]} {:keys [dataset_query]}]
+  [_tool-name {:keys [changes]} {dataset-query :dataset_query}]
   (try
     {:output "success"
      :reactions [{:type  :metabot.reaction/run-query
-                  :dataset_query (-> (metabot-v3.tools.query/source-query dataset_query)
+                  :dataset_query (-> (metabot-v3.tools.query/source-query dataset-query)
                                      (apply-query-changes changes)
                                      lib.query/->legacy-MBQL)}]}
     (catch ExceptionInfo e
       (log/debug e "Error in change-query tool")
       {:output (ex-message e)})))
+
+(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-query
+  [_tool-name {dataset-query :dataset_query}]
+  (some? dataset-query))
