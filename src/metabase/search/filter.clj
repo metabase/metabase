@@ -8,7 +8,8 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
 
@@ -76,6 +77,31 @@
 (defmethod where-clause* ::date-range [_ k v] (date-range-filter-clause k v))
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
+
+(defn personal-collections-where-clause
+  "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
+  WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
+  [{filter-type :filter-items-in-personal-collection} collection-id-col]
+  (when filter-type
+    (let [parent-ids     (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+          child-patterns (for [id parent-ids] (format "/%d/%%" id))]
+      (case filter-type
+        "only"
+        `[:or
+          ;; top level personal collections
+          [:and [:not= :collection.personal_owner_id nil] [:= :collection.location "/"]]
+          ;; their sub-collections
+          ~@(for [p child-patterns] [:like :collection.location p])]
+
+        "exclude"
+        `[:or
+          ;; not in a collection
+          [:= ~collection-id-col nil]
+          [:and
+           ;; neither in a top-level personal collection
+           [:= :collection.personal_owner_id nil]
+           ;; nor within one of their sub-collections
+           ~@(for [p child-patterns] [:not-like :collection.location p])]]))))
 
 (defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."
