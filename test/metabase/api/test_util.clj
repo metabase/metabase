@@ -18,11 +18,10 @@
     GET  card/:id/query_metadata
     POST dataset/query_metadata"
   [query-metadata-result]
-  ;; If query-metadata-result is not a map, then probably the API call that produced it failed and returned a
-  ;; different type, like "Not found" for a 404. In such cases, don't attempt to update the keys, which will throw an
-  ;; exception and obscure the true failure.
   (cond-> query-metadata-result
-    ;; The output is so large, these help debugging
+    ;; If query-metadata-result is not a map, then probably the API call that produced it failed and returned a
+    ;; different type, like "Not found" for a 404. In such cases, don't attempt to update the keys, which will throw an
+    ;; exception and obscure the true failure. If it is a map, select specific keys to make the output easier to debug.
     (map? query-metadata-result) (-> (update :fields #(map (fn [x] (select-keys x [:id])) %))
                                      (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
                                      (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))

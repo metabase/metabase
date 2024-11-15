@@ -4618,10 +4618,7 @@
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
          (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
-              ;; The output is so large, these help debugging
-             #_#_#_(update :fields #(map (fn [x] (select-keys x [:id])) %))
-                 (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))))
+             #_(api.test-util/select-query-metadata-keys-for-debugging))))))
 
 (deftest dashboard-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"

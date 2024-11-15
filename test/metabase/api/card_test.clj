@@ -3753,10 +3753,7 @@
             :tables (sort-by :id [{:id (mt/id :products)}])
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata"))
-                ;; The output is so large, these help debugging
-               (update :fields #(map (fn [x] (select-keys x [:id])) %))
-               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
+               (api.test-util/select-query-metadata-keys-for-debugging)))))
     (testing "Parameterized native query"
       (is (=?
            {:fields (sort-by :id
@@ -3768,10 +3765,7 @@
                              [{:id (str "card__" card-id-2)}])
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
-                ;; The output is so large, these help debugging
-               (update :fields #(map (fn [x] (select-keys x [:id])) %))
-               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))))
+               (api.test-util/select-query-metadata-keys-for-debugging)))))))
 
 (deftest card-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
