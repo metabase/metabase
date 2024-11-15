@@ -3,8 +3,8 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
-  createVisualizerColumnReference,
   cloneColumnProperties,
+  createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
@@ -18,7 +18,6 @@ export const pieDropHandler = (
   if (!over || !isDraggedColumnItem(active)) {
     return;
   }
-  console.log("pieDropHandler", state, active, over);
 
   const { column, dataSource } = active.data.current;
   const columnRef = createVisualizerColumnReference(
@@ -29,24 +28,27 @@ export const pieDropHandler = (
 
   if (over.id === DROPPABLE_ID.PIE_METRIC && isNumeric(column)) {
     const metricColumnName = state.settings["pie.metric"];
-    // console.log(metricColumnName);
-    // console.log(columnRef);
     if (metricColumnName) {
-      const idx = state.columns.findIndex(col => col.name === "METRIC_1");
-      state.columns[idx] = cloneColumnProperties(state.columns[idx], column);
+      const index = state.columns.findIndex(col => col.name === "METRIC_1");
+      state.columns[index] = cloneColumnProperties(
+        state.columns[index],
+        column,
+      );
       state.columnValuesMapping[metricColumnName] = addColumnMapping(
         state.columnValuesMapping[metricColumnName],
         columnRef,
       );
     }
   }
-  //
+
   if (over.id === DROPPABLE_ID.PIE_DIMENSION) {
     const [dimensionColumnName] = state.settings["pie.dimension"] ?? [];
-    console.log(dimensionColumnName);
     if (dimensionColumnName) {
-      const idx = state.columns.findIndex(col => col.name === "DIMENSION_1");
-      state.columns[idx] = cloneColumnProperties(state.columns[idx], column);
+      const index = state.columns.findIndex(col => col.name === "DIMENSION_1");
+      state.columns[index] = cloneColumnProperties(
+        state.columns[index],
+        column,
+      );
       state.columnValuesMapping[dimensionColumnName] = addColumnMapping(
         state.columnValuesMapping[dimensionColumnName],
         columnRef,

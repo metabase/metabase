@@ -2,7 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { Box, Center, Flex, Text } from "metabase/ui";
+import { Center, Flex, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -12,7 +12,6 @@ import {
 } from "metabase/visualizer/selectors";
 
 import { HorizontalWell } from "./HorizontalWell";
-import { PieDimensionWell, PieMetricWell } from "./Pie";
 import { ScatterFloatingWell } from "./ScatterFloatingWell";
 import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
@@ -44,12 +43,6 @@ export function VisualizationCanvas() {
 
   return (
     <Flex w="100%" h="100%" pos="relative" ref={setNodeRef}>
-      {display === "pie" && (
-        <Box>
-          <PieMetricWell />
-          <PieDimensionWell />
-        </Box>
-      )}
       <VerticalWell display={display} />
       <Flex direction="column" style={{ flex: 1 }}>
         <Visualization rawSeries={rawSeries} />

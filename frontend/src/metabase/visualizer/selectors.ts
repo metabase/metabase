@@ -159,7 +159,6 @@ export const getVisualizerRawSeries = createSelector(
     if (!display) {
       return [];
     }
-    console.log("raw data", data);
     return [
       {
         card: {
