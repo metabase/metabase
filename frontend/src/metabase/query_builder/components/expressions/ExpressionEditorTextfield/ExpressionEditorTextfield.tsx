@@ -527,7 +527,9 @@ class ExpressionEditorTextfieldInner extends React.Component<
 
         onChange(expression, expressionClause);
       } else {
-        onError({ message: t`Invalid expression` });
+        const errorWithMessage = { message: t`Invalid expression` };
+        this.setState({ errorMessage: errorWithMessage });
+        onError(errorWithMessage);
       }
     }
   };

@@ -1150,6 +1150,8 @@ describe("issue 49882", () => {
         "have.value",
         'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )\n\n',
       );
+
+    popover().findByText("Invalid expression").should("be.visible");
   });
 
   it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
