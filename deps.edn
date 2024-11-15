@@ -126,6 +126,7 @@
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.5"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
+  org.apache.poi/poi-ooxml-full             {:mvn/version "5.2.5"}
   org.apache.sshd/sshd-core                 {:mvn/version "2.12.1"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
