@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase-enterprise.metabot-v3.tools.change-chart-appearance]
    [metabase-enterprise.metabot-v3.tools.change-display-type]
    [metabase-enterprise.metabot-v3.tools.change-query]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
@@ -20,6 +21,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
+  metabase-enterprise.metabot-v3.tools.change-chart-appearance/keep-me
   metabase-enterprise.metabot-v3.tools.change-display-type/keep-me
   metabase-enterprise.metabot-v3.tools.change-query/keep-me
   metabase-enterprise.metabot-v3.tools.who-is-your-favorite/keep-me)
