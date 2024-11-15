@@ -9,9 +9,7 @@
    [metabuild-common.core :as u])
   (:import
    (java.io OutputStream)
-   (java.net URI)
-   (java.nio.file Files FileSystems OpenOption StandardOpenOption)
-   (java.util Collections)
+   (java.nio.file Files OpenOption StandardOpenOption)
    (java.util.jar Manifest)))
 
 (set! *warn-on-reflection* true)
