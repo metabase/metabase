@@ -1108,12 +1108,14 @@ describe("issue 49882", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.wait("@queryMetadata");
+    cy.findByLabelText("Custom column").click();
   });
 
   it("should not eat up subsequent characters when applying a suggestion (metabase#49882-1)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
     const moveCursorTo2ndCaseArgument = "{leftarrow}".repeat(6);
     enterCustomColumnDetails({
       formula: `case([Total] > 200, , "X")${moveCursorTo2ndCaseArgument}[tot{enter}`,
@@ -1126,9 +1128,6 @@ describe("issue 49882", () => {
   });
 
   it("does not clear expression input when expression is invalid (metabase#49882-2)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
     const selectTax = `{leftarrow}${"{shift+leftarrow}".repeat(5)}`;
     const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
     enterCustomColumnDetails({
@@ -1154,8 +1153,6 @@ describe("issue 49882", () => {
   });
 
   it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
     enterCustomColumnDetails({
       formula:
         'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
@@ -1170,8 +1167,6 @@ describe("issue 49882", () => {
   });
 
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
     const selectProductVendor =
       "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{enter}";
     enterCustomColumnDetails({
