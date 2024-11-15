@@ -769,6 +769,10 @@
     [_driver _feature _database]
     true))
 
+(defmethod driver/database-supports? [:redshift ::describe-materialized-view-fields]
+    [_driver _feature _database]
+    false)
+
 (deftest describe-materialized-view-fields
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
                                      (mt/sql-jdbc-drivers))
