@@ -5,8 +5,6 @@
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.query :as metabot-v3.tools.query]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.log :as log]
@@ -202,20 +200,12 @@
   [query steps]
   (reduce apply-query-step query steps))
 
-(defn- source-query
-  [source]
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database_id source))
-        table-or-card     (condp = (-> source :type keyword)
-                                 :table (lib.metadata/table metadata-provider (:id source))
-                                 :card  (lib.metadata/card metadata-provider (:id source)))]
-    (lib/query metadata-provider table-or-card)))
-
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/run-query
   [_tool-name {:keys [source steps]} _context]
   (try
     {:output "success"
      :reactions [{:type  :metabot.reaction/run-query
-                  :dataset_query (-> (source-query source)
+                  :dataset_query (-> (metabot-v3.tools.query/source-query source)
                                      (apply-query-steps steps)
                                      (lib/drop-empty-stages)
                                      lib.query/->legacy-MBQL)}]}
