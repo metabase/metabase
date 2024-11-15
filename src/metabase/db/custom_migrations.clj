@@ -1660,3 +1660,23 @@
                                                           :is_optional true})}
                          {:type                 "notification-recipient/group"
                           :permissions_group_id (t2/select-one-pk :permissions_group :name "Administrators")}]}])))
+
+#_
+(define-migration MigrateGraphMaxCategoriesEnabledVizSetting
+  (let [update! (fn [{:keys [id visualization_settings] :as card}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:visualization_settings visualization_settings}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id display visualization_settings]}]
+                                    (let [parsed-viz  (json/parse-string visualization_settings keyword)
+                                          updated-viz (update parsed-viz :graph.max_categories_enabled (fn [existing?]
+                                                                                                         (if existing?
+                                                                                                           existing?
+                                                                                                           false)))]
+                                      (when (not= partial-card updated-partial-card)
+                                        (let [{updated-viz :visualization_settings} updated-partial-card]
+                                          {:id                     id
+                                           :visualization_settings (json/generate-string updated-viz)})))))
+                            (t2/reducible-query {:select [:id :display :visualization_settings]
+                                                 :from   [:report_card]
+                                                 :where  [:like :display "bar"]})))))
