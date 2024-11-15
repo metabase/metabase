@@ -237,9 +237,9 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
                 group: "shortcuts",
                 action: () => setIsExtractingColumn(true),
               },
-          ].filter(
-            (shortcut): shortcut is SuggestionShortcut => shortcut != null,
-          )}
+          ].filter((shortcut): shortcut is SuggestionShortcut => {
+            return Boolean(shortcut);
+          })}
         />
       </ExpressionFieldWrapper>
       {withName && (
