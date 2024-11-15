@@ -24,12 +24,12 @@ export const UNSUPPORTED_REACT_VERSION = `
 export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
 
 export const INSTANCE_CONFIGURED_MESSAGE = `
-  The instance has already been configured.
+  The Metabase instance has already been configured.
   ${DELETE_CONTAINER_MESSAGE}
 `;
 
 export const getGeneratedComponentFilesMessage = (path: string) => `
-  Generated example React components files in "${path}".
+  Generated files with example React components in "${path}".
 `;
 
 export const getEmbeddingFailedMessage = (reason: string) => `
@@ -48,10 +48,14 @@ export const getMetabaseInstanceSetupCompleteMessage = (
   `
   Metabase is running at ${blue(instanceUrl)}
 
-  Login with email "${blue(email)}" and password "${blue(password)}".
+  Log in with
+
+  Email: "${blue(email)}"
+  Password: "${blue(password)}"
+
   You can also find your login credentials at "${blue(SAMPLE_CREDENTIALS_FILE_NAME)}".
 
-  Metabase will phone home some data collected via Snowplow.
+  Metabase will phone home some anonymous data collected via Snowplow.
   We don’t collect any usernames, emails, server IPs, database details of any kind, or
   any personally identifiable information (PII).
 
@@ -75,8 +79,8 @@ export const getNoTenantMessage = (unsampledTableNames: string[]) => {
 
 export const SETUP_PRO_LICENSE_MESSAGE = `
   This tool can optionally set up permissions for multi-tenancy in your Metabase.
-  It'll create a mock back-end server that signs people into Metabase,
-  So you can see how different tenants experience the dashboard embedded in your app.
+  It'll create a mock back-end server that signs people into Metabase
+  so you can see how different tenants experience the dashboard embedded in your app.
 
   To set up multi-tenancy and SSO with JWT, you'll need a Pro license.
 
