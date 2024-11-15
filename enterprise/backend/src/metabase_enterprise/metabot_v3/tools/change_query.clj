@@ -18,7 +18,7 @@
 
 (defn- find-column-error
   [query columns column-id change-type]
-  (ex-info (format "%s is not a correct column_id for the %s change. Available columns as JSON: %s"
+  (ex-info (format "%s is not a correct column_id for %s change. Available columns as JSON: %s"
                    column-id
                    change-type
                    (json/generate-string (mapv #(metabot-v3.tools.query/column-info query %) columns)))
@@ -30,11 +30,18 @@
 
 (defn- find-operator-error
   [operators operator-name change-type]
-  (ex-info (format "%s is not a correct operator for the %s change. Available operators as JSON: %s"
+  (ex-info (format "%s is not a correct operator for %s change. Available operators as JSON: %s"
                    operator-name
                    change-type
                    (json/generate-string (mapv metabot-v3.tools.query/operator-name operators)))
            {:operator operator-name}))
+
+(defn- find-clause-error
+  [clause-position change-type]
+  (ex-info (format "%i is not a valid index for %s change."
+                   clause-position
+                   change-type)
+           {:clause-position clause-position}))
 
 (defn- limit-error
   [limit]
@@ -120,6 +127,13 @@
                                            :next    value)
                                          unit))))
 
+(defmethod apply-query-change :remove-filter
+  [query {change-type :type, filter-position :filter_position}]
+  (let [filters (lib/filters query)
+        filter  (or (get filters filter-position)
+                      (throw (find-clause-error filter-position change-type)))]
+    (lib/remove-clause query filter)))
+
 (defmethod apply-query-change :add-aggregation
   [query {change-type :type, operator-name :operator, column-id :column_id}]
   (let [operators (lib/available-aggregation-operators query)
@@ -131,6 +145,13 @@
                         (throw (find-column-error query columns column-id change-type)))]
         (lib/aggregate query (lib/aggregation-clause operator column)))
       (lib/aggregate query (lib/aggregation-clause operator)))))
+
+(defmethod apply-query-change :remove-aggregation
+  [query {change-type :type, aggregation-position :aggregation_position}]
+  (let [aggregations (lib/aggregations query)
+        aggregation  (or (get aggregations aggregation-position)
+                      (throw (find-clause-error aggregation-position change-type)))]
+    (lib/remove-clause query aggregation)))
 
 (defmethod apply-query-change :add-breakout
   [query {change-type :type, column-id :column_id}]
@@ -144,9 +165,10 @@
                           binning (lib/with-binning binning)))))
 
 (defmethod apply-query-change :remove-breakout
-  [query {breakout-position :breakout_position}]
+  [query {change-type :type, breakout-position :breakout_position}]
   (let [breakouts (lib/breakouts query)
-        breakout  (get breakouts breakout-position)]
+        breakout  (or (get breakouts breakout-position)
+                      (throw (find-clause-error breakout-position change-type)))]
     (lib/remove-clause query breakout)))
 
 (defmethod apply-query-change :add-order-by
@@ -156,6 +178,13 @@
                       (throw (find-column-error query columns column-id change-type)))
         direction (when direction-name (keyword direction-name))]
     (lib/order-by query column direction)))
+
+(defmethod apply-query-change :remove-order-by
+  [query {change-type :type, order-by-position :order_by_position}]
+  (let [order-bys (lib/order-bys query)
+        order-by  (or (get order-bys order-by-position)
+                      (throw (find-clause-error order-by-position change-type)))]
+    (lib/remove-clause query order-by)))
 
 (defmethod apply-query-change :add-limit
   [query {:keys [limit]}]
@@ -172,11 +201,11 @@
   (reduce apply-query-change query changes))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-query
-  [_tool-name {:keys [changes]} {dataset-query :dataset_query}]
+  [_tool-name {:keys [changes]} {:keys [dataset_query]}]
   (try
     {:output "success"
      :reactions [{:type  :metabot.reaction/run-query
-                  :dataset_query (-> (metabot-v3.tools.query/source-query dataset-query)
+                  :dataset_query (-> (metabot-v3.tools.query/source-query dataset_query)
                                      (apply-query-changes changes)
                                      lib.query/->legacy-MBQL)}]}
     (catch ExceptionInfo e
@@ -184,5 +213,5 @@
       {:output (ex-message e)})))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-query
-  [_tool-name {dataset-query :dataset_query}]
-  (some? dataset-query))
+  [_tool-name {:keys [dataset_query]}]
+  (some? dataset_query))

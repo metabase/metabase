@@ -227,6 +227,28 @@
             },
             {
               "type": "object",
+              "description": "Removes a filter.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove-filter change.",
+                  "enum": [
+                    "remove-filter"
+                  ]
+                },
+                "filter_position": {
+                  "type": "number",
+                  "description": "Index of the filter clause to remove. `query.filters` is the list of the current query filters."
+                }
+              },
+              "required": [
+                "type",
+                "filter_position"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Aggregate query results.",
               "properties": {
                 "type": {
@@ -268,6 +290,28 @@
             },
             {
               "type": "object",
+              "description": "Removes an aggregation.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove-aggregation change.",
+                  "enum": [
+                    "remove-aggregation"
+                  ]
+                },
+                "aggregation_position": {
+                  "type": "number",
+                  "description": "Index of the aggregation clause to remove. `query.aggregations` is the list of the current query aggregations."
+                }
+              },
+              "required": [
+                "type",
+                "aggregation_position"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Group by, or breakout, query results.",
               "properties": {
                 "type": {
@@ -295,7 +339,9 @@
                 "type": {
                   "type": "string",
                   "description": "Type of remove-breakout change.",
-                  "enum": ["remove-breakout"]
+                  "enum": [
+                    "remove-breakout"
+                  ]
                 },
                 "breakout_position": {
                   "type": "number",
@@ -344,6 +390,28 @@
             },
             {
               "type": "object",
+              "description": "Removes a sorting clause.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove-order-by change.",
+                  "enum": [
+                    "remove-order-by"
+                  ]
+                },
+                "order_by_position": {
+                  "type": "number",
+                  "description": "Index of the order_by clause to remove. `query.order_bys` is the list of the current query sorting clauses."
+                }
+              },
+              "required": [
+                "type",
+                "order_by_position"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Set the row limit for the query.",
               "properties": {
                 "type": {
@@ -371,7 +439,9 @@
                 "type": {
                   "type": "string",
                   "description": "Type of remove-limit change.",
-                  "enum": ["remove-limit"]
+                  "enum": [
+                    "remove-limit"
+                  ]
                 }
               },
               "required": [
