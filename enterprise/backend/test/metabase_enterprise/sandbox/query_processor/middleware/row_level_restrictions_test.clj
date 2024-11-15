@@ -1215,3 +1215,10 @@
                                      :people {:remappings {"user_id" [:dimension $people.zip]}}}})
       (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
       (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))
+
+(deftest native-sandbox-table-level-block-perms-test
+  (testing "A sandbox powered by a native query source card can be used even when other tables have block perms (#49969)"
+    (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
+                      :attributes {"cat" 50}}
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :blocked)
+      (is (= 10 (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))

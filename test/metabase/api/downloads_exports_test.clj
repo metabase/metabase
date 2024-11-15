@@ -280,13 +280,9 @@
         (testing "formatted"
           (is (= [[["Category" "2016" "2017" "2018" "2019" "Row totals"]
                    ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
-                   ["Totals for Doohickey" "$632.14" "$854.19" "$496.43" "$203.13"]
                    ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
-                   ["Totals for Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75"]
                    ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
-                   ["Totals for Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06"]
                    ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
-                   ["Totals for Widget" "$987.39" "$1,014.68" "$912.20" "$195.04"]
                    ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
                   #{:unsaved-card-download :card-download :dashcard-download
                     :alert-attachment :subscription-attachment
@@ -303,13 +299,9 @@
                     "2019-01-01T00:00:00Z"
                     "Row totals"]
                    ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
-                   ["Totals for Doohickey" "632.14" "854.19" "496.43" "203.13"]
                    ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
-                   ["Totals for Gadget" "679.83" "1059.11" "844.51" "435.75"]
                    ["Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
-                   ["Totals for Gizmo" "529.7" "1080.18" "997.94" "227.06"]
                    ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
-                   ["Totals for Widget" "987.39" "1014.68" "912.2" "195.04"]
                    ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
                   #{:unsaved-card-download :card-download :dashcard-download
                     :alert-attachment :subscription-attachment
