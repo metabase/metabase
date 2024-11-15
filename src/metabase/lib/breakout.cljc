@@ -1,10 +1,13 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as-alias lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -14,7 +17,9 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :breakout
@@ -33,16 +38,65 @@
     stage-number :- :int]
    (not-empty (:breakout (lib.util/query-stage query stage-number)))))
 
+(mu/defn- metadata-for-breakout
+  "Generates the metadata for the given breakout *a priori*, without reference to the reified columns.
+
+  Should only be necessary to call on new breakouts. Otherwise they should be looked up in the reified column maps."
+  [query stage-number breakout-clause]
+  ;; TODO: Make sure the default `metadata-method` is including the `:ident` for breakouts!
+  (-> (lib.metadata.calculation/metadata query stage-number breakout-clause)
+      (assoc :lib/source :source/breakouts)))
+
 (mu/defn breakouts-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  "Get metadata about the breakouts in a given stage of a `query`."
+  "Get metadata about the breakouts in a given stage of a `query`.
+
+  Uses the reified column maps if present (and they should be)."
   ([query]
    (breakouts-metadata query -1))
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (some->> (breakouts query stage-number)
             (mapv (fn [field-ref]
-                    (-> (lib.metadata.calculation/metadata query stage-number field-ref)
-                        (assoc :lib/source :source/breakouts)))))))
+                    (or (when-let [ident (lib.options/ident field-ref)]
+                          (or (lib.metadata.ident/lookup-column-of-type query stage-number :lib.columns/breakouts ident)
+                              (log/warnf "Breakout metadata not found for ident '%s'" ident)))
+                        (metadata-for-breakout query stage-number field-ref)))))))
+
+;; TODO: This can be made smarter once we trust that an existing cache is still valid!
+;; To keep the scope of the refs overhaul down I'm not relying on them.
+(mu/defn- populate-breakout-metadata
+  "Generate the complete map of `:ident` to breakout metadata, and save it on the query.
+
+  No caching or shortcuts - this regenerates them from scratch for all the breakouts on this stage."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (->> (breakouts query stage-number)
+       (map-indexed
+        (fn [i break]
+          (-> (metadata-for-breakout query stage-number break)
+              (assoc :position i))))
+       (m/index-by :ident)
+       (lib.util/update-query-stage query stage-number assoc :lib.columns/breakouts)))
+
+(mu/defn breakout-clause? :- :boolean
+  "Returns true if `x` is a well-formed breakout clause."
+  [x]
+  (boolean (and (vector? x)
+                (keyword? (first x))
+                (lib.options/ident x))))
+
+(mu/defn breakout-clause :- ::lib.schema/breakout
+  "Wraps a breakoutable expression (usually a `:metadata/column` or a ref) into a breakout clause.
+
+  (Currently, breakout clauses are represented as refs with a randomly generated `:ident` option.)
+
+  If given a breakout clause, just returns it."
+  [expr :- some?]
+  (if (breakout-clause? expr)
+    expr
+    (-> expr
+        lib.ref/ref
+        (lib.options/update-options assoc :ident (u/generate-nano-id)))))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
@@ -51,10 +105,12 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     expr         :- some?]
-   (let [expr (if (fn? expr) (expr query stage-number) expr)]
-     (if (lib.schema.util/distinct-refs? (map lib.ref/ref (cons expr (breakouts query stage-number))))
-       (lib.util/add-summary-clause query stage-number :breakout expr)
-       query))))
+   (let [expr (breakout-clause expr)]
+     (if-not (lib.schema.util/distinct-refs? (map lib.ref/ref (cons expr (breakouts query stage-number))))
+       query
+       (-> query
+           (lib.util/add-summary-clause stage-number :breakout expr)
+           (populate-breakout-metadata stage-number))))))
 
 (mu/defn breakoutable-columns :- [:sequential ::lib.schema.metadata/column]
   "Get column metadata for all the columns that can be broken out by in

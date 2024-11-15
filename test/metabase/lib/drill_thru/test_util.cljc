@@ -229,9 +229,18 @@
   (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid :ident))
                  form))
 
+(defn- drop-column-maps [form]
+  (walk/postwalk
+    (fn [m]
+      (cond->> m
+        (map? m) (m/filter-keys #(not (and (keyword? %)
+                                           (= (namespace %) "lib.columns"))))))
+    form))
+
 (defn- clean-expected-query [form]
   (-> form
       drop-uuids-and-idents
+      drop-column-maps
       (dissoc :lib/metadata)))
 
 (defn- clean-expected-query-on-drill [form query-kind]
