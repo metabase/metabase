@@ -11,7 +11,6 @@ import {
   changeDisplayType,
   changeSeriesSettings,
   changeTableVisualizationSettings,
-  changeVisualizationSettings,
 } from "./visualizations";
 
 export * from "./errors";
@@ -34,5 +33,4 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/api-call": apiCall,
   "metabot.reaction/writeback": writeBack,
   "metabot.reaction/run-query": runQuery,
-  "metabot.reaction/change-visualization-settings": changeVisualizationSettings,
 };
