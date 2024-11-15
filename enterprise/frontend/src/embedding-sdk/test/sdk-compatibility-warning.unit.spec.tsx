@@ -66,7 +66,7 @@ const setup = async ({
 let consoleWarnSpy: jest.SpyInstance;
 
 const getWarnMessages = (): string[] =>
-  consoleWarnSpy.mock.calls.map(call => call.join(" "));
+  consoleWarnSpy.mock.calls.map(callArguments => callArguments.join(" "));
 
 describe("SDK auth errors", () => {
   beforeEach(() => {
