@@ -19,8 +19,8 @@
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
+   [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
-   [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
@@ -79,7 +79,7 @@
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user?))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user? search-context))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))

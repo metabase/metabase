@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -37,9 +37,13 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   if (api.basename !== config.metabaseInstanceUrl) {
     api.basename = config.metabaseInstanceUrl;
   }
-  if (config.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
-    dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
-  }
+
+  useEffect(() => {
+    if (config.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
+      // This needs to be a useEffect to avoid the `Cannot update a component XX while rendering a different component` error
+      dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+    }
+  }, [config.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
   useMount(() => {
     if (hasBeenInitialized.current) {
