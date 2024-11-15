@@ -1,5 +1,4 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
-import type { WritableDraft } from "immer/dist/types/types-external";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
@@ -11,8 +10,12 @@ import type {
 
 import { sendMessageRequest } from "./actions";
 
+type ConfirmationOptions =
+  | { [key: string]: MetabotReaction[] | undefined }
+  | undefined;
+
 export interface MetabotState {
-  confirmationOptions: Record<string, MetabotReaction[]> | undefined;
+  confirmationOptions: ConfirmationOptions | undefined;
   isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
   lastHistoryValue: MetabotHistory | undefined;
@@ -29,16 +32,6 @@ export const metabotInitialState: MetabotState = {
   sessionId: undefined,
   userMessages: [],
   visible: false,
-};
-
-const hideMetabot = (state: WritableDraft<MetabotState>) => {
-  state.visible = false;
-  state.isProcessing = false;
-  state.userMessages = [];
-  state.confirmationOptions = undefined;
-  state.lastSentContext = undefined;
-  state.lastHistoryValue = undefined;
-  state.sessionId = undefined;
 };
 
 export const metabot = createSlice({
@@ -65,14 +58,16 @@ export const metabot = createSlice({
         state.visible = true;
         state.sessionId = uuid();
       } else {
-        hideMetabot(state);
+        return metabotInitialState;
       }
     },
     setConfirmationOptions: (
       state,
-      action: PayloadAction<Record<string, MetabotReaction[]> | undefined>,
+      action: PayloadAction<ConfirmationOptions>,
     ) => {
-      state.confirmationOptions = action.payload;
+      // Type cast solves type error of "Type instantiation is excessively deep and possibly infinite."
+      // This approach will be removed in a follow up PR
+      state.confirmationOptions = action.payload as any;
     },
   },
   extraReducers: builder => {
@@ -84,9 +79,7 @@ export const metabot = createSlice({
       .addCase(sendMessageRequest.fulfilled, (state, action) => {
         state.lastHistoryValue = action.payload?.data?.history;
       })
-      .addCase(logout.pending, state => {
-        hideMetabot(state);
-      });
+      .addCase(logout.pending, () => metabotInitialState);
   },
 });
 
