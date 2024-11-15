@@ -174,13 +174,16 @@
 
 (mu/defn- native-query-metadata :- [:+ :map]
   [source-query :- [:map [:source-query :any]]]
-  (let [result (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
-                 (mw.session/as-admin
-                   ((requiring-resolve 'metabase.query-processor/process-query)
-                    {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
-                     :type     :query
-                     :query    {:source-query source-query
-                                :limit        0}})))]
+  (let [result
+        ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
+        ;; to a custom handler, and we don't want to accidentally terminate the stream here!
+        (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+          (mw.session/as-admin
+           ((requiring-resolve 'metabase.query-processor/process-query)
+            {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+             :type     :query
+             :query    {:source-query source-query
+                        :limit        0}})))]
     (or (-> result :data :results_metadata :columns not-empty)
         (throw (ex-info (tru "Error running query to determine metadata")
                         {:source-query source-query
