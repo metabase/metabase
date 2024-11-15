@@ -70,23 +70,39 @@ export const getSankeyData = (
       level,
       hasInputs: false,
       hasOutputs: false,
-      columnValues: {},
+      inputColumnValues: {},
+      outputColumnValues: {},
     };
 
     node.level = Math.max(node.level, level);
     node.hasInputs = node.hasInputs || type === "target";
     node.hasOutputs = node.hasOutputs || type === "source";
 
-    if (type === "target") {
-      cols.forEach((_column, index) => {
-        const columnKey = columnInfos[index].key;
-        const columnValue = row[index];
+    cols.forEach((_column, index) => {
+      const columnKey = columnInfos[index].key;
+      const columnValue = row[index];
+      const isMetric = columnInfos[index].isMetric;
 
-        node.columnValues[columnKey] = columnInfos[index].isMetric
-          ? sumMetric(node.columnValues[columnKey], columnValue)
-          : columnValue;
-      });
-    }
+      if (type === "target") {
+        if (isMetric) {
+          node.inputColumnValues[columnKey] = sumMetric(
+            node.inputColumnValues[columnKey],
+            columnValue,
+          );
+        } else {
+          node.inputColumnValues[columnKey] = columnValue;
+        }
+      } else {
+        if (isMetric) {
+          node.outputColumnValues[columnKey] = sumMetric(
+            node.outputColumnValues[columnKey],
+            columnValue,
+          );
+        } else {
+          node.outputColumnValues[columnKey] = columnValue;
+        }
+      }
+    });
 
     valueToNode.set(value, node);
     return node;

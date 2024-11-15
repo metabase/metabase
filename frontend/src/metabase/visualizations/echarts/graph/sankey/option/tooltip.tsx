@@ -36,7 +36,7 @@ const ChartItemTooltip = ({
 
   const value =
     params.dataType === "node"
-      ? (data.columnValues[metricColumnKey] ?? 0)
+      ? (data.inputColumnValues[metricColumnKey] ?? 0)
       : params.value;
 
   return (

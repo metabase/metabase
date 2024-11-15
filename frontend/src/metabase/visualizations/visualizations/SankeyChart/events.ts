@@ -17,7 +17,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { RawSeries, RowValue } from "metabase-types/api";
+import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 
 const getSankeyClickData = (
   [
@@ -26,8 +26,9 @@ const getSankeyClickData = (
     },
   ]: RawSeries,
   columnValues: Record<ColumnKey, RowValue>,
+  predicate: (col: DatasetColumn, index: number) => boolean = () => true,
 ) => {
-  return cols.map(col => {
+  return cols.filter(predicate).map(col => {
     return {
       col,
       value: columnValues[getColumnKey(col)],
@@ -49,22 +50,36 @@ export const useChartEvents = (
       {
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>) => {
-          const data: ClickObject = {
+          const clickData: ClickObject = {
             event: event.event.event,
             settings,
-            data: getSankeyClickData(rawSeries, event.data.columnValues),
           };
 
           if (event.dataType === "node") {
-            const sourceColumn = chartModel.sankeyColumns.source.column;
-            data.column = sourceColumn;
-            event.data.columnValues[getColumnKey(sourceColumn)];
+            const source = chartModel.sankeyColumns.source;
+            const target = chartModel.sankeyColumns.target;
+
+            clickData.column = target.column;
+            clickData.value =
+              event.data.inputColumnValues[getColumnKey(target.column)];
+
+            clickData.data = getSankeyClickData(
+              rawSeries,
+              event.data.inputColumnValues,
+              (_col, index) => index === source.index || index === target.index,
+            );
           } else if (event.dataType === "edge") {
             const valueColumn = chartModel.sankeyColumns.value.column;
-            data.column = valueColumn;
-            data.value = event.data.columnValues[getColumnKey(valueColumn)];
+            clickData.column = valueColumn;
+            clickData.value =
+              event.data.columnValues[getColumnKey(valueColumn)];
+            clickData.data = getSankeyClickData(
+              rawSeries,
+              event.data.columnValues,
+            );
           }
-          onVisualizationClick?.(data);
+
+          onVisualizationClick?.(clickData);
         },
       },
     ],
@@ -75,5 +90,24 @@ export const useChartEvents = (
 
   return {
     eventHandlers,
+  };
+};
+
+export const getSankeyClickEvent = (node: any): ClickObject => {
+  return {
+    element: {
+      source: node.name, // The name of the clicked node
+      sourceLinks: node.sourceLinks, // Outgoing links
+      targetLinks: node.targetLinks, // Incoming links
+    },
+    event: new MouseEvent("click"),
+    // These fields are required for drills to work
+    dimensions: [
+      {
+        value: node.name,
+        column: node.column,
+      },
+    ],
+    settings: {},
   };
 };

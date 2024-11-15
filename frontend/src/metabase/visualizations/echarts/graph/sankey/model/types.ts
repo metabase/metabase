@@ -14,7 +14,8 @@ export interface SankeyNode {
   level: number;
   hasInputs: boolean;
   hasOutputs: boolean;
-  columnValues: Record<ColumnKey, RowValue>;
+  inputColumnValues: Record<ColumnKey, RowValue>;
+  outputColumnValues: Record<ColumnKey, RowValue>;
 }
 
 export interface SankeyData {
