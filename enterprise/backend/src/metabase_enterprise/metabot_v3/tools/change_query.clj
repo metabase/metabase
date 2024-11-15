@@ -163,6 +163,10 @@
     (lib/limit query limit)
     (throw (limit-error limit))))
 
+(defmethod apply-query-change :remove-limit
+  [query]
+  (lib/limit query nil))
+
 (defn- apply-query-changes
   [query changes]
   (reduce apply-query-change query changes))

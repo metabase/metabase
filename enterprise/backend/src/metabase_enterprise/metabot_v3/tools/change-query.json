@@ -363,6 +363,21 @@
                 "limit"
               ],
               "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Removes a row limit from the query.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of remove-limit change.",
+                  "enum": ["remove-limit"]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
             }
           ]
         }
