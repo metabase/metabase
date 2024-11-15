@@ -123,7 +123,7 @@ export const CollectionPickerInner = (
 
       const selectedItem = path[path.length - 1]?.selectedItem;
 
-      if (selectedItem) {
+      if (selectedItem && selectedItem.model === "collection") {
         // if the currently selected item is not a folder, it will be once we create a new collection within it
         // so we need to select it
 
