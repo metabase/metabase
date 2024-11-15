@@ -563,3 +563,14 @@
             (eduction (map inc) (range 3))
             (eduction (map dec) (range 10 0 -1)))
            [25])))))
+
+(deftest ^:parallel run-count!-test
+  (testing "counts the things"
+    (is (zero? (u/run-count! inc nil)))
+    (is (zero? (u/run-count! inc [])))
+    (is (= 3 (u/run-count! inc (range 3))))
+    (is (= 3 (u/run-count! inc (eduction (map inc) (range 3))))))
+  (testing "does the stuff"
+    (let [acc (volatile! [])]
+      (u/run-count! #(vswap! acc conj %) (eduction (map inc) (range 3)))
+      (is (= [1 2 3] @acc)))))
