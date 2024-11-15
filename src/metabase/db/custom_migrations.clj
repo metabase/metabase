@@ -1661,7 +1661,7 @@
                          {:type                 "notification-recipient/group"
                           :permissions_group_id (t2/select-one-pk :permissions_group :name "Administrators")}]}])))
 
-(define-migration MigrateGraphMaxCategoriesEnabledVizSetting
+(define-migration CreateGraphMaxCategoriesEnabledVizSetting
   (let [update! (fn [{:keys [id visualization_settings] :as card}]
                   (t2/query-one {:update :report_card
                                  :set    {:visualization_settings visualization_settings}
@@ -1672,10 +1672,9 @@
                                                                                                          (if existing?
                                                                                                            existing?
                                                                                                            false)))]
-                                      (when (not= partial-card updated-partial-card)
-                                        (let [{updated-viz :visualization_settings} updated-partial-card]
-                                          {:id                     id
-                                           :visualization_settings (json/generate-string updated-viz)})))))
+                                      (when (not= parsed-viz updated-viz)
+                                        {:id                     id
+                                         :visualization_settings (json/generate-string updated-viz)}))))
                             (t2/reducible-query {:select [:id :display :visualization_settings]
                                                  :from   [:report_card]
                                                  :where  [:like :display "bar"]})))))
