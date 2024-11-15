@@ -614,8 +614,9 @@
     (doseq [idx pivot-measures]
       (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
     (doseq [[idx sort-setting] column-sort-order]
-      (let [setting (sort-setting {:ascending  STFieldSortType/ASCENDING
-                                   :descending STFieldSortType/DESCENDING})]
+      (let [setting (case sort-setting
+                      :ascending STFieldSortType/ASCENDING
+                      :descending STFieldSortType/DESCENDING)]
         (when setting
           (-> pivot-table
               .getCTPivotTableDefinition
