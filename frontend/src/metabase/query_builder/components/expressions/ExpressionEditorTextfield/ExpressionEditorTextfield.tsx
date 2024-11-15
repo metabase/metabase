@@ -156,9 +156,9 @@ function transformPropsToState(
   props: ExpressionEditorTextfieldProps,
 ): ExpressionEditorTextfieldState {
   const {
-    expression: legacyExpression = ExpressionEditorTextfield.defaultProps
+    expression: legacyExpression = ExpressionEditorTextfieldInner.defaultProps
       .expression,
-    startRule = ExpressionEditorTextfield.defaultProps.startRule,
+    startRule = ExpressionEditorTextfieldInner.defaultProps.startRule,
     clause,
     query,
     stageIndex,
@@ -211,7 +211,7 @@ const mapStateToProps = (state: State) => ({
 
 const CURSOR_DEBOUNCE_INTERVAL = 10;
 
-class ExpressionEditorTextfield extends React.Component<
+class ExpressionEditorTextfieldInner extends React.Component<
   ExpressionEditorTextfieldProps,
   ExpressionEditorTextfieldState
 > {
@@ -591,7 +591,7 @@ class ExpressionEditorTextfield extends React.Component<
   diagnoseExpression(): ErrorWithMessage | null {
     const { source } = this.state;
     const {
-      startRule = ExpressionEditorTextfield.defaultProps.startRule,
+      startRule = ExpressionEditorTextfieldInner.defaultProps.startRule,
       name,
       query,
       stageIndex,
@@ -618,7 +618,7 @@ class ExpressionEditorTextfield extends React.Component<
     const {
       query,
       stageIndex,
-      startRule = ExpressionEditorTextfield.defaultProps.startRule,
+      startRule = ExpressionEditorTextfieldInner.defaultProps.startRule,
       onCommit,
       onError,
       expressionIndex,
@@ -676,7 +676,7 @@ class ExpressionEditorTextfield extends React.Component<
       stageIndex,
       metadata,
       expressionIndex,
-      startRule = ExpressionEditorTextfield.defaultProps.startRule,
+      startRule = ExpressionEditorTextfieldInner.defaultProps.startRule,
       showMetabaseLinks,
       shortcuts = [],
     } = this.props;
@@ -817,8 +817,6 @@ class ExpressionEditorTextfield extends React.Component<
   }
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  ExplicitSize(),
-  connect(mapStateToProps),
-)(ExpressionEditorTextfield);
+export const ExpressionEditorTextfield = ExplicitSize()(
+  connect(mapStateToProps)(ExpressionEditorTextfieldInner),
+);
