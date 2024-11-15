@@ -48,7 +48,7 @@ The tool will walk you through the setup. There are a fair number of pieces to p
 ## (Optional) sets up permissions with multi-tenancy
 
 - If you have a Pro/EE license, the tool can set up permissions. To get a license, sign up for a [free trial of self-hosted Metabase Pro](https://www.metabase.com/pricing/).
-- If you set up multi-tenancy, the tool asks you for the column you want to use to sandbox the table (e.g., a user ID column). Metabase will [sandbox data](../../permissions/data-sandboxes.md) based on the values in that column.
+- If you opted to set up multi-tenancy and connected to your own database, the tool asks you for the column you want to use to sandbox the table (e.g., a user ID column). Metabase will [sandbox data](../../permissions/data-sandboxes.md) based on the values in that column.
 
 ## Generates React components that you'll import into your app
 
