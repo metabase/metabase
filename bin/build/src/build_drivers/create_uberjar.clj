@@ -1,11 +1,12 @@
 (ns build-drivers.create-uberjar
+  "Create the uberjar for an individual driver."
   (:require
    [build-drivers.common :as c]
    [clojure.java.io :as io]
+   [clojure.tools.build.api :as b]
    [clojure.tools.deps.alpha :as deps]
    [clojure.tools.deps.alpha.util.dir :as deps.dir]
    [colorize.core :as colorize]
-   [hf.depstar.api :as depstar]
    [metabuild-common.core :as u]))
 
 (set! *warn-on-reflection* true)
@@ -77,7 +78,7 @@
   [driver edition]
   (u/step (format "Write %s %s uberjar -> %s" driver edition (c/driver-jar-destination-path driver))
     (let [start-time-ms (System/currentTimeMillis)]
-      (depstar/uber
+      (b/uber
        {:class-dir (c/compiled-source-target-dir driver)
         :uber-file (c/driver-jar-destination-path driver)
         :basis     (uberjar-basis driver edition)})

@@ -6,7 +6,6 @@
    [clojure.tools.namespace.dependency :as ns.deps]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
-   [hf.depstar.api :as depstar]
    [metabuild-common.core :as u])
   (:import
    (java.io OutputStream)
@@ -108,10 +107,14 @@
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
-      (depstar/uber {:class-dir class-dir
-                     :uber-file uberjar-filename
-                     :basis     basis
-                     :exclude   [".*metabase.*.clj[c|s]?$"]})
+      (b/uber {:class-dir class-dir
+               :uber-file uberjar-filename
+               :basis     basis
+               :exclude   [#".*metabase.*\.clj[c|s]?$"
+                           ;; ignore module-info files inside META-INF because we don't have a modular JAR and they can
+                           ;; break tools like `jar tf` -- see Slacc thread
+                           ;; https://metaboat.slack.com/archives/C5XHN8GLW/p1731633690703149?thread_ts=1731504670.951389&cid=C5XHN8GLW
+                           #".*module-info\.class"]})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def ^:private manifest-entries

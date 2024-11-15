@@ -475,7 +475,6 @@
     clojure.tools.namespace.parse                                 ns.parse
     colorize.core                                                 colorize
     environ.core                                                  env
-    hf.depstar.api                                                depstar
     hiccup.core                                                   hiccup
     hiccup.util                                                   hiccup.util
     honey.sql                                                     sql
