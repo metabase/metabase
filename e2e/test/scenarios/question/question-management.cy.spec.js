@@ -465,7 +465,7 @@ function moveQuestionTo(newCollectionName, clickTab = false) {
   H.openQuestionActions();
   cy.findByTestId("move-button").click();
   H.entityPickerModal().within(() => {
-    clickTab && cy.findByRole("tab", { name: /Browse/ }).click();
+    clickTab && cy.findByRole("tab", { name: /Collections|Browse/ }).click();
     cy.findByText(newCollectionName).click();
     cy.button("Move").click();
   });
