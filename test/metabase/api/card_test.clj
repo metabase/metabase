@@ -3993,7 +3993,54 @@
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
       (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
-      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))
+      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))
+
+  (testing "We can't move a question from a collection to a dashboard if it's in another dashboard AS A SERIES"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Dashboard {other-dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id other-dash-id}
+                   :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})
+      (testing "... again, unless we pass `delete_old_dashcards=true`"
+        (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id}))))
+
+  (testing "And, if we don't have permissions on the other dashboard, it fails"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
+                     :model/Collection {_coll-id :id} {}
+                     :model/Dashboard {other-dash-id :id} {:collection_id forbidden-coll-id}
+                     :model/Dashboard {dash-id :id} {}
+                     :model/Card {card-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id other-dash-id :card_id card-id}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
+        (testing "We get a 403 back, because we don't have permissions"
+          (is (= "You don't have permissions to do that."
+                 ;; regardless of the `delete_old_dashcards` value, same response
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
+        (testing "The card is still in the old dashboard and not the new one"
+          (is (= #{other-dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+  (testing "The above includes when a card is 'in' a dashboard in a series"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
+                     :model/Collection {_coll-id :id} {}
+                     :model/Dashboard {other-dash-id :id other-dash-name :name} {:collection_id forbidden-coll-id}
+                     :model/Dashboard {dash-id :id} {}
+                     :model/Card {card-id :id} {}
+                     :model/DashboardCard {dc-id :id} {:dashboard_id other-dash-id}
+                     :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
+        (testing "We get a 403 back, because we don't have permissions"
+          (is (= "You don't have permissions to do that."
+                 ;; regardless of the `delete_old_dashcards` value, same response
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
+        (testing "The card is still in the old dashboard and not the new one"
+          (is (= [{:name other-dash-name :collection_id forbidden-coll-id :id other-dash-id}]
+                 (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
+          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
 
 (deftest we-can-get-a-list-of-dashboards-a-card-appears-in
   (testing "a card in one dashboard"
@@ -4026,5 +4073,24 @@
       (is (= [{:id dash-id :name "My Dashboard"}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
 
+  (testing "If it's in the dashboard in a series, it's counted as 'in' the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
+      (is (= [{:id dash-id :name "My Dashboard"}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
   (testing "nonexistent card"
-    (mt/user-http-request :rasta :get 404 (str "card/invalid-id/dashboards"))))
+    (mt/user-http-request :rasta :get 404 (str "card/invalid-id/dashboards")))
+
+  (testing "Don't have permissions on all the dashboards involved"
+    (mt/with-temp [:model/Collection {allowed-coll-id :id} {:name "The allowed collection"}
+                   :model/Collection {forbidden-coll-id :id} {:name "The forbidden collection"}
+                   :model/Dashboard {allowed-dash-id :id} {:name "The allowed dashboard" :collection_id allowed-coll-id}
+                   :model/Dashboard {forbidden-dash-id :id} {:name "The forbidden dashboard" :collection_id forbidden-coll-id}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id allowed-dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id forbidden-dash-id}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
+      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 (str "card/" card-id "/dashboards")))))))

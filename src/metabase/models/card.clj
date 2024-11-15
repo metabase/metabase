@@ -140,12 +140,29 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select [[:dc.card_id :card_id] [:d.name :name] [:d.id :id]]
-                    :from [[:report_dashboardcard :dc]]
-                    :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
-                    :where [:in :dc.card_id (map :id cards)]})
+   #(->> (t2/query {:select [:card_id
+                             :name
+                             :collection_id
+                             :id]
+                    :from [[{:union-all [{:select [[:dc.card_id :card_id]
+                                                   [:d.name :name]
+                                                   [:d.collection_id :collection_id]
+                                                   [:d.id :id]]
+                                          :from [[:report_dashboardcard :dc]]
+                                          :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
+                                          :where [:in :dc.card_id (map :id cards)]}
+                                         {:select [[:dcs.card_id :card_id]
+                                                   [:d.name :name]
+                                                   [:d.collection_id :collection_id]
+                                                   [:d.id :id]]
+                                          :from [[:dashboardcard_series :dcs]]
+                                          :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
+                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}]] })
          (group-by :card_id)
-         (m/map-vals (fn [dashes] (into #{} (map (fn [dash] (dissoc dash :card_id)) dashes)))))
+         (m/map-vals (fn [dashes] (->> dashes
+                                       (map (fn [dash] (dissoc dash :card_id)))
+                                       distinct
+                                       (mapv (fn [dash] (t2/instance :model/Dashboard dash)))))))
    :id
    {:default []}))
 
@@ -461,16 +478,14 @@
        (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
-  (let [dashboard-id->name (dissoc
-                            (t2/select-fn->fn :id :name :model/Dashboard
-                                              {:select [[:dashboard_id :id]
-                                                        [:dashboard.name :name]]
-                                               :from [[:report_dashboard :dashboard]]
-                                               :join [[:report_dashboardcard :dc] [:= :dc.dashboard_id :dashboard.id]]
-                                               :where [:= :dc.card_id (:id card)]
-                                               :group-by [:dashboard_id :dashboard.name]})
-                            (:dashboard_id changes)
-                            (:dashboard_id card))]
+  (let [dashboard-id->name (->> (t2/hydrate card :in_dashboards)
+                                :in_dashboards
+                                (remove #(or (= (:id %)
+                                                (:dashboard_id changes))
+                                             (= (:id %)
+                                                (:dashboard_id card))))
+                                (map (juxt :id :name))
+                                (into {}))]
     (when (and (:dashboard_id changes) (seq dashboard-id->name))
       (throw (ex-info (tru "Cannot convert to dashboard question: appears in other dashboards ({0})" (str/join "," (vals dashboard-id->name)))
                       {:status-code 400
@@ -723,6 +738,14 @@
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
   (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)
+  (t2/query {:delete-from :dashboardcard_series
+             :where [:in :id
+                     {:select [[:dcs.id :id]]
+                      :from [[:dashboardcard_series :dcs]]
+                      :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
+                      :where [:and
+                              [:= :dc.dashboard_id dashboard-id]
+                              [:= :dcs.card_id card-id]]}]})
   (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
                                                   :user-id api/*current-user-id*}))
 
@@ -775,7 +798,15 @@
                delete-old-dashcards?)
       ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
       ;; removed from the dashboard" since you can't restore to the previous state...
-      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id [:not= new-dashboard-id]))))
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id [:not= new-dashboard-id])
+      (t2/query {:delete-from :dashboardcard_series
+                 :where [:in :id
+                         {:select [[:dcs.id :id]]
+                          :from [[:dashboardcard_series :dcs]]
+                          :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
+                          :where [:and
+                                  [:= :dcs.card_id card-id]
+                                  [:not= :dc.dashboard_id new-dashboard-id]]}]}))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -1016,6 +1047,7 @@
           (t2/with-transaction [_conn]
             (doseq [[id update] updates]
               (t2/update! :model/DashboardCard :id id update))))))))
+
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."

@@ -672,7 +672,11 @@
     dashboard-cards))
 
 (defn- assert-new-dashcards-are-not-internal-to-other-dashboards [dashboard to-create]
-  (when-let [card-ids (seq (keep :card_id to-create))]
+  (when-let [card-ids (seq (into #{} (concat
+                                      (seq (keep :card_id to-create))
+                                      (->> to-create
+                                           (mapcat :series)
+                                           (keep :id)))))]
     (api/check-400 (not (t2/exists? :model/Card
                                     {:where [:and
                                              [:not= :dashboard_id (u/the-id dashboard)]
@@ -861,10 +865,22 @@
                                 :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly}
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
-             (doseq [k [:archived :collection_id]]
-               (when-let [[_ new-val] (find updates k)]
+             (when (api/column-will-change? :archived current-dash dash-updates)
+               (if (:archived dash-updates)
                  (card/with-allowed-changes-to-internal-dashboard-card
-                   (t2/update! :model/Card :dashboard_id id {k new-val}))))
+                   (t2/update! :model/Card
+                               :dashboard_id id
+                               :archived false
+                               {:archived true :archived_directly false}))
+                 (card/with-allowed-changes-to-internal-dashboard-card
+                   (t2/update! :model/Card
+                               :dashboard_id id
+                               :archived true
+                               :archived_directly false
+                               {:archived false}))))
+             (when (api/column-will-change? :collection_id current-dash dash-updates)
+               (card/with-allowed-changes-to-internal-dashboard-card
+                 (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)})))
              (t2/update! Dashboard id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
