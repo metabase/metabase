@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
+   [metabase-enterprise.metabot-v3.tools.query :as metabot-v3.tools.query]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -13,30 +14,20 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn- column-key
-  [column]
-  (or (:lib/desired-column-alias column)
-      (:name column)))
-
-(defn- column-info
-  [query column]
-  {:id (column-key column)
-   :name (-> (lib/display-info query column) :long-display-name)})
-
 (defn- operator-info
   [operator]
   (-> operator :short name))
 
 (defn- find-column
   [columns column-id]
-  (m/find-first #(= (column-key %) column-id) columns))
+  (m/find-first #(= (metabot-v3.tools.query/column-id %) column-id) columns))
 
 (defn- find-column-error
   [query columns column-id step-type]
   (ex-info (format "%s is not a correct column for the %s step. Available columns as JSON: %s"
                    column-id
                    step-type
-                   (json/generate-string (mapv #(column-info query %) columns)))
+                   (json/generate-string (mapv #(metabot-v3.tools.query/column-info query %) columns)))
            {:column column-id}))
 
 (defn- find-operator
