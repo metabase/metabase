@@ -1,10 +1,10 @@
 import { updateQuestion } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
-import type { MetabotRunQueryReaction } from "metabase-types/api";
+import type { MetabotChangeQueryReaction } from "metabase-types/api";
 
 import type { ReactionHandler } from "./types";
 
-export const runQuery: ReactionHandler<MetabotRunQueryReaction> =
+export const changeQuery: ReactionHandler<MetabotChangeQueryReaction> =
   reaction =>
   async ({ dispatch, getState }) => {
     const question = getQuestion(getState());

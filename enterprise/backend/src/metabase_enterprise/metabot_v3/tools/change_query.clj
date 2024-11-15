@@ -204,7 +204,7 @@
   [_tool-name {:keys [changes]} {:keys [dataset_query]}]
   (try
     {:output "success"
-     :reactions [{:type  :metabot.reaction/run-query
+     :reactions [{:type  :metabot.reaction/change-query
                   :dataset_query (-> (metabot-v3.tools.query/source-query dataset_query)
                                      (apply-query-changes changes)
                                      lib.query/->legacy-MBQL)}]}
