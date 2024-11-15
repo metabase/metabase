@@ -575,7 +575,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should show all users in recipients dropdown if `user-visiblity` setting is `all`", () => {
       openRecipientsWithUserVisibilitySetting("all");
 
-      H.popover().find("span").should("have.length", 9);
+      H.popover().find("span").should("have.length", 10);
     });
 
     describe("with no parameters", () => {
