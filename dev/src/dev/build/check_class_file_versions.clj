@@ -1,12 +1,11 @@
 (ns dev.build.check-class-file-versions
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [metabuild-common.core :as u])
   (:import
    (java.io DataInputStream FileInputStream InputStream)
-   (java.net URI)
-   (java.nio.file Files FileSystems FileVisitOption OpenOption Path)
-   (java.util Collections)
+   (java.nio.file Files FileVisitOption OpenOption Path)
    (java.util.function BiPredicate)))
 
 (set! *warn-on-reflection* true)
@@ -54,22 +53,18 @@
 
     (f ^Path path)"
   [path-to-jar pred]
-  (let [file (io/file path-to-jar)]
-    (assert (.exists file)
-            (format "Cannot find jar at path %s" path-to-jar))
-    (reify clojure.lang.IReduceInit
-      (reduce [_this rf init]
-        (with-open [filesystem (FileSystems/newFileSystem (URI. (str "jar:" (.toURI file)))
-                                                          Collections/EMPTY_MAP)]
-          (let [path   (.getPath filesystem "/" (make-array String 0))
-                stream (Files/find path
-                                   #_max-depth Integer/MAX_VALUE
-                                   (reify BiPredicate
-                                     (test [_this path _file-attributes]
-                                       (boolean (pred path))))
-                                   ^"[Ljava.nio.file.FileVisitOption;" (make-array FileVisitOption 0))
-                it (.iterator stream)]
-            (reduce rf init (iterator-seq it))))))))
+  (reify clojure.lang.IReduceInit
+    (reduce [_this rf init]
+      (u/with-open-jar-file-system [filesystem path-to-jar]
+        (let [path   (.getPath filesystem "/" (make-array String 0))
+              stream (Files/find path
+                                 #_max-depth Integer/MAX_VALUE
+                                 (reify BiPredicate
+                                   (test [_this path _file-attributes]
+                                     (boolean (pred path))))
+                                 ^"[Ljava.nio.file.FileVisitOption;" (make-array FileVisitOption 0))
+              it (.iterator stream)]
+          (reduce rf init (iterator-seq it)))))))
 
 (defn reducible-class-files
   "Return an `IReduceInit` for all the `.class` files in a JAR."
