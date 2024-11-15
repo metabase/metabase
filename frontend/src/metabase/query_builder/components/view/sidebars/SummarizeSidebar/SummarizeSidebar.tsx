@@ -2,42 +2,37 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
+import { useDefaultQueryAggregation } from "metabase/query_builder/hooks/use-default-query-aggregation";
 import { Divider } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import {
   SummarizeAggregationItemList,
   SummarizeBreakoutColumnList,
-  useSummarizeQuery,
 } from "./SummarizeContent";
 import { SidebarView } from "./SummarizeSidebar.styled";
 
-interface SummarizeSidebarProps {
+type SummarizeSidebarProps = {
   className?: string;
-  query: Lib.Query;
-  onQueryChange: (query: Lib.Query) => void;
   onClose: () => void;
-}
+} & UpdateQueryHookProps;
 
 export function SummarizeSidebar({
   className,
   query: initialQuery,
   onQueryChange,
   onClose,
+  stageIndex,
 }: SummarizeSidebarProps) {
   const {
     query,
-    stageIndex,
-    aggregations,
+    onUpdateQuery: onDefaultQueryChange,
+    onAggregationChange,
     hasAggregations,
-    handleQueryChange,
-    handleAddBreakout,
-    handleUpdateBreakout,
-    handleRemoveBreakout,
-    handleReplaceBreakouts,
-  } = useSummarizeQuery({
+  } = useDefaultQueryAggregation({
     query: initialQuery,
     onQueryChange,
+    stageIndex,
   });
 
   const handleDoneClick = useCallback(() => {
@@ -55,20 +50,16 @@ export function SummarizeSidebar({
       <SummarizeAggregationItemList
         px="lg"
         query={query}
+        onQueryChange={onAggregationChange}
         stageIndex={stageIndex}
-        aggregations={aggregations}
-        onQueryChange={handleQueryChange}
       />
       <Divider my="lg" />
       {hasAggregations && (
         <SummarizeBreakoutColumnList
           px="lg"
           query={query}
+          onQueryChange={onDefaultQueryChange}
           stageIndex={stageIndex}
-          onAddBreakout={handleAddBreakout}
-          onUpdateBreakout={handleUpdateBreakout}
-          onRemoveBreakout={handleRemoveBreakout}
-          onReplaceBreakouts={handleReplaceBreakouts}
         />
       )}
     </SidebarView>

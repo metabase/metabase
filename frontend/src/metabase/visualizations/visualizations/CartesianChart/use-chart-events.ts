@@ -94,8 +94,8 @@ export const useChartEvents = (
         const hiddenYAxisIndex = chartModel.leftAxisModel?.seriesKeys.includes(
           hoveredSeriesDataKey,
         )
-          ? 0
-          : 1;
+          ? 1
+          : 0;
 
         yAxisShowOption[hiddenYAxisIndex].show = false;
       }

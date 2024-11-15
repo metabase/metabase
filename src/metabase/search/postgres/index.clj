@@ -53,6 +53,7 @@
              [:legacy_input :text :not-null]
              ;; scoring related
              [:dashboardcard_count :int]
+             [:last_viewed_at :timestamp]
              [:model_rank :int :not-null]
              [:official_collection :boolean]
              [:pinned :boolean]
@@ -240,7 +241,8 @@
     (when @initialized?
       (batch-upsert! active-table entries))
     (when @reindexing?
-      (batch-upsert! pending-table entries))))
+      (batch-upsert! pending-table entries))
+    (count entries)))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
