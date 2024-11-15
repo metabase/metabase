@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -163,6 +163,23 @@ export const CollectionPickerModal = ({
     [searchResultFilter],
   );
 
+  const parentCollectionId = useMemo(() => {
+    if (canSelectItem(selectedItem)) {
+      if (
+        selectedItem.model === "dashboard" &&
+        selectedItem.collection_id !== undefined //Needed to keep type checking happy... in theory it shouldn't be undefined for model === dashboard.
+      ) {
+        return selectedItem.collection_id;
+      } else {
+        return selectedItem.id;
+      }
+    } else if (canSelectItem(value)) {
+      return value.id;
+    } else {
+      return "root";
+    }
+  }, [selectedItem, value]);
+
   return (
     <>
       <EntityPickerModal
@@ -182,13 +199,7 @@ export const CollectionPickerModal = ({
       <NewCollectionDialog
         isOpen={isCreateDialogOpen}
         onClose={closeCreateDialog}
-        parentCollectionId={
-          canSelectItem(selectedItem)
-            ? selectedItem.id
-            : canSelectItem(value)
-              ? value.id
-              : "root"
-        }
+        parentCollectionId={parentCollectionId}
         onNewCollection={handleNewCollectionCreate}
         namespace={options.namespace}
       />
