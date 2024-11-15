@@ -1119,10 +1119,9 @@ describe("issue 49882", () => {
       formula: `case([Total] > 200, , "X")${moveCursorTo2ndCaseArgument}[to{enter}`,
     });
 
-    // TODO: fix space after [Total]
     cy.get(".ace_text-input")
       .first()
-      .should("have.value", 'case([Total] > 200, [Total], "X")\n\n');
+      .should("have.value", 'case([Total] > 200, [Total] , "X")\n\n');
     popover().findByText("Expecting a closing parenthesis").should("not.exist");
   });
 
