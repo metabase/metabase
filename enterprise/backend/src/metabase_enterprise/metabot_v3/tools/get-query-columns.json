@@ -6,6 +6,7 @@
     "properties": {
       "source": {
         "type": "object",
+        "description": "Query data source.",
         "properties": {
           "id": {
             "type": "number",
