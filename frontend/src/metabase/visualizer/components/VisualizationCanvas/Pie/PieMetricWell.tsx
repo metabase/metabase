@@ -22,6 +22,7 @@ export function PieMetricWell() {
   console.log(settings["pie.metric"]);
   console.log(columns);
   const pieMetric = columns.find(col => col.name === settings["pie.metric"]);
+  console.log(pieMetric);
   return (
     <Box mt="lg">
       <Text>{t`Pie chart metric`}</Text>

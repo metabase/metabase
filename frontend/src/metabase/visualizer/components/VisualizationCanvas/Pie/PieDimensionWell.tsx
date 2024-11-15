@@ -19,9 +19,11 @@ export function PieDimensionWell() {
     id: DROPPABLE_ID.PIE_DIMENSION,
   });
 
-  const pieDimensions = columns.find(
-    col => col.name === settings["pie.dimension"],
+  const pieDimensions = columns.filter(col =>
+    (settings["pie.dimension"] ?? []).includes(col.name),
   );
+
+  console.log(pieDimensions);
   return (
     <Box mt="lg">
       <Text>{t`Pie chart dimensions`}</Text>

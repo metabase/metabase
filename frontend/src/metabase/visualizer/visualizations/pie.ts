@@ -4,6 +4,7 @@ import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
   createVisualizerColumnReference,
+  cloneColumnProperties,
   extractReferencedColumns,
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
@@ -28,9 +29,11 @@ export const pieDropHandler = (
 
   if (over.id === DROPPABLE_ID.PIE_METRIC && isNumeric(column)) {
     const metricColumnName = state.settings["pie.metric"];
-    console.log(metricColumnName);
-    console.log(columnRef);
+    // console.log(metricColumnName);
+    // console.log(columnRef);
     if (metricColumnName) {
+      const idx = state.columns.findIndex(col => col.name === "METRIC_1");
+      state.columns[idx] = cloneColumnProperties(state.columns[idx], column);
       state.columnValuesMapping[metricColumnName] = addColumnMapping(
         state.columnValuesMapping[metricColumnName],
         columnRef,
@@ -39,8 +42,11 @@ export const pieDropHandler = (
   }
   //
   if (over.id === DROPPABLE_ID.PIE_DIMENSION) {
-    const dimensionColumnName = state.settings["pie.dimension"];
+    const [dimensionColumnName] = state.settings["pie.dimension"] ?? [];
+    console.log(dimensionColumnName);
     if (dimensionColumnName) {
+      const idx = state.columns.findIndex(col => col.name === "DIMENSION_1");
+      state.columns[idx] = cloneColumnProperties(state.columns[idx], column);
       state.columnValuesMapping[dimensionColumnName] = addColumnMapping(
         state.columnValuesMapping[dimensionColumnName],
         columnRef,
