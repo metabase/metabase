@@ -24,12 +24,12 @@
                     "add-string-filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the string column to apply filter for."
+                  "description": "ID of the string column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -50,7 +50,7 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "operator",
                 "value"
               ],
@@ -67,12 +67,12 @@
                     "add-number-filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the numeric column to apply filter for."
+                  "description": "ID of the numeric column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -93,7 +93,7 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "operator",
                 "value"
               ],
@@ -110,12 +110,12 @@
                     "add-boolean-filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the boolean column to apply filter for."
+                  "description": "ID of the boolean column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -131,7 +131,7 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "operator",
                 "value"
               ],
@@ -148,12 +148,12 @@
                     "add-specific-date-filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the date column to apply filter for."
+                  "description": "ID of the date column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -171,7 +171,7 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "operator",
                 "value"
               ],
@@ -188,12 +188,12 @@
                     "add-relative-date-filter"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Name of the date column to apply filter for."
+                  "description": "ID of the date column to apply filter for."
                 },
                 "direction": {
                   "type": "string",
@@ -222,32 +222,10 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "direction",
                 "value",
                 "unit"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "description": "Remove filter from the query.",
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "description": "Type of the remove-filter change.",
-                  "enum": [
-                    "remove-filter"
-                  ]
-                },
-                "filter": {
-                  "type": "string",
-                  "description": "Filter to remove."
-                }
-              },
-              "required": [
-                "type",
-                "filter"
               ],
               "additionalProperties": false
             },
@@ -277,40 +255,18 @@
                     "max"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Optional column name for the selected aggregation operator. If not specified, set it to null."
+                  "description": "ID of an optional column for the selected aggregation operator. If not specified, set it to null."
                 }
               },
               "required": [
                 "type",
                 "operator",
-                "column"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "description": "Remove aggregation from the query.",
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "description": "Type of the remove-aggregation change.",
-                  "enum": [
-                    "remove-aggregation"
-                  ]
-                },
-                "aggregation": {
-                  "type": "string",
-                  "description": "Aggregation to remove."
-                }
-              },
-              "required": [
-                "type",
-                "aggregation"
+                "column_id"
               ],
               "additionalProperties": false
             },
@@ -325,36 +281,14 @@
                     "add-breakout"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": "string",
-                  "description": "Name of the column to apply grouping for."
+                  "description": "ID of the column to apply grouping for."
                 }
               },
               "required": [
                 "type",
-                "column"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "description": "Remove grouping, or breakout.",
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "description": "Type of the remove-breakout change.",
-                  "enum": [
-                    "remove-breakout"
-                  ]
-                },
-                "breakout": {
-                  "type": "string",
-                  "description": "Breakout to remove."
-                }
-              },
-              "required": [
-                "type",
-                "breakout"
+                "column_id"
               ],
               "additionalProperties": false
             },
@@ -369,9 +303,9 @@
                     "add-order-by"
                   ]
                 },
-                "column": {
+                "column_id": {
                   "type": "string",
-                  "description": "Name of the column to apply sorting for."
+                  "description": "ID of the column to apply sorting for."
                 },
                 "direction": {
                   "type": [
@@ -387,30 +321,8 @@
               },
               "required": [
                 "type",
-                "column",
+                "column_id",
                 "direction"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "description": "Remove sorting from the query.",
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "description": "Type of the remove-order-by change.",
-                  "enum": [
-                    "remove-order-by"
-                  ]
-                },
-                "order_by": {
-                  "type": "string",
-                  "description": "Sorting to remove."
-                }
-              },
-              "required": [
-                "type",
-                "order_by"
               ],
               "additionalProperties": false
             },
@@ -433,23 +345,6 @@
               "required": [
                 "type",
                 "limit"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "description": "Removes the row limit from the query.",
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "description": "Type of the remove-limit change.",
-                  "enum": [
-                    "remove-limit"
-                  ]
-                }
-              },
-              "required": [
-                "type"
               ],
               "additionalProperties": false
             }

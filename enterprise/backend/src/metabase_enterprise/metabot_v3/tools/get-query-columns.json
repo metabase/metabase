@@ -1,6 +1,6 @@
 {
   "name": "get-query-columns",
-  "description": "Lists available columns for the query. Accepts a serialized query and returns columns serialized as JSON. Can be used to validate and coerce user input.",
+  "description": "Lists available columns for the query as JSON. Each column has an id and name. Accepts a serialized query and returns columns serialized as JSON. Can be used to validate and coerce user input.",
   "parameters": {
     "type": "object",
     "properties": {

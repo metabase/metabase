@@ -12,4 +12,6 @@
         metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database query))
         query             (lib/query metadata-provider query)
         columns           (lib/visible-columns query)]
-    {:output (json/generate-string (mapv #(->> % (lib/display-info query) :long-display-name) columns))}))
+    {:output (json/generate-string (mapv (fn [column]
+                                           {:id (:lib/desired-column-alias column)
+                                            :name (-> (lib/display-info query column) :long-display-name)}) columns))}))
