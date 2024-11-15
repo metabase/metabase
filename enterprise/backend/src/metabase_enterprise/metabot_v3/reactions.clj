@@ -137,11 +137,6 @@
    [:type [:= :metabot.reaction/run-query]]
    [:dataset_query :map]])
 
-(defreaction :metabot.reaction/change-visualization-settings
-  [:map
-   [:type [:= :metabot.reaction/change-visualization-settings]]
-   [:visualization_settings :map]])
-
 (defreaction :metabot.reaction/change-series-settings
   [:map
    [:type [:= :metabot.reaction/change-series-settings]]

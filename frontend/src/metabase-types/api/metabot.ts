@@ -1,11 +1,6 @@
 import type { CardDisplayType } from "./visualization";
 
-import type {
-  ColumnSettings,
-  DatasetQuery,
-  SeriesSettings,
-  VisualizationSettings,
-} from ".";
+import type { ColumnSettings, DatasetQuery, SeriesSettings } from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -130,11 +125,6 @@ export type MetabotChangeChartAppearanceReaction = {
   } | null;
 };
 
-export type MetabotChangeVisualizationSettingsReaction = {
-  type: "metabot.reaction/change-visualization-settings";
-  visualization_settings: VisualizationSettings;
-};
-
 export type MetabotReaction =
   | MetabotChangeChartAppearanceReaction
   | MetabotChangeColumnSettingsReaction
@@ -145,8 +135,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
-  | MetabotRunQueryReaction
-  | MetabotChangeVisualizationSettingsReaction;
+  | MetabotRunQueryReaction;
 
 /* Metabot v3 - API Request Types */
 
