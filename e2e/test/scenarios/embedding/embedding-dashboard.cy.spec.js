@@ -2,14 +2,17 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  assertEChartsTooltip,
   assertEmbeddingParameter,
   assertSheetRowsCount,
+  chartPathWithFillColor,
   closeStaticEmbeddingModal,
   createDashboardWithTabs,
   createQuestion,
   dashboardParametersContainer,
   describeEE,
   downloadAndAssert,
+  echartsTooltip,
   editDashboard,
   filterWidget,
   getDashboardCard,
@@ -992,19 +995,18 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.findByText("April 2022").should("exist");
 
       // (metabase#49537)
-      // TODO: Enable these assertions once `echartsTooltip().should("be.visible")` fails when the tooltip is not visible
-      // chartPathWithFillColor("#509EE3").last().realHover();
-      // echartsTooltip().should("be.visible");
-      // assertEChartsTooltip({
-      //   header: "August 2022",
-      //   rows: [
-      //     {
-      //       name: "Count",
-      //       value: "79",
-      //       secondaryValue: "+23.44%",
-      //     },
-      //   ],
-      // });
+      chartPathWithFillColor("#509EE3").last().realHover();
+      echartsTooltip().should("be.visible");
+      assertEChartsTooltip({
+        header: "August 2022",
+        rows: [
+          {
+            name: "Count",
+            value: "79",
+            secondaryValue: "+23.44%",
+          },
+        ],
+      });
     });
 
     cy.get("#iframe").should($iframe => {
