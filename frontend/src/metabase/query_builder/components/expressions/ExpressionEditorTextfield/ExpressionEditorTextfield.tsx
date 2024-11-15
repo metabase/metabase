@@ -1,6 +1,5 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import type { RefObject } from "react";
 import * as React from "react";
 import type { ICommand, IMarker } from "react-ace";
 import AceEditor from "react-ace";
@@ -115,12 +114,11 @@ const ACE_OPTIONS = {
 };
 
 interface ExpressionEditorTextfieldProps {
-  expression: Expression | undefined;
-  clause: Lib.ExpressionClause | undefined;
+  expression: Expression | undefined | null;
+  clause: Lib.ExpressionClause | undefined | null;
   name: string;
   query: Lib.Query;
   stageIndex: number;
-  metadata: Metadata;
   startRule?: "expression" | "aggregation" | "boolean";
   expressionIndex?: number;
   width?: number;
@@ -132,14 +130,16 @@ interface ExpressionEditorTextfieldProps {
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
   onError: (error: ErrorWithMessage | null) => void;
-  onBlankChange: (isBlank: boolean) => void;
   onCommit: (
     expression: Expression | null,
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
-  helpTextTarget: RefObject<HTMLElement>;
-  showMetabaseLinks: boolean;
   shortcuts?: SuggestionShortcut[];
+}
+
+interface StateProps {
+  metadata: Metadata;
+  showMetabaseLinks: boolean;
 }
 
 interface ExpressionEditorTextfieldState {
@@ -153,7 +153,7 @@ interface ExpressionEditorTextfieldState {
 }
 
 function transformPropsToState(
-  props: ExpressionEditorTextfieldProps,
+  props: ExpressionEditorTextfieldProps & StateProps,
 ): ExpressionEditorTextfieldState {
   const {
     expression: legacyExpression = ExpressionEditorTextfieldInner.defaultProps
@@ -212,7 +212,7 @@ const mapStateToProps = (state: State) => ({
 const CURSOR_DEBOUNCE_INTERVAL = 10;
 
 class ExpressionEditorTextfieldInner extends React.Component<
-  ExpressionEditorTextfieldProps,
+  ExpressionEditorTextfieldProps & StateProps,
   ExpressionEditorTextfieldState
 > {
   input = React.createRef<AceEditor>();
@@ -225,7 +225,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
     startRule: "expression",
   } as const;
 
-  constructor(props: ExpressionEditorTextfieldProps) {
+  constructor(props: ExpressionEditorTextfieldProps & StateProps) {
     super(props);
 
     this.state = transformPropsToState(props);
@@ -236,7 +236,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
   }
 
   UNSAFE_componentWillReceiveProps(
-    newProps: Readonly<ExpressionEditorTextfieldProps>,
+    newProps: Readonly<ExpressionEditorTextfieldProps & StateProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
     const {
@@ -668,9 +668,6 @@ class ExpressionEditorTextfieldInner extends React.Component<
     }
 
     this.setState({ source, errorMessage: null });
-    if (this.props.onBlankChange) {
-      this.props.onBlankChange(source.length === 0);
-    }
   };
 
   handleCursorChange = _.debounce((selection: Ace.Selection) => {
