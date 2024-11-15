@@ -86,7 +86,9 @@ export const SaveQuestionProvider = ({
   ) as RecentCollectionItem | undefined;
 
   const initialDashboardId =
-    question.type() === "question" ? lastUsedDashboard?.id : undefined;
+    question.type() === "question" && lastUsedDashboard?.can_write
+      ? lastUsedDashboard?.id
+      : undefined;
   const initialCollectionId =
     lastUsedDashboard?.parent_collection.id ?? defaultCollectionId;
 

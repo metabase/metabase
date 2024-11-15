@@ -246,7 +246,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // should not show dashboard you can't write to
       // why are there 3 requests? 😵‍💫
-      cy.wait(["@getADashboard", "@getADashboard", "@getADashboard"]);
+      cy.wait(["@getADashboard", "@getADashboard"]);
 
       H.modal()
         .findByText(/Orders in a dashboard/)

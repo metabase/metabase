@@ -47,7 +47,7 @@ export const CollectionBulkActions = memo(
     const [rememberedDestination, setRememberedDestination] =
       useState<Destination | null>(null);
 
-    const isVisible = selected.length > 0 && !selectedAction;
+    const isVisible = selected.length > 0 && selectedAction !== "confirm-move";
 
     const hasSelectedItems = useMemo(
       () => !!selectedItems && !_.isEmpty(selectedItems),
