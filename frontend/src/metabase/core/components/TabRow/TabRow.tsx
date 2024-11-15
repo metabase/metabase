@@ -123,8 +123,8 @@ function TabRowInner<T>({
   );
 }
 
-const TabRowInnerWithSize = ExplicitSize()(TabRowInner);
 export function TabRow<T>(props: TabRowProps<T>) {
+  const TabRowInnerWithSize = ExplicitSize<TabRowProps<T>>()(TabRowInner);
   return <TabRowInnerWithSize {...props} />;
 }
 
