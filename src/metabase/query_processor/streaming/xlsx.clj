@@ -624,7 +624,7 @@
               .getCTPivotTableDefinition
               .getPivotFields
               (.getPivotFieldArray idx)
-              (.setSortType setting))))) 
+              (.setSortType setting)))))
     ;; now that the Pivot Table Rows and Cols are set, we can update the area-ref
     (-> pivot-table
         .getPivotCacheDefinition
