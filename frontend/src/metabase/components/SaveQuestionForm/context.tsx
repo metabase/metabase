@@ -10,6 +10,7 @@ import {
 
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
@@ -85,12 +86,17 @@ export const SaveQuestionProvider = ({
     item => item.model === "dashboard",
   ) as RecentCollectionItem | undefined;
 
+  // analytics questions should not default to saving in dashboard
+  const isAnalytics = isInstanceAnalyticsCollection(question.collection());
+
   const initialDashboardId =
-    question.type() === "question" && lastUsedDashboard?.can_write
+    question.type() === "question" && !isAnalytics && lastUsedDashboard?.can_write
       ? lastUsedDashboard?.id
       : undefined;
-  const initialCollectionId =
-    lastUsedDashboard?.parent_collection.id ?? defaultCollectionId;
+
+  const initialCollectionId = isAnalytics
+    ? defaultCollectionId
+    : (lastUsedDashboard?.parent_collection.id ?? defaultCollectionId);
 
   const initialValues: FormValues = useMemo(
     () =>

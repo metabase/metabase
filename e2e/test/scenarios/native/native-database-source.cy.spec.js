@@ -287,7 +287,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
     // Save the query
     saveQuestion("sql count", { wrapId: true });
-    cy.url().should("match", /\/dashboard\/\d+#add=\d+&edit/);
+    cy.url().should("match", /\/dashboard\/\d+#edit/);
   });
 });
 
