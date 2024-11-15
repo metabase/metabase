@@ -12,8 +12,8 @@
    [metabase.test :as mt])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)
    com.sun.management.ThreadMXBean
+   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)
    java.lang.management.ManagementFactory))
 
 (set! *warn-on-reflection* true)
