@@ -518,7 +518,11 @@ class ExpressionEditorTextfieldInner extends React.Component<
     } else {
       const compiledExpression = this.compileExpression();
 
-      if (compiledExpression) {
+      if (
+        compiledExpression &&
+        compiledExpression.expression != null &&
+        compiledExpression.expressionClause != null
+      ) {
         const { expression, expressionClause } = compiledExpression;
 
         if (!isExpression(expression)) {
