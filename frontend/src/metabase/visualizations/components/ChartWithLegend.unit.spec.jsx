@@ -62,4 +62,23 @@ describe("ChartWithLegend", () => {
 
     expect(screen.getByText("Chart stub")).toBeInTheDocument();
   });
+
+  it("should join legend titles with space in vertical layout", () => {
+    render(
+      <ChartWithLegend
+        {...defaultProps}
+        width={400}
+        height={600}
+        gridSize={{ width: 3, height: 6 }}
+        aspectRatio={0.5}
+        legendTitles={[
+          ["Foo", "10%"],
+          ["Bar", "90%"],
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("chart-legend")).toHaveTextContent("Foo 10%");
+    expect(screen.getByTestId("chart-legend")).toHaveTextContent("Bar 90%");
+  });
 });
