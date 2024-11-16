@@ -59,7 +59,7 @@ class ChartWithLegend extends Component {
     let type;
     let LegendComponent;
     const isHorizontal = gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
-    if (showLegend === false) {
+    if (!showLegend) {
       type = "small";
     } else if (isHorizontal && width > HIDE_HORIZONTAL_LEGEND_THRESHOLD) {
       type = "horizontal";
