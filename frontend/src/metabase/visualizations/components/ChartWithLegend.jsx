@@ -21,6 +21,7 @@ class ChartWithLegend extends Component {
   static defaultProps = {
     aspectRatio: 1,
     style: {},
+    showLegend: true,
   };
 
   render() {
