@@ -18,9 +18,13 @@ const defaultProps = {
   children: <div>Chart stub</div>,
 };
 
+const setup = (props = {}) => {
+  render(<ChartWithLegend {...defaultProps} {...props} />);
+};
+
 describe("ChartWithLegend", () => {
   it("should show full legend titles when width is above secondary info threshold", () => {
-    render(<ChartWithLegend {...defaultProps} />);
+    setup();
 
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Series 1");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Series 2");
@@ -28,12 +32,7 @@ describe("ChartWithLegend", () => {
   });
 
   it("should hide secondary info when width is below threshold", () => {
-    render(
-      <ChartWithLegend
-        {...defaultProps}
-        width={HIDE_SECONDARY_INFO_THRESHOLD - 1}
-      />,
-    );
+    setup({ width: HIDE_SECONDARY_INFO_THRESHOLD - 1 });
 
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Series 1");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Series 2");
@@ -41,42 +40,34 @@ describe("ChartWithLegend", () => {
   });
 
   it("should not render legend when width is below horizontal legend threshold", () => {
-    render(
-      <ChartWithLegend
-        {...defaultProps}
-        width={HIDE_HORIZONTAL_LEGEND_THRESHOLD - 1}
-      />,
-    );
+    setup({ width: HIDE_HORIZONTAL_LEGEND_THRESHOLD - 1 });
 
     expect(screen.queryByTestId("chart-legend")).not.toBeInTheDocument();
   });
 
   it("should not render chart content when dimensions are zero", () => {
-    render(<ChartWithLegend {...defaultProps} width={0} height={0} />);
+    setup({ width: 0, height: 0 });
 
     expect(screen.queryByText("Chart stub")).not.toBeInTheDocument();
   });
 
   it("should render chart content when dimensions are valid", () => {
-    render(<ChartWithLegend {...defaultProps} />);
+    setup();
 
     expect(screen.getByText("Chart stub")).toBeInTheDocument();
   });
 
   it("should join legend titles with space in vertical layout", () => {
-    render(
-      <ChartWithLegend
-        {...defaultProps}
-        width={400}
-        height={600}
-        gridSize={{ width: 3, height: 6 }}
-        aspectRatio={0.5}
-        legendTitles={[
-          ["Foo", "10%"],
-          ["Bar", "90%"],
-        ]}
-      />,
-    );
+    setup({
+      width: 400,
+      height: 600,
+      gridSize: { width: 3, height: 6 },
+      aspectRatio: 0.5,
+      legendTitles: [
+        ["Foo", "10%"],
+        ["Bar", "90%"],
+      ],
+    });
 
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Foo 10%");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Bar 90%");
