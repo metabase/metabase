@@ -94,6 +94,8 @@ class ChartWithLegend extends Component {
       type = "small";
     }
 
+    const hasDimensions = width > 0 && height > 0;
+
     const legend = LegendComponent ? (
       <LegendComponent
         className={styles.Legend}
@@ -133,7 +135,7 @@ class ChartWithLegend extends Component {
           className={cx(styles.Chart)}
           style={{ width: chartWidth, height: chartHeight }}
         >
-          {children}
+          {hasDimensions ? children : null}
         </div>
         {/* spacer div to balance legend */}
         {legend && (
