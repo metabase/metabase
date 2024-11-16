@@ -14,8 +14,8 @@ const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
 
 const DEFAULT_GRID_SIZE = 100;
-const HIDE_HORIZONTAL_LEGEND_THRESHOLD = 180;
-const HIDE_SECONDARY_INFO_THRESHOLD = 260;
+export const HIDE_HORIZONTAL_LEGEND_THRESHOLD = 180;
+export const HIDE_SECONDARY_INFO_THRESHOLD = 260;
 
 class ChartWithLegend extends Component {
   static defaultProps = {
