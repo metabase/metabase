@@ -38,3 +38,25 @@
   [dataset-query]
   (-> (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
       (lib/query dataset-query)))
+
+(defn query-context
+  "Context for query tools."
+  [dataset-query]
+  (when dataset-query
+    (let [query (source-query dataset-query)]
+      {:query
+       {:filters      (into []
+                            (map-indexed (fn [i clause] (clause-info query clause i)))
+                            (lib/filters query))
+        :aggregations (into []
+                            (map-indexed (fn [i clause] (clause-info query clause i)))
+                            (lib/aggregations query))
+        :breakouts    (into []
+                            (map-indexed (fn [i clause] (clause-info query clause i)))
+                            (lib/breakouts query))
+        :order_bys    (into []
+                            (map-indexed (fn [i clause] (clause-info query clause i)))
+                            (lib/order-bys query))
+        :limit        (lib/current-limit query)}
+       :query_columns (mapv #(column-info query %)
+                            (lib/visible-columns query))})))

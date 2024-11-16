@@ -5,7 +5,6 @@
    [metabase-enterprise.metabot-v3.tools.query :as metabot-v3.tools.query]
    [metabase-enterprise.metabot-v3.tools.visualization :as metabot-v3.tools.visualization]
    [metabase.config :as config]
-   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -55,27 +54,7 @@
 
   This should be a 'sparse' hydration rather than `SELECT * FROM dashboard WHERE id = 1` -- we should only include
   information needed for the LLM to do its thing rather than everything in the world."
-  [{:keys [display_type dataset_query dataset_columns]}]
+  [{:keys [display_type dataset_query dataset_columns visualization_settings]}]
   (merge {}
-         (when display_type
-           {:display_type display_type})
-         (when dataset_query
-           (let [query (metabot-v3.tools.query/source-query dataset_query)]
-             {:query
-              {:filters      (into []
-                                   (map-indexed (fn [i clause] (metabot-v3.tools.query/clause-info query clause i)))
-                                   (lib/filters query))
-               :aggregations (into []
-                                   (map-indexed (fn [i clause] (metabot-v3.tools.query/clause-info query clause i)))
-                                   (lib/aggregations query))
-               :breakouts    (into []
-                                   (map-indexed (fn [i clause] (metabot-v3.tools.query/clause-info query clause i)))
-                                   (lib/breakouts query))
-               :order_bys    (into []
-                                   (map-indexed (fn [i clause] (metabot-v3.tools.query/clause-info query clause i)))
-                                   (lib/order-bys query))
-               :limit        (lib/current-limit query)}
-              :query_columns (mapv #(metabot-v3.tools.query/column-info query %)
-                                   (lib/visible-columns query))}))
-         (when dataset_columns
-           {:visualization_columns (mapv metabot-v3.tools.visualization/column-info dataset_columns)})))
+         (metabot-v3.tools.query/query-context dataset_query)
+         (metabot-v3.tools.visualization/visualization-context display_type dataset_columns visualization_settings)))
