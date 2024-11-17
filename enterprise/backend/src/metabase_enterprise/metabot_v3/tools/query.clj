@@ -22,12 +22,6 @@
            (lib.types.isa/string-or-string-like? column) :string
            :else :unknown)})
 
-(defn clause-info
-  "Query clause info."
-  [query clause index]
-  {:id index
-   :name (lib/display-name query clause)})
-
 (defn operator-name
   "Query operator name."
   [operator]
@@ -45,18 +39,10 @@
   (when dataset-query
     (let [query (source-query dataset-query)]
       {:query
-       {:filters      (into []
-                            (map-indexed (fn [i clause] (clause-info query clause i)))
-                            (lib/filters query))
-        :aggregations (into []
-                            (map-indexed (fn [i clause] (clause-info query clause i)))
-                            (lib/aggregations query))
-        :breakouts    (into []
-                            (map-indexed (fn [i clause] (clause-info query clause i)))
-                            (lib/breakouts query))
-        :order_bys    (into []
-                            (map-indexed (fn [i clause] (clause-info query clause i)))
-                            (lib/order-bys query))
+       {:filters      (mapv #(lib/display-name query %) (lib/filters query))
+        :aggregations (mapv #(lib/display-name query %) (lib/aggregations query))
+        :breakouts    (mapv #(lib/display-name query %) (lib/breakouts query))
+        :order_bys    (mapv #(lib/display-name query %) (lib/order-bys query))
         :limit        (lib/current-limit query)}
        :query_columns (mapv #(column-info query %)
                             (lib/visible-columns query))})))

@@ -11,21 +11,17 @@ import type {
   MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
   MetabotChangeSeriesSettingsReaction,
-  MetabotChangeTableSettingsReaction,
+  MetabotChangeTableColumnSettingsReaction,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import type { ReactionHandler } from "./types";
 
-export const changeTableSettings: ReactionHandler<
-  MetabotChangeTableSettingsReaction
+export const changeTableColumnSettings: ReactionHandler<
+  MetabotChangeTableColumnSettingsReaction
 > = reaction => {
   return async ({ dispatch }) => {
-    await dispatch(
-      onUpdateVisualizationSettings({
-        "table.columns": reaction.table_columns,
-      }),
-    );
+    await dispatch(onUpdateVisualizationSettings(reaction.settings));
   };
 };
 

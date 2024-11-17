@@ -236,14 +236,14 @@
                     "remove_filter"
                   ]
                 },
-                "filter_id": {
+                "filter_position": {
                   "type": "number",
-                  "description": "ID of the filter to remove. `query.filters` is the list of the current query filters."
+                  "description": "Index of the filter clause to remove. `query.filters` is the list of the current query filters."
                 }
               },
               "required": [
                 "type",
-                "filter_id"
+                "filter_position"
               ],
               "additionalProperties": false
             },
@@ -299,14 +299,14 @@
                     "remove_aggregation"
                   ]
                 },
-                "aggregation_id": {
+                "aggregation_position": {
                   "type": "number",
-                  "description": "ID of the aggregation to remove. `query.aggregations` is the list of the current query aggregations."
+                  "description": "Index of the aggregation clause to remove. `query.aggregations` is the list of the current query aggregations."
                 }
               },
               "required": [
                 "type",
-                "aggregation_id"
+                "aggregation_position"
               ],
               "additionalProperties": false
             },
@@ -343,14 +343,14 @@
                     "remove_breakout"
                   ]
                 },
-                "breakout_id": {
+                "breakout_position": {
                   "type": "number",
-                  "description": "ID of the breakout to remove. `query.breakouts` is the list of the current query breakouts."
+                  "description": "Index of the breakout clause to remove. `query.breakouts` is the list of the current query breakouts."
                 }
               },
               "required": [
                 "type",
-                "breakout_id"
+                "breakout_position"
               ],
               "additionalProperties": false
             },
@@ -360,7 +360,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add_order_by change.",
+                  "description": "Type of the add_order_by by change.",
                   "enum": [
                     "add_order_by"
                   ]
@@ -399,14 +399,14 @@
                     "remove_order_by"
                   ]
                 },
-                "order_by_id": {
+                "order_by_position": {
                   "type": "number",
-                  "description": "ID of the order_by clause to remove. `query.order_bys` is the list of the current query sorting clauses."
+                  "description": "Index of the order_by clause to remove. `query.order_bys` is the list of the current query sorting clauses."
                 }
               },
               "required": [
                 "type",
-                "order_by_id"
+                "order_by_position"
               ],
               "additionalProperties": false
             },

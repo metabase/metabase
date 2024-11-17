@@ -4,7 +4,11 @@ import { getAccentColors } from "metabase/lib/colors/groups";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { getVisualizationMetabotContext } from "metabase/metabot-v3/selectors";
 
-import { getQueryResults, getQuestion } from "../selectors";
+import {
+  getQueryResults,
+  getQuestion,
+  getVisualizationSettings,
+} from "../selectors";
 
 export const useRegisterMetabotContext = () => {
   useRegisterMetabotContextProvider(state => {
@@ -28,10 +32,13 @@ export const useRegisterMetabotContext = () => {
     );
 
     return {
+      dataset_query: question?.datasetQuery(),
+      dataset_columns: queryResultCols,
+      display_type: question?.display(),
+      visualization_settings: getVisualizationSettings(state),
+
       colorPalette: getAccentColors(),
       current_question_id: question?.id() || null,
-      display_type: question?.display(),
-      dataset_query: question?.datasetQuery(),
       current_visualization_settings: {
         ...vizSettings,
         ...(visible_columns.length ? { visible_columns } : {}),

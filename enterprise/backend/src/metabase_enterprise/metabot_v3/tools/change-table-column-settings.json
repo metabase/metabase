@@ -1,0 +1,34 @@
+{
+  "name": "change-table-column-settings",
+  "description": "Show, hide, or reorder columns in a table. `table_columns` is the current list of columns.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "table_columns": {
+        "type": "array",
+        "description": "New list of table columns. You can only change `enabled` property of each column or reorder columns in the list. Do not add new columns and do not remove existing columns from this list.",
+        "items": {
+          "type": "object",
+          "description": "Table column.",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ID of the column."
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "To make the column visible, set `enabled` to true. To hide the column, set `enabled` to false. If no changes to the column visibility is needed, use the original value for this column from `table_columns`."
+            }
+          },
+          "required": [
+            "id",
+            "enabled"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["table_columns"],
+    "additionalProperties": false
+  }
+}

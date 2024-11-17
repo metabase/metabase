@@ -54,7 +54,7 @@
 
   This should be a 'sparse' hydration rather than `SELECT * FROM dashboard WHERE id = 1` -- we should only include
   information needed for the LLM to do its thing rather than everything in the world."
-  [{:keys [display_type dataset_query dataset_columns visualization_settings]}]
+  [{:keys [dataset_query dataset_columns display_type visualization_settings]}]
   (merge {}
          (metabot-v3.tools.query/query-context dataset_query)
-         (metabot-v3.tools.visualization/visualization-context display_type dataset_columns visualization_settings)))
+         (metabot-v3.tools.visualization/visualization-context dataset_columns display_type visualization_settings)))

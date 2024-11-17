@@ -4,7 +4,7 @@ import type {
   ColumnSettings,
   DatasetQuery,
   SeriesSettings,
-  TableColumnOrderSetting,
+  VisualizationSettings,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -59,9 +59,9 @@ export type MetabotChangeDisplayTypeReaction = {
   display_type: CardDisplayType;
 };
 
-export type MetabotChangeTableSettingsReaction = {
-  type: "metabot.reaction/change-table-settings";
-  table_columns: TableColumnOrderSetting[];
+export type MetabotChangeTableColumnSettingsReaction = {
+  type: "metabot.reaction/change-table-column-settings";
+  settings: Pick<VisualizationSettings, "table.columns">;
 };
 
 export type MetabotConfirmationReaction = {
@@ -136,7 +136,7 @@ export type MetabotReaction =
   | MetabotChangeSeriesSettingsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
-  | MetabotChangeTableSettingsReaction
+  | MetabotChangeTableColumnSettingsReaction
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
