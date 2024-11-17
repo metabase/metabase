@@ -112,7 +112,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
           defaultBrowserFonteFamily,
         );
 
-        cy.findByText("Error").should(
+        cy.findByText(/Failed to fetch the user/).should(
           "have.css",
           "font-family",
           "Lato, sans-serif",
