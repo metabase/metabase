@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - metabot-v3-second-try
+      - trying-java-11-default
     paths-ignore:
       # config files
       - ".**"
