@@ -221,14 +221,14 @@
 (defn- build-column-totals
   "Build column totals for a section."
   [section-path col-combos pivot-measures totals row-totals? ordered-formatters pivot-rows]
-  (let [totals-row (distinct (for [col-combo   col-combos
-                                   measure-key pivot-measures]
-                               (fmt (get ordered-formatters measure-key)
-                                    (get-in totals (concat
-                                                    [:column-totals]
-                                                    section-path
-                                                    col-combo
-                                                    [measure-key])))))]
+  (let [totals-row (for [col-combo   col-combos
+                         measure-key pivot-measures]
+                     (fmt (get ordered-formatters measure-key)
+                          (get-in totals (concat
+                                          [:column-totals]
+                                          section-path
+                                          col-combo
+                                          [measure-key]))))]
     (when (some #(and (some? %) (not= "" %)) totals-row)
       (concat
        (cons (format "Totals for %s" (fmt (get ordered-formatters (first pivot-rows)) (last section-path)))
@@ -254,6 +254,30 @@
    (for [measure-key pivot-measures]
      (fmt (get ordered-formatters measure-key)
           (get-in totals [:grand-total measure-key])))))
+
+(defn- sort-pivot-subsections
+  [config section]
+  (let [{:keys [pivot-rows column-sort-order]} config]
+    (reduce
+     (fn [section [idx pivot-row-idx]]
+       (let [sort-spec (get column-sort-order pivot-row-idx :ascending)
+             transform (if (= :descending sort-spec) reverse identity)
+             groups    (group-by #(nth % idx) section)]
+         (mapcat second (transform (sort groups)))))
+     section
+     (reverse (map vector (range) pivot-rows)))))
+
+(defn- sort-column-combos
+  [config column-combos]
+  (let [{:keys [pivot-cols column-sort-order]} config]
+    (reduce
+     (fn [section [idx pivot-row-idx]]
+       (let [sort-spec (get column-sort-order pivot-row-idx :ascending)
+             transform (if (= :descending sort-spec) reverse identity)
+             groups    (group-by #(nth % idx) section)]
+         (mapcat second (transform (sort groups)))))
+     column-combos
+     (reverse (map vector (range) pivot-cols)))))
 
 (defn- append-totals-to-subsections
   [pivot section col-combos ordered-formatters]
@@ -307,13 +331,17 @@
         {:keys [pivot-rows
                 pivot-cols
                 pivot-measures
+                column-sort-order
                 column-titles
                 row-totals?
                 col-totals?]}   config
+        sort-fns                (update-vals column-sort-order (fn [direction] (get {:ascending  identity
+                                                                                     :descending reverse} direction)))
         row-formatters          (mapv #(get ordered-formatters %) pivot-rows)
         col-formatters          (mapv #(get ordered-formatters %) pivot-cols)
         row-combos              (apply math.combo/cartesian-product (map row-values pivot-rows))
         col-combos              (apply math.combo/cartesian-product (map column-values pivot-cols))
+        col-combos              (sort-column-combos config col-combos)
         row-totals?             (and row-totals? (boolean (seq pivot-cols)))
         column-headers          (build-column-headers config col-combos col-formatters)
         headers                 (or (seq (build-headers column-headers config))
@@ -325,18 +353,21 @@
      (filter seq
              (apply concat
                     (let [sections-rows
-                          (for [section-row-combos (sort-by ffirst (vals (group-by first row-combos)))]
+                          (for [section-row-combos ((get sort-fns (first pivot-rows) identity) (sort-by ffirst (vals (group-by first row-combos))))]
                             (concat
                              (remove nil?
-                                     (for [row-combo (sort-by first section-row-combos)]
+                                     (for [row-combo section-row-combos]
                                        (build-row row-combo col-combos pivot-measures data totals row-totals? ordered-formatters row-formatters)))))]
                       (mapv
                        (fn [section-rows]
                          (->>
+                          section-rows
+                          (sort-pivot-subsections config)
                           ;; section rows are either enriched with column-totals rows or left as is
-                          (if col-totals?
-                            (append-totals-to-subsections pivot section-rows col-combos ordered-formatters)
-                            section-rows)
+                          ((fn [rows]
+                             (if (and col-totals? (> (count pivot-rows) 1))
+                               (append-totals-to-subsections pivot rows col-combos ordered-formatters)
+                               rows)))
                           ;; then, we apply the row-formatters to the pivot-rows portion of each row,
                           ;; filtering out any rows that begin with "Totals ..."
                           (mapv

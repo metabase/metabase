@@ -81,14 +81,26 @@
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
+(defn add-collection-join-and-where-clauses
+  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
+  so we can return its `:name`."
+  [search-ctx qry]
+  (let [collection-id-col      :search_index.collection_id
+        permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
+    (cond-> qry
+      true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+      true (sql.helpers/where permitted-clause)
+      personal-clause (sql.helpers/where personal-clause))))
+
 (defn- fulltext
   "Search purely using the index."
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (let [base-query (search.index/search-query search-term search-ctx [:legacy_input])]
-         (search.permissions/add-collection-join-and-where-clauses base-query "search-index" search-ctx))
+  (->> (search.index/search-query search-term search-ctx [:legacy_input])
+       (add-collection-join-and-where-clauses search-ctx)
        (search.scoring/with-scores search-ctx)
        (search.filter/with-filters search-ctx)
        (t2/query)
@@ -114,8 +126,8 @@
   [search-ctx]
   ;; We ignore any current models filter
   (let [search-ctx (assoc search-ctx :models search.config/all-models)]
-    (->> (-> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
-             (search.permissions/add-collection-join-and-where-clauses "search-index" search-ctx))
+    (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
+         (add-collection-join-and-where-clauses search-ctx)
          (search.filter/with-filters search-ctx)
          t2/query
          (into #{} (map :model)))))

@@ -518,7 +518,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.signIn("readonly");
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At").should("be.visible");
+      cy.findByText("Created At: Year").should("be.visible");
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -537,7 +537,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.signIn("readonly");
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At").should("be.visible");
+      cy.findByText("Created At: Year").should("be.visible");
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

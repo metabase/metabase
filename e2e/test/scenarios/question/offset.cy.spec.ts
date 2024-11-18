@@ -455,7 +455,7 @@ describe("scenarios > question > offset", () => {
       visualize();
       verifyNoQuestionError();
       verifyLineChart({
-        xAxis: breakoutName,
+        xAxis: breakoutName + ": Month",
         yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
       });
 
@@ -463,7 +463,7 @@ describe("scenarios > question > offset", () => {
         visitQuestion(response?.body.id);
         verifyNoQuestionError();
         verifyLineChart({
-          xAxis: breakoutName,
+          xAxis: breakoutName + ": Month",
           yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
       });
@@ -517,7 +517,7 @@ describe("scenarios > question > offset", () => {
       visualize();
       verifyNoQuestionError();
       verifyLineChart({
-        xAxis: breakoutName,
+        xAxis: breakoutName + ": Month",
         legendItems,
       });
 
@@ -526,7 +526,7 @@ describe("scenarios > question > offset", () => {
         visitQuestion(response?.body.id);
         verifyNoQuestionError();
         verifyLineChart({
-          xAxis: breakoutName,
+          xAxis: breakoutName + ": Month",
           legendItems,
         });
       });
