@@ -8,6 +8,7 @@ import type {
   CreateBookmark,
   DeleteBookmark,
   OnCopy,
+  OnCopyToWorkspace,
   OnMove,
 } from "metabase/collections/types";
 import {
@@ -21,7 +22,7 @@ import {
 } from "metabase/collections/utils";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
@@ -40,6 +41,7 @@ export interface ActionMenuProps {
   databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy?: OnCopy;
+  onCopyToWorkspace?: OnCopyToWorkspace;
   onMove?: OnMove;
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
@@ -83,6 +85,7 @@ function ActionMenu({
   isXrayEnabled,
   isMetabotEnabled,
   onCopy,
+  onCopyToWorkspace,
   onMove,
   createBookmark,
   deleteBookmark,
@@ -101,6 +104,10 @@ function ActionMenu({
   const canRestore = item.can_restore;
   const canDelete = item.can_delete;
   const canCopy = onCopy && canCopyItem(item);
+  const canCopyToWorkspace = useSelector(
+    state => state.embed.options.dashboard_workspace_copy_enabled,
+  );
+
   const canUseMetabot =
     database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
 
@@ -111,6 +118,10 @@ function ActionMenu({
   const handleCopy = useCallback(() => {
     onCopy?.([item]);
   }, [item, onCopy]);
+
+  const handleCopyToWorkspace = useCallback(() => {
+    onCopyToWorkspace?.([item]);
+  }, [item, onCopyToWorkspace]);
 
   const handleMove = useCallback(() => {
     onMove?.([item]);
@@ -176,6 +187,9 @@ function ActionMenu({
         onPin={canPin ? handlePin : undefined}
         onMove={canMove ? handleMove : undefined}
         onCopy={canCopy ? handleCopy : undefined}
+        onCopyToWorkspace={
+          canCopyToWorkspace ? handleCopyToWorkspace : undefined
+        }
         onArchive={canArchive ? handleArchive : undefined}
         onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
         onTogglePreview={canPreview ? handleTogglePreview : undefined}

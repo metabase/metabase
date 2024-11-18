@@ -6,6 +6,7 @@ import { c, t } from "ttag";
 import type {
   OnArchive,
   OnCopy,
+  OnCopyToWorkspace,
   OnDeletePermanently,
   OnMove,
   OnPin,
@@ -124,6 +125,7 @@ function EntityItemMenu({
   onPin,
   onMove,
   onCopy,
+  onCopyToWorkspace,
   onArchive,
   onRestore,
   onDeletePermanently,
@@ -138,6 +140,7 @@ function EntityItemMenu({
   onPin?: OnPin;
   onMove?: OnMove;
   onCopy?: OnCopy;
+  onCopyToWorkspace?: OnCopyToWorkspace;
   onArchive?: OnArchive;
   onRestore?: OnRestore;
   onDeletePermanently?: OnDeletePermanently;
@@ -209,6 +212,14 @@ function EntityItemMenu({
       });
     }
 
+    if (onCopyToWorkspace) {
+      result.push({
+        title: t`Copy to another workspace`,
+        icon: "copy",
+        action: onCopyToWorkspace,
+      });
+    }
+
     if (onMove) {
       result.push({
         title: t`Move`,
@@ -256,6 +267,7 @@ function EntityItemMenu({
     onPin,
     onMove,
     onCopy,
+    onCopyToWorkspace,
     onArchive,
     onTogglePreview,
     onToggleBookmark,
@@ -284,6 +296,7 @@ const EntityItem = ({
   onPin,
   onMove,
   onCopy,
+  onCopyToWorkspace,
   onArchive,
   selected,
   onToggleSelected,
@@ -301,6 +314,7 @@ const EntityItem = ({
   onPin?: OnPin;
   onMove?: OnMove;
   onCopy?: OnCopy;
+  onCopyToWorkspace?: OnCopyToWorkspace;
   onArchive?: OnArchive;
   selected?: boolean;
   onToggleSelected?: OnToggleSelected;
@@ -346,6 +360,7 @@ const EntityItem = ({
           onPin={onPin}
           onMove={onMove}
           onCopy={onCopy}
+          onCopyToWorkspace={onCopyToWorkspace}
           onArchive={onArchive}
           className={CS.ml1}
         />

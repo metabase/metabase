@@ -154,6 +154,23 @@ export const CollectionContentView = ({
     setSelectedAction("copy");
   };
 
+  const handleCopyToWorkspace = (selectedItems: CollectionItem[]) => {
+    const selectedDashboards = selectedItems.map(item => item.id);
+
+    const messageData = {
+      pipelines: {
+        type: "DashboardTransfer",
+        payload: {
+          selectedDashboards,
+        },
+      },
+    };
+    window.parent.postMessage(messageData, "*");
+
+    setSelectedItems(selectedItems);
+    setSelectedAction("copy_to_workspace");
+  };
+
   const handleCreateBookmark = () => {
     createBookmark(collectionId.toString(), "collection");
   };
@@ -264,6 +281,7 @@ export const CollectionContentView = ({
                   collection={collection}
                   onMove={handleMove}
                   onCopy={handleCopy}
+                  onCopyToWorkspace={handleCopyToWorkspace}
                 />
               </ErrorBoundary>
               <ErrorBoundary>
@@ -283,6 +301,7 @@ export const CollectionContentView = ({
                   clear={clear}
                   handleMove={handleMove}
                   handleCopy={handleCopy}
+                  handleCopyToWorkspace={handleCopyToWorkspace}
                 />
                 <CollectionBulkActions
                   collection={collection}
@@ -292,6 +311,7 @@ export const CollectionContentView = ({
                   setSelectedItems={setSelectedItems}
                   selectedAction={selectedAction}
                   setSelectedAction={setSelectedAction}
+                  onCopyToWorkspace={handleCopyToWorkspace}
                 />
               </ErrorBoundary>
             </CollectionMain>

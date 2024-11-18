@@ -14,6 +14,7 @@ export const DEFAULT_EMBED_OPTIONS: EmbedOptions = {
   header: true,
   additional_info: true,
   action_buttons: true,
+  dashboard_workspace_copy_enabled: true,
 } as const;
 
 const allowedEmbedOptions = Object.keys(DEFAULT_EMBED_OPTIONS);
@@ -34,7 +35,7 @@ export const urlParameterToBoolean = (
 const interactiveEmbedSlice = createSlice({
   name: "interactiveEmbed",
   initialState: {
-    options: {} as EmbedOptions,
+    options: DEFAULT_EMBED_OPTIONS,
     isEmbeddingSdk: false,
   },
   reducers: {
@@ -55,10 +56,13 @@ const interactiveEmbedSlice = createSlice({
         ...action.payload,
       };
     },
+    toggleCopyToWorkspace: (state, action: PayloadAction<boolean>) => {
+      state.options.dashboard_workspace_copy_enabled = action.payload;
+    },
   },
 });
 
-export const { setInitialUrlOptions, setOptions } =
+export const { setInitialUrlOptions, setOptions, toggleCopyToWorkspace } =
   interactiveEmbedSlice.actions;
 
 // eslint-disable-next-line import/no-default-export

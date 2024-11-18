@@ -25,6 +25,7 @@ type BaseItemTableRowProps = PropsWithChildren<
     | "createBookmark"
     | "deleteBookmark"
     | "onCopy"
+    | "onCopyToWorkspace"
     | "onMove"
     | "onToggleSelected"
     | "onClick"
@@ -41,6 +42,7 @@ export const TableRow = ({
   ItemComponent = DefaultItemRenderer,
   isPinned,
   onCopy,
+  onCopyToWorkspace,
   onMove,
   onToggleSelected,
   item,
@@ -63,6 +65,7 @@ export const TableRow = ({
       collection={collection}
       isPinned={isPinned}
       onCopy={onCopy}
+      onCopyToWorkspace={onCopyToWorkspace}
       onMove={onMove}
       onToggleSelected={onToggleSelected}
       showActionMenu={showActionMenu}
@@ -79,6 +82,7 @@ export const ItemDragSourceTableRow = ({
   ItemComponent = DefaultItemRenderer,
   isPinned,
   onCopy,
+  onCopyToWorkspace,
   onMove,
   onToggleSelected,
   item,
@@ -112,6 +116,7 @@ export const ItemDragSourceTableRow = ({
           collection={collection}
           isPinned={isPinned}
           onCopy={onCopy}
+          onCopyToWorkspace={onCopyToWorkspace}
           onMove={onMove}
           onToggleSelected={onToggleSelected}
           onClick={onClick}

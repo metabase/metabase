@@ -3,7 +3,10 @@ import _ from "underscore";
 
 import { isFitViewportMode } from "metabase/hoc/FitViewPort";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/lib/dom";
-import { setInitialUrlOptions } from "metabase/redux/embed";
+import {
+  setInitialUrlOptions,
+  toggleCopyToWorkspace,
+} from "metabase/redux/embed";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason
@@ -39,10 +42,27 @@ export function initializeEmbedding(store) {
         if (e.data.metabase.type === "location") {
           store.dispatch(push(e.data.metabase.location));
         }
+      } else if (e.data.pipelines) {
+        if (
+          e.data.pipelines?.type === "FeatureToggles" &&
+          e.data.pipelines?.payload
+        ) {
+          if ("enableCopyToWorkspace" in e.data.pipelines.payload) {
+            const { enableCopyToWorkspace: enable_copy_to_workspace } =
+              e.data.pipelines.payload;
+            store.dispatch(
+              toggleCopyToWorkspace({
+                enable_copy_to_workspace,
+              }),
+            );
+          }
+        }
       }
     });
 
     store.dispatch(setInitialUrlOptions(window.location));
+
+    window.parent.postMessage({ pipelines: { type: "FeatureToggles" } }, "*");
   }
 }
 

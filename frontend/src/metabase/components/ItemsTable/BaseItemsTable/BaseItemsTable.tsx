@@ -5,6 +5,7 @@ import type {
   CreateBookmark,
   DeleteBookmark,
   OnCopy,
+  OnCopyToWorkspace,
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
@@ -110,6 +111,7 @@ export type BaseItemsTableProps = {
   onSelectAll?: () => void;
   onSelectNone?: () => void;
   onCopy?: OnCopy;
+  onCopyToWorkspace?: OnCopyToWorkspace;
   onMove?: OnMove;
   onDrop?: () => void;
   getIsSelected?: (item: any) => boolean;
@@ -133,6 +135,7 @@ export const BaseItemsTable = ({
   hasUnselected,
   isPinned,
   onCopy,
+  onCopyToWorkspace,
   onMove,
   onDrop,
   sortingOptions,
@@ -217,6 +220,7 @@ export const BaseItemsTable = ({
         createBookmark={createBookmark}
         deleteBookmark={deleteBookmark}
         onCopy={onCopy}
+        onCopyToWorkspace={onCopyToWorkspace}
         onMove={onMove}
         onToggleSelected={onToggleSelected}
         onClick={onClick}

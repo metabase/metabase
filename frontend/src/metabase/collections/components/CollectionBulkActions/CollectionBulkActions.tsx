@@ -20,6 +20,7 @@ type CollectionBulkActionsProps = {
   selectedAction: string | null;
   setSelectedAction: (action: string | null) => void;
   clearSelected: () => void;
+  onCopyToWorkspace: (items: CollectionItem[]) => void;
 };
 
 export const CollectionBulkActions = memo(
@@ -31,6 +32,7 @@ export const CollectionBulkActions = memo(
     selectedAction,
     setSelectedAction,
     clearSelected,
+    onCopyToWorkspace,
   }: CollectionBulkActionsProps) => {
     const isVisible = selected.length > 0;
 
@@ -87,6 +89,7 @@ export const CollectionBulkActions = memo(
               clearSelected={clearSelected}
               setSelectedItems={setSelectedItems}
               setSelectedAction={setSelectedAction}
+              onCopyToWorkspace={onCopyToWorkspace}
             />
           )}
         </BulkActionBar>

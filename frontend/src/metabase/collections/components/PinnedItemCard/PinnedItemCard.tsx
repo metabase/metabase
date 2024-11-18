@@ -53,6 +53,7 @@ export type PinnedItemCardProps = {
   className?: string;
   collection?: Collection;
   onCopy?: (items: CollectionItem[]) => void;
+  onCopyToWorkspace?: (items: CollectionItem[]) => void;
   onMove?: (items: CollectionItem[]) => void;
   onClick?: () => void;
 } & ItemOrSkeleton;
@@ -81,6 +82,7 @@ function PinnedItemCard({
   item,
   collection,
   onCopy,
+  onCopyToWorkspace,
   onMove,
   onClick,
   iconForSkeleton,
@@ -133,6 +135,7 @@ function PinnedItemCard({
                     item={item}
                     collection={collection}
                     onCopy={onCopy}
+                    onCopyToWorkspace={onCopyToWorkspace}
                     onMove={onMove}
                   />
                 </EventSandbox>

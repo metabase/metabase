@@ -291,6 +291,7 @@ export const Columns = {
       databases,
       bookmarks,
       onCopy,
+      onCopyToWorkspace,
       onMove,
       createBookmark,
       deleteBookmark,
@@ -304,6 +305,7 @@ export const Columns = {
               databases={databases}
               bookmarks={bookmarks}
               onCopy={onCopy}
+              onCopyToWorkspace={onCopyToWorkspace}
               onMove={onMove}
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}

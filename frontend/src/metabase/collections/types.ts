@@ -9,6 +9,7 @@ import type {
 import type { CollectionOrTableIdProps } from "./components/ModelUploadModal";
 
 export type OnCopy = (items: CollectionItem[]) => void | null;
+export type OnCopyToWorkspace = (items: CollectionItem[]) => void | null;
 export type OnCopyWithoutArguments = () => void;
 export type OnMove = (items: CollectionItem[]) => Promise<any> | void;
 export type OnMoveWithOneItem = (

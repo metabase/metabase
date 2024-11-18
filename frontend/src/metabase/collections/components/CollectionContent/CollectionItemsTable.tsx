@@ -59,6 +59,7 @@ export type CollectionItemsTableProps = {
   deleteBookmark: DeleteBookmark;
   getIsSelected: (item: CollectionItem) => boolean;
   handleCopy: (items: CollectionItem[]) => void;
+  handleCopyToWorkspace: (items: CollectionItem[]) => void;
   handleMove: (items: CollectionItem[]) => void;
   hasPinnedItems: boolean;
   loadingPinnedItems: boolean;
@@ -102,6 +103,7 @@ export const CollectionItemsTable = ({
   clear,
   handleMove,
   handleCopy,
+  handleCopyToWorkspace,
   pageSize = COLLECTION_PAGE_SIZE,
   models = ALL_MODELS,
   onClick,
@@ -205,6 +207,7 @@ export const CollectionItemsTable = ({
               onDrop={clear}
               onMove={handleMove}
               onCopy={handleCopy}
+              onCopyToWorkspace={handleCopyToWorkspace}
               onSelectAll={handleSelectAll}
               onSelectNone={clear}
               onClick={onClick}

@@ -23,6 +23,7 @@ export const BaseItemsTableBody = ({
   createBookmark,
   deleteBookmark,
   onCopy,
+  onCopyToWorkspace,
   onMove,
   onToggleSelected,
   onClick,
@@ -42,6 +43,7 @@ export const BaseItemsTableBody = ({
   | "createBookmark"
   | "deleteBookmark"
   | "onCopy"
+  | "onCopyToWorkspace"
   | "onMove"
   | "onToggleSelected"
   | "showActionMenu"
@@ -73,6 +75,7 @@ export const BaseItemsTableBody = ({
             createBookmark={createBookmark}
             deleteBookmark={deleteBookmark}
             onCopy={onCopy}
+            onCopyToWorkspace={onCopyToWorkspace}
             onMove={onMove}
             onToggleSelected={onToggleSelected}
             items={items}

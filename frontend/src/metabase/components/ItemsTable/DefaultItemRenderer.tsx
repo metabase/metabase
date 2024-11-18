@@ -28,6 +28,7 @@ export const DefaultItemRenderer = ({
   onToggleSelected,
   collection,
   onCopy,
+  onCopyToWorkspace,
   onMove,
   createBookmark,
   deleteBookmark,
@@ -79,6 +80,7 @@ export const DefaultItemRenderer = ({
           databases={databases}
           bookmarks={bookmarks}
           onCopy={onCopy}
+          onCopyToWorkspace={onCopyToWorkspace}
           onMove={onMove}
           createBookmark={createBookmark}
           deleteBookmark={deleteBookmark}

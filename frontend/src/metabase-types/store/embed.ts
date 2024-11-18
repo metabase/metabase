@@ -9,6 +9,7 @@ export interface EmbedOptions {
   header?: boolean;
   additional_info?: boolean;
   action_buttons?: boolean;
+  dashboard_workspace_copy_enabled?: boolean;
 }
 
 export interface EmbedState {
