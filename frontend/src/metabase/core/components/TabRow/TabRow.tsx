@@ -13,7 +13,13 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { usePreviousDistinct } from "react-use";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -123,16 +129,9 @@ function TabRowInner<T>({
   );
 }
 
-export function TabRow<T>(props: TabRowProps<T>) {
-  // We need to define TabRowInnerWithSize inside TabRow because we need dynamic T type.
-  // useMemo is used to avoid this component being recreated on every render which causes it to lose its state.
-  const TabRowInnerWithSize = useMemo(
-    () => ExplicitSize<TabRowProps<T>>()(TabRowInner),
-    [],
-  );
-
-  return <TabRowInnerWithSize {...props} />;
-}
+export const TabRow = ExplicitSize<TabRowProps<unknown>>()(TabRowInner) as <T>(
+  props: TabRowProps<T>,
+) => ReactNode;
 
 interface ScrollArrowProps {
   direction: "left" | "right";
