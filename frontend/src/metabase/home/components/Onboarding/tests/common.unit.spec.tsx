@@ -236,7 +236,7 @@ describe("Onboarding", () => {
 
       expect(cta).toHaveAttribute("href", "/dashboard/1");
       expect(
-        within(cta).getByRole("button", { name: "Edit a sample dashboard" }),
+        within(cta).getByRole("button", { name: "See a sample dashboard" }),
       ).toBeInTheDocument();
     });
 
@@ -254,7 +254,7 @@ describe("Onboarding", () => {
       setup({ openItem: "subscription" });
 
       expect(
-        getItemControl("Get dashboard updates by email"),
+        getItemControl("Subscribe to a dashboard by email or Slack"),
       ).toBeInTheDocument();
 
       const commsSetup = screen.getByTestId("subscription-communication-setup");
@@ -376,16 +376,16 @@ describe("Onboarding", () => {
       ).toBeInTheDocument();
       expect(
         within(learning).getByText(
-          /There are more tutorials and guides to explore./,
+          /data visualization, modeling, and other data/,
         ),
       ).toBeInTheDocument();
       expect(
         within(learning).getByRole("link", {
-          name: "Click here to continue learning",
+          name: "Docs",
         }),
       ).toHaveAttribute(
         "href",
-        "https://www.youtube.com/playlist?list=PLzmftu0Z5MYGY0aA3rgIGwSCifECMeuG6",
+        "https://www.metabase.com/docs/latest/?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss",
       );
     });
 
