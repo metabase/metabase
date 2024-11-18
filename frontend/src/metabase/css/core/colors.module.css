@@ -296,11 +296,6 @@
   color: var(--mb-color-brand);
 }
 
-.bgBrandLight,
-.bgBrandLightHover:hover {
-  background: var(--mb-color-brand-light);
-}
-
 .textSuccess {
   color: var(--mb-color-success);
 }
