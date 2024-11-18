@@ -76,7 +76,7 @@
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   clj-commons/clj-yaml                      {:mvn/version "1.0.27"}             ; Clojure wrapper for YAML library SnakeYAML
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.554"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.556"}
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}

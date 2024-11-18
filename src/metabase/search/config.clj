@@ -41,8 +41,14 @@
   10)
 
 (def ^:const view-count-scaling
-  "The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
-  50)
+  "A constant factor influencing how quickly the incremental score grows with view count for a given search model.
+  The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
+  0.2)
+
+(def ^:const view-count-scaling-percentile
+  "The percentile of the given search model's view counts, to be multiplied by [[view-count-scaling]].
+  The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
+  0.9)
 
 (def ^:const surrounding-match-context
   "Show this many words of context before/after matches in long search results"

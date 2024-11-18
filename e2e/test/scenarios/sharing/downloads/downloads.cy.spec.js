@@ -413,7 +413,7 @@ describe("scenarios > question > download", () => {
       });
 
       showDashboardCardActions(0);
-      getDashboardCard(0).findByText("Created At").should("be.visible");
+      getDashboardCard(0).findByText("Created At: Month").should("be.visible");
       getDashboardCardMenu(0).click();
 
       exportFromDashcard(".png");
@@ -511,7 +511,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
     });
 
     showDashboardCardActions(0);
-    getDashboardCard(0).findByText("Created At").should("be.visible");
+    getDashboardCard(0).findByText("Created At: Month").should("be.visible");
     getDashboardCardMenu(0).click();
 
     exportFromDashcard(".png");

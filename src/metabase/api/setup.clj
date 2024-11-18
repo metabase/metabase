@@ -221,7 +221,7 @@
    {:title       (tru "Set Slack credentials")
     :group       (tru "Get connected")
     :description (tru "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions.")
-    :link        "/admin/settings/slack"
+    :link        "/admin/settings/notifications/slack"
     :completed   (configured :slack)
     :triggered   :always}
    {:title       (tru "Setup embedding")
