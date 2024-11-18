@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { ModalRootProps } from "@mantine/core/lib/Modal/ModalRoot/ModalRoot";
 import { merge } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
@@ -6,7 +8,13 @@ import {
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
 } from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
-import type { MantineThemeOverride } from "metabase/ui";
+import type {
+  MantineThemeOverride,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ModalProps,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  PopoverProps,
+} from "metabase/ui";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 
@@ -149,7 +157,7 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
       defaultProps: {
         withinPortal: true,
         target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
-      }, //  satisfies Partial<ModalRootProps>,
+      }, // satisfies Partial<ModalRootProps>,
     },
     Modal: {
       defaultProps: {

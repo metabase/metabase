@@ -35,7 +35,7 @@ describe("Transform Embedding Theme Override", () => {
         fontSize: "2rem",
         ...DEFAULT_EMBEDDED_COMPONENT_THEME,
       },
-      components: getEmbeddingComponentOverrides(theme.components),
+      components: getEmbeddingComponentOverrides(),
     });
   });
 });

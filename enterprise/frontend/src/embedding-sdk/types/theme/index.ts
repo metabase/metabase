@@ -169,7 +169,7 @@ export type MetabaseComponentTheme = {
   };
 
   /** Popover */
-  popover?: {
+  popover: {
     /** z-index of floating-elements. Defaults to 200. */
     zIndex?: number;
   };
