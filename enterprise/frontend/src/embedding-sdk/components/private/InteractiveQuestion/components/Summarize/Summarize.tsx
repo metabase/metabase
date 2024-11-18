@@ -2,28 +2,24 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { match } from "ts-pattern";
 
+import { MultiStepPopover } from "embedding-sdk/components/private/util/MultiStepPopover";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
 import {
   type AggregationItem,
   getAggregationItems,
 } from "metabase/query_builder/utils/get-aggregation-items";
-import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { MultiStepPopover } from "../../util/MultiStepPopover";
-import { useInteractiveQuestionContext } from "../context";
-
-import { BadgeList } from "./util/BadgeList";
-
-type SummarizeProps = { onClose?: () => void };
+import { useInteractiveQuestionContext } from "../../context";
+import { BadgeList } from "../util/BadgeList";
+import { ToolbarButton } from "../util/ToolbarButton";
 
 export const SummarizeInner = ({
   query,
   onQueryChange,
   stageIndex,
-  onClose,
-}: UpdateQueryHookProps & SummarizeProps) => {
+}: UpdateQueryHookProps) => {
   const aggregationItems = useMemo(
     () => getAggregationItems({ query, stageIndex }),
     [query, stageIndex],
@@ -51,21 +47,17 @@ export const SummarizeInner = ({
         setStep("list");
       }
     },
-    onClose,
   });
 
   return (
     <MultiStepPopover currentStep={step} opened={opened} onClose={close}>
       <MultiStepPopover.Target>
-        <Button
+        <ToolbarButton
+          label={label}
+          icon={"sum"}
+          isHighlighted={aggregationItems.length > 0}
           onClick={toggle}
-          variant={aggregationItems.length === 0 ? "subtle" : "filled"}
-          leftIcon={<Icon name="sum" />}
-          py="sm"
-          px="md"
-        >
-          {label}
-        </Button>
+        />
       </MultiStepPopover.Target>
       <MultiStepPopover.Step value="picker">
         <AggregationPicker
@@ -112,7 +104,7 @@ export const SummarizeInner = ({
   );
 };
 
-export const Summarize = ({ onClose }: SummarizeProps) => {
+export const Summarize = () => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   if (!question) {
@@ -130,7 +122,6 @@ export const Summarize = ({ onClose }: SummarizeProps) => {
       query={query}
       onQueryChange={onQueryChange}
       stageIndex={-1}
-      onClose={onClose}
     />
   );
 };

@@ -30,12 +30,6 @@ describe("BadgeListItem", () => {
     expect(onSelectItem).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onRemoveItem when close button is clicked", async () => {
-    const { onRemoveItem } = setup();
-    await userEvent.click(screen.getByLabelText("close icon"));
-    expect(onRemoveItem).toHaveBeenCalledTimes(1);
-  });
-
   it("prevents badge click event when clicking remove button", async () => {
     const { onSelectItem, onRemoveItem } = setup();
     await userEvent.click(screen.getByLabelText("close icon"));
