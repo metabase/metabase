@@ -35,7 +35,7 @@ export type InteractiveDashboardProps = {
    * @todo pass the question context to the question view component,
    *       once we have a public-facing question context.
    */
-  renderQuestionView?: () => ReactNode;
+  renderDrillThroughQuestion?: () => ReactNode;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -52,7 +52,7 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
   style,
-  renderQuestionView: AdHocQuestionView,
+  renderDrillThroughQuestion: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
   const {
     displayOptions,

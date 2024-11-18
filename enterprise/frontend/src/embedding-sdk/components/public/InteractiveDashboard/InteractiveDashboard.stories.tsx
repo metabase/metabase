@@ -37,7 +37,7 @@ export const WithCustomQuestionLayout = {
 
   args: {
     dashboardId: DASHBOARD_ID,
-    renderQuestionView: () => (
+    renderDrillThroughQuestion: () => (
       <Stack>
         <InteractiveQuestion.Title />
         <InteractiveQuestion.QuestionVisualization />
