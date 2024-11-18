@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.debug :as qp.debug]
@@ -589,8 +590,9 @@
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
-  (deduplicate-cols-names
-   (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
+  (->> (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)
+       (deduplicate-cols-names)
+       (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)))
 
 (defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.

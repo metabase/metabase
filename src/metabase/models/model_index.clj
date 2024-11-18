@@ -187,6 +187,7 @@
 
 (search/define-spec "indexed-entity"
   {:model        :model/ModelIndexValue
+   :visibility   :app-user
    :attrs        {:id            :model_pk
                   :collection-id :collection.id
                   :creator-id    false

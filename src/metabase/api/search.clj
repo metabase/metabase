@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search :as search]
    [metabase.search.config :as search.config]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -53,8 +54,8 @@
     (throw (ex-info "Search index is not enabled." {:status-code 501}))
 
     (search/supports-index?)
-    (if (task/job-exists? task.search-index/job-key)
-      (do (task/trigger-now! task.search-index/job-key) {:message "task triggered"})
+    (if (task/job-exists? task.search-index/reindex-job-key)
+      (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (search/reindex!) {:message "done"}))
 
     :else
@@ -135,6 +136,8 @@
        :created-at                          created_at
        :created-by                          (set created_by)
        :current-user-id                     api/*current-user-id*
+       :is-impersonated-user?               (premium-features/impersonated-user?)
+       :is-sandboxed-user?                  (premium-features/sandboxed-user?)
        :is-superuser?                       api/*is-superuser?*
        :current-user-perms                  @api/*current-user-permissions-set*
        :filter-items-in-personal-collection filter_items_in_personal_collection

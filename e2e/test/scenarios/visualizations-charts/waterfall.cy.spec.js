@@ -157,7 +157,7 @@ describe("scenarios > visualizations > waterfall", () => {
       switchToWaterfallDisplay();
 
       echartsContainer().within(() => {
-        cy.findByText("Created At").should("exist"); // x-axis
+        cy.findByText("Created At: Year").should("exist"); // x-axis
         cy.findByText("Count").should("exist"); // y-axis
         cy.findByText("Sum of Total").should("not.exist");
 
@@ -187,7 +187,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
       echartsContainer().within(() => {
         cy.findByText("Sum of Total").should("exist"); // x-axis
-        cy.findByText("Created At").should("exist"); // y-axis
+        cy.findByText("Created At: Year").should("exist"); // y-axis
         cy.findByText("Count").should("not.exist");
 
         // x-axis labels (some)
