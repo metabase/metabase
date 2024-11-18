@@ -93,6 +93,7 @@ export function FilterPopover({
   useEffect(() => {
     if (
       filter &&
+      // eslint-disable-next-line no-restricted-syntax
       filter.legacyQuery({ useStructuredQuery: true }) === previousQuery &&
       legacyQuery !== previousQuery
     ) {
@@ -142,13 +143,17 @@ export function FilterPopover({
     const field = dimension?.field();
     const newFilter =
       !filter ||
+      // eslint-disable-next-line no-restricted-syntax
       filter.legacyQuery({ useStructuredQuery: true }) !==
+        // eslint-disable-next-line no-restricted-syntax
         dimension.legacyQuery({ useStructuredQuery: true }) ||
       field?.isDate?.()
         ? new Filter(
             [],
             null,
+            // eslint-disable-next-line no-restricted-syntax
             dimension.legacyQuery({ useStructuredQuery: true }) ||
+              // eslint-disable-next-line no-restricted-syntax
               (filter && filter.legacyQuery({ useStructuredQuery: true })) ||
               legacyQuery,
           )
@@ -212,7 +217,8 @@ export function FilterPopover({
           style={{ color: color("filter") }}
           maxHeight={Infinity}
           dimension={dimension}
-          sections={(
+          sections={// eslint-disable-next-line no-restricted-syntax
+          (
             (filter && filter.legacyQuery({ useStructuredQuery: true })) ||
             legacyQuery
           ).filterFieldOptionSections(filter, {
