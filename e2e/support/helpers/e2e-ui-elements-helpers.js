@@ -1,17 +1,13 @@
 // Functions that get key elements in the app
 
+// TODO: Remove the [data-element-id] selector if possible
 export const POPOVER_ELEMENT =
-  ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
+  "[role='status'],[role='menu'],[role='dialog'],[role='tooltip'],[role='alert'],.popover[data-state~='visible'],[data-element-id='mantine-popover']";
 
-/** The currently visible popover dropdown
+/** The currently visible popover (a.k.a. overlay or floating element).
  *
- * Note: This function finds Mantine <Popover> dropdowns as well as Mantine <Menu>
- * dropdowns (which also have the attribute data-element-id="mantine-popover")
- * */
-export function popover() {
-  cy.get(POPOVER_ELEMENT).should("be.visible");
-  return cy.get(POPOVER_ELEMENT);
-}
+ * Note: Mantine's "Popover" component is only one kind of popover. */
+export const popover = () => cy.get(POPOVER_ELEMENT).should("be.visible");
 
 const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 

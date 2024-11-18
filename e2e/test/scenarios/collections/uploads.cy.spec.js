@@ -170,7 +170,7 @@ describeWithSnowplow(
         });
 
         describe("CSV appends", () => {
-          it.only("Can append a CSV file to an existing table", () => {
+          it("Can append a CSV file to an existing table", () => {
             uploadFileToCollection(VALID_CSV_FILES[0]);
             cy.findByTestId("view-footer").findByText(
               `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
