@@ -1,53 +1,29 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type Ref, forwardRef, useState } from "react";
+import { useState } from "react";
 import { match } from "ts-pattern";
 
-import { getBreakoutListItem } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
+import {
+  type ListItem as BreakoutListItem,
+  getBreakoutListItem,
+} from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
 } from "metabase/query_builder/hooks";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
-import { Button, type ButtonProps, Icon, Stack } from "metabase/ui";
+import { Button, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { MultiStepPopover } from "../../util/MultiStepPopover";
 import { useInteractiveQuestionContext } from "../context";
 
 import { BadgeList } from "./util/BadgeList";
+import { ToolbarButton } from "./util/ToolbarButton";
 
-const BreakoutButtonInner = (
-  { query, stageIndex, ...buttonProps }: UpdateQueryHookProps & ButtonProps,
-  ref: Ref<HTMLButtonElement>,
-) => {
-  const breakouts = Lib.breakouts(query, stageIndex);
-
-  const items = breakouts.map(breakout =>
-    getBreakoutListItem(query, stageIndex, breakout),
-  );
-
-  const label = match(items.length)
-    .with(0, () => "Group")
-    .with(1, () => "1 grouping")
-    .otherwise(value => `${value} groupings`);
-
-  const variant = items.length ? "filled" : "subtle";
-
-  return (
-    <Button
-      ref={ref}
-      variant={variant}
-      leftIcon={<Icon name="arrow_split" />}
-      py="sm"
-      px="md"
-      {...buttonProps}
-    >
-      {label}
-    </Button>
-  );
+type BreakoutItem = {
+  breakout?: Lib.BreakoutClause;
+  breakoutIndex?: number;
 };
-
-const BreakoutButton = forwardRef(BreakoutButtonInner);
 
 export const BreakoutInner = ({
   query,
@@ -59,37 +35,50 @@ export const BreakoutInner = ({
 
   const breakouts = Lib.breakouts(query, stageIndex);
 
-  const items = breakouts.map(breakout =>
+  const items: BreakoutListItem[] = breakouts.map(breakout =>
     getBreakoutListItem(query, stageIndex, breakout),
   );
 
   const [step, setStep] = useState<"picker" | "list">("list");
 
-  const [selectedBreakout, setSelectedBreakout] = useState<{
-    breakout?: Lib.BreakoutClause;
-    breakoutIndex?: number;
-  }>({
+  const [selectedBreakout, setSelectedBreakout] = useState<BreakoutItem>({
     breakout: undefined,
     breakoutIndex: undefined,
   });
 
   const [opened, { close, toggle }] = useDisclosure(false, {
-    onOpen: () => {
-      if (items.length === 0) {
-        setStep("picker");
-      } else {
-        setStep("list");
-      }
-    },
+    onOpen: () => setStep(items.length === 0 ? "picker" : "list"),
   });
+
+  const label = match(items.length)
+    .with(0, () => "Group")
+    .with(1, () => "1 grouping")
+    .otherwise(value => `${value} groupings`);
+
+  const onSelectItem = (item?: BreakoutListItem, index?: number) => {
+    setSelectedBreakout({
+      breakout: item?.breakout,
+      breakoutIndex: index,
+    });
+    setStep("picker");
+  };
+
+  function handleRemoveItem(item: BreakoutListItem) {
+    if (item.breakout) {
+      onRemoveBreakout(item.breakout);
+    }
+    if (items.length === 1) {
+      close();
+    }
+  }
 
   return (
     <MultiStepPopover currentStep={step} opened={opened} onClose={close}>
       <MultiStepPopover.Target>
-        <BreakoutButton
-          query={query}
-          onQueryChange={onQueryChange}
-          stageIndex={stageIndex}
+        <ToolbarButton
+          label={label}
+          icon="arrow_split"
+          isHighlighted={items.length > 0}
           onClick={toggle}
         />
       </MultiStepPopover.Target>
@@ -114,25 +103,9 @@ export const BreakoutInner = ({
             name: item.displayName,
             item,
           }))}
-          onSelectItem={(item, index) => {
-            setSelectedBreakout({
-              breakout: item?.breakout,
-              breakoutIndex: index,
-            });
-            setStep("picker");
-          }}
-          onAddItem={() => {
-            setStep("picker");
-            setSelectedBreakout({});
-          }}
-          onRemoveItem={item => {
-            if (item?.breakout) {
-              onRemoveBreakout(item.breakout);
-            }
-            if (items.length === 1) {
-              close();
-            }
-          }}
+          onSelectItem={onSelectItem}
+          onAddItem={onSelectItem}
+          onRemoveItem={handleRemoveItem}
           addButtonLabel={"Add grouping"}
         />
       </MultiStepPopover.Step>
