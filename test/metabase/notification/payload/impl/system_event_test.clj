@@ -201,7 +201,7 @@
         admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
     (testing "send to admins with a link to setting page"
       (check admin-emails [#"Your Slack connection stopped working"
-                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
+                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/notifications/slack\"[^>]*>Go to settings</a>"]))
 
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]
