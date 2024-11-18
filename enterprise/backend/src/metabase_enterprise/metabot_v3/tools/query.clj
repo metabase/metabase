@@ -218,7 +218,7 @@
                                      (apply-summarize summarize)
                                      lib.query/->legacy-MBQL)}]}
     (catch ExceptionInfo e
-      (log/debug e "Error in filter-data tool")
+      (log/debug e "Error in aggregate-data tool")
       {:output (ex-message e)})))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/aggregate-data
