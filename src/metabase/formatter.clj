@@ -30,7 +30,7 @@
 
 (p/import-vars
  [datetime
-  format-temporal-str
+  make-temporal-str-formatter
   temporal-string?])
 
 (def RenderedPulseCard
@@ -283,7 +283,7 @@
      ;; for numbers, return a format function that has already computed the differences.
      ;; todo: do the same for temporal strings
      (and apply-formatting? (types/temporal-field? col))
-     #(datetime/format-temporal-str timezone-id % col visualization-settings)
+     (datetime/make-temporal-str-formatter timezone-id col visualization-settings)
 
      (and apply-formatting? (isa? (:semantic_type col) :type/Coordinate))
      (partial format-geographic-coordinates (:semantic_type col))
