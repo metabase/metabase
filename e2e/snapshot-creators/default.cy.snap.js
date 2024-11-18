@@ -8,7 +8,6 @@ import {
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import {
-  changeSynchronousBatchUpdateSetting,
   restore,
   snapshot,
   updateSetting,
@@ -95,7 +94,9 @@ describe("snapshots", () => {
     // significantly increasing their flakiness. These failures hardly reflect real-life
     // scenarios, as users do not interact with the UI as quickly as Cypress does.
     // To mitigate this type of flakiness, we use synchronous updates by default in e2e tests.
-    changeSynchronousBatchUpdateSetting(true);
+    //
+    // The most frequently flaky tests were the dashboard filter tests, often involving last_used_param_values.
+    updateSetting("synchronous-batch-updates", true);
 
     updateSetting("enable-public-sharing", true);
     // interactive is not enabled in the snapshots as it requires a premium feature
