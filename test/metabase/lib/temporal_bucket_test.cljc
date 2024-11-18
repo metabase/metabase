@@ -135,8 +135,8 @@
             (is (= (assoc-in expected-defaults [0 :unit] unit)
                    (filter :default options)))))))
     (testing "inherited-temporal-unit other than default disables a default bucket"
-      (is (every? (complement :default) (lib.temporal-bucket/available-temporal-buckets-method
-                                         nil -1 (assoc column :inherited-temporal-unit :day)))))
+      (is (not-any? :default (lib.temporal-bucket/available-temporal-buckets-method
+                              nil -1 (assoc column :inherited-temporal-unit :day)))))
     (testing "default inherited-temporal-unit does not disable a default bucket"
       (is (some :default (lib.temporal-bucket/available-temporal-buckets-method
                           nil -1 (assoc column :inherited-temporal-unit :default)))))))
