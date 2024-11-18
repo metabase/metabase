@@ -34,7 +34,7 @@
 (def ^:const stale-time-in-days
   "Results older than this number of days are all considered to be equally old. In other words, there is a ranking
   bonus for results newer than this (scaled to just how recent they are). c.f. `search.scoring/recency-score`"
-  180)
+  30)
 
 (def ^:const dashboard-count-ceiling
   "Results in more dashboards than this are all considered to be equally popular."
