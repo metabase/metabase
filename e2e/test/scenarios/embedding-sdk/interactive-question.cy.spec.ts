@@ -155,7 +155,7 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().contains("User ID is 12");
   });
 
-  it("can save questions via the SaveQuestionForm component", () => {
+  it("can create questions via the SaveQuestionForm component", () => {
     visitInteractiveQuestionStory({
       storyId: "embeddingsdk-interactivequestion-savequestionform--default",
     });
@@ -163,6 +163,11 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     saveInteractiveQuestionAsNewQuestion({
       entityName: "Orders",
       questionName: "Sample Orders 4",
+    });
+
+    cy.wait("@createCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      expect(response?.body.name).to.equal("Sample Orders 4");
     });
 
     getSdkRoot().contains("onBeforeSave is called");
