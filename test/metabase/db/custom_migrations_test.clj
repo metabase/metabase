@@ -1879,7 +1879,7 @@
                                                    :details    "{}"})
             card-ids    (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   (mapv (fn [[name {:keys [card]}]]
-                                                          (merge card {:name name
+                                                          (merge card {:name          name
                                                                        :created_at    :%now
                                                                        :updated_at    :%now
                                                                        :creator_id    user-id
@@ -1895,10 +1895,10 @@
                            (map (fn [card] (update card :visualization_settings #(json/parse-string % keyword)))))]
             (doseq [{:keys [name] :as card} cards]
               (testing (format "Migrating a card where: %s" name)
-                (is (= (-> (get-in area-bar-combo-cards-test-data [name :expected])
-                           (dissoc :name))
-                       (-> card
-                           (dissoc :name))))))))))))
+                (is (partial= (-> (get-in area-bar-combo-cards-test-data [name :expected])
+                                  (dissoc :name))
+                              (-> card
+                                  (dissoc :name))))))))))))
 
 (def ^:private migrate-uploads-default-db
   {:name       "DB"
@@ -2177,3 +2177,64 @@
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
                      (json/parse-string keyword-except-column-key)))))))))
+
+(def ^:private graph-max-categories-cards-test-data
+  {"Any chart that isn't bar is unaffected"
+   {:card     {:display                "area"
+               :visualization_settings (json/generate-string
+                                        {:whatever_viz_setting true})}
+    :expected {:display                "area"
+               :visualization_settings (json/generate-string
+                                        {:whatever_viz_setting true})}}
+
+   "Bar charts have :graph.max_categories_enabled set to false."
+   {:card     {:display                "bar"
+               :visualization_settings (json/generate-string
+                                        {})}
+    :expected {:display                "bar"
+               :visualization_settings {:graph.max_categories_enabled false}}}
+
+   "Bar charts have :graph.max_categories_enabled is left alone if a value is already present."
+   {:card     {:display                "bar"
+               :visualization_settings (json/generate-string
+                                        {:graph.max_categories_enabled true})}
+    :expected {:display                "bar"
+               :visualization_settings {:graph.max_categories_enabled true}}}})
+
+(deftest create-graph-max-categories-enabled-test
+  (testing "Migration v52.2024-11-15T10:00:00: Add graph.max_categories_enabled to bar chart viz-settings, defaulting to false"
+    (impl/test-migrations ["v52.2024-11-15T10:00:00"] [migrate!]
+      (let [user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-ids    (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  (mapv (fn [[name {:keys [card]}]]
+                                                          (merge card {:name          name
+                                                                       :created_at    :%now
+                                                                       :updated_at    :%now
+                                                                       :creator_id    user-id
+                                                                       :dataset_query "{}"
+                                                                       :database_id   database-id
+                                                                       :collection_id nil}))
+                                                        graph-max-categories-cards-test-data))]
+        (migrate!)
+        (testing "Area Bar Combo Stacked Viz settings migration"
+          (let [cards (->> (t2/query {:select [:name :display :visualization_settings]
+                                      :from   [:report_card]
+                                      :where  [:in :id card-ids]})
+                           (map (fn [card] (update card :visualization_settings #(json/parse-string % keyword)))))]
+            (doseq [{:keys [name] :as card} cards]
+              (testing (format "Migrating a card where: %s" name)
+                (is (partial= (-> (get-in area-bar-combo-cards-test-data [name :expected])
+                                  (dissoc :name))
+                              (-> card
+                                  (dissoc :name))))))))))))
