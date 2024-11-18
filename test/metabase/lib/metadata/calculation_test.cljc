@@ -353,7 +353,7 @@
         breakout-ref (first (lib/breakouts card-query))
         mp (lib.tu/metadata-provider-with-card-from-query card-id card-query)
         query (lib/query mp (lib.metadata/card mp card-id))]
-    (testing "_cols functions_ return :inherited-temporla-unit for a card source"
+    (testing "_cols functions_ return :inherited-temporal-unit for a card source"
       (doseq [cols-fn cols-fns]
         (is (contains? (lib/find-matching-column breakout-ref (cols-fn query))
                        :inherited-temporal-unit))))))
@@ -373,8 +373,9 @@
                 (lib/append-stage $))]
     (testing "_cols functions_ return :inherited-temporla-unit for bucketed expressions"
       (doseq [cols-fn cols-fns]
-        (is (contains? (lib/find-matching-column (lib/expression-ref query 0 expression-name) (cols-fn query))
-                       :inherited-temporal-unit))))
+        (is (= :quarter (-> (lib/expression-ref query 0 expression-name)
+                            (lib/find-matching-column (cols-fn query))
+                            :inherited-temporal-unit)))))
     (testing "orderable columns do not contain inherited-temporal-unit for expression"
       (is (not (contains? (lib/find-matching-column (lib/expression-ref query 0 expression-name)
                                                     (lib/orderable-columns query 0))
