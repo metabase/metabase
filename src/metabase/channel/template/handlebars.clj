@@ -27,6 +27,7 @@
     nil)
   (^Template get [^TemplateCache this ^TemplateSource source ^Parser parser]
     (let [[cached-source cached-template :as entry] (get @cache source)]
+      (log/fatalf "Template %s with last modified %s and cached modified %s" source (when source (.lastModified source)) (when cached-source (.lastModified ^TemplateSource cached-source)))
       (cond
         (nil? entry)
         (let [template (.parse parser source)]
