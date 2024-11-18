@@ -40,14 +40,21 @@ export const SummarizeInner = ({
 
   const [step, setStep] = useState<"picker" | "list">("picker");
   const [opened, { close, toggle }] = useDisclosure(false, {
-    onOpen: () => {
-      if (aggregationItems.length === 0) {
-        setStep("picker");
-      } else {
-        setStep("list");
-      }
-    },
+    onOpen: () => setStep(aggregationItems.length === 0 ? "picker" : "list"),
   });
+
+  const onSelectBadge = (item?: AggregationItem) => {
+    setSelectedAggregationItem(item);
+    setStep("picker");
+  };
+
+  const onRemoveBadge = (item: AggregationItem) => {
+    handleRemove(item.aggregation);
+
+    if (aggregationItems.length === 1) {
+      close();
+    }
+  };
 
   return (
     <MultiStepPopover currentStep={step} opened={opened} onClose={close}>
@@ -71,7 +78,9 @@ export const SummarizeInner = ({
           }
           allowTemporalComparisons
           onQueryChange={onQueryChange}
+          /* Called when a new aggregation is selected */
           onClose={() => setStep("list")}
+          /* Called when the back button is clicked */
           onBack={() => setStep("list")}
         />
       </MultiStepPopover.Step>
@@ -81,22 +90,9 @@ export const SummarizeInner = ({
             name: item.displayName,
             item,
           }))}
-          onSelectItem={item => {
-            setSelectedAggregationItem(item);
-            setStep("picker");
-          }}
-          onAddItem={() => {
-            setStep("picker");
-            setSelectedAggregationItem(undefined);
-          }}
-          onRemoveItem={item => {
-            if (item) {
-              handleRemove(item.aggregation);
-            }
-            if (aggregationItems.length === 1) {
-              close();
-            }
-          }}
+          onSelectItem={onSelectBadge}
+          onAddItem={onSelectBadge}
+          onRemoveItem={onRemoveBadge}
           addButtonLabel={"Add grouping"}
         />
       </MultiStepPopover.Step>
