@@ -103,6 +103,7 @@ export const InteractiveQuestionResult = ({
             }
           />
           <InteractiveQuestion.Summarize />
+          <InteractiveQuestion.Breakout />
           <InteractiveQuestion.EditorButton
             isOpen={questionView === "editor"}
             onClick={() =>
