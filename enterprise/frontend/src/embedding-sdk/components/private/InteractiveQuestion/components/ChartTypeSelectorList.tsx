@@ -56,14 +56,14 @@ export const ChartTypeSelectorList = () => {
   );
 
   return (
-    <Menu>
+    <Menu position="bottom-start">
       <Menu.Target>
         <ToolbarButton
           label={selectedElem.label}
           icon={selectedElem.iconName}
           isHighlighted={false}
           variant="default"
-          rightIcon={<Icon size={10} name="chevrondown" />}
+          rightIcon={<Icon ml="xs" size={10} name="chevrondown" />}
         />
       </Menu.Target>
       <Menu.Dropdown h="30rem">
