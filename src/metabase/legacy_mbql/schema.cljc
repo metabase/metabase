@@ -252,6 +252,10 @@
     {:error/message "field options"}
     [:base-type {:optional true} [:maybe ::lib.schema.common/base-type]]
 
+    ;; Following option conveys temporal unit that was set on a ref in previous stages. For details refer to
+    ;; [:metabase.lib.schema.ref/field.options] schema.
+    [:inherited-temporal-unit {:optional true} [:maybe ::DateTimeUnit]]
+
     [:source-field
      {:optional true
       :description

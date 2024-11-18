@@ -1126,7 +1126,7 @@ describe("issue 44532", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
-      cy.findByText("Created At").should("exist"); // x-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
       cy.findByText("January 2023").should("exist");
@@ -1152,7 +1152,7 @@ describe("issue 44532", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
-      cy.findByText("Created At").should("exist"); // x-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
       cy.findByText("January 2023").should("exist");
@@ -1285,7 +1285,7 @@ describe("issue 43294", () => {
     queryBuilderFooter().findByLabelText("Switch to visualization").click();
     echartsContainer().within(() => {
       cy.findByText("Count").should("be.visible");
-      cy.findByText("Created At").should("be.visible");
+      cy.findByText("Created At: Month").should("be.visible");
     });
   });
 });
@@ -2210,7 +2210,7 @@ describe("issue 36027", () => {
     visualize();
 
     echartsContainer().within(() => {
-      cy.findByText("Created At").should("be.visible"); // x-axis
+      cy.findByText("Created At: Month").should("be.visible"); // x-axis
       cy.findByText("Count").should("be.visible"); // y-axis
 
       // x-axis values
