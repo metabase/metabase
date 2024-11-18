@@ -167,6 +167,6 @@ Metabase will display this illustration when searches don't return any results.
 
 ## Further reading
 
-- [Customer-facing analytics](https://www.metabase.com/learn/customer-facing-analytics).
+- [Customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding).
 - [Embedding introduction](../embedding/start.md).
-- [Brand your Metabase](https://www.metabase.com/learn/embedding/brand).
+- [Brand your Metabase](https://www.metabase.com/learn/metabase-basics/embedding/brand).

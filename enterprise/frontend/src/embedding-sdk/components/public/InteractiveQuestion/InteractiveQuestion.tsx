@@ -9,7 +9,9 @@ import {
   Filter,
   FilterBar,
   FilterButton,
+  FilterPicker,
   QuestionResetButton,
+  QuestionSettings,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
@@ -89,6 +91,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   BackButton: typeof BackButton;
   FilterBar: typeof FilterBar;
   Filter: typeof Filter;
+  FilterPicker: typeof FilterPicker;
   FilterButton: typeof FilterButton;
   ResetButton: typeof QuestionResetButton;
   Title: typeof Title;
@@ -105,12 +108,14 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
   EditorViewControl: typeof EditorViewControl;
+  QuestionSettings: typeof QuestionSettings;
 };
 
 InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.FilterBar = FilterBar;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterButton = FilterButton;
+InteractiveQuestion.FilterPicker = FilterPicker;
 InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
@@ -126,5 +131,6 @@ InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
+InteractiveQuestion.QuestionSettings = QuestionSettings;
 
 export { InteractiveQuestion };

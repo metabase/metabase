@@ -12,11 +12,11 @@
 (defn substitute-params
   "Substitute parameters in text with values from context.
 
-  Params are specified using mustache syntax, e.g. {{param}}."
+  Params are specified using handlebars syntax, e.g. {{param}}."
   [text context & {:keys [ignore-missing?]
                    :or   {ignore-missing? false}
                    :as   _opts}]
-  ;; NOTE: in case the syntax involves, consider using the mustache syntax and use stencil for substitution
+  ;; NOTE: in case the syntax involves, consider using the handlebars syntax and use stencil for substitution
   (let [components (params.parse/parse text)]
     (str/join ""
               (for [c components]
