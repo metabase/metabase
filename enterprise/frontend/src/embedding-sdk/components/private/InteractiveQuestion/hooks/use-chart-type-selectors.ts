@@ -1,9 +1,11 @@
+import { useMemo } from "react";
+
 import {
   getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
+
 import { useInteractiveQuestionContext } from "../context";
-import { useMemo } from "react";
 
 export const useChartTypeSelectors = () => {
   const { question, queryResults, updateQuestion } =

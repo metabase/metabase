@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -23,7 +24,6 @@ import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
 import type { CardEntityId, CardId, Dataset } from "metabase-types/api";
-import { useMemo } from "react";
 
 export type StaticQuestionProps = {
   questionId: CardId | CardEntityId;
