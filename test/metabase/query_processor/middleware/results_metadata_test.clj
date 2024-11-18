@@ -208,7 +208,7 @@
                 :effective_type    :type/Date
                 :visibility_type :normal
                 :coercion_strategy nil
-                :display_name "Date"
+                :display_name "Date: Year"
                 :name         "DATE"
                 :unit         :year
                 :settings     nil

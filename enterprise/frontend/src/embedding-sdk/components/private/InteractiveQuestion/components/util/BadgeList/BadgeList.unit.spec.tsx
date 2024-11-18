@@ -4,7 +4,9 @@ import { render, screen } from "__support__/ui";
 
 import { BadgeList, type BadgeListProps } from "./BadgeList";
 
-const setup = (props: Partial<BadgeListProps<{ id: number }>> = {}) => {
+type SetupOpts = Partial<BadgeListProps<{ id: number }>>;
+
+const setup = (opts: SetupOpts = {}) => {
   const items = [
     { name: "item1", item: { id: 1 } },
     { name: "item2", item: { id: 2 } },
@@ -13,7 +15,7 @@ const setup = (props: Partial<BadgeListProps<{ id: number }>> = {}) => {
   const onAddItem = jest.fn();
   const onRemoveItem = jest.fn();
   const addButtonLabel =
-    "addButtonLabel" in props ? props.addButtonLabel : "Add new";
+    "addButtonLabel" in opts ? opts.addButtonLabel : "Add new";
 
   render(
     <BadgeList
