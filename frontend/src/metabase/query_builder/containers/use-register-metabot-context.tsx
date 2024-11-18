@@ -1,11 +1,9 @@
-import _ from "underscore";
-
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { getVisualizationMetabotContext } from "metabase/metabot-v3/selectors";
 
 import {
-  getQueryResults,
+  getFirstQueryResult,
   getQuestion,
   getVisualizationSettings,
 } from "../selectors";
@@ -13,37 +11,19 @@ import {
 export const useRegisterMetabotContext = () => {
   useRegisterMetabotContextProvider(state => {
     const question = getQuestion(state);
-
-    const queryResults = getQueryResults(state);
-    const queryResultCols = queryResults?.[0]?.data?.cols ?? [];
-    const columnNames = queryResultCols.map((col: any) => ({
-      name: col.name,
-      ...(col.description && { description: col.description }),
-    }));
-
-    const vizSettings = getVisualizationMetabotContext(state);
-    const columnSettings = vizSettings["table.columns"] || [];
-    const disabledColumnNames = new Set(
-      columnSettings.filter(col => !col.enabled).map(c => c.name),
-    );
-
-    const [hidden_columns, visible_columns] = _.partition(columnNames, col =>
-      disabledColumnNames.has(col.name),
-    );
+    const queryResult = getFirstQueryResult(state);
+    const datasetColumns = queryResult?.data?.cols ?? [];
+    const vizSettings = getVisualizationSettings(state);
 
     return {
       dataset_query: question?.datasetQuery(),
-      dataset_columns: queryResultCols,
+      dataset_columns: datasetColumns,
       display_type: question?.display(),
-      visualization_settings: getVisualizationSettings(state),
+      visualization_settings: vizSettings,
 
+      // not used atm
       colorPalette: getAccentColors(),
-      current_question_id: question?.id() || null,
-      current_visualization_settings: {
-        ...vizSettings,
-        ...(visible_columns.length ? { visible_columns } : {}),
-        ...(hidden_columns.length ? { hidden_columns } : {}),
-      },
+      current_visualization_settings: getVisualizationMetabotContext(state),
     };
   }, []);
 };

@@ -155,28 +155,10 @@
 (defreaction :metabot.reaction/change-column-settings
   [:map
    [:type [:= :metabot.reaction/change-column-settings]]
-   [:column_settings [:vector [:map
-                               [:key :string]
-                               [:column_title {:optional true} [:maybe :string]]
-                               [:date_abbreviate {:optional true} [:maybe boolean?]]
-                               [:date_format {:optional true} [:maybe :string]]
-                               [:date_separator {:optional true} [:maybe [:enum "/" "-" "."]]]
-                               [:date_style {:optional true} [:maybe [:enum
-                                                                      "MMMM D, YYYY"
-                                                                      "D MMMM, YYYY"
-                                                                      "dddd, MMMM D, YYYY"
-                                                                      "M/D/YYYY"
-                                                                      "D/M/YYYY"
-                                                                      "YYYY/M/D"]]]
-                               [:decimals {:optional true} [:maybe :int]]
-                               [:link_text {:optional true} [:maybe :string]]
-                               [:link_url {:optional true} [:maybe :string]]
-                               [:number_separators {:optional true} [:maybe :string]]
-                               [:number_style {:optional true} [:maybe :string]]
-                               [:prefix {:optional true} [:maybe :string]]
-                               [:show_mini_bar {:optional true} [:maybe boolean?]]
-                               [:suffix {:optional true} [:maybe :string]]
-                               [:view_as {:optional true} [:maybe [:enum "link" "email_link" "image" "auto"]]]]]]])
+   [:column_settings [:map-of
+                      :string
+                      [:map
+                       [:column_title {:optional true} [:maybe :string]]]]]])
 
 (defreaction :metabot.reaction/change-chart-appearance
   [:map

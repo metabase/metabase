@@ -86,6 +86,13 @@ export function nestedSettings(
     [id]: {
       section: t`Display`,
       default: {},
+      getValue: (series, settings) => {
+        const objects = getObjects(series, settings);
+        return getComputedSettingsForAllObjects(series, objects, settings[id], {
+          series,
+          settings,
+        });
+      },
       getProps: (series, settings, onChange, extra) => {
         const objects = getObjects(series, settings);
         const allComputedSettings = getComputedSettingsForAllObjects(

@@ -96,11 +96,9 @@ export type MetabotChangeSeriesSettingsReaction = {
   series_settings: SeriesSettingsEntry[];
 };
 
-type ColumnSettingsEntry = ColumnSettings & { key: string };
-
 export type MetabotChangeColumnSettingsReaction = {
   type: "metabot.reaction/change-column-settings";
-  column_settings: ColumnSettingsEntry[];
+  column_settings: Record<string, Partial<ColumnSettings>>;
 };
 
 export type MetabotChangeChartAppearanceReaction = {

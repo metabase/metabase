@@ -5,7 +5,6 @@ import {
 } from "metabase/query_builder/actions";
 import { setQuestionDisplayType } from "metabase/query_builder/components/chart-type-selector";
 import { getQuestion } from "metabase/query_builder/selectors";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   MetabotChangeChartAppearanceReaction,
   MetabotChangeColumnSettingsReaction,
@@ -80,26 +79,19 @@ export const changeColumnSettings: ReactionHandler<
 > =
   reaction =>
   async ({ dispatch, getState }) => {
-    const columnSettings =
-      getQuestion(getState())?.settings().column_settings ?? {};
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
 
+    const settings = question.settings();
+    const columnSettings = settings["column_settings"] ?? {};
     const newColumnSettings = { ...columnSettings };
-
-    reaction.column_settings.forEach(settings => {
-      const columnKey = getColumnKey({ name: settings.key });
-      const onlyIncludedSettings = Object.fromEntries(
-        Object.entries(settings).filter(([_, value]) => value !== null),
-      );
-
-      newColumnSettings[columnKey] = {
-        ...newColumnSettings[columnKey],
-        ...onlyIncludedSettings,
-      };
-    });
-
-    await dispatch(
-      onUpdateVisualizationSettings({ column_settings: newColumnSettings }),
-    );
+    for (const [key, setting] of Object.entries(reaction.column_settings)) {
+      newColumnSettings[key] = { ...columnSettings[key], ...setting };
+    }
+    const newSettings = { column_settings: newColumnSettings };
+    await dispatch(onUpdateVisualizationSettings(newSettings));
   };
 
 export const changeChartAppearance: ReactionHandler<

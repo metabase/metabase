@@ -1,0 +1,30 @@
+{
+  "name": "change-column-settings",
+  "description": "Change column formatting settings on a chart. `column_settings` is the list of current column formatting settings, where `key` is an identifier of the column and `column_title` is a user visible name of the column.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "column_settings": {
+        "type": "array",
+        "description": "A list of modified `column_settings`. Include only modified items from `column_settings`.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "Key of the column exactly as in `column_settings`."
+            },
+            "column_title": {
+              "type": ["string", "null"],
+              "description": "The new column title. If no column title change was requested, set this parameter to `null`."
+            }
+          },
+          "required": ["key", "column_title"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["column_settings"],
+    "additionalProperties": false
+  }
+}
