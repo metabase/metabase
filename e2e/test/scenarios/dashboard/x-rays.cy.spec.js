@@ -305,7 +305,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     // wait for echarts to re-render after resizing; this fixes test flakiness
     chartPathWithFillColor("#509EE3").eq(4).should("be.visible");
-    cy.wait(1);
+    resetHoverState();
 
     chartPathWithFillColor("#509EE3").eq(0).realHover();
     assertEChartsTooltip({
@@ -431,4 +431,8 @@ function waitForSatisfyingResponse(
 
 function getDashcardByTitle(title) {
   return dashboardGrid().findByText(title).closest("[data-testid='dashcard']");
+}
+
+function resetHoverState() {
+  cy.findByTestId("main-logo").realHover();
 }
