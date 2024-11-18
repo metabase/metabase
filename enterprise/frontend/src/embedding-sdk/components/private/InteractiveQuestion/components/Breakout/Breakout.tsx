@@ -14,12 +14,10 @@ import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutS
 import { Button, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { MultiStepPopover } from "../../util/MultiStepPopover";
-import { useInteractiveQuestionContext } from "../context";
-
-import { BadgeList } from "./util/BadgeList";
-import { ToolbarButton } from "./util/ToolbarButton";
-
+import { MultiStepPopover } from "../../../util/MultiStepPopover";
+import { useInteractiveQuestionContext } from "../../context";
+import { BadgeList } from "../util/BadgeList";
+import { ToolbarButton } from "../util/ToolbarButton";
 type BreakoutItem = {
   breakout?: Lib.BreakoutClause;
   breakoutIndex?: number;
