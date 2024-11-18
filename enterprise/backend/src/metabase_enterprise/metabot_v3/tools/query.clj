@@ -74,9 +74,20 @@
 (defn- find-operator-error
   [operators operator operator-map]
   (ex-info (format "%s is not a correct operator. Available operators as JSON: %s"
-                   operator
+                   (name operator)
                    (json/generate-string (mapv #(-> % :short operator-map) operators)))
            {:operator operator}))
+
+(defn- find-temporal-bucket
+  [options unit]
+  (m/find-first #(= (:unit %) unit) options))
+
+(defn- find-temporal-bucket-error
+  [options unit]
+  (ex-info (format "%s is not a correct granularity. Available granularities as JSON: %s"
+                   (name unit)
+                   (json/generate-string (mapv #(-> % :unit name) options)))
+           {:unit unit}))
 
 ;; filter-data tool
 
@@ -208,13 +219,15 @@
       (lib/aggregate query (lib/aggregation-clause operator)))))
 
 (defn- apply-group-by
-  [query {:keys [column_id] :as group-by}]
+  [query {:keys [column_id granularity] :as group-by}]
   (if group-by
     (let [columns (lib/breakoutable-columns query)
           column  (or (find-column columns column_id)
                       (throw (find-column-error query columns column_id)))
           buckets (lib/available-temporal-buckets query column)
-          bucket  (m/find-first :default buckets)]
+          bucket  (when granularity
+                    (or (find-temporal-bucket buckets (keyword granularity))
+                        (throw (find-temporal-bucket-error buckets (keyword granularity)))))]
       (lib/breakout query (cond-> column
                             bucket (lib/with-temporal-bucket bucket))))
     query))
