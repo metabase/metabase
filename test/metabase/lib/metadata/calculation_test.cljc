@@ -310,3 +310,73 @@
                           {:name       (:name col)
                            :lib/source :source/implicitly-joinable}))
                 (lib/visible-columns query)))))))
+
+(def cols-fns [lib/visible-columns lib/filterable-columns lib/breakoutable-columns lib/orderable-columns])
+
+(deftest ^:parallel inherited-temporal-unit-stage-propagation-test
+  (let [unit :quarter
+        base (-> meta/metadata-provider
+                 (lib/query (meta/table-metadata :orders))
+                 (lib/aggregate (lib/count)))
+        stage-0-query (lib/breakout base
+                                    (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) unit))
+        stage-0-breakout (first (lib/breakouts stage-0-query))
+        stage-0-returned-breakout-col (first (lib/returned-columns stage-0-query))
+        stage-1-query (-> (lib/append-stage stage-0-query)
+                          (lib/with-fields -1 [(assoc stage-0-returned-breakout-col
+                                                      :lib/source :source/previous-stage)]))
+        stage-2-query (lib/append-stage stage-1-query)]
+    (testing "0th stage `orderable-columns` do not contain inherited-temporal-unit"
+      (is ((complement contains?)
+           (u/prog1 (lib/find-matching-column stage-0-breakout (lib/orderable-columns stage-0-query))
+             (is (= :metadata/column (:lib/type <>))))
+           :inherited-temporal-unit)))
+    (testing "1st stage col function contain inherited-temporal-unit"
+      (doseq [cols-fn cols-fns
+              :let [stage-1-cols (cols-fn stage-1-query)
+                    stage-1-col (lib/find-matching-column stage-0-breakout stage-1-cols)]]
+        (is (= unit (:inherited-temporal-unit stage-1-col)))))
+    (testing "inherited-temporal-unit is propagated into 2nd stage (and further)"
+      (doseq [cols-fn cols-fns
+              :let [stage-2-cols (cols-fn stage-2-query)
+                    stage-1-ref (first (lib/fields stage-1-query))
+                    stage-2-col (lib/find-matching-column stage-1-ref stage-2-cols)]]
+        (is (= unit (:inherited-temporal-unit stage-2-col)))))))
+
+(deftest ^:parallel inherited-temporal-unit-card-propagation-test
+  (let [unit :quarter
+        card-id 11001100
+        card-query (-> meta/metadata-provider
+                       (lib/query (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) unit)))
+        breakout-ref (first (lib/breakouts card-query))
+        mp (lib.tu/metadata-provider-with-card-from-query card-id card-query)
+        query (lib/query mp (lib.metadata/card mp card-id))]
+    (testing "_cols functions_ return :inherited-temporal-unit for a card source"
+      (doseq [cols-fn cols-fns]
+        (is (contains? (lib/find-matching-column breakout-ref (cols-fn query))
+                       :inherited-temporal-unit))))))
+
+(deftest ^:parallel inherited-temporal-unit-propagation-from-expression-test
+  (let [expression-name "created at + 1 month"
+        query (as-> meta/metadata-provider $
+                (lib/query $ (meta/table-metadata :orders))
+                (lib/expression $
+                                expression-name
+                                (lib/datetime-add (meta/field-metadata :orders :created-at)
+                                                  1 :month))
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (lib/with-temporal-bucket
+                                  (lib/expression-ref $ 0 expression-name)
+                                  :quarter))
+                (lib/append-stage $))]
+    (testing "_cols functions_ return :inherited-temporla-unit for bucketed expressions"
+      (doseq [cols-fn cols-fns]
+        (is (= :quarter (-> (lib/expression-ref query 0 expression-name)
+                            (lib/find-matching-column (cols-fn query))
+                            :inherited-temporal-unit)))))
+    (testing "orderable columns do not contain inherited-temporal-unit for expression"
+      (is (not (contains? (lib/find-matching-column (lib/expression-ref query 0 expression-name)
+                                                    (lib/orderable-columns query 0))
+                          :inherited-temporal-unit))))))

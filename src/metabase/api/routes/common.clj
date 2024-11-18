@@ -19,6 +19,6 @@
   "Wrap `routes` so they may only be accessed with a correct API key header."
   #'mw.auth/enforce-static-api-key)
 
-(def ^{:arglists '([handler])} +auth
+(def +auth
   "Wrap `routes` so they may only be accessed with proper authentication credentials."
   #'mw.auth/enforce-authentication)

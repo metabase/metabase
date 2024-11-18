@@ -58,7 +58,9 @@
     [#"RAW"         :type/*]
     [#"CHAR"        :type/Text]
     [#"CLOB"        :type/OracleCLOB]
-    [#"DATE"        :type/Date]
+    ;; Yes, the DATE is mapped to `:type/DateTime`. Oracle's DATE can store also a time part.
+    ;; See the docs - https://docs.oracle.com/en/database/oracle/oracle-database/19/nlspg/datetime-data-types-and-time-zone-support.html#GUID-3A1B7AC6-2EDB-4DDC-9C9D-223D4C72AC74
+    [#"DATE"        :type/DateTime]
     [#"DOUBLE"      :type/Float]
     ;; Expression filter type
     [#"^EXPRESSION" :type/*]

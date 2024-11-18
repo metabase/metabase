@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupDashboardCreateEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import type { Dashboard } from "metabase-types/api";
 
 import type { CreateDashboardValues } from "./use-create-dashboard-api";
@@ -81,7 +81,7 @@ function setup() {
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockJwtConfig(),
+        config: createMockAuthProviderUriConfig(),
       },
     },
   );

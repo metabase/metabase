@@ -511,3 +511,36 @@
                (mt/with-native-query-testing-context query
                  (is (= (t/zoned-date-time (u.date/parse test-date) report-tz)
                         (ffirst (mt/rows (qp/process-query query))))))))))))))
+
+(mt/defdataset date-cols-with-datetime-values
+  [["dates_with_time" [{:field-name "date_with_time"
+                        :base-type {:native "DATE"}}]
+    [[(t/offset-date-time 2024 11 5 12 12 12)]
+     [(t/offset-date-time 2024 11 6 13 13 13)]]]])
+
+(deftest date-column-filtering-test
+  (mt/test-driver
+    :oracle
+    (mt/dataset
+      date-cols-with-datetime-values
+      (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
+        (testing "Synced field is correctly mapped"
+          (let [date-field (t2/select-one :model/Field
+                                          {:where [:and
+                                                   [:= :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id))]
+                                                   [:= :name "date_with_time"]]})]
+            (are [key* expected-type] (= expected-type (key* date-field))
+              :base_type :type/DateTime
+              :database_type "DATE")))
+        (testing "Filtering with day temporal unit returns expected resutls"
+          (is (= [[2M "2024-11-06T13:13:13Z"]]
+                 (mt/rows
+                  (mt/run-mbql-query
+                    dates_with_time
+                    {:filter [:= [:field %date_with_time {:base-type :type/Date :temporal-unit :day}] "2024-11-06"]})))))
+        (testing "Filtering by datetime retuns expected results"
+          (is (= [[1M "2024-11-05T12:12:12Z"]]
+                 (mt/rows
+                  (mt/run-mbql-query
+                    dates_with_time
+                    {:filter [:= [:field %date_with_time {:base-type :type/Date}] "2024-11-05T12:12:12"]})))))))))
