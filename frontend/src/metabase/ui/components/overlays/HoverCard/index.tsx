@@ -4,8 +4,10 @@ import {
   HoverCard as MantineHoverCard,
 } from "@mantine/core";
 
-import { Guard } from "../Guard";
+import { Guard } from "metabase/ui";
 export { getHoverCardOverrides } from "./HoverCard.styled";
+
+export type { HoverCardProps, HoverCardDropdownProps } from "@mantine/core";
 
 export const HoverCard = (props: HoverCardProps) => {
   return <MantineHoverCard {...props} />;

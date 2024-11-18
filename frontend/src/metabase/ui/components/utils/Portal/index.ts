@@ -1,2 +1,2 @@
-export { Portal } from "@mantine/core";
-export type { PortalProps } from "@mantine/core";
+export { Portal, type PortalProps } from "@mantine/core";
+export { getPortalOverrides } from "./Portal.styled";

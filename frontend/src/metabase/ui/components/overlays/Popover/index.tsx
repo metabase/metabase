@@ -5,8 +5,7 @@ import { useEffect } from "react";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
-
-import { Guard } from "../Guard";
+import { Guard } from "metabase/ui";
 
 export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
 export { getPopoverOverrides } from "./Popover.styled";

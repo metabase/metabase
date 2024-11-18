@@ -4,7 +4,8 @@ import {
   Portal,
 } from "@mantine/core";
 
-import { Guard } from "../Guard";
+import { Guard } from "metabase/ui";
+
 export { type OverlayProps } from "@mantine/core";
 export { getOverlayOverrides } from "./Overlay.styled";
 

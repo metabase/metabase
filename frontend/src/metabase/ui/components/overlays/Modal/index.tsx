@@ -1,7 +1,8 @@
 import { Modal as MantineModal, type ModalProps } from "@mantine/core";
 import type { ModalRootProps } from "@mantine/core/lib/Modal/ModalRoot/ModalRoot";
 
-import { Guard } from "../Guard";
+import { Guard } from "metabase/ui";
+
 export type { ModalProps } from "@mantine/core";
 
 export * from "./Modal.styled";
