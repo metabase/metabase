@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   appBar,
-  changeSynchronousBatchUpdateSetting,
   clearFilterWidget,
   createNativeQuestion,
   createQuestion,
@@ -238,14 +237,7 @@ const getParameterMapping = card => ({
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true);
     cy.signInAsNormalUser();
-  });
-
-  afterEach(() => {
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   describe("mapping targets", () => {
