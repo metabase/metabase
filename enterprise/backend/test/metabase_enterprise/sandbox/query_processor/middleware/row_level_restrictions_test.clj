@@ -28,6 +28,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.server.middleware.session :as mw.session]
@@ -1222,3 +1223,16 @@
                       :attributes {"cat" 50}}
       (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :blocked)
       (is (= 10 (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))
+
+(deftest native-sandbox-no-query-metadata-streaming-test
+  (testing "A sandbox powered by a native query source card can be used via the streaming API even if the card has no
+           stored results_metadata (#49985)"
+    (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
+                      :attributes {"cat" 50}}
+      (let [sandbox-card-id (t2/select-one-fn :card_id
+                                              :model/GroupTableAccessPolicy
+                                              :group_id (:id &group)
+                                              :table_id (mt/id :venues))]
+        (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
+        (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
+        (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))
