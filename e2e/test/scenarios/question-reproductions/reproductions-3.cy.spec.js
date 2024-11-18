@@ -2358,7 +2358,7 @@ describe("issue 48829", () => {
   });
 });
 
-describe("issue 50064", () => {
+describe("issue 50038", () => {
   const QUESTION = {
     name: "question with a very long name that will be too long to fit on one line which normally would result in some weird looking buttons with inconsistent heights",
     query: {
@@ -2416,7 +2416,7 @@ describe("issue 50064", () => {
     });
   }
 
-  it("should not break data source and join source buttons when the source names are too long (metabase#50064)", () => {
+  it("should not break data source and join source buttons when the source names are too long (metabase#50038)", () => {
     openNotebook();
     getNotebookStep("data").within(() => {
       assertEqualHeight(
