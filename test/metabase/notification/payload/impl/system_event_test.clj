@@ -12,7 +12,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users-personal-collections :web-server :plugins))
+  (fixtures/initialize :test-users-personal-collections :web-server :plugins :notifications))
 
 (defn- publish-user-invited-event!
   [user invitor from-setup?]

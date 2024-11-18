@@ -2,6 +2,7 @@
   "Seed default notifications on startup.
   Will truncate al notifications related tables then reinsert the default notifications."
   (:require
+   [metabase.db :as db]
    [metabase.models.notification :as models.notification]
    [metabase.models.permissions-group :as perms-group]
    [metabase.util.log :as log]
@@ -63,14 +64,22 @@
 
 (def ^:private notification-related-models
   [:model/Notification
-   :model/NotificationSubscription
    :model/NotificationHandler
+   :model/NotificationSubscription
    :model/NotificationRecipient
    :model/ChannelTemplate])
 
 (defn- truncate-table!
+  "Truncate a table and restart the identity column."
   [table-name]
-  (t2/query {:truncate [table-name :restart :identity :cascade]}))
+  (case (db/db-type)
+    :postgres
+   (t2/query {:truncate [table-name :restart :identity :cascade]})
+   :mysql
+   (t2/query {:truncate [table-name]})
+   (do
+     (t2/delete! table-name)
+     (t2/query {:alter-table [table-name {:alter-column [:id :restart :with 1]}]}))))
 
 (defn- truncate-notification-related-tables!
   []
