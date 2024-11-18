@@ -2,7 +2,7 @@ import type { ModalBaseProps } from "@mantine/core";
 
 /** Prevent eager portal rendering.
  *
- * The point of doing this is to stop any floating element from popping up
+ * This stops any floating element that is in a portal from popping up
  * underneath another one already on the page */
 export const Guard = <
   T extends Partial<
