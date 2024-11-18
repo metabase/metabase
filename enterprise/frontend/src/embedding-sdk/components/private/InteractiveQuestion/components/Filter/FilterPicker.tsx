@@ -4,9 +4,9 @@ import { FilterPicker as InnerFilterPicker } from "metabase/querying/filters/com
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useInteractiveQuestionContext } from "../../context";
 
-import S from "./Picker.module.css";
+import S from "../Picker.module.css";
 
 interface Props {
   className?: string;
