@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { getSlackSettings } from "metabase/admin/settings/slack/selectors";
+import { useSendBugReportMutation } from "metabase/api/bug-report";
 import Alert from "metabase/core/components/Alert";
 import { isBugReportingEnabled } from "metabase/env";
 import {
@@ -40,6 +41,7 @@ export const ErrorDiagnosticModal = ({
 }: ErrorDiagnosticModalProps) => {
   const dispatch = useDispatch();
   const [isSlackSending, setIsSlackSending] = useState(false);
+  const [sendBugReport] = useSendBugReportMutation();
 
   const slackSettings = useSelector(getSlackSettings);
   const enableBugReportField = Boolean(
@@ -91,17 +93,11 @@ export const ErrorDiagnosticModal = ({
     const selectedInfo: ErrorPayload = _.pick(errorInfo, ...selectedKeys);
 
     try {
-      const response = await fetch("/api/slack/bug-report", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ diagnosticInfo: selectedInfo }),
-      });
+      const response = await sendBugReport({
+        diagnosticInfo: selectedInfo,
+      }).unwrap();
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         dispatch(
           addUndo({
             message: t`Diagnostic information sent to Slack successfully`,
