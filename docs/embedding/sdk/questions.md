@@ -241,7 +241,7 @@ export default function App() {
 
 With the `CreateQuestion` component, you can embed the query builder without a pre-defined question.
 
-This component is built on top of the `InteractiveQuestion` component [with namespaced components](#customizing-interactive-questions), so it has [the same props](#question-props) except for `questionId` and ability to pass custom `children`.
+This component is built on top of the `InteractiveQuestion` component with [namespaced components](#interactive-question-components). It [shares the same props as InteractiveQuestion](#question-props), except it lacks the `questionId` prop and the ability to pass custom children.
 
 If you want to customize the question editor's layout, you can use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
 
