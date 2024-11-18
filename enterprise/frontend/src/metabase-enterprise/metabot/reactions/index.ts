@@ -3,7 +3,7 @@ import type { MetabotReaction } from "metabase-types/api";
 import { apiCall } from "./api";
 import { requireUserConfirmation, showMessage } from "./messages";
 import { writeBack } from "./metabot";
-import { filterData } from "./queries";
+import { aggregateData, filterData } from "./queries";
 import type { ReactionHandler } from "./types";
 import {
   changeChartAppearance,
@@ -33,4 +33,5 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/api-call": apiCall,
   "metabot.reaction/writeback": writeBack,
   "metabot.reaction/filter-data": filterData,
+  "metabot.reaction/aggregate-data": aggregateData,
 };

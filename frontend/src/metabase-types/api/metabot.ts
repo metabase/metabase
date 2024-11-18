@@ -84,6 +84,11 @@ export type MetabotFilterDataReaction = {
   dataset_query: DatasetQuery;
 };
 
+export type MetabotAggregateDataReaction = {
+  type: "metabot.reaction/aggregate-data";
+  dataset_query: DatasetQuery;
+};
+
 type SeriesSettingsEntry = SeriesSettings & { key: string };
 
 export type MetabotChangeSeriesSettingsReaction = {
@@ -135,7 +140,8 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
-  | MetabotFilterDataReaction;
+  | MetabotFilterDataReaction
+  | MetabotAggregateDataReaction;
 
 /* Metabot v3 - API Request Types */
 

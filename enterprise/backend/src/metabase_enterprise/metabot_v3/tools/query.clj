@@ -67,6 +67,17 @@
                    (json/generate-string (mapv #(column-info query %) columns)))
            {:column column-id}))
 
+(defn- find-operator
+  [operators operator operator-map]
+  (m/find-first #(= (:short %) (get operator-map operator)) operators))
+
+(defn- find-operator-error
+  [operators operator operator-map]
+  (ex-info (format "%s is not a correct operator. Available operators as JSON: %s"
+                   operator
+                   (json/generate-string (mapv #(-> % :short operator-map) operators)))
+           {:operator operator}))
+
 ;; filter-data tool
 
 (defmulti ^:private apply-filter
@@ -170,5 +181,46 @@
       {:output (ex-message e)})))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/filter-data
+  [_tool-name {:keys [dataset_query]}]
+  (some? dataset_query))
+
+;; aggregate-data tool
+
+(def ^:private aggregation-operator-map
+  {:count              :count
+   :count-distinct     :distinct
+   :sum                :sum
+   :max                :max
+   :min                :min
+   :average            :avg
+   :standard-deviation :stddev})
+
+(defn- apply-summarize
+  [query {:keys [function column_id]}]
+  (let [operators (lib/available-aggregation-operators query)
+        operator  (or (find-operator operators (keyword function) aggregation-operator-map)
+                      (throw (find-operator-error operators (keyword function) aggregation-operator-map)))]
+    (if (:requires-column? operator)
+      (let [columns   (lib/aggregation-operator-columns operator)
+            column    (or (find-column columns column_id)
+                          (throw (find-column-error query columns column_id)))]
+        (lib/aggregate query (lib/aggregation-clause operator column)))
+      (lib/aggregate query (lib/aggregation-clause operator)))))
+
+(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/aggregate-data
+  [_tool-name {:keys [summarize]} {:keys [dataset_query]}]
+  (try
+    {:output "success"
+     :reactions [{:type  :metabot.reaction/aggregate-data
+                  :dataset_query (-> dataset_query
+                                     legacy-MBQL->query
+                                     source-query
+                                     (apply-summarize summarize)
+                                     lib.query/->legacy-MBQL)}]}
+    (catch ExceptionInfo e
+      (log/debug e "Error in filter-data tool")
+      {:output (ex-message e)})))
+
+(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/aggregate-data
   [_tool-name {:keys [dataset_query]}]
   (some? dataset_query))
