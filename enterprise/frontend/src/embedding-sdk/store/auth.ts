@@ -59,6 +59,8 @@ export const initAuth = createAsyncThunk(
         console.warn(
           ...bigWarningHeader("Detected SDK compatibility issue"),
           `SDK version ${sdkVersion} is not compatible with MB version ${mbVersion}, this might cause issues.`,
+          // eslint-disable-next-line no-unconditional-metabase-links-render -- console log in case of issues
+          "Learn more at https://www.metabase.com/docs/latest/embedding/sdk/version",
         );
       }
     }
