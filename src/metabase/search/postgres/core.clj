@@ -78,9 +78,12 @@
        (json/parse-string (:legacy_input index-row) keyword)
        (select-keys index-row [:total_score :pinned]))
       (assoc :scores (mapv (fn [k]
-                             {:score               (get index-row k)
-                              :name                k
-                              :weight              (search.config/weight k)})
+                             (let [score  (get index-row k)
+                                   weight (search.config/weight k)]
+                               {:score        score
+                                :name         k
+                                :weight       weight
+                                :contribution (* weight score)}))
                            (keys (search.scoring/scorers))))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
