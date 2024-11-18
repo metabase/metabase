@@ -38,31 +38,30 @@ The tool will walk you through the setup. There are a fair number of pieces to p
 
 - Asks you for an email address to create the first admin account in Metabase. Doesn't have to be a real email address (the tool doesn't set up a SMTP server); the email address is just required for login.
 - Spins up a Metabase on Docker. This takes a bit. To see the Docker container's status, use the `docker ps` command. Or use the time to reflect on good choices you've made recently.
-- Generates a new API Key. The tool will build a mock Express server that will use this key to authenticate its requests to your Metabase.
+- Generates a new [API key](../../people-and-groups/api-keys.md).
 
 ## Connects Metabase to your database
 
-- Prompts you to connect to a database. Pick your database's engine. You'll need the database's host, port, username, and password (if Postgres, you can also use an auth provider).
+- Prompts you to connect to a database. Pick your database's engine. You'll need the database's host, port, username, and password.
 - Connects to the database, and prompts you to select tables from your database to embed. Pick 1-3 tables. If you want to see multi-tenancy in action, pick a table with user IDs in it. Metabase will X-ray these tables to create a dashboard to embed.
 
 ## (Optional) sets up permissions with multi-tenancy
 
-- If you have a Pro/EE license, the tool can set up permissions. To get a license, sign up for a [free trial of self-hosted Metabase Pro](https://www.metabase.com/pricing/).
-- If you opted to set up multi-tenancy and connected to your own database, the tool asks you for the column you want to use to sandbox the table (e.g., a user ID column). Metabase will [sandbox data](../../permissions/data-sandboxes.md) based on the values in that column.
+If you have a Pro/EE license, the tool can set up permissions. To get a license, sign up for a [free trial of self-hosted Metabase Pro](https://www.metabase.com/pricing/).
 
-## Generates React components that you'll import into your app
+If you opted to set up multi-tenancy and connected to your own database, the tool will ask you for the column you want to use to sandbox the table (e.g., a user ID column). Metabase will [sandbox data](../../permissions/data-sandboxes.md) based on the values in that column.
 
-Generates example React components files. By default, it will save them in `./components/metabase` in your React app, though the tool will prompt you to save them to a different directory (e.g., `./src/components/metabase`).
+The tool will also set up a mock Express server with JWT. It'll ask you where it should save the server code (default: `./mock-server`). It'll install the server's dependencies with `npm install`.
 
-## Creates a mock Express server
-
-The tool will ask you where it should save a mock Express server (default: `./mock-server`). It'll install the server's dependencies with `npm install`.
-
-Start the mock server in another terminal session. Change into the mock server's directory and run:
+You'll need to start the mock server in another terminal session. Change into the mock server's directory and run:
 
 ```sh
 npm run start
 ```
+
+## Generates React components that you'll import into your app
+
+Generates example React components files. By default, it will save them in `./components/metabase` in your React app, though the tool will prompt you to save them to a different directory (e.g., `./src/components/metabase`).
 
 ## Add the Metabase/React components to your app
 
