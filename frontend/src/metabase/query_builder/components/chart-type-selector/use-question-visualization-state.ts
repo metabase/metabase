@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
@@ -7,7 +7,6 @@ import type Question from "metabase-lib/v1/Question";
 import {
   type CardDisplayType,
   type Dataset,
-  type VisualizationDisplay,
   isCardDisplayType,
 } from "metabase-types/api";
 
@@ -50,7 +49,7 @@ export const useQuestionVisualizationState = ({
 
 type IsSensibleVisualizationProps = {
   result: Dataset | null;
-  vizType: VisualizationDisplay;
+  vizType: CardDisplayType;
 };
 
 const isSensibleVisualization = ({

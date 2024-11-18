@@ -14,3 +14,4 @@ export * from "./SummarizeButton";
 export * from "./Title";
 export * from "./Visualization";
 export * from "./QuestionSettings";
+export * from "./ChartTypeSelectorList";
