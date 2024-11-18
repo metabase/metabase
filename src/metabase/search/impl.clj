@@ -260,7 +260,7 @@
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "only" "exclude"]]]
+   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "only" "exclude" "not-others" "all"]]]
    [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
    [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:limit                               {:optional true} [:maybe ms/Int]]

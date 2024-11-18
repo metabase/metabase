@@ -62,9 +62,23 @@
                              [:= collection-id-col :collection.id])
 
       ;; TODO This is not really about permissions, it should really be handled in search.filter
-      (some? filter-items-in-personal-collection)
+      (and (some? filter-items-in-personal-collection) (not= "all" filter-items-in-personal-collection))
       (sql.helpers/where
        (case filter-items-in-personal-collection
+         "not-others"
+         `[:or
+           ;; in one of your personal collections
+           ~[:= :collection.personal_owner_id current-user-id]
+           ;; in a child of one of your collections
+           ~@(for [id (t2/select-pks-set :model/Collection :personal_owner_id [:= current-user-id])]
+               [:like :collection.location (format "/%d/%%" id)])
+           ;; in a non-personal collection
+           [:and [:= :collection.personal_owner_id nil]
+            ~@(for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
+                [:not-like :collection.location (format "/%d/%%" id)])]
+           ;; not in a collection
+           ~[:= collection-id-col nil]]
+
          "only"
          (concat [:or]
                  ;; sub personal collections

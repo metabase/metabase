@@ -92,12 +92,13 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (let [base-query (search.index/search-query search-term search-ctx [:legacy_input])]
-         (search.permissions/add-collection-join-and-where-clauses base-query "search-index" search-ctx))
-       (search.scoring/with-scores search-ctx)
-       (search.filter/with-filters search-ctx)
-       (t2/query)
-       (map rehydrate)))
+  (let [search-ctx (update search-ctx :filter-items-in-personal-collection #(or % "not-others"))]
+    (->> (let [base-query (search.index/search-query search-term search-ctx [:legacy_input])]
+           (search.permissions/add-collection-join-and-where-clauses base-query "search-index" search-ctx))
+         (search.scoring/with-scores search-ctx)
+         (search.filter/with-filters search-ctx)
+         (t2/query)
+         (map rehydrate))))
 
 (def ^:private default-engine fulltext)
 
