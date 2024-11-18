@@ -4,9 +4,9 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { getSlackSettings } from "metabase/admin/settings/slack/selectors";
+import { useGetBugReportEnabledQuery } from "metabase/api";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import Alert from "metabase/core/components/Alert";
-import { isBugReportingEnabled } from "metabase/env";
 import {
   Form,
   FormCheckbox,
@@ -42,6 +42,8 @@ export const ErrorDiagnosticModal = ({
   const dispatch = useDispatch();
   const [isSlackSending, setIsSlackSending] = useState(false);
   const [sendBugReport] = useSendBugReportMutation();
+  const { data: { enabled: isBugReportingEnabled } = { enabled: false } } =
+    useGetBugReportEnabledQuery();
 
   const slackSettings = useSelector(getSlackSettings);
   const enableBugReportField = Boolean(

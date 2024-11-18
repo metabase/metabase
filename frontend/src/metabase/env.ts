@@ -13,6 +13,3 @@ export const isChartsDebugLoggingEnabled =
   process.env.MB_LOG_CHARTS_DEBUG === "true";
 
 export const isEmbeddingSdk = !!process.env.IS_EMBEDDING_SDK;
-
-export const isBugReportingEnabled =
-  process.env.MB_BUG_REPORTING_ENABLED === "true";

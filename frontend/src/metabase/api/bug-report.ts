@@ -18,7 +18,14 @@ export const bugReportApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getBugReportEnabled: builder.query<{ enabled: boolean }, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/util/bug_report_enabled",
+      }),
+    }),
   }),
 });
 
-export const { useSendBugReportMutation } = bugReportApi;
+export const { useSendBugReportMutation, useGetBugReportEnabledQuery } =
+  bugReportApi;
