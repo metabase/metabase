@@ -56,6 +56,7 @@ export const SearchField = ({
   isLoading = false,
 }: SearchFieldProps) => {
   const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -119,8 +120,10 @@ export const SearchField = ({
     inputRef.current?.focus();
   }, [value]);
 
+  const width = useInitialWidth(rootRef);
+
   return (
-    <div className={S.root}>
+    <div className={S.root} ref={rootRef} style={{ maxWidth: width ?? "auto" }}>
       <MultiAutocomplete
         ref={inputRef}
         data-testid="field-values-multi-autocomplete"
@@ -201,4 +204,14 @@ export const SearchField = ({
 
 function NoDropdown() {
   return null;
+}
+
+function useInitialWidth(ref: React.RefObject<HTMLDivElement>) {
+  const [width, setWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    setWidth(ref.current?.offsetWidth ?? null);
+  }, [ref]);
+
+  return width;
 }
