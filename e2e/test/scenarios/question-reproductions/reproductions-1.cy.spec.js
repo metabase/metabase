@@ -854,8 +854,7 @@ describe("issue 18207", () => {
     openVizType();
     leftSidebar().within(() => {
       cy.icon("table2").click();
-      cy.findByTestId("Table-button").realHover();
-      cy.icon("gear").click();
+      cy.findByText("Columns").click();
     });
 
     cy.button("Done").click();

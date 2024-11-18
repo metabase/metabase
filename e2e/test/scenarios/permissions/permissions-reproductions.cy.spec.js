@@ -14,6 +14,7 @@ import {
   entityPickerModal,
   filterWidget,
   getFullName,
+  leftSidebar,
   modal,
   onlyOnEE,
   openQuestionActions,
@@ -310,12 +311,8 @@ describe("UI elements that make no sense for users without data permissions (met
 
     cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
-    cy.findByTestId("Line-button").realHover();
-    cy.findByTestId("Line-container").within(() => {
-      cy.icon("gear").click();
-    });
+    leftSidebar().findByText("Data").click();
 
-    cy.findByTextEnsureVisible("Line options");
     cy.findByTestId("qb-save-button")
       .as("saveButton")
       .should("have.attr", "data-disabled");
