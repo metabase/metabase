@@ -28,6 +28,7 @@ import {
   openNotebook,
   openOrdersTable,
   openProductsTable,
+  openQuestionActions,
   openTable,
   popover,
   queryBuilderFooter,
@@ -2355,5 +2356,44 @@ describe("issue 48829", () => {
     visualize();
 
     modal().should("not.exist");
+  });
+});
+
+describe("issue 47940", () => {
+  const questionDetails = {
+    name: "Issue 47940",
+    query: {
+      "source-table": ORDERS_ID,
+      limit: 5,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be able to convert a question with date casting to a model", () => {
+    cy.log("create a question without any column casting");
+
+    createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("add coercion");
+
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      semantic_type: "type/Category",
+      coercion_strategy: "Coercion/UNIXMicroSeconds->DateTime",
+    });
+
+    cy.log("turn into a model");
+    openQuestionActions();
+    popover().findByText("Turn into a model").click();
+    cy.findByRole("dialog").findByText("Turn this into a model").click();
+
+    cy.log("verify there is a table displayed");
+    cy.findByTestId("visualization-root").should(
+      "contain",
+      "December 31, 1969, 4:00 PM",
+    );
   });
 });
