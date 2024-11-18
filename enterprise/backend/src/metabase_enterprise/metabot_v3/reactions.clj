@@ -158,7 +158,7 @@
    [:column_settings [:map-of
                       :string
                       [:map
-                       [:column_title {:optional true} [:maybe :string]]]]]])
+                       [:column_title {:optional true} :string]]]]])
 
 (defreaction :metabot.reaction/change-chart-appearance
   [:map
