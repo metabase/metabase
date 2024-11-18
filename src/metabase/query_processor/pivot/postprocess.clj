@@ -213,7 +213,7 @@
                                  (get m measure-key)))))]
     (when (some #(and (some? %) (not= "" %)) measure-values)
       (as-> (vec (when-not (seq row-formatters) (repeat (count pivot-measures) nil)))
-          row
+            row
         (into row row-combo)
         (into row measure-values)
         (into row (when row-totals?
