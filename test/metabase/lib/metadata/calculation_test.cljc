@@ -328,7 +328,8 @@
         stage-2-query (lib/append-stage stage-1-query)]
     (testing "0th stage `orderable-columns` do not contain inherited-temporal-unit"
       (is ((complement contains?)
-           (lib/find-matching-column stage-0-breakout (lib/orderable-columns stage-0-query))
+           (u/prog1 (lib/find-matching-column stage-0-breakout (lib/orderable-columns stage-0-query))
+             (is (= :metatadata/column (:lib/type <>))))
            :inherited-temporal-unit)))
     (testing "1st stage col function contain inherited-temporal-unit"
       (doseq [cols-fn cols-fns
