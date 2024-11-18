@@ -25,7 +25,7 @@
   "Return the select-item expressions used to calculate the score for each search result."
   :feature :none
   []
-  (merge fulltext.scoring/base-scorers (select-keys enterprise-scorers (additional-scorers))))
+  (merge (fulltext.scoring/base-scorers) (select-keys enterprise-scorers (additional-scorers))))
 
 ;; ------------ LEGACY ----------
 
