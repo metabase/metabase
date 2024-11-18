@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { type Ref, forwardRef, useState } from "react";
 import { match } from "ts-pattern";
 
 import { getBreakoutListItem } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
@@ -8,7 +8,7 @@ import {
   useBreakoutQueryHandlers,
 } from "metabase/query_builder/hooks";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
-import { Box, Button, type ButtonProps, Icon, Stack } from "metabase/ui";
+import { Button, type ButtonProps, Icon, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { MultiStepPopover } from "../../util/MultiStepPopover";
@@ -16,11 +16,10 @@ import { useInteractiveQuestionContext } from "../context";
 
 import { BadgeList } from "./util/BadgeList";
 
-const BreakoutButton = ({
-  query,
-  stageIndex,
-  ...buttonProps
-}: UpdateQueryHookProps & ButtonProps) => {
+const BreakoutButtonInner = (
+  { query, stageIndex, ...buttonProps }: UpdateQueryHookProps & ButtonProps,
+  ref: Ref<HTMLButtonElement>,
+) => {
   const breakouts = Lib.breakouts(query, stageIndex);
 
   const items = breakouts.map(breakout =>
@@ -32,18 +31,23 @@ const BreakoutButton = ({
     .with(1, () => "1 grouping")
     .otherwise(value => `${value} groupings`);
 
-  const variant = items.length ? "filled" : "default";
+  const variant = items.length ? "filled" : "subtle";
 
   return (
     <Button
+      ref={ref}
       variant={variant}
       leftIcon={<Icon name="arrow_split" />}
+      py="sm"
+      px="md"
       {...buttonProps}
     >
       {label}
     </Button>
   );
 };
+
+const BreakoutButton = forwardRef(BreakoutButtonInner);
 
 export const BreakoutInner = ({
   query,
@@ -82,14 +86,12 @@ export const BreakoutInner = ({
   return (
     <MultiStepPopover currentStep={step} opened={opened} onClose={close}>
       <MultiStepPopover.Target>
-        <Box>
-          <BreakoutButton
-            query={query}
-            onQueryChange={onQueryChange}
-            stageIndex={stageIndex}
-            onClick={toggle}
-          />
-        </Box>
+        <BreakoutButton
+          query={query}
+          onQueryChange={onQueryChange}
+          stageIndex={stageIndex}
+          onClick={toggle}
+        />
       </MultiStepPopover.Target>
       <MultiStepPopover.Step value="picker">
         <Stack>

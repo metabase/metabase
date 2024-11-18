@@ -9,7 +9,7 @@ export type BadgeListProps<T> = {
     item: T;
   }[];
   onSelectItem?: (item?: T, index?: number) => void;
-  onAddItem?: () => void;
+  onAddItem?: (item?: T) => void;
   onRemoveItem?: (item?: T, index?: number) => void;
   addButtonLabel?: string;
 };
