@@ -53,7 +53,7 @@
     [:inline 1]))
 
 (defn- weighted-score [[column-alias expr]]
-  [:* [:inline (search.config/weights column-alias 0)] expr])
+  [:* [:inline (search.config/weight column-alias)] expr])
 
 (defn- select-items [scorers]
   (concat
@@ -80,7 +80,7 @@
    :view-count (atan-size :view_count search.config/view-count-scaling)
    :pinned     (truthy :pinned)
    :bookmarked bookmark-score-expr
-   :recency    (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)
+   :recency    (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
    :dashboard  (size :dashboardcard_count search.config/dashboard-count-ceiling)
    :model      (idx-rank :model_rank (count search.config/all-models))})
 
