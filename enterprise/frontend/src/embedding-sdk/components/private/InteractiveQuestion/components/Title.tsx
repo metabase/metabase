@@ -1,9 +1,9 @@
 import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
-import type { PropsWithHTMLStyle } from "embedding-sdk/types/default-style-props";
+import type { PropsWithHTMLAttributes } from "embedding-sdk/types/default-style-props";
 
 import { useInteractiveQuestionContext } from "../context";
 
-export const Title = ({ className, style }: PropsWithHTMLStyle) => {
+export const Title = ({ className, style }: PropsWithHTMLAttributes) => {
   const { question } = useInteractiveQuestionContext();
 
   return (

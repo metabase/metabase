@@ -1,8 +1,6 @@
-import type { CSSProperties } from "react";
+import type { ComponentProps, ElementType } from "react";
 
-export type PropsWithHTMLStyle<
-  T extends Record<string, any> = NonNullable<Record<string, any>>,
-> = {
-  className?: string;
-  style?: CSSProperties;
-} & T;
+export type PropsWithHTMLAttributes<
+  E extends ElementType = ElementType,
+  T extends Record<string, any> = Record<never, never>,
+> = ComponentProps<E> & T;

@@ -1,8 +1,7 @@
 import cx from "classnames";
-import type React from "react";
 import { t } from "ttag";
 
-import type { PropsWithHTMLStyle } from "embedding-sdk/types/default-style-props";
+import type { PropsWithHTMLAttributes } from "embedding-sdk/types/default-style-props";
 import CS from "metabase/css/core/index.css";
 import { AdHocQuestionDescription } from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription";
 import * as Lib from "metabase-lib";
@@ -16,7 +15,7 @@ export const QuestionTitle = ({
   question,
   className,
   style,
-}: PropsWithHTMLStyle<QuestionTitleProps>): React.JSX.Element => {
+}: PropsWithHTMLAttributes<"h2", QuestionTitleProps>) => {
   const isSaved = question.isSaved();
 
   const query = question.query();
