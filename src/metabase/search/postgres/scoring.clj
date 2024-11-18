@@ -25,7 +25,7 @@
   ;; 2/PI * tan^-1 (x/N)
   [:*
    [:/ [:inline 2] [:pi]]
-   [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] [:inline scaling]]]])
+   [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] scaling]]])
 
 (defn inverse-duration
   "Score at item based on the duration between two dates, where less is better."
