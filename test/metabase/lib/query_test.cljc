@@ -12,7 +12,6 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
    [metabase.types :as types]
@@ -180,8 +179,11 @@
              :stages       [{:lib/type    :mbql.stage/mbql
                              :source-card 1}]
              :info         {:card-id 1000}}
-            (lib.query/query meta/metadata-provider (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
-                                                           :info {:card-id 1000}))))))
+            (lib.query/query meta/metadata-provider
+                             {:database (meta/id)
+                              :type     :query
+                              :query    {:source-table "card__1"}
+                              :info     {:card-id 1000}})))))
 
 (deftest ^:parallel convert-from-legacy-remove-type-test
   (testing "legacy keys like :type and :query should get removed"
@@ -479,36 +481,36 @@
     (are [x] (=? {:lib/type :mbql/query
                   :database (meta/id)
                   :stages   [{:lib/type     :mbql.stage/mbql
-                              :source-table 1
+                              :source-table (meta/id :orders)
                               :aggregation  [[:count {:lib/uuid string?}]]
                               :filters      [[:=
                                               {:lib/uuid string?}
-                                              [:field {:lib/uuid string?} 1]
+                                              [:field {:lib/uuid string?} (meta/id :orders :quantity)]
                                               4]]}]}
                  (lib/query meta/metadata-provider x))
       {"lib/type" "mbql/query"
        "database" (meta/id)
        "stages"   [{"lib/type"     "mbql.stage/mbql"
-                    "source-table" 1
+                    "source-table" (meta/id :orders)
                     "aggregation"  [["count" {}]]
-                    "filters"      [["=" {} ["field" {} 1] 4]]}]}
+                    "filters"      [["=" {} ["field" {} (meta/id :orders :quantity)] 4]]}]}
 
       {:lib/type :mbql/query
        :database (meta/id)
        :stages   [{:lib/type     :mbql.stage/mbql
-                   :source-table 1
+                   :source-table (meta/id :orders)
                    :aggregation  [[:count {}]]
                    :filters      [[:=
                                    {}
-                                   [:field {} 1]
+                                   [:field {} (meta/id :orders :quantity)]
                                    4]]}]}
 
       ;; denormalized legacy query
       {"type"     "query"
        "database" (meta/id)
-       "query"    {"source-table" 1
+       "query"    {"source-table" (meta/id :orders)
                    "aggregation"  [["count"]]
-                   "filter"       ["=" ["field" 1 nil] 4]}})))
+                   "filter"       ["=" ["field" (meta/id :orders :quantity) nil] 4]}})))
 
 (deftest ^:parallel coerced-fields-effective-type-test
   (let [effective-type (types/effective-type-for-coercion :Coercion/UNIXSeconds->DateTime)

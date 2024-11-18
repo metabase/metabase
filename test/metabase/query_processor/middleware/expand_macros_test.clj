@@ -10,12 +10,6 @@
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.query-processor.store :as qp.store]))
 
-(defn- mbql-query [inner-query]
-  {:database (meta/id)
-   :type     :query
-   :query    (merge {:source-table 1}
-                    inner-query)})
-
 (defn- expand-macros
   "If input is a legacy query, convert to pMBQL, call [[expand-macros/expand-macros]], then convert back to legacy. This
   way we don't need to update all the tests below right away."
@@ -31,14 +25,15 @@
 
 (deftest ^:parallel basic-expansion-test
   (testing "no Segment should yield exact same query"
-    (is (= (mbql-query
-            {:filter   [:> [:field 4 nil] 1]
-             :breakout [[:field 17 nil]]
+    (is (= (lib.tu.macros/mbql-query
+            {:filter   [:> $price 1]
+             :breakout [$category-id]
              :breakout-idents {0 "jnTPEtySlo9dp0rsXIZjy"}})
            (expand-macros
-            (mbql-query
-             {:filter   [:> [:field 4 nil] 1]
-              :breakout [[:field 17 nil]]
+            (lib.tu.macros/mbql-query
+             venues
+             {:filter   [:> $price 1]
+              :breakout [$category-id]
               :breakout-idents {0 "jnTPEtySlo9dp0rsXIZjy"}}))))))
 
 (def ^:private mock-metadata-provider
@@ -47,30 +42,32 @@
    {:segments [{:id         1
                 :name       "Segment 1"
                 :table-id   (meta/id :venues)
-                :definition {:filter [:= [:field 5 nil] "abc"]}}
+                :definition {:filter [:= [:field (meta/id :venues :name) nil] "abc"]}}
                {:id         2
                 :name       "Segment 2"
                 :table-id   (meta/id :venues)
-                :definition {:filter [:is-null [:field 7 nil]]}}]}))
+                :definition {:filter [:is-null [:field (meta/id :venues :category-id) nil]]}}]}))
 
 (deftest ^:parallel segments-test
   (qp.store/with-metadata-provider mock-metadata-provider
-    (is (= (mbql-query
+    (is (= (lib.tu.macros/mbql-query
+            venues
             {:filter   [:and
-                        [:= [:field 5 nil] "abc"]
+                        [:= $name "abc"]
                         [:or
-                         [:is-null [:field 7 nil]]
-                         [:> [:field 4 nil] 1]]]
-             :breakout [[:field 17 nil]]
+                         [:is-null $category-id]
+                         [:> $price 1]]]
+             :breakout [$category-id]
              :breakout-idents {0 "tSQXJ8zkCoNrXgc4tkaPo"}})
            (expand-macros
-            (mbql-query
+            (lib.tu.macros/mbql-query
+             venues
              {:filter   [:and
                          [:segment 1]
                          [:or
                           [:segment 2]
-                          [:> [:field 4 nil] 1]]]
-              :breakout [[:field 17 nil]]
+                          [:> $price 1]]]
+              :breakout [$category-id]
               :breakout-idents {0 "tSQXJ8zkCoNrXgc4tkaPo"}}))))))
 
 (deftest ^:parallel nested-segments-test
@@ -81,13 +78,13 @@
                                         :table-id   (meta/id :venues)
                                         :definition {:filter [:and
                                                               [:segment 1]
-                                                              [:> [:field 6 nil] 1]]}}]})]
+                                                              [:> [:field (meta/id :venues :price) nil] 1]]}}]})]
     (qp.store/with-metadata-provider metadata-provider
       (testing "Nested segments are correctly expanded (#30866)"
         (is (= (lib.tu.macros/mbql-query venues
                  {:filter [:and
-                           [:= [:field 5 nil] "abc"]
-                           [:> [:field 6 nil] 1]]})
+                           [:= $name "abc"]
+                           [:> $price 1]]})
                (expand-macros
                 (lib.tu.macros/mbql-query venues
                   {:filter [:segment 2]}))))))
@@ -108,20 +105,22 @@
 (deftest ^:parallel segments-in-share-clauses-test
   (testing "segments in :share clauses"
     (qp.store/with-metadata-provider mock-metadata-provider
-      (is (= (mbql-query
+      (is (= (lib.tu.macros/mbql-query
+              venues
               {:aggregation [[:share [:and
-                                      [:= [:field 5 nil] "abc"]
+                                      [:= $name "abc"]
                                       [:or
-                                       [:is-null [:field 7 nil]]
-                                       [:> [:field 4 nil] 1]]]]]
+                                       [:is-null $category-id]
+                                       [:> $price 1]]]]]
                :aggregation-idents {0 "Sg7Gx3EJV-axMhMWsBeFR"}})
              (expand-macros
-              (mbql-query
+              (lib.tu.macros/mbql-query
+               venues
                {:aggregation [[:share [:and
                                        [:segment 1]
                                        [:or
                                         [:segment 2]
-                                        [:> [:field 4 nil] 1]]]]]
+                                        [:> $price 1]]]]]
                :aggregation-idents {0 "Sg7Gx3EJV-axMhMWsBeFR"}})))))))
 
 (deftest ^:parallel expand-macros-in-nested-queries-test
@@ -132,7 +131,7 @@
                                      {:before {:source-table $$checkins
                                                :filter       [:segment 2]}
                                       :after  {:source-table $$checkins
-                                               :filter       [:is-null [:field 7 nil]]}})]
+                                               :filter       [:is-null $venues.category-id]}})]
         (testing "nested 1 level"
           (is (= (lib.tu.macros/mbql-query nil
                    {:source-query after})
@@ -163,11 +162,11 @@
                                        (assoc :source-query before))})))))
         (testing "inside :source-query inside :joins"
           (is (= (lib.tu.macros/mbql-query checkins
-                   {:joins [{:condition    [:= [:field 1 nil] 2]
+                   {:joins [{:condition    [:= $venue-id 2]
                              :source-query after}]})
                  (expand-macros
                   (lib.tu.macros/mbql-query checkins
-                    {:joins [{:condition    [:= [:field 1 nil] 2]
+                    {:joins [{:condition    [:= $venue-id 2]
                               :source-query before}]})))))
         (testing "inside join condition"
           (is (= (lib.tu.macros/mbql-query checkins
@@ -180,9 +179,9 @@
         (testing "inside :joins inside :source-query"
           (is (= (lib.tu.macros/mbql-query nil
                    {:source-query {:source-table $$checkins
-                                   :joins        [{:condition    [:= [:field 1 nil] 2]
+                                   :joins        [{:condition    [:= $checkins.venue-id 2]
                                                    :source-query after}]}})
                  (expand-macros (lib.tu.macros/mbql-query nil
                                   {:source-query {:source-table $$checkins
-                                                  :joins        [{:condition    [:= [:field 1 nil] 2]
+                                                  :joins        [{:condition    [:= $checkins.venue-id 2]
                                                                   :source-query before}]}})))))))))

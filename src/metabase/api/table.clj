@@ -461,6 +461,7 @@
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
              :description      (:description card)
+             :entity_id        (:entity_id card)
              :metrics          (:metrics card)
              :type             card-type}
       (and (= card-type :metric)
@@ -497,7 +498,7 @@
     (let [cards (t2/select Card
                            {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
                                         :c.description :c.collection_id :c.database_id :c.type
-                                        :c.source_card_id
+                                        :c.source_card_id :c.entity_id
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
                             :left-join [[{:select   [:moderated_item_id :status]

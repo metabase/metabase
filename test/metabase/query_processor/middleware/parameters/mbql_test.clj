@@ -441,18 +441,13 @@
                      [:field
                       (mt/id :orders :created_at)
                       {:base-type :type/DateTimeWithLocalTZ, :temporal-unit unit}])
-          query    {:database (mt/id)
-                    :type     :query
-                    :query    {:source-table       (mt/id :orders)
-                               :aggregation        [[:count]]
-                               :aggregation-idents {0 (u/generate-nano-id)}
-                               :breakout           [(by-unit :day)
-                                                    (by-unit :month)]
-                               :breakout-idents    {0 (u/generate-nano-id)
-                                                    1 (u/generate-nano-id)}
-                               :order-by           [[:asc (by-unit :month)]]}
-                    :parameters [{:type   :temporal-unit
-                                  :target [:dimension (by-unit :month)]
-                                  :value  :week}]}]
+          query    (merge (mt/mbql-query orders
+                            {:aggregation  [[:count]]
+                             :breakout     [(by-unit :day)
+                                            (by-unit :month)]
+                             :order-by     [[:asc (by-unit :month)]]})
+                          {:parameters [{:type   :temporal-unit
+                                         :target [:dimension (by-unit :month)]
+                                         :value  :week}]})]
       (is (= ["2016-04-30T00:00:00Z" "2016-04-24T00:00:00Z" 1]
              (first (mt/rows (mt/process-query query))))))))
