@@ -1224,7 +1224,7 @@ describe("issue 49577", () => {
     cy.signInAsNormalUser();
   });
 
-  it("not initially show the values when using a single select search box (metabase#49577)", () => {
+  it("should not show the values initially when using a single select search box (metabase#49577)", () => {
     openNativeEditor().type("select * from {{param");
     sidebar()
       .last()
