@@ -302,8 +302,12 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     // Bars
     chartPathWithFillColor("#509EE3").should("have.length", 5);
-    chartPathWithFillColor("#509EE3").eq(0).realHover();
 
+    // wait for echarts to re-render after resizing; this fixes test flakiness
+    chartPathWithFillColor("#509EE3").eq(4).should("be.visible");
+    cy.wait(1);
+
+    chartPathWithFillColor("#509EE3").eq(0).realHover();
     assertEChartsTooltip({
       header: "Affiliate",
       rows: [
