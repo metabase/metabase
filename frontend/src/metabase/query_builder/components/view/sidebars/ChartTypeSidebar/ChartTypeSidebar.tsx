@@ -15,7 +15,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,
-  type UseChartTypeVisualizationsProps,
+  type UseQuestionVisualizationStateProps,
   getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
@@ -24,7 +24,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
 
 export type ChartTypeSidebarProps = Pick<
-  UseChartTypeVisualizationsProps,
+  UseQuestionVisualizationStateProps,
   "question"
 > &
   GetSensibleVisualizationsProps;

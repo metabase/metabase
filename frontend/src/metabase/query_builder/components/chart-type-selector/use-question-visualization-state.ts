@@ -12,7 +12,7 @@ import {
 
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
-export type UseChartTypeVisualizationsProps = {
+export type UseQuestionVisualizationStateProps = {
   question?: Question;
   onUpdateQuestion: (question: Question) => void;
 };
@@ -20,7 +20,7 @@ export type UseChartTypeVisualizationsProps = {
 export const useQuestionVisualizationState = ({
   question,
   onUpdateQuestion,
-}: UseChartTypeVisualizationsProps) => {
+}: UseQuestionVisualizationStateProps) => {
   const selectedVisualization = question?.display() ?? "table";
 
   const updateQuestionVisualization = useCallback(

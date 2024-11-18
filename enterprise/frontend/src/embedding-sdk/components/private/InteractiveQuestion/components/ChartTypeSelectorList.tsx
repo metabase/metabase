@@ -1,18 +1,18 @@
 import { useMemo } from "react";
 
+import { useQuestionVisualization } from "embedding-sdk/components/private/InteractiveQuestion/hooks/use-question-visualization";
 import { Button, Icon, Menu, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { CardDisplayType } from "metabase-types/api";
 
-import { useChartTypeSelectors } from "../hooks/use-chart-type-selectors";
+import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
 
 export const ChartTypeSelectorList = () => {
-  const {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  } = useChartTypeSelectors();
+  const { selectedVisualization, updateQuestionVisualization } =
+    useQuestionVisualization();
+
+  const { sensibleVisualizations, nonSensibleVisualizations } =
+    useSensibleVisualizations();
 
   const getVisualizationItems = (visualizationType: CardDisplayType) => {
     const visualization = visualizations.get(visualizationType);
