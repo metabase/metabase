@@ -5,7 +5,7 @@
 
   or
 
-    java -jar metabase.jar load-from-h2
+    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2
 
   Test this as follows:
 

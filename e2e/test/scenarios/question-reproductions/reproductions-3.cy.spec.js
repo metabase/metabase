@@ -1126,7 +1126,7 @@ describe("issue 44532", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
-      cy.findByText("Created At").should("exist"); // x-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
       cy.findByText("January 2023").should("exist");
@@ -1152,7 +1152,7 @@ describe("issue 44532", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
-      cy.findByText("Created At").should("exist"); // x-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
       cy.findByText("January 2023").should("exist");
@@ -1285,7 +1285,7 @@ describe("issue 43294", () => {
     queryBuilderFooter().findByLabelText("Switch to visualization").click();
     echartsContainer().within(() => {
       cy.findByText("Count").should("be.visible");
-      cy.findByText("Created At").should("be.visible");
+      cy.findByText("Created At: Month").should("be.visible");
     });
   });
 });
@@ -2210,7 +2210,7 @@ describe("issue 36027", () => {
     visualize();
 
     echartsContainer().within(() => {
-      cy.findByText("Created At").should("be.visible"); // x-axis
+      cy.findByText("Created At: Month").should("be.visible"); // x-axis
       cy.findByText("Count").should("be.visible"); // y-axis
 
       // x-axis values
@@ -2355,5 +2355,84 @@ describe("issue 48829", () => {
     visualize();
 
     modal().should("not.exist");
+  });
+});
+
+describe("issue 50038", () => {
+  const QUESTION = {
+    name: "question with a very long name that will be too long to fit on one line which normally would result in some weird looking buttons with inconsistent heights",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const OTHER_QUESTION = {
+    name: "question that also has a long name that is so long it will break in the button",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+
+    createQuestion(QUESTION, { wrapId: true, idAlias: "questionId" });
+    createQuestion(OTHER_QUESTION, {
+      wrapId: true,
+      idAlias: "otherQuestionId",
+    });
+
+    cy.get("@questionId").then(questionId => {
+      cy.get("@otherQuestionId").then(otherQuestionId => {
+        createQuestion(
+          {
+            name: "Joined question",
+            query: {
+              "source-table": `card__${questionId}`,
+              joins: [
+                {
+                  "source-table": `card__${otherQuestionId}`,
+                  fields: "all",
+                  strategy: "left-join",
+                  condition: [
+                    "=",
+                    ["field", ORDERS_ID, {}],
+                    ["field", PRODUCTS_ID, {}],
+                  ],
+                },
+              ],
+            },
+          },
+          { visitQuestion: true },
+        );
+      });
+    });
+  });
+
+  function assertEqualHeight(selector, otherSelector) {
+    selector.invoke("outerHeight").then(height => {
+      otherSelector.invoke("outerHeight").should("eq", height);
+    });
+  }
+
+  it("should not break data source and join source buttons when the source names are too long (metabase#50038)", () => {
+    openNotebook();
+    getNotebookStep("data").within(() => {
+      assertEqualHeight(
+        cy.findByText(QUESTION.name).parent().should("be.visible"),
+        cy.findByTestId("fields-picker").should("be.visible"),
+      );
+    });
+    getNotebookStep("join").within(() => {
+      assertEqualHeight(
+        cy
+          .findAllByText(OTHER_QUESTION.name)
+          .first()
+          .parent()
+          .should("be.visible"),
+        cy.findByTestId("fields-picker").should("be.visible"),
+      );
+    });
   });
 });

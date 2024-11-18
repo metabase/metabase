@@ -6,7 +6,7 @@
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-chart-appearance
   [_tool-name arguments _context]
   {:reactions [(merge {:type :metabot.reaction/change-chart-appearance}
-                       arguments)]
+                      arguments)]
    :output "success"})
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-chart-appearance

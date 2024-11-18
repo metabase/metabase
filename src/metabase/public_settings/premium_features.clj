@@ -59,6 +59,10 @@
 
 (declare premium-embedding-token)
 
+(def ^:private ^:const active-users-count-cache-ttl
+  "Amount of time before we re-fetch the count of active users."
+  (u/minutes->ms 5))
+
 ;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
 ;; at a time.
 (let [f        (fn []
@@ -73,31 +77,30 @@
                    result))
       memoized (memoize/ttl
                 f
-                :ttl/threshold (u/minutes->ms 5))
+                :ttl/threshold (u/minutes->ms active-users-count-cache-ttl))
       lock     (Object.)]
-  (defn cached-active-users-count
-    "Primarily used for the settings because we don't wish it to be 100%. (HUH?)"
+  (defn- cached-active-users-count'
+    "Returns a count of users on the system, cached for 5 minutes."
     []
     (locking lock
       (memoized))))
 
-(defsetting active-users-count
+(defsetting cached-active-users-count
   (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
   :visibility :admin
   :type       :integer
   :audit      :never
   :setter     :none
   :default    0
+  :export?    false
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
                   0
-                  (cached-active-users-count))))
+                  (cached-active-users-count'))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
-
-(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (def TokenStatus
   "Schema for a response from the token status API."
@@ -112,18 +115,18 @@
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]])
 
+(def ^:private ^:const token-status-cache-ttl
+  "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
+  (u/hours->ms 12))
+
 (def ^{:arglists '([token base-url site-uuid active-users-count])} fetch-token-and-parse-body*
-  "Caches API responses for 5 minutes. This is important to avoid making too many API calls to the Store, which will
-  throttle us if we make too many requests; putting in a bad token could otherwise put us in a state where
-  `valid-token->features*` made API calls over and over, never itself getting cached because checks failed.
-
-  Note that we only cache successful responses, or 4XX responses!
-
-  5XX errors, timeouts, etc. may be transient and will NOT be cached."
+  "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
+  cached, but may trigger the *store-circuit-breaker*."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[token base-url site-uuid _active-users-count]]
                          [token base-url site-uuid])}
    (fn [token base-url site-uuid active-users-count]
+     (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
      (let [{:keys [body status] :as resp} (some-> (token-status-url token base-url)
                                                   (http/get {:query-params     {:users      active-users-count
                                                                                 :site-uuid  site-uuid
@@ -138,7 +141,7 @@
          :else (throw (ex-info "An unknown error occurred when validating token." {:status status
                                                                                    :body body})))))
 
-   :ttl/threshold (u/minutes->ms 5)))
+   :ttl/threshold token-status-cache-ttl))
 
 (def ^:private store-circuit-breaker-config
   {;; if 10 requests within 10 seconds fail, open the circuit breaker.
@@ -158,6 +161,8 @@
   and then all instances everywhere fire off constant requests to get token status. Instead, execution will constantly
   fail instantly until the circuit breaker is closed."
   (dh.cb/circuit-breaker store-circuit-breaker-config))
+
+(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
@@ -182,6 +187,7 @@
         (throw (.getCause e))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
+
 (declare decode-airgap-token)
 
 (mu/defn max-users-allowed :- [:maybe pos-int?]
@@ -206,29 +212,26 @@
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/
   (cond (mc/validate [:re RemoteCheckedToken] token)
-        ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
-        ;; reasonable amount of time throw a timeout exception
-        (do
-          (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
-          (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
-            (try (fetch-token-and-parse-body token token-check-url site-uuid)
-                 (catch Exception e1
-                   ;; Unwrap exception from inside the future
-                   (log/errorf e1 "Error fetching token status from %s:" token-check-url)
-                   ;; Try the fallback URL, which was the default URL prior to 45.2
-                   (try (fetch-token-and-parse-body token store-url site-uuid)
-                        ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                        ;; first error and return a generic message about the token being invalid. This message
-                        ;; will get displayed in the Settings page in the admin panel so we do not want something
-                        ;; complicated
-                        (catch Exception e2
-                          (log/errorf e2 "Error fetching token status from %s:" store-url)
-                          (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                            (or
-                             body
-                             {:valid         false
-                              :status        (tru "Unable to validate token")
-                              :error-details (.getMessage e1)}))))))))
+    ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
+    ;; reasonable amount of time throw a timeout exception
+        (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+          (try (fetch-token-and-parse-body token token-check-url site-uuid)
+               (catch Exception e1
+                 (log/errorf e1 "Error fetching token status from %s:" token-check-url)
+                 ;; Try the fallback URL, which was the default URL prior to 45.2
+                 (try (fetch-token-and-parse-body token store-url site-uuid)
+                      ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                      ;; first error and return a generic message about the token being invalid. This message
+                      ;; will get displayed in the Settings page in the admin panel so we do not want something
+                      ;; complicated
+                      (catch Exception e2
+                        (log/errorf e2 "Error fetching token status from %s:" store-url)
+                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                          (or
+                           body
+                           {:valid         false
+                            :status        (tru "Unable to validate token")
+                            :error-details (.getMessage e1)})))))))
 
         (mc/validate [:re AirgapToken] token)
         (do
@@ -243,7 +246,7 @@
            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
 (def ^{:arglists '([token])} fetch-token-status
-  "Locked vesrion of `fetch-token-status` allowing one request at a time."
+  "Locked version of `fetch-token-status` allowing one request at a time."
   (let [lock (Object.)]
     (fn [token]
       (locking lock
@@ -251,8 +254,9 @@
 
 (declare token-valid-now?)
 
-(mu/defn- valid-token->features* :- [:set ms/NonBlankString]
+(mu/defn- valid-token->features :- [:set ms/NonBlankString]
   [token :- TokenStr]
+  (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
   (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
@@ -266,18 +270,6 @@
                        :error-details (tru "Airgapped token is no longer valid. Please contact Metabase support.")})))
     ;; otherwise return the features this token supports
     (set features)))
-
-(def ^:private ^:const valid-token-recheck-interval-ms
-  "Amount of time to cache the status of a valid embedding token before forcing a re-check"
-  (u/hours->ms 24)) ; once a day
-
-(def ^:private ^{:arglists '([token])} valid-token->features
-  "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
-  ;; this is just `valid-token->features*` with some light caching
-  (let [f (memoize/ttl valid-token->features* :ttl/threshold valid-token-recheck-interval-ms)]
-    (fn [token]
-      (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
-      (f token))))
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")

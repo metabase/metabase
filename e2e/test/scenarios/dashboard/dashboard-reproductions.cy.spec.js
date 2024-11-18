@@ -63,6 +63,10 @@ const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
+function capitalize(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 describe("issue 12578", () => {
   const ORDERS_QUESTION = {
     name: "Orders question",
@@ -505,7 +509,9 @@ describe("issue 17879", () => {
       cy.findByText("Created At").click();
 
       popover().within(() => {
-        cy.findByText("Created At").click();
+        cy.findByText(
+          "Created At: " + capitalize(sourceDateUnit.replace(/-/g, " ")),
+        ).click();
       });
 
       cy.findByText("Done").click();

@@ -21,7 +21,6 @@ import {
   Subtitle,
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import { computeChange } from "../lib/numeric";
 
@@ -134,7 +133,7 @@ export default class FunnelNormal extends Component {
               col: cols[dimensionIndex],
             },
             {
-              key: getFriendlyName(cols[metricIndex]),
+              key: cols[metricIndex].display_name,
               value: row[metricIndex],
               col: cols[metricIndex],
             },
@@ -183,7 +182,7 @@ export default class FunnelNormal extends Component {
           </Head>
           <FunnelStart isNarrow={isNarrow}>
             <Title>{formatMetric(sortedRows[0][metricIndex])}</Title>
-            <Subtitle>{getFriendlyName(cols[metricIndex])}</Subtitle>
+            <Subtitle>{cols[metricIndex].display_name}</Subtitle>
           </FunnelStart>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
           <Info isNarrow={isNarrow}>
