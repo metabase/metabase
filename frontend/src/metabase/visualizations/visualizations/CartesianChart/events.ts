@@ -50,7 +50,6 @@ import {
   isRemappedToString,
 } from "metabase/visualizations/lib/renderer_utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
@@ -185,7 +184,7 @@ const getEventColumnsData = (
       const columnSeriesModel = seriesModelsByDataKey[dataKey];
       const key =
         columnSeriesModel == null
-          ? getFriendlyName(col)
+          ? col.display_name
           : columnSeriesModel.tooltipName;
       const displayValue =
         isBreakoutSeries(seriesModel) && seriesModel.breakoutColumn === col

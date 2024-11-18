@@ -1,6 +1,5 @@
 import crossfilter from "crossfilter";
 import * as d3 from "d3";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
@@ -147,27 +146,6 @@ export function computeSplit(extents, left = [], right = []) {
   } else {
     return best && best.sort((a, b) => a[0] - b[0]);
   }
-}
-
-const AGGREGATION_NAME_MAP = {
-  avg: t`Average`,
-  count: t`Count`,
-  sum: t`Sum`,
-  distinct: t`Distinct`,
-  stddev: t`Standard Deviation`,
-};
-const AGGREGATION_NAME_REGEX = new RegExp(
-  `^(${Object.keys(AGGREGATION_NAME_MAP).join("|")})(_\\d+)?$`,
-);
-
-export function getFriendlyName(column) {
-  if (AGGREGATION_NAME_REGEX.test(column.name)) {
-    const friendly = AGGREGATION_NAME_MAP[column.display_name.toLowerCase()];
-    if (friendly) {
-      return friendly;
-    }
-  }
-  return column.display_name;
 }
 
 export function isSameSeries(seriesA, seriesB) {

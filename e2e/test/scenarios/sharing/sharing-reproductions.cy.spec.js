@@ -1078,7 +1078,7 @@ describe("issue 49525", { tags: "@external" }, () => {
         const rows = csvContent.split("\n");
         const headers = rows[0];
         expect(headers).to.equal(
-          "Created At,Doohickey,Gadget,Gizmo,Widget,Row totals\r",
+          "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals\r",
         );
       });
     });
