@@ -51,7 +51,7 @@
     (if (= (set (map :name new-table-columns)) (set (map :name old-table-columns)))
       {:output "success"
        :reactions [{:type :metabot.reaction/change-table-column-settings
-                    :settings {:table.columns new-table-columns}}]}
+                    :table_columns new-table-columns}]}
       {:output "Invalid `table_columns` change. You can only change `enabled` property of each column or reorder columns in the list. Do not add new columns and do not remove existing columns from this list."})))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-table-column-settings
