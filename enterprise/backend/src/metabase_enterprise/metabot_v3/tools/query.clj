@@ -1,17 +1,17 @@
 (ns metabase-enterprise.metabot-v3.tools.query
   (:require
-    [cheshire.core :as json]
-    [medley.core :as m]
-    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
-    [metabase.lib.core :as lib]
-    [metabase.lib.expression :as lib.expression]
-    [metabase.lib.metadata :as lib.metadata]
-    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-    [metabase.lib.query :as lib.query]
-    [metabase.lib.types.isa :as lib.types.isa]
-    [metabase.lib.util :as lib.util]
-    [metabase.util.log :as log]
-    [metabase.util.malli :as mu])
+   [cheshire.core :as json]
+   [medley.core :as m]
+   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
+   [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.query :as lib.query]
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang ExceptionInfo)))
 
