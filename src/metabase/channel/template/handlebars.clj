@@ -34,20 +34,20 @@
           ;; try uncomment this and run the metabase.channel.template.handlebars-test/reload-template-if-it's-changed test
           ;; TODO: fix this upstream for the original ConcurrentMapTemplateCache
           (.lastModified source)
-          (log/debugf "Caching template %s" source)
+          (log/fatalf "Caching template %s" source)
           (swap! cache assoc source [source template])
           template)
 
         (and reload (not= (.lastModified source) (.lastModified ^TemplateSource cached-source)))
         (do
-          (log/debugf "Reloading template %s" source)
+          (log/fatalf "Reloading template %s" source)
           (.evict this source)
           (let [template (.parse parser source)]
             (swap! cache assoc source [source template])
             template))
         :else
         (do
-          (log/debugf "Using cached template %s" source)
+          (log/fatalf "Using cached template %s" source)
           cached-template))))
 
   (setReload [this value]
