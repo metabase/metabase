@@ -3,7 +3,7 @@ import { type ComponentProps, useState } from "react";
 
 import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box, Button, Stack } from "metabase/ui";
+import { Box, Button, Modal, Stack } from "metabase/ui";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
@@ -44,9 +44,9 @@ export const Default = {
         </Box>
 
         {isSaveModalOpen && (
-          <Box data-testid="save-question-form-container">
+          <Modal opened={isSaveModalOpen} onClose={close}>
             <InteractiveQuestion.SaveQuestionForm onClose={close} />
-          </Box>
+          </Modal>
         )}
 
         {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
