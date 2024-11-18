@@ -20,7 +20,7 @@ import {
   SummarizeButton,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
-import { Breakout } from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout";
+import { Breakout } from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout/Breakout";
 import {
   InteractiveQuestionProvider,
   type InteractiveQuestionProviderProps,

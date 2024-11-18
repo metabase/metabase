@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { match } from "ts-pattern";
 
+import S from "embedding-sdk/components/private/InteractiveQuestion/components/Picker.module.css";
 import {
   type ListItem as BreakoutListItem,
   getBreakoutListItem,
@@ -14,12 +15,10 @@ import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutS
 import { Button, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { MultiStepPopover } from "../../util/MultiStepPopover";
-import { useInteractiveQuestionContext } from "../context";
-
-import { BadgeList } from "./util/BadgeList";
-import { ToolbarButton } from "./util/ToolbarButton";
-
+import { MultiStepPopover } from "../../../util/MultiStepPopover";
+import { useInteractiveQuestionContext } from "../../context";
+import { BadgeList } from "../util/BadgeList";
+import { ToolbarButton } from "../util/ToolbarButton";
 type BreakoutItem = {
   breakout?: Lib.BreakoutClause;
   breakoutIndex?: number;
@@ -86,6 +85,7 @@ export const BreakoutInner = ({
         <Stack>
           <Button onClick={() => setStep("list")}>Back</Button>
           <BreakoutPopover
+            className={S.PickerContainer}
             query={query}
             stageIndex={stageIndex}
             breakout={selectedBreakout.breakout}
