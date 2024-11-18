@@ -61,12 +61,12 @@ export const CreateQuestionDefaultView = ({
 
   return (
     <FlexibleSizeComponent>
-      <Flex w="100%" justify="space-between">
+      <Flex w="100%" justify="space-between" pb="lg">
         <Flex>
           <InteractiveQuestion.Title />
         </Flex>
 
-        <Flex>
+        <Flex gap="sm">
           <Button onClick={() => setIsVisualizationView(!isVisualizationView)}>
             Show {isVisualizationView ? "editor" : "visualization"}
           </Button>
