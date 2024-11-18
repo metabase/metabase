@@ -115,7 +115,6 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
             13371337: "none",
           },
         },
-        skip_graph: true,
       });
     });
   });

@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { currency } from "cljs/metabase.util.currency";
 import {
-  formatColumn,
+  displayNameForColumn,
   getCurrencySymbol,
   getDateFormatFromStyle,
   numberFormatterForOptions,
@@ -435,7 +435,8 @@ const COMMON_COLUMN_SETTINGS = {
   },
   _column_title_full: {
     getValue: (column, settings) => {
-      let columnTitle = settings["column_title"] || formatColumn(column);
+      let columnTitle =
+        settings["column_title"] || displayNameForColumn(column);
       const headerUnit = settings["_header_unit"];
       if (headerUnit) {
         columnTitle += ` (${headerUnit})`;
@@ -499,10 +500,11 @@ export function isPivoted(series, settings) {
 export const getTitleForColumn = (column, series, settings) => {
   const pivoted = isPivoted(series, settings);
   if (pivoted) {
-    return formatColumn(column) || t`Unset`;
+    return displayNameForColumn(column) || t`Unset`;
   } else {
     return (
-      settings.column(column)["_column_title_full"] || formatColumn(column)
+      settings.column(column)["_column_title_full"] ||
+      displayNameForColumn(column)
     );
   }
 };

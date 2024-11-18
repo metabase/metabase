@@ -9,7 +9,7 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk/lib/is-localhost";
 import {
   createMockApiKeyConfig,
-  createMockJwtConfig,
+  createMockAuthProviderUriConfig,
 } from "embedding-sdk/test/mocks/config";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
@@ -57,7 +57,10 @@ const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
 
 describe("SdkUsageProblemDisplay", () => {
   it("does not show an error when JWT is provided with a license", () => {
-    setup({ config: createMockJwtConfig(), hasEmbeddingFeature: true });
+    setup({
+      config: createMockAuthProviderUriConfig(),
+      hasEmbeddingFeature: true,
+    });
 
     expect(
       screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
@@ -65,7 +68,10 @@ describe("SdkUsageProblemDisplay", () => {
   });
 
   it("shows an error when JWT is used without a license", async () => {
-    setup({ config: createMockJwtConfig(), hasEmbeddingFeature: false });
+    setup({
+      config: createMockAuthProviderUriConfig(),
+      hasEmbeddingFeature: false,
+    });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
@@ -120,7 +126,7 @@ describe("SdkUsageProblemDisplay", () => {
     mock.mockRestore();
   });
 
-  it("shows an error when neither JWT or API keys are provided", async () => {
+  it("shows an error when neither an Auth Provider URI or API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing neither to simulate bad usage
       config: { metabaseInstanceUrl: "http://localhost" },
@@ -130,18 +136,18 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(
       within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
-        /must provide either a JWT URI or an API key for authentication/,
+        /must provide either an Auth Provider URI or an API key for authentication/,
       ),
     ).toBeInTheDocument();
   });
 
-  it("shows an error when both JWT and API keys are provided", async () => {
+  it("shows an error when both an Auth Provider URI and API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing both to simulate bad usage
       config: {
         apiKey: "TEST_API_KEY",
         metabaseInstanceUrl: "http://localhost",
-        jwtProviderUri: "http://TEST_URI/sso/metabase",
+        authProviderUri: "http://TEST_URI/sso/metabase",
       },
     });
 
@@ -149,7 +155,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(
       within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
-        /cannot use both JWT and API key authentication at the same time/,
+        /cannot use both an Auth Provider URI and API key authentication at the same time/,
       ),
     ).toBeInTheDocument();
   });
