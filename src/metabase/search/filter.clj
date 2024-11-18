@@ -81,8 +81,18 @@
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
   WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
-  [{filter-type :filter-items-in-personal-collection} collection-id-col]
-  (when filter-type
+  [{filter-type :filter-items-in-personal-collection :keys [current-user-id] :as search-ctx} collection-id-col]
+  (case #p (or filter-type "all")
+    "all" nil
+
+    "not-others"
+    [:or
+     [:and [:= :collection.personal_owner_id nil] [:= :collection.location "/"]]
+     [:like :collection.location (format "/%d/%%" current-user-id)]
+     (personal-collections-where-clause
+      (assoc search-ctx :filter-items-in-personal-collection "exclude")
+      collection-id-col)]
+
     (let [parent-ids     (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
           child-patterns (for [id parent-ids] (format "/%d/%%" id))]
       (case filter-type

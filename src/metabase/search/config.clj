@@ -199,7 +199,7 @@
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+   [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude" "all" "not-others"]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
