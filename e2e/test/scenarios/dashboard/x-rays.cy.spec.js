@@ -295,11 +295,6 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.url().should("contain", "/question");
 
-    cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("chartsettings-field-picker")
-      .contains("User → Source")
-      .should("be.visible");
-
     // Bars
     chartPathWithFillColor("#509EE3").should("have.length", 5);
     chartPathWithFillColor("#509EE3").eq(0).realHover();
@@ -314,6 +309,11 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         },
       ],
     });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findAllByTestId("chartsettings-field-picker")
+      .contains("User → Source")
+      .should("be.visible");
   });
 
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
