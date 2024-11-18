@@ -1,11 +1,15 @@
 import { useMemo } from "react";
 
-import { useQuestionVisualization } from "embedding-sdk/components/private/InteractiveQuestion/hooks/use-question-visualization";
-import { Button, Icon, Menu, Text } from "metabase/ui";
+import { isNotNull } from "metabase/lib/types";
+import { Icon, Menu } from "metabase/ui";
 import visualizations from "metabase/visualizations";
+import type { Visualization } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
 
+import { useQuestionVisualization } from "../hooks/use-question-visualization";
 import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
+
+import { ToolbarButton } from "./util/ToolbarButton";
 
 export const ChartTypeSelectorList = () => {
   const { selectedVisualization, updateQuestionVisualization } =
@@ -14,44 +18,55 @@ export const ChartTypeSelectorList = () => {
   const { sensibleVisualizations, nonSensibleVisualizations } =
     useSensibleVisualizations();
 
-  const getVisualizationItems = (visualizationType: CardDisplayType) => {
+  const getVisualizationItems = (
+    visualizationType: CardDisplayType,
+  ): {
+    value: CardDisplayType;
+    label: Visualization["uiName"];
+    iconName: Visualization["iconName"];
+  } | null => {
     const visualization = visualizations.get(visualizationType);
+    if (!visualization) {
+      return null;
+    }
+
     return {
       value: visualizationType,
-      label: visualization?.uiName,
-      iconName: visualization?.iconName,
+      label: visualization.uiName,
+      iconName: visualization.iconName,
     };
   };
 
   const sensibleItems = useMemo(
-    () => sensibleVisualizations.map(getVisualizationItems),
+    () => sensibleVisualizations.map(getVisualizationItems).filter(isNotNull),
     [sensibleVisualizations],
   );
   const nonsensibleItems = useMemo(
-    () => nonSensibleVisualizations.map(getVisualizationItems),
+    () =>
+      nonSensibleVisualizations.map(getVisualizationItems).filter(isNotNull),
     [nonSensibleVisualizations],
   );
 
   const selectedElem = useMemo(
-    () => getVisualizationItems(selectedVisualization),
-    [selectedVisualization],
+    () =>
+      getVisualizationItems(selectedVisualization) ??
+      sensibleItems[0] ??
+      nonsensibleItems[0],
+    [selectedVisualization, sensibleItems, nonsensibleItems],
   );
 
   return (
     <Menu>
       <Menu.Target>
-        <Button
+        <ToolbarButton
+          label={selectedElem.label}
+          icon={selectedElem.iconName}
+          isHighlighted={false}
           variant="default"
-          leftIcon={
-            selectedElem?.iconName && <Icon name={selectedElem.iconName} />
-          }
-          py="xs"
-          px="md"
-        >
-          {selectedElem.label && <Text>{selectedElem.label}</Text>}
-        </Button>
+          rightIcon={<Icon size={10} name="chevrondown" />}
+        />
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown h="30rem">
         <Menu.Label>Sensible</Menu.Label>
         {sensibleItems.map(({ iconName, label, value }, index) => (
           <Menu.Item
