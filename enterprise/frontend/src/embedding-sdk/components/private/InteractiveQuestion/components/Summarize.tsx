@@ -16,11 +16,14 @@ import { useInteractiveQuestionContext } from "../context";
 
 import { BadgeList } from "./util/BadgeList";
 
+type SummarizeProps = { onClose?: () => void };
+
 export const SummarizeInner = ({
   query,
   onQueryChange,
   stageIndex,
-}: UpdateQueryHookProps) => {
+  onClose,
+}: UpdateQueryHookProps & SummarizeProps) => {
   const aggregationItems = useMemo(
     () => getAggregationItems({ query, stageIndex }),
     [query, stageIndex],
@@ -48,6 +51,7 @@ export const SummarizeInner = ({
         setStep("list");
       }
     },
+    onClose,
   });
 
   return (
@@ -108,7 +112,7 @@ export const SummarizeInner = ({
   );
 };
 
-export const Summarize = () => {
+export const Summarize = ({ onClose }: SummarizeProps) => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   if (!question) {
@@ -126,6 +130,7 @@ export const Summarize = () => {
       query={query}
       onQueryChange={onQueryChange}
       stageIndex={-1}
+      onClose={onClose}
     />
   );
 };
