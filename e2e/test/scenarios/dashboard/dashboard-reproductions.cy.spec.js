@@ -53,7 +53,6 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import { capitalize } from "metabase/lib/formatting";
 import {
   createMockDashboardCard,
   createMockParameter,
@@ -63,6 +62,10 @@ const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
+
+function capitalize(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
 
 describe("issue 12578", () => {
   const ORDERS_QUESTION = {
