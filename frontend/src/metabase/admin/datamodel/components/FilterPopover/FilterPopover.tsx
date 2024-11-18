@@ -217,9 +217,10 @@ export function FilterPopover({
           style={{ color: color("filter") }}
           maxHeight={Infinity}
           dimension={dimension}
-          sections={// eslint-disable-next-line no-restricted-syntax
-          (
-            (filter && filter.legacyQuery({ useStructuredQuery: true })) ||
+          sections={(
+            (filter &&
+              // eslint-disable-next-line no-restricted-syntax
+              filter.legacyQuery({ useStructuredQuery: true })) ||
             legacyQuery
           ).filterFieldOptionSections(filter, {
             includeSegments: showCustom,
