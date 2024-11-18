@@ -2,6 +2,7 @@ import cx from "classnames";
 import type React from "react";
 import { t } from "ttag";
 
+import type { PropsWithHTMLStyle } from "embedding-sdk/types/default-style-props";
 import CS from "metabase/css/core/index.css";
 import { AdHocQuestionDescription } from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription";
 import * as Lib from "metabase-lib";
@@ -13,14 +14,16 @@ interface QuestionTitleProps {
 
 export const QuestionTitle = ({
   question,
-}: QuestionTitleProps): React.JSX.Element => {
+  className,
+  style,
+}: PropsWithHTMLStyle<QuestionTitleProps>): React.JSX.Element => {
   const isSaved = question.isSaved();
 
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
 
   return (
-    <h2 className={cx(CS.h2, CS.textWrap)}>
+    <h2 className={cx(CS.h2, CS.textWrap, className)} style={style}>
       {isSaved ? (
         question.displayName()
       ) : !isNative && AdHocQuestionDescription.shouldRender(question) ? (

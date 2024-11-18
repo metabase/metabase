@@ -1,8 +1,14 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
+import type { PropsWithHTMLStyle } from "embedding-sdk/types/default-style-props";
 
-export const Title = () => {
+import { useInteractiveQuestionContext } from "../context";
+
+export const Title = ({ className, style }: PropsWithHTMLStyle) => {
   const { question } = useInteractiveQuestionContext();
 
-  return question && <QuestionTitle question={question} />;
+  return (
+    question && (
+      <QuestionTitle question={question} className={className} style={style} />
+    )
+  );
 };
