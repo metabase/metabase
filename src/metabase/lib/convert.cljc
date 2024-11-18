@@ -185,25 +185,46 @@
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [aggregations (->pMBQL (:aggregation stage))
+  (let [agg-idents   (:aggregation-idents stage)
+        aggregations (->> (:aggregation stage)
+                          ->pMBQL
+                          (map-indexed (fn [i agg]
+                                         (if-let [ident (get agg-idents i)]
+                                           (lib.options/update-options agg assoc :ident ident)
+                                           agg)))
+                          vec
+                          not-empty)
+        brk-idents   (:breakout-idents stage)
+        breakouts    (->> (:breakout stage)
+                          ->pMBQL
+                          (map-indexed (fn [i breakout]
+                                         (if-let [ident (get brk-idents i)]
+                                           (lib.options/update-options breakout assoc :ident ident)
+                                           breakout)))
+                          vec
+                          not-empty)
+        expr-idents  (:expression-idents stage)
         expressions  (->> stage
                           :expressions
                           (mapv (fn [[k v]]
-                                  (-> v
-                                      ->pMBQL
-                                      (lib.util/top-level-expression-clause k))))
+                                  (let [expr (-> v
+                                                 ->pMBQL
+                                                 (lib.util/top-level-expression-clause k))]
+                                    (if-let [ident (get expr-idents k)]
+                                      (lib.options/update-options expr assoc :ident ident)
+                                      expr))))
                           not-empty)]
     (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
-                      (m/assoc-some :aggregation aggregations :expressions expressions))
+                      (m/assoc-some :aggregation aggregations :breakout breakouts :expressions expressions))
             stage (reduce
                    (fn [stage k]
                      (if-not (get stage k)
                        stage
                        (update stage k ->pMBQL)))
-                   stage
-                   (disj stage-keys :aggregation :expressions))]
+                   (dissoc stage :aggregation-idents :breakout-idents :expression-idents)
+                   (disj stage-keys :aggregation :breakout :expressions))]
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
 
@@ -399,7 +420,7 @@
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
     (into [k] (concat (map ->legacy-MBQL args)
-                      (when-let [options (options->legacy-MBQL options)]
+                      (when-let [options (not-empty (options->legacy-MBQL options))]
                         [options])))
     (into [k] (map ->legacy-MBQL (cons options args)))))
 
@@ -551,6 +572,25 @@
         (assoc :source-table (str "card__" source-card-id)))
     stage))
 
+(defn- stage-expressions->legacy-MBQL [expressions]
+  (into {}
+        (for [expression expressions
+              :let [legacy-clause (->legacy-MBQL expression)]]
+          [(lib.util/expression-name expression)
+           ;; We wrap literals in :value ->pMBQL so unwrap this
+           ;; direction. Also, `:aggregation-options` is not allowed
+           ;; inside `:expressions` in legacy, we'll just have to toss
+           ;; the extra info.
+           (if (#{:value :aggregation-options} (first legacy-clause))
+             (second legacy-clause)
+             legacy-clause)])))
+
+(defn- idents-by-index [clause-list]
+  (->> clause-list
+       (into {} (map-indexed (fn [i clause]
+                               [i (lib.options/ident clause)])))
+       not-empty))
+
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
   (metabase.lib.convert/with-aggregation-list (:aggregation stage)
@@ -558,21 +598,19 @@
             (-> stage
                 disqualify
                 source-card->legacy-source-table
+
+                (m/assoc-some :aggregation-idents (idents-by-index (:aggregation stage)))
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
-                (m/update-existing :expressions (fn [expressions]
-                                                  (into {}
-                                                        (for [expression expressions
-                                                              :let [legacy-clause (->legacy-MBQL expression)]]
-                                                          [(lib.util/expression-name expression)
-                                                           ;; We wrap literals in :value ->pMBQL so unwrap this
-                                                           ;; direction. Also, `:aggregation-options` is not allowed
-                                                           ;; inside `:expressions` in legacy, we'll just have to toss
-                                                           ;; the extra info.
-                                                           (if (#{:value :aggregation-options} (first legacy-clause))
-                                                             (second legacy-clause)
-                                                             legacy-clause)]))))
+                (m/assoc-some :breakout-idents (idents-by-index (:breakout stage)))
+                (m/update-existing :breakout #(mapv ->legacy-MBQL %))
+
+                (m/assoc-some :expression-idents (->> (:expressions stage)
+                                                      (into {} (map (juxt lib.util/expression-name
+                                                                          lib.options/ident)))
+                                                      not-empty))
+                (m/update-existing :expressions stage-expressions->legacy-MBQL)
                 (update-list->legacy-boolean-expression :filters :filter))
-            (disj stage-keys :aggregation :filters :expressions))))
+            (disj stage-keys :aggregation :breakout :filters :expressions))))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
