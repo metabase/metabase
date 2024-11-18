@@ -1,8 +1,9 @@
 import type { MantineThemeOverride } from "@mantine/core";
+import cx from "classnames";
 import { t } from "ttag";
+
 import Animation from "metabase/css/core/animation.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
-import cx from "classnames";
 
 const DEFAULT_MODAL_SPACING = "lg";
 
