@@ -9,12 +9,10 @@ export type AggregationItem = {
   displayName: string;
 };
 
-export type AggregationItems = AggregationItem[];
-
 export const getAggregationItems = ({
   query,
   stageIndex,
-}: Pick<UpdateQueryHookProps, "query" | "stageIndex">): AggregationItems => {
+}: Pick<UpdateQueryHookProps, "query" | "stageIndex">): AggregationItem[] => {
   const aggregations = Lib.aggregations(query, stageIndex);
 
   return aggregations.map((aggregation, aggregationIndex) => {
