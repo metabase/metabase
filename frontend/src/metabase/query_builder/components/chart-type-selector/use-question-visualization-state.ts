@@ -25,20 +25,20 @@ export const useQuestionVisualizationState = ({
 
   const updateQuestionVisualization = useCallback(
     (display: CardDisplayType) => {
-      if (question) {
-        let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
-        const visualization = visualizations.get(display);
-        if (visualization?.onDisplayUpdate) {
-          const updatedSettings = visualization.onDisplayUpdate(
-            newQuestion.settings(),
-          );
-          newQuestion = newQuestion.setSettings(updatedSettings);
-        }
-
-        onUpdateQuestion(newQuestion);
+      if (!question || selectedVisualization === display) {
+        return;
       }
+      let newQuestion = question.setDisplay(display).lockDisplay();
+      const visualization = visualizations.get(display);
+      if (visualization?.onDisplayUpdate) {
+        const updatedSettings = visualization.onDisplayUpdate(
+          newQuestion.settings(),
+        );
+        newQuestion = newQuestion.setSettings(updatedSettings);
+      }
+      onUpdateQuestion(newQuestion);
     },
-    [onUpdateQuestion, question],
+    [onUpdateQuestion, question, selectedVisualization],
   );
 
   return {

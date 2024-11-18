@@ -1,5 +1,6 @@
 export * from "./BackButton";
 export * from "./ChartTypeSelector";
+export * from "./ChartTypeSelectorList";
 export * from "./Filter";
 export * from "./FilterBar";
 export * from "./FilterButton";
@@ -14,4 +15,3 @@ export * from "./SummarizeButton";
 export * from "./Title";
 export * from "./Visualization";
 export * from "./QuestionSettings";
-export * from "./ChartTypeSelectorList";

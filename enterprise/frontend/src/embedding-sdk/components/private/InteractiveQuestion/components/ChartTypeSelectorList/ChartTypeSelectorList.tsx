@@ -6,10 +6,9 @@ import visualizations from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
 
-import { useQuestionVisualization } from "../hooks/use-question-visualization";
-import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
-
-import { ToolbarButton } from "./util/ToolbarButton";
+import { useQuestionVisualization } from "../../hooks/use-question-visualization";
+import { useSensibleVisualizations } from "../../hooks/use-sensible-visualizations";
+import { ToolbarButton } from "../util/ToolbarButton";
 
 export const ChartTypeSelectorList = () => {
   const { selectedVisualization, updateQuestionVisualization } =
