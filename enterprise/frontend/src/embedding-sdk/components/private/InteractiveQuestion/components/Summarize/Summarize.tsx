@@ -12,6 +12,7 @@ import {
 import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../context";
+import S from "../Picker.module.css";
 import { BadgeList } from "../util/BadgeList";
 import { ToolbarButton } from "../util/ToolbarButton";
 
@@ -68,6 +69,7 @@ export const SummarizeInner = ({
       </MultiStepPopover.Target>
       <MultiStepPopover.Step value="picker">
         <AggregationPicker
+          className={S.PickerContainer}
           query={query}
           stageIndex={stageIndex}
           clause={selectedAggregationItem?.aggregation}
