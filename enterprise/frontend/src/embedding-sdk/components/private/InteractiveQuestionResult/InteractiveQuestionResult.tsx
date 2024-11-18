@@ -105,11 +105,7 @@ export const InteractiveQuestionResult = ({
               )
             }
           />
-          <InteractiveQuestion.SummarizeButton
-            onOpen={() => setQuestionView("summarize")}
-            onClose={() => setQuestionView("visualization")}
-            isOpen={questionView === "summarize"}
-          />
+          <InteractiveQuestion.Summarize onClose={() => null} />
           <InteractiveQuestion.EditorButton
             isOpen={questionView === "editor"}
             onClick={() =>

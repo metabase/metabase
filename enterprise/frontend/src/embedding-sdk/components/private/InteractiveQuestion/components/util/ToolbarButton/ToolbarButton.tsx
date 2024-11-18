@@ -20,7 +20,7 @@ function _ToolbarButton(
   return (
     <Button
       ref={ref}
-      variant={isHighlighted ? "subtle" : "filled"}
+      variant={isHighlighted ? "filled" : "subtle"}
       leftIcon={<Icon name={icon} />}
       py="sm"
       px="md"
