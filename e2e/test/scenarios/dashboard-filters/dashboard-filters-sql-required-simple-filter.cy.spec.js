@@ -1,4 +1,5 @@
 import {
+  changeSynchronousBatchUpdateSetting,
   clearFilterWidget,
   editDashboard,
   restore,
@@ -43,6 +44,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
 
     cy.createNativeQuestionAndDashboard({
       questionDetails,
@@ -64,6 +66,10 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
       visitDashboard(dashboard_id);
     });
+  });
+
+  afterEach(() => {
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("should respect default filter precedence while properly updating the url for each step of the flow", () => {

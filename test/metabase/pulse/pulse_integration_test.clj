@@ -438,7 +438,7 @@
                     "Example Month"                    "12"
                     "Example Day"                      "11"
                     "Example Week Number"              "50"
-                    "Example Week"                     "December 10, 2023 - December 16, 2023"
+                    "Example Week: Week"               "December 10, 2023 - December 16, 2023"
                     "Example Hour"                     "15"
                     "Example Minute"                   "30"
                     "Example Second"                   "45"}
@@ -460,7 +460,7 @@
                    (metamodel-results "Example Time"))))
           (testing "Week Units Are Displayed as a Date Range"
             (is (= "December 10, 2023 - December 16, 2023"
-                   (metamodel-results "Example Week")))))))))
+                   (metamodel-results "Example Week: Week")))))))))
 
 (deftest renamed-column-names-are-applied-test
   (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"

@@ -185,6 +185,7 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
 }
 
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
+  echartsTooltip().should("be.visible");
   echartsTooltip().within(() => {
     if (header != null) {
       tooltipHeader().should("have.text", header);
