@@ -55,7 +55,7 @@ function ExplicitSize<T>({
   wrapped = false,
   refreshMode = "throttle",
 }: ExplicitSizeProps<T> = {}) {
-  return (ComposedComponent: ComponentType<T>) => {
+  return (ComposedComponent: ComponentType<T & SizeState>) => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
     class WrappedComponent extends Component<T & InnerProps> {

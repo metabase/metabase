@@ -121,7 +121,7 @@ interface ExpressionEditorTextfieldProps {
   stageIndex: number;
   startRule?: "expression" | "aggregation" | "boolean";
   expressionIndex?: number;
-  width?: number;
+  width: number;
   reportTimezone?: string;
   textAreaId?: string;
 
