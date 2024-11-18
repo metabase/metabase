@@ -2,10 +2,12 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
+  createDashboardWithQuestions,
   createPublicDashboardLink,
   dashboardParametersContainer,
   describeEE,
   filterWidget,
+  getDashboardCard,
   goToTab,
   openNewPublicLinkDropdown,
   openSharingMenu,
@@ -17,7 +19,7 @@ import {
   visitPublicDashboard,
 } from "e2e/support/helpers";
 
-const { PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "sql param",
@@ -285,6 +287,54 @@ describe("scenarios > public > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
     cy.findByText("Registerkarte als PDF exportieren").should("be.visible");
     cy.url().should("include", "locale=de");
+  });
+
+  it("should respect click behavior", () => {
+    createDashboardWithQuestions({
+      dashboardName: "test click behavior",
+      questions: [
+        {
+          name: "orders",
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 5,
+          },
+        },
+      ],
+      cards: [
+        {
+          visualization_settings: {
+            column_settings: {
+              '["name","TOTAL"]': {
+                click_behavior: {
+                  type: "link",
+                  linkType: "url",
+                  linkTemplate: "https://metabase.com",
+                },
+              },
+            },
+          },
+        },
+      ],
+    }).then(({ dashboard }) => {
+      visitPublicDashboard(dashboard.id);
+    });
+
+    // This is a hacky way to intercept the link click we create an a element
+    // with href on fly and remove it afterwards in lib/dom.js
+    cy.window().then(win => {
+      cy.spy(win.document.body, "appendChild").as("appendChild");
+    });
+
+    getDashboardCard().findByText("39.72").click();
+
+    cy.get("@appendChild").then(appendChild => {
+      // last call is a link
+      const element = appendChild.lastCall.args[0];
+
+      expect(element.tagName).to.eq("A");
+      expect(element.href).to.eq("https://metabase.com/");
+    });
   });
 });
 

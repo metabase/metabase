@@ -139,7 +139,7 @@ type OwnProps = {
   mode?: QueryClickActionsMode | Mode;
   // public dashboard passes it explicitly
   width?: number;
-  // public dashboard passes it as noop
+  // public or embedded dashboard passes it as noop
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
