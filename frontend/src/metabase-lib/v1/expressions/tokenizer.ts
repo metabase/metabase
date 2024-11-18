@@ -269,9 +269,9 @@ export function tokenize(expression: string): {
       } else {
         const operator = parseOperator(source, index);
 
-        // if we hit an operator while scanning for bracket identifier, then we have
-        // an incomplete bracket identifier
-        if (operator) {
+        // if while scanning for bracket identifier we hit an operator not within brackets,
+        // then we have an incomplete bracket identifier
+        if (operator && !isInsideBracketIdentifier()) {
           const type = TOKEN.Identifier;
           const end = index;
           const error = t`Missing a closing bracket`;
@@ -285,6 +285,22 @@ export function tokenize(expression: string): {
     const terminated = source[end - 1] === "]";
     const error = terminated ? null : t`Missing a closing bracket`;
     return { type, start, end, error };
+  };
+
+  const isInsideBracketIdentifier = () => {
+    for (let i = index + 1; i < length; ++i) {
+      const character = source[i];
+
+      if (character === "]") {
+        return true;
+      }
+
+      if (character === "[") {
+        return false;
+      }
+    }
+
+    return false;
   };
 
   const isIdentifierStart = (cp: number) => isAlpha(cp) || cp === 0x5f; // underscore;
