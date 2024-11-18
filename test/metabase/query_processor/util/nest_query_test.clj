@@ -522,28 +522,30 @@
                                                                                              ::add/position      1}]
                                                       pivot-grouping    [:expression "pivot-grouping" {::add/desired-alias "pivot-grouping"
                                                                                                        ::add/position      2}]
-                                                      products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
-                                                                                                    ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
-                                                                                                    ::add/source-alias  "CATEGORY"
-                                                                                                    ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                                    ::add/position      3}]
                                                       products-id       [:field %products.id {:join-alias         "PRODUCTS__via__PRODUCT_ID"
                                                                                               ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
                                                                                               ::add/source-alias  "ID"
                                                                                               ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__ID"
-                                                                                              ::add/position      4}]]
+                                                                                              ::add/position      3}]
+                                                      products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                                                                                    ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
+                                                                                                    ::add/source-alias  "CATEGORY"
+                                                                                                    ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                                                                                                    ::add/position      4}]]
                                                   {:source-table $$orders
                                                    :joins        [{:source-table $$products
                                                                    :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                                   :ident        "oJhVb8BtrfV9-KsWj5kKw"
                                                                    :condition    [:= product-id products-id]
                                                                    :strategy     :left-join
                                                                    :fk-field-id  %product-id}]
                                                    :expressions  {"pivot-grouping" [:abs 0]}
+                                                   :expression-idents {"pivot-grouping" "F_YdWocSQso_vOKlxhzR2"}
                                                    :fields       [product-id
                                                                   created-at
                                                                   pivot-grouping
-                                                                  products-category
-                                                                  products-id]})}
+                                                                  products-id
+                                                                  products-category]})}
                                  (let [products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
                                                                                      ::add/source-table  ::add/source
                                                                                      ::add/source-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
@@ -564,21 +566,25 @@
                                     :aggregation [[:aggregation-options [:count] {:name               "count"
                                                                                   ::add/desired-alias "count"
                                                                                   ::add/position      3}]]
+                                    :aggregation-idents {0 "IvoUecSau91Z1Qatl67T_"}
                                     :order-by    [[:asc products-category]
                                                   [:asc created-at]
                                                   [:asc pivot-grouping]]})))
                         (-> (lib.tu.macros/mbql-query orders
                               {:aggregation [[:aggregation-options [:count] {:name "count"}]]
+                               :aggregation-idents {0 "IvoUecSau91Z1Qatl67T_"}
                                :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
                                              !year.created-at
                                              [:expression "pivot-grouping"]]
                                :expressions {"pivot-grouping" [:abs 0]}
+                               :expression-idents {"pivot-grouping" "F_YdWocSQso_vOKlxhzR2"}
                                :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
                                              [:asc !year.created-at]
                                              [:asc [:expression "pivot-grouping"]]]
                                :joins       [{:source-table $$products
                                               :strategy     :left-join
                                               :alias        "PRODUCTS__via__PRODUCT_ID"
+                                              :ident        "oJhVb8BtrfV9-KsWj5kKw"
                                               :fk-field-id  %product-id
                                               :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
                             qp.preprocess/preprocess
