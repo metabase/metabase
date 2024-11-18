@@ -105,7 +105,7 @@ describe("Filters > DefaultPicker", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByRole("combobox")).toBeInTheDocument();
-    expect(screen.getByText("Ugly Shoes")).toBeInTheDocument();
+    expect(screen.getAllByText("Ugly Shoes").length).toBe(2);
   });
 
   it("lists possible field values for a string filter", async () => {
@@ -114,14 +114,11 @@ describe("Filters > DefaultPicker", () => {
     expect(
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("combobox")).toBeInTheDocument();
-    const productTitles = [
-      "Fancy Shoes",
-      "Ugly Shoes",
-      "Fancy Boots",
-      "Ugly Boots",
-    ];
 
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getAllByText("Ugly Shoes").length).toBe(2);
+
+    const productTitles = ["Fancy Shoes", "Fancy Boots", "Ugly Boots"];
     productTitles.forEach(productTitle => {
       expect(screen.getByText(productTitle)).toBeInTheDocument();
     });
