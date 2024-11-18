@@ -50,26 +50,6 @@ By default, dashboard components take full page height (100vh). You can override
 />
 ```
 
-## Customizing the question layout when clicking on dashboard cards
-
-When clicking on a card in the dashboard, you will be taken to the question for that card.
-
-By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
-
-To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component,
-with the custom view as the child component.
-
-```typescript
-<InteractiveQuestion questionId={95} renderDrillThroughQuestion={QuestionView} />
-
-// You can use namespaced components to build the question's layout.
-const QuestionView = () => <InteractiveQuestion.Title />
-```
-
-The questionView prop accepts a React component that will be rendered in the question view, which
-you can build with namespaced components within the `InteractiveQuestion` component.
-See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
-
 ## Example embedded dashboard with `InteractiveDashboard` component
 
 ```typescript
@@ -98,6 +78,26 @@ export default function App() {
     );
 }
 ```
+
+## Customizing the question layout when clicking on dashboard cards
+
+When clicking on a card in the dashboard, you will be taken to the question for that card.
+
+By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
+
+To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component,
+with the custom view as the child component.
+
+```typescript
+<InteractiveQuestion questionId={95} renderDrillThroughQuestion={QuestionView} />
+
+// You can use namespaced components to build the question's layout.
+const QuestionView = () => <InteractiveQuestion.Title />
+```
+
+The questionView prop accepts a React component that will be rendered in the question view, which
+you can build with namespaced components within the `InteractiveQuestion` component.
+See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
 
 ## Dashboard plugins
 
