@@ -8,7 +8,7 @@ import {
   type AggregationItem,
   getAggregationItems,
 } from "metabase/query_builder/utils/get-aggregation-items";
-import { Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { MultiStepPopover } from "../../util/MultiStepPopover";
@@ -55,7 +55,10 @@ export const SummarizeInner = ({
       <MultiStepPopover.Target>
         <Button
           onClick={toggle}
-          variant={aggregationItems.length === 0 ? "default" : "filled"}
+          variant={aggregationItems.length === 0 ? "subtle" : "filled"}
+          leftIcon={<Icon name="sum" />}
+          py="sm"
+          px="md"
         >
           {label}
         </Button>
