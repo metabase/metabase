@@ -295,19 +295,10 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.url().should("contain", "/question");
 
-    cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("chartsettings-field-picker")
-      .contains("User → Source")
-      .should("be.visible");
-
     // Bars
     chartPathWithFillColor("#509EE3").should("have.length", 5);
-
-    // wait for echarts to re-render after resizing; this fixes test flakiness
-    chartPathWithFillColor("#509EE3").eq(4).should("be.visible");
-    resetHoverState();
-
     chartPathWithFillColor("#509EE3").eq(0).realHover();
+
     assertEChartsTooltip({
       header: "Affiliate",
       rows: [
@@ -318,6 +309,11 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         },
       ],
     });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findAllByTestId("chartsettings-field-picker")
+      .contains("User → Source")
+      .should("be.visible");
   });
 
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
@@ -431,8 +427,4 @@ function waitForSatisfyingResponse(
 
 function getDashcardByTitle(title) {
   return dashboardGrid().findByText(title).closest("[data-testid='dashcard']");
-}
-
-function resetHoverState() {
-  cy.findByTestId("main-logo").realHover();
 }
