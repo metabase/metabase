@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import type { PropsWithHTMLStyle } from "embedding-sdk/types/default-style-props";
 import CS from "metabase/css/core/index.css";
 import {
   getAdHocQuestionDescription,
@@ -36,16 +35,8 @@ const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
   return t`New question`;
 };
 
-export const QuestionTitle = ({
-  question,
-  className,
-  style,
-}: PropsWithHTMLStyle<QuestionTitleProps>) => {
+export const QuestionTitle = ({ question }: QuestionTitleProps) => {
   const questionTitle = getQuestionTitle({ question });
 
-  return (
-    <h2 className={cx(CS.h2, CS.textWrap, className)} style={style}>
-      {questionTitle}
-    </h2>
-  );
+  return <h2 className={cx(CS.h2, CS.textWrap)}>{questionTitle}</h2>;
 };
