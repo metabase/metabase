@@ -397,12 +397,15 @@
   {:type            maybe-normalize-token
    ;; don't normalize native queries
    :native          normalize-native-query
-   :query           {:aggregation     normalize-ag-clause-tokens
-                     :expressions     normalize-expressions-tokens
-                     :order-by        normalize-order-by-tokens
-                     :source-query    normalize-source-query
-                     :source-metadata {::sequence normalize-source-metadata}
-                     :joins           {::sequence normalize-join}}
+   :query           {:aggregation        normalize-ag-clause-tokens
+                     :aggregation-idents identity
+                     :breakout-idents    identity
+                     :expressions        normalize-expressions-tokens
+                     :expression-idents  identity
+                     :order-by           normalize-order-by-tokens
+                     :source-query       normalize-source-query
+                     :source-metadata    {::sequence normalize-source-metadata}
+                     :joins              {::sequence normalize-join}}
    ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
    :info            {:metadata/model-metadata identity
