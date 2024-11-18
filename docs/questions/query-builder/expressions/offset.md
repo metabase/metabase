@@ -22,7 +22,7 @@ Because `Offset` refers to other rows, the order of the breakouts matters (the b
 
 ## Offset doesn't account for missing data
 
-`Offset` can only reference the rows you _have_, which means it can produce correct but unexpected results. For example, lets say you want to compare each _day's_ count to the previous day.
+`Offset` can only reference the rows you _have_, which means it can produce correct but unexpected results. For example, let's say you want to compare each _day's_ count to the previous day.
 
 Take the following table, where the `Previous` column is created by the expression `Offset(Count, -1)`:
 
