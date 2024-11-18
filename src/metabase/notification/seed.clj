@@ -74,15 +74,14 @@
   [table-name]
   (case (db/db-type)
     :postgres
-   (t2/query {:truncate [table-name :restart :identity :cascade]})
-   :mysql
-   (do
-     (t2/delete! table-name)
-     (t2/query (format "ALTER TABLE `%s` AUTO_INCREMENT = 1" (name table-name))))
-   (do
-     (t2/delete! table-name)
-     (t2/query {:alter-table [table-name {:alter-column [:id :restart :with 1]}]}))))
-
+    (t2/query {:truncate [table-name :restart :identity :cascade]})
+    :mysql
+    (do
+      (t2/delete! table-name)
+      (t2/query (format "ALTER TABLE `%s` AUTO_INCREMENT = 1" (name table-name))))
+    (do
+      (t2/delete! table-name)
+      (t2/query {:alter-table [table-name {:alter-column [:id :restart :with 1]}]}))))
 
 (defn- truncate-notification-related-tables!
   []
