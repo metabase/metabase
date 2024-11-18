@@ -166,7 +166,7 @@ export const MultiAutocomplete = forwardRef<
     }
   };
 
-  const infoIcon = isFocused ? (
+  const infoIcon = (
     <Tooltip
       label={
         <>
@@ -178,7 +178,7 @@ export const MultiAutocomplete = forwardRef<
     >
       <Icon name="info_filled" fill={color("text-light")} />
     </Tooltip>
-  ) : null;
+  );
 
   return (
     <MultiSelect
