@@ -11,9 +11,9 @@
           "type": "object",
           "description": "Table column.",
           "properties": {
-            "id": {
+            "key": {
               "type": "string",
-              "description": "ID of the column."
+              "description": "Key of the column."
             },
             "enabled": {
               "type": "boolean",
@@ -21,7 +21,7 @@
             }
           },
           "required": [
-            "id",
+            "key",
             "enabled"
           ],
           "additionalProperties": false

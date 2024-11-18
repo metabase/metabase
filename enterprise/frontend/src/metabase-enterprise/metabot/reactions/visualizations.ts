@@ -21,7 +21,11 @@ export const changeTableColumnSettings: ReactionHandler<
   MetabotChangeTableColumnSettingsReaction
 > = reaction => {
   return async ({ dispatch }) => {
-    await dispatch(onUpdateVisualizationSettings(reaction.settings));
+    await dispatch(
+      onUpdateVisualizationSettings({
+        "table.columns": reaction.table_columns,
+      }),
+    );
   };
 };
 

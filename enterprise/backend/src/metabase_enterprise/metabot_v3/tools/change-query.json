@@ -20,12 +20,12 @@
                     "add_string_filter"
                   ]
                 },
-                "column_id": {
+                "column_key": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "ID of the string column to apply filter for."
+                  "description": "Key of the string column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -46,7 +46,7 @@
               },
               "required": [
                 "type",
-                "column_id",
+                "column_key",
                 "operator",
                 "value"
               ],
@@ -63,12 +63,12 @@
                     "add_number_filter"
                   ]
                 },
-                "column_id": {
+                "column_key": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "ID of the numeric column to apply filter for."
+                  "description": "Key of the numeric column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -89,7 +89,7 @@
               },
               "required": [
                 "type",
-                "column_id",
+                "column_key",
                 "operator",
                 "value"
               ],
@@ -106,12 +106,12 @@
                     "add_boolean_filter"
                   ]
                 },
-                "column_id": {
+                "column_key": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "ID of the boolean column to apply filter for."
+                  "description": "Key of the boolean column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -127,7 +127,7 @@
               },
               "required": [
                 "type",
-                "column_id",
+                "column_key",
                 "operator",
                 "value"
               ],
@@ -144,12 +144,12 @@
                     "add_specific_date_filter"
                   ]
                 },
-                "column_id": {
+                "column_key": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "ID of the date column to apply filter for."
+                  "description": "Key of the date column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
@@ -167,7 +167,7 @@
               },
               "required": [
                 "type",
-                "column_id",
+                "column_key",
                 "operator",
                 "value"
               ],
@@ -184,12 +184,12 @@
                     "add_relative_date_filter"
                   ]
                 },
-                "column_id": {
+                "column_key": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "ID of the date column to apply filter for."
+                  "description": "Key of the date column to apply filter for."
                 },
                 "direction": {
                   "type": "string",
@@ -218,7 +218,7 @@
               },
               "required": [
                 "type",
-                "column_id",
+                "column_key",
                 "direction",
                 "value",
                 "unit"
@@ -273,18 +273,18 @@
                     "max"
                   ]
                 },
-                "column_id": {
+                "column_key": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "ID of an optional column for the selected aggregation operator. If not specified, set it to null."
+                  "description": "Key of an optional column for the selected aggregation operator. If not specified, set it to null."
                 }
               },
               "required": [
                 "type",
                 "operator",
-                "column_id"
+                "column_key"
               ],
               "additionalProperties": false
             },
@@ -321,14 +321,14 @@
                     "add_breakout"
                   ]
                 },
-                "column_id": {
+                "column_key": {
                   "type": "string",
-                  "description": "ID of the column to apply grouping for."
+                  "description": "Key of the column to apply grouping for."
                 }
               },
               "required": [
                 "type",
-                "column_id"
+                "column_key"
               ],
               "additionalProperties": false
             },
@@ -365,9 +365,9 @@
                     "add_order_by"
                   ]
                 },
-                "column_id": {
+                "column_key": {
                   "type": "string",
-                  "description": "ID of the column to apply sorting for."
+                  "description": "Key of the column to apply sorting for."
                 },
                 "direction": {
                   "type": [
@@ -383,7 +383,7 @@
               },
               "required": [
                 "type",
-                "column_id",
+                "column_key",
                 "direction"
               ],
               "additionalProperties": false

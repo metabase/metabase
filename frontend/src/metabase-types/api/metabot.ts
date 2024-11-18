@@ -4,7 +4,7 @@ import type {
   ColumnSettings,
   DatasetQuery,
   SeriesSettings,
-  VisualizationSettings,
+  TableColumnOrderSetting,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -61,7 +61,7 @@ export type MetabotChangeDisplayTypeReaction = {
 
 export type MetabotChangeTableColumnSettingsReaction = {
   type: "metabot.reaction/change-table-column-settings";
-  settings: Pick<VisualizationSettings, "table.columns">;
+  table_columns: TableColumnOrderSetting[];
 };
 
 export type MetabotConfirmationReaction = {

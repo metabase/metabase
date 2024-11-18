@@ -12,14 +12,14 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn- column-alias-or-name
+(defn- column-key
   [column]
   (or (:lib/desired-column-alias column)
       (:name column)))
 
 (defn- column-info
   [query column]
-  {:id (column-alias-or-name column)
+  {:key (column-key column)
    :name (-> (lib/display-info query column) :long-display-name)
    :type (cond
            (lib.types.isa/boolean? column) :boolean
@@ -38,16 +38,16 @@
       (lib/query dataset-query)))
 
 (defn- find-column
-  [columns column-id]
-  (m/find-first #(= (column-alias-or-name %) column-id) columns))
+  [columns a-column-key]
+  (m/find-first #(= (column-key %) a-column-key) columns))
 
 (defn- find-column-error
-  [query columns column-id change-type]
-  (ex-info (format "%s is not a correct column_id for %s change. Available columns as JSON: %s"
-                   column-id
+  [query columns column-key change-type]
+  (ex-info (format "%s is not a correct column_key for %s change. Available columns as JSON: %s"
+                   column-key
                    change-type
                    (json/generate-string (mapv #(column-info query %) columns)))
-           {:column column-id}))
+           {:column column-key}))
 
 (defn- find-operator
   [operators operator-name]
@@ -79,10 +79,10 @@
     (-> change :type keyword)))
 
 (defmethod apply-query-change :add_string_filter
-  [query {:keys [value], change-type :type, column-id :column_id, operator-name :operator}]
+  [query {:keys [value], change-type :type, column-key :column_key, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/string-or-string-like?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id change-type)))
+        column    (or (find-column columns column-key)
+                      (throw (find-column-error query columns column-key change-type)))
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
                       (throw (find-operator-error operators operator-name change-type)))
@@ -96,10 +96,10 @@
     (lib/filter query clause)))
 
 (defmethod apply-query-change :add_number_filter
-  [query {:keys [value], change-type :type, column-id :column_id, operator-name :operator}]
+  [query {:keys [value], change-type :type, column-key :column_key, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/numeric?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id change-type)))
+        column    (or (find-column columns column-key)
+                      (throw (find-column-error query columns column-key change-type)))
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
                       (throw (find-operator-error operators operator-name change-type)))
@@ -113,10 +113,10 @@
     (lib/filter query clause)))
 
 (defmethod apply-query-change :add_boolean_filter
-  [query {:keys [value], change-type :type, column-id :column_id, operator-name :operator}]
+  [query {:keys [value], change-type :type, column-key :column_key, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/boolean?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id change-type)))
+        column    (or (find-column columns column-key)
+                      (throw (find-column-error query columns column-key change-type)))
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
                       (throw (find-operator-error operators operator-name change-type)))
@@ -125,10 +125,10 @@
     (lib/filter query clause)))
 
 (defmethod apply-query-change :add_specific_date_filter
-  [query {:keys [value], change-type :type, column-id :column_id, operator-name :operator}]
+  [query {:keys [value], change-type :type, column-key :column_key, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id change-type)))
+        column    (or (find-column columns column-key)
+                      (throw (find-column-error query columns column-key change-type)))
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
                       (throw (find-operator-error operators operator-name change-type)))
@@ -139,10 +139,10 @@
     (lib/filter query clause)))
 
 (defmethod apply-query-change :add_relative_date_filter
-  [query {:keys [direction unit value], change-type :type, column-id :column_id}]
+  [query {:keys [direction unit value], change-type :type, column-key :column_key}]
   (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id change-type)))
+        column    (or (find-column columns column-key)
+                      (throw (find-column-error query columns column-key change-type)))
         direction (keyword direction)
         unit      (keyword unit)]
     (lib/filter query (lib/time-interval column
@@ -160,14 +160,14 @@
     (lib/remove-clause query filter)))
 
 (defmethod apply-query-change :add_aggregation
-  [query {change-type :type, operator-name :operator, column-id :column_id}]
+  [query {change-type :type, operator-name :operator, column-key :column_key}]
   (let [operators (lib/available-aggregation-operators query)
         operator  (or (find-operator operators operator-name)
                       (throw (find-operator-error operators operator-name change-type)))]
     (if (:requires-column? operator)
       (let [columns (lib/aggregation-operator-columns operator)
-            column  (or (find-column columns column-id)
-                        (throw (find-column-error query columns column-id change-type)))]
+            column  (or (find-column columns column-key)
+                        (throw (find-column-error query columns column-key change-type)))]
         (lib/aggregate query (lib/aggregation-clause operator column)))
       (lib/aggregate query (lib/aggregation-clause operator)))))
 
@@ -179,10 +179,10 @@
     (lib/remove-clause query aggregation)))
 
 (defmethod apply-query-change :add_breakout
-  [query {change-type :type, column-id :column_id}]
+  [query {change-type :type, column-key :column_key}]
   (let [columns (lib/breakoutable-columns query)
-        column  (or (find-column columns column-id)
-                    (throw (find-column-error query columns column-id change-type)))
+        column  (or (find-column columns column-key)
+                    (throw (find-column-error query columns column-key change-type)))
         bucket  (m/find-first :default (lib/available-temporal-buckets query column))
         binning (m/find-first :default (lib/available-binning-strategies query column))]
     (lib/breakout query (cond-> column
@@ -197,10 +197,10 @@
     (lib/remove-clause query breakout)))
 
 (defmethod apply-query-change :add_order_by
-  [query {change-type :type, column-id :column_id, direction-name :direction}]
+  [query {change-type :type, column-key :column_key, direction-name :direction}]
   (let [columns   (lib/orderable-columns query)
-        column    (or (find-column columns column-id)
-                      (throw (find-column-error query columns column-id change-type)))
+        column    (or (find-column columns column-key)
+                      (throw (find-column-error query columns column-key change-type)))
         direction (when direction-name (keyword direction-name))]
     (lib/order-by query column direction)))
 
