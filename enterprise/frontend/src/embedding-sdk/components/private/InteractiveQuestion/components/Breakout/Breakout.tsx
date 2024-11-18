@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { match } from "ts-pattern";
 
+import S from "embedding-sdk/components/private/InteractiveQuestion/components/Picker.module.css";
 import {
   type ListItem as BreakoutListItem,
   getBreakoutListItem,
@@ -84,6 +85,7 @@ export const BreakoutInner = ({
         <Stack>
           <Button onClick={() => setStep("list")}>Back</Button>
           <BreakoutPopover
+            className={S.PickerContainer}
             query={query}
             stageIndex={stageIndex}
             breakout={selectedBreakout.breakout}

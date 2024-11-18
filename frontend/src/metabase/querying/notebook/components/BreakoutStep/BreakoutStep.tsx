@@ -100,6 +100,7 @@ export function BreakoutStep({
 }
 
 interface BreakoutPopoverProps {
+  className?: string;
   query: Lib.Query;
   stageIndex: number;
   breakout: Lib.BreakoutClause | undefined;
@@ -114,6 +115,7 @@ interface BreakoutPopoverProps {
 }
 
 export const BreakoutPopover = ({
+  className,
   query,
   stageIndex,
   breakout,
@@ -144,6 +146,7 @@ export const BreakoutPopover = ({
 
   return (
     <QueryColumnPicker
+      className={className}
       query={query}
       stageIndex={stageIndex}
       columnGroups={columnGroups}
