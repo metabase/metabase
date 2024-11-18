@@ -207,8 +207,20 @@
         (lib/aggregate query (lib/aggregation-clause operator column)))
       (lib/aggregate query (lib/aggregation-clause operator)))))
 
+(defn- apply-group-by
+  [query {:keys [column_id] :as group-by}]
+  (if group-by
+    (let [columns (lib/breakoutable-columns query)
+          column  (or (find-column columns column_id)
+                      (throw (find-column-error query columns column_id)))
+          buckets (lib/available-temporal-buckets query column)
+          bucket  (m/find-first :default buckets)]
+      (lib/breakout query (cond-> column
+                            bucket (lib/with-temporal-bucket bucket))))
+    query))
+
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/aggregate-data
-  [_tool-name {:keys [summarize]} {:keys [dataset_query]}]
+  [_tool-name {:keys [summarize group-by]} {:keys [dataset_query]}]
   (try
     {:output "success"
      :reactions [{:type  :metabot.reaction/aggregate-data
@@ -216,6 +228,7 @@
                                      legacy-MBQL->query
                                      source-query
                                      (apply-summarize summarize)
+                                     (apply-group-by group-by)
                                      lib.query/->legacy-MBQL)}]}
     (catch ExceptionInfo e
       (log/debug e "Error in aggregate-data tool")
