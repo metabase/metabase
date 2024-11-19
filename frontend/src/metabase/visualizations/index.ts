@@ -141,6 +141,14 @@ export function isCartesianChart(display: VisualizationDisplay) {
   );
 }
 
+export function getColumnVizSettings(display: VisualizationDisplay) {
+  const visualization = visualizations.get(display);
+  const settings = visualization?.settings ?? {};
+
+  // TODO Come up with a better condition
+  return Object.keys(settings).filter(key => settings[key]?.widget === "field");
+}
+
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 export const extractRemappedColumns = (data: DatasetData) => {
   const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({

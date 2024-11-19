@@ -9,7 +9,10 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { isCartesianChart } from "metabase/visualizations";
+import {
+  getColumnVizSettings,
+  isCartesianChart,
+} from "metabase/visualizations";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
@@ -29,10 +32,9 @@ import type {
 
 import {
   addColumnMapping,
+  copyColumn,
   createDataSource,
   createDataSourceNameRef,
-  createDimensionColumn,
-  createMetricColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
   getDataSourceIdFromNameRef,
@@ -138,47 +140,6 @@ const visualizerHistoryItemSlice = createSlice({
       state.columns = [];
       state.columnValuesMapping = {};
 
-      if (!display) {
-        return;
-      }
-
-      if (isCartesianChart(display) || display === "funnel") {
-        const metric = createMetricColumn();
-        const dimension = createDimensionColumn();
-
-        state.columns = [metric, dimension];
-
-        if (display === "scatter") {
-          state.columns.push(createMetricColumn({ name: "BUBBLE_SIZE" }));
-        }
-
-        if (display === "funnel") {
-          state.settings = {
-            "funnel.metric": metric.name,
-            "funnel.dimension": dimension.name,
-          };
-        } else {
-          state.settings = {
-            "graph.metrics": [metric.name],
-            "graph.dimensions": [dimension.name],
-          };
-
-          if (display === "scatter") {
-            state.settings["scatter.bubble"] = "BUBBLE_SIZE";
-          }
-        }
-      }
-
-      if (display === "pie") {
-        const metric = createMetricColumn();
-        const dimension = createDimensionColumn();
-        state.columns = [metric, dimension];
-        state.settings = {
-          "pie.metric": metric.name,
-          "pie.dimension": [dimension.name],
-        };
-      }
-
       if (display === "pivot") {
         state.columns = [
           {
@@ -233,15 +194,56 @@ const visualizerHistoryItemSlice = createSlice({
             }),
         );
       })
-      .addCase(fetchCard.fulfilled, (state, action) => {
-        const card = action.payload;
-        if (!state.display) {
-          state.display = card.display;
-          state.settings = card.visualization_settings;
-        }
-      })
       .addCase(fetchCardQuery.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
+
+        if (
+          card &&
+          (!state.display ||
+            (card.display === state.display && state.columns.length === 0))
+        ) {
+          const source = createDataSource("card", card.id, card.name);
+
+          state.display = card.display;
+
+          state.columns = [];
+          state.columnValuesMapping = {};
+
+          dataset.data.cols.forEach((column, i) => {
+            const name = `COLUMN_${i + 1}`;
+            state.columns.push(copyColumn(name, column));
+            state.columnValuesMapping[name] = [
+              createVisualizerColumnReference(source, column, []),
+            ];
+          });
+
+          state.settings = card.visualization_settings;
+          getColumnVizSettings(state.display).forEach(setting => {
+            const originalValue = card.visualization_settings[setting];
+
+            if (!originalValue) {
+              return;
+            }
+
+            if (Array.isArray(originalValue)) {
+              state.settings[setting] = originalValue.map(
+                originalColumnName => {
+                  const index = dataset.data.cols.findIndex(
+                    col => col.name === originalColumnName,
+                  );
+                  return state.columns[index].name;
+                },
+              );
+            } else {
+              const index = dataset.data.cols.findIndex(
+                col => col.name === originalValue,
+              );
+              state.settings[setting] = state.columns[index].name;
+            }
+          });
+
+          return;
+        }
 
         if (state.display === "funnel") {
           if (

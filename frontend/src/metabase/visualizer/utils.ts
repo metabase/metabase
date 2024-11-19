@@ -136,6 +136,26 @@ export function createMetricColumn({
   };
 }
 
+export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
+  const copy: DatasetColumn = {
+    ...column,
+    name,
+    field_ref: ["field", name, { "base-type": column.base_type }],
+  };
+
+  // TODO Remove manual MBQL manipulation
+  if (isDate(column)) {
+    const opts = copy.field_ref[2];
+    const temporalUnit = maybeGetTemporalUnit(column);
+    if (temporalUnit) {
+      opts["temporal-unit"] = temporalUnit;
+    }
+    copy.field_ref = ["field", name, opts];
+  }
+
+  return copy;
+}
+
 export function createDimensionColumn({
   name = "DIMENSION_1",
 }: CreateColumnOpts = {}): DatasetColumn {
