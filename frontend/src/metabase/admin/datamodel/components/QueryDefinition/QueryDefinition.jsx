@@ -11,6 +11,7 @@ function _QueryDefinition({ className, object, metadata }) {
       dataset_query: { type: "query", query: object.definition },
     },
     metadata,
+    // eslint-disable-next-line no-restricted-syntax
   ).legacyQuery({ useStructuredQuery: true });
   const filters = query.filters();
   return (
