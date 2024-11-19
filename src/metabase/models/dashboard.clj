@@ -672,6 +672,7 @@
                   :database-id    false
                   :last-editor-id :r.user_id
                   :last-edited-at :r.timestamp
+                  :last-viewed-at true
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :view-count     true
                   :created-at     true

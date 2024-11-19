@@ -2,14 +2,17 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  assertEChartsTooltip,
   assertEmbeddingParameter,
   assertSheetRowsCount,
+  chartPathWithFillColor,
   closeStaticEmbeddingModal,
   createDashboardWithTabs,
   createQuestion,
   dashboardParametersContainer,
   describeEE,
   downloadAndAssert,
+  echartsTooltip,
   editDashboard,
   filterWidget,
   getDashboardCard,
@@ -938,10 +941,20 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     };
 
     const questionDetails = {
-      name: "Orders",
+      name: "Line chart",
       query: {
         "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+        ],
+        limit: 5,
       },
+      display: "bar",
     };
     createQuestion(questionDetails)
       .then(({ body: { id: card_id } }) => {
@@ -977,7 +990,24 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       );
     });
 
-    getIframeBody().findByText("Rows 1-21 of first 2000").should("exist");
+    getIframeBody().within(() => {
+      cy.findByText(questionDetails.name).should("exist");
+      cy.findByText("April 2022").should("exist");
+
+      // (metabase#49537)
+      chartPathWithFillColor("#509EE3").last().realHover();
+      echartsTooltip().should("be.visible");
+      assertEChartsTooltip({
+        header: "August 2022",
+        rows: [
+          {
+            name: "Count",
+            value: "79",
+            secondaryValue: "+23.44%",
+          },
+        ],
+      });
+    });
 
     cy.get("#iframe").should($iframe => {
       const [iframe] = $iframe;

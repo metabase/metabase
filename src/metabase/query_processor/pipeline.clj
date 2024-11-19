@@ -23,13 +23,18 @@
   []
   (some-> *canceled-chan* a/poll!))
 
-(defn ^:dynamic *result*
-  "Called exactly once with the final result, which is the result of either [[*reduce*]] (if query completed
-  successfully), or an Exception (if it did not)."
+(defn default-result-handler
+  "Default implementation for *result*."
   [result]
   (if (instance? Throwable result)
     (throw result)
     result))
+
+(defn ^:dynamic *result*
+  "Called exactly once with the final result, which is the result of either [[*reduce*]] (if query completed
+  successfully), or an Exception (if it did not)."
+  [result]
+  (default-result-handler result))
 
 (defn ^:dynamic *execute*
   "Called by [[*run*]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a

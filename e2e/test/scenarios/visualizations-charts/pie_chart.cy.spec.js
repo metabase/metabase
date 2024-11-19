@@ -390,7 +390,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     assertEChartsTooltip({
-      header: "Created At",
+      header: "Created At: Day of week",
       rows: [
         {
           color: "#51528D",
