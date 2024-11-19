@@ -707,7 +707,7 @@
    :message (stencil/render-file "metabase/email/slack_token_error.mustache"
                                  (merge (common-context)
                                         {:logoHeader  true
-                                         :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))
+                                         :settingsUrl (str (public-settings/site-url) "/admin/settings/notifications/slack")}))))
 
 (defn send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
