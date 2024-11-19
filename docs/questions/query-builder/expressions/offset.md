@@ -32,7 +32,7 @@ Take the following table, where the `Previous` column is created by the expressi
 | 2-Oct-22 | 3     | 6        |
 | 4-Oct-22 | 2     | 3        |
 
-The value in the `Previous` column for October 4th is `3`, which is the value of the previous row. While correct based on the data, the previous row is October _2nd_; there's no data for the previous _day_, October 3rd. If you want to use offset to compare previous _days_ (or weeks, or whatever), you need to make sure that your data includes a row for each data point you want to compare. In this case, your data would need to include a row for each day, including days where the count was zero.
+The value in the `Previous` column for October 4th is `3`, which is the value of the previous row. While correct based on the data, the previous row is October _2nd_; there's no data for the previous _day_, October 3rd. If you want to use offset to compare previous _days_ (or weeks, or whatever), you need to make sure that your data includes a row for each data point you want to compare. In this case, your data would need to include a row for each day, including days where the count was zero. If you're missing dates in your data, you could join a calendar table to your data to make sure that each day has a row in your data.
 
 ## Data types
 
