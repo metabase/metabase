@@ -68,14 +68,18 @@ const PeopleList = ({
   updateMembership,
   confirmDeleteMembershipAction,
   confirmUpdateMembershipAction,
-  reloadUsers,
   reloadGroups,
   onNextPage,
   onPreviousPage,
 }) => {
   const { modalContent, show } = useConfirmation();
 
-  const { data, isLoading, error } = useListUsersQuery({
+  const {
+    data,
+    isLoading,
+    error,
+    refetch: reloadUsers,
+  } = useListUsersQuery({
     query: query.searchText,
     status: query.status,
     limit: query.pageSize,
@@ -303,7 +307,6 @@ PeopleList.propTypes = {
   confirmUpdateMembershipAction: PropTypes.func.isRequired,
   onNextPage: PropTypes.func,
   onPreviousPage: PropTypes.func,
-  reloadUsers: PropTypes.func.isRequired,
   reloadGroups: PropTypes.func.isRequired,
 };
 
