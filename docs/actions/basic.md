@@ -8,8 +8,6 @@ Basic actions are "implicit" [actions](./introduction.md) that do things that pe
 
 If you only want to give people the option to update a subset of columns, or update columns in multiple tables, you can write a [custom action](./custom.md).
 
-[Broken link](./broken.md)
-
 ## Creating basic actions
 
 Once actions are enabled, you can create basic actions on a new or existing [model](../data-modeling/models.md) that only wraps a single database table.

@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 20
+          fetch-depth: 2
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Lint doc links with linkspector.
