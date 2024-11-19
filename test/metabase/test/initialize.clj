@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [mb.hawk.init]
    [metabase.config :as config]
+   [metabase.notification.core :as notification]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -112,6 +113,10 @@
   (initialize-if-needed! :test-users)
   (classloader/require 'metabase.test.initialize.test-users-personal-collections)
   ((resolve 'metabase.test.initialize.test-users-personal-collections/init!)))
+
+(define-initialization :notifications
+  (initialize-if-needed! :db)
+  (notification/truncate-then-seed-notification!))
 
 (defn- all-components
   "Set of all components/initialization steps that are defined."
