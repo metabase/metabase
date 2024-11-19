@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.pivots :as api.pivots]
+   [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.http-client :as client]
@@ -4617,10 +4618,38 @@
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
          (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
-              ;; The output is so large, these help debugging
-             #_#_#_(update :fields #(map (fn [x] (select-keys x [:id])) %))
-                 (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))))
+             #_(api.test-util/select-query-metadata-keys-for-debugging))))))
+
+(deftest dashboard-query-metadata-with-archived-and-deleted-source-card-test
+  (testing "Don't throw an error if source card is deleted (#48461)"
+    (mt/with-temp
+      [Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
+       Card          {card-id-2 :id}    {:dataset_query {:type     :query
+                                                         :query    {:source-table (str "card__" card-id-1)}}}
+       Dashboard     {dashboard-id :id} {}
+       DashboardCard _                  {:card_id      card-id-2
+                                         :dashboard_id dashboard-id}]
+
+      (letfn [(query-metadata []
+                (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
+                    (api.test-util/select-query-metadata-keys-for-debugging)))]
+        (api.test-util/before-and-after-deleted-card
+         card-id-1
+         #(testing "Before delete"
+            (is (=?
+                 {:cards      empty?
+                  :fields     empty?
+                  :dashboards empty?
+                  :tables     [{:id (str "card__" card-id-1)}]
+                  :databases  [{:id (mt/id) :engine string?}]}
+                 (query-metadata))))
+         #(testing "After delete"
+            (is (=? {:cards      empty?
+                     :fields     empty?
+                     :dashboards empty?
+                     :tables     empty?
+                     :databases  empty?}
+                    (query-metadata)))))))))
 
 (deftest dashboard-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
