@@ -309,6 +309,8 @@
 
   ;; run the prod server when generating docs
   ;; as some default values differ between dev and prod
+  ;;
+  ;; clojure -M:ee:doc
   :doc
   {:main-opts ["-m" "metabase.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
