@@ -2,16 +2,13 @@ import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import Questions from "metabase/entities/questions";
-import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getQuestion } from "../selectors";
 
-import { API_UPDATE_QUESTION, apiUpdateQuestion, updateQuestion } from "./core";
-import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
+import { apiUpdateQuestion, updateQuestion } from "./core";
+import { runDirtyQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab =
@@ -29,41 +26,16 @@ export const onCancelCreateNewModel = () => async (dispatch: Dispatch) => {
 export const turnQuestionIntoModel =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-
     if (!question) {
       return;
     }
 
-    await dispatch(
-      Questions.actions.update(
-        {
-          id: question.id(),
-        },
-        question
-          .setType("model")
-          .setPinned(true)
-          .setDisplay("table")
-          .setSettings({})
-          .card(),
-      ),
-    );
-
-    const metadata = getMetadata(getState());
-    const dataset = metadata.question(question.id());
-
-    if (!dataset) {
-      return;
-    }
-
-    await dispatch(loadMetadataForCard(dataset.card()));
-
-    await dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
-
-    await dispatch(
-      runQuestionQuery({
-        shouldUpdateUrl: true,
-      }),
-    );
+    const model = question
+      .setType("model")
+      .setPinned(true)
+      .setDisplay("table")
+      .setSettings({});
+    await dispatch(apiUpdateQuestion(model, { rerunQuery: true }));
 
     dispatch(
       addUndo({
@@ -76,7 +48,6 @@ export const turnQuestionIntoModel =
 export const turnModelIntoQuestion =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const model = getQuestion(getState());
-
     if (!model) {
       return;
     }
