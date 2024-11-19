@@ -110,7 +110,7 @@ const mapStateToProps = state => ({
 
 const connector = connect(mapStateToProps, null);
 
-const addTrailingSlash = url => (url.endsWith("/") ? url : url + "/");
+const ensureTrailingSlash = url => (url.endsWith("/") ? url : url + "/");
 
 export function getMapUrl(details, props) {
   if (details.builtin) {
@@ -122,7 +122,7 @@ export function getMapUrl(details, props) {
 
       // if the second parameter ends with a slash, it will join them together
       // new URL("/sub-path", "http://example.org/proxy/") => "http://example.org/proxy/sub-path"
-      return new URL(details.url, addTrailingSlash(baseUrl)).href;
+      return new URL(details.url, ensureTrailingSlash(baseUrl)).href;
     }
     return details.url;
   }
