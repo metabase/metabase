@@ -28,7 +28,7 @@ Take the following table, where the `Previous` column is created by the expressi
 
 | Date     | Count | Previous |
 | -------- | ----- | -------- |
-| 1-Oct-22 | 6     | 3        |
+| 1-Oct-22 | 6     |          |
 | 2-Oct-22 | 3     | 6        |
 | 4-Oct-22 | 2     | 3        |
 
