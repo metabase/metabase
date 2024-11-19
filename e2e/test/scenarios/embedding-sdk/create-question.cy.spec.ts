@@ -43,6 +43,9 @@ describeSDK("scenarios > embedding-sdk > create-question", () => {
     });
 
     getSdkRoot().within(() => {
+      // The question title's header should be "New question" by default.
+      cy.contains("New question");
+
       cy.findByRole("button", { name: "Visualize" }).click();
 
       // Should be able to go back to the editor view
@@ -67,5 +70,8 @@ describeSDK("scenarios > embedding-sdk > create-question", () => {
       expect(response?.statusCode).to.equal(200);
       expect(response?.body.name).to.equal("My Orders");
     });
+
+    // The question title's header should be updated.
+    getSdkRoot().contains("My Orders");
   });
 });
