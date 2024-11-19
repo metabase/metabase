@@ -1,3 +1,6 @@
+import { useDisclosure } from "@mantine/hooks";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -5,25 +8,26 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   createQuestion,
+  describeEE,
   popover,
-  restore,
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
-import { describeSDK } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
-  getSdkRoot,
-  signInAsAdminAndEnableEmbeddingSdk,
-  visitInteractiveQuestionStory,
-} from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
-import { saveInteractiveQuestionAsNewQuestion } from "e2e/test/scenarios/embedding-sdk/helpers/save-interactive-question-e2e-helpers";
+  mountSdkContent,
+  sdkJwtSignIn,
+  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+} from "e2e/support/helpers/component-embedding-sdk-helpers";
+import { mountInteractiveQuestion } from "e2e/support/helpers/component-embedding-sdk-interactive-question-helpers";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
+import { Box, Button, Flex, Popover } from "metabase/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeSDK("scenarios > embedding-sdk > interactive-question", () => {
+describeEE("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
-    restore();
-    signInAsAdminAndEnableEmbeddingSdk();
+    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
 
     createQuestion(
       {
@@ -39,10 +43,12 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     );
 
     cy.signOut();
+
+    sdkJwtSignIn();
   });
 
   it("should show question content", () => {
-    visitInteractiveQuestionStory();
+    mountInteractiveQuestion();
 
     getSdkRoot().within(() => {
       cy.findByText("Product ID").should("be.visible");
@@ -51,7 +57,7 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should not fail on aggregated question drill", () => {
-    visitInteractiveQuestionStory();
+    mountInteractiveQuestion();
 
     cy.wait("@cardQuery").then(({ response }) => {
       expect(response?.statusCode).to.equal(202);
@@ -73,7 +79,7 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should be able to hide columns from a table", () => {
-    visitInteractiveQuestionStory();
+    mountInteractiveQuestion();
 
     cy.wait("@cardQuery").then(({ response }) => {
       expect(response?.statusCode).to.equal(202);
@@ -91,7 +97,7 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a default collection", () => {
-    visitInteractiveQuestionStory();
+    mountInteractiveQuestion();
 
     saveInteractiveQuestionAsNewQuestion({
       entityName: "Orders",
@@ -106,7 +112,7 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a selected collection", () => {
-    visitInteractiveQuestionStory();
+    mountInteractiveQuestion();
 
     saveInteractiveQuestionAsNewQuestion({
       entityName: "Orders",
@@ -122,8 +128,13 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a pre-defined collection", () => {
-    visitInteractiveQuestionStory({
-      saveToCollectionId: Number(THIRD_COLLECTION_ID),
+    cy.get("@questionId").then(questionId => {
+      mountSdkContent(
+        <InteractiveQuestion
+          questionId={questionId}
+          saveToCollectionId={Number(THIRD_COLLECTION_ID)}
+        />,
+      );
     });
 
     saveInteractiveQuestionAsNewQuestion({
@@ -138,10 +149,50 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it("can add a filter via the FilterPicker component", () => {
-    visitInteractiveQuestionStory({
-      storyId:
-        "embeddingsdk-interactivequestion-filterpicker--picker-in-popover",
+  // InteractiveQuestion.FilterPicker is not exposed in SDK 1.51.4
+  it.skip("can add a filter via the FilterPicker component", () => {
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+    const TestSuiteComponent = ({ questionId }: { questionId: string }) => {
+      const [isOpen, { close, toggle }] = useDisclosure();
+
+      return (
+        <Box p="lg">
+          <InteractiveQuestion questionId={questionId}>
+            <Box>
+              <Flex justify="space-between" w="100%">
+                <Box>
+                  <InteractiveQuestion.FilterBar />
+                </Box>
+
+                <Popover position="bottom-end" opened={isOpen} onClose={close}>
+                  <Popover.Target>
+                    <Button onClick={toggle}>Filter</Button>
+                  </Popover.Target>
+
+                  <Popover.Dropdown>
+                    <InteractiveQuestion.FilterPicker
+                      onClose={close}
+                      withIcon
+                    />
+                  </Popover.Dropdown>
+                </Popover>
+              </Flex>
+
+              <InteractiveQuestion.QuestionVisualization />
+            </Box>
+          </InteractiveQuestion>
+        </Box>
+      );
+    };
+
+    cy.get<string>("@questionId").then(questionId => {
+      mountSdkContent(<TestSuiteComponent questionId={questionId} />);
+    });
+
+    cy.wait("@getCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
     });
 
     getSdkRoot().findByText("Filter").click();
@@ -156,8 +207,8 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can create questions via the SaveQuestionForm component", () => {
-    visitInteractiveQuestionStory({
-      storyId: "embeddingsdk-interactivequestion-savequestionform--default",
+    cy.get("@questionId").then(questionId => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
     });
 
     saveInteractiveQuestionAsNewQuestion({

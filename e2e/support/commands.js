@@ -17,5 +17,7 @@ import "./commands/visibility/isRenderedWithinViewport";
 
 import "./commands/overwrites/log";
 
+import "./commands/component";
+
 import { addCustomCommands } from "./commands/downloads/downloadUtils";
 addCustomCommands();
