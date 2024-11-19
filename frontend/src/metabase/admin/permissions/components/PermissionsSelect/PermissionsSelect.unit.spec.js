@@ -1,4 +1,4 @@
-import { render, fireEvent, screen, getIcon } from "__support__/ui";
+import { fireEvent, getIcon, render, screen } from "__support__/ui";
 
 import { DataPermissionValue } from "../../types";
 

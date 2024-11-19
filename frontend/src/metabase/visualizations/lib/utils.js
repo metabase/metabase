@@ -1,11 +1,10 @@
 import crossfilter from "crossfilter";
-import d3 from "d3";
-import { t } from "ttag";
+import * as d3 from "d3";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import { isDimension, isMetric, isDate } from "metabase-lib/v1/types/utils/isa";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
 
@@ -26,11 +25,14 @@ export function columnsAreValid(colNames, data, filter = () => true) {
   for (const col of data.cols) {
     colsByName[col.name] = col;
   }
-  return colNames.reduce(
+
+  const isValid = colNames.reduce(
     (acc, name) =>
       acc && (name == null || (colsByName[name] && filter(colsByName[name]))),
     true,
   );
+
+  return Boolean(isValid);
 }
 
 // computed size properties (drop 'px' and convert string -> Number)
@@ -146,27 +148,6 @@ export function computeSplit(extents, left = [], right = []) {
   }
 }
 
-const AGGREGATION_NAME_MAP = {
-  avg: t`Average`,
-  count: t`Count`,
-  sum: t`Sum`,
-  distinct: t`Distinct`,
-  stddev: t`Standard Deviation`,
-};
-const AGGREGATION_NAME_REGEX = new RegExp(
-  `^(${Object.keys(AGGREGATION_NAME_MAP).join("|")})(_\\d+)?$`,
-);
-
-export function getFriendlyName(column) {
-  if (AGGREGATION_NAME_REGEX.test(column.name)) {
-    const friendly = AGGREGATION_NAME_MAP[column.display_name.toLowerCase()];
-    if (friendly) {
-      return friendly;
-    }
-  }
-  return column.display_name;
-}
-
 export function isSameSeries(seriesA, seriesB) {
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
@@ -256,10 +237,10 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         ? // Just recycle the original card id of previous card if there was one
           previousCard.original_card_id
         : // A multi-aggregation or multi-breakout series legend / drill-through action
-        // should always use the id of underlying/previous card
-        isMultiseriesQuestion
-        ? previousCard.id
-        : nextCard.id,
+          // should always use the id of underlying/previous card
+          isMultiseriesQuestion
+          ? previousCard.id
+          : nextCard.id,
       id: null,
     };
   } else {

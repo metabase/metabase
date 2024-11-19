@@ -2,46 +2,48 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
-  enterCustomColumnDetails,
-  getNotebookStep,
-  entityPickerModal,
-  popover,
-  visualize,
-  restore,
-  startNewQuestion,
-  queryBuilderMain,
-  selectFilterOperator,
-  entityPickerModalTab,
-  withDatabase,
-  summarize,
+  addOrUpdateDashboardCard,
   cartesianChartCircle,
+  createNativeQuestion,
+  createSegment,
+  editDashboard,
+  enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
+  filter,
+  filterWidget,
+  getDashboardCard,
+  getNotebookStep,
+  main,
+  modal,
+  multiAutocompleteInput,
+  openNotebook,
   openOrdersTable,
   openProductsTable,
-  openNotebook,
-  filter,
-  visitDashboard,
-  editDashboard,
-  setFilter,
-  filterWidget,
-  visitQuestionAdhoc,
-  addOrUpdateDashboardCard,
-  modal,
+  popover,
+  queryBuilderMain,
+  resetTestTable,
+  restore,
   saveDashboard,
   selectDashboardFilter,
-  getDashboardCard,
-  visitQuestion,
+  selectFilterOperator,
+  setFilter,
+  startNewQuestion,
+  summarize,
   tableHeaderClick,
-  resetTestTable,
-  main,
-  multiAutocompleteInput,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
 
 describe.skip("issue 12445", { tags: "@external" }, () => {
   const CC_NAME = "Abbr";
+
   beforeEach(() => {
     restore("mysql-8");
     cy.signInAsAdmin();
@@ -78,6 +80,7 @@ describe.skip("issue 12445", { tags: "@external" }, () => {
 
 describe("issue 13289", () => {
   const CC_NAME = "Math";
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -133,6 +136,7 @@ describe("issue 13289", () => {
 describe("issue 13751", { tags: "@external" }, () => {
   const CC_NAME = "C-States";
   const PG_DB_NAME = "QA Postgres12";
+
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
@@ -178,6 +182,7 @@ describe.skip(
     // Ironically, both Prettier and Cypress remove escape characters from our code as well
     // We're testing for the literal sting `(?<=\/\/)[^\/]*`, but we need to escape the escape characters to make it work
     const ESCAPED_REGEX = "(?<=\\/\\/)[^\\/]*";
+
     beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
@@ -190,7 +195,7 @@ describe.skip(
 
     it("should not remove regex escape characters (metabase#14517)", () => {
       cy.log("Create custom column using `regexextract()`");
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom Column").click();
       popover().within(() => {
         cy.get("[contenteditable='true']")
           .type(`regexextract([State], "${ESCAPED_REGEX}")`)
@@ -215,6 +220,7 @@ describe("issue 14843", () => {
       expressions: { [CC_NAME]: ["length", ["field", PEOPLE.CITY, null]] },
     },
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -257,6 +263,7 @@ describe("issue 18069", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -317,7 +324,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     filterWidget().click();
     popover().within(() => {
-      multiAutocompleteInput().type("14");
+      cy.findByRole("searchbox").type("14");
       cy.button("Add filter").click();
     });
   }
@@ -384,6 +391,7 @@ describe("issue 18814", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -392,7 +400,7 @@ describe("issue 18814", () => {
   });
 
   it("should be able to use a custom column in aggregation for a nested query (metabase#18814)", () => {
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.icon("sum").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -474,7 +482,7 @@ describe.skip("issue 19744", () => {
   it("custom column after aggregation shouldn't limit or change the behavior of dashboard filters (metabase#19744)", () => {
     editDashboard();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     cy.findByTestId("dashcard-container").contains("Select…").click();
     popover().contains("Created At");
@@ -616,7 +624,7 @@ describe("issue 20229", () => {
     ccAssertion();
 
     // Switch to the notebook view to deselect at least one column
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.findAllByTestId("fields-picker").click();
     popover().within(() => {
@@ -651,7 +659,7 @@ describe("issue 21135", () => {
     restore();
     cy.signInAsAdmin();
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    cy.icon("notebook").click();
+    openNotebook();
   });
 
   it("should handle cc with the same name as the table column (metabase#21135)", () => {
@@ -716,6 +724,7 @@ describe("issue 23862", () => {
       breakout: [["expression", "CC"]],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -763,6 +772,7 @@ describe("issue 24922", () => {
     name: "CustomColumn",
     formula: 'case([OrdersSegment], "Segment", "Other")',
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -804,6 +814,7 @@ describe.skip("issue 25189", () => {
       },
     },
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -864,18 +875,23 @@ describe.skip("issue 25189", () => {
 
       resetTestTable({ type: dialect, table: tableName });
       cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
+      cy.intercept("GET", "/api/search*").as("search");
     });
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("colors");
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "colors",
+        );
+        cy.findByText("Everywhere").click();
+        cy.wait("@search");
         cy.findByTestId("result-item")
           .contains(/colors/i)
           .click();
       });
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom column").click();
       enterCustomColumnDetails({
         formula: "case([ID] > 1, 25, 5)",
         name: "Numeric",
@@ -914,6 +930,7 @@ describe("issue 32032", () => {
       ["expression", "Custom Reviewer", { "base-type": "type/Text" }],
     ],
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -934,5 +951,155 @@ describe("issue 32032", () => {
     cy.findByTestId("TableInteractive-root")
       .findAllByText("xavier")
       .should("have.length", 2);
+  });
+});
+
+describe("issue 42949", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should correctly show available shortcuts for date and number columns (metabase#42949)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: `
+            SELECT DATE '2024-05-21' AS created_at, null as v
+            UNION ALL SELECT DATE '2024-05-20', 1
+            UNION ALL SELECT DATE '2024-05-19', 2
+            ORDER BY created_at
+          `,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+
+    cy.log("Verify header drills - CREATED_AT");
+    tableHeaderClick("CREATED_AT");
+    popover().findByText("Extract day, month…").should("be.visible");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify header drills - V");
+    tableHeaderClick("V");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button - extract column");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").click();
+    popover().findByText("CREATED_AT").click();
+    popover().within(() => {
+      cy.findByText("Day of month").should("be.visible");
+      cy.findByText("Day of week").should("be.visible");
+      cy.findByText("Month of year").should("be.visible");
+      cy.findByText("Quarter of year").should("be.visible");
+      cy.findByText("Year").should("be.visible").click();
+    });
+    cy.findAllByTestId("header-cell").eq(2).should("have.text", "Year");
+
+    cy.log("Verify plus button - combine columns");
+    cy.button("Add column").click();
+    popover().findByText("Combine columns").click();
+    popover().findAllByTestId("column-input").eq(0).click();
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("CREATED_AT").should("be.visible");
+        cy.findByText("V").should("be.visible");
+        cy.findByText("Year").should("be.visible").click();
+      });
+    popover().button("Done").click();
+
+    cy.findAllByTestId("header-cell")
+      .eq(3)
+      .should("have.text", "Combined Year, V");
+
+    cy.findAllByTestId("cell-data").eq(6).should("have.text", "2,024");
+    cy.findAllByTestId("cell-data").eq(7).should("have.text", "2024 2");
+    cy.findAllByTestId("cell-data").eq(10).should("have.text", "2,024");
+    cy.findAllByTestId("cell-data").eq(11).should("have.text", "2024 1");
+    cy.findAllByTestId("cell-data").eq(13).should("have.text", "2,024");
+    cy.findAllByTestId("cell-data").eq(14).should("have.text", "2024 ");
+  });
+
+  it("should correctly show available shortcuts for a number column (metabase#42949)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "select 1 as n",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.findByLabelText("Switch to data").click();
+
+    cy.log("Verify header drills");
+    tableHeaderClick("N");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").click();
+    popover().findAllByTestId("column-input").eq(0).click();
+    popover().last().findByText("N").should("be.visible");
+  });
+
+  it("should correctly show available shortcuts for a string column (metabase#42949)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "select 'abc'",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.findByLabelText("Switch to data").click();
+
+    cy.log("Verify header drills");
+    tableHeaderClick("'abc'");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("be.visible");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").click();
+    popover().findAllByTestId("column-input").eq(0).click();
+    popover().last().findByText("'abc'").should("be.visible");
+  });
+});
+
+describe("issue 49342", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to leave the expression input with the Tab key (metabase#49342)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    enterCustomColumnDetails({ formula: "[Tot{Enter}", blur: false });
+    cy.get(".ace_text-input").first().focus().realPress("Tab");
+    cy.findByTestId("expression-name").should("be.focused");
+
+    cy.log("should contain focus within the popover");
+    cy.findByTestId("expression-name").realPress(["Shift", "Tab"]);
+    cy.get(".ace_text-input")
+      .first()
+      .should("be.focused")
+      .realPress(["Shift", "Tab"]);
+    cy.button("Cancel").should("be.focused");
   });
 });

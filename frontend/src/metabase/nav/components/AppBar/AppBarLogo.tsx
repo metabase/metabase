@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 
-import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
+import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import LogoIcon from "metabase/components/LogoIcon";
 
 import { LogoLink } from "./AppBarLogo.styled";
@@ -18,7 +18,7 @@ export function AppBarLogo({
   isNavBarEnabled,
   onLogoClick,
 }: AppBarLogoProps): JSX.Element | null {
-  const { canNavigateHome } = useHomepageDashboard();
+  const isAtHomepageDashboard = useIsAtHomepageDashboard();
 
   if (!isLogoVisible) {
     return null;
@@ -27,7 +27,7 @@ export function AppBarLogo({
   const handleClick = (event: MouseEvent) => {
     // Prevent navigating to the dashboard homepage when a user is already there
     // https://github.com/metabase/metabase/issues/43800
-    if (!canNavigateHome) {
+    if (isAtHomepageDashboard) {
       event.preventDefault();
     }
     onLogoClick?.();

@@ -1,5 +1,3 @@
-import { popover } from "./e2e-ui-elements-helpers";
-
 export function openSeriesSettings(field, isBreakout = false) {
   if (isBreakout) {
     cy.get("[data-testid^=draggable-item]")
@@ -13,8 +11,5 @@ export function openSeriesSettings(field, isBreakout = false) {
       .closest("[data-testid=chartsettings-field-picker]")
       .find(".Icon-ellipsis")
       .click();
-    popover().within(() => {
-      cy.findAllByRole("radiogroup").findByText("Style").click();
-    });
   }
 }

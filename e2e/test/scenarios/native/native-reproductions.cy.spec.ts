@@ -1,10 +1,16 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  withDatabase,
   adhocQuestionHash,
-  runNativeQuery,
+  createNativeQuestion,
+  createQuestion,
   openNativeEditor,
+  restore,
+  runNativeQuery,
+  withDatabase,
 } from "e2e/support/helpers";
+
+import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
@@ -18,6 +24,7 @@ describe("issue 11727", { tags: "@external" }, () => {
       },
     },
   };
+
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
@@ -68,5 +75,121 @@ describe("issue 16584", () => {
     cy.findByTestId("query-visualization-root")
       .findByText("NL")
       .should("exist");
+  });
+});
+
+describe("issue 38083", () => {
+  const QUESTION = {
+    name: "SQL query with a date parameter",
+    native: {
+      query: "select * from people where state = {{ state }} limit 1",
+      "template-tags": {
+        state: {
+          id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+          type: "text" as const,
+          name: "state",
+          "display-name": "State",
+          "widget-type": "string/=",
+          default: "CA",
+          required: true,
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
+    createNativeQuestion(QUESTION, {
+      visitQuestion: true,
+    });
+
+    cy.get("legend")
+      .contains(QUESTION.native["template-tags"].state["display-name"])
+      .parent("fieldset")
+      .within(() => {
+        cy.icon("time_history").should("not.exist");
+      });
+  });
+});
+
+describe("issue 33327", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should recover from a visualization error (metabase#33327)", () => {
+    const query = "SELECT 1";
+    createNativeQuestion(
+      { native: { query }, display: "scalar" },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    cy.findByTestId("scalar-value").should("have.text", "1");
+
+    cy.findByTestId("visibility-toggler").click();
+    cy.findByTestId("native-query-editor")
+      .should("contain", query)
+      .type("{leftarrow}--");
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.findByTestId("native-query-editor").should("contain", "SELECT --1");
+    getRunQueryButton().click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("visualization-root").icon("warning").should("be.visible");
+    cy.findByTestId("scalar-value").should("not.exist");
+
+    cy.findByTestId("native-query-editor")
+      .should("contain", "SELECT --1")
+      .type("{leftarrow}{backspace}{backspace}");
+    cy.findByTestId("native-query-editor").should("contain", query);
+
+    getRunQueryButton().click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("scalar-value").should("have.text", "1");
+    cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+  });
+});
+
+describe("issue 49454", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestion({
+      name: "Test Metric 49454",
+      type: "metric",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+    });
+    createQuestion({
+      name: "Test Question 49454",
+      type: "question",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+    });
+  });
+
+  it("should be possible to use metrics in native queries (metabase#49454)", () => {
+    openNativeEditor().type("select * from {{ #test");
+
+    cy.get(".ace_autocomplete")
+      .should("be.visible")
+      .within(() => {
+        cy.findByText("-question-49454").should("be.visible");
+        cy.findByText("-metric-49454").should("be.visible");
+      });
   });
 });

@@ -9,6 +9,7 @@
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.revision :as revision]
@@ -28,7 +29,7 @@
 
 ;; ## Dashboard Revisions
 
-(deftest serialize-dashboard-test
+(deftest ^:parallel serialize-dashboard-test
   (testing "without tabs"
     (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
                              Card                {card-id :id}     {}
@@ -70,7 +71,7 @@
                                :card_id (= card-id card_id)
                                :series  (= [series-id-1 series-id-2] series))])))))))
 
-(deftest serialize-dashboard-with-tabs-test
+(deftest ^:parallel serialize-dashboard-with-tabs-test
   (testing "with tabs"
     (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
                              :model/DashboardTab {tab-id :id}                     {:dashboard_id dashboard-id :name "Test Tab" :position 0}
@@ -177,11 +178,11 @@
   (testing "update collection ---"
     (is (= "moved this Dashboard to Our analytics."
            (u/build-sentence
-             (revision/diff-strings
-               Dashboard
-               {:name "Apple"}
-               {:name          "Apple"
-                :collection_id nil}))))
+            (revision/diff-strings
+             Dashboard
+             {:name "Apple"}
+             {:name          "Apple"
+              :collection_id nil}))))
 
     (t2.with-temp/with-temp
       [Collection {coll-id :id} {:name "New collection"}]
@@ -241,7 +242,6 @@
                                         ;; create one before the update
                                         (create-dashboard-revision! dashboard-id true))]
 
-
     (testing "dashboard ---"
       (t2.with-temp/with-temp
         [:model/Dashboard dashboard {:name                "A Dashboard"
@@ -287,60 +287,60 @@
                 (when-not (#{:made_public_by_id :archived_directly} col)
                   (testing (format "we should have a revision description for %s" col)
                     (is (some? (u/build-sentence
-                                 (revision/diff-strings
-                                   Dashboard
-                                   before
-                                   changes))))))))))))
+                                (revision/diff-strings
+                                 Dashboard
+                                 before
+                                 changes))))))))))))
 
-   (testing "dashboardcard ---"
-     (t2.with-temp/with-temp
-       [:model/Dashboard     dashboard {:name "A Dashboard"}
-        :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)}
-        :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
-        :model/Card          card      {:name "A Card" :type :model}
-        Action               action    {:model_id (:id card)
-                                        :type     :implicit
-                                        :name     "An action"}]
-       (let [columns    (disj (set/difference (set (keys dashcard)) (set @#'dashboard/excluded-columns-for-dashcard-revision))
-                              :dashboard_id :id)
-             update-col (fn [col value]
-                          (cond
-                            (= col :action_id)              (:id action)
-                            (= col :card_id)                (:id card)
-                            (= col :dashboard_tab_id)       (:id dashtab)
-                            (= col :parameter_mappings)     [{:parameter_id "_CATEGORY_NAME_"
-                                                              :target       [:dimension (mt/$ids $categories.name)]}]
-                            (= col :visualization_settings) {:text "now it's a text card"}
-                            (int? value)                    (inc value)
-                            (boolean? value)                (not value)
-                            (string? value)                 (str value "_changed")))]
-         (doseq [col columns]
-           (clean-revisions-for-dashboard (:id dashboard))
+    (testing "dashboardcard ---"
+      (t2.with-temp/with-temp
+        [:model/Dashboard     dashboard {:name "A Dashboard"}
+         :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)}
+         :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
+         :model/Card          card      {:name "A Card" :type :model}
+         Action               action    {:model_id (:id card)
+                                         :type     :implicit
+                                         :name     "An action"}]
+        (let [columns    (disj (set/difference (set (keys dashcard)) (set @#'dashboard/excluded-columns-for-dashcard-revision))
+                               :dashboard_id :id)
+              update-col (fn [col value]
+                           (cond
+                             (= col :action_id)              (:id action)
+                             (= col :card_id)                (:id card)
+                             (= col :dashboard_tab_id)       (:id dashtab)
+                             (= col :parameter_mappings)     [{:parameter_id "_CATEGORY_NAME_"
+                                                               :target       [:dimension (mt/$ids $categories.name)]}]
+                             (= col :visualization_settings) {:text "now it's a text card"}
+                             (int? value)                    (inc value)
+                             (boolean? value)                (not value)
+                             (string? value)                 (str value "_changed")))]
+          (doseq [col columns]
+            (clean-revisions-for-dashboard (:id dashboard))
            ;; do the update
-           (t2/update! :model/DashboardCard (:id dashcard) {col (update-col col (get dashcard col))})
-           (create-dashboard-revision! (:id dashboard) false)
+            (t2/update! :model/DashboardCard (:id dashcard) {col (update-col col (get dashcard col))})
+            (create-dashboard-revision! (:id dashboard) false)
 
-           (testing (format "we should track when %s changes" col)
-             (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))))))
+            (testing (format "we should track when %s changes" col)
+              (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))))))
 
-   (testing "dashboardtab ---"
-     (t2.with-temp/with-temp
-       [:model/Dashboard     dashboard {:name "A Dashboard"}
-        :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}]
-       (let [columns    (disj (set/difference (set (keys dashtab)) (set @#'dashboard/excluded-columns-for-dashboard-tab-revision))
-                              :dashboard_id :id)
-             update-col (fn [_col value]
-                          (cond
-                            (int? value)    (inc value)
-                            (string? value) (str value "_changed")))]
-         (doseq [col columns]
-           (clean-revisions-for-dashboard (:id dashboard))
+    (testing "dashboardtab ---"
+      (t2.with-temp/with-temp
+        [:model/Dashboard     dashboard {:name "A Dashboard"}
+         :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}]
+        (let [columns    (disj (set/difference (set (keys dashtab)) (set @#'dashboard/excluded-columns-for-dashboard-tab-revision))
+                               :dashboard_id :id)
+              update-col (fn [_col value]
+                           (cond
+                             (int? value)    (inc value)
+                             (string? value) (str value "_changed")))]
+          (doseq [col columns]
+            (clean-revisions-for-dashboard (:id dashboard))
            ;; do the update
-           (t2/update! :model/DashboardTab (:id dashtab) {col (update-col col (get dashtab col))})
-           (create-dashboard-revision! (:id dashboard) false)
+            (t2/update! :model/DashboardTab (:id dashtab) {col (update-col col (get dashtab col))})
+            (create-dashboard-revision! (:id dashboard) false)
 
-           (testing (format "we should track when %s changes" col)
-             (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
+            (testing (format "we should track when %s changes" col)
+              (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
 
 (deftest revert-dashboard!-test
   (t2.with-temp/with-temp [Dashboard           {dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}
@@ -451,7 +451,7 @@
     :user-id      (mt/user->id :crowberto)
     :is-creation? is-creation?}))
 
-(defn- revert-to-previous-revision
+(defn- revert-to-previous-revision!
   "Revert to a previous revision for a model.
   `n` is the number of revisions to revert back to.
   `n=1` means do nothing (i.e. revert to the current revision).
@@ -461,8 +461,8 @@
   (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
   (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
-   (assert (= n (count ids)), "There are less revisions than required to revert")
-   (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
+    (assert (= n (count ids)), "There are less revisions than required to revert")
+    (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
 
 (deftest revert-dashboard-with-tabs-basic-test
   (testing "revert adding tabs"
@@ -470,8 +470,7 @@
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
 
-
-      ;; 1. add 2 tabs
+;; 1. add 2 tabs
       (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
                                                                                 :position     0
                                                                                 :dashboard_id dashboard-id}
@@ -492,7 +491,7 @@
                  {:id tab-3-id :name "Tab 3" :position 2}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
-        (revert-to-previous-revision Dashboard dashboard-id 2)
+        (revert-to-previous-revision! Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
@@ -502,8 +501,7 @@
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
 
-
-      ;; 1. add 2 tabs
+;; 1. add 2 tabs
       (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
                                                                                 :position     0
                                                                                 :dashboard_id dashboard-id}
@@ -521,39 +519,38 @@
                  {:id tab-2-id :name "Tab 2" :position 1}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
-        (revert-to-previous-revision Dashboard dashboard-id 2)
+        (revert-to-previous-revision! Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
 
- (testing "revert deleting tabs"
-   (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+  (testing "revert deleting tabs"
+    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
      ;; 0. create a dashboard
-     (create-dashboard-revision! dashboard-id true)
+      (create-dashboard-revision! dashboard-id true)
 
-
-     ;; 1. add 2 tabs
-     (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
-                                                                               :position     0
-                                                                               :dashboard_id dashboard-id}
-                                                                              {:name         "Tab 2"
-                                                                               :position     1
-                                                                               :dashboard_id dashboard-id}])]
-       (create-dashboard-revision! dashboard-id false)
+;; 1. add 2 tabs
+      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
+                                                                                :position     0
+                                                                                :dashboard_id dashboard-id}
+                                                                               {:name         "Tab 2"
+                                                                                :position     1
+                                                                                :dashboard_id dashboard-id}])]
+        (create-dashboard-revision! dashboard-id false)
 
        ;; 2. delete the 1st tab and re-position the second tab
-       (t2/delete! :model/DashboardTab tab-1-id)
-       (t2/update! :model/DashboardTab tab-2-id {:position 0})
-       (create-dashboard-revision! dashboard-id false)
+        (t2/delete! :model/DashboardTab tab-1-id)
+        (t2/update! :model/DashboardTab tab-2-id {:position 0})
+        (create-dashboard-revision! dashboard-id false)
 
        ;; check to make sure we have everything setup before testing
-       (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
-               (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+        (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
+                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
        ;; revert
-       (revert-to-previous-revision Dashboard dashboard-id 2)
-       (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
-                {:id tab-2-id :name "Tab 2" :position 1}]
-               (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+        (revert-to-previous-revision! Dashboard dashboard-id 2)
+        (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
+                 {:id tab-2-id :name "Tab 2" :position 1}]
+                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-advanced-test
   (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
@@ -626,23 +623,23 @@
       (create-dashboard-revision! dashboard-id false)
 
      ;; revert
-     (revert-to-previous-revision Dashboard dashboard-id 2)
-     (testing "tab 1 should have 2 cards"
-       (is (= 2 (t2/count :model/DashboardCard :dashboard_tab_id tab-1-id)))
-       (testing "and position of first card is (0,0)"
-         (is (=? {:row 0
-                  :col 0}
-                 (t2/select-one :model/DashboardCard card-1-tab-1)))))
+      (revert-to-previous-revision! Dashboard dashboard-id 2)
+      (testing "tab 1 should have 2 cards"
+        (is (= 2 (t2/count :model/DashboardCard :dashboard_tab_id tab-1-id)))
+        (testing "and position of first card is (0,0)"
+          (is (=? {:row 0
+                   :col 0}
+                  (t2/select-one :model/DashboardCard card-1-tab-1)))))
 
-     (testing "tab \"Tab 2\" is restored"
-       (let [new-tab-2 (t2/select-one :model/DashboardTab :dashboard_id dashboard-id :name "Tab 2")]
-        (is (= 1 (:position new-tab-2)))
+      (testing "tab \"Tab 2\" is restored"
+        (let [new-tab-2 (t2/select-one :model/DashboardTab :dashboard_id dashboard-id :name "Tab 2")]
+          (is (= 1 (:position new-tab-2)))
 
-        (testing "with its cards"
-          (is (= 2 (t2/count :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id (:id new-tab-2)))))))
+          (testing "with its cards"
+            (is (= 2 (t2/count :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id (:id new-tab-2)))))))
 
-     (testing "there are no \"Tab 3\""
-       (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3")))))))
+      (testing "there are no \"Tab 3\""
+        (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3")))))))
 
 (deftest revert-dashboard-skip-archived-or-deleted-card-test
   (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id}          {:name "A dashboard"}
@@ -691,7 +688,7 @@
     (t2/update! :model/Card :id will-be-archived-card {:archived true})
 
     (testing "revert should not include archived or deleted card ids (#34884)"
-      (revert-to-previous-revision Dashboard dashboard-id 2)
+      (revert-to-previous-revision! Dashboard dashboard-id 2)
       (is (=? #{{:card_id                unchanged-card
                  :visualization_settings {}}
                 {:card_id                nil
@@ -725,15 +722,15 @@
                                           "static-list" false
                                           nil           true}]
       (testing (format "\nvalues_source_type=%s" values_source_type)
-       (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
-                                                                default-parameter
-                                                                {:filteringParameters ["other-param-id"]
-                                                                 :values_source_type  values_source_type})]}]
-         (let [parameter (first (:parameters dashboard))]
-           (if keep-filtering-parameters?
-             (is (= ["other-param-id"]
-                    (:filteringParameters parameter)))
-             (is (not (contains? parameter :filteringParameters))))))))))
+        (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
+                                                                 default-parameter
+                                                                 {:filteringParameters ["other-param-id"]
+                                                                  :values_source_type  values_source_type})]}]
+          (let [parameter (first (:parameters dashboard))]
+            (if keep-filtering-parameters?
+              (is (= ["other-param-id"]
+                     (:filteringParameters parameter)))
+              (is (not (contains? parameter :filteringParameters))))))))))
 
 (deftest migrate-parameters-with-linked-filters-and-values-query-type-test
   (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_query_type is 'none'"
@@ -741,15 +738,15 @@
              keep-filtering-parameters?] {"none" false
                                           "list" true}]
       (testing (format "\nvalues_query_type=%s" values_query_type)
-       (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
-                                                                default-parameter
-                                                                {:filteringParameters ["other-param-id"]
-                                                                 :values_query_type   values_query_type})]}]
-         (let [parameter (first (:parameters dashboard))]
-           (if keep-filtering-parameters?
-             (is (= ["other-param-id"]
-                    (:filteringParameters parameter)))
-             (is (not (contains? parameter :filteringParameters))))))))))
+        (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
+                                                                 default-parameter
+                                                                 {:filteringParameters ["other-param-id"]
+                                                                  :values_query_type   values_query_type})]}]
+          (let [parameter (first (:parameters dashboard))]
+            (if keep-filtering-parameters?
+              (is (= ["other-param-id"]
+                     (:filteringParameters parameter)))
+              (is (not (contains? parameter :filteringParameters))))))))))
 
 (deftest migrate-parameters-empty-name-test
   (testing "test that a Dashboard's :parameters is selected with a non-nil name and slug"
@@ -838,11 +835,23 @@
       (t2/delete! Dashboard :id dashboard-id)
       (is (nil? (t2/select-one 'ParameterCard :card_id card-id))))))
 
+(deftest do-not-update-parameter-card-if-it-doesn't-change-test
+  (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
+    (mt/with-temp [:model/Card      {source-card-id :id} {}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name       "Category Name"
+                                                                      :slug       "category_name"
+                                                                      :id         "_CATEGORY_NAME_"
+                                                                      :type       "category"
+                                                                      :values_source_type    "card"
+                                                                      :values_source_config {:card_id source-card-id}}]}]
+      (mt/with-dynamic-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
+        (t2/update! :model/Dashboard dashboard-id {:name "new name"})))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-dash-in-collection [f]
+(defn do-with-dash-in-collection! [f]
   (tu/with-non-admin-groups-no-root-collection-perms
     (t2.with-temp/with-temp [Collection    collection {}
                              Dashboard     dash       {:collection_id (u/the-id collection)}
@@ -854,16 +863,16 @@
                              DashboardCard _          {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]
       (f db collection dash))))
 
-(defmacro with-dash-in-collection
+(defmacro with-dash-in-collection!
   "Execute `body` with a Dashboard in a Collection. Dashboard will contain one Card in a Database."
   {:style/indent :defn}
   [[db-binding collection-binding dash-binding] & body]
-  `(do-with-dash-in-collection
+  `(do-with-dash-in-collection!
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or dash-binding '_)]
       ~@body)))
 
 (deftest perms-test
-  (with-dash-in-collection [_db collection dash]
+  (with-dash-in-collection! [_db collection dash]
     (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
@@ -997,22 +1006,23 @@
       [Field     field     {:name "A field"}
        Card      card      {:name "A card"}
        Dashboard dashboard {:name       "A dashboard"
-                            :parameters [{:id "abc"
-                                          :type "category"
-                                          :values_source_type "card"
+                            :parameters [{:id                   "abc"
+                                          :type                 "category"
+                                          :values_source_type   "card"
                                           :values_source_config {:card_id     (:id card)
                                                                  :value_field [:field (:id field) nil]}}]}]
-      (is (= #{["Card" (:id card)]}
+      (is (= {["Card" (:id card)] {"Dashboard" (:id dashboard)}}
              (serdes/descendants "Dashboard" (:id dashboard))))))
 
   (testing "dashboard which has a dashcard with an action"
     (mt/with-actions [{:keys [action-id]} {}]
       (mt/with-temp
-        [Dashboard dashboard {:name "A dashboard"}
-         DashboardCard _ {:action_id          action-id
-                          :dashboard_id       (:id dashboard)
-                          :parameter_mappings []}]
-        (is (= #{["Action" action-id]}
+        [Dashboard     dashboard {:name "A dashboard"}
+         DashboardCard dc        {:action_id          action-id
+                                  :dashboard_id       (:id dashboard)
+                                  :parameter_mappings []}]
+        (is (= {["Action" action-id] {"Dashboard"     (:id dashboard)
+                                      "DashboardCard" (:id dc)}}
                (serdes/descendants "Dashboard" (:id dashboard)))))))
 
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
@@ -1023,13 +1033,15 @@
                                               :slug "category_name"
                                               :id   "_CATEGORY_NAME_"
                                               :type "category"}]}
-       DashboardCard _         {:card_id            (:id card1)
+       DashboardCard dc        {:card_id            (:id card1)
                                 :dashboard_id       (:id dashboard)
                                 :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                       :card_id      (:id card2)
                                                       :target       [:dimension (mt/$ids $categories.name)]}]}]
-      (is (= #{["Card" (:id card1)]
-               ["Card" (:id card2)]}
+      (is (= {["Card" (:id card1)] {"Dashboard"     (:id dashboard)
+                                    "DashboardCard" (:id dc)}
+              ["Card" (:id card2)] {"Dashboard"     (:id dashboard)
+                                    "DashboardCard" (:id dc)}}
              (serdes/descendants "Dashboard" (:id dashboard))))))
 
   (testing "dashboard in which its dashcards have series"
@@ -1042,13 +1054,15 @@
                                                     :id   "_CATEGORY_NAME_"
                                                     :type "category"}]}
        DashboardCard       dashcard {:card_id (:id card1), :dashboard_id (:id dashboard)}
-       DashboardCardSeries _        {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}
-       DashboardCardSeries _        {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]
-      (is (= (set (for [card [card1 card2 card3]]
-                    ["Card" (:id card)]))
+       DashboardCardSeries s2       {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}
+       DashboardCardSeries s3       {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]
+      (is (= (into {} (for [[card series] [[card1 nil] [card2 s2] [card3 s3]]]
+                        [["Card" (:id card)] (cond-> {"Dashboard"           (:id dashboard)
+                                                      "DashboardCard"       (:id dashcard)}
+                                               series (assoc "DashboardCardSeries" (:id series)))]))
              (serdes/descendants "Dashboard" (:id dashboard)))))))
 
-(deftest hydrate-tabs-test
+(deftest ^:parallel hydrate-tabs-test
   (mt/with-temp
     [:model/Dashboard    dash1      {:name "A dashboard"}
      :model/DashboardTab dash1-tab1 {:name "Tab 1", :dashboard_id (:id dash1)}
@@ -1060,7 +1074,7 @@
              [dash2-tab1 dash2-tab2]]
             (map :tabs (t2/hydrate [dash1 dash2] :tabs))))))
 
-(deftest hydrate-dashcards-test
+(deftest ^:parallel hydrate-dashcards-test
   (mt/with-temp
     [:model/Dashboard     dash1       {:name "A dashboard"}
      :model/DashboardCard dash1-card1 {:dashboard_id (:id dash1)}
@@ -1072,7 +1086,7 @@
              [dash2-card1 dash2-card2]]
             (map :dashcards (t2/hydrate [dash1 dash2] :dashcards))))))
 
-(deftest hydrate-resolved-params-test
+(deftest ^:parallel hydrate-resolved-params-test
   (mt/with-temp
     [:model/Dashboard     dash      {:parameters [{:name "Category Name"
                                                    :slug "category_name"
@@ -1097,7 +1111,7 @@
                                                                    [:id [:= (:id card)]]]]]]]])}}
             (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
 
-(deftest hydrate-resolved-params-model-test
+(deftest ^:parallel hydrate-resolved-params-model-test
   (mt/with-temp
     [:model/Dashboard     dash      {:parameters [{:name "Category Name"
                                                    :slug "category_name"

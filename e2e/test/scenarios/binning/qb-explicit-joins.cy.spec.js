@@ -1,16 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  entityPickerModal,
-  restore,
-  visualize,
-  changeBinningForDimension,
-  summarize,
-  startNewQuestion,
-  echartsContainer,
   cartesianChartCircle,
+  changeBinningForDimension,
   chartPathWithFillColor,
+  echartsContainer,
+  entityPickerModal,
   entityPickerModalTab,
+  restore,
+  startNewQuestion,
+  summarize,
   tableHeaderClick,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
@@ -142,7 +142,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Pick a function or metric").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -6,11 +6,11 @@ import Select from "metabase/core/components/Select";
 import Toggle from "metabase/core/components/Toggle";
 
 import {
+  ErrorMessage,
   SessionTimeoutInput,
   SessionTimeoutInputContainer,
-  SessionTimeoutSettingRoot,
   SessionTimeoutSettingContainer,
-  ErrorMessage,
+  SessionTimeoutSettingRoot,
 } from "./SessionTimeoutSetting.styled";
 
 const UNITS = [

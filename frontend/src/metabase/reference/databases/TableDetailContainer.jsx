@@ -12,9 +12,9 @@ import * as actions from "metabase/reference/reference";
 
 import {
   getDatabase,
-  getTable,
   getDatabaseId,
   getIsEditing,
+  getTable,
 } from "../selectors";
 
 import TableSidebar from "./TableSidebar";

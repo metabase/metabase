@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { getIn } from "icepick";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
-import { useMount } from "react-use";
+import { useMount, useUpdateEffect } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
@@ -16,12 +16,14 @@ import {
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useStore } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
   Card,
@@ -74,7 +76,7 @@ export interface DashCardProps {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  onReplaceAllVisualizationSettings: (
+  onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
     settings: VisualizationSettings,
   ) => void;
@@ -84,6 +86,8 @@ export interface DashCardProps {
   ) => void;
   showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+
+  downloadsEnabled: boolean;
 }
 
 function DashCardInner({
@@ -110,13 +114,19 @@ function DashCardInner({
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
-  onReplaceAllVisualizationSettings,
+  onReplaceAllDashCardVisualizationSettings,
+  downloadsEnabled,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
-  const href = useSelector(state => getDashcardHref(state, dashcard.id));
-  const [isPreviewingCard, setIsPreviewingCard] = useState(false);
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const store = useStore();
+  const getHref = useCallback(
+    () => getDashcardHref(store.getState(), dashcard.id),
+    [store, dashcard.id],
+  );
+  const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
   const handlePreviewToggle = useCallback(() => {
@@ -132,14 +142,18 @@ function DashCardInner({
     }
   });
 
+  useUpdateEffect(() => {
+    if (!isEditing) {
+      setIsPreviewingCard(true);
+    }
+  }, [isEditing]);
+
   const mainCard: Card | VirtualCard = useMemo(
-    () => ({
-      ...dashcard.card,
-      visualization_settings: mergeSettings(
-        dashcard?.card?.visualization_settings,
+    () =>
+      extendCardWithDashcardSettings(
+        dashcard.card,
         dashcard.visualization_settings,
       ),
-    }),
     [dashcard],
   );
 
@@ -176,7 +190,7 @@ function DashCardInner({
   );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = isJWT(dashcard.dashboard_id);
+  const isEmbed = isEmbeddingSdk || isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -247,8 +261,14 @@ function DashCardInner({
     }
   }, [dashcard, dashboard.collection_authority_level]);
 
+  const { supportPreviewing } = getVisualizationRaw(series) ?? {};
+  const isEditingCardContent = supportPreviewing && !isPreviewingCard;
+
   const isEditingDashboardLayout =
-    isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
+    isEditing &&
+    !clickBehaviorSidebarDashcard &&
+    !isEditingParameter &&
+    !isEditingCardContent;
 
   const isClickBehaviorSidebarOpen = !!clickBehaviorSidebarDashcard;
   const isEditingDashCardClickBehavior =
@@ -275,6 +295,7 @@ function DashCardInner({
     <ErrorBoundary>
       <DashCardRoot
         data-testid="dashcard"
+        data-dashcard-key={dashcard.id}
         className={cx(
           DashboardS.Card,
           EmbedFrameS.Card,
@@ -305,8 +326,8 @@ function DashCardInner({
             onRemove={onRemove}
             onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-            onReplaceAllVisualizationSettings={
-              onReplaceAllVisualizationSettings
+            onReplaceAllDashCardVisualizationSettings={
+              onReplaceAllDashCardVisualizationSettings
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
@@ -323,7 +344,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
-          href={navigateToNewCardFromDashboard ? href : undefined}
+          getHref={navigateToNewCardFromDashboard ? getHref : undefined}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
@@ -345,6 +366,8 @@ function DashCardInner({
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }
           onChangeLocation={onChangeLocation}
+          onTogglePreviewing={handlePreviewToggle}
+          downloadsEnabled={downloadsEnabled}
         />
       </DashCardRoot>
     </ErrorBoundary>

@@ -6,10 +6,14 @@ import _ from "underscore";
 import Groups from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_AUDIT,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+} from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
+  Database,
   DatabaseId,
   Group,
   GroupsPermissions,
@@ -19,16 +23,16 @@ import type { State } from "metabase-types/store";
 
 import type {
   DataRouteParams,
-  RawGroupRouteParams,
-  PermissionSectionConfig,
   EntityId,
+  PermissionSectionConfig,
   PermissionSubject,
+  RawGroupRouteParams,
 } from "../../types";
-import { DataPermissionValue, DataPermission } from "../../types";
+import { DataPermission, DataPermissionValue } from "../../types";
 import {
-  getTableEntityId,
-  getSchemaEntityId,
   getDatabaseEntityId,
+  getSchemaEntityId,
+  getTableEntityId,
 } from "../../utils/data-entity-id";
 import { hasPermissionValueInEntityGraphs } from "../../utils/graph";
 
@@ -219,7 +223,7 @@ export const getDatabasesPermissionEditor = createSelector(
             ),
           };
         });
-    } else if (databaseId != null) {
+    } else if (database && databaseId != null) {
       const maybeDbEntities = metadata
         ?.database(databaseId)
         ?.getSchemas()
@@ -238,6 +242,7 @@ export const getDatabasesPermissionEditor = createSelector(
               permissions,
               originalPermissions,
               defaultGroup,
+              database,
             ),
           };
         });
@@ -249,6 +254,7 @@ export const getDatabasesPermissionEditor = createSelector(
       permissionSubject = "schemas";
       entities = metadata
         .databasesList({ savedQuestions: false })
+        .filter(db => !PLUGIN_AUDIT.isAuditDb(db as Database))
         .map(database => {
           const entityId = getDatabaseEntityId(database);
           return {
@@ -396,6 +402,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             permissions,
             originalPermissions,
             defaultGroup,
+            database,
           );
         } else if (databaseId != null) {
           groupPermissions = buildSchemasPermissions(

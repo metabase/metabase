@@ -1,0 +1,17 @@
+name: Perf test command
+
+on:
+  pull_request:
+    types: [ labeled ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-perf-test:
+    if: ${{ github.event.label.name == 'Run-perf' }}
+    uses: ./.github/workflows/perf-test.yml
+    with:
+      wait_for_uberjar: true
+    secrets: inherit

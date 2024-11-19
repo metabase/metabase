@@ -20,6 +20,7 @@ From the **+ New** dropdown, select **Question**, then pick your starting data:
 You can start a question from:
 
 - **A model**. A [model](../../data-modeling/models.md) is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
+- **A metric**. [Metrics](../../data-modeling/metrics.md) are pre-defined calculations. If you pick a metric as a starting point for a question, Metabase will create a question with the same data source as the selected metric, and apply the metric. You'll be able to add more joins, filter, and summaries.
 - **Tables**. You'll need to specify the database and the table in that database as the starting point for your question.
 - A **saved question**. You can use the results of any question as the starting point for a new question.
 
@@ -36,11 +37,13 @@ Once you select your data, Metabase will take you to the query builder. Say you 
 
 ![Metabase query builder](../images/notebook-editor.png)
 
-This is the query builder's notebook editor. It has three default steps.
+This is the query builder's editor. It has three default steps.
 
 - [Picking data](#picking-data)
 - [Filtering](#filtering)
 - [Summarizing and grouping by](#summarizing-and-grouping-by)
+
+You can also add steps for [joining data](#joining-data), [custom columns](#creating-custom-columns), and [sorting results](#sorting-results).
 
 To the right of each completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
 
@@ -48,7 +51,13 @@ To the right of each completed step is a **Preview** button (looks like a Play b
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results. See also [adding or removing columns in a table](#adding-or-removing-columns-in-a-table).
+The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), a table from a database, or a saved question.
+
+![data picker](../images/data-picker.png)
+
+You can see the data source in a new browser tab by Cmd/Ctrl+Clicking on the data source's name in the query builder.
+
+To choose which columns to include in your query, click on the arrow next to the data source . You'll also be able [hide columns ](#adding-or-removing-columns-in-a-table) from the table view once you visualize your results.
 
 ## Joining data
 
@@ -60,7 +69,7 @@ Filtering just means narrowing things down based on certain criteria. You're pro
 
 ![Filtering](../images/filter-step.png)
 
-When you add a filter step, you can select one or more columns to filter on. Depending on the [data type](https://www.metabase.com/learn/databases/data-types-overview) of the column you pick, you'll get different [filter types](#filter-types), like a calendar for date columns.
+When you add a filter step, you can select one or more columns to filter on. Depending on the [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of the column you pick, you'll get different [filter types](#filter-types), like a calendar for date columns.
 
 You can add subsequent filter steps after each summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
@@ -68,21 +77,24 @@ Once you're happy with your filter, click **Add filter**, and visualize your res
 
 If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
-## Filter types
+### Filter types
 
-Broadly speaking, there are three types of columns, each with their own set of filtering options:
+Depending on the data type of the column, Metabase will present different filtering options.
 
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
-- **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
+- **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, whether it contains, starts with, or ends with a substring, or whether the row is empty or not.
 - **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
+- **Structured data columns**, typically JSON or XML, can only be filtered by "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
 
-## Filter multiple columns
+### Filter multiple columns
 
-When viewing a table or chart, clicking on the **Filter** will bring up the filter modal:
+When viewing a table or chart, clicking on the **Filter** will bring up the filter modal.
 
 ![Bulk filter modal](../images/bulk-filter-modal.png)
 
-Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
+Here you can add multiple filters to your question in one go (which can save you a lot of loading time). Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. You can also filter your summaries.
+
+When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the editor, and vice versa.
 
 ### Filtering by date
 
@@ -93,7 +105,7 @@ One important thing to understand when filtering on a date column is the differe
 
 ### Filtering by a segment
 
-If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments-and-metrics.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
+If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
 ### Filter with custom expressions
 
@@ -144,7 +156,7 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 You can also add metrics and groupings on the results page in a sidebar: the top of the sidebar where you pick the number ("metric") you want to see, and the part below is where you pick how to group that number (or how to "break it out").
 
-If your admins have created any named metrics that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
+If your admins have created any named [metrics](../../data-modeling/metrics.md) that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
 
 ## Grouping your metrics
 
@@ -156,9 +168,14 @@ When you click on a different grouping column than the one you currently have se
 
 ![Multiple groupings](../images/summarize-timeseries-breakout.png)
 
-Some grouping columns will give you the option of choosing how big or small to make the groupings. So for example, if you've picked a Date column to group by, you can click on the words `by month` to change the grouping to day, week, hour, quarter, year, etc. If you're grouping by a numeric column, like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click on the current binning option to change it to a specific number of bins. It's not currently possible to choose your own ranges for bins, though.
+Some grouping columns will give you the option of choosing how big or small to make the groupings:
 
-![Multiple groupings](../images/histogram-bins.png)
+- For datetime columns, you can click on the words `by month` to change the grouping to day, week, hour, quarter, year, etc. You'll also be able to add multiple breakouts by the same datetime column with different time granularities (for example, group by week and day of the week).
+- For numeric columns like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click on the current binning option to change it to a specific number of bins. Currently, you can't choose your own ranges for bins.
+
+  ![Multiple groupings](../images/histogram-bins.png)
+
+  If you select a fixed number of bins, Metabase will break the range of the data into that number of equal size intervals. Some intervals might end up having no data, and Metabase will not display them.
 
 Once you're done setting your metrics and groupings, click **Visualize** to see your results in all their glory.
 
@@ -172,17 +189,11 @@ When viewing a chart, you can also click through questions to explore the data i
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The drill-through menu is only available for questions built using the query builder. For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. Full drill-through menu is only available for questions built using the query builder. Questions build with SQL/native queries will have only have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
 
 ## Column heading drill-through
 
 When viewing a [table](../sharing/visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
-
-## Returning to the editor
-
-To return to the editor for a question, click on the **Show editor** button in the upper right.
-
-![Show editor](../images/show-editor.png)
 
 ## Viewing an individual record's details
 
@@ -196,7 +207,7 @@ Custom expressions allow you to use spreadsheet-like functions and simple arithm
 
 ![Custom expression](../images/aggregation-expression.png)
 
- For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
+For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
 
 ### Creating custom columns
 
@@ -265,4 +276,4 @@ See [History](../../exploration-and-organization/history.md).
 
 - [Visualize results](../sharing/visualizing-results.md).
 - [Sharing answers](../sharing/answers.md).
-- [Asking questions](https://www.metabase.com/learn/questions)
+- [Asking questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions)

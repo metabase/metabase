@@ -1,16 +1,22 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getMaxDimensionsSupported } from "metabase/visualizations";
+import { isNotNull } from "metabase/lib/types";
+import {
+  getMaxDimensionsSupported,
+  getMaxMetricsSupported,
+} from "metabase/visualizations";
+import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
+import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
   columnsAreValid,
   getDefaultDimensionsAndMetrics,
-  getFriendlyName,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
   isDate,
@@ -20,7 +26,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
-  CardDisplayType,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -35,55 +40,68 @@ export function getDefaultMetricFilter(display: string) {
   return display === "scatter" ? isNumeric : isMetric;
 }
 
-export function getAreDimensionsAndMetricsValid(
-  rawSeries: RawSeries,
-  settings: ComputedVisualizationSettings,
-) {
-  return rawSeries.some(
-    ({ card, data }) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        settings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        settings["graph._metric_filter"],
-      ),
-  );
+export function getAreDimensionsAndMetricsValid(rawSeries: RawSeries) {
+  return rawSeries.some(({ card, data }) => {
+    const dimensions = card.visualization_settings["graph.dimensions"];
+    const metrics = card.visualization_settings["graph.metrics"];
+
+    const dimensionsFilter = getDefaultDimensionFilter(card.display);
+    const metricsFilter = getDefaultMetricFilter(card.display);
+
+    return (
+      columnsAreValid(dimensions, data, dimensionsFilter) &&
+      columnsAreValid(metrics, data, metricsFilter) &&
+      (metrics ?? []).length <= getMaxMetricsSupported(card.display)
+    );
+  });
 }
 
 export function getDefaultDimensions(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  return preserveExistingColumnsOrder(
-    settings["graph.dimensions"] ?? [],
-    getDefaultColumns(rawSeries).dimensions,
-  );
+  const prevDimensions = settings["graph.dimensions"] ?? [];
+  const defaultDimensions = getDefaultColumns(rawSeries).dimensions;
+  if (
+    prevDimensions.length > 0 &&
+    defaultDimensions.length > 0 &&
+    defaultDimensions[0] == null
+  ) {
+    return prevDimensions;
+  }
+
+  return preserveExistingColumnsOrder(prevDimensions, defaultDimensions);
 }
 
-export function getDefaultMetrics(rawSeries: RawSeries) {
-  return getDefaultColumns(rawSeries).metrics;
+export function getDefaultMetrics(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const [{ card }] = rawSeries;
+  const prevMetrics = settings["graph.metrics"] ?? [];
+  const defaultMetrics = getDefaultColumns(rawSeries).metrics;
+  if (
+    prevMetrics.length > 0 &&
+    defaultMetrics.length > 0 &&
+    defaultMetrics[0] == null
+  ) {
+    return prevMetrics;
+  }
+  return defaultMetrics.slice(0, getMaxMetricsSupported(card.display));
 }
 
-export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar", "combo"]);
+export const STACKABLE_SERIES_DISPLAY_TYPES = new Set(["area", "bar"]);
 
 export const isStackingValueValid = (
-  cardDisplay: CardDisplayType,
   settings: ComputedVisualizationSettings,
   seriesDisplays: string[],
 ) => {
   if (settings["stackable.stack_type"] == null) {
     return true;
   }
-  if (!STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
-    return false;
-  }
 
   const stackableDisplays = seriesDisplays.filter(display =>
-    STACKABLE_DISPLAY_TYPES.has(display),
+    STACKABLE_SERIES_DISPLAY_TYPES.has(display),
   );
   return stackableDisplays.length > 1;
 };
@@ -117,6 +135,10 @@ export const getDefaultStackingValue = (
 
   return shouldStack ? "stacked" : null;
 };
+
+export const getSeriesOrderDimensionSetting = (
+  settings: ComputedVisualizationSettings,
+) => settings["graph.dimensions"]?.[1];
 
 export const getSeriesOrderVisibilitySettings = (
   settings: ComputedVisualizationSettings,
@@ -208,7 +230,7 @@ export const getDefaultXAxisTitle = (
     return null;
   }
 
-  return getFriendlyName(dimensionColumn);
+  return dimensionColumn.display_name;
 };
 
 export const getIsXAxisLabelEnabledDefault = () => true;
@@ -365,4 +387,61 @@ function getDefaultLineAreaBarColumns(series: RawSeries) {
     series,
     getMaxDimensionsSupported(display),
   );
+}
+
+export function getAvailableAdditionalColumns(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+): DatasetColumn[] {
+  const alreadyIncludedColumns = new Set<DatasetColumn>();
+
+  if (
+    _.isEmpty(settings["graph.dimensions"]?.filter(isNotNull)) ||
+    _.isEmpty(settings["graph.metrics"]?.filter(isNotNull))
+  ) {
+    return [];
+  }
+
+  getCardsColumns(rawSeries, settings).forEach(cardColumns => {
+    alreadyIncludedColumns.add(cardColumns.dimension.column);
+    if ("breakout" in cardColumns) {
+      alreadyIncludedColumns.add(cardColumns.breakout.column);
+      alreadyIncludedColumns.add(cardColumns.metric.column);
+    } else {
+      cardColumns.metrics.forEach(columnDescriptor =>
+        alreadyIncludedColumns.add(columnDescriptor.column),
+      );
+    }
+  });
+
+  return rawSeries
+    .flatMap(singleSeries => {
+      return singleSeries.data.cols;
+    })
+    .filter(column => isMetric(column) && !alreadyIncludedColumns.has(column));
+}
+
+export function getComputedAdditionalColumnsValue(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const availableAdditionalColumnKeys = new Set(
+    getAvailableAdditionalColumns(rawSeries, settings).map(column =>
+      getColumnKey(column),
+    ),
+  );
+
+  const filteredStoredColumns = (
+    settings["graph.tooltip_columns"] ?? []
+  ).filter((columnKey: string) => availableAdditionalColumnKeys.has(columnKey));
+
+  return filteredStoredColumns;
+}
+
+export function getSeriesModelsForSettings(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  return getCardsSeriesModels(rawSeries, cardsColumns, [], settings);
 }

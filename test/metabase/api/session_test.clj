@@ -4,13 +4,11 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
-   [metabase.email.messages :as messages]
    [metabase.http-client :as client]
-   [metabase.models
-    :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
-            PulseChannel Session User]]
+   [metabase.models :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Session User]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
@@ -73,12 +71,12 @@
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
   (testing "failure should log an error(#14317)"
     (t2.with-temp/with-temp [User user]
-      (is (=? [:error clojure.lang.ExceptionInfo "Authentication endpoint error"]
-              (->> (mt/with-log-messages-for-level :error
-                     (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
-                   ;; geojson can throw errors and we want the authentication error
-                   (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
-                   first))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (mt/client :post 400 "session" {:email (:email user), :password "wooo"})
+        (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+                (->> (messages)
+                     ;; geojson can throw errors and we want the authentication error
+                     (m/find-first #(= (:message %) "Authentication endpoint error")))))))))
 
 (deftest login-validation-test
   (reset-throttlers!)
@@ -115,9 +113,10 @@
         (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (login))))
       (testing "Error should be logged (#14317)"
-        (is (=? [:error clojure.lang.ExceptionInfo "Authentication endpoint error"]
-                (first (mt/with-log-messages-for-level :error
-                         (login))))))
+        (mt/with-log-messages-for-level [messages :error]
+          (login)
+          (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+                  (first (messages))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
           "Trying to login immediately again should still return throttling error"))))
@@ -190,13 +189,13 @@
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
       (test.users/clear-cached-session-tokens!)
-      (let [session-id       (test.users/username->token :rasta)
+      (let [session-id       (client/authenticate (test.users/user->credentials :rasta))
             login-history-id (t2/select-one-pk LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
-        (mt/user-http-request :rasta :delete 204 "session")
+        (client/client session-id :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
                (t2/select-one Session :id session-id)))
@@ -209,7 +208,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= false]]]
-                (t2/select-one LoginHistory :id login-history-id))))))))
+                      (t2/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (reset-throttlers!)
@@ -434,14 +433,14 @@
 
     (testing "Authenticated normal user"
       (mt/with-test-user :lucky
-       (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
-              (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
+               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-       (with-redefs [setting/has-advanced-setting-access? (constantly true)]
-         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
-                (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
+        (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+          (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+                 (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
     (testing "Authenticated super user"
       (mt/with-test-user :crowberto
@@ -451,6 +450,7 @@
     (testing "Includes user-local settings"
       (defsetting test-session-api-setting
         "test setting"
+        :encryption :no
         :user-local :only
         :type       :string
         :default    "FOO")
@@ -464,10 +464,22 @@
   (reset-throttlers!)
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
-      (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
+      (mt/with-mock-i18n-bundles! {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
+
+(deftest properties-skip-sensitive-test
+  (reset-throttlers!)
+  (testing "GET /session/properties"
+    (testing "don't return the token for admins"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
+                 keys #{:premium-embedding-token}))))
+    (testing "don't return the token for non-admins"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
+                 keys #{:premium-embedding-token}))))))
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
@@ -502,7 +514,7 @@
 
 (deftest ldap-login-test
   (reset-throttlers!)
-  (ldap.test/with-ldap-server
+  (ldap.test/with-ldap-server!
     (testing "Test that we can login with LDAP"
       (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
                                        :password "securedpassword"}]
@@ -584,113 +596,3 @@
              clojure.lang.ExceptionInfo
              #"Password did not match stored password"
              (#'api.session/login (:email user) "password" device-info)))))))
-
-;;; ------------------------------------------- TESTS FOR UNSUBSCRIBING NONUSERS STUFF --------------------------------------------
-
-(deftest unsubscribe-hash-test
-  (mt/with-temporary-setting-values [site-uuid-for-unsubscribing-url "08534993-94c6-4bac-a1ad-86c9668ee8f5"]
-    (let [email         "rasta@pasta.com"
-          pulse-id      12345678
-          expected-hash "37bc76b4a24279eb90a71c129a629fb8626ad0089f119d6d095bc5135377f2e2884ad80b037495f1962a283cf57cdbad031fd1f06a21d86a40bba7fe674802dd"]
-      (testing "We generate a cryptographic hash to validate unsubscribe URLs"
-        (is (= expected-hash (messages/generate-pulse-unsubscribe-hash pulse-id email))))
-
-      (testing "The hash value depends on the pulse-id, email, and site-uuid"
-        (let [alternate-site-uuid "aa147515-ade9-4298-ac5f-c7e42b69286d"
-              alternate-hashes    [(messages/generate-pulse-unsubscribe-hash 87654321 email)
-                                   (messages/generate-pulse-unsubscribe-hash pulse-id "hasta@lavista.com")
-                                   (mt/with-temporary-setting-values [site-uuid-for-unsubscribing-url alternate-site-uuid]
-                                     (messages/generate-pulse-unsubscribe-hash pulse-id email))]]
-          (is (= 3 (count (distinct (remove #{expected-hash} alternate-hashes))))))))))
-
-(deftest unsubscribe-test
-  (reset-throttlers!)
-  (testing "POST /pulse/unsubscribe"
-    (let [email "test@metabase.com"]
-      (testing "Invalid hash"
-        (is (= "Invalid hash."
-               (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id 1
-                                                                 :email    email
-                                                                 :hash     "fake-hash"}))))
-
-      (testing "Valid hash but not email"
-        (mt/with-temp [Pulse        {pulse-id :id} {}
-                       PulseChannel _              {:pulse_id pulse-id}]
-          (is (= "Email for pulse-id doesnt exist."
-                 (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id pulse-id
-                                                                   :email    email
-                                                                   :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
-
-      (testing "Valid hash and email"
-        (mt/with-temp [Pulse        {pulse-id :id} {:name "title"}
-                       PulseChannel _              {:pulse_id     pulse-id
-                                                    :channel_type "email"
-                                                    :details      {:emails [email]}}]
-          (is (= {:status "success" :title "title"}
-                 (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
-                                                                   :email    email
-                                                                   :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))
-
-(deftest unsubscribe-event-test
-  (reset-throttlers!)
-  (mt/with-premium-features #{:audit-app}
-    (mt/with-model-cleanup [:model/User]
-      (testing "Valid hash and email returns event."
-        (t2.with-temp/with-temp [Pulse        {pulse-id :id} {}
-                                 PulseChannel _              {:pulse_id     pulse-id
-                                                              :channel_type "email"
-                                                              :details      {:emails ["test@metabase.com"]}}]
-          (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
-                                                            :email    "test@metabase.com"
-                                                            :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})
-          (is (= {:topic    :subscription-unsubscribe
-                  :user_id  nil
-                  :model    "Pulse"
-                  :model_id nil
-                  :details  {:email "test@metabase.com"}}
-                 (mt/latest-audit-log-entry :subscription-unsubscribe))))))))
-
-(deftest unsubscribe-undo-test
-  (reset-throttlers!)
-  (testing "POST /pulse/unsubscribe/undo"
-    (let [email "test@metabase.com"]
-      (testing "Invalid hash"
-        (is (= "Invalid hash."
-               (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id 1
-                                                                      :email    email
-                                                                      :hash     "fake-hash"}))))
-
-      (testing "Valid hash and email doesn't exist"
-        (mt/with-temp [Pulse        {pulse-id :id} {:name "title"}
-                       PulseChannel _              {:pulse_id pulse-id}]
-          (is (= {:status "success" :title "title"}
-                 (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
-                                                                        :email    email
-                                                                        :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
-
-      (testing "Valid hash and email already exists"
-        (mt/with-temp [Pulse        {pulse-id :id} {}
-                       PulseChannel _              {:pulse_id     pulse-id
-                                                    :channel_type "email"
-                                                    :details      {:emails [email]}}]
-          (is (= "Email for pulse-id already exists."
-                 (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
-                                                                        :email    email
-                                                                        :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))
-
-(deftest unsubscribe-undo-event-test
-  (reset-throttlers!)
-  (mt/with-premium-features #{:audit-app}
-    (mt/with-model-cleanup [:model/User]
-      (testing "Undoing valid hash and email returns event"
-        (t2.with-temp/with-temp [Pulse        {pulse-id :id} {}
-                                 PulseChannel _              {:pulse_id pulse-id}]
-          (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
-                                                                 :email    "test@metabase.com"
-                                                                 :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})
-          (is (= {:topic    :subscription-unsubscribe-undo
-                  :user_id  nil
-                  :model    "Pulse"
-                  :model_id nil
-                  :details  {:email "test@metabase.com"}}
-                 (mt/latest-audit-log-entry :subscription-unsubscribe-undo))))))))

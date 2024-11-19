@@ -99,7 +99,6 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(lastRequest).toEqual({
         ...defaultPermissionsGraph,
         groups: {
-          ...defaultPermissionsGraph.groups,
           3: {
             ...defaultPermissionsGraph.groups[3],
             3: "read",
@@ -155,7 +154,6 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(lastRequest).toEqual({
         ...defaultPermissionsGraph,
         groups: {
-          ...defaultPermissionsGraph.groups,
           3: {
             ...defaultPermissionsGraph.groups[3],
             1: "write",

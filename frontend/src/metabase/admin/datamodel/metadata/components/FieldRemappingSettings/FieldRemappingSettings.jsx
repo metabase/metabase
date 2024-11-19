@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,11 +10,10 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import {
-  hasSourceField,
   getFieldTargetId,
+  hasSourceField,
 } from "metabase-lib/v1/queries/utils/field-ref";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 
@@ -24,8 +23,8 @@ import {
   FieldMappingContainer,
   FieldMappingRoot,
   FieldSelectButton,
-  ForeignKeyList,
   FieldValueMappingInput,
+  ForeignKeyList,
 } from "./FieldRemappingSettings.styled";
 
 const MAP_OPTIONS = {
@@ -125,11 +124,6 @@ class FieldRemappingSettings extends Component {
     this.clearEditingStates();
 
     if (mappingType.type === "original") {
-      MetabaseAnalytics.trackStructEvent(
-        "Data Model",
-        "Change Remapping Type",
-        "No Remapping",
-      );
       await deleteFieldDimension({ id: field.id });
       this.setState({ hasChanged: false });
     } else if (mappingType.type === "foreign") {
@@ -137,11 +131,6 @@ class FieldRemappingSettings extends Component {
       const entityNameFieldId = this.getFKTargetTableEntityNameOrNull();
 
       if (entityNameFieldId) {
-        MetabaseAnalytics.trackStructEvent(
-          "Data Model",
-          "Change Remapping Type",
-          "Foreign Key",
-        );
         await updateFieldDimension(
           { id: field.id },
           {
@@ -158,11 +147,6 @@ class FieldRemappingSettings extends Component {
         });
       }
     } else if (mappingType.type === "custom") {
-      MetabaseAnalytics.trackStructEvent(
-        "Data Model",
-        "Change Remapping Type",
-        "Custom Remappings",
-      );
       await updateFieldDimension(
         { id: field.id },
         {
@@ -183,10 +167,6 @@ class FieldRemappingSettings extends Component {
     this.clearEditingStates();
 
     if (hasSourceField(foreignKeyClause)) {
-      MetabaseAnalytics.trackStructEvent(
-        "Data Model",
-        "Update FK Remapping Target",
-      );
       await updateFieldDimension(
         { id: field.id },
         {
@@ -348,8 +328,8 @@ class ValueRemappings extends Component {
           mappedOrUndefined !== undefined
             ? mappedOrUndefined.toString()
             : original === null
-            ? "null"
-            : original.toString();
+              ? "null"
+              : original.toString();
 
         return [original, mappedString];
       }),
@@ -378,10 +358,6 @@ class ValueRemappings extends Component {
   }
 
   onSaveClick = () => {
-    MetabaseAnalytics.trackStructEvent(
-      "Data Model",
-      "Update Custom Remappings",
-    );
     // Returns the promise so that ButtonWithStatus can show the saving status
     return this.props.updateRemappings(this.state.editingRemappings);
   };

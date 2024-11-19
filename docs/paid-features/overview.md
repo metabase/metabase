@@ -11,18 +11,19 @@ Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide 
 - **If you're on Metabase Cloud**, your Pro/Enterprise features will activate automatically.
 - **If you're self-hosting,** you'll need to [activate your license](./activating-the-enterprise-edition.md).
 
-## Authentication
+## Authentication and provisioning
 
 Pro and Enterprise plans include more ways to authenticate people and manage groups.
 
 - [Authenticating with SAML](../people-and-groups/authenticating-with-saml.md)
   - [Setting up SAML with Auth0](../people-and-groups/saml-auth0.md)
-  - [Setting up SAML with Azure AD](../people-and-groups/saml-azure.md)
+  - [Setting up SAML with Microsoft Entra ID](../people-and-groups/saml-azure.md)
   - [Setting up SAML with Google](../people-and-groups/saml-google.md)
   - [Setting up SAML with Keycloak](../people-and-groups/saml-keycloak.md)
   - [Setting up SAML with Okta](../people-and-groups/saml-okta.md)
 - [Authenticating with JWT](../people-and-groups/authenticating-with-jwt.md)
 - [Multiple domains with Google Sign-in](../people-and-groups/google-and-ldap.md#multiple-domains-for-google-sign-in)
+- [User provisioning with SCIM](../people-and-groups/user-provisioning.md)
 
 ## Permissions
 
@@ -91,7 +92,7 @@ All Metabase editions include global caching controls. Pro and Enterprise plans 
 
 See how people are using your Metabase.
 
-- [Metabase analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 
 ## Admin tools
 

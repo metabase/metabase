@@ -23,8 +23,8 @@
                            :cache_field_values]
                           [sync.schedules/default-metadata-sync-schedule-cron-strings
                            :metadata_sync]]]
-     (let [generator  (comp u.cron/schedule-map->cron-string
-                            k
-                            sync.schedules/default-randomized-schedule)]
-       (is (empty? (filter defaults (repeatedly 500 generator)))
-           (format "Found default values for %s randomized schedule" (name k)))))))
+      (let [generator  (comp u.cron/schedule-map->cron-string
+                             k
+                             sync.schedules/default-randomized-schedule)]
+        (is (empty? (filter defaults (repeatedly 500 generator)))
+            (format "Found default values for %s randomized schedule" (name k)))))))

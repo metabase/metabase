@@ -4,7 +4,7 @@ title: Tables
 
 # Tables
 
-The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/basics/visualizing-data/table.html).
+The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/table).
 
 ## Rearranging, adding, and removing columns
 
@@ -22,7 +22,7 @@ Click on a column heading and Metabase will present quick options for filtering 
 
 ### Filter by this column
 
-You can enter a value and filter the column  value:
+You can enter a value and filter the column value:
 
 Text filters:
 
@@ -72,6 +72,8 @@ Grab the domain or host from a URL or email. So if you have `https://www.example
 - Domain: `example`
 - Subdomain: `www`
 
+> Extracting domain and host from a URL or email is unavailable for MongoDB, SQLite, and SQL Server. For Druid, extracting domain and host is only available for the Druid-JDBC driver.
+
 ### Sum over time
 
 Add up all the values and group by a time period, generally by month.
@@ -97,14 +99,12 @@ You can display the text as is, or you can display the text as a link. If you se
 For example, you could create a dynamic URL using a parameter from another column in the results:
 
 ```html
-{% raw %}
-https://www.example.com/{{category}}
-{% endraw %}
+{% raw %} https://www.example.com/{{category}} {% endraw %}
 ```
 
-In the above example, Metabase would take the value for the `category` column for that row  (in this case `widget`), and insert it into the URL:
+In the above example, Metabase would take the value for the `category` column for that row (in this case `widget`), and insert it into the URL:
 
-```
+```html
 https://www.example.com/widget
 ```
 
@@ -171,7 +171,7 @@ Gives you various options for how commas and periods are used to separate the nu
 - 100000.00
 - 100'000.00
 
-### Minimum number of decimal places
+### Number of decimal places
 
 Forces the number to be displayed with exactly this many decimal places.
 
@@ -193,11 +193,11 @@ Lets you change the unit of currency from whatever the system default is.
 
 ### Currency label style
 
- Allows you to switch between displaying the currency label as:
+Allows you to switch between displaying the currency label as:
 
- - a symbol (like $)
- - a code (like USD)
- - the full name of the currency (like "US dollars")
+- a symbol (like $)
+- a code (like USD)
+- the full name of the currency (like "US dollars")
 
 ### Where to display the unit of currency
 

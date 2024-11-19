@@ -39,7 +39,6 @@
   ^Scheduler []
   @*quartz-scheduler*)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -107,7 +106,6 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Quartz Scheduler Class Load Helper                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -127,7 +125,6 @@
 
 (when-not *compile-files*
   (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          STARTING/STOPPING SCHEDULER                                           |
@@ -188,12 +185,11 @@
     (when old-scheduler
       (qs/shutdown old-scheduler))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private reschedule-task!
+(mu/defn- reschedule-task!
   [job         :- (ms/InstanceOfClass JobDetail)
    new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
@@ -224,8 +220,17 @@
         (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
         (reschedule-task! job trigger)))))
 
+(mu/defn trigger-now!
+  "Immediatley trigger exeuction of task"
+  [job-key :- (ms/InstanceOfClass JobKey)]
+  (try
+    (when-let [scheduler (scheduler)]
+      (.triggerJob scheduler job-key))
+    (catch Throwable e
+      (log/errorf e "Failed to trigger immediate execution of task %s" job-key))))
+
 (mu/defn delete-task!
-  "delete a task from the scheduler"
+  "Delete a task from the scheduler"
   [job-key :- (ms/InstanceOfClass JobKey) trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)
@@ -248,7 +253,6 @@
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Scheduler Info                                                 |
@@ -304,6 +308,13 @@
     (instance? JobKey x) x
     (string? x)          (JobKey. ^String x)))
 
+(defn job-exists?
+  "Check whether there is a Job with the given key."
+  [job-key]
+  (boolean
+   (when-let [s (scheduler)]
+     (qs/get-job s (->job-key job-key)))))
+
 (defn job-info
   "Get info about a specific Job (`job-key` can be either a String or `JobKey`).
 
@@ -326,6 +337,11 @@
        (sort-by #(.getName ^JobKey %))
        (map job-info)
        (filter some?)))
+
+(defn existing-triggers
+  "Get the existing triggers for a job by key name, if it exists."
+  [job-key trigger-key]
+  (filter #(= (:key %) (.getName ^TriggerKey trigger-key)) (:triggers (job-info job-key))))
 
 (defn scheduler-info
   "Return raw data about all the scheduler and scheduled tasks (i.e. Jobs and Triggers). Primarily for debugging

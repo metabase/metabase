@@ -1,27 +1,27 @@
 import { useState } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   PERSIST_DATABASE,
   UNPERSIST_DATABASE,
 } from "metabase/admin/databases/database";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { MetabaseApi } from "metabase/services";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   ControlContainer,
+  ErrorMessage,
+  FeatureDescriptionText,
+  FeatureTitle,
   HoverableIcon,
   PopoverContent,
-  FeatureTitle,
-  FeatureDescriptionText,
-  ErrorMessage,
 } from "./ModelCachingControl.styled";
 
 interface Props {
@@ -35,10 +35,11 @@ interface ErrorResponse {
 }
 
 function FeatureDescription({ schemaName }: { schemaName: string }) {
+  const { url } = useDocsUrl("data-modeling/model-persistence");
   const docsLink = (
     <ExternalLink
       key="model-caching-link"
-      href={MetabaseSettings.docsUrl("data-modeling/model-persistence")}
+      href={url}
     >{t`Learn more.`}</ExternalLink>
   );
   return (
@@ -64,8 +65,8 @@ function ModelCachingControl({ database }: Props) {
     ? t`Turn model persistence off`
     : t`Turn model persistence on`;
 
-  const siteUUID = MetabaseSettings.get("site-uuid") || "";
-  const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID);
+  const siteUUID = useSetting("site-uuid");
+  const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID || "");
 
   const handleCachingChange = async () => {
     setError(null);

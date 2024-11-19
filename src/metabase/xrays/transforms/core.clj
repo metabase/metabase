@@ -22,7 +22,7 @@
    [metabase.xrays.transforms.specs :refer [Step transform-specs TransformSpec]]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private add-bindings :- Bindings
+(mu/defn- add-bindings :- Bindings
   [bindings     :- Bindings
    source       :- SourceName
    new-bindings :- [:maybe DimensionBindings]]
@@ -42,7 +42,7 @@
     [:field (id :guard integer?) _]
     (t2/select-one-fn :name Field :id id)))
 
-(mu/defn ^:private infer-resulting-dimensions :- DimensionBindings
+(mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
    {:keys [joins name]} :- Step
    query                :- mbql.s/Query]
@@ -90,7 +90,7 @@
                                  (for [breakout breakout]
                                    (de/resolve-dimension-clauses bindings name breakout)))))
 
-(mu/defn ^:private ->source-table-reference
+(mu/defn- ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
   [entity :- SourceEntity]
   (if (mi/instance-of? Table entity)
@@ -100,13 +100,13 @@
 (defn- maybe-add-joins
   [bindings {context-source :source joins :joins} query]
   (m/assoc-some query :joins
-    (not-empty
-     (for [{:keys [source condition strategy]} joins]
-       (-> {:condition    (de/resolve-dimension-clauses bindings context-source condition)
-            :source-table (-> source bindings :entity ->source-table-reference)
-            :alias        source
-            :fields       :all}
-           (m/assoc-some :strategy strategy))))))
+                (not-empty
+                 (for [{:keys [source condition strategy]} joins]
+                   (-> {:condition    (de/resolve-dimension-clauses bindings context-source condition)
+                        :source-table (-> source bindings :entity ->source-table-reference)
+                        :alias        source
+                        :fields       :all}
+                       (m/assoc-some :strategy strategy))))))
 
 (defn- maybe-add-filter
   [bindings {:keys [name filter]} query]
@@ -116,7 +116,7 @@
   [_bindings {:keys [limit]} query]
   (m/assoc-some query :limit limit))
 
-(mu/defn ^:private transform-step! :- Bindings
+(mu/defn- transform-step! :- Bindings
   [bindings :- Bindings
    {:keys [name source aggregation expressions] :as step} :- Step]
   (let [source-entity  (get-in bindings [source :entity])
@@ -140,40 +140,40 @@
 (def ^:private Tableset
   [:sequential (ms/InstanceOf Table)])
 
-(mu/defn ^:private find-tables-with-domain-entity :- Tableset
+(mu/defn- find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset
    domain-entity-spec :- DomainEntitySpec]
   (filter #(-> % :domain_entity :type (isa? (:type domain-entity-spec))) tableset))
 
-(mu/defn ^:private tableset->bindings :- Bindings
+(mu/defn- tableset->bindings :- Bindings
   [tableset :- Tableset]
   (into {} (for [{{domain-entity-name :name dimensions :dimensions} :domain_entity :as table} tableset]
              [domain-entity-name
               {:dimensions (m/map-vals de/mbql-reference dimensions)
                :entity     table}])))
 
-(mu/defn ^:private apply-transform-to-tableset! :- Bindings
+(mu/defn- apply-transform-to-tableset! :- Bindings
   [tableset                  :- Tableset
    {:keys [steps _provides]} :- TransformSpec]
   (driver/with-driver (-> tableset first table/database :engine)
     (reduce transform-step! (tableset->bindings tableset) (vals steps))))
 
-(mu/defn ^:private resulting-entities :- [:sequential SourceEntity]
+(mu/defn- resulting-entities :- [:sequential SourceEntity]
   [bindings           :- Bindings
    {:keys [provides]} :- TransformSpec]
   (map (comp :entity val) (select-keys bindings provides)))
 
-(mu/defn ^:private validate-results :- Bindings
+(mu/defn- validate-results :- Bindings
   [bindings           :- Bindings
    {:keys [provides]} :- TransformSpec]
   (doseq [domain-entity-name provides]
     (assert (de/satisfies-requierments? (get-in bindings [domain-entity-name :entity])
                                         (@domain-entity-specs domain-entity-name))
-      (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
-                domain-entity-name))))
+            (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
+                      domain-entity-name))))
   bindings)
 
-(mu/defn ^:private tables-matching-requirements :- [:maybe Tableset]
+(mu/defn- tables-matching-requirements :- [:maybe Tableset]
   [tableset           :- Tableset
    {:keys [requires]} :- TransformSpec]
   (let [matches (map (comp (partial find-tables-with-domain-entity tableset)
@@ -182,7 +182,7 @@
     (when (every? (comp #{1} count) matches)
       (map first matches))))
 
-(mu/defn ^:private tableset :- Tableset
+(mu/defn- tableset :- Tableset
   [db-id  :- ::lib.schema.id/database
    schema :- [:maybe :string]]
   (-> (t2/select :model/Table :db_id db-id :schema schema)

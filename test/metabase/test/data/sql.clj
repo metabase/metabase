@@ -9,7 +9,9 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
-   [metabase.util.log :as log]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.random :as u.random]))
 
 (comment metabase.driver.sql/keep-me)
 
@@ -20,7 +22,6 @@
 (defn add-test-extensions! [driver]
   (driver/add-parent! driver :sql/test-extensions)
   (log/infof "Added SQL test extensions for %s ✏️" driver))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Interface (Identifier Names)                                          |
@@ -62,7 +63,7 @@
 
   You should only use this function in places where you are working directly with SQL. For HoneySQL forms, use
   [[metabase.util.honey-sql-2/identifier]] instead."
-  {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name]), :style/indent 1}
+  {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name])}
   [driver & names]
   (let [identifier-type (condp = (count names)
                           1 :database
@@ -71,7 +72,6 @@
     (->> (apply qualified-name-components driver names)
          (map (partial ddl.i/format-name driver))
          (apply sql.u/quote-name driver identifier-type))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Interface (Comments)                                              |
@@ -95,7 +95,6 @@
   (when (seq field-comment)
     (format "COMMENT '%s'" field-comment)))
 
-
 (defmulti standalone-column-comment-sql
   "Return standalone `COMMENT` statement for a column."
   {:arglists '([driver dbdef tabledef fielddef])}
@@ -109,8 +108,8 @@
   [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name field-comment]}]
   (when (seq field-comment)
     (format "COMMENT ON COLUMN %s IS '%s';"
-      (qualify-and-quote driver database-name table-name field-name)
-      field-comment)))
+            (qualify-and-quote driver database-name table-name field-name)
+            field-comment)))
 
 (defmulti inline-table-comment-sql
   "Return an inline `COMMENT` statement for a table."
@@ -133,9 +132,8 @@
   [driver {:keys [database-name]} {:keys [table-name table-comment]}]
   (when (seq table-comment)
     (format "COMMENT ON TABLE %s IS '%s';"
-      (qualify-and-quote driver database-name table-name)
-      table-comment)))
-
+            (qualify-and-quote driver database-name table-name)
+            table-comment)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Interface (DDL SQL Statements)                                         |
@@ -344,3 +342,43 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod session-schema :sql/test-extensions [_] nil)
+
+(defmulti create-materialized-view-of-table-sql
+  "Return a `CREATE MATERIALIZED VIEW` statement.
+   The view should be a simple view of the table, like `select * from table`
+   `view-name` is the name of the new view
+   `table-name` is the name of the table."
+  {:arglists '([driver database view-name table-name])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-materialized-view-of-table-sql :sql/test-extensions
+  [driver _database view-name table-name]
+  (let [qualified-view-name (sql.u/quote-name driver :table view-name)
+        qualified-table-name (sql.u/quote-name driver :table table-name)
+        schema-name (sql.u/quote-name driver :schema (session-schema driver))]
+    (format "CREATE MATERIALIZED VIEW %s.%s AS select * from %s.%s;"
+            schema-name
+            qualified-view-name
+            schema-name
+            qualified-table-name)))
+
+(defmulti drop-materialized-view-sql
+  "Return a `DROP MATERIALIZED VIEW` statement.
+   `view-name` is the name of the new view."
+  {:arglists '([driver database view-name])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-materialized-view-sql :sql/test-extensions
+  [driver _database view-name]
+  (let [qualified-view-name (sql.u/quote-name driver :table view-name)
+        schema-name (sql.u/quote-name driver :schema (session-schema driver))]
+    (format "DROP MATERIALIZED VIEW %s.%s;"
+            schema-name
+            qualified-view-name)))
+
+(defmethod tx/native-query-with-card-template-tag :sql
+  [_driver card-template-tag-name]
+  (let [source-table-name (u/lower-case-en (u.random/random-name))]
+    (format "SELECT * FROM {{%s}} %s" card-template-tag-name source-table-name)))

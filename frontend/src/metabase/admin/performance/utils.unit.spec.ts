@@ -1,7 +1,12 @@
-import type { ScheduleSettings } from "metabase-types/api";
+import type {
+  AdaptiveStrategy,
+  InheritStrategy,
+  ScheduleSettings,
+} from "metabase-types/api";
 
 import {
   cronToScheduleSettings,
+  getShortStrategyLabel,
   hourTo24HourFormat,
   hourToTwelveHourFormat,
   scheduleSettingsToCron,
@@ -171,6 +176,7 @@ describe("cronToScheduleSettings", () => {
       const cron = "0 30 8 ? * 7";
       expect(cronToScheduleSettings(cron)?.schedule_day).toBe("sat");
     });
+
     it('sets schedule_day to undefined if dayOfWeek is "?"', () => {
       const cron = "0 30 8 ? * ?";
       expect(cronToScheduleSettings(cron)?.schedule_day).toBeUndefined();
@@ -201,6 +207,7 @@ describe("cronToScheduleSettings", () => {
         schedule_frame: "last",
       });
     });
+
     it("converts 0 0 6 ? * 6#1 correctly", () => {
       const cron = "0 0 6 ? * 6#1";
       expect(cronToScheduleSettings(cron)).toEqual({
@@ -221,6 +228,7 @@ describe("hourToTwelveHourFormat", () => {
     expect(hourToTwelveHourFormat(23)).toBe(11);
     expect(hourToTwelveHourFormat(12)).toBe(12);
   });
+
   it("does not change hours that are already in 12-hour format", () => {
     expect(hourToTwelveHourFormat(11)).toBe(11);
     expect(hourToTwelveHourFormat(10)).toBe(10);
@@ -274,5 +282,30 @@ describe("hourTo24HourFormat", () => {
 
   it("converts NaN NaN to NaN", () => {
     expect(hourTo24HourFormat(NaN, NaN)).toBeNaN();
+  });
+});
+
+describe("getShortStrategyLabel", () => {
+  it("should return null if no strategy is provided", () => {
+    const result = getShortStrategyLabel();
+    expect(result).toBeNull();
+  });
+
+  it("can abbreviate an 'Adaptive' strategy", () => {
+    const strategy: AdaptiveStrategy = {
+      type: "ttl",
+      multiplier: 2,
+      min_duration_ms: 1000,
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Adaptive");
+  });
+
+  it("can abbreviate a 'Use default' aka inherit strategy", () => {
+    const strategy: InheritStrategy = {
+      type: "inherit",
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Use default");
   });
 });

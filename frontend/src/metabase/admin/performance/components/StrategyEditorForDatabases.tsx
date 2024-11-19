@@ -8,7 +8,7 @@ import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Stack, Flex } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
@@ -20,8 +20,8 @@ import type { UpdateTargetId } from "../types";
 
 import {
   Panel,
-  TabWrapper,
   RoundedBox,
+  TabWrapper,
 } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 
@@ -127,7 +127,7 @@ const StrategyEditorForDatabases_Base = ({
   }
 
   return (
-    <TabWrapper aria-label={t`Database caching settings`}>
+    <TabWrapper role="region" aria-label={t`Data caching settings`}>
       <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
         <aside>
           {t`Speed up queries by caching their results.`}
@@ -152,7 +152,7 @@ const StrategyEditorForDatabases_Base = ({
             {targetId !== null && (
               <StrategyForm
                 targetId={targetId}
-                targetModel="database"
+                targetModel={targetId === rootId ? "root" : "database"}
                 targetName={targetDatabase?.name || t`Untitled database`}
                 setIsDirty={setIsStrategyFormDirty}
                 saveStrategy={saveStrategy}

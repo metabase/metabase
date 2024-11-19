@@ -2,15 +2,15 @@ import { getMBQLName } from "metabase-lib/v1/expressions/config";
 import type { Expr } from "metabase-lib/v1/expressions/pratt";
 import {
   lexify,
-  parse,
   compile as newCompile,
+  parse,
 } from "metabase-lib/v1/expressions/pratt";
 import {
-  parse as oldParser,
-  useShorthands,
   adjustCase,
   adjustOffset,
   adjustOptions,
+  parse as oldParser,
+  useShorthands,
 } from "metabase-lib/v1/expressions/recursive-parser";
 import { resolve } from "metabase-lib/v1/expressions/resolver";
 

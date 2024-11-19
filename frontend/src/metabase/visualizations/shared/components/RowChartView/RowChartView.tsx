@@ -2,7 +2,7 @@ import type { AxisScale } from "@visx/axis";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
 import { Group } from "@visx/group";
-import type { StringLike, NumberLike } from "@visx/scale";
+import type { NumberLike, StringLike } from "@visx/scale";
 import { scaleBand } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
@@ -196,6 +196,7 @@ const RowChartView = <TDatum,>({
           label={yLabel ?? ""}
           labelProps={{
             fill: theme.axis.label.color,
+            fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.label.size,
             fontWeight: theme.axis.label.weight,
             textAnchor: "middle",
@@ -212,6 +213,7 @@ const RowChartView = <TDatum,>({
           tickStroke={theme.axis.color}
           tickLabelProps={() => ({
             fill: theme.axis.ticks.color,
+            fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.ticks.size,
             fontWeight: theme.axis.ticks.weight,
             textAnchor: "end",
@@ -222,6 +224,7 @@ const RowChartView = <TDatum,>({
           label={xLabel ?? ""}
           labelProps={{
             fill: theme.axis.label.color,
+            fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.label.size,
             fontWeight: theme.axis.label.weight,
             textAnchor: "middle",
@@ -237,6 +240,7 @@ const RowChartView = <TDatum,>({
           tickStroke={theme.axis.color}
           tickLabelProps={() => ({
             fill: theme.axis.ticks.color,
+            fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.ticks.size,
             fontWeight: theme.axis.ticks.weight,
             textAnchor: "middle",

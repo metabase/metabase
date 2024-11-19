@@ -13,21 +13,21 @@ import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { getMappingOptionByTarget } from "metabase/dashboard/components/DashCard/utils";
 import {
   getDashCardById,
+  getDashboard,
   getParameters,
   getQuestions,
-  getDashboard,
   getSelectedTabId,
   getTabs,
 } from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import type {
-  QuestionDashboardCard,
   DashCardId,
+  DashboardParameterMapping,
+  DashboardTabId,
   ParameterId,
   ParameterTarget,
-  DashboardTabId,
-  DashboardParameterMapping,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState, StoreDashcard } from "metabase-types/store";
 
@@ -157,7 +157,11 @@ export function showAutoWireToastNewCard({
       );
 
       for (const dashcard of dashcards) {
-        for (const mapping of dashcard.parameter_mappings ?? []) {
+        const mappings = (dashcard.parameter_mappings ?? []).filter(
+          mapping => mapping.parameter_id === parameter.id,
+        );
+
+        for (const mapping of mappings) {
           const option = getMappingOptionByTarget(
             dashcardMappingOptions,
             targetDashcard,

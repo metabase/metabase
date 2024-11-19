@@ -9,9 +9,9 @@ import {
 import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 
 import {
+  SkeletonCaptionDescription,
   SkeletonCaptionRoot,
   SkeletonCaptionTitle,
-  SkeletonCaptionDescription,
   SkeletonPlaceholder,
 } from "./SkeletonCaption.styled";
 import type { SkeletonCaptionSize } from "./types";

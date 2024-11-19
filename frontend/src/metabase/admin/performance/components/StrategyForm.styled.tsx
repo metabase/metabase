@@ -37,27 +37,26 @@ export const FormBox = styled(Box)<
   ${({ isInSidebar }) =>
     isInSidebar
       ? `
-  padding-inline-start: 2rem;
-  padding-inline-end: 1rem;
-  `
+      padding-inline: 1rem;
+      `
       : `
-  padding-inline: 2.5rem;
-`}
+      padding-inline: 2.5rem;
+  `}
 `;
 
 export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
   padding-block: 1rem;
   gap: 1rem;
-  background-color: var(--mb-color-bg-white);
-  border-top: 1px solid var(--mb-color-border);
   ${({ isInSidebar }) =>
     isInSidebar
       ? `
   justify-content: flex-end;
-  padding-inline-start: 2rem;
-  padding-inline-end: 1rem;
+  padding-inline: 1rem;
+  padding-bottom: 0;
   `
       : `
+  background-color: var(--mb-color-bg-white);
+  border-top: 1px solid var(--mb-color-border);
   padding-inline: 2.5rem;
   `}
 `;

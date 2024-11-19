@@ -94,7 +94,9 @@
 
 .ModalBackdrop.ModalAppearActive .Modal,
 .ModalBackdrop.ModalEnterActive .Modal {
-  transition: opacity 200ms linear 100ms, transform 200ms ease-in-out 100ms;
+  transition:
+    opacity 200ms linear 100ms,
+    transform 200ms ease-in-out 100ms;
   opacity: 1;
   transform: translate(0, 0);
 }
@@ -105,7 +107,9 @@
 }
 
 .ModalBackdrop.ModalExitActive .Modal {
-  transition: opacity 200ms linear, transform 200ms ease-in-out;
+  transition:
+    opacity 200ms linear,
+    transform 200ms ease-in-out;
   opacity: 0.01;
   transform: translate(0, -40px);
 }

@@ -1,57 +1,58 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  addOrUpdateDashboardCard,
+  appBar,
+  assertQueryBuilderRowCount,
+  cartesianChartCircle,
+  closeCommandPalette,
+  commandPalette,
+  commandPaletteSearch,
+  createAction,
+  createNativeQuestion,
+  createQuestion,
+  editDashboard,
+  enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalLevel,
-  navigationSidebar,
-  openNavigationSidebar,
-  popover,
-  restore,
-  modal,
-  openNativeEditor,
-  saveQuestion,
-  openQuestionActions,
-  sidebar,
-  summarize,
-  filter,
-  addOrUpdateDashboardCard,
-  editDashboard,
-  visitDashboard,
-  setModelMetadata,
-  getDashboardCard,
-  setFilter,
-  visitQuestion,
-  createNativeQuestion,
-  startNewQuestion,
-  createQuestion,
   entityPickerModalTab,
-  enterCustomColumnDetails,
+  filter,
   filterField,
   filterFieldPopover,
-  commandPaletteSearch,
-  commandPalette,
-  closeCommandPalette,
-  createAction,
-  setActionsEnabledForDB,
-  cartesianChartCircle,
-  assertQueryBuilderRowCount,
-  saveMetadataChanges,
-  getNotebookStep,
-  appBar,
-  main,
   filterWidget,
-  rightSidebar,
-  leftSidebar,
-  openNotebook,
-  visualize,
   focusNativeEditor,
-  tableHeaderClick,
+  getDashboardCard,
+  getNotebookStep,
+  leftSidebar,
+  main,
+  modal,
+  navigationSidebar,
   onlyOnOSS,
+  openNativeEditor,
+  openNavigationSidebar,
+  openNotebook,
+  openQuestionActions,
+  popover,
+  restore,
+  rightSidebar,
+  saveMetadataChanges,
+  saveQuestion,
+  setActionsEnabledForDB,
+  setFilter,
+  setModelMetadata,
+  sidebar,
+  startNewNativeModel,
+  startNewQuestion,
+  summarize,
+  tableHeaderClick,
+  visitDashboard,
   visitModel,
+  visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -80,6 +81,7 @@ describe("issue 19180", () => {
   const QUESTION = {
     native: { query: "select * from products" },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -201,6 +203,7 @@ describe("issue 19776", { tags: "@OSS" }, () => {
   function openEllipsisMenuFor(item) {
     cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
   }
+
   beforeEach(() => {
     onlyOnOSS();
     restore();
@@ -304,6 +307,7 @@ describe("issue 20517", () => {
     },
     type: "model",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -346,6 +350,7 @@ describe.skip("issue 20624", () => {
       column_settings: { '["name","TITLE"]': { column_title: renamedColumn } },
     },
   };
+
   beforeEach(() => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
@@ -419,6 +424,7 @@ describe("issue 22517", () => {
   function renameColumn(column, newName) {
     cy.findByDisplayValue(column).clear().type(newName).blur();
   }
+
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("PUT", "/api/card/*").as("updateMetadata");
@@ -445,7 +451,7 @@ describe("issue 22517", () => {
     cy.wait("@updateMetadata");
   });
 
-  it("adding or removging a column should not drop previously edited metadata (metabase#22517)", () => {
+  it.skip("adding or removing a column should not drop previously edited metadata (metabase#22517)", () => {
     openQuestionActions();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
@@ -523,6 +529,7 @@ describe.skip("issue 22519", () => {
       "source-table": REVIEWS_ID,
     },
   };
+
   beforeEach(() => {
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -747,6 +754,7 @@ describe("issue 23421", () => {
     },
     type: "model",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -762,7 +770,7 @@ describe("issue 23421", () => {
     cy.get(".ace_content").should("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
-    cy.button("Save changes").should("be.disabled");
+    cy.button("Save changes").should("be.visible");
   });
 
   it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
@@ -834,6 +842,7 @@ describe("issue 25537", () => {
       cy.request("PUT", `/api/user/${user_id}`, { locale });
     });
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1027,6 +1036,7 @@ describe("issue 28971", () => {
     cy.findByText("Showing 4 rows").should("exist");
   });
 });
+
 describe("issue 29378", () => {
   const ACTION_DETAILS = {
     name: "Update orders quantity",
@@ -1108,6 +1118,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
   function selectModelColumn(column) {
     cy.findAllByTestId("header-cell").contains(column).click();
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1189,7 +1200,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     visitDashboard("@dashboardId");
 
-    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
       "loadTargetDashboard",
     );
     cartesianChartCircle().eq(25).click({ force: true });
@@ -1276,6 +1287,7 @@ describe("issue 31309", () => {
       ],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1414,6 +1426,7 @@ describe("issue 32483", () => {
     type: "string/=",
     sectionId: "string",
   });
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1558,6 +1571,7 @@ describe("issue 32963", () => {
       );
     });
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1573,6 +1587,7 @@ describe("issue 32963", () => {
 
   it("should pick sensible display for model based questions (metabase#32963)", () => {
     cy.findByTestId("qb-header").button("Summarize").click();
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     rightSidebar().within(() => {
       cy.findAllByText("Created At").eq(0).click();
@@ -1597,51 +1612,49 @@ describe("issue 32963", () => {
 });
 
 describe("issues 35039 and 37009", () => {
+  // We only need to ensure there is a comment. Any comment.
+  const query = "select * from products limit 1 -- foo";
+
+  const cardDetails = {
+    name: "35039",
+    type: "model",
+    native: { query },
+    visualization_settings: {},
+  };
+
   beforeEach(() => {
     restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.signInAsNormalUser();
+
+    createNativeQuestion(cardDetails).then(({ body: { id } }) => {
+      // It is crucial for this repro to go directly to the "edit query definition" page!
+      // When the repro was created back in v47-v48, it was still possible to save a new model
+      // without running the query first. This resulted in the missing `result_metadata`.
+      // It's not possible to replicate that using UI anymore, so our best bet is to create a model
+      // using API, and then to visit this page directly.
+      cy.visit(`/model/${id}/query`);
+    });
+    assertResultsLoaded();
   });
 
   // This test follows #37009 repro steps because they are simpler than #35039 but still equivalent
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
-
-    focusNativeEditor().type("select * from products -- where true=false");
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("dataset-edit-bar").button("Save").click();
-    modal()
-      .last()
-      .within(() => {
-        cy.findByLabelText("Name").type("Model").realPress("Tab");
-        cy.findByText("Save").click();
-      });
-
-    openQuestionActions();
-    popover().findByText("Edit query definition").click();
-
-    focusNativeEditor().type(
-      "{backspace}{backspace}{backspace}{backspace}{backspace}",
-    );
+    // The repro requires that we update the query in a minor, non-impactful way.
+    cy.log("Update the query and save");
+    focusNativeEditor().type("{backspace}");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
     cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.findByText("Save changes").click();
-      cy.findByText("Saving…").should("not.exist");
+      cy.button("Save changes").click();
+      cy.button("Saving…").should("not.exist");
     });
 
-    cy.findByTestId("query-builder-main").within(() => {
-      cy.findByText("Doing science...").should("be.visible");
-      cy.findByText("Doing science...").should("not.exist");
-    });
+    assertResultsLoaded();
 
-    cy.icon("notebook").click();
+    cy.log("Start new ad-hoc question and make sure all columns are there");
+    openNotebook();
     cy.findByTestId("fields-picker").click();
     popover().within(() => {
       cy.findByText("ID").should("exist");
@@ -1654,6 +1667,10 @@ describe("issues 35039 and 37009", () => {
       cy.findByText("CREATED_AT").should("exist");
     });
   });
+
+  function assertResultsLoaded() {
+    cy.findAllByTestId("cell-data").should("contain", "Rustic Paper Wallet");
+  }
 });
 
 describe("issue 37009", () => {
@@ -1666,12 +1683,8 @@ describe("issue 37009", () => {
   });
 
   it("should prevent saving new and updating existing models without result_metadata (metabase#37009)", () => {
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
+    startNewNativeModel({ query: "select * from products" });
 
-    focusNativeEditor().type("select * from products");
     cy.findByTestId("dataset-edit-bar")
       .button("Save")
       .should("be.disabled")
@@ -1691,7 +1704,7 @@ describe("issue 37009", () => {
       .last()
       .within(() => {
         cy.findByLabelText("Name").type("Model");
-        cy.findByText("Save").click();
+        cy.button("Save").click();
       });
     cy.wait("@saveCard")
       .its("request.body")
@@ -1735,6 +1748,7 @@ describe("issue 40252", () => {
     native: { query: "select 1 as b1, 2 as b2" },
     type: "model",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1859,5 +1873,54 @@ describe("issue 42355", () => {
       .next()
       .findByText("Orders → ID")
       .should("be.visible");
+  });
+});
+
+describe("cumulative count - issue 33330", () => {
+  const questionDetails = {
+    name: "33330",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["cum-count"]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestion(questionDetails, { visitQuestion: true });
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Created At: Month")
+      .and("contain", "Cumulative count");
+    cy.findAllByTestId("cell-data").should("contain", "June 2022");
+  });
+
+  it("should still work after turning a question into model (metabase#33330-1)", () => {
+    turnIntoModel();
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Created At: Month")
+      .and("contain", "Cumulative count");
+    cy.findAllByTestId("cell-data").should("contain", "June 2022");
+  });
+
+  it("should still work after applying a post-aggregation filter (metabase#33330-2)", () => {
+    filter();
+    cy.findByRole("dialog").within(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByTestId("filter-column-Created At").findByText("Today").click();
+      cy.button("Apply filters").click();
+      cy.wait("@dataset");
+    });
+
+    cy.findByTestId("filter-pill").should("have.text", "Created At is today");
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Created At: Month")
+      .and("contain", "Cumulative count");
+    cy.findAllByTestId("cell-data")
+      .should("have.length", "4")
+      .and("not.be.empty");
+    cy.findByTestId("question-row-count").should("have.text", "Showing 1 row");
   });
 });

@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { provideTaskTags, provideTaskListTags } from "./tags";
+import { provideTaskListTags, provideTaskTags } from "./tags";
 
 export const taskApi = Api.injectEndpoints({
   endpoints: builder => ({

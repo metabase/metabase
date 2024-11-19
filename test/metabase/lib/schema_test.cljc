@@ -1,5 +1,6 @@
 (ns metabase.lib.schema-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
@@ -7,13 +8,66 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel disallow-duplicate-uuids-test
   (testing "sanity check: make sure query is valid with different UUIDs"
     (is (not (mc/explain ::lib.schema/query lib.schema.util-test/query-with-no-duplicate-uuids))))
   (testing "should not validate if UUIDs are duplicated"
     (is (mc/explain ::lib.schema/query lib.schema.util-test/query-with-duplicate-uuids))
-    (is (= ["Duplicate :lib/uuid \"00000000-0000-0000-0000-000000000001\""]
+    (is (= ["Duplicate :lib/uuid #{\"00000000-0000-0000-0000-000000000001\"}"]
            (me/humanize (mc/explain ::lib.schema/query lib.schema.util-test/query-with-duplicate-uuids))))))
+
+(deftest ^:parallel disallow-duplicate-order-bys-test
+  (testing "query should validate if order-bys are not duplicated"
+    (let [query-with-no-duplicate-order-bys
+          {:lib/type :mbql/query
+           :database 1
+           :stages   [{:lib/type :mbql.stage/mbql
+                       :source-table 2
+                       :order-by
+                       [[:asc
+                         #:lib{:uuid "00000000-0000-0000-0000-000000000020"}
+                         [:field
+                          {:lib/uuid "00000000-0000-0000-0000-000000000030"
+                           :base-type :type/BigInteger}
+                          3]]
+                        [:desc
+                         #:lib{:uuid "00000000-0000-0000-0000-000000000040"}
+                         [:field
+                          {:lib/uuid "00000000-0000-0000-0000-000000000050"
+                           :base-type :type/Integer}
+                          4]]]}]}]
+      (is (not (mc/explain ::lib.schema/query query-with-no-duplicate-order-bys)))))
+
+  (testing "query should not validate if order-bys are duplicated"
+    (let [query-with-duplicate-order-bys
+          {:lib/type :mbql/query
+           :database 1
+           :stages   [{:lib/type :mbql.stage/mbql
+                       :source-table 2
+                       :order-by
+                       [[:asc
+                         #:lib{:uuid "00000000-0000-0000-0000-000000000020"}
+                         [:field
+                          {:lib/uuid "00000000-0000-0000-0000-000000000030"
+                           :base-type :type/Integer}
+                          3]]
+                        [:asc
+                         #:lib{:uuid "00000000-0000-0000-0000-000000000040"}
+                         [:field
+                          {:lib/uuid "00000000-0000-0000-0000-000000000050"
+                           :base-type :type/Integer}
+                          3]]]}]}]
+      (is (mc/explain ::lib.schema/query query-with-duplicate-order-bys))
+      (is (=? {:stages [{:order-by [#"^Duplicate values ignoring uuids in.*"]}]}
+              (me/humanize (mc/explain ::lib.schema/query query-with-duplicate-order-bys)))))))
+
+(deftest ^:parallel allow-blank-database-test
+  (testing ":database field can be missing"
+    (is (not (mc/explain ::lib.schema/query {:lib/type :mbql/query
+                                             :stages   [{:lib/type :mbql.stage/native
+                                                         :native   "SELECT 1"}]})))))
 
 (def ^:private valid-ag-1
   [:count {:lib/uuid (str (random-uuid))}])

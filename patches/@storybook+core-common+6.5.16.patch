@@ -1,0 +1,29 @@
+diff --git a/node_modules/@storybook/core-common/templates/base-preview-head.html b/node_modules/@storybook/core-common/templates/base-preview-head.html
+index 45c0c30..b61173d 100644
+--- a/node_modules/@storybook/core-common/templates/base-preview-head.html
++++ b/node_modules/@storybook/core-common/templates/base-preview-head.html
+@@ -326,24 +326,4 @@
+     // eslint-disable-next-line no-console
+     console.warn('unable to connect to top frame for connecting dev tools');
+   }
+-
+-  window.onerror = function onerror(message, source, line, column, err) {
+-    if (window.CONFIG_TYPE !== 'DEVELOPMENT') return;
+-    // eslint-disable-next-line no-var, vars-on-top
+-    var xhr = new window.XMLHttpRequest();
+-    xhr.open('POST', '/runtime-error');
+-    xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+-    xhr.send(
+-      JSON.stringify({
+-        /* eslint-disable object-shorthand */
+-        message: message,
+-        source: source,
+-        line: line,
+-        column: column,
+-        error: err && { message: err.message, name: err.name, stack: err.stack },
+-        origin: 'preview',
+-        /* eslint-enable object-shorthand */
+-      })
+-    );
+-  };
+ </script>

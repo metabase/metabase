@@ -1,11 +1,10 @@
-(ns metabase.driver.sql-jdbc.actions-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.actions-test
   "Most of the tests for code in [[metabase.driver.sql-jdbc.actions]] are e2e tests that live
   in [[metabase.api.action-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
    [metabase.actions.error :as actions.error]
-   [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -17,7 +16,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private cast-values :- ::lib.schema.actions/row
+(mu/defn- cast-values :- ::lib.schema.actions/row
   [driver        :- :keyword
    column->value :- ::lib.schema.actions/row
    table-id      :- ::lib.schema.id/table]
@@ -57,9 +56,9 @@
           (reset! parse-sql-error-called? false)
           ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
           ;; this `category_id` -- it's an FK constraint violation.
-          (binding [*current-user-permissions-set* (delay #{"/"})]
+          (mt/as-admin
             (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
-                                            (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
+                                  (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))
 
@@ -81,9 +80,9 @@
   Used to test error message when executing implicit action for SQL DBs."
   [& args]
   (try
-   (apply actions/perform-action! args)
-   (catch Exception e
-     (ex-data e))))
+    (apply actions/perform-action! args)
+    (catch Exception e
+      (ex-data e))))
 
 (defn- test-action-error-handling! [f]
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
@@ -169,19 +168,29 @@
                                                                            :source-table $$group}
                                                               :type       :query})))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::action-error-handling-incorrect-type-error-message]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:h2 :postgres]]
+  (defmethod driver/database-supports? [driver ::action-error-handling-incorrect-type-error-message]
+    [_driver _feature _database]
+    false))
+
 (deftest action-error-handling-incorrect-type-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-name group-ranking]}]
      (testing "incorrect type"
        (testing "when creating"
-         (is (= (merge
-                 {:message     "Some of your values aren’t of the correct type for the database."
-                  :type        actions.error/incorrect-value-type
-                  :status-code 400}
-                 (case driver/*driver*
-                   (:h2 :postgres)
-                   {:errors {}}
-                   {:errors {"ranking" "This value should be of type Integer."}}))
+         (is (= {:message     "Some of your values aren’t of the correct type for the database."
+                 :type        actions.error/incorrect-value-type
+                 :status-code 400
+                 :errors      (if (driver/database-supports?
+                                   driver/*driver*
+                                   ::action-error-handling-incorrect-type-error-message
+                                   (mt/db))
+                                {"ranking" "This value should be of type Integer."}
+                                {})}
                 (perform-action-ex-data :row/create (mt/$ids {:create-row {group-name    "new"
                                                                            group-ranking "S"}
                                                               :database   db-id
@@ -193,14 +202,15 @@
    (fn [{:keys [db-id group-ranking]}]
      (testing "incorrect type"
        (testing "when updating"
-         (is (= (merge
-                 {:message     "Some of your values aren’t of the correct type for the database."
-                  :type        actions.error/incorrect-value-type
-                  :status-code 400}
-                 (case driver/*driver*
-                   (:h2 :postgres)
-                   {:errors {}}
-                   {:errors {"ranking" "This value should be of type Integer."}}))
+         (is (= {:message     "Some of your values aren’t of the correct type for the database."
+                 :type        actions.error/incorrect-value-type
+                 :status-code 400
+                 :errors      (if (driver/database-supports?
+                                   driver/*driver*
+                                   ::action-error-handling-incorrect-type-error-message
+                                   (mt/db))
+                                {"ranking" "This value should be of type Integer."}
+                                {})}
                 (perform-action-ex-data :row/update (mt/$ids {:update-row {group-ranking "S"}
                                                               :database   db-id
                                                               :query      {:filter [:= $group.id 1]

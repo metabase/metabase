@@ -3,8 +3,8 @@ import type {
   PinDropTargetRenderArgs,
 } from "./PinnedItemSortDropTarget.styled";
 import {
-  StyledPinDropTarget,
   PinDropTargetIndicator,
+  StyledPinDropTarget,
 } from "./PinnedItemSortDropTarget.styled";
 
 function PinnedItemSortDropTarget(props: PinDropTargetProps) {

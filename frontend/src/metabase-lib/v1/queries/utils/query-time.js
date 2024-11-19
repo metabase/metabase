@@ -1,6 +1,6 @@
 import { assoc } from "icepick";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
@@ -146,7 +146,7 @@ function generateTimeValueDescription(value, bucketing, isExclude) {
     if (bucketing) {
       return formatDateTimeWithUnit(value, bucketing, { isExclude });
     } else if (m.hours() || m.minutes()) {
-      return m.format("MMMM D, YYYY hh:mm a");
+      return m.format("MMMM D, YYYY hh:mm A");
     } else {
       return m.format("MMMM D, YYYY");
     }
@@ -247,25 +247,9 @@ export function getStartingFrom(mbql) {
   return [num, unit];
 }
 
-export function formatStartingFrom(bucketing, n) {
-  const suffix = n >= 0 ? "from now" : "ago";
-  switch (bucketing) {
-    case "minute":
-      return ngettext(msgid`minute ${suffix}`, `minutes ${suffix}`, n);
-    case "hour":
-      return ngettext(msgid`hour ${suffix}`, `hours ${suffix}`, n);
-    case "day":
-      return ngettext(msgid`day ${suffix}`, `days ${suffix}`, n);
-    case "week":
-      return ngettext(msgid`week ${suffix}`, `weeks ${suffix}`, n);
-    case "month":
-      return ngettext(msgid`month ${suffix}`, `months ${suffix}`, n);
-    case "quarter":
-      return ngettext(msgid`quarter ${suffix}`, `quarters ${suffix}`, n);
-    case "year":
-      return ngettext(msgid`year ${suffix}`, `years ${suffix}`, n);
-  }
-  return "";
+export function formatStartingFrom(unit, n) {
+  const unitText = Lib.describeTemporalUnit(unit, n).toLowerCase();
+  return n >= 0 ? t`${unitText} from now` : t`${unitText} ago`;
 }
 
 function getTimeInterval(mbql) {

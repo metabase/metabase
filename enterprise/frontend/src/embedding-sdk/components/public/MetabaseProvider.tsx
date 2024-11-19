@@ -1,75 +1,122 @@
-import { type ReactNode, type JSX, useEffect } from "react";
-import { memo } from "react";
+import { Global } from "@emotion/react";
+import type { Action, Store } from "@reduxjs/toolkit";
+import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 import { Provider } from "react-redux";
 
-import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { useInitData } from "embedding-sdk/hooks";
+import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import { store } from "embedding-sdk/store";
+import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
+  setEventHandlers,
   setLoaderComponent,
   setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
+import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { Box } from "metabase/ui";
 
-import "metabase/css/vendor.css";
+import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
+import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
+import {
+  FullPagePortalContainer,
+  PortalContainer,
+} from "../private/SdkPortalContainer";
+import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
+
 import "metabase/css/index.module.css";
+import "metabase/css/vendor.css";
 
-interface MetabaseProviderProps {
+export interface MetabaseProviderProps {
   children: ReactNode;
   config: SDKConfig;
   pluginsConfig?: SdkPluginsConfig;
+  eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
+  className?: string;
+  locale?: string;
 }
 
-const MetabaseProviderInternal = ({
+interface InternalMetabaseProviderProps extends MetabaseProviderProps {
+  store: Store<SdkStoreState, Action>;
+}
+
+export const MetabaseProviderInternal = ({
   children,
   config,
   pluginsConfig,
+  eventHandlers,
   theme,
-}: MetabaseProviderProps): JSX.Element => {
+  store,
+  className,
+  locale = "en",
+}: InternalMetabaseProviderProps): JSX.Element => {
+  const { fontFamily } = theme ?? {};
+  useInitData({ config });
+
   useEffect(() => {
-    if (theme?.fontFamily) {
-      store.dispatch(
-        setOptions({
-          font: theme.fontFamily,
-        }),
-      );
+    if (fontFamily) {
+      store.dispatch(setOptions({ font: fontFamily }));
     }
-  }, [theme?.fontFamily]);
+  }, [store, fontFamily]);
 
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
-  }, [pluginsConfig]);
+  }, [store, pluginsConfig]);
+
+  useEffect(() => {
+    store.dispatch(setEventHandlers(eventHandlers || null));
+  }, [store, eventHandlers]);
 
   useEffect(() => {
     store.dispatch(setLoaderComponent(config.loaderComponent ?? null));
-  }, [config.loaderComponent]);
+  }, [store, config.loaderComponent]);
 
   useEffect(() => {
     store.dispatch(setErrorComponent(config.errorComponent ?? null));
-  }, [config.errorComponent]);
+  }, [store, config.errorComponent]);
 
   useEffect(() => {
     store.dispatch(setMetabaseClientUrl(config.metabaseInstanceUrl));
-  }, [config.metabaseInstanceUrl]);
+  }, [store, config.metabaseInstanceUrl]);
 
   return (
-    <Provider store={store}>
-      <EmotionCacheProvider>
-        <SdkThemeProvider theme={theme}>
-          <AppInitializeController config={config}>
-            {children}
-          </AppInitializeController>
-        </SdkThemeProvider>
-      </EmotionCacheProvider>
-    </Provider>
+    <EmotionCacheProvider>
+      <Global styles={SCOPED_CSS_RESET} />
+      <SdkThemeProvider theme={theme}>
+        <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
+        <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
+          <LocaleProvider locale={locale}>{children}</LocaleProvider>
+          <SdkUsageProblemDisplay config={config} />
+          <PortalContainer />
+          <FullPagePortalContainer />
+        </Box>
+      </SdkThemeProvider>
+    </EmotionCacheProvider>
   );
 };
 
-export const MetabaseProvider = memo(MetabaseProviderInternal);
+export const MetabaseProvider = memo(function MetabaseProvider(
+  props: MetabaseProviderProps,
+) {
+  // This makes the store stable across re-renders, but still not a singleton:
+  // we need a different store for each test or each storybook story
+  const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(undefined);
+  if (!storeRef.current) {
+    storeRef.current = getSdkStore();
+  }
+
+  return (
+    <Provider store={storeRef.current}>
+      <MetabaseProviderInternal store={storeRef.current} {...props} />
+    </Provider>
+  );
+});

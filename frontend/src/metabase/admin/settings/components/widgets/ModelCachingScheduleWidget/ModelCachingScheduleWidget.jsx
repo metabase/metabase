@@ -6,10 +6,10 @@ import CronExpressionInput from "./CronExpressionInput";
 import CustomScheduleExplainer from "./CustomScheduleExplainer";
 import {
   Root,
-  WidgetsRow,
-  WidgetContainer,
-  StyledSettingSelect,
   SelectLabel,
+  StyledSettingSelect,
+  WidgetContainer,
+  WidgetsRow,
 } from "./ModelCachingScheduleWidget.styled";
 
 const propTypes = {

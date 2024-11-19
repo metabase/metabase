@@ -1,21 +1,17 @@
-import { useEffect } from "react";
-import { t } from "ttag";
+import { useEffect, useRef } from "react";
+import { useMount } from "react-use";
 import _ from "underscore";
 
+import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import { initAuth } from "embedding-sdk/store/auth";
+import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
 import {
-  getOrRefreshSession,
-  setLoginStatus,
-} from "embedding-sdk/store/reducer";
-import { getLoginStatus } from "embedding-sdk/store/selectors";
-import type {
-  EmbeddingSessionTokenState,
-  SdkDispatch,
-} from "embedding-sdk/store/types";
+  getFetchRefreshTokenFn,
+  getLoginStatus,
+} from "embedding-sdk/store/selectors";
 import type { SDKConfig } from "embedding-sdk/types";
 import api from "metabase/lib/api";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -24,87 +20,57 @@ interface InitDataLoaderParameters {
   config: SDKConfig;
 }
 
-const isValidJwtAuth = (config: SDKConfig) => !!config.jwtProviderUri;
-
-const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
-  api.onBeforeRequest = async () => {
-    const tokenState = await dispatch(
-      getOrRefreshSession(config.jwtProviderUri),
-    );
-
-    api.sessionToken = (
-      tokenState.payload as EmbeddingSessionTokenState["token"]
-    )?.id;
-  };
-};
-
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
+  const { allowConsoleLog = true } = config;
+
+  // react calls some lifecycle hooks twice in dev mode, the auth init fires some http requests and when it's called twice,
+  // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
+  const hasBeenInitialized = useRef(false);
+
   const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
+  const fetchRefreshTokenFnFromStore = useSdkSelector(getFetchRefreshTokenFn);
+
+  // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
+  // This is the case for example for the locale json files
+  if (api.basename !== config.metabaseInstanceUrl) {
+    api.basename = config.metabaseInstanceUrl;
+  }
 
   useEffect(() => {
+    if (config.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
+      // This needs to be a useEffect to avoid the `Cannot update a component XX while rendering a different component` error
+      dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+    }
+  }, [config.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
+
+  useMount(() => {
+    if (hasBeenInitialized.current) {
+      return;
+    }
+    hasBeenInitialized.current = true;
+
     registerVisualizationsOnce();
-  }, [dispatch]);
 
-  useEffect(() => {
+    // Note: this check is not actually needed in prod, but some of our tests start with a loginStatus already initialized
+    // and they don't mock the network requests so the tests fail
     if (loginStatus.status === "uninitialized") {
-      api.basename = config.metabaseInstanceUrl;
-
-      if (isValidJwtAuth(config)) {
-        setupJwtAuth(config, dispatch);
-        dispatch(setLoginStatus({ status: "validated" }));
-      } else {
-        dispatch(
-          setLoginStatus({
-            status: "error",
-            error: new Error(t`Invalid JWT URI provided.`),
-          }),
-        );
-      }
+      dispatch(initAuth(config));
     }
-  }, [config, dispatch, loginStatus.status]);
 
-  useEffect(() => {
-    if (loginStatus.status === "validated") {
-      const fetchData = async () => {
-        dispatch(setLoginStatus({ status: "loading" }));
+    const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+    api.requestClient = {
+      name: "embedding-sdk-react",
+      version: EMBEDDING_SDK_VERSION,
+    };
 
-        try {
-          const [userResponse, siteSettingsResponse] = await Promise.all([
-            dispatch(refreshCurrentUser()),
-            dispatch(refreshSiteSettings({})),
-          ]);
-
-          if (
-            userResponse.meta.requestStatus === "rejected" ||
-            siteSettingsResponse.meta.requestStatus === "rejected"
-          ) {
-            dispatch(
-              setLoginStatus({
-                status: "error",
-                error: new Error(
-                  t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
-                ),
-              }),
-            );
-            return;
-          }
-
-          dispatch(setLoginStatus({ status: "success" }));
-        } catch (error) {
-          dispatch(
-            setLoginStatus({
-              status: "error",
-              error: new Error(
-                t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
-              ),
-            }),
-          );
-        }
-      };
-
-      fetchData();
+    if (allowConsoleLog) {
+      // eslint-disable-next-line no-console
+      console.log(
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
+      );
     }
-  }, [dispatch, loginStatus.status]);
+  });
 };

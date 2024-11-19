@@ -1,14 +1,9 @@
-import {
-  Root,
-  EditIcon,
-  Title,
-  Subtitle,
-  ButtonsContainer,
-} from "./EditBar.styled";
+import { Group } from "metabase/ui";
+
+import { ButtonsContainer, EditIcon, Root, Title } from "./EditBar.styled";
 
 type Props = {
   title: string;
-  subtitle?: string;
   center?: JSX.Element;
   buttons: JSX.Element[];
   admin?: boolean;
@@ -18,7 +13,6 @@ type Props = {
 
 function EditBar({
   title,
-  subtitle,
   center,
   buttons,
   admin = false,
@@ -31,11 +25,10 @@ function EditBar({
       admin={admin}
       data-testid={dataTestId ?? "edit-bar"}
     >
-      <div>
+      <Group spacing="sm" align="center" noWrap>
         <EditIcon name="pencil" size={12} />
         <Title>{title}</Title>
-        {subtitle && <Subtitle>{subtitle}</Subtitle>}
-      </div>
+      </Group>
       {center && <div>{center}</div>}
       <ButtonsContainer>{buttons}</ButtonsContainer>
     </Root>

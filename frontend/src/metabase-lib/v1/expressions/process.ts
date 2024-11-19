@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { parse, adjustBooleans } from "./recursive-parser";
+import { adjustBooleans, parse } from "./recursive-parser";
 import { resolve } from "./resolver";
 
 import { parseDimension, parseMetric, parseSegment } from "./index";
@@ -11,6 +11,7 @@ export function processSource(options: {
   source: string;
   query: Lib.Query;
   stageIndex: number;
+  expressionIndex: number | undefined;
   startRule: string;
   name?: string;
 }) {
@@ -30,10 +31,8 @@ export function processSource(options: {
 
       return Lib.legacyRef(query, stageIndex, segment);
     } else {
-      const reference = options.name ?? ""; // avoid circular reference
-
       // fallback
-      const dimension = parseDimension(name, { reference, ...options });
+      const dimension = parseDimension(name, options);
       if (!dimension) {
         throw new Error(t`Unknown Field: ${name}`);
       }

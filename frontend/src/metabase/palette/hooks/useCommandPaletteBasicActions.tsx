@@ -1,4 +1,4 @@
-import { useRegisterActions, type Action } from "kbar";
+import { type Action, useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -11,11 +11,12 @@ import {
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { openDiagnostics } from "metabase/redux/app";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
-  getHasNativeWrite,
   getHasDatabaseWithActionsEnabled,
+  getHasNativeWrite,
 } from "metabase/selectors/data";
 
 export const useCommandPaletteBasicActions = ({
@@ -131,6 +132,28 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
+    if (hasDataAccess) {
+      actions.push({
+        id: "new_metric",
+        name: t`New metric`,
+        section: "basic",
+        icon: "metric",
+        perform: () => {
+          dispatch(closeModal());
+          dispatch(push("metric/query"));
+          dispatch(
+            push(
+              Urls.newQuestion({
+                mode: "query",
+                cardType: "metric",
+                collectionId,
+              }),
+            ),
+          );
+        },
+      });
+    }
+
     if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
       actions.push({
         id: "new_action",
@@ -164,7 +187,18 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    return [...actions, ...browseActions];
+    const diagnosticAction = {
+      id: "diagnostic_modal",
+      name: t`Open error diagnostic modal`,
+      section: "basic",
+      icon: "info",
+      shortcut: ["$mod+f1"],
+      perform: () => {
+        dispatch(openDiagnostics());
+      },
+    };
+
+    return [...actions, ...browseActions, diagnosticAction];
   }, [
     dispatch,
     hasDataAccess,

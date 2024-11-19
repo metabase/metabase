@@ -2,31 +2,30 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { AggregationPicker } from "../SummarizeSidebar.styled";
-
 import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
-
-const STAGE_INDEX = -1;
 
 interface AddAggregationButtonProps {
   query: Lib.Query;
-  onAddAggregations: (aggregation: Lib.Aggregable[]) => void;
+  stageIndex: number;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 export function AddAggregationButton({
   query,
-  onAddAggregations,
+  stageIndex,
+  onQueryChange,
 }: AddAggregationButtonProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const hasAggregations = Lib.aggregations(query, STAGE_INDEX).length > 0;
-  const operators = Lib.availableAggregationOperators(query, STAGE_INDEX);
+  const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+  const operators = Lib.availableAggregationOperators(query, stageIndex);
 
   const renderTooltip = (children: ReactNode) =>
     hasAggregations ? (
-      <Tooltip label={t`Add metric`}>{children}</Tooltip>
+      <Tooltip label={t`Add a function or metric`}>{children}</Tooltip>
     ) : (
       children
     );
@@ -43,22 +42,18 @@ export function AddAggregationButton({
             aria-label={t`Add aggregation`}
             data-testid="add-aggregation-button"
           >
-            {hasAggregations ? null : t`Add a metric`}
+            {hasAggregations ? null : t`Add a function or metric`}
           </AddAggregationButtonRoot>,
         )}
       </Popover.Target>
       <Popover.Dropdown>
         <AggregationPicker
           query={query}
-          stageIndex={STAGE_INDEX}
+          stageIndex={stageIndex}
           operators={operators}
-          hasExpressionInput={false}
-          onAdd={aggregations => {
-            onAddAggregations(aggregations);
-            setIsOpened(false);
-          }}
-          onSelect={aggregation => {
-            onAddAggregations([aggregation]);
+          allowTemporalComparisons
+          onQueryChange={query => {
+            onQueryChange(query);
             setIsOpened(false);
           }}
         />

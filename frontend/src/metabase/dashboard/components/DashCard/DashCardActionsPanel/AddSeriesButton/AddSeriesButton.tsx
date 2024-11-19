@@ -29,11 +29,12 @@ export function AddSeriesButton({
   series: Series;
   onClick: () => void;
 }) {
+  const label = series.length > 1 ? t`Edit series` : t`Add series`;
   return (
     <ActionButton
       onClick={onClick}
-      tooltip={series.length > 1 ? t`Edit series` : t`Add series`}
-      analyticsEvent="Dashboard;Edit Series Modal;open"
+      tooltip={label}
+      aria-label={label}
       data-testid="add-series-button"
     >
       <IconContainer>

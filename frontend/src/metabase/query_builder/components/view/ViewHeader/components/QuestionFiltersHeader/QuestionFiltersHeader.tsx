@@ -1,34 +1,7 @@
-import { FilterPanel, FilterPanelButton } from "metabase/querying";
+import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
-
-interface FilterHeaderToggleProps {
-  className?: string;
-  query: Lib.Query;
-  isExpanded: boolean;
-  onExpand: () => void;
-  onCollapse: () => void;
-}
-
-export function QuestionFiltersHeaderToggle({
-  className,
-  query,
-  isExpanded,
-  onExpand,
-  onCollapse,
-}: FilterHeaderToggleProps) {
-  return (
-    <div className={className}>
-      <FilterPanelButton
-        query={query}
-        isExpanded={isExpanded}
-        onExpand={onExpand}
-        onCollapse={onCollapse}
-      />
-    </div>
-  );
-}
 
 interface FilterHeaderProps {
   question: Question;
@@ -76,4 +49,3 @@ const shouldRender = ({
 };
 
 QuestionFiltersHeader.shouldRender = shouldRender;
-QuestionFiltersHeaderToggle.shouldRender = shouldRender;

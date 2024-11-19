@@ -82,7 +82,7 @@ export const DATE_FILTER_SUBTYPES = {
     },
     representativeResult: "Gorgeous Wooden Car",
   },
-  "Date Filter": {
+  "All Options": {
     value: {
       timeBucket: "month",
     },

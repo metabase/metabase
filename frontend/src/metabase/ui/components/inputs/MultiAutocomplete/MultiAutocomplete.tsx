@@ -12,6 +12,7 @@ import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
+  showInfoIcon?: boolean;
 };
 
 export function MultiAutocomplete({
@@ -22,6 +23,8 @@ export function MultiAutocomplete({
   placeholder,
   autoFocus,
   shouldCreate = defaultShouldCreate,
+  showInfoIcon = true,
+  rightSection,
   onChange,
   onSearchChange,
   onFocus,
@@ -150,7 +153,7 @@ export function MultiAutocomplete({
     }
   };
 
-  const info = isFocused ? (
+  const infoIcon = isFocused ? (
     <Tooltip
       label={
         <>
@@ -162,9 +165,7 @@ export function MultiAutocomplete({
     >
       <Icon name="info_filled" fill={color("text-light")} />
     </Tooltip>
-  ) : (
-    <span />
-  );
+  ) : null;
 
   return (
     <MultiSelect
@@ -180,7 +181,7 @@ export function MultiAutocomplete({
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
-      rightSection={info}
+      rightSection={rightSection ?? (showInfoIcon ? infoIcon : null)}
     />
   );
 }

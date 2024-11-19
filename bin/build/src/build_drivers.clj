@@ -22,13 +22,13 @@
        (map (comp keyword #(.getName ^File %)))))
 
 (defn build-drivers!
-  "Build `edition`(`:ee` or `:oss`) versions of *all* the drivers in `modules/drivers`."
+  "Build `edition`(`:ee` or `:oss`) versions of *all* the drivers in `modules/drivers` in parallel."
   [edition]
   (let [edition (or edition :oss)]
     (assert (#{:oss :ee} edition))
-    (u/step (format "Building all drivers (%s edition)" (pr-str edition))
-      (doseq [driver (all-drivers)]
-        (build-driver/build-driver! driver edition))
+    (u/step (format "Building all drivers in parallel (%s edition)" (pr-str edition))
+      (doall  ; Force evaluation of pmap
+       (pmap #(build-driver/build-driver! % edition) (all-drivers)))
       (u/announce "Successfully built all drivers."))))
 
 (defn build-drivers

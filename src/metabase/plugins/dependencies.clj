@@ -35,7 +35,6 @@
 (defn log-once
   "Log a message a single time, such as warning that a plugin cannot be initialized because of required dependencies.
   Subsequent calls with duplicate messages are automatically ignored."
-  {:style/indent 1}
   ([message]
    (log-once nil message))
 
@@ -47,9 +46,9 @@
 
 (defn- warn-about-required-dependencies [plugin-name message]
   (log-once plugin-name
-    (str (u/format-color 'red (trs "Metabase cannot initialize plugin {0} due to required dependencies." plugin-name))
-         " "
-         message)))
+            (str (u/format-color 'red (trs "Metabase cannot initialize plugin {0} due to required dependencies." plugin-name))
+                 " "
+                 message)))
 
 (defmethod dependency-satisfied? :class
   [_ {{plugin-name :name} :info} {^String classname :class, message :message, :as _dep}]
@@ -79,7 +78,7 @@
   (let [dep-satisfied? (fn [dep]
                          (u/prog1 (dependency-satisfied? initialized-plugin-names info dep)
                            (log-once plugin-name
-                             (trs "{0} dependency {1} satisfied? {2}" plugin-name (dissoc dep :message) (boolean <>)))))]
+                                     (trs "{0} dependency {1} satisfied? {2}" plugin-name (dissoc dep :message) (boolean <>)))))]
     (every? dep-satisfied? dependencies)))
 
 (defn all-dependencies-satisfied?
@@ -94,9 +93,8 @@
    (do
      (swap! plugins-with-unsatisfied-deps conj info)
      (log-once (u/format-color 'yellow
-                   (trs "Plugins with unsatisfied deps: {0}" (mapv (comp :name :info) @plugins-with-unsatisfied-deps))))
+                               (trs "Plugins with unsatisfied deps: {0}" (mapv (comp :name :info) @plugins-with-unsatisfied-deps))))
      false)))
-
 
 (defn- remove-plugins-with-satisfied-deps [plugins initialized-plugin-names ready-for-init-atom]
   ;; since `remove-plugins-with-satisfied-deps` could theoretically be called multiple times we need to reset the atom

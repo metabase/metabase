@@ -19,10 +19,10 @@ import visualizations from "metabase/visualizations";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
-  getTableQuestions,
   getError,
   getLoading,
   getTable,
+  getTableQuestions,
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 

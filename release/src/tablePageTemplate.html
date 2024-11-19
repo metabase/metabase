@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <title>Metabase v{{major-version}} Release Log</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        font-family: Lato, sans-serif;
+        background-color: #282c34;
+        color: #ddd;
+        padding: 40px;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      th, td {
+        padding: 8px;
+        text-align: left;
+      }
+      tr:nth-child(even) {
+        background-color: #2e323a;
+      }
+      tbody > tr:hover{
+        color: #8fbdf6;
+      }
+      a {
+        text-decoration: underline;
+        color:#2987f9;
+      }
+    </style>
+  </head>
+  <body class="p-5 text-gray-200 bg-gray-800">
+      <h1>Metabase v{{major-version}} Release Log</h1>
+      <p>as of {{current-time}}</p>
+      <div>
+        {{release-table}}
+      </div>
+  </body>
+</html>

@@ -1,6 +1,6 @@
 import {
-  getParameterType,
   getParameterSubType,
+  getParameterType,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 
 describe("parameters/utils/parameter-type", () => {

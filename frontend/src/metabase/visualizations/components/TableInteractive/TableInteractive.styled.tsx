@@ -28,6 +28,9 @@ interface TableDraggableProps {
   enableCustomUserSelectHack?: boolean;
 }
 
+// this wrapper adds prop-types warning because of the nature of emotion component
+// TableDraggable doesn't allow className, style to be passed, but emotion does it
+// TODO: drop this style definition and maybe move styles to the global stylesheet
 export const TableDraggable = styled(Draggable)<TableDraggableProps>`
   ${props =>
     props.enableCustomUserSelectHack &&

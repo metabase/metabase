@@ -1,8 +1,8 @@
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
-  createMockRecentTableItem,
   createMockRecentCollectionItem,
+  createMockRecentTableItem,
 } from "metabase-types/api/mocks";
 
 import { RecentsList } from "./RecentsList";

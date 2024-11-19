@@ -9,6 +9,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import type { EmbedOptions } from "metabase-types/store";
 import {
   createMockAppState,
+  createMockEmbedOptions,
   createMockEmbedState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
@@ -174,8 +175,10 @@ function setup(embedOptions: Partial<EmbedOptions>) {
     storeInitialState: {
       app: createMockAppState({ isNavbarOpen: false }),
       embed: createMockEmbedState({
-        ...DEFAULT_EMBED_OPTIONS,
-        ...embedOptions,
+        options: createMockEmbedOptions({
+          ...DEFAULT_EMBED_OPTIONS,
+          ...embedOptions,
+        }),
       }),
       qb: createMockQueryBuilderState({
         card: createMockCard(),

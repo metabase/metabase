@@ -14,7 +14,7 @@ To change how the answer to your question is displayed, click on the **Visualiza
 
 If a particular visualization doesn’t really make sense for your answer, that option will appear in the "Other charts" section. You can still select one of these other charts, though you might need to fiddle with the chart options to make the chart work with your data.
 
-Not sure which visualization type to use? Check out [Which chart should you use?](https://www.metabase.com/learn/visualization/chart-guide)
+Not sure which visualization type to use? Check out [Which chart should you use?](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/chart-guide)
 
 ## Visualization options
 
@@ -75,7 +75,7 @@ The [Table](./visualizations/table.md) option is good for looking at tabular dat
 
 ## Line charts
 
-[Line charts](./visualizations/line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html) and [Time series analysis](https://www.metabase.com/learn/time-series) tutorials.
+[Line charts](./visualizations/line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
 
 ![Trend lines](../images/trend-lines.png)
 
@@ -121,11 +121,13 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 ![Scatter](../images/scatter.png)
 
-## Pie chart or donut charts
+## Pie, donut, and sunburst charts
 
-A [pie chart or donut chart](./visualizations/pie-or-donut-chart.md) can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like users by gender.
+A [pie chart or donut chart](./visualizations/pie-or-donut-chart.md) can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like accounts by plan.
 
-![Donut](../images/donut.png)
+A [sunburst chart](./visualizations/pie-or-donut-chart.md) chart is a pie chart with more than one ring to show the data broken out by additional dimensions.
+
+![Donut](../images/pie-sunburst-demo.png)
 
 ## Funnel charts
 
@@ -139,18 +141,18 @@ When you select the [Map](./visualizations/map.md) visualization, Metabase will 
 
 ![Region map](../images/map.png)
 
-## Formatting data in charts
-
-While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization settings and select the `Data` tab:
-
-![Chart formatting](../images/chart-formatting.png)
-
-Then click on the gear icon next to the column that you want to format. Dates, numbers, and currencies tend to have the most useful formatting options.
+## Styling and formatting data in charts
 
 ![Chart formatting options](../images/chart-formatting-options.png)
+
+You can access formatting options for the columns used in a chart. Just open the visualization settings (click on the gear in the bottom left of a chart next to **Visualization**).
+
+Options differ depending on the chart, and can include settings for the chart's data, its display, and its axes.
+
+See also [Formatting defaults](../../data-modeling/formatting.md).
 
 ## Further reading
 
 - [Charts with multiple series](../../dashboards/multiple-series.md)
 - [Appearance](../../configuring-metabase/appearance.md)
-- [BI dashboard best practices](https://www.metabase.com/learn/dashboards/bi-dashboard-best-practices.html)
+- [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices.html)

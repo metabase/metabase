@@ -13,8 +13,8 @@ import CS from "metabase/css/core/index.css";
 
 import {
   ModalHeader,
-  ModalSubtitle,
   ModalRadioRoot,
+  ModalSubtitle,
 } from "./DeleteGroupMappingModal.styled";
 
 export type DeleteGroupMappingModalProps = {

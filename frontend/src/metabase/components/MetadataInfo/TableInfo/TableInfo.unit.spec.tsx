@@ -1,7 +1,7 @@
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { TableId, Table } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 import {
   createMockField,
   createMockForeignKey,

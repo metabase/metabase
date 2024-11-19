@@ -1,11 +1,11 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { duration } from "metabase/lib/formatting";
 
 import {
+  Duration,
   Root,
   ShortMessage,
-  Duration,
   SlowQueryMessageContainer,
   StyledLoadingSpinner,
 } from "./LoadingView.styled";
@@ -22,7 +22,7 @@ function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
       {isSlow === "usually-slow" ? (
         <div>
           {jt`This usually takes an average of ${(
-            <Duration>{duration(expectedDuration)}</Duration>
+            <Duration key="duration">{duration(expectedDuration)}</Duration>
           )}, but is currently taking longer.`}
         </div>
       ) : (

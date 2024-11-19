@@ -1,12 +1,12 @@
 (ns metabase.lib.drill-thru.test-util.canned
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 (defn- base-context [column value]
   {:column     column
@@ -212,8 +212,7 @@
                       "BIRTH_DATE" "1987-06-14T00:00:00Z"
                       "CREATED_AT" "2024-09-08T22:03:20.239-04:00"}
      :aggregations    0
-     :breakouts       0}
-    }))
+     :breakouts       0}}))
 
 (defn returned "Given a test case, a context, and a target drill type (eg. `:drill-thru/quick-filter`), calls
   [[lib/available-drill-thrus]] and looks for the specified drill.
@@ -399,8 +398,8 @@
          ;; Claims VENDOR is :type/SerializedJSON (derives from :type/Structured).
          (let [tc (-> metadata-provider
                       (merged-mock/merged-mock-metadata-provider
-                        {:fields [{:id            (meta/id :products :vendor)
-                                   :semantic-type :type/SerializedJSON}]})
+                       {:fields [{:id            (meta/id :products :vendor)
+                                  :semantic-type :type/SerializedJSON}]})
                       (test-case :test.query/products))]
            [(click tc :cell   "VENDOR" :basic :string)
             (click tc :header "VENDOR" :basic :string)])
@@ -409,8 +408,8 @@
          ;; Claims EMAIL is :type/URL (relevant to Column Extract drills).
          (let [tc (-> metadata-provider
                       (merged-mock/merged-mock-metadata-provider
-                        {:fields [{:id            (meta/id :people :email)
-                                   :semantic-type :type/URL}]})
+                       {:fields [{:id            (meta/id :people :email)
+                                  :semantic-type :type/URL}]})
                       (test-case :test.query/people))]
            [(click tc :cell   "EMAIL" :basic :string)
             (click tc :header "EMAIL" :basic :string)])]
@@ -422,7 +421,6 @@
   returned if falsy.
 
   The special value `::skip` can be returned to ignore a test case altogether."
-  {:style/ident 1}
   ([drill pred]
    (canned-test drill pred (canned-clicks)))
   ([drill pred clicks]

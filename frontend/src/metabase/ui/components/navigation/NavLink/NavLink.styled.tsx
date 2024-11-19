@@ -15,37 +15,37 @@ export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     variants: {
-      default: theme => ({
+      default: () => ({
         root: {
           "&:hover": {
-            backgroundColor: theme.fn.themeColor("brand-lighter"),
+            backgroundColor: "var(--mb-color-brand-lighter)",
           },
           "&[data-active]": {
             "&:hover": {
-              backgroundColor: theme.fn.themeColor("brand"),
+              backgroundColor: "var(--mb-color-brand)",
             },
 
-            backgroundColor: theme.fn.themeColor("brand"),
-            color: theme.fn.themeColor("text-white"),
+            backgroundColor: "var(--mb-color-brand)",
+            color: "var(--mb-color-text-white)",
 
             "& .emotion-NavLink-label": {
-              color: theme.fn.themeColor("text-white"),
+              color: "var(--mb-color-text-white)",
             },
 
             "& .emotion-NavLink-icon": {
-              color: theme.fn.themeColor("text-white"),
+              color: "var(--mb-color-text-white)",
             },
           },
         },
       }),
-      "mb-light": theme => ({
+      "mb-light": () => ({
         root: {
           "&:hover": {
-            backgroundColor: theme.fn.themeColor("brand-lighter"),
+            backgroundColor: "var(--mb-color-brand-lighter)",
           },
 
           "&[data-active]": {
-            backgroundColor: theme.fn.themeColor("bg-medium"),
+            backgroundColor: "var(--mb-color-bg-medium)",
           },
         },
       }),

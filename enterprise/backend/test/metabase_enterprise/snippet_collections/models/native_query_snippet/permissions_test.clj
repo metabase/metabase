@@ -50,7 +50,7 @@
           (testing "should NOT be allowed if you do not have native query perms for at least one DB"
             (test-perms* false)))))))
 
-(defn- test-with-root-collection-and-collection [f]
+(defn- test-with-root-collection-and-collection! [f]
   (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
     (t2.with-temp/with-temp [Collection collection {:name "Parent Collection", :namespace "snippets"}]
       (doseq [coll [root-collection collection]]
@@ -60,7 +60,7 @@
 
 (deftest read-perms-test
   (testing "read a Snippet"
-    (test-with-root-collection-and-collection
+    (test-with-root-collection-and-collection!
      (fn [coll snippet]
        (test-perms!
         :has-perms-for-obj?       #(mi/can-read? snippet)
@@ -70,7 +70,7 @@
 
 (deftest create-perms-test
   (testing "create a Snippet"
-    (test-with-root-collection-and-collection
+    (test-with-root-collection-and-collection!
      (fn [coll snippet]
        (test-perms!
         :has-perms-for-obj?       #(mi/can-create? NativeQuerySnippet (dissoc snippet :id))
@@ -79,7 +79,7 @@
 
 (deftest update-perms-test
   (testing "update a Snippet"
-    (test-with-root-collection-and-collection
+    (test-with-root-collection-and-collection!
      (fn [coll snippet]
        (test-perms!
         :has-perms-for-obj?       #(mi/can-write? snippet)

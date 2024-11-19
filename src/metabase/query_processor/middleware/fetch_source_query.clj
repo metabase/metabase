@@ -54,9 +54,11 @@
     (letfn [(update-stages [stages]
               (let [stages        (fix-mongodb-first-stage stages)
                     stages        (for [stage stages]
-                                    ;; this is for detecting circular refs below.
+                                    ;; This is for detecting circular refs below, and is later used as part of
+                                    ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
-                    card-metadata (lib.card/card-metadata-columns metadata-providerable card)
+                    card-metadata (into [] (remove :remapped-from)
+                                        (lib.card/card-metadata-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
                                     (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
                                     ;; This will be applied, if still appropriate, by
@@ -73,7 +75,7 @@
                   (update :stages update-stages)))]
       (update card :dataset-query update-query))))
 
-(mu/defn ^:private card :- ::lib.schema.metadata/card
+(mu/defn- card :- ::lib.schema.metadata/card
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
   (let [card (or (lib.metadata/card metadata-providerable card-id)
@@ -92,7 +94,7 @@
                          :card-database-id   (:database-id card)}))))
     (normalize-card-query metadata-providerable card)))
 
-(mu/defn ^:private resolve-source-cards-in-stage :- [:maybe ::lib.schema/stages]
+(mu/defn- resolve-source-cards-in-stage :- [:maybe ::lib.schema/stages]
   [query     :- ::lib.schema/query
    stage     :- ::lib.schema/stage
    dep-graph :- (lib.schema.common/instance-of-class clojure.lang.Volatile)]

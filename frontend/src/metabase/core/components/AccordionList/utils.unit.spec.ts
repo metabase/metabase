@@ -1,4 +1,4 @@
-import { getPrevCursor, getNextCursor } from "./utils";
+import { getNextCursor, getPrevCursor } from "./utils";
 
 const sectionIsExpanded = () => true;
 const sectionIsNotExpanded = () => false;

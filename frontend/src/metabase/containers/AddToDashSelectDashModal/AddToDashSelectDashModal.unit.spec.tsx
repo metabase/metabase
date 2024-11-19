@@ -279,13 +279,15 @@ const setup = async ({
 
   fetchMock.get(`path:/api/user/recipients`, { data: [] });
 
+  const onChangeLocation = jest.fn();
+
   renderWithProviders(
     <Route
       path="/"
       component={() => (
         <AddToDashSelectDashModal
           card={card}
-          onChangeLocation={() => undefined}
+          onChangeLocation={onChangeLocation}
           onClose={() => undefined}
         />
       )}
@@ -301,6 +303,8 @@ const setup = async ({
   if (waitForContent) {
     await waitForLoaderToBeRemoved();
   }
+
+  return { onChangeLocation };
 };
 
 describe("AddToDashSelectDashModal", () => {
@@ -543,6 +547,7 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
+      await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
       const call = fetchMock.lastCall("path:/api/search");
@@ -572,6 +577,7 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
+      await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
       const call = fetchMock.lastCall("path:/api/search");
@@ -586,10 +592,8 @@ describe("AddToDashSelectDashModal", () => {
   });
 
   describe('"Create a new dashboard" option', () => {
-    beforeEach(async () => {
-      await setup();
-    });
     it('should render "Create a new dashboard" option', async () => {
+      await setup();
       expect(
         await screen.findByRole("button", {
           name: /Create a new dashboard/,
@@ -598,6 +602,12 @@ describe("AddToDashSelectDashModal", () => {
     });
 
     it("should show the create dashboard dialog", async () => {
+      // Second part of test requires a value to be "selected"
+      const { onChangeLocation } = await setup({
+        dashboard: DASHBOARD_AT_ROOT,
+        mostRecentlyViewedDashboard: DASHBOARD_AT_ROOT,
+      });
+
       await userEvent.click(
         await screen.findByRole("button", {
           name: /Create a new dashboard/,
@@ -610,6 +620,11 @@ describe("AddToDashSelectDashModal", () => {
       expect(
         await screen.findByTestId("create-dashboard-on-the-go"),
       ).toBeInTheDocument();
+
+      // Pressing enter when the create dialog is open should not trigger handleConfirm (metabase#45360);
+      await userEvent.keyboard("{enter}");
+
+      expect(onChangeLocation).not.toHaveBeenCalled();
     });
   });
 });

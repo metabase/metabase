@@ -5,8 +5,8 @@ import { getBrokenUpTextMatcher } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import {
-  createSampleDatabase,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";
@@ -75,6 +75,7 @@ describe("ExpressionEditorHelpText (OSS)", () => {
 
   describe("Metabase links", () => {
     const helpText = getHelpText("concat", database, "UTC");
+
     it("should show a help link when `show-metabase-links: true`", async () => {
       await setup({ helpText, showMetabaseLinks: true });
 

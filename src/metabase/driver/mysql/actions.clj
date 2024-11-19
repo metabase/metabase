@@ -177,8 +177,8 @@
         pks              (primary-keys driver jdbc-spec table-components)
         select-sql-args  (select-created-row-sql-args driver create-hsql pks insert_id)
         query-results    (jdbc/query jdbc-spec
-                           select-sql-args
-                           {:identifiers identity, :transaction? false, :keywordize? false})]
+                                     select-sql-args
+                                     {:identifiers identity, :transaction? false, :keywordize? false})]
     (if (next query-results)
       (log/warn "cannot identify row inserted by" create-hsql "using results" results)
       (first query-results))))

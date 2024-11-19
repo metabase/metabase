@@ -266,7 +266,9 @@ const getTabs = (parameter: Parameter): Tab[] => {
   const tabs: Tab[] = [];
 
   tabs.push({
-    name: isFilterParameter(parameter) ? t`Filter settings` : t`Settings`,
+    name: isFilterParameter(parameter)
+      ? t`Filter settings`
+      : t`Parameter settings`,
     value: "settings",
     icon: "gear",
   });

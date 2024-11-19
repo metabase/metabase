@@ -74,7 +74,7 @@
     ;; Make sure the driver has required properties like driver-name
     (when-not (seq driver-name)
       (throw (ex-info (trs "Cannot initialize plugin: missing required property `driver-name`")
-               driver-info)))
+                      driver-info)))
     ;; if someone forgot to include connection properties for a non-abstract driver throw them a bone and warn them
     ;; about it
     (when (and (not abstract)

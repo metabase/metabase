@@ -6,26 +6,26 @@ import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type { FieldReference, Filter } from "metabase-types/api";
 
 import {
+  EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
   MBQL_CLAUSES,
   OPERATOR_PRECEDENCE,
-  isNumberLiteral,
-  isBooleanLiteral,
-  isStringLiteral,
-  isOperator,
-  isFunction,
-  isDimension,
-  isMetric,
-  isSegment,
-  isCase,
-  isOffset,
+  formatDimensionName,
+  formatLegacyDimensionName,
   formatMetricName,
   formatSegmentName,
-  formatLegacyDimensionName,
-  getExpressionName,
   formatStringLiteral,
+  getExpressionName,
   hasOptions,
-  EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
-  formatDimensionName,
+  isBooleanLiteral,
+  isCase,
+  isDimension,
+  isFunction,
+  isMetric,
+  isNumberLiteral,
+  isOffset,
+  isOperator,
+  isSegment,
+  isStringLiteral,
 } from "./index";
 
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
@@ -43,6 +43,7 @@ type Options = {
       legacyQuery?: never;
       query: Lib.Query;
       stageIndex: number;
+      expressionIndex: number | undefined;
     }
 );
 
@@ -86,7 +87,7 @@ function formatNumberLiteral(mbql: unknown) {
 }
 
 function formatDimension(fieldRef: FieldReference, options: Options) {
-  const { query, stageIndex, legacyQuery } = options;
+  const { query, stageIndex, legacyQuery, expressionIndex } = options;
 
   if (!query) {
     if (!legacyQuery) {
@@ -98,7 +99,7 @@ function formatDimension(fieldRef: FieldReference, options: Options) {
     return formatLegacyDimension(fieldRef, options);
   }
 
-  const columns = Lib.expressionableColumns(query, stageIndex);
+  const columns = Lib.expressionableColumns(query, stageIndex, expressionIndex);
   const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,

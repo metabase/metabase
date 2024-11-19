@@ -9,21 +9,21 @@ import {
 } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
+  Box,
+  Button,
   Radio,
+  Select,
   Stack,
   Text,
   TextInput,
-  Box,
-  Select,
-  Button,
 } from "metabase/ui";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
-  isFilterParameter,
-  isTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
-import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+  getIsMultiSelect,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   TemporalUnit,
@@ -32,7 +32,6 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 
-import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import { RequiredParamToggle } from "../RequiredParamToggle";
 import { ValuesSourceSettings } from "../ValuesSourceSettings";
@@ -168,10 +167,10 @@ export const ParameterSettings = ({
           aria-label={t`Label`}
         />
       </Box>
-      {sectionId && isFilterParameter(parameter) && (
+      {sectionId && (
         <>
           <Box mb="xl">
-            <SettingLabel>{t`Filter type`}</SettingLabel>
+            <SettingLabel>{t`Filter or parameter type`}</SettingLabel>
             <Select
               data={dataTypeSectionsData}
               value={sectionId}
@@ -192,7 +191,7 @@ export const ParameterSettings = ({
       )}
       {isTemporalUnitParameter(parameter) && (
         <Box mb="xl">
-          <SettingLabel>{t`Unit of Time options`}</SettingLabel>
+          <SettingLabel>{t`Time grouping options`}</SettingLabel>
           <TemporalUnitSettings
             parameter={parameter}
             onChangeTemporalUnits={onChangeTemporalUnits}
@@ -234,22 +233,23 @@ export const ParameterSettings = ({
       )}
 
       <Box mb="lg">
-        <SettingLabel>
+        <SettingLabel id="default-value-label">
           {t`Default value`}
           {parameter.required &&
             parameterHasNoDisplayValue(parameter.default) && (
-              <SettingLabelError>({t`required`})</SettingLabelError>
+              <SettingLabelError> ({t`required`})</SettingLabelError>
             )}
         </SettingLabel>
 
-        <SettingValueWidget
-          parameter={parameter}
-          name={parameter.name}
-          value={parameter.default}
-          placeholder={t`No default`}
-          setValue={onChangeDefaultValue}
-          mimicMantine
-        />
+        <div aria-labelledby="default-value-label">
+          <SettingValueWidget
+            parameter={parameter}
+            value={parameter.default}
+            placeholder={t`No default`}
+            setValue={onChangeDefaultValue}
+            mimicMantine
+          />
+        </div>
 
         <RequiredParamToggle
           // This forces the toggle to be a new instance when the parameter changes,

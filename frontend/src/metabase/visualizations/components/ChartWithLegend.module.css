@@ -13,8 +13,11 @@
 
 .ChartWithLegend .LegendSpacer,
 .ChartWithLegend .LegendWrapper {
+  display: flex;
+  justify-content: center;
   flex-basis: auto;
   flex-grow: 1;
+  flex-shrink: 1;
 
   /* allow legend and spacer to shrink */
   min-width: 0;
@@ -23,13 +26,6 @@
 
 .ChartWithLegend .LegendSpacer {
   visibility: hidden;
-  flex-shrink: 10; /* shrink the spacer much faster than the wrapper */
-}
-
-.ChartWithLegend .LegendWrapper {
-  display: flex;
-  justify-content: center;
-  flex-shrink: 1;
 }
 
 .ChartWithLegend .Chart {

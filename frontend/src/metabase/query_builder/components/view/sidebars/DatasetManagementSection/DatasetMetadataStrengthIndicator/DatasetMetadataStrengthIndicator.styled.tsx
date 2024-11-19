@@ -5,7 +5,6 @@ export const PercentageLabel = styled.span`
   font-size: 0.8rem;
   font-weight: bold;
   user-select: none;
-
   transition: all 0.4s;
 `;
 

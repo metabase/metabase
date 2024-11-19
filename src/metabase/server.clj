@@ -28,7 +28,7 @@
     :trust-password  (config/config-str :mb-jetty-ssl-truststore-password)
     :client-auth     (when (config/config-bool :mb-jetty-ssl-client-auth)
                        :need)
-    :sni-host-check? (when (config/config-str :mb-jetty-skip-sni)
+    :sni-host-check? (when (config/config-bool :mb-jetty-skip-sni)
                        false)}))
 
 (defn- jetty-config []
@@ -41,7 +41,7 @@
             :max-queued    (config/config-int :mb-jetty-maxqueued)
             :max-idle-time (config/config-int :mb-jetty-maxidletime)})
     (config/config-int :mb-jetty-request-header-size) (assoc :request-header-size (config/config-int
-                                                                                    :mb-jetty-request-header-size))
+                                                                                   :mb-jetty-request-header-size))
     (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
     (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
                                              (merge (jetty-ssl-config)))))

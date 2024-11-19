@@ -4,8 +4,53 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.api.common :as api]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.regex :as u.regex]))
+   [metabase.util.regex :as u.regex]
+   [toucan2.core :as t2]))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         API-level helpers                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn log-permissions-changes
+  "Log changes to the permissions graph."
+  [old new]
+  (log/debug "Changing permissions"
+             "\n FROM:" (u/pprint-to-str :magenta old)
+             "\n TO:"   (u/pprint-to-str :blue new)))
+
+(defn check-revision-numbers
+  "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
+  make sure people don't submit a new graph based on something out of date, which would otherwise stomp over changes
+  made in the interim. Return a 409 (Conflict) if the numbers don't match up."
+  [old-graph new-graph]
+  (when-not (:force new-graph)
+    (when (not= (:revision old-graph) (:revision new-graph))
+      (throw (ex-info (tru
+                       (str "Looks like someone else edited the permissions and your data is out of date. "
+                            "Please fetch new data and try again."))
+                      {:status-code 409})))))
+
+(defn save-perms-revision!
+  "Save changes made to permission graph for logging/auditing purposes.
+  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
+  *  `model`   -- revision model, should be one of
+                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision]
+  *  `before`  -- the graph before the changes
+  *  `changes` -- set of changes applied in this revision."
+  [model current-revision before changes]
+  (when api/*current-user-id*
+    (first (t2/insert-returning-instances! model
+                                           ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
+                                           ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+                                           :id      (inc current-revision)
+                                           :before  before
+                                           :after   changes
+                                           :user_id api/*current-user-id*))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    PATH CLASSIFICATION + VALIDATION                                            |
@@ -20,7 +65,7 @@
   (u.regex/rx [:or #"[^\\/]" #"\\/" #"\\\\"]))
 
 (def ^:private data-rx->data-kind
-  {      #"db/\d+/"                                                                     :dk/db
+  {#"db/\d+/"                                                                     :dk/db
    [:and #"db/\d+/" "native" "/"]                                                       :dk/db-native
    [:and #"db/\d+/" "schema" "/"]                                                       :dk/db-schema
    [:and #"db/\d+/" "schema" "/" path-char-rx "*" "/"]                                  :dk/db-schema-name
@@ -195,7 +240,6 @@
   added."
     ^Boolean [^String path]
     (path-format-validator path)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PATH UTILS                                                       |

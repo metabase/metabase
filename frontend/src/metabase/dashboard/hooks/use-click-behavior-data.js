@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import {
-  getDashboardComplete,
   getDashCardById,
+  getDashboardComplete,
   getParameterValuesBySlugMap,
+  getParameters,
 } from "metabase/dashboard/selectors";
 import { getLinkTargets } from "metabase/lib/click-behavior";
 import { useStore } from "metabase/lib/redux";
@@ -15,6 +16,7 @@ function createGetExtraDataForClick(store, dashcardId) {
     const state = store.getState();
     const dashboard = getDashboardComplete(state);
     const dashcard = getDashCardById(state, dashcardId);
+    const parameters = getParameters(state);
     const parameterValuesBySlug = getParameterValuesBySlugMap(state);
     const userAttributes = getUserAttributes(state);
 
@@ -34,6 +36,7 @@ function createGetExtraDataForClick(store, dashcardId) {
       .value();
     return {
       ...entitiesByTypeAndId,
+      parameters,
       parameterValuesBySlug,
       dashboard,
       dashcard,

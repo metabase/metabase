@@ -35,7 +35,6 @@ export const SelectLabel = styled.span`
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 0.875rem;
-
   margin-top: 4px;
 `;
 

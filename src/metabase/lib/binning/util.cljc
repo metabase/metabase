@@ -8,7 +8,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private calculate-bin-width :- ::lib.schema.binning/bin-width
+(mu/defn- calculate-bin-width :- ::lib.schema.binning/bin-width
   "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
   [min-value :- number?
    max-value :- number?
@@ -16,7 +16,7 @@
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
-(mu/defn ^:private calculate-num-bins :- ::lib.schema.binning/num-bins
+(mu/defn- calculate-num-bins :- ::lib.schema.binning/num-bins
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
   [min-value :- number?
    max-value :- number?
@@ -32,7 +32,7 @@
     [:bin-width ::lib.schema.binning/bin-width]
     [:num-bins  ::lib.schema.binning/num-bins]]])
 
-(mu/defn ^:private resolve-default-strategy :- ResolvedStrategy
+(mu/defn- resolve-default-strategy :- ResolvedStrategy
   "Determine the approprate strategy & options to use when `:default` strategy was specified."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column
@@ -47,7 +47,6 @@
       [:num-bins
        {:num-bins  num-bins
         :bin-width (calculate-bin-width min-value max-value num-bins)}])))
-
 
 ;;; ------------------------------------- Humanized binning with nicer-breakout --------------------------------------
 
@@ -79,7 +78,7 @@
                 candidate-width)))
           pleasing-numbers)))
 
-(mu/defn ^:private nicer-bounds :- [:tuple number? number?]
+(mu/defn- nicer-bounds :- [:tuple number? number?]
   [min-value :- number?
    max-value :- number?
    bin-width :- ::lib.schema.binning/bin-width]
@@ -96,7 +95,7 @@
          (drop-while (partial apply not=))
          ffirst)))
 
-(mu/defn ^:private nicer-breakout* :- :map
+(mu/defn- nicer-breakout* :- :map
   "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
   \"nice\" step (bin width)."
   [strategy                                         :- ::lib.schema.binning/strategy

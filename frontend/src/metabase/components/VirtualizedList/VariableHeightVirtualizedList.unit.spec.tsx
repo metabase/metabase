@@ -1,4 +1,4 @@
-import { screen, render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import { mockGetBoundingClientRect } from "__support__/ui";
 

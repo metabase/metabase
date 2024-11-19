@@ -24,10 +24,10 @@ import {
   createMockCollection,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   PEOPLE,
   PEOPLE_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import EditSandboxingModal from "./EditSandboxingModal";
@@ -125,7 +125,7 @@ describe("EditSandboxingModal", () => {
         const { onSave } = setup();
 
         expect(
-          screen.getByText("Grant sandboxed access to this table"),
+          screen.getByText("Restrict access to this table"),
         ).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
@@ -157,7 +157,7 @@ describe("EditSandboxingModal", () => {
         const { onSave } = setup({ shouldMockQuestions: true });
 
         expect(
-          screen.getByText("Grant sandboxed access to this table"),
+          screen.getByText("Restrict access to this table"),
         ).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
@@ -207,7 +207,7 @@ describe("EditSandboxingModal", () => {
       });
 
       expect(
-        screen.getByText("Grant sandboxed access to this table"),
+        screen.getByText("Restrict access to this table"),
       ).toBeInTheDocument();
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();

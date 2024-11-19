@@ -1,3 +1,7 @@
+---
+title: Developing Metabase documentation
+---
+
 # Developing Metabase documentation
 
 Notes on writing docs for Metabase.
@@ -36,6 +40,4 @@ clojure -M:ee:run api-documentation
 
 ## Style guide
 
-Ancient [style guide](https://github.com/metabase/metabase/wiki/Writing-style-guide-for-documentation-and-blog-posts-(WIP)) that needs an update.
-
-
+Ancient [style guide](<https://github.com/metabase/metabase/wiki/Writing-style-guide-for-documentation-and-blog-posts-(WIP)>) that needs an update.

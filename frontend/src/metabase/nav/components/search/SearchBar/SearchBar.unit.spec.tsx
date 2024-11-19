@@ -10,9 +10,9 @@ import {
 import {
   renderWithProviders,
   screen,
-  within,
-  waitForLoaderToBeRemoved,
   waitFor,
+  waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";

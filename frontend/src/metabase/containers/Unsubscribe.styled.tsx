@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import MetabotLogo from "metabase/core/components/MetabotLogo";
-import { color, hueRotate, alpha } from "metabase/lib/colors";
+import { alpha, color, hueRotate } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { memo } from "react";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
@@ -8,9 +7,9 @@ import { EntityViewSwitch } from "../EntityViewSwitch";
 import { FilterableTree } from "../FilterableTree";
 
 import {
-  SidebarHeader,
   BackButton,
   BackIcon,
+  SidebarHeader,
 } from "./PermissionsSidebar.styled";
 import { SidebarContentTitle } from "./PermissionsSidebarContent.styled";
 
@@ -26,7 +25,7 @@ export interface PermissionsSidebarContentProps {
   entityViewFocus?: "database" | "group";
 }
 
-export const PermissionsSidebarContent = memo<PermissionsSidebarContentProps>(
+export const PermissionsSidebarContent = memo(
   function PermissionsSidebarContent({
     title,
     description,
@@ -37,7 +36,7 @@ export const PermissionsSidebarContent = memo<PermissionsSidebarContentProps>(
     onEntityChange,
     onSelect,
     onBack,
-  }) {
+  }: PermissionsSidebarContentProps) {
     return (
       <>
         <SidebarHeader>

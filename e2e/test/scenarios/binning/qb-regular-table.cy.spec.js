@@ -1,13 +1,13 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  openTable,
-  visualize,
-  changeBinningForDimension,
-  summarize,
-  chartPathWithFillColor,
   cartesianChartCircle,
+  changeBinningForDimension,
+  chartPathWithFillColor,
+  openTable,
+  restore,
+  summarize,
   tableHeaderClick,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;

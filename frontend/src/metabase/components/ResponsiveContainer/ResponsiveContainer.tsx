@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
+import type { Ref } from "react";
 
-import type { RefProp } from "metabase/browse/types";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { Box, type BoxProps } from "metabase/ui";
 
@@ -22,5 +22,5 @@ ResponsiveContainer.defaultProps = { type: "inline-size" };
 export const ResponsiveChild = styled(Box, doNotForwardProps("containerName"))<
   BoxProps & {
     containerName: string;
-  } & Partial<RefProp<HTMLDivElement | null>>
+  } & { ref?: Ref<HTMLDivElement | null> }
 >``;

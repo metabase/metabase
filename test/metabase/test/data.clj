@@ -41,6 +41,7 @@
    [metabase.db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test.data.impl :as data.impl]
@@ -55,7 +56,12 @@
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset
 ;; combos.
 
-(defn db
+(mu/defn db :- [:map
+                [:id       ::lib.schema.id/database]
+                [:engine   :keyword]
+                [:name     :string]
+                [:settings [:map
+                            [:database-source-dataset-name :string]]]]
   "Return the current database.
    Relies on the dynamic variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   []
@@ -241,7 +247,7 @@
   *  An inline dataset definition:
 
      (data/dataset (get-dataset-definition) ...)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [dataset & body]
   `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
                                         (format "using %s dataset" dataset)
@@ -260,6 +266,8 @@
   [& body]
   `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
 
+;;; TODO FIXME -- rename this to `with-empty-h2-app-db`
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-empty-h2-app-db
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
   created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.

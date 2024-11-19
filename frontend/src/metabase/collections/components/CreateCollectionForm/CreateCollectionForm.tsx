@@ -22,7 +22,7 @@ import * as Errors from "metabase/lib/errors";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import FormAuthorityLevelFieldContainer from "../../containers/FormAuthorityLevelFieldContainer";
+import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
 
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
@@ -111,7 +111,7 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={handleCreate}
     >
-      {({ dirty, values }) => (
+      {({ dirty }) => (
         <Form>
           <FormInput
             name="name"
@@ -131,9 +131,7 @@ function CreateCollectionForm({
             title={t`Collection it's saved in`}
             filterPersonalCollections={filterPersonalCollections}
           />
-          <FormAuthorityLevelFieldContainer
-            collectionParentId={values.parent_id}
-          />
+          <FormAuthorityLevelField />
           <FormFooter>
             <FormErrorMessage inline />
             {!!onCancel && (

@@ -1,33 +1,47 @@
-import type { ReactNode, MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useState } from "react";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
 
-export const POPOVER_DELAY: [number, number] = [250, 150];
-export const POPOVER_TRANSITION_DURATION = 150;
+const POPOVER_TRANSITION_DURATION = 150;
 
-import { WidthBound, Dropdown, Target } from "./Popover.styled";
+// Initially, the user will have to hover for this long to open the popover
+const POPOVER_SLOW_OPEN_DELAY = 250;
+
+// When an item in the same delay group is already open, we want to open the
+// popover immediately, without waiting for the user to hover for POPOVER_SLOW_OPEN_DELAY.
+// This way the user can move the cursor between hover targets and get feedback immediately.
+//
+// When opening fast, we still delay a little bit to avoid a flickering popover
+// when the target is being clicked.
+const POPOVER_FAST_OPEN_DELAY = 150;
 
 // When switching to another hover target in the same delay group,
 // we don't close immediately but delay by a short amount to avoid flicker.
-export const POPOVER_CLOSE_DELAY = 20;
+const POPOVER_CLOSE_DELAY = POPOVER_FAST_OPEN_DELAY + 30;
+
+import {
+  Dropdown,
+  HackyInvisibleTargetFiller,
+  WidthBound,
+} from "./Popover.styled";
 
 export type PopoverProps = Pick<
   HoverCardProps,
   "children" | "position" | "disabled"
 > & {
-  delay?: [number, number];
   width?: number;
   content: ReactNode;
+  openDelay?: number;
 };
 
 export function Popover({
   position = "bottom-start",
   disabled,
-  delay = POPOVER_DELAY,
   content,
+  openDelay = POPOVER_SLOW_OPEN_DELAY,
   width,
   children,
 }: PopoverProps) {
@@ -53,8 +67,8 @@ export function Popover({
     <HoverCard
       position={position}
       disabled={disabled}
-      openDelay={group.shouldDelay ? delay[0] : 0}
-      closeDelay={group.shouldDelay ? delay[1] : POPOVER_CLOSE_DELAY}
+      openDelay={group.shouldDelay ? openDelay : POPOVER_FAST_OPEN_DELAY}
+      closeDelay={POPOVER_CLOSE_DELAY}
       onOpen={handleOpen}
       onClose={handleClose}
       transitionProps={{
@@ -73,7 +87,7 @@ export function Popover({
       >
         {/* HACK: adds an element between the target and the card */}
         {/* to avoid the card from disappearing */}
-        <Target />
+        <HackyInvisibleTargetFiller />
         <WidthBound
           width={width}
           ref={node => {

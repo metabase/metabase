@@ -4,9 +4,10 @@ import type {
   CollectionEssentials,
   PaginationRequest,
   PaginationResponse,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { CardDisplayType, CardType } from "./card";
+import type { CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
@@ -62,7 +63,7 @@ export interface Collection {
   can_delete: boolean;
   archived: boolean;
   children?: Collection[];
-  authority_level?: "official" | null;
+  authority_level?: CollectionAuthorityLevel;
   type?: "instance-analytics" | "trash" | null;
 
   parent_id?: CollectionId | null;
@@ -90,7 +91,7 @@ export const COLLECTION_ITEM_MODELS = [
   "collection",
   "indexed-entity",
 ] as const;
-export type CollectionItemModel = typeof COLLECTION_ITEM_MODELS[number];
+export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
 export type CollectionItemId = number;
 
@@ -107,7 +108,7 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
-  display?: CardDisplayType;
+  display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
@@ -120,9 +121,10 @@ export interface CollectionItem {
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
+  authority_level?: CollectionAuthorityLevel;
   getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
-  setArchived?: (isArchived: boolean) => void;
+  setArchived?: (isArchived: boolean, opts?: Record<string, unknown>) => void;
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;

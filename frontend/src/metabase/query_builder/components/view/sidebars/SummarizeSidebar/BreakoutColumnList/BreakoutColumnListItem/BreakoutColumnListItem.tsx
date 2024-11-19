@@ -9,53 +9,58 @@ import * as Lib from "metabase-lib";
 
 import {
   AddButton,
-  Content,
   ColumnTypeIcon,
-  Title,
-  TitleContainer,
+  Content,
   RemoveButton,
   Root,
+  Title,
+  TitleContainer,
 } from "./BreakoutColumnListItem.styled";
-
-const STAGE_INDEX = -1;
 
 interface BreakoutColumnListItemProps {
   query: Lib.Query;
+  stageIndex: number;
   item: Lib.ColumnDisplayInfo & { column: Lib.ColumnMetadata };
   breakout?: Lib.BreakoutClause;
   isPinned?: boolean;
-  onAddColumn: (column: Lib.ColumnMetadata) => void;
-  onUpdateColumn: (column: Lib.ColumnMetadata) => void;
-  onRemoveColumn: (column: Lib.ColumnMetadata) => void;
-  onReplaceColumns?: (column: Lib.ColumnMetadata) => void;
+  onAddBreakout: (column: Lib.ColumnMetadata) => void;
+  onUpdateBreakout: (
+    breakout: Lib.BreakoutClause,
+    column: Lib.ColumnMetadata,
+  ) => void;
+  onRemoveBreakout: (breakout: Lib.BreakoutClause) => void;
+  onReplaceBreakouts?: (column: Lib.ColumnMetadata) => void;
 }
 
 export function BreakoutColumnListItem({
   query,
+  stageIndex,
   item,
   breakout,
   isPinned = false,
-  onAddColumn,
-  onUpdateColumn,
-  onRemoveColumn,
-  onReplaceColumns,
+  onAddBreakout,
+  onUpdateBreakout,
+  onRemoveBreakout,
+  onReplaceBreakouts,
 }: BreakoutColumnListItemProps) {
-  const isSelected = typeof item.breakoutPosition === "number";
+  const isSelected = breakout != null;
 
   const handleAddClick = useCallback(() => {
-    onAddColumn(Lib.withDefaultBucket(query, STAGE_INDEX, item.column));
-  }, [query, item.column, onAddColumn]);
+    onAddBreakout(Lib.withDefaultBucket(query, stageIndex, item.column));
+  }, [query, stageIndex, item.column, onAddBreakout]);
 
   const handleListItemClick = useCallback(() => {
-    onReplaceColumns?.(Lib.withDefaultBucket(query, STAGE_INDEX, item.column));
-  }, [query, item.column, onReplaceColumns]);
+    onReplaceBreakouts?.(Lib.withDefaultBucket(query, stageIndex, item.column));
+  }, [query, stageIndex, item.column, onReplaceBreakouts]);
 
   const handleRemoveColumn = useCallback(
     (event: MouseEvent) => {
       event.stopPropagation();
-      onRemoveColumn(item.column);
+      if (breakout) {
+        onRemoveBreakout(breakout);
+      }
     },
-    [item.column, onRemoveColumn],
+    [breakout, onRemoveBreakout],
   );
 
   const displayName = isPinned ? item.longDisplayName : item.displayName;
@@ -72,7 +77,7 @@ export function BreakoutColumnListItem({
         <TitleContainer>
           <ColumnTypeIcon
             query={query}
-            stageIndex={STAGE_INDEX}
+            stageIndex={stageIndex}
             column={item.column}
             position="left"
             size={18}
@@ -81,7 +86,7 @@ export function BreakoutColumnListItem({
         </TitleContainer>
         <BucketPickerPopover
           query={query}
-          stageIndex={STAGE_INDEX}
+          stageIndex={stageIndex}
           column={item.column}
           color="summarize"
           isEditing={isSelected}
@@ -89,7 +94,9 @@ export function BreakoutColumnListItem({
           hasBinning
           hasTemporalBucketing
           onSelect={column =>
-            breakout ? onUpdateColumn(column) : onAddColumn(column)
+            breakout
+              ? onUpdateBreakout(breakout, column)
+              : onAddBreakout(column)
           }
         />
         {isSelected && (

@@ -12,8 +12,8 @@ import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import {
   ActionCardContainer,
   ActionHeader,
-  ActionRunButtonContainer,
   ActionRunButton,
+  ActionRunButtonContainer,
   ActionSubtitle,
   ActionSubtitlePart,
   ActionTitle,

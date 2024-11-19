@@ -1,0 +1,603 @@
+[
+  {
+    "card": {
+      "original_card_id": 437,
+      "can_delete": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-09-11T15:27:33.439408Z",
+      "parameters": [],
+      "metabase_version": "v0.1.33-SNAPSHOT (8755117)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "sunburst",
+        "archive_operation_id": null,
+        "name": "Sunburst",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 32,
+        "archived_directly": null,
+        "entity_id": "yivDsLk9XUmdCWr0lt9GJ",
+        "location": "/5/23/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-08-25T18:16:32.499168Z"
+      },
+      "visualization_settings": {
+        "table.pivot_column": "generation",
+        "table.cell_column": "count",
+        "pie.dimension": ["generation", "type_1", "type_2"],
+        "pie.metric": "count",
+        "pie.slice_threshold": 0,
+        "pie.show_labels": false
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-09-12T20:57:42.021468Z"
+      },
+      "collection_preview": true,
+      "entity_id": "ue-evUeQ07b-xZEr48VAk",
+      "archived_directly": false,
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 437,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              "generation",
+              {
+                "base-type": "type/BigInteger"
+              }
+            ],
+            [
+              "field",
+              "type_1",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            [
+              "field",
+              "type_2",
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ],
+          "order-by": [["desc", ["aggregation", 0]]],
+          "source-table": "card__104",
+          "filter": [
+            "and",
+            [
+              "=",
+              [
+                "field",
+                "type_1",
+                {
+                  "base-type": "type/Text"
+                }
+              ],
+              "Water",
+              "Grass",
+              "Fire"
+            ],
+            [
+              "not-empty",
+              [
+                "field",
+                "type_2",
+                {
+                  "base-type": "type/Text"
+                }
+              ]
+            ]
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-09-12T20:57:41.785432Z",
+      "moderation_reviews": [],
+      "can_restore": false,
+      "creator_id": 1,
+      "average_query_time": 487.7894736842105,
+      "type": "question",
+      "last_used_at": "2024-09-13T17:05:33.584358Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-09-13T17:05:33.238198Z",
+      "name": "Sunburst - Poke Count by Gen, Type 1, Type 2, 0 MSP",
+      "query_type": "query",
+      "collection_id": 32,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-09-13T17:05:26.388255Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": "type/Category",
+          "name": "generation",
+          "field_ref": [
+            "field",
+            "generation",
+            {
+              "base-type": "type/BigInteger"
+            }
+          ],
+          "effective_type": "type/BigInteger",
+          "id": 1503,
+          "visibility_type": "normal",
+          "display_name": "Generation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 2.1045160333142734,
+                "q3": 5.716989271844637,
+                "max": 8,
+                "sd": 2.234937326790694,
+                "avg": 4.034046692607004
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "semantic_type": "type/Category",
+          "name": "type_1",
+          "field_ref": [
+            "field",
+            "type_1",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1475,
+          "visibility_type": "normal",
+          "display_name": "Type 1",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 18,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 5.281128404669261
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "semantic_type": "type/Category",
+          "name": "type_2",
+          "field_ref": [
+            "field",
+            "type_2",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1499,
+          "visibility_type": "normal",
+          "display_name": "Type 2",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 19,
+              "nil%": 0.4727626459143969
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 2.9474708171206228
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "name": "count",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 6,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1,
+                "q3": 2.2964690541943424,
+                "max": 10,
+                "sd": 1.2898977338673652,
+                "avg": 1.8076923076923077
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 156,
+      "source_card_id": 104,
+      "collection_position": null,
+      "view_count": 35,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [1, "Grass", "Poison", 10],
+        [3, "Water", "Ground", 5],
+        [1, "Water", "Psychic", 4],
+        [3, "Water", "Dark", 4],
+        [1, "Fire", "Flying", 3],
+        [1, "Water", "Ice", 3],
+        [2, "Grass", "Flying", 3],
+        [3, "Fire", "Fighting", 3],
+        [3, "Fire", "Ground", 3],
+        [3, "Grass", "Dark", 3],
+        [3, "Water", "Grass", 3],
+        [4, "Grass", "Ice", 3],
+        [7, "Grass", "Fairy", 3],
+        [8, "Grass", "Dragon", 3],
+        [1, "Grass", "Psychic", 2],
+        [1, "Water", "Poison", 2],
+        [2, "Water", "Electric", 2],
+        [2, "Water", "Fairy", 2],
+        [2, "Water", "Ground", 2],
+        [3, "Water", "Flying", 2],
+        [4, "Fire", "Fighting", 2],
+        [4, "Grass", "Poison", 2],
+        [5, "Fire", "Fighting", 2],
+        [5, "Grass", "Fairy", 2],
+        [5, "Grass", "Poison", 2],
+        [5, "Grass", "Steel", 2],
+        [5, "Water", "Fighting", 2],
+        [5, "Water", "Flying", 2],
+        [5, "Water", "Ghost", 2],
+        [5, "Water", "Ground", 2],
+        [5, "Water", "Rock", 2],
+        [6, "Fire", "Flying", 2],
+        [6, "Fire", "Normal", 2],
+        [6, "Water", "Dark", 2],
+        [7, "Grass", "Flying", 2],
+        [7, "Water", "Bug", 2],
+        [7, "Water", "Fairy", 2],
+        [8, "Fire", "Bug", 2],
+        [1, "Fire", "Dragon", 1],
+        [1, "Fire", "Ghost", 1],
+        [1, "Grass", "Dragon", 1],
+        [1, "Water", "Dark", 1],
+        [1, "Water", "Fighting", 1],
+        [1, "Water", "Flying", 1],
+        [2, "Fire", "Flying", 1],
+        [2, "Fire", "Rock", 1],
+        [2, "Water", "Dragon", 1],
+        [2, "Water", "Flying", 1],
+        [2, "Water", "Poison", 1],
+        [2, "Water", "Psychic", 1],
+        [2, "Water", "Rock", 1],
+        [3, "Grass", "Dragon", 1],
+        [3, "Grass", "Fighting", 1],
+        [3, "Grass", "Flying", 1],
+        [3, "Grass", "Poison", 1],
+        [3, "Water", "Rock", 1],
+        [4, "Fire", "Steel", 1],
+        [4, "Grass", "Flying", 1],
+        [4, "Grass", "Ground", 1],
+        [4, "Water", "Dragon", 1],
+        [4, "Water", "Flying", 1],
+        [4, "Water", "Ground", 1],
+        [4, "Water", "Steel", 1],
+        [5, "Fire", "Psychic", 1],
+        [5, "Grass", "Fighting", 1],
+        [6, "Fire", "Psychic", 1],
+        [6, "Fire", "Water", 1],
+        [6, "Grass", "Fighting", 1],
+        [7, "Fire", "Dark", 1],
+        [7, "Fire", "Dragon", 1],
+        [7, "Fire", "Flying", 1],
+        [7, "Fire", "Ghost", 1],
+        [7, "Grass", "Ghost", 1],
+        [7, "Grass", "Steel", 1],
+        [7, "Water", "Psychic", 1],
+        [8, "Water", "Dragon", 1],
+        [8, "Water", "Ice", 1],
+        [8, "Water", "Rock", 1]
+      ],
+      "cols": [
+        {
+          "database_type": "int8",
+          "semantic_type": "type/Category",
+          "table_id": 156,
+          "name": "generation",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "generation",
+            {
+              "base-type": "type/BigInteger"
+            }
+          ],
+          "effective_type": "type/BigInteger",
+          "id": 1503,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Generation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 2.1045160333142734,
+                "q3": 5.716989271844637,
+                "max": 8,
+                "sd": 2.234937326790694,
+                "avg": 4.034046692607004
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "database_type": "varchar",
+          "semantic_type": "type/Category",
+          "table_id": 156,
+          "name": "type_1",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "type_1",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1475,
+          "position": 9,
+          "visibility_type": "normal",
+          "display_name": "Type 1",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 18,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 5.281128404669261
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "database_type": "varchar",
+          "semantic_type": "type/Category",
+          "table_id": 156,
+          "name": "type_2",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "type_2",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1499,
+          "position": 10,
+          "visibility_type": "normal",
+          "display_name": "Type 2",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 19,
+              "nil%": 0.4727626459143969
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 2.9474708171206228
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "database_type": "int8",
+          "semantic_type": "type/Quantity",
+          "name": "count",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/BigInteger",
+          "aggregation_index": 0,
+          "display_name": "Count",
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"generation\" AS \"generation\", \"source\".\"type_1\" AS \"type_1\", \"source\".\"type_2\" AS \"type_2\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"pokedex_number\" AS \"pokedex_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"name\" AS \"name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"german_name\" AS \"german_name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"japanese_name\" AS \"japanese_name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"generation\" AS \"generation\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"status\" AS \"status\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"species\" AS \"species\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_number\" AS \"type_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_1\" AS \"type_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_2\" AS \"type_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"height_m\" AS \"height_m\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"weight_kg\" AS \"weight_kg\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"abilities_number\" AS \"abilities_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_1\" AS \"ability_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_2\" AS \"ability_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_hidden\" AS \"ability_hidden\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"total_points\" AS \"total_points\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"hp\" AS \"hp\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"attack\" AS \"attack\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"defense\" AS \"defense\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"sp_attack\" AS \"sp_attack\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"sp_defense\" AS \"sp_defense\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"speed\" AS \"speed\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"catch_rate\" AS \"catch_rate\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"base_friendship\" AS \"base_friendship\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"base_experience\" AS \"base_experience\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"growth_rate\" AS \"growth_rate\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_number\" AS \"egg_type_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_1\" AS \"egg_type_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_2\" AS \"egg_type_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"percentage_male\" AS \"percentage_male\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_cycles\" AS \"egg_cycles\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_normal\" AS \"against_normal\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fire\" AS \"against_fire\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_water\" AS \"against_water\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_electric\" AS \"against_electric\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_grass\" AS \"against_grass\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ice\" AS \"against_ice\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fight\" AS \"against_fight\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_poison\" AS \"against_poison\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ground\" AS \"against_ground\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_flying\" AS \"against_flying\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_psychic\" AS \"against_psychic\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_bug\" AS \"against_bug\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_rock\" AS \"against_rock\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ghost\" AS \"against_ghost\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_dragon\" AS \"against_dragon\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_dark\" AS \"against_dark\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_steel\" AS \"against_steel\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fairy\" AS \"against_fairy\" FROM \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\") AS \"source\" WHERE ((\"source\".\"type_1\" = 'Water') OR (\"source\".\"type_1\" = 'Grass') OR (\"source\".\"type_1\" = 'Fire')) AND (\"source\".\"type_2\" IS NOT NULL) AND ((\"source\".\"type_2\" <> '') OR (\"source\".\"type_2\" IS NULL)) GROUP BY \"source\".\"generation\", \"source\".\"type_1\", \"source\".\"type_2\" ORDER BY \"count\" DESC, \"source\".\"generation\" ASC, \"source\".\"type_1\" ASC, \"source\".\"type_2\" ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/Category",
+            "name": "generation",
+            "field_ref": [
+              "field",
+              "generation",
+              {
+                "base-type": "type/BigInteger"
+              }
+            ],
+            "effective_type": "type/BigInteger",
+            "id": 1503,
+            "visibility_type": "normal",
+            "display_name": "Generation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 2.1045160333142734,
+                  "q3": 5.716989271844637,
+                  "max": 8,
+                  "sd": 2.234937326790694,
+                  "avg": 4.034046692607004
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          },
+          {
+            "semantic_type": "type/Category",
+            "name": "type_1",
+            "field_ref": [
+              "field",
+              "type_1",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 1475,
+            "visibility_type": "normal",
+            "display_name": "Type 1",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 18,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 5.281128404669261
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "semantic_type": "type/Category",
+            "name": "type_2",
+            "field_ref": [
+              "field",
+              "type_2",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 1499,
+            "visibility_type": "normal",
+            "display_name": "Type 2",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 19,
+                "nil%": 0.4727626459143969
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 2.9474708171206228
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "name": "count",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1,
+                  "q3": 2.2964690541943424,
+                  "max": 10,
+                  "sd": 1.2898977338673652,
+                  "avg": 1.8076923076923077
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

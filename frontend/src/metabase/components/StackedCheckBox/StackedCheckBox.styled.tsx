@@ -24,14 +24,11 @@ export const StackedBackground = styled.div<{
   border-radius: 4px;
   position: absolute;
   display: inline-block;
-
   z-index: -1;
   top: -3px;
   left: 3px;
-
   background: ${props =>
     props.checked ? color(props.checkedColor) : "var(--mb-color-bg-white)"};
-
   border: 2px solid
     ${props =>
       props.checked ? color(props.checkedColor) : color(props.uncheckedColor)};

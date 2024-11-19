@@ -67,8 +67,8 @@
   [_ _ source-table-symb source-token-str dest-token-str]
   ;; recursively parse the destination field, then add `:source-field` to it.
   (let [[_ id-form options] (parse-token-by-sigil source-table-symb (symbol (if (token->sigil dest-token-str)
-                                                                             dest-token-str
-                                                                             (str \$ dest-token-str))))]
+                                                                              dest-token-str
+                                                                              (str \$ dest-token-str))))]
     [:field id-form (assoc options :source-field (field-id-call source-table-symb source-token-str))]))
 
 (defmethod mbql-field [:raw :normal]
@@ -143,8 +143,8 @@
   [source-table-symb token]
   (if-let [[_ unit token] (re-matches #"^!([^.]+)\.(.+$)" (str token))]
     (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
-                                                                       (symbol token)
-                                                                       (symbol (str \$ token))))]
+                                                                        (symbol token)
+                                                                        (symbol (str \$ token))))]
       [:field id-or-name (assoc opts :temporal-unit (keyword unit))])
     (throw (ex-info "Error parsing token starting with '!'" {:token token}))))
 
@@ -179,16 +179,16 @@
 
 ;; TODO: Enable on [[druid-id-fn]] removal. Ie. after discussing alternative approach to druid-id-fn.
 #_(deftest parse-tokens-test
-  (is (= '[:field
-           (metabase.test.data/id :categories :name)
-           {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
-         (parse-tokens 'categories '&CATEGORIES__via__CATEGORY_ID.name)))
-  (is (= '[:field
-           (metabase.test.data/id :categories :name)
-           {:source-field (metabase.test.data/id :venues :category_id)}]
-         (parse-tokens 'venues '$category_id->categories.name)))
-  (is (= '[:field
-           (metabase.test.data/id :categories :name)
-           {:source-field (metabase.test.data/id :venues :category_id)
-            :join-alias   "CATEGORIES__via__CATEGORY_ID"}]
-         (parse-tokens 'venues '$category_id->&CATEGORIES__via__CATEGORY_ID.categories.name))))
+    (is (= '[:field
+             (metabase.test.data/id :categories :name)
+             {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
+           (parse-tokens 'categories '&CATEGORIES__via__CATEGORY_ID.name)))
+    (is (= '[:field
+             (metabase.test.data/id :categories :name)
+             {:source-field (metabase.test.data/id :venues :category_id)}]
+           (parse-tokens 'venues '$category_id->categories.name)))
+    (is (= '[:field
+             (metabase.test.data/id :categories :name)
+             {:source-field (metabase.test.data/id :venues :category_id)
+              :join-alias   "CATEGORIES__via__CATEGORY_ID"}]
+           (parse-tokens 'venues '$category_id->&CATEGORIES__via__CATEGORY_ID.categories.name))))

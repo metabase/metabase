@@ -12,11 +12,7 @@ export const Container = styled.div`
   padding: ${space(1)} ${space(2)} ${space(2)} ${space(2)};
 `;
 
-type ToggleButtonProps = {
-  primaryColor?: string;
-};
-
-export const ToggleButton = styled(Button)<ToggleButtonProps>`
+export const ToggleButton = styled(Button)`
   border: none;
   border-radius: 0;
   background: none;
@@ -25,7 +21,7 @@ export const ToggleButton = styled(Button)<ToggleButtonProps>`
   font-weight: normal;
 
   &:hover {
-    color: ${props => `${props.primaryColor || "var(--mb-color-brand)"}`};
+    color: var(--mb-color-text-brand);
     background: none;
   }
 `;

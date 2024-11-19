@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Droppable, Draggable } from "react-beautiful-dnd";
+import { Draggable, Droppable } from "react-beautiful-dnd";
 import { t } from "ttag";
 
 import { DragDropContext } from "metabase/core/components/DragDropContext";
@@ -17,6 +17,7 @@ const ChartSettingFieldsPicker = ({
   addAnother,
   showColumnSetting,
   showColumnSettingForIndicies,
+  fieldSettingWidgets = [],
   ...props
 }) => {
   const handleDragEnd = ({ source, destination }) => {
@@ -93,6 +94,7 @@ const ChartSettingFieldsPicker = ({
                                 : null
                             }
                             showDragHandle={fields.length > 1}
+                            fieldSettingWidget={fieldSettingWidgets[fieldIndex]}
                           />
                         </div>
                       )}

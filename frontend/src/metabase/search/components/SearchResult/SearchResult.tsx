@@ -8,7 +8,7 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import type { WrappedResult } from "metabase/search/types";
-import { Group, Loader, Icon } from "metabase/ui";
+import { Group, Icon, Loader } from "metabase/ui";
 import type { SearchContext } from "metabase-types/api";
 
 import { InfoText } from "../InfoText";

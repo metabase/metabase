@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.results-metadata-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.results-metadata-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -98,7 +98,11 @@
         (when-not (= :completed (:status result))
           (throw (ex-info "Query failed." result))))
       (is (= (round-to-2-decimals (default-card-results-native))
-             (-> card card-metadata round-to-2-decimals))))))
+             (-> card card-metadata round-to-2-decimals)))
+
+      ;; updated_at should not be modified when saving result metadata
+      (is (= (:updated_at card)
+             (t2/select-one-fn :updated_at :model/Card :id (u/the-id card)))))))
 
 (deftest save-result-metadata-test-2
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
@@ -204,7 +208,7 @@
                 :effective_type    :type/Date
                 :visibility_type :normal
                 :coercion_strategy nil
-                :display_name "Date"
+                :display_name "Date: Year"
                 :name         "DATE"
                 :unit         :year
                 :settings     nil
@@ -258,21 +262,21 @@
                      :native   {:query "select date_trunc('day', checkins.\"DATE\") as d FROM checkins"}
                      :database (mt/id)}))]
       (testing "Sanity check: annotate should infer correct type from `:cols`"
-        (is (= {:base_type    :type/Date,
-                :effective_type :type/Date
-                :display_name "D" :name "D"
-                :source       :native
-                :field_ref    [:field "D" {:base-type :type/Date}]}
-               (first (:cols results)))))
+        (is (=? {:base_type    :type/Date,
+                 :effective_type :type/Date
+                 :display_name "D" :name "D"
+                 :source       :native
+                 :field_ref    [:field "D" {:base-type :type/Date}]}
+                (first (:cols results)))))
 
-      (testing "Results metadata should have the same type info")
-      (is (= {:base_type    :type/Date
-              :effective_type :type/Date
-              :display_name "D"
-              :name         "D"
-              :semantic_type nil
-              :field_ref    [:field "D" {:base-type :type/Date}]}
-             (-> results :results_metadata :columns first (dissoc :fingerprint)))))))
+      (testing "Results metadata should have the same type info"
+        (is (=? {:base_type    :type/Date
+                 :effective_type :type/Date
+                 :display_name "D"
+                 :name         "D"
+                 :semantic_type nil
+                 :field_ref    [:field "D" {:base-type :type/Date}]}
+                (-> results :results_metadata :columns first)))))))
 
 (deftest ^:parallel results-metadata-should-have-field-refs-test
   (testing "QP results metadata should include Field refs"
@@ -345,14 +349,15 @@
                                                                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
                                                                                         [:expression "Tax Rate"]]
                                                                          :limit        10}}}
-                     Card {:keys [dataset_query result_metadata]
-                           :as   _card} {:dataset_query   {:type     :query
-                                                           :database (mt/id)
-                                                           :query    {:source-table (format "card__%s" base-card-id)}}
-                                         :result_metadata [{:semantic_type :type/Percentage
-                                                            :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}]
+                     Card {dataset-query   :dataset_query
+                           result-metadata :result_metadata
+                           :as             _card} {:dataset_query   {:type     :query
+                                                                     :database (mt/id)
+                                                                     :query    {:source-table (format "card__%s" base-card-id)}}
+                                                   :result_metadata [{:semantic_type :type/Percentage
+                                                                      :name          "Tax Rate"}]}]
         (testing "The baseline behavior is for data results_metadata to be independently computed"
-          (let [results (qp/process-query dataset_query)]
+          (let [results (qp/process-query dataset-query)]
             ;; :type/Share is the computed semantic type as of 2023-11-30
             (is (not= :type/Percentage (->> (get-in results [:data :results_metadata :columns])
                                             (some (fn [{field-name :name :as field-metadata}]
@@ -361,7 +366,7 @@
                                             :semantic_type)))))
         (testing "When result_metadata is passed into the query processor context, it is preserved in the result."
           (let [results (qp/process-query
-                          (assoc-in dataset_query [:info :metadata/model-metadata] result_metadata))]
+                         (assoc-in dataset-query [:info :metadata/model-metadata] result-metadata))]
             (is (= :type/Percentage (->> (get-in results [:data :results_metadata :columns])
                                          (some (fn [{field-name :name :as field-metadata}]
                                                  (when (= field-name "Tax Rate")
@@ -376,3 +381,15 @@
     (is (=? {:status :completed
              :data   {:results_metadata (symbol "nil #_\"key is not present.\"")}}
             (qp/process-query (assoc-in query [:middleware :skip-results-metadata?] true))))))
+
+(deftest ^:parallel results-metadata-disambiguated-field-names-test
+  (let [query (mt/mbql-query orders {:joins  [{:source-table $$products
+                                               :alias        "Products"
+                                               :condition    [:= $product_id &Products.products.id]
+                                               :fields       [&Products.$products.id]}]
+                                     :fields [$id]
+                                     :limit  5})]
+    (is (=? {:status :completed
+             :data   {:results_metadata {:columns [{:name "ID"}
+                                                   {:name "ID_2"}]}}}
+            (mt/process-query query)))))

@@ -1,11 +1,11 @@
 import classNames from "classnames";
-import type { FocusEvent, MouseEvent, KeyboardEvent } from "react";
-import { useRef, useState, useMemo } from "react";
+import type { FocusEvent, KeyboardEvent, MouseEvent } from "react";
+import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import { color } from "metabase/lib/colors";
-import { Button, Icon, Input, Popover, FocusTrap } from "metabase/ui";
+import { Button, FocusTrap, Icon, Input, Popover } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import * as Lib from "metabase-lib";
 

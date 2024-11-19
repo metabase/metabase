@@ -1,7 +1,7 @@
 import {
-  isFieldReference,
-  isExpressionReference,
   isAggregationReference,
+  isExpressionReference,
+  isFieldReference,
   isTemplateTagReference,
   normalizeReferenceOptions,
 } from "metabase-lib/v1/references";
@@ -107,6 +107,7 @@ describe("normalizeReferenceOptions", () => {
     expect(normalizeReferenceOptions(null)).toEqual(null);
     expect(normalizeReferenceOptions({})).toEqual(null);
   });
+
   it("should remove null/undefined keys", () => {
     expect(
       normalizeReferenceOptions({
@@ -118,6 +119,7 @@ describe("normalizeReferenceOptions", () => {
       binning: { strategy: "default" },
     });
   });
+
   it("should recursively normalize maps options", () => {
     expect(
       normalizeReferenceOptions({

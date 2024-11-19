@@ -11,6 +11,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -61,6 +62,12 @@
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))}]
     (merge defaults table)))
 
+(t2/define-before-delete :model/Table
+  [table]
+  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
+  ;; foreign key constraints in generated columns. #44866
+  (t2/delete! :model/Field :table_id (:id table)))
+
 (defn- set-new-table-permissions!
   [table]
   (t2/with-transaction [_conn]
@@ -71,11 +78,11 @@
       (if (= (:db_id table) audit/audit-db-id)
         (do
          ;; Tables in audit DB should start out with no query access in all groups
-         (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-         (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
+          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
+          (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
         (do
           ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (data-perms/set-new-table-permissions! (conj non-magic-groups all-users-group) table :perms/view-data :unrestricted)
+          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
           (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
           (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
       ;; Download permissions
@@ -87,7 +94,7 @@
 (t2/define-after-insert :model/Table
   [table]
   (u/prog1 table
-   (set-new-table-permissions! table)))
+    (set-new-table-permissions! table)))
 
 (defmethod mi/can-read? :model/Table
   ([instance]
@@ -118,11 +125,9 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
 
-
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db)])
-
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -155,8 +160,8 @@
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
   (= (t2/select-pks-set :model/Field
-       :table_id (u/the-id table)
-       :active   true)
+                        :table_id (u/the-id table)
+                        :active   true)
      (set field-ordering)))
 
 (defn custom-order-fields!
@@ -165,11 +170,10 @@
   {:pre [(valid-field-order? table field-order)]}
   (t2/update! Table (u/the-id table) {:field_order :custom})
   (doall
-    (map-indexed (fn [position field-id]
-                   (t2/update! :model/Field field-id {:position        position
-                                                      :custom_position position}))
-                 field-order)))
-
+   (map-indexed (fn [position field-id]
+                  (t2/update! :model/Field field-id {:position        position
+                                                     :custom_position position}))
+                field-order)))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -220,11 +224,12 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (t2/select :model/Card
-                 :table_id [:in table-ids],
-                 :archived false,
-                 :type :metric,
-                 {:order-by [[:name :asc]]}))
+      (->> (t2/select :model/Card
+                      :table_id [:in table-ids],
+                      :archived false,
+                      :type :metric,
+                      {:order-by [[:name :asc]]})
+           (filter mi/can-read?)))
     tables))
 
 (defn with-fields
@@ -233,10 +238,10 @@
   (with-objects :fields
     (fn [table-ids]
       (t2/select :model/Field
-        :active          true
-        :table_id        [:in table-ids]
-        :visibility_type [:not= "retired"]
-        {:order-by       field-order-rule}))
+                 :active          true
+                 :table_id        [:in table-ids]
+                 :visibility_type [:not= "retired"]
+                 {:order-by       field-order-rule}))
     tables))
 
 (mi/define-batched-hydration-method fields
@@ -275,19 +280,16 @@
         db-id       (t2/select-one-pk :model/Database :name db-name)]
     (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
-(defmethod serdes/extract-one "Table"
-  [_model-name _opts {:keys [db_id] :as table}]
-  (-> (serdes/extract-one-basics "Table" table)
-      (dissoc :view_count :estimated_row_count)
-      (assoc :db_id (t2/select-one-fn :name :model/Database :id db_id))))
-
-(defmethod serdes/load-xform "Table"
-  [{:keys [db_id] :as table}]
-  (-> (serdes/load-xform-basics table)
-      (assoc :db_id (t2/select-one-fn :id :model/Database :name db_id))))
+(defmethod serdes/make-spec "Table" [_model-name _opts]
+  {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
+               :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
+               :database_require_filter]
+   :skip      [:estimated_row_count :view_count]
+   :transform {:created_at (serdes/date)
+               :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes/storage-table-path-prefix (serdes/path table))
+  (concat (serdes/storage-path-prefixes (serdes/path table))
           [(:name table)]))
 
 ;;; -------------------------------------------------- Audit Log Table -------------------------------------------------
@@ -295,3 +297,29 @@
 (defmethod audit-log/model-details Table
   [table _event-type]
   (select-keys table [:id :name :db_id]))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "table"
+  {:model        :model/Table
+   :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
+                  ;; so we moved that to the where clause
+                  :archived      false
+                  :collection-id false
+                  :creator-id    false
+                  :database-id   :db_id
+                  :view-count    true
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :display_name :description]
+   :render-terms {:initial-sync-status true
+                  :table-id            :id
+                  :table-description   :description
+                  :table-name          :name
+                  :table-schema        :schema
+                  :database-name       :db.name}
+   :where        [:and
+                  :active
+                  [:= :visibility_type nil]
+                  [:not= :db_id [:inline audit/audit-db-id]]]
+   :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})

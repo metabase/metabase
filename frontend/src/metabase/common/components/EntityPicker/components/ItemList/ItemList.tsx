@@ -3,8 +3,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/components/VirtualizedList";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
-import { Box, Center, Icon, NavLink } from "metabase/ui";
+import { Box, Center, Flex, Icon, NavLink } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
 import { getEntityPickerIcon, isSelectedItem } from "../../utils";
@@ -78,13 +79,23 @@ export const ItemList = <
         const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
 
         return (
-          <div key={`${item.model}-${item.id}`}>
+          <div data-testid="picker-item" key={`${item.model}-${item.id}`}>
             <NavLink
               disabled={shouldDisableItem?.(item)}
               rightSection={
                 isFolder(item) ? <Icon name="chevronright" size={10} /> : null
               }
-              label={item.name}
+              label={
+                <Flex align="center">
+                  {item.name}{" "}
+                  <PLUGIN_MODERATION.ModerationStatusIcon
+                    status={item.moderated_status}
+                    filled
+                    size={14}
+                    ml="0.5rem"
+                  />
+                </Flex>
+              }
               active={isSelected}
               icon={<Icon {...icon} />}
               onClick={(e: React.MouseEvent) => {

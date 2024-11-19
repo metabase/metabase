@@ -14,13 +14,13 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { DashCardMenuConnected } from "./DashCardMenu";
+import { DashCardMenu } from "./DashCardMenu";
 
 const TEST_CARD = createMockCard({
   can_write: true,
@@ -43,12 +43,33 @@ const TEST_CARD_NATIVE = createMockCard({
   }),
 });
 
+const TEST_CARD_MODEL = createMockCard({
+  can_write: true,
+  type: "model",
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  }),
+});
+
+const TEST_CARD_METRIC = createMockCard({
+  can_write: true,
+  type: "metric",
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  }),
+});
+
 const TEST_CARD_NO_DATA_ACCESS = createMockCard({
   dataset_query: createMockStructuredDatasetQuery({
     database: SAMPLE_DB_ID,
     query: {},
   }),
-  can_run_adhoc_query: false,
 });
 
 const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({
@@ -93,7 +114,7 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
       <Route
         path="dashboard/:slug"
         component={() => (
-          <DashCardMenuConnected question={question} result={result} />
+          <DashCardMenu question={question} result={result} downloadsEnabled />
         )}
       />
       <Route path="question/:slug" component={() => <div />} />
@@ -130,6 +151,26 @@ describe("DashCardMenu", () => {
     expect(pathname).toBe(`/question/${TEST_CARD_SLUG}`);
   });
 
+  it("should display a link to the editor for models", async () => {
+    const { history } = setup({ card: TEST_CARD_MODEL });
+
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Edit model"));
+
+    const pathname = history?.getCurrentLocation().pathname;
+    expect(pathname).toBe(`/model/${TEST_CARD_SLUG}/query`);
+  });
+
+  it("should display a link to the editor for metrics", async () => {
+    const { history } = setup({ card: TEST_CARD_METRIC });
+
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Edit metric"));
+
+    const pathname = history?.getCurrentLocation().pathname;
+    expect(pathname).toBe(`/metric/${TEST_CARD_SLUG}/query`);
+  });
+
   it("should not display a link to the notebook editor if the user does not have the data permission", async () => {
     setup({ card: TEST_CARD_NO_DATA_ACCESS });
 
@@ -154,7 +195,18 @@ describe("DashCardMenu", () => {
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Download results"));
 
-    expect(screen.getByText("Download full results")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /download/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("should not display query export options when query is running", async () => {
+    setup({ result: {} as any });
+
+    await userEvent.click(getIcon("ellipsis"));
+
+    expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    expect(screen.queryByText("Download results")).not.toBeInTheDocument();
   });
 
   it("should not display query export options when there is a query error", async () => {

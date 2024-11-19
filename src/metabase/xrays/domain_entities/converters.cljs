@@ -1,8 +1,8 @@
 (ns metabase.xrays.domain-entities.converters
   (:require
-    [malli.core :as mc]
-    [malli.transform :as mtx]
-    [metabase.util :as u]))
+   [malli.core :as mc]
+   [malli.transform :as mtx]
+   [metabase.util :as u]))
 
 (defn- decode-map [schema _]
   (let [by-prop (into {} (for [[map-key props] (mc/children schema)]
@@ -91,45 +91,45 @@
   `:tuple`, `:vector` and `:sequential` all get transformed into CLJS vectors. When converting back to JS,
   they are JS arrays."
   (mtx/transformer
-    {:name :js
-     :decoders
-     (merge identity-transformers
-            {:keyword           keyword
-             'keyword?          keyword
-             :qualified-keyword keyword
-             :uuid              parse-uuid
-             :vector            {:enter #(and % (vec %))}
-             :sequential        {:enter #(and % (vec %))}
-             :tuple             {:enter #(and % (vec %))}
-             :cat               {:enter #(and % (vec %))}
-             :catn              {:enter #(and % (vec %))}
-             :enum              {:compile infer-child-decoder}
-             :=                 {:compile infer-child-decoder}
-             :map               {:compile decode-map}
-             :map-of            {:compile (fn [schema _]
-                                            (let [[key-schema] (mc/children schema)
-                                                  keydec (mc/decoder key-schema js-transformer)]
-                                              {:enter #(decode-map-of keydec %)}))}})
-     :encoders
-     (merge identity-transformers
-            {:keyword           name
-             'keyword?          name
-             :qualified-keyword #(str (namespace %) "/" (name %))
-             :uuid              str
-             :vector            {:leave clj->js}
-             :sequential        {:leave clj->js}
-             :tuple             {:leave clj->js}
-             :enum              {:compile infer-child-encoder}
-             :=                 {:compile infer-child-encoder}
-             :map               {:compile
-                                 (fn [schema _]
-                                   (let [js-props (into {} (for [[k props] (mc/children schema)
-                                                                 :when (:js/prop props)]
-                                                             [k (:js/prop props)]))
-                                         keyenc   (fn [k] (or (get js-props k)
-                                                              (u/->snake_case_en (u/qualified-name k))))]
-                                     {:leave #(encode-map % keyenc)}))}
-             :map-of            {:leave #(encode-map % name)}})}))
+   {:name :js
+    :decoders
+    (merge identity-transformers
+           {:keyword           keyword
+            'keyword?          keyword
+            :qualified-keyword keyword
+            :uuid              parse-uuid
+            :vector            {:enter #(and % (vec %))}
+            :sequential        {:enter #(and % (vec %))}
+            :tuple             {:enter #(and % (vec %))}
+            :cat               {:enter #(and % (vec %))}
+            :catn              {:enter #(and % (vec %))}
+            :enum              {:compile infer-child-decoder}
+            :=                 {:compile infer-child-decoder}
+            :map               {:compile decode-map}
+            :map-of            {:compile (fn [schema _]
+                                           (let [[key-schema] (mc/children schema)
+                                                 keydec (mc/decoder key-schema js-transformer)]
+                                             {:enter #(decode-map-of keydec %)}))}})
+    :encoders
+    (merge identity-transformers
+           {:keyword           name
+            'keyword?          name
+            :qualified-keyword #(str (namespace %) "/" (name %))
+            :uuid              str
+            :vector            {:leave clj->js}
+            :sequential        {:leave clj->js}
+            :tuple             {:leave clj->js}
+            :enum              {:compile infer-child-encoder}
+            :=                 {:compile infer-child-encoder}
+            :map               {:compile
+                                (fn [schema _]
+                                  (let [js-props (into {} (for [[k props] (mc/children schema)
+                                                                :when (:js/prop props)]
+                                                            [k (:js/prop props)]))
+                                        keyenc   (fn [k] (or (get js-props k)
+                                                             (u/->snake_case_en (u/qualified-name k))))]
+                                    {:leave #(encode-map % keyenc)}))}
+            :map-of            {:leave #(encode-map % name)}})}))
 
 (defn incoming
   "Returns a function for converting a JS value into CLJS data structures, based on a schema."

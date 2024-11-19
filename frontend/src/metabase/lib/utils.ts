@@ -3,9 +3,6 @@ import _ from "underscore";
 
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
-const EMAIL_REGEX =
-  /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-
 export function isEmpty(str: string | null) {
   if (str != null) {
     str = String(str);
@@ -40,18 +37,6 @@ export function isJWT(string: unknown) {
     typeof string === "string" &&
     /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string)
   );
-}
-
-export function isEmail(email: string | undefined | null) {
-  if (email === null || email === undefined) {
-    return false;
-  }
-  return EMAIL_REGEX.test(email);
-}
-
-export function getEmailDomain(email: string) {
-  const match = EMAIL_REGEX.exec(email);
-  return match && match[5];
 }
 
 export function equals(a: unknown, b: unknown) {
@@ -153,17 +138,26 @@ export function compareVersions(
   return 0;
 }
 
+export function newVersionAvailable({
+  currentVersion,
+  latestVersion,
+}: {
+  currentVersion: string;
+  latestVersion: string;
+}) {
+  const result = compareVersions(currentVersion, latestVersion);
+  return result != null && result < 0;
+}
+
+export function versionIsLatest({
+  currentVersion,
+  latestVersion,
+}: {
+  currentVersion: string;
+  latestVersion: string;
+}) {
+  const result = compareVersions(currentVersion, latestVersion);
+  return result != null && result >= 0;
+}
+
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
-
-export const safeJsonParse = (value: string | null | undefined) => {
-  if (!value) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(value);
-  } catch (e) {
-    console.error("Unable to parse JSON: ", value, e);
-    return null;
-  }
-};

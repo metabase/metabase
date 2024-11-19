@@ -2,9 +2,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  ROOT_COLLECTION,
   PERSONAL_COLLECTION,
   PERSONAL_COLLECTIONS,
+  ROOT_COLLECTION,
 } from "./constants";
 
 // given list of collections with { id, name, location } returns a map of ids to
@@ -24,8 +24,8 @@ function getExpandedCollectionsById(
         c.id === "root"
           ? []
           : c.location != null
-          ? ["root", ...c.location.split("/").filter(l => l)]
-          : null,
+            ? ["root", ...c.location.split("/").filter(l => l)]
+            : null,
       parent: null,
       children: [],
     };

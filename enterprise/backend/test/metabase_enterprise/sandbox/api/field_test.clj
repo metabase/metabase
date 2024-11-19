@@ -170,7 +170,7 @@
 
       (testing "Do we invalidate the cache when full FieldValues change"
         (try
-          (let [ ;; Updating FieldValues which should invalidate the cache
+          (let [;; Updating FieldValues which should invalidate the cache
                 fv-id      (t2/select-one-pk FieldValues :field_id (:id field) :type :full)
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"

@@ -56,19 +56,17 @@
     'metabase.util.i18n/trsn
     'metabase.util.i18n/trun
     'metabase.util.i18n/deferred-trsn
-    'metabase.util.i18n/deferred-trun
-    'metabase.shared.util.i18n/tru
-    'metabase.shared.util.i18n/trs})
+    'metabase.util.i18n/deferred-trun})
 
 (def ^:private plural-translation-macro-names
   #{"trsn" "trun" "deferred-trsn" "deferred-trun"})
 
 (s/def ::translate (s/and
-                     (complement vector?)
-                     (s/cat :translate-symbol (fn [x]
+                    (complement vector?)
+                    (s/cat :translate-symbol (fn [x]
                                                (and (symbol? x)
                                                     (translation-vars (g/resolve-symbol x))))
-                            :args (s/+ any?))))
+                           :args (s/+ any?))))
 
 (defn- form->messages
   "Function that turns a form into a map containing the translation string, and optional plural translation string

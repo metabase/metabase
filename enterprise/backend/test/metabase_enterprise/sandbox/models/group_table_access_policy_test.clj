@@ -34,12 +34,12 @@
                (t2/select-one-fn :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap))))))))
 
 (deftest disallow-changing-table-id-test
-  (testing "You can't change the table_id of a GTAP after it has been created."
+  (testing "You can't change the table_id of a sandbox after it has been created."
     (t2.with-temp/with-temp [GroupTableAccessPolicy gtap {:table_id (mt/id :venues)
                                                           :group_id (u/the-id (perms-group/all-users))}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"You cannot change the Table ID of a GTAP once it has been created"
+           #"You cannot change the table ID of a sandbox once it has been created"
            (t2/update! GroupTableAccessPolicy (:id gtap) {:table_id (mt/id :checkins)}))))))
 
 (deftest disallow-queries-that-add-columns-test

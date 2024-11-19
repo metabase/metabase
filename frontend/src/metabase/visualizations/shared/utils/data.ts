@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import { sumMetric } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { getColumnScaling } from "metabase/visualizations/echarts/cartesian/model/util";
+import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {
   CartesianChartColumns,
   ColumnDescriptor,
@@ -21,10 +21,10 @@ import type {
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
 import type {
+  DatasetData,
   RowValue,
   RowValues,
   SeriesOrderSetting,
-  DatasetData,
 } from "metabase-types/api";
 
 import { getChartMetrics } from "./series";

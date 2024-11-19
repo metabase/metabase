@@ -1,13 +1,13 @@
 import {
-  restore,
-  popover,
   clearFilterWidget,
-  filterWidget,
   editDashboard,
+  filterWidget,
+  popover,
+  restore,
   saveDashboard,
   setFilter,
-  visitQuestion,
   visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -40,7 +40,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
   it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Time", filter);
+      setFilter("Date picker", filter);
 
       cy.findByText("Select…").click();
       popover().contains(filter).click();
@@ -68,7 +68,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
   });
 
   it("should work when set as the default filter", () => {
-    setFilter("Time", "Month and Year");
+    setFilter("Date picker", "Month and Year");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();

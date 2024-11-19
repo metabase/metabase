@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
 
-import { setup, dashcard, user, hasBasicFilterOptions } from "./setup";
+import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
 
 describe("SharingSidebar", () => {
   it("should forward non-admin to email form - when slack is not setup", async () => {

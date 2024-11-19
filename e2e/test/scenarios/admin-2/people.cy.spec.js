@@ -3,18 +3,21 @@ import _ from "underscore";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  NORMAL_USER_ID,
   COLLECTION_GROUP_ID,
+  NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
+  createAlert,
+  createApiKey,
+  createPulse,
+  describeEE,
+  getCurrentUser,
+  getFullName,
   modal,
   popover,
-  setupSMTP,
-  describeEE,
-  getFullName,
+  restore,
   setTokenFeatures,
-  createApiKey,
+  setupSMTP,
 } from "e2e/support/helpers";
 
 const { sandboxed, normal, admin, nodata, nocollection } = USERS;
@@ -252,9 +255,17 @@ describe("scenarios > admin > people", () => {
       showUserOptions(normalUserName);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit user").click();
-      cy.findByDisplayValue(normal.first_name).click().clear().type(NEW_NAME);
 
-      clickButton("Update");
+      modal().within(() => {
+        cy.log("Should display error messages (metabase#46449)");
+        cy.findByLabelText("First name").click().clear().type(" ");
+        clickButton("Update");
+        cy.findByText(/non-blank string./).should("exist");
+
+        cy.findByLabelText("First name").click().clear().type(NEW_NAME);
+        clickButton("Update", { timeout: 4000 });
+      });
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NEW_FULL_NAME);
       cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
@@ -531,12 +542,12 @@ describeEE("scenarios > admin > people", () => {
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
-    cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+    getCurrentUser().then(({ body: { id: user_id } }) => {
       cy.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
-        cy.createAlert(getAlertDetails({ user_id, card_id }));
-        cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
+        createAlert(getAlertDetails({ user_id, card_id }));
+        createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });
 
@@ -799,6 +810,7 @@ describeEE("issue 23689", () => {
     cy.visit(`/admin/people/groups/${groupId}`);
     cy.wait("@membership");
   }
+
   beforeEach(() => {
     // TODO: remove the next line when this issue gets fixed
     cy.skipOn(true);
@@ -868,8 +880,8 @@ function showUserOptions(full_name) {
     });
 }
 
-function clickButton(button_name) {
-  cy.button(button_name).should("not.be.disabled").click();
+function clickButton(button_name, opts = {}) {
+  cy.button(button_name, opts).should("not.be.disabled").click();
 }
 
 function assertTableRowsCount(length) {

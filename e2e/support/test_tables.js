@@ -5,7 +5,7 @@
 // json-serializable data to cypress tasks (which run in node)
 // https://docs.cypress.io/api/commands/task#Arguments
 
-import { many_data_types_rows } from "./test_tables_data";
+import { ip_addresses_rows, many_data_types_rows } from "./test_tables_data";
 
 export const colors27745 = async dbClient => {
   const tableName = "colors27745";
@@ -169,23 +169,70 @@ export const no_pk_table = async dbClient => {
 
 export const multi_schema = async dbClient => {
   const schemas = {
-    Domestic: [
-      "Animals",
-      [
+    Domestic: {
+      Animals: [
         { name: "Duck", score: 10 },
         { name: "Horse", score: 20 },
         { name: "Cow", score: 30 },
       ],
-    ],
-    Wild: [
-      "Animals",
-      [
+    },
+    Wild: {
+      Animals: [
         { name: "Snake", score: 10 },
         { name: "Lion", score: 20 },
         { name: "Elephant", score: 30 },
       ],
-    ],
+      Birds: [{ name: "Toucan", score: 50 }],
+    },
   };
+
+  for (const [schema, tables] of Object.entries(schemas)) {
+    await dbClient.schema.createSchemaIfNotExists(schema);
+
+    for (const [table, rows] of Object.entries(tables)) {
+      await dbClient.schema.withSchema(schema).dropTableIfExists(table);
+      await dbClient.schema.withSchema(schema).createTable(table, t => {
+        t.string("name");
+        t.integer("score");
+      });
+      await dbClient(`${schema}.${table}`).insert(rows);
+    }
+  }
+
+  return schemas;
+};
+
+export const ip_addresses = async dbClient => {
+  const tableName = "ip_addresses";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.text("count");
+  });
+
+  await dbClient.schema.raw(`ALTER TABLE ${tableName} ADD inet inet`);
+  await dbClient(tableName).insert(ip_addresses_rows);
+
+  return null;
+};
+
+export const many_schemas = async dbClient => {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const schemas = Object.fromEntries(
+    alphabet.map(letter => {
+      const key = `Schema ${letter}`;
+      const value = [
+        "Animals",
+        [
+          { name: "Duck", score: 10 },
+          { name: "Horse", score: 20 },
+          { name: "Cow", score: 30 },
+        ],
+      ];
+      return [key, value];
+    }),
+  );
 
   Object.entries(schemas).forEach(async ([schemaName, details]) => {
     const [table, rows] = details;
@@ -201,4 +248,18 @@ export const multi_schema = async dbClient => {
   });
 
   return schemas;
+};
+
+export const cached_table = async dbClient => {
+  const tableName = "cached_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+  await dbClient.schema.createTable(tableName, table => {
+    table.increments("id").primary();
+    table.string("my_text").notNullable();
+  });
+
+  await dbClient(tableName).insert([{ my_text: "Old Value" }]);
+
+  return null;
 };

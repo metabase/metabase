@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import RecipientPicker from "metabase/pulse/components/RecipientPicker";
+import { RecipientPicker } from "metabase/pulse/components/RecipientPicker";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
 import { Icon } from "metabase/ui";
 
@@ -59,7 +59,6 @@ function _AddEditEmailSidebar({
         <div>
           <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
           <RecipientPicker
-            isNewPulse={pulse.id == null}
             autoFocus={false}
             recipients={channel.recipients}
             recipientTypes={channelSpec.recipients}
@@ -129,26 +128,6 @@ function _AddEditEmailSidebar({
             value={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
           />
-        </div>
-        <div
-          className={cx(
-            CS.textBold,
-            CS.py2,
-            CS.flex,
-            CS.justifyBetween,
-            CS.alignCenter,
-            CS.borderTop,
-          )}
-        >
-          <div className={cx(CS.flex, CS.alignCenter)}>
-            <Heading>{t`Attach results`}</Heading>
-            <Icon
-              name="info"
-              className={cx(CS.textMedium, CS.ml1)}
-              size={12}
-              tooltip={t`Attachments can contain up to 2,000 rows of data.`}
-            />
-          </div>
         </div>
         <EmailAttachmentPicker
           cards={pulse.cards}

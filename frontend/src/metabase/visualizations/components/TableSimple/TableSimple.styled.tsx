@@ -22,7 +22,6 @@ export const TableContainer = styled.div`
   bottom: 0;
   right: 0;
   left: 0;
-
   overflow-x: auto;
   overflow-y: hidden;
 `;
@@ -30,9 +29,7 @@ export const TableContainer = styled.div`
 const standardTableStyleReset = css`
   border-collapse: collapse;
   border-spacing: 0;
-
   width: 100%;
-
   font-size: 12px;
   line-height: 12px;
   text-align: left;
@@ -76,7 +73,9 @@ export const TableHeaderCellContent = styled.button<{
   width: 100%;
   flex-direction: ${props => (props.isRightAligned ? "row-reverse" : "row")};
   color: ${props =>
-    props.isSorted ? "var(--mb-color-brand)" : "var(--mb-color-text-medium)"};
+    props.isSorted
+      ? "var(--mb-color-brand)"
+      : "var(--mb-color-text-secondary)"};
   font-weight: 700;
   cursor: pointer;
 
@@ -92,7 +91,6 @@ export const TableHeaderCellContent = styled.button<{
 export const TableFooterRoot = styled.div`
   display: flex;
   flex-shrink: 0;
-
   padding: 0.5rem;
   margin-left: auto;
 `;
@@ -107,7 +105,6 @@ export const PaginationButton = styled.button<{
   padding-left: ${props =>
     props.direction === "previous" ? "0.5rem" : "unset"};
   padding-right: 0.5rem;
-
   cursor: pointer;
 
   &:hover {

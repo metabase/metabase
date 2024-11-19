@@ -15,7 +15,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
 (def ^:private remapped-field
@@ -170,7 +169,6 @@
                                                    ::qp.add-dimension-projections/new-field-dimension-id integer?}]]}})
                 query))))))
 
-
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
@@ -245,8 +243,12 @@
 (deftest ^:parallel transform-values-for-col-test
   (testing "test that different columns types are transformed"
     (is (= (map list [123M 123.0 123N 123 "123"])
-           (map #(#'qp.add-dimension-projections/transform-values-for-col {:base-type %} [123])
-                [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text])))))
+           (map #(#'qp.add-dimension-projections/transform-values-for-col {:base-type %} [123] false)
+                [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text])))
+    (testing "and stringified if necessary"
+      (is (= (map list ["123" "123.0" "123" "123" "123"])
+             (map #(#'qp.add-dimension-projections/transform-values-for-col {:base-type %} [123] true)
+                  [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text]))))))
 
 (deftest ^:parallel external-remappings-metadata-test
   (testing "test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info"
@@ -468,54 +470,62 @@
 ;;; update [[metabase.query-processor.middleware.add-dimension-projections/remap-column-infos]] not to ignore `:field`
 ;;; clauses with a `:join-alias`, altho the implicit joins don't get added by this middleware.
 
-#_
-(deftest ^:parallel add-remappings-inside-joins-test
-  (testing "Remappings should work inside joins (#15578)"
-    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      meta/metadata-provider
-                                      (meta/field-metadata :orders :product-id)
-                                      (meta/field-metadata :products :title))
-      (is (=? (lib.tu.macros/mbql-query products
-                {:joins  [{:source-query {:source-table $$orders}
-                           :alias        "Q1"
-                           :fields       [&Q1.orders.id
-                                          &Q1.orders.product-id
-                                          &PRODUCTS__via__PRODUCT_ID.orders.product-id->title]
-                           :condition    [:= $id &Q1.orders.product-id]
-                           :strategy     :left-join}
-                          {:source-table $$products
-                           :alias        "PRODUCTS__via__PRODUCT_ID"
-                           :condition    [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.products.id]
-                           :strategy     :left-join
-                           :fk-field-id  %orders.product-id}]
-                 :fields [&Q1.orders.id
-                          &Q1.orders.product-id
-                          $orders.product-id->products.title
-                          &PRODUCTS__via__PRODUCT_ID.orders.product-id->products.title]
-                 :limit  2})
-              (qp.add-dimension-projections/add-remapped-columns
-               (lib.tu.macros/mbql-query products
-                 {:joins  [{:strategy     :left-join
-                            :source-query {:source-table $$orders}
-                            :alias        "Q1"
-                            :condition    [:= $id &Q1.orders.product-id]
-                            :fields       [&Q1.orders.id
-                                           &Q1.orders.product-id]}]
-                  :fields [&Q1.orders.id &Q1.orders.product-id]
-                  :limit  2})))))))
+#_(deftest ^:parallel add-remappings-inside-joins-test
+    (testing "Remappings should work inside joins (#15578)"
+      (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                        meta/metadata-provider
+                                        (meta/field-metadata :orders :product-id)
+                                        (meta/field-metadata :products :title))
+        (is (=? (lib.tu.macros/mbql-query products
+                  {:joins  [{:source-query {:source-table $$orders}
+                             :alias        "Q1"
+                             :fields       [&Q1.orders.id
+                                            &Q1.orders.product-id
+                                            &PRODUCTS__via__PRODUCT_ID.orders.product-id->title]
+                             :condition    [:= $id &Q1.orders.product-id]
+                             :strategy     :left-join}
+                            {:source-table $$products
+                             :alias        "PRODUCTS__via__PRODUCT_ID"
+                             :condition    [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.products.id]
+                             :strategy     :left-join
+                             :fk-field-id  %orders.product-id}]
+                   :fields [&Q1.orders.id
+                            &Q1.orders.product-id
+                            $orders.product-id->products.title
+                            &PRODUCTS__via__PRODUCT_ID.orders.product-id->products.title]
+                   :limit  2})
+                (qp.add-dimension-projections/add-remapped-columns
+                 (lib.tu.macros/mbql-query products
+                   {:joins  [{:strategy     :left-join
+                              :source-query {:source-table $$orders}
+                              :alias        "Q1"
+                              :condition    [:= $id &Q1.orders.product-id]
+                              :fields       [&Q1.orders.id
+                                             &Q1.orders.product-id]}]
+                    :fields [&Q1.orders.id &Q1.orders.product-id]
+                    :limit  2})))))))
 
 (deftest internal-remap-e2e-test
   (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-    (let [results (qp/process-query
-                   {:database (mt/id)
-                    :type     :query
-                    :query    {:source-table (mt/id :venues)
-                               :limit        2}})]
-      (is (= ["ID" "Name"  "Category ID" "Latitude" "Longitude" "Price" "Category ID [internal remap]"]
-             (mapv :display_name (get-in results [:data :cols]))))
-      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Asian"]
-              [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "Burger"]]
-             (mt/rows results))))))
+    (let [query     {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id :venues)
+                                :limit        2}}
+          exp-names ["ID" "Name"  "Category ID" "Latitude" "Longitude" "Price" "Category ID [internal remap]"]]
+      (testing "with original IDs"
+        (let [results (qp/process-query query)]
+          (is (= exp-names
+                 (mapv :display_name (get-in results [:data :cols]))))
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Asian"]
+                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "Burger"]]
+                 (mt/rows results)))))
+      (testing "with stringified IDs"
+        (let [results (qp/process-query (assoc-in query [:middleware :js-int-to-string?] true))]
+          (is (= exp-names
+                 (mapv :display_name (get-in results [:data :cols]))))
+          (is (= [["1" "Red Medicine" "4" 10.0646 -165.374 3 "Asian"]
+                  ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2 "Burger"]]
+                 (mt/rows results))))))))
 
 (deftest ^:parallel different-id-types-test
   (testing "Make sure different ID types like Integers vs BigDecimals (Oracle) are handled correctly\n"
@@ -524,19 +534,21 @@
                                          {:base-type :type/Decimal,    :cast-fn bigdec}
                                          {:base-type :type/BigInteger, :cast-fn bigint}
                                          {:base-type :type/Text,       :cast-fn str}]]
-      (testing (format "Base type = %s; IDs in result rows are %s" base-type (class (cast-fn 1)))
-        (let [info (#'qp.add-dimension-projections/col->dim-map
-                    1
-                    (assoc (meta/field-metadata :venues :category-id)
-                           :base-type          base-type
-                           :effective-type     base-type
-                           :lib/internal-remap {:lib/type              :metadata.column.remapping/internal
-                                                :id                    1
-                                                :name                  "Category ID [internal remap]"
-                                                :values                [24]
-                                                :human-readable-values ["Fashion"]}))
-              f    (#'qp.add-dimension-projections/make-row-map-fn [info])]
-          (is (= [["Some store" (cast-fn 1) nil]
-                  ["Another store" (cast-fn 24) "Fashion"]]
-                 (transduce (map f) conj [] [["Some store" (cast-fn 1)]
-                                             ["Another store" (cast-fn 24)]]))))))))
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (testing (format "Base type = %s; IDs in result rows are %s" base-type (class (cast-fn 1)))
+          (let [info (#'qp.add-dimension-projections/col->dim-map
+                      1
+                      (assoc (meta/field-metadata :venues :category-id)
+                             :id                 nil
+                             :base-type          base-type
+                             :effective-type     base-type
+                             :lib/internal-remap {:lib/type              :metadata.column.remapping/internal
+                                                  :id                    1
+                                                  :name                  "Category ID [internal remap]"
+                                                  :values                [24]
+                                                  :human-readable-values ["Fashion"]}))
+                f    (#'qp.add-dimension-projections/make-row-map-fn [info])]
+            (is (= [["Some store" (cast-fn 1) nil]
+                    ["Another store" (cast-fn 24) "Fashion"]]
+                   (transduce (map f) conj [] [["Some store" (cast-fn 1)]
+                                               ["Another store" (cast-fn 24)]])))))))))

@@ -35,23 +35,8 @@ jobs:
 
       - name: Remind PR authors to use conventional commit in the title
         if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
-        run: |
-          comment='@${{ github.event.pull_request.user.login }} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
-
-          Here are all the supported types that will be shown in the changelog:
-          - `feat`
-          - `fix`
-          - `perf`
-
-          These types `docs`, `style`, `refactor`, `test`, `build`, and `ci` are also encouraged for non-changelog related tasks.
-
-          Please also make sure to include `sdk` scope, otherwise, the changelog will not include this task.
-
-          For example, these are valid PR titles:
-          - `feat(sdk): Add interactive dashboard component`
-          - `feat(sdk): Support theming pie chart`
-          - `fix(sdk): Fix static dashboard crash`'
-
-          gh pr comment -b "$comment" --edit-last || gh pr comment -b "$comment"
-        env:
-          GH_TOKEN: ${{ github.token }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { updateComment } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")
+            await updateComment({github, context})

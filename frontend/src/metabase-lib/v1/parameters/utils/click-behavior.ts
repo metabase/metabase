@@ -20,22 +20,24 @@ import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { ClickObjectDataRow } from "metabase-lib/v1/queries/drills/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import { isa, isDate } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   ClickBehavior,
   ClickBehaviorDimensionTarget,
   ClickBehaviorSource,
   ClickBehaviorTarget,
   Dashboard,
-  QuestionDashboardCard,
   DashboardId,
   DatasetColumn,
   DatetimeUnit,
   Parameter,
   ParameterValueOrArray,
+  QuestionDashboardCard,
   UserAttribute,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
+
+import { parseParameterValue } from "./parameter-parsing";
 
 interface Target {
   id: Parameter["id"];
@@ -52,6 +54,7 @@ interface SourceFilters {
 
 interface ExtraData {
   dashboard?: Dashboard;
+  parameters?: Parameter[];
   dashboards?: Record<Dashboard["id"], Dashboard>;
 }
 
@@ -291,6 +294,7 @@ function baseTypeFilterForParameterType(parameterType: string) {
     id: [TYPE.Integer, TYPE.UUID],
     category: [TYPE.Text, TYPE.Integer],
     location: [TYPE.Text],
+    "temporal-unit": [TYPE.Text, TYPE.TextLike],
   }[typePrefix];
   if (allowedTypes === undefined) {
     // default to showing everything
@@ -372,6 +376,12 @@ export function formatSourceForTarget(
   },
 ) {
   const datum = data[source.type][source.id.toLowerCase()] || {};
+  const parameter = getParameter(target, { extraData, clickBehavior });
+
+  if (parameter?.type === "temporal-unit") {
+    return parseParameterValue(datum.value, parameter);
+  }
+
   if (
     "column" in datum &&
     datum.column &&
@@ -382,7 +392,6 @@ export function formatSourceForTarget(
 
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
-      const parameter = getParameter(target, { extraData, clickBehavior });
       if (parameter) {
         return formatDateForParameterType(
           datum.value,
@@ -408,7 +417,7 @@ export function formatSourceForTarget(
     }
   }
 
-  return datum.value;
+  return parameter ? parseParameterValue(datum.value, parameter) : datum.value;
 }
 
 function formatDateForParameterType(
@@ -462,7 +471,7 @@ function getParameter(
   },
 ): Parameter | undefined {
   if (clickBehavior.type === "crossfilter") {
-    const parameters = extraData.dashboard?.parameters || [];
+    const parameters = extraData.parameters ?? [];
     return parameters.find(parameter => parameter.id === target.id);
   }
 
@@ -472,9 +481,11 @@ function getParameter(
     (clickBehavior.linkType === "dashboard" ||
       clickBehavior.linkType === "question")
   ) {
-    const dashboard =
-      extraData.dashboards?.[clickBehavior.targetId as DashboardId];
-    const parameters = dashboard?.parameters || [];
+    const dashboardId = clickBehavior.targetId as DashboardId;
+    const parameters =
+      extraData.dashboard?.id === dashboardId
+        ? (extraData.parameters ?? [])
+        : (extraData.dashboards?.[dashboardId]?.parameters ?? []);
     return parameters.find(parameter => parameter.id === target.id);
   }
 

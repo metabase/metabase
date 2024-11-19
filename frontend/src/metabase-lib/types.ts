@@ -1,24 +1,26 @@
 import type {
   CardId,
-  DatasetColumn,
   DatabaseId,
+  DatasetColumn,
   FieldId,
   FieldValuesType,
   RowValue,
-  TableId,
   SchemaId,
+  TableId,
+  TableVisibilityType,
   TemporalUnit,
 } from "metabase-types/api";
 
 import type {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
-  NUMBER_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
   TIME_FILTER_OPERATORS,
 } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
@@ -134,6 +136,7 @@ export type TableDisplayInfo = {
   isQuestion?: boolean;
   isModel?: boolean;
   isMetric?: boolean;
+  visibilityType?: TableVisibilityType;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -159,7 +162,7 @@ export type ColumnDisplayInfo = {
   table?: TableInlineDisplayInfo;
   fingerprint?: FingerprintDisplayInfo;
 
-  breakoutPosition?: number;
+  breakoutPositions?: number[];
   filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
@@ -189,13 +192,16 @@ export type TextFingerprintDisplayInfo = {
   percentUrl: number;
 };
 
+// We're setting the values here as unknown even though
+// the API will return numbers most of the time, because
+// sometimes it doesn't!
 export type NumberFingerprintDisplayInfo = {
-  avg: number;
-  max: number;
-  min: number;
-  q1: number;
-  q3: number;
-  sd: number;
+  avg: unknown;
+  max: unknown;
+  min: unknown;
+  q1: unknown;
+  q3: unknown;
+  sd: unknown;
 };
 
 export type DateTimeFingerprintDisplayInfo = {
@@ -204,7 +210,7 @@ export type DateTimeFingerprintDisplayInfo = {
 };
 
 export type ColumnGroupDisplayInfo = TableDisplayInfo & {
-  fkReferenceName?: string;
+  isMainGroup?: boolean;
 };
 
 export type SegmentDisplayInfo = {
@@ -274,6 +280,7 @@ export type ExpressionOperatorName =
   | "concat"
   | "interval"
   | "time-interval"
+  | "relative-time-interval"
   | "relative-datetime"
   | "inside"
   | "segment"
@@ -303,26 +310,30 @@ export type FilterOperatorName =
   | ExcludeDateFilterOperatorName
   | CoordinateFilterOperatorName;
 
-export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
+export type StringFilterOperatorName = (typeof STRING_FILTER_OPERATORS)[number];
 
-export type NumberFilterOperatorName = typeof NUMBER_FILTER_OPERATORS[number];
+export type NumberFilterOperatorName = (typeof NUMBER_FILTER_OPERATORS)[number];
 
 export type CoordinateFilterOperatorName =
-  typeof COORDINATE_FILTER_OPERATORS[number];
+  (typeof COORDINATE_FILTER_OPERATORS)[number];
 
-export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+export type BooleanFilterOperatorName =
+  (typeof BOOLEAN_FILTER_OPERATORS)[number];
 
 export type SpecificDateFilterOperatorName =
-  typeof SPECIFIC_DATE_FILTER_OPERATORS[number];
+  (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
 
 export type ExcludeDateFilterOperatorName =
-  typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
+  (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
 
-export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
+export type TimeFilterOperatorName = (typeof TIME_FILTER_OPERATORS)[number];
 
-export type RelativeDateBucketName = typeof RELATIVE_DATE_BUCKETS[number];
+export type DefaultFilterOperatorName =
+  (typeof DEFAULT_FILTER_OPERATORS)[number];
 
-export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
+export type RelativeDateBucketName = (typeof RELATIVE_DATE_BUCKETS)[number];
+
+export type ExcludeDateBucketName = (typeof EXCLUDE_DATE_BUCKETS)[number];
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -334,12 +345,13 @@ export type FilterOperatorDisplayInfo = {
 export type FilterParts =
   | StringFilterParts
   | NumberFilterParts
+  | CoordinateFilterParts
   | BooleanFilterParts
   | SpecificDateFilterParts
   | RelativeDateFilterParts
   | ExcludeDateFilterParts
   | TimeFilterParts
-  | CoordinateFilterParts;
+  | DefaultFilterParts;
 
 export type StringFilterParts = {
   operator: StringFilterOperatorName;
@@ -375,6 +387,7 @@ export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
   values: Date[];
+  hasTime: boolean;
 };
 
 export type RelativeDateFilterParts = {
@@ -408,6 +421,11 @@ export type TimeFilterParts = {
   operator: TimeFilterOperatorName;
   column: ColumnMetadata;
   values: Date[];
+};
+
+export type DefaultFilterParts = {
+  operator: DefaultFilterOperatorName;
+  column: ColumnMetadata;
 };
 
 export type JoinConditionOperatorDisplayInfo = {
@@ -563,6 +581,12 @@ export type FilterDrillDetails = {
   column: ColumnMetadata;
 };
 
+export type CombineColumnsDrillDetails = {
+  query: Query;
+  stageIndex: number;
+  column: ColumnMetadata;
+};
+
 export type AggregationDrillDetails = {
   aggregation: AggregationClause;
 };
@@ -615,7 +639,7 @@ export type DatabaseItem = {
 
 export type SchemaItem = {
   type: "schema";
-  id: DatabaseId;
+  id: SchemaId;
 };
 
 export type TableItem = {

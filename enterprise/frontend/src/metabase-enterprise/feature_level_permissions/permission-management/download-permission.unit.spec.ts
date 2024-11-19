@@ -2,8 +2,8 @@ import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import {
-  buildDownloadPermission,
   DOWNLOAD_PERMISSION_OPTIONS,
+  buildDownloadPermission,
 } from "./download-permission";
 
 const defaultGroupId = 1;
@@ -27,7 +27,7 @@ const getPermissionGraph = (downloadValue = "all"): GroupsPermissions =>
         },
       },
     },
-  } as any);
+  }) as any;
 
 const isAdmin = true;
 const isNotAdmin = false;

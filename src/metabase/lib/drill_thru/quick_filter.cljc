@@ -56,7 +56,7 @@
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
 
-(mu/defn ^:private operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
+(mu/defn- operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
   [column :- ::lib.schema.metadata/column
    value]
   (let [field-ref (lib.ref/ref column)]
@@ -120,13 +120,13 @@
              (not (lib.types.isa/foreign-key? column)))
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
-    (let [adjusted (lib.drill-thru.column-filter/prepare-query-for-drill-addition
-                     query stage-number column column-ref :filter)]
-      (merge {:lib/type   :metabase.lib.drill-thru/drill-thru
+    (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
+                              query stage-number column column-ref :filter)]
+      (merge drill-details
+             {:lib/type   :metabase.lib.drill-thru/drill-thru
               :type       :drill-thru/quick-filter
-              :operators  (operators-for (:column adjusted) value)
-              :value      value}
-             adjusted))))
+              :operators  (operators-for (:column drill-details) value)
+              :value      value}))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]

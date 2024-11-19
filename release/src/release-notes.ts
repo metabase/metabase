@@ -1,21 +1,24 @@
-import { getMilestoneIssues, isLatestRelease } from "./github";
-import type { ReleaseProps, Issue } from "./types";
+import { match } from "ts-pattern";
+
+import { nonUserFacingLabels, hiddenLabels } from "./constants";
+import { getMilestoneIssues, hasBeenReleased } from "./github";
+import type { Issue, ReleaseProps } from "./types";
 import {
   isEnterpriseVersion,
-  isRCVersion,
+  isPreReleaseVersion,
   isValidVersionString,
 } from "./version-helpers";
 
+const releaseTemplate = `## Upgrading
 
-const releaseTemplate = `**Upgrading**
+> Before you upgrade, back up your Metabase application database!
 
-You can download a .jar of the release, or get the latest on Docker. Make sure to back up your Metabase
-database before you upgrade! Need help? Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase.html).
+Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase).
 
 Docker image: {{docker-tag}}
 Download the JAR here: {{download-url}}
 
-**Notes**
+## Notes
 
 SHA-256 checksum for the {{version}} JAR:
 
@@ -26,26 +29,53 @@ SHA-256 checksum for the {{version}} JAR:
 <details>
 <summary><h2>Changelog</h2></summary>
 
-**Enhancements**
+### Enhancements
 
 {{enhancements}}
 
-**Bug fixes**
+### Bug fixes
 
 {{bug-fixes}}
+
+### Already Fixed
+
+Issues confirmed to have been fixed in a previous release.
+
+{{already-fixed}}
+
+### Under the Hood
+
+{{under-the-hood}}
 
 </details>
 
 `;
 
-const isBugIssue = (issue: Issue) => {
-  if (typeof issue.labels === 'string') {
-    return issue.labels.includes("Type:Bug");
+const hasLabel = (issue: Issue, label: string) => {
+  if (typeof issue.labels === "string") {
+    return issue.labels.includes(label);
   }
-  return issue.labels.some(tag => tag.name === "Type:Bug");
-}
+  return issue.labels.some(tag => tag.name === label);
+};
 
-const formatIssue = (issue: Issue) => `- ${issue.title} (#${issue.number})`;
+const isBugIssue = (issue: Issue) => {
+  return hasLabel(issue, "Type:Bug");
+};
+
+const isAlreadyFixedIssue = (issue: Issue) => {
+  return hasLabel(issue, ".Already Fixed");
+};
+
+const isNonUserFacingIssue = (issue: Issue) => {
+  return nonUserFacingLabels.some(label => hasLabel(issue, label));
+};
+
+const isHiddenIssue = (issue: Issue) => {
+  return hiddenLabels.some(label => hasLabel(issue, label));
+};
+
+const formatIssue = (issue: Issue) =>
+  `- ${issue.title.trim()} (#${issue.number})`;
 
 export const getDockerTag = (version: string) => {
   const imagePath = `${process.env.DOCKERHUB_OWNER}/${
@@ -69,6 +99,120 @@ export const getReleaseTitle = (version: string) => {
   return `Metabase ${version}`;
 };
 
+enum IssueType {
+  bugFixes = "bugFixes",
+  enhancements = "enhancements",
+  alreadyFixedIssues = "alreadyFixedIssues",
+  underTheHoodIssues = "underTheHoodIssues",
+}
+
+// Product area labels take the form of "Category/Subcategory", e.g., "Querying/MBQL"
+// We're only interested in the main product category, e.g., "Querying"
+enum ProductCategory {
+  administration = "Administration",
+  database = "Database",
+  embedding = "Embedding",
+  operation = "Operation",
+  organization = "Organization",
+  querying = "Querying",
+  reporting = "Reporting",
+  visualization = "Visualization",
+  other = "Other",
+}
+
+type CategoryIssueMap = Record<Partial<ProductCategory>, Issue[]>;
+
+type IssueMap = {
+  [IssueType.bugFixes]: CategoryIssueMap;
+  [IssueType.enhancements]: CategoryIssueMap;
+  [IssueType.alreadyFixedIssues]: CategoryIssueMap;
+  [IssueType.underTheHoodIssues]: CategoryIssueMap;
+};
+
+const getIssueType = (issue: Issue): IssueType => {
+  return match(issue)
+    .when(isNonUserFacingIssue, () => IssueType.underTheHoodIssues)
+    .when(isAlreadyFixedIssue, () => IssueType.alreadyFixedIssues)
+    .when(isBugIssue, () => IssueType.bugFixes)
+    .otherwise(() => IssueType.enhancements);
+};
+
+const getLabels = (issue: Issue): string[] => {
+  if (typeof issue.labels === "string") {
+    return issue.labels.split(",");
+  }
+  return issue.labels.map(label => label.name || "");
+};
+
+const hasCategory = (issue: Issue, categoryName: ProductCategory): boolean => {
+  const labels = getLabels(issue);
+  return labels.some(label => label.includes(categoryName));
+};
+
+export const getProductCategory = (issue: Issue): ProductCategory => {
+  const category = Object.values(ProductCategory).find(categoryName =>
+    hasCategory(issue, categoryName)
+  );
+
+  return category ?? ProductCategory.other;
+};
+
+// Format issues for a single product category
+const formatIssueCategory = (categoryName: ProductCategory, issues: Issue[]): string => {
+  return `**${categoryName}**\n\n${issues.map(formatIssue).join("\n")}`;
+};
+
+// We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
+const sortCategories = (categories: ProductCategory[]) => {
+  const uncategorizedIssues = categories.filter(
+    category => category === ProductCategory.other,
+  );
+  const sortedCategories = categories
+    .filter(cat => cat !== ProductCategory.other)
+    .sort((a, b) => a.localeCompare(b));
+
+  return [
+    ...sortedCategories,
+    ...uncategorizedIssues,
+  ];
+};
+
+// For each issue category ("Enhancements", "Bug Fixes", etc.), we want to group issues by product category
+const formatIssues = (issueMap: CategoryIssueMap): string => {
+  const categories = sortCategories(
+    Object.keys(issueMap) as ProductCategory[],
+  );
+
+  return categories
+    .map(categoryName => formatIssueCategory(categoryName, issueMap[categoryName]))
+    .join("\n\n");
+};
+
+export const categorizeIssues = (issues: Issue[]) => {
+  return issues
+    .filter(issue => !isHiddenIssue(issue))
+    .reduce((issueMap: IssueMap, issue: Issue) => {
+      const issueType = getIssueType(issue);
+      const productCategory = getProductCategory(issue);
+
+      return {
+        ...issueMap,
+        [issueType]: {
+          ...issueMap[issueType],
+          [productCategory]: [
+            ...issueMap[issueType][productCategory] ?? [],
+            issue,
+          ],
+        },
+      };
+    }, {
+      [IssueType.bugFixes]: {},
+      [IssueType.enhancements]: {},
+      [IssueType.alreadyFixedIssues]: {},
+      [IssueType.underTheHoodIssues]: {},
+    } as IssueMap);
+};
+
 export const generateReleaseNotes = ({
   version,
   checksum,
@@ -78,15 +222,25 @@ export const generateReleaseNotes = ({
   checksum: string;
   issues: Issue[];
 }) => {
-  const bugFixes = issues.filter(isBugIssue);
-  const enhancements = issues.filter(issue => !isBugIssue(issue));
+  const issuesByType = categorizeIssues(issues);
 
   return releaseTemplate
     .replace(
       "{{enhancements}}",
-      enhancements?.map(formatIssue).join("\n") ?? "",
+      formatIssues(issuesByType.enhancements),
     )
-    .replace("{{bug-fixes}}", bugFixes?.map(formatIssue).join("\n") ?? "")
+    .replace(
+      "{{bug-fixes}}",
+      formatIssues(issuesByType.bugFixes),
+    )
+    .replace(
+      "{{already-fixed}}",
+      formatIssues(issuesByType.alreadyFixedIssues),
+    )
+    .replace(
+      "{{under-the-hood}}",
+      formatIssues(issuesByType.underTheHoodIssues),
+    )
     .replace("{{docker-tag}}", getDockerTag(version))
     .replace("{{download-url}}", getDownloadUrl(version))
     .replace("{{version}}", version)
@@ -106,10 +260,6 @@ export async function publishRelease({
 
   const issues = await getMilestoneIssues({ version, github, owner, repo });
 
-  const isLatest: 'true' | 'false' = !isEnterpriseVersion(version) && await isLatestRelease({ version, github, owner, repo })
-    ? 'true'
-    : 'false';
-
   const payload = {
     owner,
     repo,
@@ -117,8 +267,7 @@ export async function publishRelease({
     name: getReleaseTitle(version),
     body: generateReleaseNotes({ version, checksum, issues }),
     draft: true,
-    prerelease: isRCVersion(version),
-    make_latest: isLatest,
+    prerelease: isPreReleaseVersion(version), // this api arg has never worked, but maybe it will someday! 🤞
   };
 
   return github.rest.repos.createRelease(payload);
@@ -133,19 +282,24 @@ export async function getChangelog({
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
-  const issues = await getMilestoneIssues({ version, github, owner, repo });
+  const isAlreadyReleased = await hasBeenReleased({
+    github,
+    owner,
+    repo,
+    version,
+  });
 
-  const bugFixes = issues.filter(isBugIssue);
-  const enhancements = issues.filter(issue => !isBugIssue(issue));
+  const issues = await getMilestoneIssues({
+    version,
+    github,
+    owner,
+    repo,
+    milestoneStatus: isAlreadyReleased ? "closed" : "open",
+  });
 
-  const notes = `
-## Enhancements
-${enhancements?.map(formatIssue).join("\n") ?? ""}
-
-
-## Bug fixes
-${bugFixes?.map(formatIssue).join("\n") ?? ""}
-`;
-
-  return notes;
+  return generateReleaseNotes({
+    version,
+    checksum: "checksum-placeholder",
+    issues,
+  });
 }

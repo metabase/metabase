@@ -193,10 +193,10 @@
       },
       "viz-settings": {
         "graph.show_trendline": true,
-        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/column-settings": {},
         "graph.y_axis.scale": "linear",
         "graph.metrics": ["sum", "sum_2"],
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "series_settings": {
           "sum": { "color": "#F7C41F", "display": "area" },
           "sum_2": { "color": "#509EE3", "display": "area" }

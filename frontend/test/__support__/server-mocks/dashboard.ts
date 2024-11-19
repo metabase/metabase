@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { getNextId } from "__support__/utils";
 import type {
   Dashboard,
   DashboardId,
@@ -13,6 +14,16 @@ export function setupDashboardEndpoints(dashboard: Dashboard) {
     const lastCall = fetchMock.lastCall(url);
     return createMockDashboard(await lastCall?.request?.json());
   });
+}
+
+export function setupDashboardCreateEndpoint(dashboard: Partial<Dashboard>) {
+  fetchMock.post(
+    `path:/api/dashboard`,
+    createMockDashboard({
+      id: getNextId(),
+      ...dashboard,
+    }),
+  );
 }
 
 export function setupDashboardQueryMetadataEndpoint(

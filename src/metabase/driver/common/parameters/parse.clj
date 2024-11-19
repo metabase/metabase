@@ -59,7 +59,8 @@
     ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
     ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
    [#"(?s)\{\{(?!\{)" :param-begin]
-   ["}}" :param-end]])
+   ["}}" :param-end]
+   ["'" :single-quote]])
 
 (def ^:private sql-token-patterns
   (concat
@@ -69,7 +70,7 @@
     ["\n" :newline]]
    param-token-patterns))
 
-(mu/defn ^:private tokenize :- [:sequential StringOrToken]
+(mu/defn- tokenize :- [:sequential StringOrToken]
   [s                   :- :string
    handle-sql-comments :- :boolean]
   (reduce
@@ -87,16 +88,17 @@
      sql-token-patterns
      param-token-patterns)))
 
-(defn- param [& [k & more]]
-  (when (or (seq more)
-            (not (string? k)))
-    (throw (ex-info (tru "Invalid '{{...}}' clause: expected a param name")
-                    {:type qp.error-type/invalid-query})))
-  (let [k (str/trim k)]
-    (when (empty? k)
-      (throw (ex-info (tru "'{{...}}' clauses cannot be empty.")
+(defn- param [& parsed]
+  (let [[k & more] (combine-adjacent-strings parsed)]
+    (when (or (seq more)
+              (not (string? k)))
+      (throw (ex-info (tru "Invalid '{{...}}' clause: expected a param name")
                       {:type qp.error-type/invalid-query})))
-    (params/->Param k)))
+    (let [k (str/trim k)]
+      (when (empty? k)
+        (throw (ex-info (tru "'{{...}}' clauses cannot be empty.")
+                        {:type qp.error-type/invalid-query})))
+      (params/->Param k))))
 
 (defn- optional [& parsed]
   (when-not (some params/Param? parsed)
@@ -104,14 +106,17 @@
                     {:type qp.error-type/invalid-query})))
   (params/->Optional (combine-adjacent-strings parsed)))
 
-(mu/defn ^:private parse-tokens* :- [:tuple
-                                     [:sequential ParsedToken]
-                                     [:maybe [:sequential StringOrToken]]]
-  [tokens         :- [:sequential StringOrToken]
+(mu/defn- parse-tokens* :- [:tuple
+                            [:sequential ParsedToken]
+                            [:maybe [:sequential StringOrToken]]]
+  [tokens         :- [:maybe [:sequential StringOrToken]]
    optional-level :- :int
    param-level    :- :int
+   in-string?     :- :boolean
    comment-mode   :- [:maybe [:enum :block-comment-begin :line-comment-begin]]]
-  (loop [acc [], [string-or-token & more] tokens]
+  (loop [acc [],
+         [string-or-token & more] tokens
+         in-string? in-string?]
     (cond
       (nil? string-or-token)
       (if (or (pos? optional-level) (pos? param-level))
@@ -120,48 +125,61 @@
         [acc nil])
 
       (string? string-or-token)
-      (recur (conj acc string-or-token) more)
+      (recur (conj acc string-or-token) more in-string?)
 
       :else
       (let [{:keys [text token]} string-or-token]
         (case token
           :optional-begin
           (if comment-mode
-            (recur (conj acc text) more)
-            (let [[parsed more] (parse-tokens* more (inc optional-level) param-level comment-mode)]
-              (recur (conj acc (apply optional parsed)) more)))
+            (recur (conj acc text) more in-string?)
+            (let [[parsed more] (try (let [[parsed more] (parse-tokens* more (inc optional-level) param-level in-string? comment-mode)]
+                                       [(apply optional parsed) more])
+                                     (catch clojure.lang.ExceptionInfo e
+                                       (if (and in-string? (= qp.error-type/invalid-query (:type (ex-data e))))
+                                         [text more]
+                                         (throw e))))]
+              (recur (conj acc parsed) more in-string?)))
 
           :param-begin
           (if comment-mode
-            (recur (conj acc text) more)
-            (let [[parsed more] (parse-tokens* more optional-level (inc param-level) comment-mode)]
-              (recur (conj acc (apply param parsed)) more)))
+            (recur (conj acc text) more in-string?)
+            (let [[parsed more] (try (let [[parsed more] (parse-tokens* more optional-level (inc param-level) in-string? comment-mode)]
+                                       [(apply param parsed) more])
+                                     (catch clojure.lang.ExceptionInfo e
+                                       (if (and in-string? (= qp.error-type/invalid-query (:type (ex-data e))))
+                                         [text more]
+                                         (throw e))))]
+              (recur (conj acc parsed) more in-string?)))
 
           (:line-comment-begin :block-comment-begin)
-          (if (or comment-mode (pos? optional-level))
-            (recur (conj acc text) more)
-            (let [[parsed more] (parse-tokens* more optional-level param-level token)]
-              (recur (into acc (cons text parsed)) more)))
+          (if (or comment-mode (pos? optional-level) in-string?)
+            (recur (conj acc text) more in-string?)
+            (let [[parsed more] (parse-tokens* more optional-level param-level in-string? token)]
+              (recur (into acc (cons text parsed)) more in-string?)))
 
           :block-comment-end
           (if (= comment-mode :block-comment-begin)
             [(conj acc text) more]
-            (recur (conj acc text) more))
+            (recur (conj acc text) more in-string?))
 
           :newline
           (if (= comment-mode :line-comment-begin)
             [(conj acc text) more]
-            (recur (conj acc text) more))
+            (recur (conj acc text) more in-string?))
 
           :optional-end
           (if (pos? optional-level)
             [acc more]
-            (recur (conj acc text) more))
+            (recur (conj acc text) more in-string?))
 
           :param-end
           (if (pos? param-level)
             [acc more]
-            (recur (conj acc text) more)))))))
+            (recur (conj acc text) more in-string?))
+
+          :single-quote
+          (recur (conj acc text) more (not in-string?)))))))
 
 (mu/defn parse :- [:sequential ParsedToken]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
@@ -178,5 +196,5 @@
        [s]
        (do
          (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
-         (u/prog1 (combine-adjacent-strings (first (parse-tokens* tokenized 0 0 nil)))
+         (u/prog1 (combine-adjacent-strings (first (parse-tokens* tokenized 0 0 false nil)))
            (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))

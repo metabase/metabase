@@ -1,8 +1,8 @@
 import {
-  getValuePopulatedParameters,
-  getParameterValuesBySlug,
-  normalizeParameterValue,
   getParameterValue,
+  getParameterValuesBySlug,
+  getValuePopulatedParameters,
+  normalizeParameterValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { createMockParameter } from "metabase-types/api/mocks";
 

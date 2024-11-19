@@ -5,7 +5,7 @@ import { Component } from "react";
 import { connect } from "react-redux";
 
 import CS from "metabase/css/core/index.css";
-import { removeAllChildren, parseDataUri } from "metabase/lib/dom";
+import { parseDataUri, removeAllChildren } from "metabase/lib/dom";
 import { getLogoUrl } from "metabase-enterprise/settings/selectors";
 
 const mapStateToProps = state => ({

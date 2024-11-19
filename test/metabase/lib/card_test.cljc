@@ -195,21 +195,21 @@
       ;; TODO: Currently if the source-card has an explicit join for a table, those fields will also be duplicated as
       ;; implicitly joinable columns. That should be fixed and this test re-enabled. #33565
       #_(testing "even on nested queries"
-        (let [card     (lib.tu/mock-card query)
-              provider (lib.tu/metadata-provider-with-mock-card card)
-              nested   (lib/query provider (lib.metadata/card provider 1))]
-          (is (=? (->> (concat (from :source/card (cols-of :orders))
-                               (from :source/card (cols-of :products)))
-                       (map #(dissoc % :id :table-id))
-                       sorted)
-                  (->> nested lib.metadata.calculation/returned-columns sorted)))
+          (let [card     (lib.tu/mock-card query)
+                provider (lib.tu/metadata-provider-with-mock-card card)
+                nested   (lib/query provider (lib.metadata/card provider 1))]
+            (is (=? (->> (concat (from :source/card (cols-of :orders))
+                                 (from :source/card (cols-of :products)))
+                         (map #(dissoc % :id :table-id))
+                         sorted)
+                    (->> nested lib.metadata.calculation/returned-columns sorted)))
 
-          (is (=? (->> (concat (from :source/card (cols-of :orders))
-                               (from :source/card (cols-of :products)))
-                       (map #(dissoc % :id :table-id))
-                       (concat (from :source/implicitly-joinable (cols-of :people)))
-                       sorted)
-                  (->> nested lib.metadata.calculation/visible-columns sorted))))))))
+            (is (=? (->> (concat (from :source/card (cols-of :orders))
+                                 (from :source/card (cols-of :products)))
+                         (map #(dissoc % :id :table-id))
+                         (concat (from :source/implicitly-joinable (cols-of :people)))
+                         sorted)
+                    (->> nested lib.metadata.calculation/visible-columns sorted))))))))
 
 (deftest ^:parallel display-name-of-joined-cards-is-clean-test
   (testing "We get proper field names rather than ids (#27323)"
@@ -239,3 +239,25 @@
              (lib/display-info query card)))
       (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :metric? true}
              (lib/display-info query (assoc card :type :metric)))))))
+
+(deftest ^:parallel ->card-metadata-column-test
+  (testing ":effective-type is set for columns coming from an aggregation in a card (#47184)"
+    (let [col {:lib/type :metadata/column
+               :base-type :type/Integer
+               :semantic-type :type/Quantity
+               :name "count"
+               :lib/source :source/aggregations}
+          card-id 176
+          card {:type :model}
+          field nil
+          expected-col {:lib/type :metadata/column
+                        :base-type :type/Integer
+                        :effective-type :type/Integer
+                        :semantic-type :type/Quantity
+                        :name "count"
+                        :lib/card-id 176
+                        :lib/source :source/card
+                        :lib/source-column-alias "count"
+                        :fk-target-field-id nil}]
+      (is (=? expected-col
+              (#'lib.card/->card-metadata-column col card-id card field))))))

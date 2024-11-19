@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
 import {
-  StepRoot,
-  StepTitle,
   StepLabel,
   StepLabelText,
+  StepRoot,
+  StepTitle,
 } from "./ActiveStep.styled";
 
 interface ActiveStepProps {

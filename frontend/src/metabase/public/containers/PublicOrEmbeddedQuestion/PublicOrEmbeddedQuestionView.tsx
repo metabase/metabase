@@ -14,12 +14,31 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
-  VisualizationSettings,
   Dataset,
+  DatasetQuery,
   ParameterId,
   ParameterValuesMap,
-  DatasetQuery,
+  VisualizationSettings,
 } from "metabase-types/api";
+
+export interface PublicOrEmbeddedQuestionViewProps {
+  initialized: boolean;
+  card: Card<DatasetQuery> | null;
+  metadata: Metadata;
+  result: Dataset | null;
+  uuid: string;
+  token: string;
+  getParameters: () => UiParameter[];
+  parameterValues: ParameterValuesMap;
+  setParameterValue: (parameterId: ParameterId, value: any) => Promise<void>;
+  setParameterValueToDefault: (parameterId: ParameterId) => void;
+  bordered: boolean;
+  hide_parameters: string | null;
+  theme: DisplayTheme | undefined;
+  titled: boolean;
+  setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
+  downloadsEnabled: boolean;
+}
 
 export function PublicOrEmbeddedQuestionView({
   card,
@@ -32,39 +51,23 @@ export function PublicOrEmbeddedQuestionView({
   setParameterValue,
   setParameterValueToDefault,
   bordered,
-  hide_download_button,
   hide_parameters,
   theme,
   titled,
   setCard,
-}: {
-  initialized: boolean;
-  card: Card<DatasetQuery> | null;
-  metadata: Metadata;
-  result: Dataset | null;
-  uuid: string;
-  token: string;
-  getParameters: () => UiParameter[];
-  parameterValues: ParameterValuesMap;
-  setParameterValue: (parameterId: ParameterId, value: any) => Promise<void>;
-  setParameterValueToDefault: (parameterId: ParameterId) => void;
-  bordered: boolean;
-  hide_download_button: boolean | null;
-  hide_parameters: string | null;
-  theme: DisplayTheme | undefined;
-  titled: boolean;
-  setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
-}) {
+  downloadsEnabled,
+}: PublicOrEmbeddedQuestionViewProps) {
   const question = new Question(card, metadata);
-  const actionButtons = result && (
-    <QueryDownloadWidget
-      className={cx(CS.m1, CS.textMediumHover)}
-      question={question}
-      result={result}
-      uuid={uuid}
-      token={token}
-    />
-  );
+  const actionButtons =
+    result && downloadsEnabled ? (
+      <QueryDownloadWidget
+        className={cx(CS.m1, CS.textMediumHover)}
+        question={question}
+        result={result}
+        uuid={uuid}
+        token={token}
+      />
+    ) : null;
 
   return (
     <EmbedFrame
@@ -77,11 +80,13 @@ export function PublicOrEmbeddedQuestionView({
       setParameterValue={setParameterValue}
       enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
+      // We don't support background: false on questions (metabase#43838)
+      background
       bordered={bordered}
-      hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
+      downloadsEnabled={downloadsEnabled}
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}
@@ -91,6 +96,7 @@ export function PublicOrEmbeddedQuestionView({
       >
         {() => (
           <Visualization
+            isNightMode={theme === "night"}
             error={result && result.error}
             rawSeries={[{ card: card, data: result && result.data }]}
             className={cx(CS.full, CS.flexFull, CS.z1)}

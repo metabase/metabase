@@ -5,15 +5,19 @@ import type {
   EmbeddingParametersValues,
 } from "./types";
 
-function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
-  return JSON.stringify(
-    optionsToHashParams(
-      removeDefaultValueParameters(displayOptions, {
-        theme: "light",
-        hide_download_button: false,
-      }),
-    ),
+export function getIframeQueryWithoutDefaults(
+  displayOptions: EmbeddingDisplayOptions,
+) {
+  return optionsToHashParams(
+    removeDefaultValueParameters(displayOptions, {
+      theme: "light",
+      hide_download_button: false,
+      background: true,
+    }),
   );
+}
+function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
+  return JSON.stringify(getIframeQueryWithoutDefaults(displayOptions));
 }
 
 function removeDefaultValueParameters(

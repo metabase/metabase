@@ -10,13 +10,14 @@
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest users-with-segmented-perms-test
-  (testing "Users with segmented permissions should be able to save cards"
+(deftest users-with-sandboxed-perms-test
+  (testing "Users with sandboxed permissions should be able to save cards"
     (let [card-name (mt/random-name)]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Database                   db {}
                        :model/Collection                 collection {}
                        :model/Table                      table {:db_id (u/the-id db)}
+                       :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
                        :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
                                                             :group_id (u/the-id group)}
@@ -31,11 +32,12 @@
                                                (assoc (api.card-test/card-with-name-and-query card-name (api.card-test/mbql-count-query db table))
                                                       :collection_id (u/the-id collection))))))))))
 
-    (testing "Users with segmented permissions should be able to update the query associated to a card"
+    (testing "Users with sandboxed permissions should be able to update the query associated to a card"
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Database                   db {}
                        :model/Collection                 collection {}
                        :model/Table                      table {:db_id (u/the-id db)}
+                       :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
                        :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
                                                             :group_id (u/the-id group)}
@@ -51,24 +53,140 @@
               (is (= "Another Name"
                      (:name (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                                   {:name          "Another Name"
-                                                   :dataset_query (api.card-test/mbql-count-query db table)})))))))))))
+                                                   :dataset_query (api.card-test/mbql-count-query db table)})))))))))
+
+    (testing "Legacy no self service doesn't override the sandbox when updating a card"
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Database                   db {}
+                       :model/Collection                 collection {}
+                       :model/Table                      table {:db_id (u/the-id db)}
+                       :model/Table                      other-table {:db_id (u/the-id db)}
+                       :model/Field                      _field {:table_id (u/the-id table) :name "field"}
+                       :model/PermissionsGroup           group {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                            :group_id (u/the-id group)}
+                       :model/Card                       card {:name "Some Name"
+                                                               :collection_id (u/the-id collection)}
+                       :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
+                                                               :table_id (u/the-id table)}]
+          (mt/with-db db
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
+              (data-perms/set-table-permission! group other-table :perms/view-data :legacy-no-self-service)
+              (data-perms/set-table-permission! group table :perms/create-queries :query-builder)
+              (perms/grant-collection-readwrite-permissions! group collection)
+              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
+                                    {:name          "Another Name"
+                                     :dataset_query (api.card-test/mbql-count-query db table)})))))
+
+      (testing "Legacy no self service doesn't override the sandbox when creating a new card"
+        (mt/with-model-cleanup [:model/Card]
+          (mt/with-temp [:model/Database                   db {}
+                         :model/Collection                 collection {}
+                         :model/Table                      table {:db_id (u/the-id db)}
+                         :model/Table                      other-table {:db_id (u/the-id db)}
+                         :model/Field                      _field {:table_id (u/the-id table) :name "field"}
+                         :model/PermissionsGroup           group {}
+                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                              :group_id (u/the-id group)}
+                         :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
+                                                                 :table_id (u/the-id table)}]
+            (mt/with-db db
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
+                (data-perms/set-table-permission! group other-table :perms/view-data :legacy-no-self-service)
+                (data-perms/set-table-permission! group table :perms/create-queries :query-builder)
+                (perms/grant-collection-readwrite-permissions! group collection)
+                (mt/user-http-request :rasta :post 200 "card"
+                                      (assoc (api.card-test/card-with-name-and-query "foobar"
+                                                                                     (api.card-test/mbql-count-query db table))
+                                             :collection_id (u/the-id collection)))))))))))
+
+(deftest users-with-data-access-and-query-create-may-access-cards
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temp [:model/User                       {user-id :id} {}
+                   :model/PermissionsGroup           group         {}
+                   :model/PermissionsGroupMembership _             {:user_id  user-id
+                                                                    :group_id (u/the-id group)}
+                   :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
+                                                                                                      :type :query,
+                                                                                                      :query {:source-table (mt/id :venues)
+                                                                                                              :limit 1}}}]
+      (let [cases [[:unrestricted           :query-builder-and-native true]
+                   [:unrestricted           :query-builder            true]
+                   [:unrestricted           :no                       true]
+                   [:legacy-no-self-service :no                       false]
+                   [:blocked                :no                       false]]
+            ;; These are invalid permission combinations, so we don't test them:
+            invalid-cases [[:legacy-no-self-service :query-builder-and-native]
+                           [:legacy-no-self-service :query-builder]
+                           [:blocked :query-builder-and-native]
+                           [:blocked :query-builder]]]
+        (is (= (count cases)
+               (- (* (-> data-perms/Permissions :perms/view-data :values count)
+                     (-> data-perms/Permissions :perms/create-queries :values count))
+                  (count invalid-cases)))
+            "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
+        (mt/with-no-data-perms-for-all-users!
+          (doseq [[view-perm create-perm should-succeed?] cases]
+            (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data view-perm)
+            (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-perm)
+            (testing (str "view-data: " view-perm ", create-queries: " create-perm)
+              (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
+                (if should-succeed?
+                  (is (= 1 (count (mt/rows response))))
+                  (is (thrown? clojure.lang.ExceptionInfo (mt/rows response))))))))))))
+
+(deftest sandbox-join-permissions-test
+  (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"
+    (mt/with-temp [:model/Collection collection {}]
+      (mt/with-model-cleanup [:model/Card]
+        (met/with-gtaps! (mt/$ids orders
+                           {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                            :attributes {"user_id" 1}})
+          (perms/grant-collection-readwrite-permissions! &group collection)
+          (data-perms/set-table-permission! &group (mt/id :products) :perms/view-data :legacy-no-self-service)
+          (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :no)
+          (let [query (mt/mbql-query orders
+                        {:limit 5
+                         :aggregation [:count]
+                         :joins [{:source-table $$products
+                                  :fields       :all
+                                  :alias        "Products"
+                                  :condition    [:= $product_id &Products.products.id]}]})]
+            (mt/user-http-request :rasta :post 403 "card"
+                                  (assoc (api.card-test/card-with-name-and-query (mt/random-name) query)
+                                         :collection_id (u/the-id collection))))
+
+          (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products)}]
+            (let [query (mt/mbql-query orders
+                          {:limit 5
+                           :aggregation [:count]
+                           :joins [{:source-table (str "card__" (:id card))
+                                    :fields       :all
+                                    :strategy     :left-join
+                                    :alias        "Products"
+                                    :condition    [:= $product_id &Products.products.id]}]})]
+              (mt/user-http-request :rasta :post 403 "card"
+                                    (assoc (api.card-test/card-with-name-and-query (mt/random-name) query)
+                                           :collection_id (u/the-id collection))))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "a card with a parameter whose source is a card should respect sandboxing"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp
-          [:model/Card {source-card-id :id} {:database_id   (mt/id)
-                                             :table_id      (mt/id :categories)
-                                             :dataset_query (mt/mbql-query categories)}
-           :model/Card {card-id         :id} {:database_id     (mt/id)
-                                              :dataset_query   (mt/mbql-query categories)
-                                              :parameters      [{:id                   "abc"
-                                                                 :type                 "category"
-                                                                 :name                 "CATEGORY"
-                                                                 :values_source_type   "card"
-                                                                 :values_source_config {:card_id     source-card-id
-                                                                                        :value_field (mt/$ids $categories.name)}}]
-                                              :table_id        (mt/id :venues)}]
+        [:model/Card {source-card-id :id} {:database_id   (mt/id)
+                                           :table_id      (mt/id :categories)
+                                           :dataset_query (mt/mbql-query categories)}
+         :model/Card {card-id         :id} {:database_id     (mt/id)
+                                            :dataset_query   (mt/mbql-query categories)
+                                            :parameters      [{:id                   "abc"
+                                                               :type                 "category"
+                                                               :name                 "CATEGORY"
+                                                               :values_source_type   "card"
+                                                               :values_source_config {:card_id     source-card-id
+                                                                                      :value_field (mt/$ids $categories.name)}}]
+                                            :table_id        (mt/id :venues)}]
 
         (testing "when getting values"
           (let [get-values (fn [user]

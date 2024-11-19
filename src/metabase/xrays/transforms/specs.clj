@@ -41,8 +41,8 @@
   [:map-of
    ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
    {:decode/transform-spec
-      (comp (partial u/topological-sort extract-dimensions)
-            stringify-keys)}
+    (comp (partial u/topological-sort extract-dimensions)
+          stringify-keys)}
    Dimension
    MBQL])
 
@@ -119,8 +119,8 @@
   [spec]
   (update spec :steps (partial m/map-kv-vals (fn [step-name step]
                                                (assoc step
-                                                 :name      step-name
-                                                 :transform (:name spec))))))
+                                                      :name      step-name
+                                                      :transform (:name spec))))))
 
 (defn- coerce-to-transform-spec [spec]
   (mc/coerce TransformSpec

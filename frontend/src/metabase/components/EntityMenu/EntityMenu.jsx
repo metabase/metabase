@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import CS from "metabase/css/core/index.css";
-import { Popover } from "metabase/ui";
+import { Divider, Popover } from "metabase/ui";
 
 /**
  * @deprecated: use Menu from "metabase/ui"
@@ -97,6 +97,14 @@ class EntityMenu extends Component {
                 }
 
                 const key = item.key ?? item.title;
+
+                if (item.separator) {
+                  return (
+                    <li key={key}>
+                      <Divider m="sm" />
+                    </li>
+                  );
+                }
 
                 if (item.content) {
                   return (

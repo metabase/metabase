@@ -1,10 +1,10 @@
 import {
-  restore,
-  popover,
-  openPeopleTable,
-  summarize,
-  echartsContainer,
   chartPathWithFillColor,
+  echartsContainer,
+  openPeopleTable,
+  popover,
+  restore,
+  summarize,
 } from "e2e/support/helpers";
 
 import { LONGITUDE_OPTIONS } from "./shared/constants";

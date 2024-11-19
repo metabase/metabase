@@ -14,13 +14,13 @@ First, you'll want to make sure your browser is on friendly terms with Metabase:
 1. Create a new dashboard for each group of cards that are related to the same time period or segment.
    - For example, create new dashboards for weekly vs. monthly metrics, or new vs. returning customers.
 2. Move your cards to the new dashboard(s) until each dashboard has 10 or fewer cards.
-3. Use [custom destinations](https://www.metabase.com/learn/dashboards/custom-destinations) to link related cards on different dashboards.
+3. Use [custom destinations](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) to link related cards on different dashboards.
 
 **Explanation**
 
 A dashboard with 50 cards is almost always going to be slower than 5 dashboards with 10 cards. Metabase displays a dashboard by refreshing all of the questions on it (that is, re-executing all of the queries against your database). Your data warehouse may try to run these queries at the same time to return the results faster, however, these queries can actually compete with each other and slow things down (like having too many programs open on your computer at once).
 
-Aside from running faster, a small and focused dashboard is also easier for people to understand without getting overwhelmed. For more tips, check out our article on [BI dashboard best practices](https://www.metabase.com/learn/dashboards/bi-dashboard-best-practices).
+Aside from running faster, a small and focused dashboard is also easier for people to understand without getting overwhelmed. For more tips, check out our article on [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices).
 
 ## Dashboard used by many people at the same time
 
@@ -34,11 +34,11 @@ Aside from running faster, a small and focused dashboard is also easier for peop
 
 If you have a dashboard that many people check around the same time (e.g., at the start of the work day), you may end up with queued queries or saturated database connections. Caching allows you to prepare for peak traffic by running those slow queries once, ahead of time, so that the results are ready to go.
 
-Caching takes less effort because it doesn't involve any changes to your schemas or databases. If you're ready to invest more resources into the root cause of dashboard performance issues, check out this list of common [schema and database optimizations](https://metabase.com/learn/administration/making-dashboards-faster#organize-data-to-anticipate-common-questions).
+Caching takes less effort because it doesn't involve any changes to your schemas or databases. If you're ready to invest more resources into the root cause of dashboard performance issues, check out this list of common [schema and database optimizations](https://metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#organize-data-to-anticipate-common-questions).
 
 ## Embedded dashboard is slow compared to original dashboard
 
-1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../embedding/static-embedding-parameters.md#restricting-data-in-a-static-embed).
+1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../embedding/static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
 
 **Explanation**
 

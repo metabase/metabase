@@ -7,7 +7,7 @@ redirect_from:
 
 # Migrating to a production application database
 
-This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance PostgreSQL. For more on why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/administration/metabase-in-production).
+This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance PostgreSQL. For more on why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//metabase-in-production).
 
 If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
@@ -31,7 +31,7 @@ You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase
 
 We recommend using PostgreSQL for your application database.
 
-- [PostgreSQL](https://www.postgresql.org/). Minimum version: `9.5`. Postgres is our preferred choice for Metabase's application database.
+- [PostgreSQL](https://www.postgresql.org/). Minimum version: `12`. Postgres is our preferred choice for Metabase's application database.
 - [MySQL](https://www.mysql.com/). Minimum version: `8.0.17`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 - [MariaDB](https://mariadb.org/). Minimum version: `10.4.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 
@@ -70,7 +70,7 @@ Here's an example command for migrating to a Postgres database:
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
 Here's an example command for migrating to a MySQL database using Java parameter instead of environment variables:
@@ -90,7 +90,7 @@ Start your Metabase (with the db connection info, but without the `load-from-h2`
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 You should, however, keep your old H2 file just for safe-keeping, or as a heirloom, or talisman, or whatever.
@@ -138,7 +138,7 @@ From the directory with your H2 file and your Metabase JAR, run the migration co
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
 Metabase will start up, perform the migration (meaning, it'll take the data from the H2 file and put it into your new app db, in this a Postgres db), and then exit.

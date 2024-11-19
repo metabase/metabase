@@ -23,8 +23,10 @@
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -67,14 +69,14 @@
    {:f #'lib.drill-thru.zoom-in-geographic/zoom-in-geographic-drill,             :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.zoom-in-bins/zoom-in-binning-drill,                      :return-drills-for-dimensions? true}])
 
-(mu/defn ^:private dimension-contexts :- [:maybe [:sequential {:min 1} ::lib.schema.drill-thru/context]]
+(mu/defn- dimension-contexts :- [:maybe [:sequential {:min 1} ::lib.schema.drill-thru/context]]
   "Create new context maps (with updated `:column` and `:value` keys) for each of the `:dimensions` passed in. Some
   drill thru functions are expected to return drills for each of these columns, while others are expected to ignore
   them. Why? Who knows."
   [{:keys [dimensions], :as context} :- ::lib.schema.drill-thru/context]
   (not-empty
-    (for [dimension dimensions]
-      (merge context dimension))))
+   (for [dimension dimensions]
+     (merge context dimension))))
 
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
@@ -92,7 +94,9 @@
    (try
      (into []
            (when (lib.metadata/editable? query)
-             (let [dim-contexts (dimension-contexts context)]
+             (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
+                                                 query stage-number (:card-id context))
+                   dim-contexts                 (dimension-contexts context)]
                (for [{:keys [f return-drills-for-dimensions?]} available-drill-thru-fns
                      context                                   (if (and return-drills-for-dimensions? dim-contexts)
                                                                  dim-contexts
@@ -115,12 +119,14 @@
 
   Returns the updated query."
   ([query drill]
-   (drill-thru query -1 drill))
+   (drill-thru query -1 nil drill))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
+    card-id      :- [:maybe ::lib.schema.id/card]
     drill        :- ::lib.schema.drill-thru/drill-thru
     & args]
    (log/debugf "Applying drill thru: %s"
                (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
-   (apply lib.drill-thru.common/drill-thru-method query stage-number drill args)))
+   (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql query stage-number card-id)]
+     (apply lib.drill-thru.common/drill-thru-method query stage-number drill args))))

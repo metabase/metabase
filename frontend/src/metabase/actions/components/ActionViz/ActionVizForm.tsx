@@ -12,8 +12,8 @@ import { getDashboardType } from "metabase/dashboard/utils";
 import { ActionsApi, PublicApi } from "metabase/services";
 import type {
   ActionDashboardCard,
-  OnSubmitActionForm,
   Dashboard,
+  OnSubmitActionForm,
   ParametersForActionExecution,
   VisualizationSettings,
   WritebackAction,

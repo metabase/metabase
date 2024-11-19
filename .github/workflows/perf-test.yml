@@ -1,0 +1,150 @@
+name: CI for Perf tests
+run-name: Run perf test for ${{ github.ref_name }} by @${{ github.actor }}
+
+on:
+  workflow_call:
+    inputs:
+      wait_for_uberjar:
+        description: "Wait for uberjar build"
+        required: false
+        type: boolean
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    name: Build Metabase Docker image
+    timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}"
+      - name: Wait for uberjar
+        id: wait_for_uberjar
+        if: ${{ inputs.wait_for_uberjar == true }}
+        run: |
+          ## Get workflow run id for uberjar build
+          curl -Ls --output e2e-tests.json \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/actions/workflows/e2e-tests.yml/runs?head_sha=${{ github.event.pull_request.head.sha || github.sha }}
+          ID=$(jq -r '.workflow_runs[0].id' e2e-tests.json)
+          ## Wait for uberjar build to complete
+          while [ true ]; do
+            curl -Ls --output uberjar.json \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/actions/runs/${ID}/jobs?filter=latest
+            jq -r '.jobs[] | select(.name == "build (ee)") | .steps[] | select(.name == "Prepare uberjar artifact") | .status' uberjar.json | grep -q "completed" && break
+            echo "Waiting for uberjar build..."
+            sleep 10
+          done
+          echo "run_id=$(jq -r '.workflow_runs[0].id' e2e-tests.json)" >> $GITHUB_OUTPUT
+      - name: Retrieve uberjar artifact for ee
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.wait_for_uberjar && steps.wait_for_uberjar.outputs.run_id || github.run_id }}
+      - name: Move uberjar to bin/docker
+        run: |
+          jar xf target/uberjar/metabase.jar
+          mv target/uberjar/metabase.jar bin/docker/metabase.jar
+      - name: Build container
+        uses: docker/build-push-action@v6
+        with:
+          context: bin/docker/
+          platforms: linux/amd64
+          network: host
+          tags: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/metabase-enterprise:pr${{ github.event.number }}
+          push: true
+  launch_perf_test:
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    name: Launch Perf Test
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      - name: Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_SECRET }}
+          tags: tag:ci
+          version: 1.50.1
+          sha256sum: d9fe6b480fb5078f0aa57dace686898dda7e2a768884271159faa74846bfb576
+      - name: Create OIDC Token
+        id: create-oidc-token
+        shell: bash
+        run: |
+          export OIDC_URL_WITH_AUDIENCE="$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${{ secrets.PR_ENV_K8S_AUDIENCE }}"
+          IDTOKEN=$(curl -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" -H "Accept: application/json; api-version=2.0" "$OIDC_URL_WITH_AUDIENCE" | jq -r .value)
+          echo "::add-mask::${IDTOKEN}"
+          echo "idToken=${IDTOKEN}" >>$GITHUB_OUTPUT
+      - name: Setup Kube Context
+        uses: azure/k8s-set-context@v2
+        with:
+          method: kubeconfig
+          kubeconfig: |
+            kind: Config
+            apiVersion: v1
+            current-context: default
+            clusters:
+            - name: default
+              cluster:
+                certificate-authority-data: ${{ secrets.PR_ENV_K8S_CERTIFICATE_AUTHORITY_DATA }}
+                server: ${{ secrets.PR_ENV_K8S_SERVER }}
+            users:
+            - name: oidc-token
+              user:
+                token: ${{ steps.create-oidc-token.outputs.IDTOKEN }}
+            contexts:
+            - name: default
+              context:
+                cluster: default
+                namespace: default
+                user: oidc-token
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+      - name: Download Deployment YAML template
+        run: aws s3 cp s3://metabase-pr-env/perf-test-pr.yml.tmpl ./perf-test-pr.yml.tmpl
+      - name: Trim SHA
+        env:
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        id: split
+        run: echo "::set-output name=fragment::${SHA:5}"
+      - name: Render Deployment YAML
+        uses: nowactions/envsubst@v1
+        with:
+          input: ./perf-test-pr.yml.tmpl
+          output: ./perf-test-pr.yml
+        env:
+          IMAGE_TAG: pr${{ github.event.number }}
+          PR_NUMBER: ${{ github.event.number }}
+          RUN_ID: ${{ steps.split.outputs.fragment }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TEST_NAME: test
+      - name: Deploy PR Review ENV
+        run: |
+          kubectl apply -f ./perf-test-pr.yml

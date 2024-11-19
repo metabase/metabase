@@ -8,7 +8,7 @@ import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { TextProps } from "metabase/ui";
-import { Text, FixedSizeIcon } from "metabase/ui";
+import { FixedSizeIcon, Text } from "metabase/ui";
 
 import { RawMaybeLink } from "../Badge/Badge.styled";
 
@@ -46,18 +46,18 @@ Table.defaultProps = { className: AdminS.ContentTable };
 export const hideResponsively = ({
   hideAtContainerBreakpoint,
   containerName,
-}: ResponsiveProps) =>
-  css`
-    ${getContainerQuery({
-      hideAtContainerBreakpoint,
-      containerName,
-    })}
-  `;
+}: ResponsiveProps) => css`
+  ${getContainerQuery({
+    hideAtContainerBreakpoint,
+    containerName,
+  })}
+`;
 
 export const ColumnHeader = styled.th<ResponsiveProps>`
   th& {
     padding: 0.75em 1em 0.75em;
   }
+
   font-weight: bold;
   color: var(--mb-color-text-medium);
   ${hideResponsively}
@@ -159,6 +159,7 @@ SortingControlContainer.defaultProps = { isSortable: true };
 export const RowActionsContainer = styled.div`
   display: flex;
   gap: 0.5rem;
+
   span {
     display: flex;
     align-items: center;
@@ -174,7 +175,6 @@ export const TBody = styled.tbody`
   td {
     border: none;
     background-color: transparent;
-
     border-top: 1px solid var(--mb-color-border);
 
     &:first-of-type {

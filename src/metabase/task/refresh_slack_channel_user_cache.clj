@@ -41,11 +41,11 @@
         trigger (triggers/build
                  (triggers/with-identity (triggers/key trigger-key))
                  (triggers/with-schedule
-                   (cron/schedule
-                    (cron/cron-schedule
+                  (cron/schedule
+                   (cron/cron-schedule
                      ;; run every 4 hours at a random minute:
-                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
-                    (cron/with-misfire-handling-instruction-do-nothing)))
+                    (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
+                   (cron/with-misfire-handling-instruction-do-nothing)))
 
                  (triggers/start-now))
         startup-job     (jobs/build
@@ -54,7 +54,7 @@
         startup-trigger (triggers/build
                          (triggers/with-identity (triggers/key startup-trigger-key))
                          (triggers/with-schedule
-                           (simple/schedule (simple/with-interval-in-seconds 60)))
+                          (simple/schedule (simple/with-interval-in-seconds 60)))
                          (triggers/start-now))]
     (task/schedule-task! job trigger)
     (task/schedule-task! startup-job startup-trigger)))

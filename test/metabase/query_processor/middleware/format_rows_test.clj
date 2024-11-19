@@ -1,11 +1,12 @@
-(ns metabase.query-processor.middleware.format-rows-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.format-rows-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,62 +14,90 @@
 
 (defmethod driver/database-supports? [::timezone-driver :set-timezone] [_driver _feature _db] true)
 
-;; TIMEZONE FIXME
-(def ^:private dbs-exempt-from-format-rows-tests
-  "DBs to skip the tests below for. TIMEZONE FIXME — why are so many databases not running these tests? Most of these
-  should be able to pass with a few tweaks. Some of them are excluded because they do not have a TIME data type and
-  can't load the `time-test-data` dataset; but that's not true of ALL of these. Please make sure you add a note
-  as to why a certain database is explicitly skipped if you skip it -- Cam"
-  #{:bigquery-cloud-sdk :oracle :mongo :redshift :sparksql :snowflake})
+(defmethod driver/database-supports? [::driver/driver ::format-rows-test]
+  [_driver _feature _database]
+  true)
 
-(deftest format-rows-test
-  (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-except dbs-exempt-from-format-rows-tests))
+;;; DBs to skip the tests below for.
+;;;
+;;; TIMEZONE FIXME — why are so many databases not running these tests? Most of these should be able to pass with a few
+;;; tweaks. Some of them are excluded because they do not have a TIME data type and can't load the `time-test-data`
+;;; dataset; but that's not true of ALL of these. Please make sure you add a note as to why a certain database is
+;;; explicitly skipped if you skip it -- Cam
+(doseq [driver #{:bigquery-cloud-sdk :oracle :mongo :redshift :sparksql :snowflake}]
+  (defmethod driver/database-supports? [driver ::format-rows-test]
+    [_driver _feature _database]
+    false))
+
+(defmulti format-rows-without-report-timezone-test-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod format-rows-without-report-timezone-test-expected-rows :default
+  [_driver]
+  [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
+   [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00Z"]
+   [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
+   [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
+   [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
+
+(defmethod format-rows-without-report-timezone-test-expected-rows :sqlite
+  [_driver]
+  [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
+   [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
+   [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
+   [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
+   [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]])
+
+(deftest format-rows-without-report-timezone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type ::format-rows-test)
     (mt/dataset time-test-data
       (testing "without report timezone"
-        (is (= (if (= driver/*driver* :sqlite)
-                 ;; TIMEZONE FIXME
-                 [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
-                  [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
-                  [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
-                  [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
-                  [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]]
-                 [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
-                  [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00Z"]
-                  [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
-                  [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
-                  [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
+        (is (= (format-rows-without-report-timezone-test-expected-rows driver/*driver*)
                (mt/rows
-                 (mt/run-mbql-query users
-                   {:order-by [[:asc $id]]
-                    :limit    5})))))
+                (mt/run-mbql-query users
+                  {:order-by [[:asc $id]]
+                   :limit    5}))))))))
+
+(defmulti format-rows-with-report-timezone-test-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod format-rows-with-report-timezone-test-expected-rows :default
+  [driver]
+  ;; TIMEZONE FIXME -- the value of this changes based on whether we are in DST. This is B R O K E N
+  (if (qp.test-util/supports-report-timezone? driver)
+    [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" "08:30:00-08:00"]
+     [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" "15:15:00-08:00"]
+     [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" "16:15:00-08:00"]
+     [4 "Simcha Yan"          "2014-01-01T00:00:00-08:00" "08:30:00-08:00"]
+     [5 "Quentin Sören"       "2014-10-03T00:00:00-07:00" "17:30:00-08:00"]]
+    [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
+     [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00Z"]
+     [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
+     [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
+     [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]]))
+
+(defmethod format-rows-with-report-timezone-test-expected-rows :sqlite
+  [_driver]
+  [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
+   [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
+   [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
+   [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
+   [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]])
+
+(deftest format-rows-with-report-timezone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type ::format-rows-test)
+    (mt/dataset time-test-data
       (testing "with report timezone"
         (mt/with-report-timezone-id! "America/Los_Angeles"
-          (is (= (cond
-                   (= driver/*driver* :sqlite)
-                   [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
-                    [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
-                    [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
-                    [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
-                    [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]]
-
-                   ;; TIMEZONE FIXME -- the value of this changes based on whether we are in DST. This is B R O K E N
-                   (qp.test-util/supports-report-timezone? driver/*driver*)
-                   [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" "08:30:00-08:00"]
-                    [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" "15:15:00-08:00"]
-                    [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" "16:15:00-08:00"]
-                    [4 "Simcha Yan"          "2014-01-01T00:00:00-08:00" "08:30:00-08:00"]
-                    [5 "Quentin Sören"       "2014-10-03T00:00:00-07:00" "17:30:00-08:00"]]
-
-                   :else
-                   [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
-                    [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00Z"]
-                    [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
-                    [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
-                    [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
+          (is (= (format-rows-with-report-timezone-test-expected-rows driver/*driver*)
                  (mt/rows
-                   (mt/run-mbql-query users
-                     {:order-by [[:asc $id]]
-                      :limit    5})))))))))
+                  (mt/run-mbql-query users
+                    {:order-by [[:asc $id]]
+                     :limit    5})))))))))
 
 (deftest ^:parallel format-value-test
   ;; `t` = original value
@@ -189,7 +218,7 @@
                          (t/local-date 2011 4 18)
                          (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
               (is (= expected-rows
-                     (format-rows rows {:cols [{}{}{}]}))))))))
+                     (format-rows rows {:cols [{} {} {}]}))))))))
 
     (testing "Make sure ISO-8601 timestamps respects the converted_timezone metadata"
       (doseq [timezone-id ["UTC" "Asia/Tokyo"]]

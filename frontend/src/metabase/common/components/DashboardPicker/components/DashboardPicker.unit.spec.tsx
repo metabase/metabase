@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import _ from "underscore";
+import { useState } from "react";
 
 import {
   setupCollectionItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -24,7 +25,11 @@ import {
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import type { DashboardPickerItem, DashboardPickerValueModel } from "../types";
+import type {
+  DashboardPickerItem,
+  DashboardPickerStatePath,
+  DashboardPickerValueModel,
+} from "../types";
 
 import { DashboardPicker, defaultOptions } from "./DashboardPicker";
 import { DashboardPickerModal } from "./DashboardPickerModal";
@@ -168,6 +173,7 @@ const commonSetup = () => {
   setupRecentViewsAndSelectionsEndpoints([]);
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupSearchEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,
@@ -190,13 +196,21 @@ const setupPicker = async ({
 }: SetupOpts = {}) => {
   commonSetup();
 
-  renderWithProviders(
-    <DashboardPicker
-      onItemSelect={onChange}
-      initialValue={initialValue}
-      options={defaultOptions}
-    />,
-  );
+  function TestComponent() {
+    const [path, setPath] = useState<DashboardPickerStatePath>();
+
+    return (
+      <DashboardPicker
+        initialValue={initialValue}
+        options={defaultOptions}
+        path={path}
+        onItemSelect={onChange}
+        onPathChange={setPath}
+      />
+    );
+  }
+
+  renderWithProviders(<TestComponent />);
 
   await waitForLoaderToBeRemoved();
 };

@@ -6,7 +6,7 @@ import { getIcon, renderWithProviders } from "__support__/ui";
 import { TabRow } from "../TabRow";
 
 import type { RenameableTabButtonProps } from "./TabButton";
-import { TabButton, INPUT_WRAPPER_TEST_ID } from "./TabButton";
+import { INPUT_WRAPPER_TEST_ID, TabButton } from "./TabButton";
 
 function setup(props?: Partial<RenameableTabButtonProps>) {
   const action = jest.fn();

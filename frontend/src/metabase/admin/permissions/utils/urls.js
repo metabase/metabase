@@ -1,7 +1,7 @@
 import {
-  isTableEntityId,
-  isSchemaEntityId,
   isDatabaseEntityId,
+  isSchemaEntityId,
+  isTableEntityId,
 } from "./data-entity-id";
 
 export const DATABASES_BASE_PATH = `/admin/permissions/data/database`;

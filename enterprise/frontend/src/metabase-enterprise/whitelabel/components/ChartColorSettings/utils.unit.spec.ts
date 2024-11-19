@@ -1,6 +1,6 @@
 import Color from "color";
 
-import { getDefaultChartColors, getAutoChartColors } from "./utils";
+import { getAutoChartColors, getDefaultChartColors } from "./utils";
 
 describe("getDefaultChartColors", () => {
   const groups = [["accent1"], ["accent2"], ["accent3"]];

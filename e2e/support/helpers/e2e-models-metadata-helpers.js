@@ -1,4 +1,4 @@
-import { popover, interceptIfNotPreviouslyDefined } from "e2e/support/helpers";
+import { interceptIfNotPreviouslyDefined, popover } from "e2e/support/helpers";
 
 export function saveMetadataChanges() {
   interceptIfNotPreviouslyDefined({
@@ -25,7 +25,7 @@ export function openColumnOptions(column) {
 }
 
 export function renameColumn(oldName, newName) {
-  cy.findByDisplayValue(oldName).clear().type(newName);
+  cy.findByDisplayValue(oldName).clear().type(newName).blur();
 }
 
 export function setColumnType(oldType, newType) {
@@ -34,9 +34,11 @@ export function setColumnType(oldType, newType) {
     .contains(oldType)
     .click();
 
-  cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
-  cy.findByPlaceholderText("Search for a special type").type(newType);
-  popover().findByLabelText(newType).click();
+  popover().within(() => {
+    cy.findByText(oldType).closest(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
+    cy.findByPlaceholderText("Search for a special type").realType(newType);
+    cy.findByLabelText(newType).click();
+  });
 }
 
 export function mapColumnTo({ table, column } = {}) {

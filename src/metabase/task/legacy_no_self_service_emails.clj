@@ -2,18 +2,18 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.channel.template.core :as channel.template]
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
-   [stencil.core :as stencil]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private template-path (str "metabase/email/legacy_no_self_service.mustache"))
+(def ^:private template-path (str "metabase/email/legacy_no_self_service.hbs"))
 
 (defn- legacy-no-self-service-groups
   "Returns a list of groups that have `legacy-no-self-service` as their `view-data` permissions level for any database."
@@ -30,12 +30,12 @@
   (when (and config/ee-available? (email/email-configured?))
     (when-let [groups (not-empty (legacy-no-self-service-groups))]
       (log/info "Sending email to admins about deprecation of `no-self-service`")
-      (doseq [admin (t2/select :model/User :is_superuser true)]
+      (doseq [admin (t2/select :model/User :is_superuser true :is_active true)]
         (email/send-email-retrying!
          {:recipients   [(:email admin)]
           :message-type :html
           :subject      "[Metabase] Please update groups with deprecated view access"
-          :message      (stencil/render-file
+          :message      (channel.template/render
                          template-path
                          (merge (messages/common-context)
                                 {:userName    (:first_name admin)

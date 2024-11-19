@@ -1,6 +1,6 @@
 import { useInterval } from "@mantine/hooks";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useMount } from "react-use";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -34,7 +34,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
       }
     } catch (err: any) {
       console.error(err);
-      const msg = err?.data?.message ?? err.messsage ?? t`An error occurred.`;
+      const msg = err?.data?.message ?? err.message ?? t`An error occurred.`;
       if (isMountedRef.current) {
         setError(msg);
         isFetchingRef.current = false;
@@ -50,10 +50,11 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
     isMountedRef.current = true;
     fetchLogs();
     pollingInterval.start();
-    return () => {
-      isMountedRef.current = false;
-      pollingInterval.stop();
-    };
+  });
+
+  useUnmount(() => {
+    isMountedRef.current = false;
+    pollingInterval.stop();
   });
 
   return { loaded, error, logs };

@@ -150,24 +150,24 @@
           (is (= [["Conchúr Tihomir"]]
                  (mt/rows results))))
         (testing "cols"
-          (is (= [{:display_name "NAME"
-                   :base_type    :type/Text
-                   :effective_type :type/Text
-                   :source       :native
-                   :field_ref    [:field "NAME" {:base-type :type/Text}]
-                   :name         "NAME"}]
-                 (mt/cols results))))))))
+          (is (=? [{:display_name "NAME"
+                    :base_type    :type/Text
+                    :effective_type :type/Text
+                    :source       :native
+                    :field_ref    [:field "NAME" {:base-type :type/Text}]
+                    :name         "NAME"}]
+                  (mt/cols results))))))))
 
 (deftest ^:parallel native-query-date-trunc-test
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
-      (is (= [{:display_name "D"
-               :base_type    :type/Date
-               :effective_type :type/Date
-               :source       :native
-               :field_ref    [:field "D" {:base-type :type/Date}]
-               :name         "D"}]
-             (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
+      (is (=? [{:display_name "D"
+                :base_type    :type/Date
+                :effective_type :type/Date
+                :source       :native
+                :field_ref    [:field "D" {:base-type :type/Date}]
+                :name         "D"}]
+              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
 (deftest ^:parallel timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
@@ -179,18 +179,18 @@
   (testing "Native query parameters should work with filters."
     (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
            (mt/rows
-             (qp/process-query
-              {:database   (mt/id)
-               :type       :native
-               :native     {:query         "select * from checkins where {{date}} order by date desc limit 1;"
-                            :template-tags {"date" {:name         "date"
-                                                    :display-name "date"
-                                                    :type         :dimension
-                                                    :widget-type  :date/all-options
-                                                    :dimension    [:field (mt/id :checkins :date) nil]}}}
-               :parameters [{:type :date/all-options
-                             :target [:dimension [:template-tag "date"]]
-                             :value "past30years"}]}))))))
+            (qp/process-query
+             {:database   (mt/id)
+              :type       :native
+              :native     {:query         "select * from checkins where {{date}} order by date desc limit 1;"
+                           :template-tags {"date" {:name         "date"
+                                                   :display-name "date"
+                                                   :type         :dimension
+                                                   :widget-type  :date/all-options
+                                                   :dimension    [:field (mt/id :checkins :date) nil]}}}
+              :parameters [{:type :date/all-options
+                            :target [:dimension [:template-tag "date"]]
+                            :value "past30years"}]}))))))
 
 (defn- pretty-sql [s]
   (-> s
@@ -289,8 +289,8 @@
       "delete venues"
       "select 1; update venues set name = 'bill'; delete venues;"
       (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
-                        "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
-                        "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
+                      "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                      "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
 
 (deftest disallowed-commands-in-action-test
   (mt/test-driver :h2

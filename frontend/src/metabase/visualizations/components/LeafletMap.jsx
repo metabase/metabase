@@ -1,16 +1,15 @@
-/* eslint-disable import/order, react/prop-types */
-import { Component, createRef } from "react";
-import _ from "underscore";
-
+/* eslint-disable react/prop-types */
+import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
 
 import L from "leaflet";
-import "leaflet-draw";
+import { Component, createRef } from "react";
+import _ from "underscore";
 
+import MetabaseSettings from "metabase/lib/settings";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import MetabaseSettings from "metabase/lib/settings";
 
 export default class LeafletMap extends Component {
   constructor(props) {
@@ -122,6 +121,17 @@ export default class LeafletMap extends Component {
     this.map.remove();
   }
 
+  supportsFilter() {
+    const {
+      series: [{ card }],
+      metadata,
+    } = this.props;
+
+    const question = new Question(card, metadata);
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+    return !isNative || question.isSaved();
+  }
+
   startFilter() {
     this._filter = new L.Draw.Rectangle(
       this.map,
@@ -157,9 +167,7 @@ export default class LeafletMap extends Component {
     });
 
     const question = new Question(card, metadata);
-    const { isNative } = Lib.queryDisplayInfo(question.query());
-
-    if (!isNative) {
+    if (this.supportsFilter()) {
       const query = question.query();
       const stageIndex = -1;
       const filterBounds = {
@@ -173,6 +181,7 @@ export default class LeafletMap extends Component {
         stageIndex,
         latitudeColumn,
         longitudeColumn,
+        question.id(),
         filterBounds,
       );
       const updatedQuestion = question.setQuery(updatedQuery);

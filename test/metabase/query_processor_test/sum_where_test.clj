@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.sum-where-test
+(ns ^:mb/driver-tests metabase.query-processor-test.sum-where-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -96,7 +96,6 @@
                   mt/rows
                   ffirst
                   double))))))
-
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)

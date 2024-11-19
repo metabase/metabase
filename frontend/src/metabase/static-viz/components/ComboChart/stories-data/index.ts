@@ -27,11 +27,15 @@ import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barLogYScaleStackedNegative from "./bar-log-y-scale-stacked-negative.json";
 import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
+import barMaxCategoriesDefault from "./bar-max-categories-default.json";
+import barMaxCategoriesStackedNormalized from "./bar-max-categories-stacked-normalized.json";
+import barMaxCategoriesStacked from "./bar-max-categories-stacked.json";
 import barMinHeightLimit from "./bar-min-height-limit.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
+import barStackedAllLabelsTimeseriesWithGap45717 from "./bar-stacked-all-labels-timeseries-with-gap-45717.json";
 import barStackedLabelsNullVsZero from "./bar-stacked-labels-null-vs-zero.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barStackedNormalizedSeriesLabels from "./bar-stacked-normalized-series-labels.json";
@@ -49,6 +53,7 @@ import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import breakoutNullAndEmptyString from "./breakout-null-and-empty-string.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
+import combinedWithInvalidSettings from "./combined-with-invalid-settings.json";
 import comboDataLabelsAutoCompactnessPropagatesFromLine from "./combo-data-labels-auto-compactness-propagates-from-line.json";
 import comboDataLabelsAutoCompactnessPropagatesFromTotals from "./combo-data-labels-auto-compactness-propagates-from-totals.json";
 import comboHistogram from "./combo-histogram.json";
@@ -89,8 +94,11 @@ import noGoodAxisSplit from "./no-good-axis-split.json";
 import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
+import offsetBasedTimezone47835 from "./offset-based-timezone-47835.json";
 import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
 import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
+import seriesOrderSettingsDoNotMatchSeriesCount from "./series-order-settings-do-not-match-series-count.json";
+import stackedChartCustomYAxisRange from "./stacked-chart-custom-y-axis-range.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
 import timeSeriesTicksCompactFormattingMixedTimezones from "./time-series-ticks-compact-formatting-mixed-timezones.json";
@@ -99,6 +107,7 @@ import timezoneTicksPlacement from "./timezone-ticks-placement.json";
 import trendComboLog from "./trend-combo-log.json";
 import trendComboPower from "./trend-combo-power.json";
 import trendCombo from "./trend-combo.json";
+import trendGoalLinesWithScalingPowScaleCustomRange from "./trend-goal-lines-with-scaling-pow-scale-custom-range.json";
 import trendMultiSeriesArea from "./trend-multi-series-area.json";
 import trendMultiSeriesBar from "./trend-multi-series-bar.json";
 import trendMultiSeriesLine from "./trend-multi-series-line.json";
@@ -220,10 +229,19 @@ export const data = {
   barStackedSeriesLabelsAndTotalsOrdinal,
   barStackedSeriesLabelsNormalizedAutoCompactness,
   barStackedLabelsNullVsZero,
+  barMaxCategoriesDefault,
+  barMaxCategoriesStacked,
+  barMaxCategoriesStackedNormalized,
   barMinHeightLimit,
   comboDataLabelsAutoCompactnessPropagatesFromLine,
   comboDataLabelsAutoCompactnessPropagatesFromTotals,
   areaChartSteppedNullsInterpolated,
   areaChartSteppedNullsSkipped,
   safariNonIanaTimezoneRepro44128,
+  combinedWithInvalidSettings,
+  stackedChartCustomYAxisRange,
+  seriesOrderSettingsDoNotMatchSeriesCount,
+  trendGoalLinesWithScalingPowScaleCustomRange,
+  barStackedAllLabelsTimeseriesWithGap45717,
+  offsetBasedTimezone47835,
 };

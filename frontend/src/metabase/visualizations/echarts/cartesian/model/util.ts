@@ -3,7 +3,7 @@ import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX,
@@ -28,8 +28,7 @@ export function getColumnScaling(
   settings: ComputedVisualizationSettings,
 ) {
   const columnSettings =
-    settings.column?.(column) ??
-    settings.column_settings?.[getColumnKey(column)];
+    settings.column?.(column) ?? getColumnSettings(settings, column);
   const scale = columnSettings?.scale;
   return Number.isFinite(scale) ? (scale as number) : 1;
 }

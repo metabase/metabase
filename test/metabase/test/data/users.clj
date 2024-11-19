@@ -107,9 +107,9 @@
   User could be a keyword like `:rasta` or a user object."
   [user]
   (cond
-   (keyword user)       (user-descriptor (fetch-user user))
-   (:is_superuser user) "admin"
-   :else                "non-admin"))
+    (keyword user)       (user-descriptor (fetch-user user))
+    (:is_superuser user) "admin"
+    :else                "non-admin"))
 
 (mu/defn user->credentials :- [:map
                                [:username [:fn
@@ -127,14 +127,30 @@
 
 (defonce ^:private tokens (atom {}))
 
-(mu/defn username->token :- [:re u/uuid-regex]
+;;; This is done by hitting the app DB directly instead of hitting [[metabase.http-client/authenticate]] to avoid
+;;; deadlocks in MySQL that I haven't been able to figure out yet. The session endpoint updates User last_login and
+;;; updated_at which requires a lock on that User row which other parallel test threads seem to already have for one
+;;; reason or another...
+;;;
+;;;    DRIVERS=mysql clj -X:dev:user/mysql:ee:ee-dev:test :only metabase.query-processor.card-test
+;;;
+;;; consistently fails for me when using [[metabase.http-client/authenticate]] instead of the code below. See #48489 for
+;;; more info
+(mu/defn ^:private authenticate! :- ms/UUIDString
+  "Create a new `:model/Session` for one of the test users."
+  [username :- TestUserName]
+  (let [session-token (str (random-uuid))]
+    (t2/insert! :model/Session {:id session-token, :user_id (user->id username)})
+    session-token))
+
+(mu/defn username->token :- ms/UUIDString
   "Return cached session token for a test User, logging in first if needed."
   [username :- TestUserName]
   (or (@tokens username)
       (locking tokens
         (or (@tokens username)
-            (u/prog1 (client/authenticate (user->credentials username))
-                     (swap! tokens assoc username <>))))
+            (u/prog1 (authenticate! username)
+              (swap! tokens assoc username <>))))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
 
@@ -167,10 +183,11 @@
 
 (defn- user-request
   [the-client user & args]
+  (initialize/initialize-if-needed! :db :test-users :web-server)
   (if (keyword? user)
     (do
-     (fetch-user user)
-     (apply client-fn the-client user args))
+      (fetch-user user)
+      (apply client-fn the-client user args))
     (let [user-id (u/the-id user)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
@@ -193,14 +210,14 @@
   (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
-  (t/testing (format "with test user %s\n" user-kwd)
+  (t/testing (format "\nwith test user %s\n" user-kwd)
     (mw.session/with-current-user (some-> user-kwd user->id)
       (thunk))))
 
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the predefined test User
   named by `user-kwd`. If you want to bind a non-predefined-test User, use `mt/with-current-user` instead."
-  {:style/indent 1}
+  {:style/indent :defn}
   [user-kwd & body]
   `(do-with-test-user ~user-kwd (fn [] ~@body)))
 

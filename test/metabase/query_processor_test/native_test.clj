@@ -10,33 +10,33 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel native-test
-  (is (= {:rows
-          [["Plato Yeshua"]
-           ["Felipinho Asklepios"]
-           ["Kaneonuskatew Eiran"]
-           ["Simcha Yan"]
-           ["Quentin Sören"]
-           ["Shad Ferdynand"]
-           ["Conchúr Tihomir"]
-           ["Szymon Theutrich"]
-           ["Nils Gotam"]
-           ["Frans Hevel"]
-           ["Spiros Teofil"]
-           ["Kfir Caj"]
-           ["Dwight Gresham"]
-           ["Broen Olujimi"]
-           ["Rüstem Hebel"]]
-          :cols
-          [{:display_name "NAME"
-            :source       :native
-            :field_ref    [:field "NAME" {:base-type :type/Text}]
-            :name         "NAME"
-            :base_type    :type/Text
-            :effective_type :type/Text}]}
-         (qp.test-util/rows-and-cols
-          (qp/process-query
-           (mt/native-query
-            {:query "select name from users;"}))))))
+  (is (=? {:rows
+           [["Plato Yeshua"]
+            ["Felipinho Asklepios"]
+            ["Kaneonuskatew Eiran"]
+            ["Simcha Yan"]
+            ["Quentin Sören"]
+            ["Shad Ferdynand"]
+            ["Conchúr Tihomir"]
+            ["Szymon Theutrich"]
+            ["Nils Gotam"]
+            ["Frans Hevel"]
+            ["Spiros Teofil"]
+            ["Kfir Caj"]
+            ["Dwight Gresham"]
+            ["Broen Olujimi"]
+            ["Rüstem Hebel"]]
+           :cols
+           [{:display_name "NAME"
+             :source       :native
+             :field_ref    [:field "NAME" {:base-type :type/Text}]
+             :name         "NAME"
+             :base_type    :type/Text
+             :effective_type :type/Text}]}
+          (qp.test-util/rows-and-cols
+           (qp/process-query
+            (mt/native-query
+              {:query "select name from users;"}))))))
 
 (deftest ^:parallel native-with-duplicate-column-names
   (testing "Should be able to run native query referring a question referring a question (#25988)"
@@ -60,11 +60,11 @@
                                                                     :semantic_type :type/PK}]}]
         (is (=? {:columns ["ID" "ID_2"]}
                 (mt/rows+column-names
-                  (qp/process-query
-                    {:query {:source-table (str "card__" (:id card))
-                             :fields [[:field "ID" {:base-type :type/Integer}] [:field "ID_2" {:base-type :type/Integer}]]}
-                     :database (mt/id)
-                     :type :query}))))))))
+                 (qp/process-query
+                  {:query {:source-table (str "card__" (:id card))
+                           :fields [[:field "ID" {:base-type :type/Integer}] [:field "ID_2" {:base-type :type/Integer}]]}
+                   :database (mt/id)
+                   :type :query}))))))))
 
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"

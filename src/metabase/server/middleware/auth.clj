@@ -28,11 +28,14 @@
   "Middleware that sets the `:static-metabase-api-key` keyword on the request if a valid API Key can be found. We check
   the request headers for `X-METABASE-APIKEY` and if it's not found then no keyword is bound to the request."
   [handler]
-  (fn [request respond raise]
-    (handler (wrap-static-api-key* request) respond raise)))
+  (with-meta
+   (fn [request respond raise]
+     (handler (wrap-static-api-key* request) respond raise))
+   (meta handler)))
 
 (defsetting api-key
   "When set, this API key is required for all API requests."
+  :encryption :when-encryption-key-set
   :visibility :internal
   :doc "Middleware that enforces validation of the client via the request header X-Metabase-Apikey.
         If the header is available, then it’s validated against MB_API_KEY.
@@ -64,15 +67,17 @@
 
   This variable only works for /api/notify/db/:id endpoint"
   [handler]
-  (fn [{:keys [static-metabase-api-key], :as request} respond raise]
-    (cond (str/blank? (static-api-key))
-          (respond key-not-set-response)
+  (with-meta
+   (fn [{:keys [static-metabase-api-key], :as request} respond raise]
+     (cond (str/blank? (static-api-key))
+           (respond key-not-set-response)
 
-          (not static-metabase-api-key)
-          (respond req.util/response-forbidden)
+           (not static-metabase-api-key)
+           (respond req.util/response-forbidden)
 
-          (= (static-api-key) static-metabase-api-key)
-          (handler request respond raise)
+           (= (static-api-key) static-metabase-api-key)
+           (handler request respond raise)
 
-          :else
-          (respond req.util/response-forbidden))))
+           :else
+           (respond req.util/response-forbidden)))
+   (meta handler)))

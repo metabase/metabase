@@ -1,8 +1,8 @@
-import type { Story } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import {
-  VisualizationWrapper,
   SdkVisualizationWrapper,
+  VisualizationWrapper,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "embedding-sdk";
 import { Box } from "metabase/ui";
@@ -14,7 +14,7 @@ export default {
   title: "viz/TableSimple",
 };
 
-export const Default: Story = () => (
+export const Default: StoryFn = () => (
   <VisualizationWrapper>
     <Box h={500}>
       <Visualization rawSeries={RAW_SERIES} isDashboard />,
@@ -22,12 +22,12 @@ export const Default: Story = () => (
   </VisualizationWrapper>
 );
 
-export const EmbeddingTheme: Story = () => {
+export const EmbeddingTheme: StoryFn = () => {
   const theme: MetabaseTheme = {
     colors: {
       brand: "#eccc68",
-      "text-primary": "#ffffff",
-      "text-secondary": "#ffffff",
+      "text-primary": "#4c5773",
+      "text-secondary": "#696e7b",
       "text-tertiary": "#ffffff",
     },
     components: {

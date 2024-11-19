@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
-import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type {
+  TextHeightMeasurer,
+  TextWidthMeasurer,
+} from "metabase/visualizations/shared/types/measure-text";
 import type { ClickObject } from "metabase/visualizations/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
@@ -15,6 +18,7 @@ import type {
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -27,9 +31,8 @@ export type ColorGetter = (colorName: string) => string;
 
 export interface RenderingContext {
   getColor: ColorGetter;
-  formatValue: Formatter;
-
   measureText: TextWidthMeasurer;
+  measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
 
   theme: VisualizationTheme;
@@ -50,6 +53,9 @@ export interface VisualizationTheme {
       };
     };
   };
+  pie: {
+    borderColor: string;
+  };
 }
 
 export type OnChangeCardAndRunOpts = {
@@ -60,24 +66,30 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
+export type ColumnSettings = OptionsType & {
+  "pivot_table.column_show_totals"?: boolean;
+  [key: string]: unknown;
+};
+
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (col: RemappingHydratedDatasetColumn) => Record<string, unknown>;
+  column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
 };
 
 export interface StaticVisualizationProps {
   rawSeries: RawSeries;
-  dashcardSettings: VisualizationSettings;
   renderingContext: RenderingContext;
+  isStorybook?: boolean;
 }
 
 export interface VisualizationProps {
   series: Series;
   card: Card;
-  href: string | undefined;
+  getHref?: () => string | undefined;
   data: DatasetData;
   metadata: Metadata;
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
+  hiddenSeries?: Set<string>;
   headerIcon: IconProps;
   errorIcon: IconName;
   actionButtons: ReactNode;
@@ -89,9 +101,11 @@ export interface VisualizationProps {
   showTitle: boolean;
   isDashboard: boolean;
   isEditing: boolean;
+  isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
   hovered?: HoveredObject;
+  clicked?: ClickObject;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];
@@ -123,6 +137,7 @@ export interface VisualizationProps {
   "graph.metrics"?: string[];
 
   canRemoveSeries?: (seriesIndex: number) => boolean;
+  canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 }
@@ -154,6 +169,8 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
   getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
   getValue?: (series: Series, settings: VisualizationSettings) => TValue;
+  getDisabled?: (series: Series, settings: VisualizationSettings) => TValue;
+  disabled?: boolean;
   default?: TValue;
   marginBottom?: string;
   getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
@@ -165,6 +182,7 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
     vizSettings: VisualizationSettings,
     onChange: (value: TValue) => void,
     extra: unknown,
+    onChangeSettings: (value: Record<string, any>) => void,
   ) => TProps;
   readDependencies?: string[];
   writeDependencies?: string[];
@@ -186,20 +204,23 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<VisualizationProps> & {
-  name: string;
-  noun: string;
+export type Visualization = React.ComponentType<VisualizationProps> &
+  VisualizationDefinition;
+
+export type VisualizationDefinition = {
+  name?: string;
+  noun?: string;
   uiName: string;
-  identifier: string;
+  identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
 
-  maxMetricsSupported: number;
-  maxDimensionsSupported: number;
+  maxMetricsSupported?: number;
+  maxDimensionsSupported?: number;
 
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
-  noHeader: boolean;
+  noHeader?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
@@ -210,18 +231,17 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
 
   settings: VisualizationSettingsDefinitions;
 
-  placeHolderSeries: Series;
+  placeHolderSeries?: Series;
 
-  transformSeries: (series: Series) => TransformedSeries;
-  // TODO: remove dependency on metabase-lib
-  isSensible: (data: DatasetData, query?: Query) => boolean;
+  transformSeries?: (series: Series) => TransformedSeries;
+  isSensible: (data: DatasetData) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,
     settings: VisualizationSettings,
     query: Query,
   ) => void | never;
-  isLiveResizable: (series: Series) => boolean;
+  isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
   placeholderSeries: RawSeries;
 };

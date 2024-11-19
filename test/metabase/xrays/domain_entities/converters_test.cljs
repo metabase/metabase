@@ -226,7 +226,7 @@
     (let [uuid   (random-uuid)
           schema [:map [:id :uuid]]]
       (is (test.js/= #js {:id (str uuid)}
-               ((converters/outgoing schema) {:id uuid})))
+                     ((converters/outgoing schema) {:id uuid})))
       (is (= {:id uuid}
              ((converters/incoming schema) #js {:id (str uuid)})))))
 
@@ -234,6 +234,6 @@
     (let [uuid   (random-uuid)
           schema [:map-of :string [:map [:id :uuid]]]]
       (is (test.js/= #js{"abc" #js {:id (str uuid)}}
-               ((converters/outgoing schema) {"abc" {:id uuid}})))
+                     ((converters/outgoing schema) {"abc" {:id uuid}})))
       (is (= {"abc" {:id uuid}}
              ((converters/incoming schema) #js {"abc" #js {:id (str uuid)}}))))))

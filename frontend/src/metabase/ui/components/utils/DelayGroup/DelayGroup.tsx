@@ -1,10 +1,10 @@
 import {
   createContext,
-  useMemo,
-  useState,
-  useRef,
-  useEffect,
   useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 
 type DelayGroupContext = {
@@ -32,9 +32,7 @@ export function DelayGroup({
 }: DelayGroupProps) {
   const [shouldDelay, setShouldDelay] = useState(true);
 
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
+  const timeoutRef = useRef<number>();
 
   const value = useMemo(
     () => ({
@@ -45,7 +43,10 @@ export function DelayGroup({
       },
       onClose() {
         clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => setShouldDelay(true), timeout);
+        timeoutRef.current = window.setTimeout(
+          () => setShouldDelay(true),
+          timeout,
+        );
       },
     }),
     [timeout, shouldDelay],

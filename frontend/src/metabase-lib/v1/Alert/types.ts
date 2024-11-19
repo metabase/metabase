@@ -10,4 +10,4 @@ const ALERT_TYPES = [
   ALERT_TYPE_PROGRESS_BAR_GOAL,
 ] as const;
 
-export type AlertType = typeof ALERT_TYPES[number];
+export type AlertType = (typeof ALERT_TYPES)[number];

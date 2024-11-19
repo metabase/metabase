@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -13,6 +14,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as dom from "metabase/lib/dom";
 import {
   CLOSE_NAVBAR,
@@ -20,10 +22,15 @@ import {
   isNavbarOpenForPathname,
 } from "metabase/redux/app";
 import type { User } from "metabase-types/api";
-import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockDatabase,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import {
   createMockAppState,
+  createMockEmbedOptions,
   createMockEmbedState,
   createMockState,
 } from "metabase-types/store/mocks";
@@ -48,13 +55,19 @@ async function setup({
   setupCollectionsEndpoints({ collections: [] });
   setupDatabasesEndpoints([createMockDatabase()]);
   setupSearchEndpoints([]);
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection(ROOT_COLLECTION),
+    collectionItems: [],
+  });
   fetchMock.get("path:/api/bookmark", []);
 
   const storeInitialState = createMockState({
     app: createMockAppState({
       isNavbarOpen: isOpen ?? isNavbarOpenForPathname(pathname, true),
     }),
-    embed: createMockEmbedState(embedOptions),
+    embed: createMockEmbedState({
+      options: createMockEmbedOptions(embedOptions),
+    }),
     currentUser: user,
   });
 

@@ -1,4 +1,4 @@
-import { configureStore, type Dispatch } from "@reduxjs/toolkit";
+import { type Dispatch, configureStore } from "@reduxjs/toolkit";
 
 import embedReduer, {
   DEFAULT_EMBED_OPTIONS,

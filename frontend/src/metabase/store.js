@@ -1,5 +1,5 @@
-import { configureStore, combineReducers } from "@reduxjs/toolkit";
-import { routerReducer as routing, routerMiddleware } from "react-router-redux";
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { routerMiddleware, routerReducer as routing } from "react-router-redux";
 import promise from "redux-promise";
 
 import { Api } from "metabase/api";

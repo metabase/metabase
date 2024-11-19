@@ -39,7 +39,7 @@
     [:dimensions DimensionBindings]
     [:entity {:optional true} SourceEntity]]])
 
-(mu/defn ^:private get-dimension-binding :- MBQL
+(mu/defn- get-dimension-binding :- MBQL
   [bindings            :- Bindings
    source              :- SourceName
    dimension-reference :- DimensionReference]

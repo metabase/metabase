@@ -2,8 +2,8 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeWithSnowplow,
-  enableTracking,
   echartsContainer,
+  enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   openCollectionItemMenu,
@@ -11,6 +11,7 @@ import {
   resetSnowplow,
   restore,
   sidebar,
+  updateSetting,
   visitModel,
 } from "e2e/support/helpers";
 
@@ -149,7 +150,7 @@ describeWithSnowplow.skip("scenarios > metabot", () => {
 });
 
 const enableMetabot = () => {
-  cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
+  updateSetting("is-metabot-enabled", true);
 };
 
 const verifyTableVisibility = () => {

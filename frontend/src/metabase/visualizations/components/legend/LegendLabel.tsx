@@ -1,9 +1,10 @@
 import cx from "classnames";
 import {
-  useCallback,
+  type FocusEventHandler,
   type MouseEvent,
   type MouseEventHandler,
   type ReactNode,
+  useCallback,
 } from "react";
 import type { LinkProps } from "react-router";
 import { Link } from "react-router";
@@ -15,9 +16,18 @@ interface Props {
   className?: string;
   href?: LinkProps["to"];
   onClick: MouseEventHandler;
+  onFocus: FocusEventHandler;
+  onMouseEnter: MouseEventHandler;
 }
 
-export const LegendLabel = ({ children, className, href, onClick }: Props) => {
+export const LegendLabel = ({
+  children,
+  className,
+  href,
+  onClick,
+  onFocus,
+  onMouseEnter,
+}: Props) => {
   const handleLinkClick = useCallback(
     (event: MouseEvent) => {
       // Prefer programmatic onClick handling over native browser's href handling.
@@ -35,6 +45,8 @@ export const LegendLabel = ({ children, className, href, onClick }: Props) => {
           [S.link]: onClick,
         })}
         onClick={onClick}
+        onFocus={onFocus}
+        onMouseEnter={onMouseEnter}
       >
         {children}
       </div>
@@ -46,6 +58,8 @@ export const LegendLabel = ({ children, className, href, onClick }: Props) => {
       className={cx(S.text, S.link, className)}
       to={href}
       onClick={handleLinkClick}
+      onFocus={onFocus}
+      onMouseEnter={onMouseEnter}
     >
       {children}
     </Link>

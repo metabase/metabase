@@ -5,7 +5,7 @@ import { addUndo } from "metabase/redux/undo";
 import { CacheConfigApi } from "metabase/services";
 import type { CacheableModel } from "metabase-types/api";
 
-import { resolveSmoothly, isErrorWithMessage } from "../utils";
+import { isErrorWithMessage, resolveSmoothly } from "../utils";
 
 export const useInvalidateTarget = (
   targetId: number | null,

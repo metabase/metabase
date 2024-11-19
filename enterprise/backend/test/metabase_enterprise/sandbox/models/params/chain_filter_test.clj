@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.api.common :as api]
    [metabase.models :refer [FieldValues]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.test :as mt]
@@ -27,16 +27,14 @@
 
         (testing "When chain-filter with constraints"
           (testing "creates a linked-filter FieldValues if not sandboxed"
-            ;; HACK to run this outside of sandboxing
-            (binding [api/*current-user-id*              nil
-                      api/*current-user-permissions-set* (atom #{"/"})]
+            (binding [data-perms/*sandboxes-for-user* (delay nil)]
               (is (= {:values          [["Artisan"]]
                       :has_more_values false}
                      (mt/$ids (chain-filter/chain-filter %categories.name
                                                          [{:field-id %categories.id :op := :value 3}])))))
             (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter))))
 
-          (testing "creates another linked-filter FieldValues if  sandboxed"
+          (testing "creates another linked-filter FieldValues if sandboxed"
             (is (= {:values          []
                     :has_more_values false}
                    (mt/$ids (chain-filter/chain-filter %categories.name

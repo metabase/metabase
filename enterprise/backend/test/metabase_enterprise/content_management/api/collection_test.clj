@@ -43,9 +43,8 @@
 
     (testing "fails to add an official collection if doesn't have any premium features"
       (mt/with-premium-features #{}
-        (is (= "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
-                                                                        :authority_level "official"})))))))
+        (mt/assert-has-premium-feature-error "Official Collections" (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
+                                                                                                                             :authority_level "official"}))))))
 
 (deftest update-collection-authority-happy-path-test
   (testing "PUT /api/collection/:id"
@@ -76,9 +75,7 @@
       (mt/with-premium-features #{}
         (t2.with-temp/with-temp
           [:model/Collection {id :id} {:authority_level nil}]
-          (is (= "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))))
-
+          (mt/assert-has-premium-feature-error "Official Collections" (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"})))))))
 
 (deftest update-collection-authority-backward-compatible-test
   ;; edge cases we need to handle for backwards compatibility see metabase-private#77
@@ -102,16 +99,14 @@
      :model/Card {model-id :id} {:name "A question" :type :model}]
     (testing "can't use verified questions/models if has :official-collections feature"
       (mt/with-premium-features #{:official-collections}
-        (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :crowberto :post 402 "moderation-review"
-                                     {:moderated_item_id   card-id
-                                      :moderated_item_type :card
-                                      :status              :verified})))
-        (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :crowberto :post 402 "moderation-review"
-                                     {:moderated_item_id   model-id
-                                      :moderated_item_type :card
-                                      :status              :verified})))))
+        (mt/assert-has-premium-feature-error "Content verification" (mt/user-http-request :crowberto :post 402 "moderation-review"
+                                                                                          {:moderated_item_id   card-id
+                                                                                           :moderated_item_type :card
+                                                                                           :status              :verified}))
+        (mt/assert-has-premium-feature-error "Content verification" (mt/user-http-request :crowberto :post 402 "moderation-review"
+                                                                                          {:moderated_item_id   model-id
+                                                                                           :moderated_item_type :card
+                                                                                           :status              :verified}))))
 
     (testing "can use verified questions/models if has :content-verification feature"
       (mt/with-premium-features #{:content-verification}

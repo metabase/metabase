@@ -19,20 +19,6 @@ const ruleTester = new RuleTester({
 const VALID_CASES = [
   {
     code: `
-import MetabaseSettings from "metabase/lib/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-
-const docsUrl = MetabaseSettings.docsUrl("permissions/data")`,
-  },
-  {
-    code: `
-import MetabaseSettings from "metabase/lib/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-
-const docsUrl = MetabaseSettings.learnUrl("permissions/data")`,
-  },
-  {
-    code: `
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -82,35 +68,21 @@ function MyComponent() {
   return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;
 }`,
   },
+  {
+    code: `
+const { url, showMetabaseLinks } = useDocsUrl("permissions/data");`,
+  },
+  {
+    code: `
+const { url: docsUrl, showMetabaseLinks: shouldShowLink } = useDocsUrl("permissions/data");`,
+  },
+  {
+    code: `
+// eslint-disable-next-line no-unconditional-metabase-links-render -- Only shows for admins.
+const { url } = useDocsUrl("permissions/data");`,
+  },
 ];
 const INVALID_CASES = [
-  {
-    name: 'Detect any name of the default import of "metabase/lib/settings"',
-    code: `
-import Settings from "metabase/lib/settings";
-
-const docsUrl = Settings.docsUrl("permissions/data")`,
-    error:
-      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
-  },
-  {
-    name: "Detect MetabaseSettings.docsUrl()",
-    code: `
-import MetabaseSettings from "metabase/lib/settings";
-
-const docsUrl = MetabaseSettings.docsUrl("permissions/data")`,
-    error:
-      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
-  },
-  {
-    name: "Detect MetabaseSettings.learn()",
-    code: `
-import MetabaseSettings from "metabase/lib/settings";
-
-const docsUrl = MetabaseSettings.learnUrl("permissions/data")`,
-    error:
-      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
-  },
   {
     name: "Detect getDocsUrl()",
     code: `
@@ -190,6 +162,26 @@ function MyComponent() {
   return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;
 }`,
     error: "Please use inline disable with comments instead.",
+  },
+  {
+    code: `
+function MyComponent() {
+  const { url } = useDocsUrl("permissions/data");
+  let foo="bar";
+}`,
+    error: /Metabase links must be rendered conditionally/,
+  },
+  {
+    code: `
+const { url: docsUrl } = useDocsUrl("permissions/data");`,
+    error: /Metabase links must be rendered conditionally/,
+  },
+  {
+    code: `
+// eslint-disable-next-line no-unconditional-metabase-links-render
+const { url } = useDocsUrl("permissions/data");`,
+    error:
+      /Please add comment to indicate the reason why this rule needs to be disabled./,
   },
 ];
 

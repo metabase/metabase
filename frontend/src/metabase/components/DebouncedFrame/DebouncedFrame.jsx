@@ -97,9 +97,11 @@ class DebouncedFrame extends Component {
           ...style,
         }}
       >
-        <div className={CS.absolute} style={{ width, height }}>
-          {children}
-        </div>
+        {width > 0 ? (
+          <div className={CS.absolute} style={{ width, height }}>
+            {children}
+          </div>
+        ) : null}
       </div>
     );
   }

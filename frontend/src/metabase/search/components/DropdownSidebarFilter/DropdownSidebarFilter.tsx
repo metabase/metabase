@@ -15,12 +15,12 @@ import type {
 } from "metabase/search/types";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import type { IconName } from "metabase/ui";
-import { Text, Box, Center, Button, Stack, Icon } from "metabase/ui";
+import { Box, Button, Center, Icon, Stack, Text } from "metabase/ui";
 
 import {
-  GroupOverflowHidden,
   DropdownFieldSet,
   DropdownLabelIcon,
+  GroupOverflowHidden,
   SearchEventSandbox,
 } from "./DropdownSidebarFilter.styled";
 

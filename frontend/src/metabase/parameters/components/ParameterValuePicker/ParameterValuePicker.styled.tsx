@@ -5,6 +5,7 @@ import { Icon, TextInput } from "metabase/ui";
 // TODO replace with Select without a dropdown? (metabase#40226)
 export const TextInputTrirgger = styled(TextInput)`
   cursor: pointer;
+
   input {
     cursor: pointer;
   }

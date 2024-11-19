@@ -1,4 +1,10 @@
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import _ from "underscore";
+
+import {
+  SdkError,
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -7,18 +13,23 @@ import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
 
-export type StaticDashboardProps = SdkDashboardDisplayProps;
+export type StaticDashboardProps = SdkDashboardDisplayProps &
+  PublicOrEmbeddedDashboardEventHandlersProps;
 
 export const StaticDashboardInner = ({
   dashboardId,
   initialParameterValues = {},
   withTitle = true,
   withCardTitle = true,
-  withDownloads = true,
+  withDownloads = false,
   hiddenParameters = [],
+  onLoad,
+  onLoadWithoutCards,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -45,8 +56,8 @@ export const StaticDashboardInner = ({
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameterValues}
-        hideDownloadButton={displayOptions.hideDownloadButton}
         hideParameters={displayOptions.hideParameters}
+        background={displayOptions.background}
         titled={displayOptions.titled}
         cardTitled={withCardTitle}
         theme={theme}
@@ -57,11 +68,30 @@ export const StaticDashboardInner = ({
         setRefreshElapsedHook={setRefreshElapsedHook}
         font={font}
         bordered={displayOptions.bordered}
+        onLoad={onLoad}
+        onLoadWithoutCards={onLoadWithoutCards}
+        downloadsEnabled={withDownloads}
+        isNightMode={false}
+        onNightModeChange={_.noop}
+        hasNightModeToggle={false}
       />
     </Box>
   );
 };
 
-const StaticDashboard = withPublicComponentWrapper(StaticDashboardInner);
+const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
+  ({ dashboardId, ...rest }) => {
+    const { isLoading, id } = useValidatedEntityId({
+      type: "dashboard",
+      id: dashboardId,
+    });
+
+    if (!id) {
+      return isLoading ? <SdkLoader /> : <SdkError message="ID not found" />;
+    }
+
+    return <StaticDashboardInner dashboardId={id} {...rest} />;
+  },
+);
 
 export { EmbedDisplayParams, StaticDashboard };

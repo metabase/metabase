@@ -1,5 +1,7 @@
 (ns metabase.models.api-key
-  (:require [crypto.random :as crypto-random]
+  (:require [clojure.core.memoize :as memoize]
+            [crypto.random :as crypto-random]
+            [metabase.db :as mdb]
             [metabase.models.audit-log :as audit-log]
             [metabase.models.interface :as mi]
             [metabase.models.permissions-group :as perms-group]
@@ -36,8 +38,8 @@
           (fn [api-key-id]
             (let [{name :group-name
                    id   :group-id} (->> (api-key-id->permissions-groups api-key-id)
-                                      (sort-by #(= (:group-id %) (u/the-id (perms-group/all-users))))
-                                      first)]
+                                        (sort-by #(= (:group-id %) (u/the-id (perms-group/all-users))))
+                                        first)]
               {:name name :id id}))]
       (for [api-key api-keys]
         (assoc api-key :group (api-key-id->group (u/the-id api-key)))))))
@@ -108,3 +110,16 @@
 (defmethod audit-log/model-details :model/ApiKey
   [entity _event-type]
   (select-keys entity [:name :group :key_prefix :user_id]))
+
+(def ^{:arglists '([user-id])} is-api-key-user?
+  "Cached function to determine whether the user with this ID is an API key user"
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[user-id]]
+                         [(mdb/unique-identifier) user-id])}
+   (fn is-api-key-user?*
+     [user-id]
+     (= :api-key (t2/select-one-fn :type :model/User user-id)))
+
+   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
+   ;; large
+   :ttl/threshold (* 60 60 1000)))

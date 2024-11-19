@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { assoc } from "icepick";
 import { PureComponent } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -11,7 +10,6 @@ import { SmallGenericError } from "metabase/components/ErrorPages";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
@@ -58,6 +56,7 @@ const defaultProps = {
   isSettings: false,
   isQueryBuilder: false,
   isEmbeddingSdk: false,
+  onUpdateQuestion: () => {},
   onUpdateVisualizationSettings: () => {},
   // prefer passing in a function that doesn't cause the application to reload
   onChangeLocation: location => {
@@ -75,13 +74,12 @@ const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
 class Visualization extends PureComponent {
   state = {
-    href: undefined,
+    getHref: undefined,
     hovered: null,
     clicked: null,
     error: null,
     genericError: null,
     warnings: [],
-    yAxisSplit: null,
     series: null,
     visualization: null,
     computedSettings: {},
@@ -158,7 +156,6 @@ class Visualization extends PureComponent {
       error: null,
       genericError: null,
       warnings: [],
-      yAxisSplit: null,
       series: series,
       visualization: visualization,
       computedSettings: computedSettings,
@@ -178,14 +175,6 @@ class Visualization extends PureComponent {
 
   handleHoverChange = hovered => {
     if (hovered) {
-      const { yAxisSplit } = this.state;
-      // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
-      if (yAxisSplit) {
-        const axisIndex = _.findIndex(yAxisSplit, indexes =>
-          _.contains(indexes, hovered.index),
-        );
-        hovered = assoc(hovered, "axisIndex", axisIndex);
-      }
       this.setState({ hovered });
       // If we previously set a timeout for clearing the hover clear it now since we received
       // a new hover.
@@ -256,10 +245,6 @@ class Visualization extends PureComponent {
   }
 
   visualizationIsClickable = clicked => {
-    const { onChangeCardAndRun } = this.props;
-    if (!onChangeCardAndRun) {
-      return false;
-    }
     try {
       return this.getClickActions(clicked).length > 0;
     } catch (e) {
@@ -270,16 +255,6 @@ class Visualization extends PureComponent {
 
   handleVisualizationClick = clicked => {
     const { handleVisualizationClick } = this.props;
-
-    if (clicked) {
-      MetabaseAnalytics.trackStructEvent(
-        "Actions",
-        "Clicked",
-        `${clicked.column ? "column" : ""} ${clicked.value ? "value" : ""} ${
-          clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""
-        }`,
-      );
-    }
 
     if (typeof handleVisualizationClick === "function") {
       handleVisualizationClick(clicked);
@@ -319,8 +294,11 @@ class Visualization extends PureComponent {
     });
   };
 
-  onRender = ({ yAxisSplit, warnings = [] } = {}) => {
-    this.setState({ yAxisSplit, warnings });
+  onRender = ({ warnings = [] } = {}) => {
+    const currentWarnings = this.state.warnings;
+    if (!_.isEqual(currentWarnings, warnings)) {
+      this.setState({ warnings });
+    }
   };
 
   onRenderError = error => {
@@ -343,7 +321,7 @@ class Visualization extends PureComponent {
       actionButtons,
       className,
       dashcard,
-      href,
+      getHref,
       errorMessageOverride,
       showTitle,
       isDashboard,
@@ -491,7 +469,7 @@ class Visualization extends PureComponent {
                 icon={headerIcon}
                 actionButtons={extra}
                 width={width}
-                href={href}
+                getHref={getHref}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent
                     ? this.handleOnChangeCardAndRun
@@ -544,7 +522,7 @@ class Visualization extends PureComponent {
                 onRender={this.onRender}
                 onActionDismissal={this.hideActions}
                 gridSize={gridSize}
-                href={href}
+                getHref={getHref}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun
                     ? this.handleOnChangeCardAndRun
@@ -559,6 +537,7 @@ class Visualization extends PureComponent {
               clicked={clicked}
               clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
+              onUpdateQuestion={this.props.onUpdateQuestion}
               onClose={this.hideActions}
               series={series}
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}

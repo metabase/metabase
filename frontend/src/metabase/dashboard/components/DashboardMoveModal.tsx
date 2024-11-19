@@ -8,7 +8,7 @@ import Dashboards from "metabase/entities/dashboards";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
-import type { Dashboard, CollectionId, DashboardId } from "metabase-types/api";
+import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { ToastRoot } from "./DashboardMoveModal.styled";
@@ -65,6 +65,7 @@ const DashboardMoveToast = ({
     {c("{0} is a location where the dashboard was moved to")
       .jt`Dashboard moved to ${(
       <Collection.Link
+        key="link"
         id={collectionId}
         style={{ marginInlineStart: ".25em" }}
         color={color("brand")}

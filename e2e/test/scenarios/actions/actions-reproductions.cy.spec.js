@@ -2,18 +2,18 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createAction,
   editDashboard,
+  getActionCardDetails,
+  getDashboardCard,
+  getNextUnsavedDashboardCardId,
+  modal,
   restore,
   saveDashboard,
   setActionsEnabledForDB,
-  visitDashboard,
-  getDashboardCard,
-  getActionCardDetails,
-  getNextUnsavedDashboardCardId,
-  modal,
-  createAction,
-  updateDashboardCards,
   undoToast,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -27,6 +27,7 @@ const viewports = [
   [1024, 800],
   [1440, 800],
 ];
+
 describe("metabase#31587", () => {
   viewports.forEach(([width, height]) => {
     describe(`Testing on resolution ${width} x ${height}`, () => {
@@ -36,6 +37,7 @@ describe("metabase#31587", () => {
         setActionsEnabledForDB(SAMPLE_DB_ID);
         cy.viewport(width, height);
       });
+
       it("should not allow action buttons to overflow when editing dashboard", () => {
         visitDashboard(ORDERS_DASHBOARD_ID);
         editDashboard();

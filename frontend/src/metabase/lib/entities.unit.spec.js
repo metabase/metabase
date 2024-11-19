@@ -1,7 +1,7 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import promise from "redux-promise";
 
-import { createEntity, combineEntities } from "metabase/lib/entities";
+import { combineEntities, createEntity } from "metabase/lib/entities";
 import requestsReducer from "metabase/redux/requests";
 
 /**
@@ -33,6 +33,7 @@ const initialState = {
 
 describe("entities", () => {
   let store;
+
   beforeEach(() => {
     store = configureStore({
       reducer,
@@ -44,17 +45,20 @@ describe("entities", () => {
         }).concat([promise]),
     });
   });
+
   describe("getObject", () => {
     it("should return an object", () => {
       expect(
         widgets.selectors.getObject(initialState, { entityId: 1 }),
       ).toEqual({ name: "foo " });
     });
+
     it("should cache the object", () => {
       const a1 = widgets.selectors.getObject(initialState, { entityId: 1 });
       const a2 = widgets.selectors.getObject(initialState, { entityId: 1 });
       expect(a1).toBe(a2);
     });
+
     it("should cache multiple objects", () => {
       const a1 = widgets.selectors.getObject(initialState, { entityId: 1 });
       const b1 = widgets.selectors.getObject(initialState, { entityId: 2 });
@@ -64,6 +68,7 @@ describe("entities", () => {
       expect(b1).toBe(b2);
     });
   });
+
   describe("fetch", () => {
     it("should fetch an entity", async () => {
       await store.dispatch(widgets.actions.fetch({ id: 3 }));

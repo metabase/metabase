@@ -44,6 +44,7 @@ WHERE dp.perm_type = 'perms/download-results'
   AND dp.perm_value = 'ten-thousand-rows'
 AND dp.table_id IS NOT NULL;
 
+-- TODO: this specific rollback is slow
 INSERT INTO permissions (object, group_id)
 SELECT DISTINCT ON (dp.db_id, dp.group_id)
   concat('/download/limited/db/',  dp.db_id,  '/native/'),

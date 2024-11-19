@@ -2,8 +2,8 @@ import _ from "underscore";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import {
-  ChartSettingsWidgetListHeader,
   ChartSettingsWidgetListDivider,
+  ChartSettingsWidgetListHeader,
 } from "./ChartSettingsWidgetList.styled";
 
 interface ChartSettingsWidgetListProps {

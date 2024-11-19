@@ -1,11 +1,11 @@
 (ns metabase.lib.schema.join-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [malli.core :as mc]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.util.malli.humanize :as mu.humanize]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli.humanize :as mu.humanize]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -13,9 +13,13 @@
   (is (=? {:stages ["should have at least 1 elements" ["end of input"]]}
           (mu.humanize/humanize (mc/explain ::lib.schema.join/join {:stages []}))))
   ;; not sure why these errors are repeated.
-  (is (=? {:stages [[{:joins [{:stages [[{:lib/type "missing required key"}
-                                         "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]]}]}
-                     "An initial MBQL stage of a query must have :source-table or :source-card"]]}
+  (is (=? {:lib/type "missing required key"
+           :stages [{:joins [{:stages [[{:lib/type "missing required key"}
+                                        "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]]
+                              :lib/options "missing required key"
+                              :conditions  "should have at least 1 elements"}]}]}
           (mu.humanize/humanize (mc/explain ::lib.schema/query {:stages [{:lib/type :mbql.stage/mbql
                                                                           :joins    [{:lib/type :mbql/join
-                                                                                      :stages   [{}]}]}]})))))
+                                                                                      :stages   [{}]
+                                                                                      :conditions []
+                                                                                      :alias      "join alias"}]}]})))))

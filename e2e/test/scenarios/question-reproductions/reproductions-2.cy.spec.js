@@ -2,27 +2,33 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visualize,
-  openOrdersTable,
-  popover,
-  modal,
-  openNativeEditor,
-  startNewQuestion,
+  chartPathWithFillColor,
+  commandPalette,
+  commandPaletteButton,
+  createNativeQuestion,
+  createQuestion,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
+  getNotebookStep,
+  modal,
+  newButton,
+  onlyOnOSS,
+  openNativeEditor,
+  openNotebook,
+  openOrdersTable,
+  openQuestionActions,
+  popover,
+  queryBuilderHeader,
+  restore,
+  saveQuestion,
+  saveSavedQuestion,
+  selectFilterOperator,
+  startNewQuestion,
+  tableHeaderClick,
   visitQuestion,
   visitQuestionAdhoc,
-  openNotebook,
-  selectFilterOperator,
-  chartPathWithFillColor,
-  openQuestionActions,
-  queryBuilderHeader,
-  saveQuestion,
-  tableHeaderClick,
-  onlyOnOSS,
-  entityPickerModalItem,
-  newButton,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -56,6 +62,7 @@ describe("issue 23023", () => {
       type: "query",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -104,7 +111,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
   });
 
   it("from the notebook GUI (metabase#24839-1)", () => {
-    cy.icon("notebook").click();
+    openNotebook();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -151,6 +158,7 @@ describe("issue 25016", () => {
       "table.cell_column": "count",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -246,6 +254,7 @@ describe("issue 27104", () => {
     },
     display: "bar",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -419,6 +428,7 @@ describe("issue 28874", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -554,6 +564,138 @@ describe("issue 30610", () => {
   });
 });
 
+describe("issue 36669", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("GET", "/api/search*").as("search");
+  });
+
+  it("should be able to change question data source to raw data after selecting saved question (metabase#36669)", () => {
+    const questionDetails = {
+      name: "Orders 36669",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails).then(() => {
+      startNewQuestion();
+    });
+
+    entityPickerModal().within(() => {
+      cy.findByPlaceholderText("Search this collection or everywhere…").type(
+        "Orders 36669",
+      );
+      cy.wait("@search");
+
+      cy.findByText("Everywhere").click();
+      cy.findByRole("tabpanel").findByText("Orders 36669").click();
+    });
+
+    getNotebookStep("data").findByText("Orders 36669").click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+
+      cy.log("verify Tables are listed");
+      cy.findByRole("tabpanel").should("contain", "Orders");
+    });
+  });
+});
+
+describe("issue 35290", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render column settings when source query is a table joined on itself (metabase#35290)", () => {
+    const questionDetails = {
+      name: "Orders + Orders",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            "source-table": ORDERS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.ID, null],
+              ["field", ORDERS.ID, null],
+            ],
+            alias: "Orders",
+          },
+        ],
+        limit: 5,
+      },
+    };
+
+    createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+      const questionDetails = {
+        name: "35290",
+        query: {
+          "source-table": `card__${questionId}`,
+        },
+      };
+
+      createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar")
+      // verify panel is shown
+      .should("contain", "Add or remove columns")
+      // verify column name is shown
+      .should("contain", "Created At");
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.icon("warning").should("not.exist");
+    });
+  });
+});
+
+describe("issue 43216", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+
+    createNativeQuestion({
+      name: "Source question",
+      native: { query: "select 1 as A, 2 as B, 3 as C" },
+    });
+  });
+
+  it("should update source question metadata when it changes (metabase#43216)", () => {
+    cy.visit("/");
+
+    cy.log("Create target question");
+    newButton("Question").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("Source question").click();
+    });
+    saveQuestion("Target question");
+
+    cy.log("Update source question");
+    commandPaletteButton().click();
+    commandPalette().findByText("Source question").click();
+    cy.findByTestId("native-query-editor-container")
+      .findByText("Open Editor")
+      .click();
+    cy.get(".ace_editor").should("be.visible").type(" , 4 as D");
+    saveSavedQuestion();
+
+    cy.log("Assert updated metadata in target question");
+    commandPaletteButton().click();
+    commandPalette().findByText("Target question").click();
+    cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("D").should("be.visible");
+  });
+});
+
 function updateQuestion() {
   queryBuilderHeader().findByText("Save").click();
   cy.findByTestId("save-question-modal").within(modal => {
@@ -599,6 +741,7 @@ describe("Custom columns visualization settings", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

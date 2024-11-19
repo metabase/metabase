@@ -8,9 +8,9 @@ import Search from "metabase/entities/search";
 import { closeNavbar } from "metabase/redux/app";
 import {
   getHasDataAccess,
+  getHasDatabaseWithActionsEnabled,
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
-  getHasDatabaseWithActionsEnabled,
 } from "metabase/selectors/data";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { CollectionItem } from "metabase-types/api";

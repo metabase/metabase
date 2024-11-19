@@ -4,8 +4,10 @@
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 0.375rem;
+  color: var(--mb-color-text-dark);
 
   &:hover {
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-selected);
+    color: var(--mb-color-text-selected);
   }
 }

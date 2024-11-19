@@ -3,8 +3,8 @@
   ;; This special context is defined only for dev-mode shadow-cljs builds; see shadow-cljs.edn
   ;; In release builds, and JVM Clojure, this file is an empty namespace.
   #?(:cljs-dev (:require
-                 [devtools.core :as devtools]
-                 [shadow.cljs.devtools.client.browser])))
+                [devtools.core :as devtools]
+                [shadow.cljs.devtools.client.browser])))
 
 #?(:cljs-dev
    (do

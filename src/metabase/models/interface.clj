@@ -5,6 +5,7 @@
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
@@ -12,6 +13,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
@@ -234,7 +236,9 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
+              ;; This is necessary, because in the wild, there may be cards created prior to this change.
+              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
@@ -250,6 +254,44 @@
   "Transform for json-no-keywordization"
   {:in  json-in
    :out json-out-without-keywordization})
+
+(mu/defn assert-enum
+  "Assert that a value is one of the values in `enum`."
+  [enum :- [:set :any]
+   value]
+  (when-not (contains? enum value)
+    (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
+                                                                                               :value       value}))))
+
+(mu/defn assert-namespaced
+  "Assert that a value is a namespaced keyword under `qualified-ns`."
+  [qualified-ns :- string?
+   value]
+  (when-not (= qualified-ns (-> value keyword namespace))
+    (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
+                                                                                                   :value       value}))))
+
+(defn transform-validator
+  "Given a transform, returns a transform that call `assert-fn` on the \"out\" value.
+
+  E.g: A keyword transfomer that throw an error if the value is not namespaced
+    (transform-validator
+      transform-keyword (fn [x]
+      (when-not (-> x namespace some?)
+        (throw (ex-info \"Value is not namespaced\")))))"
+  [tf assert-fn]
+  (-> tf
+      ;; deserialization
+      (update :out (fn [f]
+                     (fn [x]
+                       (let [out (f x)]
+                         (assert-fn out)
+                         out))))
+      ;; serialization
+      (update :in (fn [f]
+                    (fn [x]
+                      (assert-fn x)
+                      (f x))))))
 
 (def encrypted-json-in
   "Serialize encrypted json."
@@ -316,12 +358,16 @@
 
 (defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
   (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} viz-settings]
-    (if-let [new-value (cond
-                         legend?  "inside"
-                         percent? "legend")]
-      (assoc viz-settings :pie.percent_visibility new-value)
-      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+         legend?  :pie.show_legend} viz-settings
+        new-visibility              (cond
+                                      legend?  "inside"
+                                      percent? "legend")
+        new-linktype                (when (= "page" (-> viz-settings :click_behavior :linkType))
+                                      "dashboard")]
+    (cond-> viz-settings
+      ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+      new-visibility (assoc :pie.percent_visibility new-visibility)
+      new-linktype   (assoc-in [:click_behavior :linkType] new-linktype))))
 
 (defn- migrate-viz-settings
   [viz-settings]
@@ -367,7 +413,6 @@
     (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
       (validate-legacy-metric-segment-definition <>))))
 
-
 (def transform-legacy-metric-segment-definition
   "Transform for inner queries like those in Metric definitions."
   {:in  (comp json-in normalize-legacy-metric-segment-definition)
@@ -412,7 +457,7 @@
   []
   (classloader/require 'metabase.driver.sql.query-processor)
   (let [db-type ((requiring-resolve 'metabase.db/db-type))]
-   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) db-type)))
+    ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
@@ -425,7 +470,6 @@
                                               (:updated_at obj))]
     (cond-> obj
       (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
-
 
 (t2/define-before-insert :hook/timestamped?
   [instance]
@@ -701,6 +745,7 @@
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
 (mu/defn instances-with-hydrated-data
+  ;; TODO: this example is wrong, we don't get a vector of tables
   "Helper function to write batched hydrations.
   Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
 

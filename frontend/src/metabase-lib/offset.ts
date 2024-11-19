@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { breakoutColumn, breakouts } from "./breakout";
-import { isDate } from "./column_types";
+import { isTemporal } from "./column_types";
 import { expressionClause, withExpressionName } from "./expression";
 import { describeTemporalUnit, displayInfo } from "./metadata";
 import { temporalBucket } from "./temporal_bucket";
@@ -86,7 +86,7 @@ function getOffsetClauseName(
 
   const firstBreakoutColumn = breakoutColumn(query, stageIndex, firstBreakout);
 
-  if (!isDate(firstBreakoutColumn)) {
+  if (!isTemporal(firstBreakoutColumn)) {
     return absoluteOffset === 1
       ? t`${displayName} (${prefix}previous value)`
       : t`${displayName} (${prefix}${absoluteOffset} rows above)`;

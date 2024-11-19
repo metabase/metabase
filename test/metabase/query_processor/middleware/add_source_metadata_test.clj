@@ -144,8 +144,8 @@
            (source-metadata
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
-                            {:source-query {:source-table $$venues
-                                            :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}})))))))
+               {:source-query {:source-table $$venues
+                               :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}})))))))
 
 (deftest ^:parallel named-aggregations-display-name-only-test
   (testing "w/ `:display-name` only"
@@ -158,8 +158,8 @@
            (source-metadata
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
-                            {:source-query {:source-table $$venues
-                                            :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}})))))))
+               {:source-query {:source-table $$venues
+                               :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}})))))))
 
 (deftest ^:parallel nested-sources-test
   (testing (str "Can we automatically add source metadata to the parent level of a query? If the source query has a "
@@ -201,7 +201,6 @@
            (add-source-metadata
             (lib.tu.macros/mbql-query venues
               {:source-query {:source-query {:source-query {:source-table $$venues}}}}))))))
-
 
 (deftest ^:parallel nested-sources-3-levels-with-fields-test
   (testing "nested 3 levels with `fields`"
@@ -367,13 +366,7 @@
           ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
           ;; `qp.preprocess/query->expected-cols`
           expected-metadata (for [col metadata]
-                              (cond-> (merge (results-col col) (select-keys col [:source_alias]))
-                                ;; for some reason this middleware returns temporal fields with a `:default` unit,
-                                ;; whereas `query->expected-cols` does not return the unit. It ulimately makes zero
-                                ;; difference, so I haven't looked into why this is the case yet.
-                                (isa? (:base_type col) :type/Temporal)
-                                (update :field_ref (fn [[_ id-or-name opts]]
-                                                     [:field id-or-name (assoc opts :temporal-unit :default)]))))]
+                              (merge (results-col col) (select-keys col [:source_alias])))]
       (letfn [(added-metadata [query]
                 (get-in (add-source-metadata query) [:query :source-metadata]))]
         (testing "\nShould add source metadata if there's none already"

@@ -10,16 +10,26 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  SAMPLE_DB_ID,
   ORDERS,
   ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createOrdersTable,
+  createProductsTable,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { ViewTitleHeader } from "./ViewTitleHeader";
 
 console.warn = jest.fn();
+console.error = jest.fn();
+
+const PRODUCTS_TABLE = createProductsTable();
+const HIDDEN_ORDERS_TABLE = createOrdersTable({
+  visibility_type: "hidden",
+});
 
 const BASE_GUI_QUESTION = {
   display: "table",
@@ -105,6 +115,7 @@ function setup({
   isAdditionalInfoVisible = true,
   isDirty = false,
   isRunnable = true,
+  hideOrdersTable = false,
   ...props
 } = {}) {
   mockSettings(settings);
@@ -126,6 +137,9 @@ function setup({
     entities: createMockEntitiesState({
       databases: [database],
       questions: [card],
+      tables: hideOrdersTable
+        ? [PRODUCTS_TABLE, HIDDEN_ORDERS_TABLE]
+        : undefined,
     }),
   });
 
@@ -185,6 +199,10 @@ function setupSavedNative(props = {}) {
 }
 
 describe("ViewTitleHeader", () => {
+  beforeEach(() => {
+    fetchMock.reset();
+  });
+
   const TEST_CASE = {
     SAVED_GUI_QUESTION: {
       card: getSavedGUIQuestionCard(),
@@ -255,7 +273,7 @@ describe("ViewTitleHeader", () => {
           ).not.toBeInTheDocument();
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
           expect(
-            screen.queryByLabelText("notebook icon"),
+            screen.queryByTestId("notebook-button"),
           ).not.toBeInTheDocument();
           expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
         });
@@ -307,27 +325,17 @@ describe("ViewTitleHeader", () => {
             card,
             queryBuilderMode: "view",
           });
-          fireEvent.click(screen.getByLabelText("notebook icon"));
+          fireEvent.click(screen.getByTestId("notebook-button"));
           expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
-        });
-
-        it("displays `Show editor` tooltip above notebook icon", async () => {
-          setup({
-            card,
-          });
-          const notebookButton = screen.getByLabelText("notebook icon");
-          await userEvent.hover(notebookButton);
-          const tooltip = screen.getByRole("tooltip");
-          expect(tooltip).toHaveAttribute("data-placement", "top");
-          expect(tooltip).toHaveTextContent("Show editor");
         });
 
         it("allows to close notebook editor", () => {
           const { setQueryBuilderMode } = setup({
             card,
             queryBuilderMode: "notebook",
+            result: { data: [] },
           });
-          fireEvent.click(screen.getByLabelText("notebook icon"));
+          fireEvent.click(screen.getByTestId("notebook-button"));
           expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
         });
 
@@ -465,6 +473,14 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
       ).not.toBeInTheDocument();
       expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
     });
+
+    it("hides the close notebook editor for brand new questions", () => {
+      setup({
+        card,
+        queryBuilderMode: "notebook",
+      });
+      expect(screen.queryByLabelText("notebook icon")).not.toBeInTheDocument();
+    });
   });
 });
 
@@ -573,5 +589,74 @@ describe("View Header | Read only permissions", () => {
   it("should disable the input field for the question title", () => {
     setup({ card: getSavedGUIQuestionCard({ can_write: false }) });
     expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();
+  });
+});
+
+describe("View Header | Hidden tables", () => {
+  it("should show the View-only badge when the source table is hidden", async () => {
+    setup({
+      hideOrdersTable: true,
+      card: getSavedGUIQuestionCard({ can_write: false }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
+  });
+
+  it("should show the View-only badge when a joined table is hidden", async () => {
+    setup({
+      hideOrdersTable: true,
+      card: getSavedGUIQuestionCard({
+        can_write: false,
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PRODUCTS_ID,
+            joins: [
+              {
+                alias: "Orders",
+                fields: "all",
+                "source-table": ORDERS_ID,
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.ID, null],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
+  });
+});
+
+describe("View Header | Inaccessible Cards", () => {
+  it("should show the View-only badge when the source question is inaccessible", async () => {
+    setup({
+      card: getSavedGUIQuestionCard({
+        can_write: false,
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": "card_123",
+            joins: [
+              {
+                alias: "Orders",
+                fields: "all",
+                "source-table": ORDERS_ID,
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.ID, null],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
   });
 });

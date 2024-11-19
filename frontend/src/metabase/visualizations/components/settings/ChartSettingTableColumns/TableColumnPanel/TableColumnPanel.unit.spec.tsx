@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -43,26 +43,18 @@ const COLUMNS = [
 const COLUMN_SETTINGS = [
   createMockTableColumnOrderSetting({
     name: "TOTAL",
-    key: `["ref",["field",${ORDERS.TOTAL},null]]`,
-    fieldRef: ["field", ORDERS.TOTAL, null],
     enabled: true,
   }),
   createMockTableColumnOrderSetting({
     name: "ID",
-    key: `["ref",["field",${ORDERS.ID},null]]`,
-    fieldRef: ["field", ORDERS.ID, null],
     enabled: true,
   }),
   createMockTableColumnOrderSetting({
     name: "TAX",
-    key: `["ref",["field",${ORDERS.TAX},null]]`,
-    fieldRef: ["field", ORDERS.TAX, null],
     enabled: false,
   }),
   createMockTableColumnOrderSetting({
     name: "SUBTOTAL",
-    key: `["ref",["field",${ORDERS.SUBTOTAL},null]]`,
-    fieldRef: ["field", ORDERS.SUBTOTAL, null],
     enabled: false,
   }),
 ];

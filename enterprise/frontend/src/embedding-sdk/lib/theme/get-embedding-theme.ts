@@ -4,24 +4,21 @@ import { DEFAULT_FONT } from "embedding-sdk/config";
 import type { MantineThemeOverride } from "metabase/ui";
 
 import type {
-  MetabaseTheme,
   MetabaseColor,
   MetabaseComponentTheme,
+  MetabaseTheme,
 } from "../../types/theme";
 
 import { colorTuple } from "./color-tuple";
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   DEFAULT_SDK_FONT_SIZE,
-  EMBEDDING_SDK_COMPONENTS_OVERRIDES,
+  getEmbeddingComponentOverrides,
 } from "./default-component-theme";
 import type { MappableSdkColor } from "./embedding-color-palette";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 
-const getFontFamily = (theme: MetabaseTheme) =>
-  theme.fontFamily ?? DEFAULT_FONT;
-
-const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE / 16}em`;
+const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -29,6 +26,7 @@ const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE / 16}em`;
  */
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
+  font: string | undefined,
 ): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
@@ -36,7 +34,9 @@ export function getEmbeddingThemeOverride(
   );
 
   const override: MantineThemeOverride = {
-    fontFamily: getFontFamily(theme),
+    // font is coming from either redux, where we store theme.fontFamily,
+    // or from the instance settings, we're adding a default to be used while loading the settings
+    fontFamily: font ?? DEFAULT_FONT,
 
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
 
@@ -45,7 +45,7 @@ export function getEmbeddingThemeOverride(
       fontSize: theme.fontSize ?? SDK_BASE_FONT_SIZE,
     },
 
-    components: EMBEDDING_SDK_COMPONENTS_OVERRIDES,
+    components: getEmbeddingComponentOverrides(theme.components),
   };
 
   if (theme.colors) {
@@ -56,10 +56,12 @@ export function getEmbeddingThemeOverride(
       const color = theme.colors[name as MetabaseColor];
 
       if (color && typeof color === "string") {
-        const themeColorName =
+        const themeColorNames =
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
 
-        override.colors[themeColorName] = colorTuple(color);
+        for (const themeColorName of themeColorNames) {
+          override.colors[themeColorName] = colorTuple(color);
+        }
       }
     }
   }

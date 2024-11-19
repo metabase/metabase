@@ -41,13 +41,19 @@
   "Helper for storing a serialized database to a tree of YAML files."
   [stream root-dir]
   (let [settings (atom [])
-        report   (atom [])
+        report   (atom {:seen [] :errors []})
         opts     (merge {:root-dir root-dir} (serdes/storage-base-context))]
     (doseq [entity stream]
-      (if (-> entity :serdes/meta last :model (= "Setting"))
+      (cond
+        (instance? Exception entity)
+        (swap! report update :errors conj entity)
+
+        (-> entity :serdes/meta last :model (= "Setting"))
         (swap! settings conj entity)
-        (swap! report conj (store-entity! opts entity))))
+
+        :else
+        (swap! report update :seen conj (store-entity! opts entity))))
     (when (seq @settings)
       (store-settings! opts @settings)
-      (swap! report conj [{:model "Setting"}]))
-    {:seen @report}))
+      (swap! report update :seen conj [{:model "Setting"}]))
+    @report))

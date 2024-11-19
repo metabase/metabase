@@ -1,19 +1,12 @@
-import PropTypes from "prop-types";
-
 import type { PinDropTargetRenderArgs } from "./PinDropZone.styled";
 import {
-  StyledPinDropTarget,
   PinDropTargetIndicator,
+  StyledPinDropTarget,
 } from "./PinDropZone.styled";
 
 type PinDropZoneProps = {
   variant: "pin" | "unpin";
   empty?: boolean;
-};
-
-PinDropZone.propTypes = {
-  variant: PropTypes.oneOf(["pin", "unpin"]).isRequired,
-  empty: PropTypes.bool,
 };
 
 function PinDropZone({ variant, empty, ...props }: PinDropZoneProps) {

@@ -6,12 +6,12 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
-  FullHeightContainer,
-  TabsContainer,
-  PermissionPageRoot,
-  PermissionPageContent,
-  PermissionPageSidebar,
   CloseSidebarButton,
+  FullHeightContainer,
+  PermissionPageContent,
+  PermissionPageRoot,
+  PermissionPageSidebar,
+  TabsContainer,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
@@ -21,13 +21,15 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import fitViewport from "metabase/hoc/FitViewPort";
+import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { updateUserSetting } from "metabase/redux/settings";
 import type { IconName } from "metabase/ui";
 import {
+  Group,
+  Button as NewButton,
   Modal as NewModal,
   Text,
-  Button as NewButton,
-  Group,
 } from "metabase/ui";
 import type { PermissionsGraph } from "metabase-types/api";
 
@@ -36,6 +38,7 @@ import {
   toggleHelpReference,
 } from "../../permissions";
 import { showRevisionChangedModal } from "../../selectors/data-permissions/revision";
+import { LegacyPermissionsModal } from "../LegacyPermissionsModal/LegacyPermissionsModal";
 import { ToolbarButton } from "../ToolbarButton";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
@@ -57,6 +60,7 @@ type PermissionsPageLayoutProps = {
   navigateToTab: (tab: string) => void;
   helpContent?: ReactNode;
   toolbarRightContent?: ReactNode;
+  showSplitPermsModal?: boolean;
 };
 
 const CloseSidebarButtonWithDefault = ({
@@ -77,9 +81,14 @@ function PermissionsPageLayout({
   route,
   toolbarRightContent,
   helpContent,
+  showSplitPermsModal: _showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
+  const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
+    useToggle(_showSplitPermsModal);
+
   const saveError = useSelector(state => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
+
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
 
@@ -90,6 +99,13 @@ function PermissionsPageLayout({
   const handleToggleHelpReference = useCallback(() => {
     dispatch(toggleHelpReference());
   }, [dispatch]);
+
+  const handleDimissSplitPermsModal = () => {
+    disableSplitPermsModal();
+    dispatch(
+      updateUserSetting({ key: "show-updated-permission-modal", value: false }),
+    );
+  };
 
   return (
     <PermissionPageRoot>
@@ -159,6 +175,10 @@ function PermissionsPageLayout({
           </NewButton>
         </Group>
       </NewModal>
+      <LegacyPermissionsModal
+        isOpen={showSplitPermsModal}
+        onClose={handleDimissSplitPermsModal}
+      />
     </PermissionPageRoot>
   );
 }

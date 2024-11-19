@@ -107,8 +107,23 @@ jobs:
             echo "PR has been merged, searching for a squashed commit in the base branch"
             echo "searching for a commit in a ${ORIGINAL_BASE_REF} that contains pull request number ${ORIGINAL_PULL_REQUEST_NUMBER}"
             SQUASHED_COMMIT=$(env -i git log ${ORIGINAL_BASE_REF} --grep="(#${ORIGINAL_PULL_REQUEST_NUMBER})" --format="%H")
-            echo "found commit ${SQUASHED_COMMIT}"
-            git cherry-pick ${SQUASHED_COMMIT}
+
+            if [ -n "${SQUASHED_COMMIT}" ]; then
+              echo "found commit ${SQUASHED_COMMIT}"
+              git cherry-pick ${SQUASHED_COMMIT}
+            else
+              echo "probably a PR wasn't merged with Squash And Merge button, searching again"
+              SQUASHED_COMMIT=$(env -i git log ${ORIGINAL_BASE_REF} --grep="#${ORIGINAL_PULL_REQUEST_NUMBER}" --format="%H")
+
+              if [ -n "${SQUASHED_COMMIT}" ]; then
+                echo "found commit ${SQUASHED_COMMIT}"
+                git cherry-pick ${SQUASHED_COMMIT}
+              else
+                echo "No squashed commit found for PR #${ORIGINAL_PULL_REQUEST_NUMBER}"
+                exit 1
+              fi
+            fi
+
           else
             echo "PR has not been merged, copying all commits"
             git cherry-pick ${ORIGINAL_BASE_SHA}..${ORIGINAL_HEAD_SHA}

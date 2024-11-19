@@ -9,7 +9,7 @@ import type {
 } from "metabase-types/api/admin";
 
 import { Api } from "./api";
-import { provideApiKeyListTags, idTag, invalidateTags, listTag } from "./tags";
+import { idTag, invalidateTags, listTag, provideApiKeyListTags } from "./tags";
 
 export const apiKeyApi = Api.injectEndpoints({
   endpoints: builder => ({

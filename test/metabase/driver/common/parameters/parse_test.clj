@@ -132,3 +132,21 @@
                             ["{{{foo}}: \"/* {{bar}} */\"}"
                              ["{" (param "foo") ": \"/* " (param "bar") " */\"}"]]]]
       (is (= result (normalize-tokens (params.parse/parse query false)))))))
+
+(deftest ^:parallel tokens-in-strings-test
+  (testing "skip malformed parameter tokens in strings"
+    (is (= ["'{{'"] (params.parse/parse "'{{'")))
+    (is (= ["'{{"] (params.parse/parse "'{{")))
+    (is (= ["'{{}}'"] (params.parse/parse "'{{}}'")))
+    (is (= ["'[['"] (params.parse/parse "'[['")))
+    (is (= ["'[[]]'"] (params.parse/parse "'[[]]'")))
+    (is (= ["'[[{{]]'"] (params.parse/parse "'[[{{]]'"))))
+  (testing "Parse well-formed tokens in strings"
+    (is (= ["'" (param "x") "'"] (params.parse/parse "'{{x}}'")))
+    (is (= ["'" (param "snippet: 'test'") "'"] (params.parse/parse "'{{snippet: 'test'}}'")))
+    (is (= ["'{{" (param "x") "'"] (params.parse/parse "'{{{{x}}'")))
+    (is (= ["'[[" (param "x") "'"] (params.parse/parse "'[[{{x}}'")))
+    (is (= ["'" (optional (param "x")) "'"] (params.parse/parse "'[[{{x}}]]'"))))
+  (testing "skip comment start in strings"
+    (is (= ["concat('--'," (param "x") ")"] (params.parse/parse "concat('--',{{x}})")))
+    (is (= ["concat('/*'," (param "x") ")"] (params.parse/parse "concat('/*',{{x}})")))))

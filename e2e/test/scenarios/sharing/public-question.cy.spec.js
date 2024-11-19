@@ -1,15 +1,19 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
-  visitQuestion,
-  saveQuestion,
-  downloadAndAssert,
   assertSheetRowsCount,
-  openNewPublicLinkDropdown,
+  createNativeQuestion,
   createPublicQuestionLink,
+  downloadAndAssert,
+  filterWidget,
+  main,
   modal,
   openNativeEditor,
+  openNewPublicLinkDropdown,
+  openSharingMenu,
+  restore,
+  saveQuestion,
+  updateSetting,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -58,7 +62,7 @@ describe("scenarios > public > question", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    updateSetting("enable-public-sharing", true);
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
@@ -86,9 +90,9 @@ describe("scenarios > public > question", () => {
       cy.get("[data-testid=cell-data]").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.get("@uuid").then(publicUid => {
+      cy.get("@uuid").then(publicUuid => {
         downloadAndAssert(
-          { fileType: "xlsx", questionId: id, publicUid },
+          { fileType: "xlsx", questionId: id, publicUuid },
           assertSheetRowsCount(5),
         );
       });
@@ -102,13 +106,13 @@ describe("scenarios > public > question", () => {
       cy.signInAsNormalUser().then(() => {
         visitQuestion(id);
 
-        cy.icon("share").click();
+        openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").then($input =>
-            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
-          );
+          cy.findByTestId("public-link-input").should($input => {
+            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
+          });
           cy.findByText("Remove public URL").should("not.exist");
         });
       });
@@ -193,15 +197,52 @@ describe("scenarios > public > question", () => {
       });
     });
   });
+
+  it("should allow to set locale from the `locale` query parameter", () => {
+    createNativeQuestion(
+      {
+        name: "Native question with a parameter",
+        native: {
+          query:
+            "select '2025-2-11'::DATE as date, {{some_parameter}} as some_parameter ",
+          "template-tags": {
+            some_parameter: {
+              type: "text",
+              name: "some_parameter",
+              id: "1e0806a0-155b-4e24-80bc-c050720201d0",
+              "display-name": "Some Parameter",
+              default: "some default value",
+            },
+          },
+        },
+      },
+      { wrapId: true },
+    );
+
+    cy.get("@questionId").then(id => {
+      cy.request("POST", `/api/card/${id}/public_link`).then(
+        ({ body: { uuid } }) => {
+          cy.visit(
+            `/public/question/${uuid}?locale=de&some_parameter=some_value`,
+          );
+        },
+      );
+    });
+
+    main().findByText("Februar 11, 2025");
+
+    cy.url().should("include", "locale=de");
+  });
 });
 
 const visitPublicURL = () => {
+  cy.findByTestId("public-link-input").should($input => {
+    // Copied URL has no get params
+    expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
+  });
   cy.findByTestId("public-link-input")
     .invoke("val")
     .then(publicURL => {
-      // Copied URL has no get params
-      expect(publicURL).to.match(PUBLIC_QUESTION_REGEX);
-
       cy.signOut();
       cy.visit(publicURL);
     });

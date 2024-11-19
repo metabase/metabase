@@ -1,0 +1,27 @@
+name: parent dash
+description: null
+entity_id: JT3BKJwNCfhUHnd9oqQ_1
+created_at: '2024-08-28T12:50:14.419489Z'
+creator_id: rasta@metabase.com
+archived: false
+collection_id: qPZhJMPNGkfd3sq8jWiZS
+auto_apply_filters: true
+collection_position: null
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters: []
+serdes/meta:
+- id: JT3BKJwNCfhUHnd9oqQ_1
+  label: parent_dash
+  model: Dashboard
+archived_directly: false
+dashcards: []
+initially_published_at: null
+tabs: []
+width: fixed

@@ -1,5 +1,5 @@
 import classnames from "classnames";
-import { forwardRef, type ReactNode, type Ref } from "react";
+import { type ReactNode, type Ref, forwardRef } from "react";
 
 import styles from "./ParameterValueWidget.module.css";
 import { TriggerContainer } from "./ParameterValueWidgetTrigger.styled";
@@ -18,7 +18,7 @@ function ParameterValueWidgetTriggerInner(
   }: {
     children: ReactNode;
     hasValue: boolean;
-    ariaLabel: string;
+    ariaLabel?: string;
     className?: string;
     mimicMantine?: boolean;
   },
@@ -26,7 +26,7 @@ function ParameterValueWidgetTriggerInner(
 ) {
   if (mimicMantine) {
     return (
-      <TriggerContainer ref={ref} hasValue={hasValue}>
+      <TriggerContainer aria-label={ariaLabel} ref={ref} hasValue={hasValue}>
         {children}
       </TriggerContainer>
     );

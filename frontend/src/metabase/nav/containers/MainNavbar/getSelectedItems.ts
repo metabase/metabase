@@ -1,7 +1,7 @@
 import { coerceCollectionId } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";
-import type { Dashboard } from "metabase-types/api";
+import type { Collection, Dashboard } from "metabase-types/api";
 
 import type { SelectedItem } from "./types";
 
@@ -13,10 +13,30 @@ type Opts = {
   };
   question?: Question;
   dashboard?: Dashboard;
+  collection?: Collection;
 };
 
-function isCollectionPath(pathname: string): boolean {
+export function isCollectionPath(pathname: string): boolean {
   return pathname.startsWith("/collection");
+}
+
+function isTrashPath(pathname: string): boolean {
+  return pathname.startsWith("/trash");
+}
+
+function isInTrash({
+  pathname,
+  collection,
+  question,
+  dashboard,
+}: Pick<Opts, "pathname" | "collection" | "question" | "dashboard">): boolean {
+  return (
+    isTrashPath(pathname) ||
+    collection?.archived ||
+    question?.isArchived() ||
+    dashboard?.archived ||
+    false
+  );
 }
 
 function isUsersCollectionPath(pathname: string): boolean {
@@ -31,6 +51,10 @@ export function isModelPath(pathname: string): boolean {
   return pathname.startsWith("/model");
 }
 
+export function isMetricPath(pathname: string): boolean {
+  return pathname.startsWith("/metric");
+}
+
 function isDashboardPath(pathname: string): boolean {
   return pathname.startsWith("/dashboard");
 }
@@ -40,9 +64,18 @@ function getSelectedItems({
   params,
   question,
   dashboard,
+  collection,
 }: Opts): SelectedItem[] {
   const { slug } = params;
 
+  if (isInTrash({ pathname, collection, question, dashboard })) {
+    return [
+      {
+        id: "trash",
+        type: "collection",
+      },
+    ];
+  }
   if (isCollectionPath(pathname)) {
     return [
       {

@@ -1,13 +1,13 @@
 (ns metabase.lib.drill-thru.zoom-in-geographic-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -58,13 +58,13 @@
                                                    "United States"]]}]}})
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-not-returned
-          {:click-type     :cell
-           :query-type     :aggregated
-           :custom-query   query
-           :custom-row     {"count"   100
-                            "COUNTRY" nil}
-           :column-name    "count"
-           :drill-type     :drill-thru/zoom-in.geographic})))))
+         {:click-type     :cell
+          :query-type     :aggregated
+          :custom-query   query
+          :custom-row     {"count"   100
+                           "COUNTRY" nil}
+          :column-name    "count"
+          :drill-type     :drill-thru/zoom-in.geographic})))))
 
 (deftest ^:parallel state-test
   (testing "State => Binned LatLon"
@@ -100,13 +100,13 @@
                                                    "California"]]}]}})
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-not-returned
-          {:click-type     :cell
-           :query-type     :aggregated
-           :custom-query   query
-           :custom-row     {"count" 100
-                            "STATE" nil}
-           :column-name    "count"
-           :drill-type     :drill-thru/zoom-in.geographic})))))
+         {:click-type     :cell
+          :query-type     :aggregated
+          :custom-query   query
+          :custom-row     {"count" 100
+                           "STATE" nil}
+          :column-name    "count"
+          :drill-type     :drill-thru/zoom-in.geographic})))))
 
 (deftest ^:parallel update-existing-breakouts-on-lat-lon-test
   (testing "If there are already breakouts on lat/lon, we should update them rather than append new ones (#34874)"
@@ -184,13 +184,13 @@
                                                    "Long Beach"]]}]}})
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-not-returned
-          {:click-type     :cell
-           :query-type     :aggregated
-           :custom-query   query
-           :custom-row     {"count" 100
-                            "CITY"  nil}
-           :column-name    "count"
-           :drill-type     :drill-thru/zoom-in.geographic})))))
+         {:click-type     :cell
+          :query-type     :aggregated
+          :custom-query   query
+          :custom-row     {"count" 100
+                           "CITY"  nil}
+          :column-name    "count"
+          :drill-type     :drill-thru/zoom-in.geographic})))))
 
 (deftest ^:parallel binned-lat-lon-large-bin-size-test
   (testing "Binned LatLon (width >= 20) => Binned LatLon (width = 10)"
@@ -370,7 +370,7 @@
                                          {:binning {:strategy :default}}
                                          (meta/id :people :longitude)]
                                         60.0]]}]}
-              (lib/drill-thru query -1 drill))))))
+              (lib/drill-thru query -1 nil drill))))))
 
 (deftest ^:parallel binned-lat-lon-nil-value-test
   (testing "Binned LatLon (default 'Auto-Bin') with nil values - no zoom-in drill"
@@ -500,4 +500,4 @@
                        :breakout [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
                                   [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :latitude)]
                                   [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :longitude)]]}]}
-            (lib/drill-thru query -1 zoom-in)))))
+            (lib/drill-thru query -1 nil zoom-in)))))

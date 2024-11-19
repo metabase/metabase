@@ -5,8 +5,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.models.database :refer [Database]]
-   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -14,32 +12,13 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (comment metabase.driver.h2/keep-me)
 
+(set! *warn-on-reflection* true)
+
 (sql-jdbc.tx/add-test-extensions! :h2)
-
-(defonce ^:private h2-test-dbs-created-by-this-instance (atom #{}))
-
-(defn- destroy-test-database-if-created-by-another-instance!
-  "For H2, test databases are all in-memory, which don't work if they're saved from a different REPL session or the
-  like. So delete any 'stale' in-mem DBs from the application DB when someone calls `get-or-create-database!` as
-  needed."
-  [database-name]
-  (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
-    (locking h2-test-dbs-created-by-this-instance
-      (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
-        (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
-        (t2/delete! Database :engine "h2", :name database-name)
-        (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
-
-(defmethod data.impl/get-or-create-database! :h2
-  [driver dbdef]
-  (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
-    (destroy-test-database-if-created-by-another-instance! database-name)
-    ((get-method data.impl/get-or-create-database! :default) driver dbdef)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"
@@ -50,6 +29,7 @@
                                    :type/Float          "FLOAT"
                                    :type/Integer        "INTEGER"
                                    :type/Text           "VARCHAR"
+                                   :type/UUID           "UUID"
                                    :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:h2 base-type] [_ _] database-type))
 
@@ -115,20 +95,21 @@
       {:base_type :type/Decimal}))))
 
 (defmethod execute/execute-sql! :h2
-  [driver _ dbdef sql]
+  [driver ^java.sql.Connection conn sql]
   ;; we always want to use 'server' context when execute-sql! is called (never
   ;; try connect as GUEST, since we're not giving them priviledges to create
   ;; tables / etc)
-  ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver :server dbdef sql))
+  ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver conn sql))
 
 ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
 (defmethod spec/dbdef->spec :h2
   [driver context dbdef]
   (mdb/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
 
-(defmethod load-data/load-data! :h2
-  [& args]
-  (apply load-data/load-data-all-at-once! args))
+(defmethod load-data/chunk-size :h2
+  [_driver _dbdef _tabledef]
+  ;; load data all at once
+  nil)
 
 (defmethod sql.tx/inline-column-comment-sql :h2
   [& args]
@@ -139,3 +120,21 @@
   (apply sql.tx/standard-standalone-table-comment-sql args))
 
 (defmethod sql.tx/session-schema :h2 [_driver] "PUBLIC")
+
+;;; Make sure the misc one-off test drivers based on H2 aren't trying to reload or destroy the actual H2 data. The need
+;;; to implement these methods themselves and no-op
+(defmethod tx/create-db! :h2
+  [driver dbdef & options]
+  (when (= (:database-name dbdef) "test-data")
+    (assert (= driver :h2)
+            (format "Driver %s is attempting to use H2's implementation of %s, this will stomp on the H2 test data!"
+                    driver `tx/create-db!)))
+  (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options))
+
+(defmethod tx/destroy-db! :h2
+  [driver dbdef]
+  (when (= (:database-name dbdef) "test-data")
+    (assert (= driver :h2)
+            (format "Driver %s is attempting to use H2's implementation of %s, this will stomp on the H2 test data!"
+                    driver `tx/destroy-db!)))
+  ((get-method tx/destroy-db! :sql-jdbc/test-extensions) driver dbdef))

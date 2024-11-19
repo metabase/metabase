@@ -53,7 +53,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private pivot-drill-pred :- [:sequential ::lib.schema.metadata/column]
+(mu/defn- pivot-drill-pred :- [:sequential ::lib.schema.metadata/column]
   "Implementation for pivoting on various kinds of fields.
 
   Don't call this directly; call [[pivot-drill]]."
@@ -81,7 +81,7 @@
       (lib.types.isa/address? column) :address
       (lib.types.isa/category? column) :category)))
 
-(mu/defn ^:private permitted-pivot-types :- [:maybe [:set ::lib.schema.drill-thru/pivot-types]]
+(mu/defn- permitted-pivot-types :- [:maybe [:set ::lib.schema.drill-thru/pivot-types]]
   "This captures some complex conditions formerly encoded by `visualizations/click-actions/Mode/*` in the FE.
   See [here](https://github.com/metabase/metabase/blob/f4415fec8563353615ef600f52de871507a052ec/frontend/src/metabase/visualizations/click-actions/Mode/utils.ts#L15)
   for the original logic. (It returns `MODE_TYPE_*` enums, which are referenced below.)

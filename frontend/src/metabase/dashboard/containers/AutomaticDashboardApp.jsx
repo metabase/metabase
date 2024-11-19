@@ -12,7 +12,7 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
-import { SyncedDashboardTabs } from "metabase/dashboard/components/DashboardTabs/SyncedDashboardTabs";
+import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
@@ -20,15 +20,15 @@ import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { SyncedParametersList } from "metabase/parameters/components/ParametersList";
+import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
+import { useDashboardUrlQuery } from "../hooks/use-dashboard-url-query";
 
 import {
   ItemContent,
@@ -90,7 +90,6 @@ class AutomaticDashboardAppInner extends Component {
     );
 
     this.setState({ savedDashboardId: newDashboard.id });
-    MetabaseAnalytics.trackStructEvent("AutoDashboard", "Save");
   };
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -121,6 +120,10 @@ class AutomaticDashboardAppInner extends Component {
           "AutomaticDashboard--withSidebar": hasSidebar,
         })}
       >
+        <AutomaticDashboardQueryParamsSync
+          router={this.props.router}
+          location={this.props.location}
+        />
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           {isHeaderVisible && (
             <div
@@ -154,7 +157,7 @@ class AutomaticDashboardAppInner extends Component {
                   </div>
                   {this.props.tabs.length > 1 && (
                     <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                      <SyncedDashboardTabs location={this.props.location} />
+                      <DashboardTabs dashboardId={dashboard.id} />
                     </div>
                   )}
                 </FixedWidthContainer>
@@ -169,7 +172,7 @@ class AutomaticDashboardAppInner extends Component {
                   data-testid="fixed-width-filters"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
-                  <SyncedParametersList
+                  <ParametersList
                     className={CS.mt1}
                     parameters={getValuePopulatedParameters({
                       parameters,
@@ -184,16 +187,7 @@ class AutomaticDashboardAppInner extends Component {
           </div>
           {more && (
             <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
-              <Link
-                to={more}
-                className={CS.ml2}
-                onClick={() =>
-                  MetabaseAnalytics.trackStructEvent(
-                    "AutoDashboard",
-                    "ClickMore",
-                  )
-                }
-              >
+              <Link to={more} className={CS.ml2}>
                 <Button iconRight="chevronright">{t`Show more about this`}</Button>
               </Link>
             </div>
@@ -299,3 +293,10 @@ const SuggestionsSidebar = ({ related }) => (
     <SuggestionsList suggestions={related} />
   </SidebarRoot>
 );
+
+// Workaround until AutomaticDashboardApp is refactored to be a function component
+// (or even better, merged/generalized with DashboardApp)
+const AutomaticDashboardQueryParamsSync = ({ router, location }) => {
+  useDashboardUrlQuery(router, location);
+  return null;
+};

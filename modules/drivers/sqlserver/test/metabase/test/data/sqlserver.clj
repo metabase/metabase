@@ -17,12 +17,12 @@
                                    :type/Decimal        "DECIMAL"
                                    :type/Float          "FLOAT"
                                    :type/Integer        "INTEGER"
+                                   :type/UUID           "UNIQUEIDENTIFIER"
                                    ;; TEXT is considered deprecated -- see
                                    ;; https://msdn.microsoft.com/en-us/library/ms187993.aspx
                                    :type/Text           "VARCHAR(1024)"
                                    :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:sqlserver base-type] [_ _] database-type))
-
 
 (defmethod tx/dbdef->connection-details :sqlserver
   [_ context {:keys [database-name]}]

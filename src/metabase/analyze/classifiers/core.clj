@@ -37,7 +37,7 @@
 
   A classifier may see the original field (before any classifiers were run) in the metadata of the field at
   `:sync.classify/original`."
-  [#'classifiers.name/infer-and-assoc-semantic-type
+  [#'classifiers.name/infer-and-assoc-semantic-type-by-name
    #'classifiers.category/infer-is-category-or-list
    #'classifiers.no-preview-display/infer-no-preview-display
    #'classifiers.text-fingerprint/infer-semantic-type])

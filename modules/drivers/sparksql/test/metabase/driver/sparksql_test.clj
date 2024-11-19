@@ -1,4 +1,4 @@
-(ns metabase.driver.sparksql-test
+(ns ^:mb/driver-tests metabase.driver.sparksql-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -27,11 +27,11 @@
                 :limit  [:inline 5]}]
       (is (= hsql
              (sql.qp/apply-top-level-clause :sparksql :page
-               {:select   [[:default.categories.name :name] [:default.categories.id :id]]
-                :from     [:default.categories]
-                :order-by [[:default.categories.id :asc]]}
-               {:page {:page  2
-                       :items 5}})))
+                                            {:select   [[:default.categories.name :name] [:default.categories.id :id]]
+                                             :from     [:default.categories]
+                                             :order-by [[:default.categories.id :asc]]}
+                                            {:page {:page  2
+                                                    :items 5}})))
       (is (= [["SELECT"
                "  `name`,"
                "  `id`"
@@ -58,16 +58,21 @@
                  (update 0 (partial driver/prettify-native-form :sparksql))
                  (update 0 str/split-lines)))))))
 
-(deftest splice-strings-test
+(deftest ^:parallel friendly-inline-strings-in-convert-to-sql-test
   (mt/test-driver :sparksql
     (let [query (mt/mbql-query venues
                   {:aggregation [[:count]]
                    :filter      [:= $name "wow"]})]
       (testing "The native query returned in query results should use user-friendly splicing"
         (is (= "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
-               (:query (qp.compile/compile-and-splice-parameters query))
-               (-> (qp/process-query query) :data :native_form :query))))
+               (:query (qp.compile/compile-with-inline-parameters query))
+               (-> (qp/process-query query) :data :native_form :query)))))))
 
+(deftest paranoid-inline-strings-test
+  (mt/test-driver :sparksql
+    (let [query (mt/mbql-query venues
+                  {:aggregation [[:count]]
+                   :filter      [:= $name "wow"]})]
       (testing "When actually running the query we should use paranoid splicing and hex-encode strings"
         (let [orig    sql-jdbc.execute/prepared-statement
               the-sql (atom nil)]

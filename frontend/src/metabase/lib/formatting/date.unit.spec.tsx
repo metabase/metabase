@@ -1,14 +1,15 @@
 import {
   DATE_RANGE_FORMAT_SPECS,
+  SPECIFIC_DATE_TIME_UNITS,
   formatDateTimeForParameter,
   formatDateTimeRangeWithUnit,
-  SPECIFIC_DATE_TIME_UNITS,
 } from "metabase/lib/formatting/date";
 
 describe("formatDateTimeRangeWithUnit", () => {
   for (const unit of SPECIFIC_DATE_TIME_UNITS) {
     describe(`formats for unit ${unit}`, () => {
       const specs = DATE_RANGE_FORMAT_SPECS[unit];
+
       it("should have a default spec", () => {
         const defaultSpec = specs.find(spec => spec.same === null);
         expect(defaultSpec).toBeDefined();

@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
@@ -8,8 +9,20 @@ import {
   parseTimestamp,
 } from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
+import { formatPercent } from "metabase/static-viz/lib/numbers";
+import type {
+  EChartsTooltipModel,
+  EChartsTooltipRow,
+} from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
+import { getRowFromDataPoint } from "metabase/visualizations/components/ChartTooltip/KeyValuePairChartTooltip/KeyValuePairChartTooltip";
+import {
+  getPercent,
+  getTotalValue,
+} from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
   ORIGINAL_INDEX_DATA_KEY,
+  OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
@@ -17,18 +30,22 @@ import {
   isQuarterInterval,
   isTimeSeriesAxis,
 } from "metabase/visualizations/echarts/cartesian/model/guards";
+import { getOtherSeriesAggregationLabel } from "metabase/visualizations/echarts/cartesian/model/other-series";
 import type {
   BaseCartesianChartModel,
+  BaseSeriesModel,
   ChartDataset,
   DataKey,
   Datum,
   DimensionModel,
   SeriesModel,
+  StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 import type {
-  EChartsSeriesMouseEvent,
   EChartsSeriesBrushEndEvent,
+  EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
@@ -36,27 +53,25 @@ import {
   isRemappedToString,
 } from "metabase/visualizations/lib/renderer_utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
   OnChangeCardAndRun,
-  TooltipRowModel,
 } from "metabase/visualizations/types";
 import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
+  CardDisplayType,
   CardId,
   RawSeries,
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
-
-import { DATETIME_ABSOLUTE_UNIT_COMPARISON } from "./constants";
+import { isSavedCard } from "metabase-types/guards";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -144,11 +159,10 @@ export const getEventDimensions = (
 
 const getEventColumnsData = (
   chartModel: BaseCartesianChartModel,
-  seriesIndex: number,
+  seriesModel: SeriesModel,
   dataIndex: number,
 ): DataPoint[] => {
   const datum = chartModel.dataset[dataIndex];
-  const seriesModel = chartModel.seriesModels[seriesIndex];
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
 
@@ -173,12 +187,12 @@ const getEventColumnsData = (
       const columnSeriesModel = seriesModelsByDataKey[dataKey];
       const key =
         columnSeriesModel == null
-          ? getFriendlyName(col)
+          ? col.display_name
           : columnSeriesModel.tooltipName;
       const displayValue =
         isBreakoutSeries(seriesModel) && seriesModel.breakoutColumn === col
           ? seriesModel.name
-          : value ?? NULL_DISPLAY_VALUE;
+          : (value ?? NULL_DISPLAY_VALUE);
 
       return {
         key,
@@ -191,30 +205,24 @@ const getEventColumnsData = (
   return dataPoints;
 };
 
-const getTooltipFooterData = (
+const computeDiffWithPreviousPeriod = (
   chartModel: BaseCartesianChartModel,
-  display: string,
-  seriesIndex: number,
+  seriesModel: BaseSeriesModel,
   dataIndex: number,
-): DataPoint[] => {
-  if (
-    display === "scatter" ||
-    display === "waterfall" ||
-    !isTimeSeriesAxis(chartModel.xAxisModel)
-  ) {
-    return [];
+): string | null => {
+  if (!isTimeSeriesAxis(chartModel.xAxisModel)) {
+    return null;
   }
 
   const datum = chartModel.dataset[dataIndex];
-  const seriesModel = chartModel.seriesModels[seriesIndex];
 
   const currentValue = datum[seriesModel.dataKey];
   const currentDate = parseTimestamp(datum[X_AXIS_DATA_KEY]);
   const previousValue =
     chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
 
-  if (previousValue == null) {
-    return [];
+  if (previousValue == null || currentValue == null) {
+    return null;
   }
   const previousDate = parseTimestamp(
     chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY],
@@ -246,84 +254,12 @@ const getTooltipFooterData = (
   }
 
   if (!isOneIntervalAgo) {
-    return [];
+    return null;
   }
 
   const change = computeChange(previousValue, currentValue);
 
-  return [
-    {
-      key: DATETIME_ABSOLUTE_UNIT_COMPARISON[unit],
-      col: seriesModel.column,
-      value: formatChangeWithSign(change),
-    },
-  ];
-};
-
-const getStackedTooltipModel = (
-  chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-  seriesIndex: number,
-  dataIndex: number,
-) => {
-  const hoveredSeries = chartModel.seriesModels[seriesIndex];
-  const seriesStack = chartModel.stackModels.find(stackModel =>
-    stackModel.seriesKeys.includes(hoveredSeries.dataKey),
-  );
-
-  if (!seriesStack) {
-    return undefined;
-  }
-
-  const column =
-    chartModel.leftAxisModel?.column ?? chartModel.rightAxisModel?.column;
-
-  const formatter = (value: unknown) =>
-    String(
-      formatValueForTooltip({
-        value,
-        settings,
-        column,
-      }),
-    );
-
-  const rows: (TooltipRowModel & { dataKey: DataKey })[] =
-    chartModel.seriesModels
-      .filter(seriesModel =>
-        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
-      )
-      .map(seriesModel => {
-        return {
-          dataKey: seriesModel.dataKey,
-          name: seriesModel.name,
-          color: seriesModel.color,
-          value: chartModel.dataset[dataIndex][seriesModel.dataKey],
-          formatter,
-        };
-      });
-  const [headerRows, bodyRows] = _.partition(
-    rows,
-    row => row.dataKey === hoveredSeries.dataKey,
-  );
-
-  const dimensionValue = chartModel.dataset[dataIndex][X_AXIS_DATA_KEY];
-
-  const headerTitle = String(
-    formatValueForTooltip({
-      value: dimensionValue,
-      column: chartModel.dimensionModel.column,
-      settings,
-    }),
-  );
-
-  return {
-    headerTitle,
-    headerRows,
-    bodyRows: bodyRows.filter(row => row.value != null),
-    totalFormatter: formatter,
-    showTotal: true,
-    showPercentages: true,
-  };
+  return formatChangeWithSign(change);
 };
 
 export const canBrush = (
@@ -340,7 +276,7 @@ export const canBrush = (
     !!onChangeCardAndRun &&
     hasBrushableDimension &&
     !hasCombinedCards &&
-    !isNative(series[0].card) &&
+    (!isNative(series[0].card) || isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );
@@ -359,28 +295,8 @@ function getDataIndex(
   return originalDataIndex ?? echartsDataIndex;
 }
 
-const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
-
-// HACK: Native events may wrongly have the entire series path or the entire svg as target when hovering a single datum
-const isValidDatumElement = (
-  element: SVGElement | undefined,
-  seriesType: string,
-) => {
-  if (element?.nodeName === "svg") {
-    return false;
-  }
-
-  if (seriesType !== "line") {
-    return true;
-  }
-
-  return element?.getAttribute("d") === CIRCLE_PATH;
-};
-
-export const getSeriesHoverData = (
+export const getSeriesHovered = (
   chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-  display: string,
   event: EChartsSeriesMouseEvent,
 ) => {
   const { dataIndex: echartsDataIndex, seriesId } = event;
@@ -394,37 +310,404 @@ export const getSeriesHoverData = (
     return;
   }
 
-  const target = event.event.event.target as SVGElement | undefined;
+  return {
+    index: seriesIndex,
+    datumIndex: dataIndex,
+  };
+};
 
-  // TODO: For some reason ECharts sometimes trigger series mouse move element with the root SVG as target
-  // Find a better fix
-  if (!isValidDatumElement(target, event.seriesType)) {
-    return;
+const getAdditionalTooltipRowsData = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  seriesModel: SeriesModel,
+  dataIndex: number,
+): EChartsTooltipRow[] => {
+  const additionalColumns = new Set(settings["graph.tooltip_columns"]);
+  const data = getEventColumnsData(chartModel, seriesModel, dataIndex);
+
+  return data
+    .filter(
+      entry =>
+        entry.col != null && additionalColumns.has(getColumnKey(entry.col)),
+    )
+    .map(data => {
+      return {
+        isSecondary: true,
+        name: data.key,
+        values: [
+          formatValueForTooltip({
+            value: data.value,
+            column: data.col,
+            settings,
+            isAlreadyScaled: true,
+          }),
+        ],
+      };
+    });
+};
+
+export const getTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  echartsDataIndex: number,
+  display: CardDisplayType,
+  seriesDataKey: DataKey,
+): EChartsTooltipModel | null => {
+  const dataIndex = getDataIndex(
+    chartModel.transformedDataset,
+    echartsDataIndex,
+  );
+
+  if (dataIndex == null) {
+    return null;
   }
 
-  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
-  const footerData = getTooltipFooterData(
+  const datum = chartModel.dataset[dataIndex];
+
+  if (seriesDataKey === OTHER_DATA_KEY) {
+    return getOtherSeriesTooltipModel(chartModel, settings, dataIndex, datum);
+  }
+
+  const hoveredSeries = chartModel.seriesModels.find(
+    s => s.dataKey === seriesDataKey,
+  );
+
+  if (!hoveredSeries) {
+    return null;
+  }
+
+  const seriesStack = chartModel.stackModels.find(stackModel =>
+    stackModel.seriesKeys.includes(hoveredSeries.dataKey),
+  );
+
+  const shouldShowAllColumnValuesTooltip =
+    settings["graph.tooltip_type"] === "default";
+  if (shouldShowAllColumnValuesTooltip) {
+    return getAllColumnsTooltipModel(
+      chartModel,
+      settings,
+      dataIndex,
+      hoveredSeries,
+    );
+  }
+
+  const shouldShowStackedTooltip = seriesStack != null;
+  if (shouldShowStackedTooltip) {
+    return getStackedTooltipModel(
+      chartModel,
+      settings,
+      seriesStack,
+      seriesDataKey,
+      dataIndex,
+      datum,
+      hoveredSeries,
+    );
+  }
+  return getSeriesOnlyTooltipModel(
     chartModel,
+    settings,
+    datum,
+    dataIndex,
     display,
-    seriesIndex,
+    hoveredSeries,
+  );
+};
+
+const getAllColumnsTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  dataIndex: number,
+  seriesModel: SeriesModel,
+): EChartsTooltipModel | null => {
+  const rows = getEventColumnsData(chartModel, seriesModel, dataIndex)
+    .map(getRowFromDataPoint)
+    .map(dataPoint => {
+      return {
+        name: dataPoint.key,
+        values: [
+          formatValueForTooltip({
+            isAlreadyScaled: true,
+            value: dataPoint.value,
+            column: dataPoint.col,
+            settings,
+          }),
+        ],
+      };
+    });
+
+  return {
+    rows,
+  };
+};
+
+export const mergeSeriesRowsAndAdditionalColumnsRows = (
+  seriesRows: EChartsTooltipRow[],
+  additionalColumnsRows: EChartsTooltipRow[],
+  hoveredSeries: SeriesModel,
+) => {
+  const rows = [...seriesRows];
+  if (isBreakoutSeries(hoveredSeries)) {
+    // For breakout series we show additional columns right below the series values
+    const additionalColumnsIndex =
+      seriesRows.findIndex(row => row.isFocused) + 1;
+    rows.splice(additionalColumnsIndex, 0, ...additionalColumnsRows);
+  } else {
+    rows.push(...additionalColumnsRows);
+  }
+
+  return rows;
+};
+
+export const getSeriesOnlyTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  datum: Datum,
+  dataIndex: number,
+  display: CardDisplayType,
+  hoveredSeries: SeriesModel,
+): EChartsTooltipModel | null => {
+  const header = String(
+    formatValueForTooltip({
+      value: datum[X_AXIS_DATA_KEY],
+      column: chartModel.dimensionModel.column,
+      settings,
+    }),
+  );
+
+  const seriesRows: EChartsTooltipRow[] = chartModel.seriesModels
+    .filter(seriesModel => seriesModel.visible)
+    .map(seriesModel => {
+      const isHoveredSeries = seriesModel.dataKey === hoveredSeries.dataKey;
+      const isFocused = isHoveredSeries && chartModel.seriesModels.length > 1;
+
+      const value =
+        seriesModel.dataKey === OTHER_DATA_KEY
+          ? chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY]
+          : datum[seriesModel.dataKey];
+
+      const prevValue =
+        seriesModel.dataKey === OTHER_DATA_KEY
+          ? null
+          : computeDiffWithPreviousPeriod(chartModel, seriesModel, dataIndex);
+
+      return {
+        isFocused,
+        name: seriesModel.name,
+        markerColorClass: getMarkerColorClass(
+          getSeriesOnlyTooltipRowColor(seriesModel, datum, settings, display),
+        ),
+        values: [
+          formatValueForTooltip({
+            value: value,
+            column: seriesModel.column,
+            settings,
+            isAlreadyScaled: true,
+          }),
+          prevValue,
+        ].filter(isNotNull),
+      };
+    });
+
+  const additionalColumnsRows = getAdditionalTooltipRowsData(
+    chartModel,
+    settings,
+    hoveredSeries,
     dataIndex,
   );
 
-  const stackedTooltipModel =
-    settings["graph.tooltip_type"] === "series_comparison"
-      ? getStackedTooltipModel(chartModel, settings, seriesIndex, dataIndex)
-      : undefined;
+  const rows = mergeSeriesRowsAndAdditionalColumnsRows(
+    seriesRows,
+    additionalColumnsRows,
+    hoveredSeries,
+  );
 
   return {
+    header,
+    rows,
+  };
+};
+
+const getSeriesOnlyTooltipRowColor = (
+  seriesModel: SeriesModel,
+  datum: Datum,
+  settings: ComputedVisualizationSettings,
+  display: CardDisplayType,
+) => {
+  const value = datum[seriesModel.dataKey];
+  if (display === "waterfall" && typeof value === "number") {
+    const color =
+      value >= 0
+        ? settings["waterfall.increase_color"]
+        : settings["waterfall.decrease_color"];
+    return color ?? seriesModel.color;
+  }
+  return seriesModel.color;
+};
+
+export const getStackedTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  seriesStack: StackModel,
+  seriesDataKey: DataKey,
+  dataIndex: number,
+  datum: Datum,
+  hoveredSeries: SeriesModel,
+): EChartsTooltipModel | null => {
+  const stackSeriesRows = chartModel.seriesModels
+    .filter(
+      seriesModel =>
+        seriesModel.visible &&
+        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
+    )
+    .map(seriesModel => {
+      const datum = chartModel.dataset[dataIndex];
+      const value =
+        seriesModel.dataKey === OTHER_DATA_KEY
+          ? chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY]
+          : datum[seriesModel.dataKey];
+
+      return {
+        isFocused: seriesModel.dataKey === seriesDataKey,
+        name: seriesModel.name,
+        color: seriesModel.color,
+        dataKey: seriesModel.dataKey,
+        value,
+      };
+    });
+
+  // Reverse rows as they appear reversed on the stacked chart to match the order
+  stackSeriesRows.reverse();
+
+  const formatter = (value: unknown) =>
+    String(
+      formatValueForTooltip({
+        isAlreadyScaled: true,
+        value,
+        settings,
+        column:
+          chartModel.leftAxisModel?.column ?? chartModel.rightAxisModel?.column,
+      }),
+    );
+
+  const rowsTotal = getTotalValue(stackSeriesRows);
+  const isShowingTotalSensible = stackSeriesRows.length > 1;
+  const header = String(
+    formatValueForTooltip({
+      value: datum[X_AXIS_DATA_KEY],
+      column: chartModel.dimensionModel.column,
+      settings,
+    }),
+  );
+
+  const formattedSeriesRows: EChartsTooltipRow[] = stackSeriesRows
+    .filter(row => row.value != null)
+    .map(tooltipRow => {
+      return {
+        isFocused: tooltipRow.isFocused,
+        name: tooltipRow.name,
+        markerColorClass: tooltipRow.color
+          ? getMarkerColorClass(tooltipRow.color)
+          : undefined,
+        values: [
+          formatter(tooltipRow.value),
+          formatPercent(getPercent(rowsTotal, tooltipRow.value) ?? 0),
+        ],
+      };
+    });
+
+  const additionalColumnsRows = getAdditionalTooltipRowsData(
+    chartModel,
     settings,
-    isAlreadyScaled: true,
-    index: seriesIndex,
-    datumIndex: dataIndex,
-    event: event.event.event,
-    element: target,
-    data,
-    footerData,
-    stackedTooltipModel,
+    hoveredSeries,
+    dataIndex,
+  );
+
+  const rows = mergeSeriesRowsAndAdditionalColumnsRows(
+    formattedSeriesRows,
+    additionalColumnsRows,
+    hoveredSeries,
+  );
+
+  return {
+    header,
+    rows,
+    footer: isShowingTotalSensible
+      ? {
+          name: t`Total`,
+          values: [
+            formatter(rowsTotal),
+            formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
+          ],
+        }
+      : undefined,
+  };
+};
+
+export const getOtherSeriesTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  dataIndex: number,
+  datum: Datum,
+) => {
+  const { groupedSeriesModels = [] } = chartModel;
+
+  const rows = groupedSeriesModels
+    .map(seriesModel => ({
+      name: seriesModel.name,
+      column: seriesModel.column,
+      value: datum[seriesModel.dataKey],
+      prevValue: computeDiffWithPreviousPeriod(
+        chartModel,
+        seriesModel,
+        dataIndex,
+      ),
+    }))
+    .sort((a, b) => {
+      if (typeof a.value === "number" && typeof b.value === "number") {
+        return b.value - a.value;
+      }
+      return a.value === undefined ? 1 : -1;
+    })
+    .map(row => ({
+      name: row.name,
+      values: [
+        formatValueForTooltip({
+          value: row.value,
+          column: row.column,
+          isAlreadyScaled: true,
+          settings,
+        }),
+        row.prevValue,
+      ],
+    }));
+
+  rows.push({
+    name: getOtherSeriesAggregationLabel(
+      settings["graph.other_category_aggregation_fn"],
+    ),
+    values: [
+      String(
+        formatValueForTooltip({
+          isAlreadyScaled: true,
+          value: chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY],
+          settings,
+          column:
+            chartModel.leftAxisModel?.column ??
+            chartModel.rightAxisModel?.column,
+        }),
+      ),
+    ],
+  });
+
+  return {
+    header: String(
+      formatValueForTooltip({
+        value: datum[X_AXIS_DATA_KEY],
+        column: chartModel.dimensionModel.column,
+        settings,
+      }),
+    ),
+    rows,
   };
 };
 
@@ -501,13 +784,17 @@ export const getSeriesClickData = (
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
   const seriesModel = chartModel.seriesModels[seriesIndex];
 
-  if (seriesIndex < 0 || dataIndex == null) {
+  if (
+    seriesIndex < 0 ||
+    dataIndex == null ||
+    seriesModel?.dataKey === OTHER_DATA_KEY
+  ) {
     return;
   }
 
   const datum = chartModel.dataset[dataIndex];
 
-  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
+  const data = getEventColumnsData(chartModel, seriesModel, dataIndex);
   const dimensions = getEventDimensions(
     chartModel,
     datum,
@@ -560,6 +847,7 @@ export const getBrushData = (
       query,
       stageIndex,
       column,
+      question.id(),
       new Date(start).toISOString(),
       new Date(end).toISOString(),
     );
@@ -576,6 +864,7 @@ export const getBrushData = (
     query,
     stageIndex,
     column,
+    question.id(),
     start,
     end,
   );

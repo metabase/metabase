@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import Text from "metabase/components/type/Text";
 import Link from "metabase/core/components/Link";
@@ -108,7 +108,7 @@ export function NewPulseSidebar({
                 jt`First, you'll have to ${(
                   <Link
                     key="link"
-                    to="/admin/settings/slack"
+                    to="/admin/settings/notifications/slack"
                     className={CS.link}
                   >
                     {t`configure Slack`}

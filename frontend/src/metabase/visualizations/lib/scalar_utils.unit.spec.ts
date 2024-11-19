@@ -1,10 +1,10 @@
 import { TYPE } from "metabase-lib/v1/types/constants";
 
 import {
-  compactifyValue,
-  COMPACT_WIDTH_PER_DIGIT,
   COMPACT_MAX_WIDTH,
   COMPACT_MIN_LENGTH,
+  COMPACT_WIDTH_PER_DIGIT,
+  compactifyValue,
 } from "./scalar_utils";
 
 describe("scalar utils", () => {

@@ -3,10 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.models.user :as user]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -60,22 +57,22 @@
   "Is this combination of scheduling choices valid?"
   [schedule-type schedule-hour schedule-day schedule-frame]
   (or
-    ;; hourly schedule does not care about other inputs
-    (= schedule-type :hourly)
-    ;; daily schedule requires a valid `hour`
-    (and (= schedule-type :daily)
-         (hour-of-day? schedule-hour))
-    ;; weekly schedule requires a valid `hour` and `day`
-    (and (= schedule-type :weekly)
-         (hour-of-day? schedule-hour)
-         (day-of-week? schedule-day))
-    ;; monthly schedule requires a valid `hour` and `frame`.  also a `day` if frame = first or last
-    (and (= schedule-type :monthly)
-         (schedule-frame? schedule-frame)
-         (hour-of-day? schedule-hour)
-         (or (contains? #{:first :last} schedule-frame)
-             (and (= :mid schedule-frame)
-                  (nil? schedule-day))))))
+   ;; hourly schedule does not care about other inputs
+   (= schedule-type :hourly)
+   ;; daily schedule requires a valid `hour`
+   (and (= schedule-type :daily)
+        (hour-of-day? schedule-hour))
+   ;; weekly schedule requires a valid `hour` and `day`
+   (and (= schedule-type :weekly)
+        (hour-of-day? schedule-hour)
+        (day-of-week? schedule-day))
+   ;; monthly schedule requires a valid `hour` and `frame`.  also a `day` if frame = first or last
+   (and (= schedule-type :monthly)
+        (schedule-frame? schedule-frame)
+        (hour-of-day? schedule-hour)
+        (or (contains? #{:first :last} schedule-frame)
+            (and (= :mid schedule-frame)
+                 (nil? schedule-day))))))
 
 (def channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
@@ -96,7 +93,11 @@
                                 :type        "select"
                                 :displayName "Post to"
                                 :options     []
-                                :required    true}]}})
+                                :required    true}]}
+   :http  {:type              "http"
+           :name              "Webhook"
+           :allows_recipients false
+           :schedules         [:hourly :daily :weekly :monthly]}})
 
 (defn channel-type?
   "Is `channel-type` a valid value as a channel type? :tv:"
@@ -107,7 +108,6 @@
   "Does given `channel` type support a list of recipients? :tv:"
   [channel]
   (boolean (:allows_recipients (get channel-types channel))))
-
 
 ;; ## Entity
 
@@ -127,10 +127,10 @@
   (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/PulseChannel
- {:details mi/transform-json
-  :channel_type mi/transform-keyword
-  :schedule_type mi/transform-keyword
-  :schedule_frame mi/transform-keyword})
+  {:details mi/transform-json
+   :channel_type mi/transform-keyword
+   :schedule_type mi/transform-keyword
+   :schedule_frame mi/transform-keyword})
 
 (methodical/defmethod t2/batched-hydrate [:default :recipients]
   [_model _k pcs]
@@ -245,10 +245,6 @@
                                               :remove-pc-ids #{(:id pulse-channel)}))))
   (validate-email-domains (mi/changes-with-pk pulse-channel)))
 
-(defmethod serdes/hash-fields PulseChannel
-  [_pulse-channel]
-  [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
-
 ;; ## Persistence Functions
 
 (defn update-recipients!
@@ -270,8 +266,8 @@
         (t2/insert! :model/PulseChannelRecipient vs)))
     (when (seq recipients-)
       (t2/delete! (t2/table-name :model/PulseChannelRecipient)
-        :pulse_channel_id id
-        :user_id          [:in recipients-]))))
+                  :pulse_channel_id id
+                  :user_id          [:in recipients-]))))
 
 (defn update-pulse-channel!
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as
@@ -304,7 +300,7 @@
 (defn create-pulse-channel!
   "Create a new `PulseChannel` along with all related data associated with the channel such as
   `PulseChannelRecipients`."
-  [{:keys [channel_type details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
+  [{:keys [channel_type channel_id details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
            recipients       []}}]
   {:pre [(channel-type? channel_type)
@@ -315,20 +311,21 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
-        {:keys [id]}       (first (t2/insert-returning-instances!
-                                    PulseChannel
-                                    :pulse_id       pulse_id
-                                    :channel_type   channel_type
-                                    :details        (cond-> details
-                                                      (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                                    :enabled        enabled
-                                    :schedule_type  schedule_type
-                                    :schedule_hour  (when (not= schedule_type :hourly)
-                                                      schedule_hour)
-                                    :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                                      schedule_day)
-                                    :schedule_frame (when (= schedule_type :monthly)
-                                                      schedule_frame)))]
+        id                 (t2/insert-returning-pk!
+                            PulseChannel
+                            :pulse_id       pulse_id
+                            :channel_type   channel_type
+                            :channel_id     channel_id
+                            :details        (cond-> details
+                                              (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                            :enabled        enabled
+                            :schedule_type  schedule_type
+                            :schedule_hour  (when (not= schedule_type :hourly)
+                                              schedule_hour)
+                            :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                              schedule_day)
+                            :schedule_frame (when (= schedule_type :monthly)
+                                              schedule_frame))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))
     ;; return the id of our newly created channel
@@ -338,52 +335,3 @@
   "Don't include `:emails`, we use that purely internally"
   [pulse-channel json-generator]
   (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
-
-; ----------------------------------------------------- Serialization -------------------------------------------------
-
-(defmethod serdes/generate-path "PulseChannel"
-  [_ {:keys [pulse_id] :as channel}]
-  [(serdes/infer-self-path "Pulse" (t2/select-one 'Pulse :id pulse_id))
-   (serdes/infer-self-path "PulseChannel" channel)])
-
-(defmethod serdes/extract-one "PulseChannel"
-  [_model-name _opts channel]
-  (let [recipients (mapv :email (mdb.query/query {:select [:user.email]
-                                                  :from   [[:pulse_channel_recipient :pcr]]
-                                                  :join   [[:core_user :user] [:= :user.id :pcr.user_id]]
-                                                  :where  [:= :pcr.pulse_channel_id (:id channel)]}))]
-    (-> (serdes/extract-one-basics "PulseChannel" channel)
-        (update :pulse_id   serdes/*export-fk* 'Pulse)
-        (assoc  :recipients recipients))))
-
-(defmethod serdes/load-xform "PulseChannel" [channel]
-  (-> channel
-      serdes/load-xform-basics
-      (update :pulse_id serdes/*import-fk* 'Pulse)))
-
-(defn- import-recipients [channel-id emails]
-  (let [incoming-users (set (for [email emails
-                                  :let [id (t2/select-one-pk :model/User :email email)]]
-                              (or id
-                                  (:id (user/serdes-synthesize-user! {:email email})))))
-        current-users  (set (t2/select-fn-set :user_id :model/PulseChannelRecipient :pulse_channel_id channel-id))
-        combined       (set/union incoming-users current-users)]
-    (when-not (empty? combined)
-      (update-recipients! channel-id combined))))
-
-;; Customized load-insert! and load-update! to handle the embedded recipients field - it's really a separate table.
-(defmethod serdes/load-insert! "PulseChannel" [_ ingested]
-  (let [;; Call through to the default load-insert!
-        chan ((get-method serdes/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
-    (import-recipients (:id chan) (:recipients ingested))
-    chan))
-
-(defmethod serdes/load-update! "PulseChannel" [_ ingested local]
-  ;; Call through to the default load-update!
-  (let [chan ((get-method serdes/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)]
-    (import-recipients (:id local) (:recipients ingested))
-    chan))
-
-;; Depends on the Pulse.
-(defmethod serdes/dependencies "PulseChannel" [{:keys [pulse_id]}]
-  [[{:model "Pulse" :id pulse_id}]])

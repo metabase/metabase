@@ -1,7 +1,9 @@
-(ns metabase.driver.sql.query-processor-test
+(ns ^:mb/driver-tests metabase.driver.sql.query-processor-test
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [malli.core :as mc]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -19,9 +21,12 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel compiled-test
   (is (= [:raw "x"]
@@ -236,6 +241,9 @@
                                                 ::add/source-alias "id"}]]})]
         (sql.qp/format-honeysql driver {:join join})))))
 
+;;; Ok to hardcode driver names here because it's for general HoneySQL compilation behavior and not something that needs
+;;; to be run against all supported drivers
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
     (are [driver expected] (= ["INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""]
@@ -269,14 +277,14 @@
 (defn- query-on-dataset-with-nils
   [query]
   (mt/rows
-    (qp/process-query
-     {:database (mt/id)
-      :type     :query
-      :query    (merge
-                 {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
-                  :expressions  {"initial" [:regex-match-first [:field "A" {:base-type :type/Text}] "(\\w)"]}
-                  :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
-                 query)})))
+   (qp/process-query
+    {:database (mt/id)
+     :type     :query
+     :query    (merge
+                {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
+                 :expressions  {"initial" [:regex-match-first [:field "A" {:base-type :type/Text}] "(\\w)"]}
+                 :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
+                query)})))
 
 (deftest ^:parallel correct-for-null-behaviour
   (testing (str "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs "
@@ -969,7 +977,7 @@
 
 (deftest ^:parallel format-honeysql-test
   (are [honeysql expected] (= expected
-                              (sql.qp/format-honeysql nil :ansi honeysql))
+                              (sql.qp/format-honeysql :sql honeysql))
     {:select [:*], :from [:table]} ["SELECT * FROM \"table\""]
 
     (h2x/identifier :field "A" "B") ["\"A\".\"B\""]
@@ -1047,12 +1055,10 @@
       ;; String containing semicolon followed by double dash followed by THE _comment or semicolon or end of input_.
       ;; TODO: Enable when better sql parsing solution is found in the [[sql.qp/make-nestable-sql]]].
       ;; Tech debt issue: #39401
-      #_#_
-      "SELECT 'string with \n ; -- ending on the same line';"
-      "(SELECT 'string with \n ; -- ending on the same line')"
-      #_#_
-      "SELECT 'string with \n ; -- ending on the same line';\n-- comment"
-      "(SELECT 'string with \n ; -- ending on the same line')"
+      #_#_"SELECT 'string with \n ; -- ending on the same line';"
+        "(SELECT 'string with \n ; -- ending on the same line')"
+      #_#_"SELECT 'string with \n ; -- ending on the same line';\n-- comment"
+        "(SELECT 'string with \n ; -- ending on the same line')"
 
       ;; String containing just `--` without `;` works
       "SELECT 'string with \n -- ending on the same line';"
@@ -1068,3 +1074,60 @@
       ; --c2\n
       -- c3"
       "(SELECT ';')")))
+
+(deftest ^:parallel string-inline-value-test
+  (testing `String
+    (let [honeysql {:select [[:%count.*]]
+                    :from   [[:venues]]
+                    :where  [:= :venues/name "Barney's Beanery"]}]
+      (binding [driver/*compile-with-inline-parameters* true]
+        (is (= ["SELECT COUNT(*) FROM \"venues\" WHERE \"venues\".\"name\" = 'Barney''s Beanery'"]
+               (sql.qp/format-honeysql :sql honeysql)))))))
+
+(deftest ^:parallel OffsetDateTime-inline-value-test
+  (let [honeysql {:select [[:*]]
+                  :from   [[:venues]]
+                  :where  [:= :venues/created_at (t/offset-date-time "2017-01-01T00:00:00.000Z")]}]
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"created_at\" = timestamp with time zone '2017-01-01 00:00:00.000 +00:00'"]
+             (sql.qp/format-honeysql :sql honeysql))))))
+
+(driver/register! ::inline-value-test, :parent :sql, :abstract? true)
+
+(defmethod sql.qp/inline-value [::inline-value-test java.time.OffsetDateTime]
+  [_driver t]
+  (format "from_iso8601_timestamp('%s')" (u.date/format t)))
+
+(deftest ^:parallel override-inline-value-test
+  (let [honeysql {:select [[:*]]
+                  :from   [[:venues]]
+                  :where  [:= :venues/created_at (t/offset-date-time "2017-01-01T00:00:00.000Z")]}]
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"created_at\" = from_iso8601_timestamp('2017-01-01T00:00:00Z')"]
+             (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(defmethod sql.qp/inline-value [::inline-value-test String]
+  [_driver ^String s]
+  (format "decode(unhex('%s'), 'utf-8')" (codecs/bytes->hex (.getBytes s "UTF-8"))))
+
+(deftest ^:parallel override-inline-value-test-2
+  (let [honeysql {:select [[:*]]
+                  :from   [[:venues]]
+                  :where  [:= :venues/name "ABC"]}]
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = decode(unhex('414243'), 'utf-8')"]
+             (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(deftype ^:private MyString [s])
+
+(defmethod sql.qp/inline-value [::inline-value-test MyString]
+  [_driver _s]
+  "[my-string]")
+
+(deftest ^:parallel override-inline-value-arbitrary-type-test
+  (let [honeysql {:select [[:*]]
+                  :from   [[:venues]]
+                  :where  [:= :venues/name (->MyString "ABC")]}]
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
+             (sql.qp/format-honeysql ::inline-value-test honeysql))))))

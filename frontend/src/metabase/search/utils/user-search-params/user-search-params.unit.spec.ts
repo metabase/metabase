@@ -1,7 +1,7 @@
 import {
   parseUserId,
-  stringifyUserIdArray,
   parseUserIdArray,
+  stringifyUserIdArray,
 } from "./user-search-params";
 
 describe("parseUserIdArray", () => {

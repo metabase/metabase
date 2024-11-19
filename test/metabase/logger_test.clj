@@ -3,12 +3,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [metabase.logger :as logger]
    [metabase.test :as mt])
   (:import
+   (org.apache.logging.log4j Level)
    (org.apache.logging.log4j.core Logger)))
 
 (set! *warn-on-reflection* true)
@@ -63,19 +64,68 @@
   (testing "logger/for-ns works properly"
     (let [f (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))]
       (try
-        (with-open [_ (logger/for-ns 'metabase.logger-test f {:additive false})]
+        (with-open [_ (logger/for-ns f 'metabase.logger-test {:additive false})]
           (log/info "just a test"))
-        (is (=? #".*just a test\n"
-                (slurp f)))
+        (is (=? [#".*just a test$"]
+                (line-seq (io/reader f))))
         (finally
           (when (.exists f)
             (io/delete-file f)))))
     (let [baos (java.io.ByteArrayOutputStream.)]
-      (with-open [_ (logger/for-ns 'metabase.logger-test baos {:additive false})]
+      (with-open [_ (logger/for-ns baos 'metabase.logger-test {:additive false})]
         (log/info "just a test"))
       (log/info "this line is not going into our stream")
-      (let [s (.toString baos "UTF-8")]
-        (testing "We catched the line we needed"
-          (is (=? #".*just a test\n" s)))
-        (testing "Only wrapped logging is catched"
-          (is (= 1 (count (re-seq #"\n" s)))))))))
+      (testing "We catched the line we needed and did not catch the other one"
+        (is (=? [#".*just a test$"]
+                (line-seq (io/reader (.toByteArray baos))))))))
+
+  (testing "We can capture few separate namespaces"
+    (let [f (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))]
+      (try
+        (with-open [_ (logger/for-ns f ['metabase.logger-test
+                                        'metabase.unknown]
+                                     {:additive false})]
+          (log/info "just a test")
+          (log/log 'metabase.unknown :info nil "separate test")
+          (testing "Check that `for-ns` will skip non-specified namespaces"
+            (log/log 'metabase.unknown2 :info nil "this one going into standard log")))
+        (is (=? [#".*just a test$"
+                 #".*separate test$"]
+                (line-seq (io/reader f))))
+        (finally
+          (when (.exists f)
+            (io/delete-file f)))))))
+
+(deftest level-enabled?-test
+  (are [set-level check-level expected-value] (= expected-value
+                                                 (mt/with-log-level [metabase.logger-test set-level]
+                                                   (logger/level-enabled? 'metabase.logger-test check-level)))
+    :error Level/ERROR true
+    :error Level/WARN  false
+    :error Level/INFO  false
+    :error Level/DEBUG false
+    :error Level/TRACE false
+
+    :warn Level/ERROR true
+    :warn Level/WARN  true
+    :warn Level/INFO  false
+    :warn Level/DEBUG false
+    :warn Level/TRACE false
+
+    :info Level/ERROR true
+    :info Level/WARN  true
+    :info Level/INFO  true
+    :info Level/DEBUG false
+    :info Level/TRACE false
+
+    :debug Level/ERROR true
+    :debug Level/WARN  true
+    :debug Level/INFO  true
+    :debug Level/DEBUG true
+    :debug Level/TRACE false
+
+    :trace Level/ERROR true
+    :trace Level/WARN  true
+    :trace Level/INFO  true
+    :trace Level/DEBUG true
+    :trace Level/TRACE true))

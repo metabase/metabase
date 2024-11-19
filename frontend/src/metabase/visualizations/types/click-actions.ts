@@ -4,7 +4,7 @@ import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
-import type { Series, VisualizationSettings, Card } from "metabase-types/api";
+import type { Card, Series, VisualizationSettings } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export type {
@@ -66,8 +66,19 @@ type ReduxClickActionBase = {
 
 export type ReduxClickAction = ClickActionBase & ReduxClickActionBase;
 
+/**
+ * What should happen when a "question change" click action is performed?
+ *
+ * - `changeCardAndRun`: the card is changed and the query is run. this is the default behavior.
+ * - `updateQuestion`: the question is updated (without running the query)
+ */
+export type QuestionChangeClickActionBehavior =
+  | "changeCardAndRun"
+  | "updateQuestion";
+
 export type QuestionChangeClickActionBase = {
   question: () => Question;
+  questionChangeBehavior?: QuestionChangeClickActionBehavior;
 };
 
 export type QuestionChangeClickAction = ClickActionBase &
@@ -85,7 +96,10 @@ type UrlClickActionBase = {
 
 export type UrlClickAction = ClickActionBase & UrlClickActionBase;
 
-type CustomClickActionContext = { closePopover: () => void };
+type CustomClickActionContext = {
+  dispatch: Dispatch;
+  closePopover: () => void;
+};
 
 type CustomClickActionBase = {
   name: ClickActionBase["name"];

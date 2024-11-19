@@ -12,10 +12,8 @@ import {
   getWaterfallChartDataDensity,
   getWaterfallLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/series";
-import type {
-  ShowWarning,
-  WaterfallChartModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { WaterfallChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
   ComputedVisualizationSettings,
@@ -35,6 +33,7 @@ import {
 export const getWaterfallChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): WaterfallChartModel => {
@@ -48,10 +47,10 @@ export const getWaterfallChartModel = (
   const [seriesModel] = getCardSeriesModels(
     singleRawSeries,
     cardsColumns[0],
+    [],
     false,
     true,
     settings,
-    renderingContext,
   );
 
   const unsortedDataset = getJoinedCardsDataset(
@@ -71,7 +70,6 @@ export const getWaterfallChartModel = (
     rawSeries,
     scaledDataset,
     settings,
-    renderingContext,
     showWarning,
   );
   if (
@@ -95,12 +93,7 @@ export const getWaterfallChartModel = (
   );
 
   const { formatter: waterfallLabelFormatter, isCompact } =
-    getWaterfallLabelFormatter(
-      seriesModel,
-      transformedDataset,
-      settings,
-      renderingContext,
-    );
+    getWaterfallLabelFormatter(seriesModel, transformedDataset, settings);
 
   const dataDensity = getWaterfallChartDataDensity(
     transformedDataset,
@@ -118,7 +111,6 @@ export const getWaterfallChartModel = (
     settings,
     { [WATERFALL_END_KEY]: seriesModel.column },
     null,
-    renderingContext,
     {
       compact:
         settings["graph.label_value_formatting"] === "compact" || isCompact,

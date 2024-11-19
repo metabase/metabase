@@ -2,12 +2,12 @@ import { getIn } from "icepick";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import Settings from "metabase/lib/settings";
 
-import { submitSetup, updateTracking } from "../../actions";
+import { goToNextStep, updateTracking } from "../../actions";
 import { getIsTrackingAllowed } from "../../selectors";
 import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
@@ -41,12 +41,16 @@ export const DataUsageStep = ({
 
   const handleStepSubmit = async () => {
     try {
-      await dispatch(submitSetup()).unwrap();
+      await dispatch(goToNextStep()).unwrap();
     } catch (error) {
       setErrorMessage(getSubmitError(error));
       throw error;
     }
   };
+
+  const { url: docsUrl } = useDocsUrl(
+    "installation-and-operation/information-collection",
+  );
 
   if (!isStepActive) {
     return (
@@ -66,9 +70,7 @@ export const DataUsageStep = ({
       <StepDescription>
         {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
         <ExternalLink
-          href={Settings.docsUrl(
-            "installation-and-operation/information-collection",
-          )}
+          href={docsUrl}
         >{t`Here's a full list of what we track and why.`}</ExternalLink>
       </StepDescription>
       <StepToggleContainer>

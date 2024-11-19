@@ -19,15 +19,15 @@ import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
-  getTable,
-  getFields,
   getError,
-  getLoading,
-  getUser,
-  getIsEditing,
-  getHasSingleSchema,
-  getIsFormulaExpanded,
+  getFields,
   getForeignKeys,
+  getHasSingleSchema,
+  getIsEditing,
+  getIsFormulaExpanded,
+  getLoading,
+  getTable,
+  getUser,
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 

@@ -3,18 +3,18 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseTest } from "__support__/enterprise";
 import {
-  setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  mockGetBoundingClientRect,
+  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
-  mockGetBoundingClientRect,
-  mockScrollBy,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
@@ -176,6 +176,7 @@ describe("CreateDashboardModal", () => {
       await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
     });
+
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       setup();
       const name = "my dashboard";
@@ -214,6 +215,7 @@ describe("CreateDashboardModal", () => {
       await userEvent.click(newCollBtn());
       await screen.findByText("Give it a name");
     });
+
     it("should create collection inside root folder", async () => {
       setup();
       const name = "my dashboard";

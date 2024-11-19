@@ -144,9 +144,13 @@
    [:name      :string]
    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
    [:base-type ::lib.schema.common/base-type]
-   [:id             {:optional true} ::lib.schema.id/field]
+   ;; This is nillable because internal remap columns have `:id nil`.
+   [:id             {:optional true} [:maybe ::lib.schema.id/field]]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
+   [:database-type  {:optional true} [:maybe :string]]
+   [:active         {:optional true} :boolean]
    ;; if this is a field from another table (implicit join), this is the field in the current table that should be
    ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
    ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
@@ -331,13 +335,14 @@
    [:id ::lib.schema.id/database]
    ;; TODO -- this should validate against the driver features list in [[metabase.driver/features]] if we're in
    ;; Clj mode
-   [:dbms-version {:optional true} [:maybe :map]]
-   [:details      {:optional true} :map]
-   [:engine       {:optional true} :keyword]
-   [:features     {:optional true} [:set :keyword]]
-   [:is-audit     {:optional true} :boolean]
-   [:settings     {:optional true} [:maybe :map]]
-   [:lib/methods  {:optional true} [:maybe [:ref ::database.methods]]]])
+   [:dbms-version    {:optional true} [:maybe :map]]
+   [:details         {:optional true} :map]
+   [:engine          {:optional true} :keyword]
+   [:features        {:optional true} [:set :keyword]]
+   [:is-audit        {:optional true} :boolean]
+   [:is-attached-dwh {:optional true} :boolean]
+   [:settings        {:optional true} [:maybe :map]]
+   [:lib/methods     {:optional true} [:maybe [:ref ::database.methods]]]])
 
 (mr/def ::metadata-provider
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."

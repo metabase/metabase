@@ -14,12 +14,12 @@ import type {
 } from "metabase-types/api";
 
 import {
-  ActionSettingsWrapper,
-  ParameterMapperContainer,
   ActionSettingsHeader,
   ActionSettingsLeft,
   ActionSettingsRight,
+  ActionSettingsWrapper,
   ModalActions,
+  ParameterMapperContainer,
 } from "./ActionDashcardSettings.styled";
 import {
   ActionParameterMappingForm,
@@ -71,8 +71,8 @@ export function ActionDashcardSettings({
   );
 
   const isFormInvalid =
-    !!action &&
-    action.parameters.some(actionParameter => {
+    action != null &&
+    action.parameters?.some(actionParameter => {
       const isHidden = isParameterHidden(action, actionParameter);
       const isRequired = isParameterRequired(action, actionParameter);
       const isParameterMapped =

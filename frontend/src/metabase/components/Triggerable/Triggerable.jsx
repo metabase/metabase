@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import styled from "@emotion/styled";
 import cx from "classnames";
-import { createRef, cloneElement, Children, Component } from "react";
+import { Children, Component, cloneElement, createRef } from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
@@ -157,7 +157,7 @@ const Triggerable = ComposedComponent =>
               !isOpen && triggerClassesClose,
               CS.noDecoration,
               {
-                [CS.cursorDefault]: this.props.disabled,
+                [CS.cursorInherit]: this.props.disabled,
               },
             )}
             aria-disabled={this.props.disabled}

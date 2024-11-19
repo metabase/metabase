@@ -2,9 +2,9 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
+  openReviewsTable,
   restore,
   visitQuestion,
-  openReviewsTable,
 } from "e2e/support/helpers";
 import type {
   ConcreteFieldReference,

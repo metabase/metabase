@@ -3,16 +3,15 @@ import { screen } from "__support__/ui";
 import {
   createMockGroup,
   createMockSettingDefinition,
-  createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
-const setupPremium = (opts?: SetupOpts) => {
+const setupPremium = async (opts?: SetupOpts) => {
   setupGroupsEndpoint([createMockGroup()]);
-  setup({
+  await setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({
       sso_saml: true,
@@ -45,17 +44,6 @@ describe("SettingsEditorApp", () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByText("Configure your identity provider (IdP)"),
-    ).toBeInTheDocument();
-  });
-
-  it("shows the admin sso notification setting", async () => {
-    setupPremium({
-      initialRoute: "/admin/settings/authentication",
-      settingValues: createMockSettings({ "saml-enabled": true }),
-    });
-
-    expect(
-      await screen.findByText("Notify admins of new SSO users"),
     ).toBeInTheDocument();
   });
 

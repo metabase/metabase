@@ -1,0 +1,118 @@
+created_at: '2024-08-28T14:38:42.774331Z'
+has_more_values: false
+hash_key: null
+human_readable_values: []
+last_used_at: '2024-08-28T14:38:42.774331Z'
+type: full
+values:
+- 20th Century Cafe
+- 25°
+- 33 Taps
+- 800 Degrees Neapolitan Pizzeria
+- BCD Tofu House
+- Baby Blues BBQ
+- Barney's Beanery
+- Beachwood BBQ & Brewing
+- Beyond Sushi
+- Bludso's BBQ
+- Blue Ribbon Sushi
+- Boneyard Bistro
+- Bozu
+- Brite Spot Family Restaurant
+- Busby's West
+- Cha Cha Chicken
+- Cheese Steak Shop
+- Chez Jay
+- Cole's
+- Dal Rae Restaurant
+- Dear Mom
+- Dimples
+- Don Day Korean Restaurant
+- Empress of China
+- Festa
+- Fred 62
+- Frolic Room
+- Garaje
+- Geido
+- Giordano Bros.
+- Golden Road Brewing
+- Gordo Taqueria
+- Greenblatt's Delicatessen & Fine Wine Shop
+- Handy Market
+- Hot Sauce and Panko
+- Hotel Biron
+- In-N-Out Burger
+- Jones Hollywood
+- Kinaree Thai Bistro
+- Krua Siri
+- La Tortilla
+- Lawry's The Prime Rib
+- Liguria Bakery
+- Little Star Pizza
+- Lucky Baldwin's Pub
+- Manuel's Original El Tepeyac Cafe
+- Marlowe
+- Marnee Thai
+- Mint Karaoke Lounge
+- Mohawk Bend
+- Musso & Frank Grill
+- My Brother's Bar-B-Q
+- Noe Valley Bakery
+- Pacific Dining Car
+- Pacific Dining Car - Santa Monica
+- Pellicola Pizzeria
+- Philippe the Original
+- Pineapple Hill Saloon & Grill
+- PizzaHacker
+- Playground
+- Polo Lounge
+- Red Medicine
+- Ruen Pair Thai Restaurant
+- Rush Street
+- Señor Fish
+- Shanghai Dumpling King
+- Slate
+- Smoke City Market
+- Soto
+- Spitz Eagle Rock
+- Stout Burgers & Beers
+- Sushi Nakazawa
+- Sushi Yasaka
+- Sushi Yasuda
+- Tacos Villa Corona
+- Tam O'Shanter
+- Tanoshi Sushi & Sake Bar
+- Taqueria Los Coyotes
+- Taqueria San Francisco
+- Taylor's Prime Steak House
+- The 101 Coffee Shop
+- The Apple Pan
+- The Daily Pint
+- The Drawing Room
+- The Gorbals
+- The Gumbo Pot
+- The Misfit Restaurant + Bar
+- The Original Pantry
+- The Residence
+- The Virgil
+- Tito's Tacos
+- Tout Sweet Patisserie
+- Tu Lan Restaurant
+- Two Sisters Bar & Books
+- Wurstküche
+- Yamashiro Hollywood
+- Ye Rustic Inn
+- Yuca's Taqueria
+- Zeke's Smokehouse
+- bigmista's barbecue
+serdes/meta:
+- id: test-data (h2)
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: VENUES
+  model: Table
+- id: NAME
+  model: Field
+- id: '0'
+  model: FieldValues

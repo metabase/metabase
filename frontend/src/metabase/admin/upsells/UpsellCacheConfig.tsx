@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
 import { Box } from "metabase/ui";
@@ -22,7 +22,7 @@ export const UpsellCacheConfig = ({ source }: { source: string }) => {
         source={source}
       >
         {jt`Get granular caching controls for each database, dashboard, and query with ${(
-          <strong>{t`Metabase Pro.`}</strong>
+          <strong key="label">{t`Metabase Pro.`}</strong>
         )}`}
       </UpsellCard>
     </Box>

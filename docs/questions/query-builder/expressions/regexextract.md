@@ -4,6 +4,8 @@ title: Regexextract
 
 # Regexextract
 
+> ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
+
 `regexextract` uses [regular expressions (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) to get a specific part of your text.
 
 `regexextract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with strings in predictable formats like SKU numbers, IDs, or other types of codes, check out the simpler [substring](../expressions/substring.md) expression instead.
@@ -14,17 +16,17 @@ Use `regexextract` to create custom columns with shorter, more readable labels f
 - chart labels, or
 - embedding parameters.
 
-| Syntax                                                        | Example                                 |
-|---------------------------------------------------------------|-----------------------------------------|
-| `regexextract(text, regular_expression)`                      | `regexextract("regexextract", "ex(.*)")`|
-| Gets a specific part of your text using a regular expression. | "extract"                               |
+| Syntax                                                        | Example                                  |
+| ------------------------------------------------------------- | ---------------------------------------- |
+| `regexextract(text, regular_expression)`                      | `regexextract("regexextract", "ex(.*)")` |
+| Gets a specific part of your text using a regular expression. | "extract"                                |
 
 ## Searching and cleaning text
 
 Let's say that you have web data with a lot of different URLs, and you want to map each URL to a shorter, more readable campaign name.
 
 | URL                                                   | Campaign Name |
-|-------------------------------------------------------|---------------|
+| ----------------------------------------------------- | ------------- |
 | https://www.metabase.com/docs/?utm_campaign=alice     | alice         |
 | https://www.metabase.com/learn/?utm_campaign=neo      | neo           |
 | https://www.metabase.com/glossary/?utm_campaign=candy | candy         |
@@ -41,19 +43,19 @@ Now, you can use **Campaign Name** in places where you need clean labels, such a
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `regexextract`  |
-| ----------------------- | -------------------- |
-| String                  | ✅                   |
-| Number                  | ❌                   |
-| Timestamp               | ❌                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| String                                                                                                                         | ✅                        |
+| Number                                                                                                                         | ❌                        |
+| Timestamp                                                                                                                      | ❌                        |
+| Boolean                                                                                                                        | ❌                        |
+| JSON                                                                                                                           | ❌                        |
 
 ## Limitations
 
-Regex can be a dark art. You have been warned.
+`regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
 
-`regexextract` is not supported on H2 (including the Metabase Sample Database), SQL Server, and SQLite.
+Regex can be a dark art. You have been warned.
 
 ## Related functions
 
@@ -137,4 +139,4 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

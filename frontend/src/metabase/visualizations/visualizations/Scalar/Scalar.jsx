@@ -8,8 +8,8 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import ScalarValue, {
-  ScalarWrapper,
   ScalarTitle,
+  ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
@@ -21,7 +21,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 
-import { ScalarContainer, LabelIcon } from "./Scalar.styled";
+import { LabelIcon, ScalarContainer } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
 import { scalarToBarTransform } from "./scalars-bar-transform";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";

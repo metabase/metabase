@@ -111,7 +111,6 @@
   "Compile MBQL query to SQL and parse it as a HoneySQL-esque map."
   (comp sql->sql-map query->sql))
 
-
 ;;;; [[testing]] context tooling
 
 (defn pprint-native-query-with-best-strategy
@@ -120,7 +119,7 @@
    (pprint-native-query-with-best-strategy (or driver/*driver* :h2) query))
 
   ([driver query]
-   (u/ignore-exceptions
+   (try
      (let [{native :query, :as query} (query->raw-native-query query)]
        (str "\nNative Query =\n"
             (cond
@@ -136,7 +135,9 @@
             \newline
             \newline
             (u/pprint-to-str (dissoc query :query))
-            \newline)))))
+            \newline))
+     (catch Exception e
+       (str "Unable to pprint native query:\n" query "\n" e)))))
 
 (defn do-with-native-query-testing-context
   [query thunk]
@@ -159,6 +160,6 @@
   "All the drivers in the :sql hierarchy."
   []
   (set
-    (for [driver (tx.env/test-drivers)
-          :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql))]
-      (tx/the-driver-with-test-extensions driver))))
+   (for [driver (tx.env/test-drivers)
+         :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql))]
+     (tx/the-driver-with-test-extensions driver))))

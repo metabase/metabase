@@ -2,6 +2,7 @@
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.util :as qp.util]))
 
@@ -23,14 +24,25 @@
          (qp.util/query-without-aggregations-or-limits? query))
     (update :query assoc :limit max-rows, ::original-limit original-limit)))
 
+(defn- xlsx-export?
+  [& {info :info}]
+  (let [context (:context info)]
+    (= context :xlsx-download)))
+
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is either:
   1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
-  2. [[metabase.query-processor.interface/absolute-max-results]] (a constant, non-nil backstop value)"
+  2. the value of `pubic-settings/download-row-limit`
+     a. if it is less than [[metabase.query-processor.interface/absolute-max-results]] or
+     b. if it is greater and the export is NOT xlsx otherwise,
+  3. [[metabase.query-processor.interface/absolute-max-results]] (a constant, non-nil backstop value)"
   [query]
   (when-not (disable-max-results? query)
-    (or (mbql.u/query->max-rows-limit query)
-        qp.i/absolute-max-results)))
+    (cond-> (or (mbql.u/query->max-rows-limit query)
+                (public-settings/download-row-limit)
+                qp.i/absolute-max-results)
+      (xlsx-export? query)
+      (min qp.i/absolute-max-results))))
 
 (defn add-default-limit
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."

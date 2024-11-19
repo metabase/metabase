@@ -5,8 +5,8 @@ import { CSSTransition, TransitionGroup } from "react-transition-group";
 
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 import type {
-  ModalSize,
   BaseModalProps,
+  ModalSize,
 } from "metabase/components/Modal/utils";
 import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
@@ -83,7 +83,13 @@ export class WindowModal extends Component<WindowModalProps> {
       >
         <FocusTrap active={this.props.trapFocus}>
           <div
-            className={cx(className, CS.relative, CS.bgWhite, CS.rounded)}
+            className={cx(
+              className,
+              CS.relative,
+              CS.bgWhite,
+              CS.rounded,
+              CS.textDark,
+            )}
             role="dialog"
             data-testid="modal"
           >
@@ -124,7 +130,7 @@ export class WindowModal extends Component<WindowModalProps> {
         container={this._modalElement}
         enableMouseEvents={enableMouseEvents}
         // disable keydown to allow FocusTrap to work
-        unsandboxEvents={["onKeyDown"]}
+        unsandboxedEvents={["onKeyDown"]}
       >
         <TransitionGroup
           appear={enableTransition}

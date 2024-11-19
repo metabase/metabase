@@ -1,10 +1,10 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  visitQuestionAdhoc,
   openNativeEditor,
+  popover,
+  restore,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -27,7 +27,7 @@ describe("scenarios > visualizations > maps", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     cy.icon("pinmap").click();
-    cy.findByTestId("Map-button").within(() => {
+    cy.findByTestId("Map-container").within(() => {
       cy.icon("gear").click();
     });
 
@@ -210,11 +210,11 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("Visualization").click();
 
     // Ensure the Map visualization is sensible
-    cy.findByTestId("Map-button").should(
-      "have.attr",
-      "data-is-sensible",
-      "true",
-    );
+    cy.findByTestId("display-options-sensible").as("sensibleOptions");
+
+    cy.get("@sensibleOptions").within(() => {
+      cy.findByTestId("Map-button").should("be.visible");
+    });
   });
 
   it("should apply brush filters by dragging map", () => {

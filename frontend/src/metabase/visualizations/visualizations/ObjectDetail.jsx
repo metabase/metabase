@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { formatColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/lib/formatting";
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
 import {
-  buildTableColumnSettings,
   columnSettings,
+  tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
@@ -23,14 +23,14 @@ const ObjectDetailProperties = {
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    ...buildTableColumnSettings({ getIsColumnVisible: () => true }),
+    ...tableColumnSettings,
   },
   columnSettings: column => {
     const settings = {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => formatColumn(column),
+        getDefault: column => displayNameForColumn(column),
       },
       click_behavior: {},
     };

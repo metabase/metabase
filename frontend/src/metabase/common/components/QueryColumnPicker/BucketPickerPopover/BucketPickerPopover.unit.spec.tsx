@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
 import {
   BucketPickerPopover,

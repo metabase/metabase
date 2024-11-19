@@ -37,7 +37,6 @@
           "name": "text-consecutivity",
           "weight": 4,
           "match": "line-unpin-from-zero",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__130228__130234$fn__130235$iter__130230__130236$fn__130237$fn__130238$fn__130241@720ce99c",
           "column": "name"
         },
         {
@@ -45,7 +44,6 @@
           "name": "text-total-occurrences",
           "weight": 4,
           "match": "line-unpin-from-zero",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__130228__130234$fn__130235$iter__130230__130236$fn__130237$fn__130238$fn__130241@6e4a4973",
           "column": "name"
         },
         {
@@ -53,7 +51,6 @@
           "name": "text-fullness",
           "weight": 2,
           "match": "line-unpin-from-zero",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__130228__130234$fn__130235$iter__130230__130236$fn__130237$fn__130238$fn__130241@f75a6de",
           "column": "name"
         }
       ],

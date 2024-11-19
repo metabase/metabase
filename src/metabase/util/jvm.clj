@@ -5,7 +5,6 @@
    [clojure.java.classpath :as classpath]
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
-   [metabase.shared.util.i18n :refer [tru]]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id])
@@ -39,7 +38,7 @@
 
     (u/varargs String)
     (u/varargs String [\"A\" \"B\"])"
-  {:style/indent 1, :arglists '([klass] [klass xs])}
+  {:style/indent [:defn], :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getTypeName ^Class (ns-resolve *ns* klass)))))
@@ -170,7 +169,6 @@
 
    For implementing more fine grained retry policies like exponential backoff,
    consider using the `metabase.util.retry` namespace."
-  {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
     (f)
@@ -193,8 +191,9 @@
   consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries & body]
-  `(do-with-auto-retries ~num-retries
-     (fn [] ~@body)))
+  `(do-with-auto-retries
+    ~num-retries
+    (fn [] ~@body)))
 
 (def ^:private ^Base64$Decoder base64-decoder
   "A shared Base64 decoder instance."
@@ -284,7 +283,7 @@
     (when (= result ::timeout)
       (when (future? reff)
         (future-cancel reff))
-      (throw (TimeoutException. (tru "Timed out after {0}" (u.format/format-milliseconds timeout-ms)))))
+      (throw (TimeoutException. (format "Timed out after %s" (u.format/format-milliseconds timeout-ms)))))
     result))
 
 (defn do-with-timeout
@@ -302,7 +301,12 @@
 
 (defn poll
   "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise.
-  The default timeout is 1000ms and the default interval is 100ms."
+  The default timeout is 1000ms and the default interval is 100ms.
+
+    (u/poll {:thunk       (fn [] (upload!))
+             :done        (fn [response] (get-in response [:status :done]))
+             :timeout-ms  1000
+             :interval-ms 100})"
   [{:keys [thunk done? timeout-ms interval-ms]
     :or   {timeout-ms 1000 interval-ms 100}}]
   (let [start-time (System/currentTimeMillis)]
@@ -317,3 +321,28 @@
               (do
                 (Thread/sleep (long interval-ms))
                 (recur)))))))))
+
+;; Following function is not compatible with Safari 16.3 and older because it uses lookbehind regex.
+(defn parse-currency
+  "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
+
+    $1,000.00
+    -£127.54
+    -127,54 €
+    kr-127,54
+    € 127,54-
+    ¥200"
+  ^java.math.BigDecimal [^String s]
+  (when-not (str/blank? s)
+    (bigdec
+     (reduce
+      (partial apply str/replace)
+      s
+      [;; strip out any current symbols
+       [#"[^\d,.-]+"          ""]
+       ;; now strip out any thousands separators
+       [#"(?<=\d)[,.](\d{3})" "$1"]
+       ;; now replace a comma decimal seperator with a period
+       [#","                  "."]
+       ;; move minus sign at end to front
+       [#"(^[^-]+)-$"         "-$1"]]))))

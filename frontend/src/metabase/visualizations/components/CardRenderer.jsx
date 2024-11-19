@@ -2,19 +2,9 @@
 import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { startTimer } from "metabase/lib/performance";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
-
-// We track this as part of the render loop.
-// It's throttled to prevent pounding GA on every prop update.
-const trackEventThrottled = _.throttle(
-  MetabaseAnalytics.trackStructEvent,
-  10000,
-);
 
 class CardRenderer extends Component {
   static propTypes = {
@@ -76,12 +66,7 @@ class CardRenderer extends Component {
     parent.appendChild(element);
 
     try {
-      const t = startTimer();
       this._deregister = this.props.renderer(element, this.props);
-      t(duration => {
-        const { display } = this.props.card;
-        trackEventThrottled("Visualization", "Render Card", display, duration);
-      });
     } catch (err) {
       console.error(err);
       this.props.onRenderError(err.message || err);

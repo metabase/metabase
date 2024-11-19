@@ -1,5 +1,3 @@
-import type { EmbedDisplayControls } from "metabase/dashboard/types/embed-display-options";
-
 export type DashboardFullscreenControls = {
   isFullscreen: boolean;
   onFullscreenChange: (
@@ -18,6 +16,22 @@ export type DashboardRefreshPeriodControls = {
   ) => void;
 };
 
-export type DashboardDisplayOptionControls = EmbedDisplayControls &
-  DashboardFullscreenControls &
-  DashboardRefreshPeriodControls;
+export type DashboardNightModeControls = {
+  hasNightModeToggle: boolean;
+  onNightModeChange: (isNightMode: boolean) => void;
+  isNightMode: boolean;
+};
+
+export type DashboardDownloadControls = {
+  downloadsEnabled?: boolean;
+};
+
+export type DashboardLoaderWrapperProps = {
+  noLoaderWrapper?: boolean;
+};
+
+export type DashboardDisplayOptionControls = DashboardFullscreenControls &
+  DashboardRefreshPeriodControls &
+  DashboardNightModeControls &
+  DashboardDownloadControls &
+  DashboardLoaderWrapperProps;

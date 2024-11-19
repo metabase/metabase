@@ -48,7 +48,8 @@
          (string? password)]}
   (let [occurences (count-occurrences password)]
     (boolean (loop [[[char-type min-count] & more] (seq char-type->min)]
-               (if-not char-type true
+               (if-not char-type
+                 true
                  (when (>= (occurences char-type) min-count)
                    (recur more)))))))
 
@@ -77,8 +78,8 @@
   (with-open [is (.openStream common-passwords-url)
               reader (java.io.BufferedReader. (java.io.InputStreamReader. is))]
     (not-any?
-      (partial = (u/lower-case-en password))
-      (iterator-seq (.. reader lines iterator)))))
+     (partial = (u/lower-case-en password))
+     (iterator-seq (.. reader lines iterator)))))
 
 (defn is-valid?
   "Check that a password both meets complexity standards, and is not present in the common passwords list.
@@ -87,6 +88,13 @@
   (and (is-complex? password)
        (or (= (config/config-kw :mb-password-complexity) :weak)
            (is-uncommon? password))))
+
+(def ^:private default-bcrypt-work-factor
+  "Default work factor used for hashing passwords with BCrypt. Intentionally minimal for tests to reduce testing time."
+  (if config/is-test?
+    ;; 4 is the minimum supported value by jbcrypt library.
+    4
+    10))
 
 ;; copied from cemerick.friend.credentials EPL v1.0 license
 (defn hash-bcrypt
@@ -97,7 +105,7 @@
   [password & {:keys [work-factor]}]
   (BCrypt/hashpw password (if work-factor
                             (BCrypt/gensalt work-factor)
-                            (BCrypt/gensalt))))
+                            (BCrypt/gensalt default-bcrypt-work-factor))))
 
 (defn bcrypt-verify
   "Returns true if the plaintext [password] corresponds to [hash],

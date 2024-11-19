@@ -20,8 +20,8 @@
     "foo%2Fbar baz" "foo/bar baz"))
 
 (deftest safe-name-unescape-name-test
- (is (= "foo/bar baz"
-        (-> {:name "foo/bar baz"} names/safe-name names/unescape-name))))
+  (is (= "foo/bar baz"
+         (-> {:name "foo/bar baz"} names/safe-name names/unescape-name))))
 
 (deftest roundtrip-test
   (ts/with-world

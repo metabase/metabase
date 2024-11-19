@@ -1,0 +1,15 @@
+.table {
+  td {
+    white-space: nowrap;
+  }
+
+  th {
+    white-space: nowrap;
+  }
+}
+
+.collectionLink {
+  :hover {
+    color: var(--mb-color-brand) !important;
+  }
+}

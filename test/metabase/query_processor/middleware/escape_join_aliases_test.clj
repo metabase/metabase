@@ -480,7 +480,6 @@
                                     [:field 6 {:join-alias    "Q2"
                                                :temporal-unit :month}]]}]})))
 
-
 ;;; these are e2e tests
 
 (defn- escape-join-aliases [query]

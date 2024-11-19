@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import _ from "underscore";
 
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
-import type { AuthSetting, AuthCardProps } from "./AuthCard";
+import type { AuthCardProps, AuthSetting } from "./AuthCard";
 import AuthCard from "./AuthCard";
 
 describe("AuthCard", () => {
@@ -12,7 +13,7 @@ describe("AuthCard", () => {
       isConfigured: false,
     });
 
-    render(<AuthCard {...props} />);
+    renderWithProviders(<AuthCard {...props} />);
 
     expect(screen.getByText("Set up")).toBeInTheDocument();
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
@@ -24,7 +25,7 @@ describe("AuthCard", () => {
       isConfigured: true,
     });
 
-    render(<AuthCard {...props} />);
+    renderWithProviders(<AuthCard {...props} />);
     await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
     await userEvent.click(screen.getByText("Pause"));
@@ -38,7 +39,7 @@ describe("AuthCard", () => {
       isConfigured: true,
     });
 
-    render(<AuthCard {...props} />);
+    renderWithProviders(<AuthCard {...props} />);
     await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
     await userEvent.click(screen.getByText("Resume"));
@@ -52,7 +53,7 @@ describe("AuthCard", () => {
       isConfigured: true,
     });
 
-    render(<AuthCard {...props} />);
+    renderWithProviders(<AuthCard {...props} />);
     await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
     await userEvent.click(screen.getByText("Deactivate"));
@@ -71,7 +72,7 @@ describe("AuthCard", () => {
       isConfigured: true,
     });
 
-    render(<AuthCard {...props} />);
+    renderWithProviders(<AuthCard {...props} />);
 
     expect(screen.getByRole("link")).toHaveTextContent("$MB_JWT_ENABLED");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
@@ -79,11 +80,15 @@ describe("AuthCard", () => {
   });
 });
 
-const getSetting = (opts?: Partial<AuthSetting>): AuthSetting =>
-  createMockSettingDefinition({
+const getSetting = (opts?: Partial<AuthSetting>): AuthSetting => {
+  const settingDefinition = createMockSettingDefinition({
+    key: "google-auth-enabled",
     value: false,
     ...opts,
-  }) as AuthSetting;
+  });
+
+  return _.omit(settingDefinition, "key") as AuthSetting;
+};
 
 const getProps = (opts?: Partial<AuthCardProps>): AuthCardProps => ({
   setting: getSetting(),

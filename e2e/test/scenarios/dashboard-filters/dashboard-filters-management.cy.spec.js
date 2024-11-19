@@ -1,14 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
   editDashboard,
-  saveDashboard,
-  visitDashboard,
-  sidebar,
+  filterWidget,
   getDashboardCard,
-  updateDashboardCards,
   popover,
+  restore,
+  saveDashboard,
+  sidebar,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -99,18 +99,18 @@ describe("scenarios > dashboard > filters > management", () => {
 
       selectFilter("Location");
 
-      getDashboardCard().contains("Person.State");
+      getDashboardCard().contains("People.State");
       getDashboardCard(1).contains("User.City");
 
       cy.log("Disconnect cards");
       sidebar().findByText("Disconnect from cards").click();
 
-      getDashboardCard().should("not.contain", "Person.State");
+      getDashboardCard().should("not.contain", "People.State");
       getDashboardCard(1).should("not.contain", "User.City");
 
       selectFilter("Text");
 
-      getDashboardCard().should("contain", "Person.Name");
+      getDashboardCard().should("contain", "People.Name");
       getDashboardCard(1).should("contain", "User.Name");
 
       saveDashboard();
@@ -125,7 +125,7 @@ describe("scenarios > dashboard > filters > management", () => {
 
       selectFilter("Text");
 
-      getDashboardCard().should("contain", "Person.Name");
+      getDashboardCard().should("contain", "People.Name");
 
       cy.log("change filter type");
 
@@ -141,7 +141,7 @@ describe("scenarios > dashboard > filters > management", () => {
         // verifies no default value
         cy.findByText("No default").should("exist");
       });
-      getDashboardCard().should("not.contain", "Person.Name");
+      getDashboardCard().should("not.contain", "People.Name");
 
       saveDashboard();
 
@@ -166,7 +166,7 @@ describe("scenarios > dashboard > filters > management", () => {
       cy.log("verify ID doesn't render operator select");
       sidebar().findAllByRole("searchbox").should("have.length", 1);
 
-      changeFilterType("Time");
+      changeFilterType("Date picker");
 
       cy.log("verify Date default value: All Options");
       verifyOperatorValue("All Options");
@@ -284,17 +284,17 @@ describe("scenarios > dashboard > filters > management", () => {
 
       sidebar().findByDisplayValue("Does not contain").should("exist");
 
-      getDashboardCard().should("contain", "Person.Name");
+      getDashboardCard().should("contain", "People.Name");
 
       changeFilterType("Number");
 
       cy.log("verify that mapping is cleared");
-      getDashboardCard().should("not.contain", "Person.Name");
+      getDashboardCard().should("not.contain", "People.Name");
 
       changeFilterType("Text or Category");
 
       cy.log("verify that mapping is restored");
-      getDashboardCard().should("contain", "Person.Name");
+      getDashboardCard().should("contain", "People.Name");
     });
   });
 
@@ -307,11 +307,11 @@ describe("scenarios > dashboard > filters > management", () => {
       // verifies default value is there
       sidebar().findByText("value to check default").should("exist");
 
-      getDashboardCard().should("contain", "Person.Name");
+      getDashboardCard().should("contain", "People.Name");
 
       changeOperator("Contains");
 
-      getDashboardCard().should("contain", "Person.Name");
+      getDashboardCard().should("contain", "People.Name");
 
       // verifies default value does not exist
       sidebar().findByText("No default").should("exist");
@@ -374,7 +374,7 @@ function selectFilter(name) {
 }
 
 function changeFilterType(type) {
-  sidebar().findByText("Filter type").next().click();
+  sidebar().findByText("Filter or parameter type").next().click();
   popover().findByText(type).click();
 }
 

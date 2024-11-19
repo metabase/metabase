@@ -1,7 +1,7 @@
 import type {
-  NativeQueryForm,
-  DatasetQuery,
   CardQueryMetadata,
+  DatasetQuery,
+  NativeQueryForm,
 } from "metabase-types/api";
 
 import { Api } from "./api";

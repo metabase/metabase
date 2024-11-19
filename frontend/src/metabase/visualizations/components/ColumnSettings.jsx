@@ -5,8 +5,8 @@ import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import {
-  getSettingsWidgets,
   getComputedSettings,
+  getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 

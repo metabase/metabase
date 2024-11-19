@@ -6,8 +6,8 @@ export const DEFAULT_DATE_STYLE = "MMMM D, YYYY";
 const UNITS_WITH_HOUR = ["default", "minute", "hour", "hour-of-day"] as const;
 const UNITS_WITH_DAY = ["default", "minute", "hour", "day", "week"] as const;
 
-type UNITS_WITH_HOUR_TYPE = typeof UNITS_WITH_HOUR[number];
-type UNITS_WITH_DAY_TYPE = typeof UNITS_WITH_DAY[number];
+type UNITS_WITH_HOUR_TYPE = (typeof UNITS_WITH_HOUR)[number];
+type UNITS_WITH_DAY_TYPE = (typeof UNITS_WITH_DAY)[number];
 
 const UNITS_WITH_HOUR_SET = new Set(UNITS_WITH_HOUR);
 const UNITS_WITH_DAY_SET = new Set(UNITS_WITH_DAY);

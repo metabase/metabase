@@ -5,8 +5,8 @@ import {
   createNativeQuestion,
   createQuestion,
   dashboardHeader,
-  dashboardParametersDoneButton,
   dashboardParameterSidebar,
+  dashboardParametersDoneButton,
   editDashboard,
   filterWidget,
   getDashboardCard,
@@ -23,6 +23,7 @@ import {
   undoToast,
   undoToastList,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
@@ -114,7 +115,13 @@ const expressionBreakoutQuestionDetails = {
         "day",
       ],
     },
-    breakout: [["expression", "Date", { "base-type": "type/DateTime" }]],
+    breakout: [
+      [
+        "expression",
+        "Date",
+        { "base-type": "type/DateTime", "temporal-unit": "day" },
+      ],
+    ],
   },
 };
 
@@ -180,13 +187,32 @@ const nativeUnitQuestionDetails = {
   name: "SQL units",
   display: "table",
   native: {
-    query: "SELECT 'month' as UNIT UNION ALL SELECT 'year' as UNIT",
+    query:
+      "SELECT 'month' AS UNIT " +
+      "UNION ALL SELECT 'year' AS UNIT " +
+      "UNION ALL SELECT 'invalid' AS UNIT",
   },
 };
 
+const nativeTimeQuestionDetails = {
+  name: "SQL time",
+  display: "table",
+  native: {
+    query: "SELECT CAST('10:00' AS TIME) AS TIME",
+  },
+};
+
+const getNativeTimeQuestionBasedQuestionDetails = card => ({
+  query: {
+    "source-table": `card__${card.id}`,
+    aggregation: [["count"]],
+    breakout: [["field", "TIME", { "base-type": "type/Time" }]],
+  },
+});
+
 const parameterDetails = {
   id: "1",
-  name: "Unit of Time",
+  name: "Time grouping",
   slug: "unit_of_time",
   type: "temporal-unit",
   sectionId: "temporal-unit",
@@ -276,10 +302,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       filterWidget().click();
       popover().findByText("Quarter").click();
       getDashboardCard().within(() => {
-        cy.findByText("Created At: Quarter").should("be.visible");
+        cy.findByText("Created At: Month: Quarter").should("be.visible");
         cy.findByText(multiStageQuestionDetails.name).click();
       });
-      queryBuilderMain().findByText("Created At: Quarter").should("be.visible");
+      queryBuilderMain()
+        .findByText("Created At: Month: Quarter")
+        .should("be.visible");
       backToDashboard();
       editDashboard();
       removeQuestion();
@@ -294,8 +322,18 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("breakout by expression");
       addQuestion(expressionBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
-      getDashboardCard().findByText("No valid fields").should("be.visible");
-      dashboardParametersDoneButton().click();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Date").click();
+      saveDashboard();
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().within(() => {
+        cy.findByText("Date: Quarter").should("be.visible");
+        cy.findByText(expressionBreakoutQuestionDetails.name).click();
+      });
+      queryBuilderMain().findByText("Date: Quarter").should("be.visible");
+      backToDashboard();
+      editDashboard();
       removeQuestion();
 
       cy.log("breakout by a column with a binning strategy");
@@ -384,9 +422,43 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", "Started from")
         .should("contain.text", multiBreakoutQuestionDetails.name);
       queryBuilderMain().within(() => {
-        cy.findByText("Product → Created At: Week").should("be.visible");
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText("April 24, 2022").should("be.visible");
+        cy.findByText("May 1, 2022").should("be.visible");
+      });
+    });
+
+    it("should connect multiple parameters to the same column in a card and drill thru, with the last parameter taking priority", () => {
+      createQuestion(singleBreakoutQuestionDetails);
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
+
+      editDashboard();
+      addQuestion(singleBreakoutQuestionDetails.name);
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "Created At");
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "Created At");
+      saveDashboard();
+
+      filterWidget().eq(0).click();
+      popover().findByText("Quarter").click();
+      filterWidget().eq(1).click();
+      popover().findByText("Year").click();
+      getDashboardCard().within(() => {
+        // metabase#44684
+        // should be "Created At: Year" and "2022" because the last parameter is "Year"
+        cy.findByText("Created At: Quarter").should("be.visible");
+        cy.findByText("Q2 2022").should("be.visible");
+        cy.findByText(singleBreakoutQuestionDetails.name).click();
+      });
+      appBar()
+        .should("contain.text", "Started from")
+        .should("contain.text", singleBreakoutQuestionDetails.name);
+      queryBuilderMain().within(() => {
+        cy.findByText("Created At: Year").should("be.visible");
         cy.findByText("2022").should("be.visible");
-        cy.findByText("2023").should("be.visible");
       });
     });
 
@@ -438,10 +510,31 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
       createDashboardWithMappedQuestion({
         extraQuestions: [nativeUnitQuestionDetails],
-      }).then(dashboard => visitDashboard(dashboard.id));
+      }).then(dashboard => {
+        cy.wrap(dashboard.id).as("dashboardId");
+        visitDashboard(dashboard.id);
+      });
 
-      cy.log("setup click behavior");
+      cy.log("unsupported column types are ignored");
       editDashboard();
+      getDashboardCard(0)
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.log("datetime columns cannot be mapped");
+        cy.findByText("Created At: Month").click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText("No available targets").should("be.visible");
+        cy.icon("chevronleft").click();
+
+        cy.log("number columns cannot be mapped");
+        cy.findByText("Count").click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText("No available targets").should("be.visible");
+        cy.button("Cancel").click();
+      });
+
+      cy.log("setup a valid click behavior with a text column");
       getDashboardCard(1)
         .findByLabelText("Click behavior")
         .click({ force: true });
@@ -453,7 +546,28 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       popover().findByText("UNIT").click();
       saveDashboard();
 
-      cy.log("verify click behavior");
+      cy.log("verify click behavior with a valid temporal unit");
+
+      // this is done to bypass race condition problem, the root cause for it is
+      // described in `updateDashboardAndCards` from frontend/src/metabase/dashboard/actions/save.js
+      visitDashboard("@dashboardId");
+
+      getDashboardCard(1).findByText("year").click();
+
+      getDashboardCard(0)
+        .findByText("Created At: Year", { timeout: 10000 })
+        .should("be.visible");
+
+      filterWidget().findByText("Year").should("be.visible");
+
+      cy.log("verify that invalid temporal units are ignored");
+      getDashboardCard(1).findByText("invalid").click();
+      filterWidget()
+        .findByText(/invalid/i)
+        .should("not.exist");
+      getDashboardCard(0).findByText("Created At: Month").should("be.visible");
+
+      cy.log("verify that recovering from an invalid temporal unit works");
       getDashboardCard(1).findByText("year").click();
       filterWidget().findByText("Year").should("be.visible");
       getDashboardCard(0).findByText("Created At: Year").should("be.visible");
@@ -470,7 +584,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           name: "Source dashboard",
         },
         questions: [nativeUnitQuestionDetails],
-      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      }).then(({ dashboard }) => cy.wrap(dashboard.id).as("sourceDashboardId"));
+      visitDashboard("@sourceDashboardId");
 
       cy.log("setup click behavior");
       editDashboard();
@@ -487,7 +602,16 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       popover().findByText("UNIT").click();
       saveDashboard();
 
-      cy.log("verify click behavior");
+      cy.log("verify that invalid temporal units are ignored");
+      getDashboardCard().findByText("invalid").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget()
+        .findByText(/invalid/i)
+        .should("not.exist");
+      getDashboardCard().findByText("Created At: Month").should("be.visible");
+
+      cy.log("verify click behavior with a valid temporal unit");
+      visitDashboard("@sourceDashboardId");
       getDashboardCard().findByText("year").click();
       dashboardHeader().findByText("Target dashboard").should("be.visible");
       filterWidget().findByText("Year").should("be.visible");
@@ -505,7 +629,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           name: "Source dashboard",
         },
         questions: [nativeUnitQuestionDetails],
-      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      }).then(({ dashboard }) => cy.wrap(dashboard.id).as("sourceDashboardId"));
+      visitDashboard("@sourceDashboardId");
 
       cy.log("setup click behavior");
       editDashboard();
@@ -533,11 +658,20 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
       saveDashboard();
 
-      cy.log("verify click behavior");
+      cy.log("verify click behavior with a temporal valid unit");
       getDashboardCard().findByText("year").click();
       dashboardHeader().findByText("Target dashboard").should("be.visible");
       filterWidget().findByText("Year").should("be.visible");
       getDashboardCard().findByText("Created At: Year").should("be.visible");
+
+      cy.log("verify that invalid temporal units are ignored");
+      visitDashboard("@sourceDashboardId");
+      getDashboardCard().findByText("invalid").click();
+      dashboardHeader().findByText("Target dashboard").should("be.visible");
+      filterWidget()
+        .findByText(/invalid/i)
+        .should("not.exist");
+      getDashboardCard().findByText("Created At: Month").should("be.visible");
     });
 
     it("should not allow to use temporal unit parameter values with SQL queries", () => {
@@ -700,6 +834,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByLabelText("Year").click();
         cy.findByLabelText("Minute").click();
       });
+      dashboardParametersDoneButton().click();
       saveDashboard();
 
       filterWidget().click();
@@ -770,6 +905,34 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       resetFilterWidgetToDefault();
       getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
+
+    it("should show an error message when an incompatible temporal unit is used", () => {
+      cy.log("setup dashboard with a time column");
+      createNativeQuestion(nativeTimeQuestionDetails).then(({ body: card }) => {
+        cy.createDashboardWithQuestions({
+          questions: [getNativeTimeQuestionBasedQuestionDetails(card)],
+        }).then(({ dashboard }) => {
+          visitDashboard(dashboard.id);
+        });
+      });
+      editDashboard();
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "TIME");
+      saveDashboard();
+
+      cy.log("use an invalid temporal unit");
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard().should(
+        "contain.text",
+        "This chart can not be broken out by the selected unit of time: year.",
+      );
+
+      cy.log("use an valid temporal unit");
+      filterWidget().click();
+      popover().findByText("Minute").click();
+      getDashboardCard().findByText("TIME: Minute").should("be.visible");
+    });
   });
 
   describe("query string parameters", () => {
@@ -777,6 +940,34 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       createDashboardWithMappedQuestion().then(dashboard => {
         visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
       });
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should ignore invalid temporal unit values from the url", () => {
+      createDashboardWithMappedQuestion().then(dashboard => {
+        visitDashboard(dashboard.id, { params: { unit_of_time: "invalid" } });
+      });
+      filterWidget().within(() => {
+        cy.findByText(parameterDetails.name).should("be.visible");
+        cy.findByText(/invalid/i).should("not.exist");
+      });
+      getDashboardCard().findByText("Created At: Month").should("be.visible");
+    });
+
+    it("should accept temporal units outside of the allowlist if they are otherwise valid values from the url", () => {
+      createDashboardWithMappedQuestion({
+        dashboardDetails: {
+          parameters: [
+            {
+              ...parameterDetails,
+              temporal_units: ["month", "quarter"],
+            },
+          ],
+        },
+      }).then(dashboard => {
+        visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
+      });
+      filterWidget().findByText("Year").should("be.visible");
       getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
   });
@@ -802,7 +993,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   describe("embedding", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+      updateSetting("enable-public-sharing", true);
     });
 
     it("should be able to use temporal unit parameters in a public dashboard", () => {
@@ -847,9 +1038,7 @@ function backToDashboard() {
 }
 
 function addTemporalUnitParameter() {
-  cy.findByTestId("dashboard-header")
-    .findByLabelText("Add a Unit of Time widget")
-    .click();
+  setFilter("Time grouping");
 }
 
 function addQuestion(name) {
@@ -874,8 +1063,8 @@ function createDashboardWithMappedQuestion({
   return cy
     .createDashboardWithQuestions({
       dashboardDetails: {
-        ...dashboardDetails,
         parameters: [parameterDetails],
+        ...dashboardDetails,
       },
       questions: [singleBreakoutQuestionDetails, ...extraQuestions],
     })

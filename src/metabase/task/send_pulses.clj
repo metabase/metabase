@@ -4,6 +4,7 @@
   `SendPulse` job will send a pulse to all channels that are scheduled to run at the same time.
   For example if you have an Alert that has scheduled to send to both slack and emails at 6am, this job will be triggered
   and send the pulse to both channels. "
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -12,9 +13,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.task-history :as task-history]
-   [metabase.pulse]
+   [metabase.notification.core :as notification]
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util.cron :as u.cron]
@@ -52,9 +54,10 @@
     (task-history/with-task-history {:task         "send-pulse"
                                      :task_details {:pulse-id    pulse-id
                                                     :channel-ids (seq channel-ids)}}
-      (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
+      (when-let [pulse (models.pulse/retrieve-notification pulse-id :archived false)]
         (log/debugf "Starting Pulse Execution: %d" pulse-id)
-        (metabase.pulse/send-pulse! pulse :channel-ids channel-ids)
+        (binding [notification/*default-options* {:notification/sync? true}]
+          (pulse/send-pulse! pulse :channel-ids channel-ids))
         (log/debugf "Finished Pulse Execution: %d" pulse-id)
         :done))
     (catch Throwable e
@@ -66,7 +69,7 @@
       (qp.timezone/system-timezone-id)
       "UTC"))
 
-(mu/defn ^:private send-pulse-trigger
+(mu/defn- send-pulse-trigger
   "Build a Quartz trigger to send a pulse to a list of channel-ids."
   ^CronTrigger
   ([pulse-id     :- pos-int?
@@ -74,17 +77,17 @@
     pc-ids       :- [:set pos-int?]
     timezone     :- :string]
    (send-pulse-trigger pulse-id schedule-map pc-ids timezone 6))
- ([pulse-id     :- pos-int?
-   schedule-map :- u.cron/ScheduleMap
-   pc-ids       :- [:set pos-int?]
-   timezone     :- :string
-   priority     :- pos-int?]
-  (triggers/build
-   (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
-   (triggers/for-job send-pulse-job-key)
-   (triggers/using-job-data {"pulse-id"    pulse-id
-                             "channel-ids" pc-ids})
-   (triggers/with-schedule
+  ([pulse-id     :- pos-int?
+    schedule-map :- u.cron/ScheduleMap
+    pc-ids       :- [:set pos-int?]
+    timezone     :- :string
+    priority     :- pos-int?]
+   (triggers/build
+    (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
+    (triggers/for-job send-pulse-job-key)
+    (triggers/using-job-data {"pulse-id"    pulse-id
+                              "channel-ids" pc-ids})
+    (triggers/with-schedule
      (cron/schedule
       (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
       (cron/in-time-zone (TimeZone/getTimeZone ^String timezone))
@@ -93,56 +96,41 @@
       ;;
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-fire-and-proceed)))
-   (triggers/with-priority priority))))
+    (triggers/with-priority priority))))
 
 ; Clearing pulse channels is not done synchronously in order to support undoing feature.
 (defn- clear-pulse-channels-no-recipients!
   "Delete PulseChannels that have no recipients and no channel set for a pulse, returns the channel ids that were deleted."
   [pulse-id]
   (when-let [ids-to-delete (seq
-                            (for [channel (t2/select [:model/PulseChannel :id :details]
+                            (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
                                                      :pulse_id pulse-id
                                                      :id [:not-in {:select   [[:pulse_channel_id :id]]
                                                                    :from     :pulse_channel_recipient
                                                                    :group-by [:pulse_channel_id]
                                                                    :having   [:>= :%count.* [:raw 1]]}])
-                                  :when (and (empty? (get-in channel [:details :emails]))
-                                             (not (get-in channel [:details :channel])))]
+                                  :when  (case (:channel_type channel)
+                                           :email
+                                           (empty? (get-in channel [:details :emails]))
+                                           :slack
+                                           (empty? (get-in channel [:details :channel]))
+                                           :http
+                                           (nil? (:channel_id channel)))]
                               (:id channel)))]
     (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
     (set ids-to-delete)))
 
-(defn- ms-duration->priority
-  "Converts a duration in milliseconds to a priority value for a trigger.
-
-  Pulses are time sensitive, so we need it to have higher priority than other tasks, in which has a default priority of 5."
-  [ms-duration]
-  (-> ms-duration
-      (/ 1000)
-      ;; assuming 1 hour is the max duration a pulse can take
-      (#(- (* 60 60) %))
-      ;; make sure it's higher than 5 (the default priority)
-      (max 6)
-      int))
-
 (defn- send-pulse!*
   "Do several things:
   - Clear PulseChannels that have no recipients and no channel set for a pulse
-  - Send a pulse to a list of channels
-  - Update the priority of the trigger if the pulse is sent successfully"
-  [schedule-map pulse-id channel-ids]
+  - Send a pulse to a list of channels"
+  [pulse-id channel-ids]
   (let [cleared-channel-ids         (clear-pulse-channels-no-recipients! pulse-id)
         to-send-channel-ids         (set/difference channel-ids cleared-channel-ids)
         to-send-enabled-channel-ids (t2/select-pks-set :model/PulseChannel :id [:in to-send-channel-ids] :enabled true)]
     (if (seq to-send-enabled-channel-ids)
-      (let [start    (System/currentTimeMillis)
-            result   (send-pulse! pulse-id to-send-enabled-channel-ids)
-            end      (System/currentTimeMillis)
-            priority (ms-duration->priority (- end start))]
-        (when (= :done result)
-          (log/infof "Updating priority of trigger %s to %d" (.getName ^TriggerKey (send-pulse-trigger-key pulse-id schedule-map)) priority)
-          (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids (send-trigger-timezone) priority))))
+      (send-pulse! pulse-id to-send-enabled-channel-ids)
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
 ;; called in [driver/report-timezone] setter
@@ -163,9 +151,8 @@
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
-  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)
-        trigger-key                    (.. context getTrigger getKey getName)]
-    (send-pulse!* (:schedule-map (send-pulse-trigger-key->info trigger-key)) pulse-id channel-ids)))
+  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
+    (send-pulse!* pulse-id channel-ids)))
 
 ;;; ------------------------------------------------ Job: InitSendPulseTriggers ----------------------------------------------------
 
@@ -198,7 +185,7 @@
   ^{:doc
     "Find all active pulse Channels, group them by pulse-id and schedule time and create a trigger for each.
 
-    This is basically a migraiton in disguise to move from the old SendPulses job to the new SendPulse job.
+    This is basically a migration in disguise to move from the old SendPulses job to the new SendPulse job.
 
     Context: prior to this, SendPulses is a single job that runs hourly and send all Pulses that are scheduled for that
     hour.
@@ -243,22 +230,22 @@
                           (set add-pc-ids))]
     (cond
      ;; no op when new-pc-ids doesnt't change
-     (= new-pc-ids existing-pc-ids) nil
+      (= new-pc-ids existing-pc-ids) nil
 
      ;; delete if no new pc-ids and there is an existing trigger
-     (and (empty? new-pc-ids)
-          (some? existing-pc-ids))
-     (do
-      (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
-      (task/delete-trigger! trigger-key))
+      (and (empty? new-pc-ids)
+           (some? existing-pc-ids))
+      (do
+        (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
+        (task/delete-trigger! trigger-key))
 
      ;; delete then create if pc ids changes
-     (and (seq new-pc-ids)
-          (not= new-pc-ids existing-pc-ids))
-     (do
-      (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
-      (task/delete-trigger! trigger-key)
-      (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
+      (and (seq new-pc-ids)
+           (not= new-pc-ids existing-pc-ids))
+      (do
+        (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
+        (task/delete-trigger! trigger-key)
+        (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
 
 ;;; -------------------------------------------------- Task init ------------------------------------------------
 

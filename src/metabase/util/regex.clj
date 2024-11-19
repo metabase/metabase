@@ -58,8 +58,7 @@
        Feel free to add support for more stuff as needed.
 
        This is memoized because arguments to rx are less optimal than they should be, in favor of better clarity -- hence skipping recompilation makes sense."
-       :arglists '([x] [x & more])
-       } rx
+       :arglists '([x] [x & more])} rx
   (memoize (fn  rx
              ;; (rx [:and [:or "Cam" "can"] [:? #"\s+"] #"\d+"])
              ;; -> #\"(?:(?:Cam)|(?:can))(?:\s+)?\d+\"

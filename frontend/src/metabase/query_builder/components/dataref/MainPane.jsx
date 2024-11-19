@@ -8,9 +8,9 @@ import Databases from "metabase/entities/databases";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import {
+  NodeListItemIcon,
   NodeListItemLink,
   NodeListItemName,
-  NodeListItemIcon,
 } from "./NodeList.styled";
 import { PaneContent } from "./Pane.styled";
 

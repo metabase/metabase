@@ -19,13 +19,13 @@
   [group cards]
   (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
-                       :group         group
-                       :width         width
-                       :height        height
-                       :card-score    100
-                       :title         name
-                       :visualization [display]
-                       :position      0)]
+                            :group         group
+                            :width         width
+                            :height        height
+                            :card-score    100
+                            :title         name
+                            :visualization [display]
+                            :position      0)]
               description (conj {:text       description
                                  :group      group
                                  :width      (- total-width width)

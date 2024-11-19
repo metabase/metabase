@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { cloneElement, Children } from "react";
+import { Children, cloneElement } from "react";
 
 import CS from "metabase/css/core/index.css";
 

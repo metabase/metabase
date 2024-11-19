@@ -5,8 +5,8 @@ import type { SettingElement } from "metabase/admin/settings/types";
 import { UpsellHosting } from "metabase/admin/upsells";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
-import { Flex, Box } from "metabase/ui";
-import type { Settings, SettingValue } from "metabase-types/api";
+import { Box, Flex } from "metabase/ui";
+import type { SettingValue, Settings } from "metabase-types/api";
 
 import { SettingsSection } from "../../app/components/SettingsEditor/SettingsSection";
 

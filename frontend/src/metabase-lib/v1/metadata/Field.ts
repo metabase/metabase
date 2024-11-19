@@ -3,7 +3,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
-import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
+import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFilterOperators } from "metabase-lib/v1/operators/utils";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -14,7 +14,6 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
-  isa,
   isAddress,
   isBoolean,
   isCategory,
@@ -37,20 +36,22 @@ import {
   isScope,
   isState,
   isString,
+  isStringLike,
   isSummable,
   isTime,
   isTypeFK,
   isZipCode,
+  isa,
 } from "metabase-lib/v1/types/utils/isa";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/v1/utils";
 import type {
   DatasetColumn,
-  FieldReference,
   FieldFingerprint,
-  FieldId,
   FieldFormattingSettings,
-  FieldVisibilityType,
+  FieldId,
+  FieldReference,
   FieldValuesType,
+  FieldVisibilityType,
 } from "metabase-types/api";
 
 import { FieldDimension } from "../Dimension";
@@ -209,6 +210,10 @@ class FieldInner extends Base {
     return isString(this);
   }
 
+  isStringLike() {
+    return isStringLike(this);
+  }
+
   isAddress() {
     return isAddress(this);
   }
@@ -285,6 +290,20 @@ class FieldInner extends Base {
         this?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
           LONG_TEXT_MIN)
     );
+  }
+
+  /**
+   * Predicate to decide whether `this` is comparable with `field`.
+   *
+   * Currently only the MongoBSONID erroneous case is ruled out to fix the issue #49149. To the best of my knowledge
+   * there's no logic on FE to reliably decide whether two columns are comparable. Trying to come up with that in ad-hoc
+   * manner could disable some cases that users may depend on.
+   */
+  isComparableWith(field) {
+    return this.effective_type === "type/MongoBSONID" ||
+      field.effective_type === "type/MongoBSONID"
+      ? this.effective_type === field.effective_type
+      : true;
   }
 
   /**
@@ -546,7 +565,7 @@ class FieldInner extends Base {
 
   isJsonUnfolded() {
     const database = this.table?.database;
-    return this.json_unfolding ?? database?.details["json-unfolding"] ?? true;
+    return this.json_unfolding ?? database?.details?.["json-unfolding"] ?? true;
   }
 
   canUnfoldJson() {

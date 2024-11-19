@@ -59,7 +59,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       breakouts,
     );
 
-    if (Lib.isDate(column)) {
+    if (Lib.isTemporal(column)) {
       const info = Lib.displayInfo(query, stageIndex, breakout);
 
       if (info.isTemporalExtraction) {
@@ -88,10 +88,10 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       breakouts,
     );
 
-    const isAnyBreakoutDate = breakoutsWithColumns.some(({ column }) => {
-      return Lib.isDate(column);
+    const isAnyBreakoutTemporal = breakoutsWithColumns.some(({ column }) => {
+      return Lib.isTemporal(column);
     });
-    if (isAnyBreakoutDate) {
+    if (isAnyBreakoutTemporal) {
       return { display: "line" };
     }
 
@@ -99,10 +99,23 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return Lib.isCoordinate(column);
     });
     if (areBreakoutsCoordinates) {
+      const binningOne = Lib.binning(breakouts[0]);
+      const binningTwo = Lib.binning(breakouts[1]);
+      const areBothBinned = binningOne !== null && binningTwo !== null;
+
+      if (areBothBinned) {
+        return {
+          display: "map",
+          settings: {
+            "map.type": "grid",
+          },
+        };
+      }
+
       return {
         display: "map",
         settings: {
-          "map.type": "grid",
+          "map.type": "pin",
         },
       };
     }

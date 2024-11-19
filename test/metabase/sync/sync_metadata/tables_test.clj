@@ -18,12 +18,12 @@
 
 (tx/defdataset db-with-some-cruft
   [["acquired_toucans"
-     [{:field-name "species"              :base-type :type/Text}
-      {:field-name "cam_has_acquired_one" :base-type :type/Boolean}]
-     [["Toco"               false]
-      ["Chestnut-Mandibled" true]
-      ["Keel-billed"        false]
-      ["Channel-billed"     false]]]
+    [{:field-name "species"              :base-type :type/Text}
+     {:field-name "cam_has_acquired_one" :base-type :type/Boolean}]
+    [["Toco"               false]
+     ["Chestnut-Mandibled" true]
+     ["Keel-billed"        false]
+     ["Channel-billed"     false]]]
    ["south_migrationhistory"
     [{:field-name "app_name"  :base-type :type/Text}
      {:field-name "migration" :base-type :type/Text}]
@@ -50,7 +50,7 @@
 (deftest sync-table-update-info-of-new-table-added-during-sync-test
   (testing "during sync, if a table is reactivated, we should update the table info if needed"
     (let [dbdef (mt/dataset-definition "sync-retired-table"
-                  ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
+                                       ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
       (mt/dataset dbdef
         (t2/update! :model/Table (mt/id :user) {:active false})
         ;; table description is changed

@@ -7,7 +7,7 @@ import ReactMarkdown from "react-markdown";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import {
   clickBehaviorIsValid,
@@ -80,7 +80,7 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
       return formatted;
     }
   }
-  if (prefix || suffix) {
+  if ((prefix || suffix) && formatted != null) {
     if (options.jsx && typeof formatted !== "string") {
       return (
         <span>
@@ -144,10 +144,8 @@ export function formatValueRaw(
     return remapped;
   }
 
-  if (value === NULL_NUMERIC_VALUE) {
-    return NULL_DISPLAY_VALUE;
-  } else if (value == null) {
-    return null;
+  if (value == null) {
+    return options.stringifyNull ? NULL_DISPLAY_VALUE : null;
   } else if (
     options.view_as !== "image" &&
     options.click_behavior &&

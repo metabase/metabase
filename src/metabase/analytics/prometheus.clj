@@ -5,7 +5,6 @@
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
-  (:refer-clojure :exclude [inc])
   (:require
    [clojure.java.jmx :as jmx]
    [iapetos.collector :as collector]
@@ -66,7 +65,7 @@
   [port registry-name]
   (try
     (let [registry   (setup-metrics! registry-name)
-          web-server (start-web-server! port registry)]
+          web-server (when port (start-web-server! port registry))]
       (->PrometheusSystem registry web-server))
     (catch Exception e
       (throw (ex-info (trs "Failed to initialize Prometheus on port {0}" port)
@@ -111,19 +110,19 @@
 
 (def ^:private label-translation
   {:maxPoolSize        {:label       "c3p0_max_pool_size"
-                        :description (deferred-trs "C3P0 Max pool size")}
+                        :description "C3P0 Max pool size"}
    :minPoolSize        {:label       "c3p0_min_pool_size"
-                        :description (deferred-trs "C3P0 Minimum pool size")}
+                        :description "C3P0 Minimum pool size"}
    :numConnections     {:label       "c3p0_num_connections"
-                        :description (deferred-trs "C3P0 Number of connections")}
+                        :description "C3P0 Number of connections"}
    :numIdleConnections {:label       "c3p0_num_idle_connections"
-                        :description (deferred-trs "C3P0 Number of idle connections")}
+                        :description "C3P0 Number of idle connections"}
    :numBusyConnections {:label       "c3p0_num_busy_connections"
-                        :description (deferred-trs "C3P0 Number of busy connections")}
+                        :description "C3P0 Number of busy connections"}
 
    :numThreadsAwaitingCheckoutDefaultUser
-                       {:label       "c3p0_num_threads_awaiting_checkout_default_user"
-                        :description (deferred-trs "C3P0 Number of threads awaiting checkout")}})
+   {:label       "c3p0_num_threads_awaiting_checkout_default_user"
+    :description "C3P0 Number of threads awaiting checkout"}})
 
 (defn- stats->prometheus
   "Create an ArrayList of GaugeMetricFamily objects containing measurements from the c3p0 stats. Stats are grouped by
@@ -134,7 +133,7 @@
       (if-let [{gauge-label :label desc :description} (label-translation raw-label)]
         (let [gauge (GaugeMetricFamily.
                      ^String gauge-label
-                     ^String (str desc) ;; site-localized becomes string
+                     ^String desc
                      (List/of "database"))]
           (doseq [m measurements]
             (.addMetric gauge (List/of (:label m)) (:value m)))
@@ -193,6 +192,26 @@
                        :name      "jetty_stats"}
                       (JettyStatisticsCollector. (.getHandler (server/instance))))]))
 
+(defn- product-collectors
+  []
+  ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set, e.g. `metabase-email`:
+  [(prometheus/counter :metabase-email/messages
+                       {:description "Number of emails sent."})
+   (prometheus/counter :metabase-email/message-errors
+                       {:description "Number of errors when sending emails."})
+   (prometheus/counter :metabase-sdk/response-ok
+                       {:description "Number of successful SDK requests."})
+   (prometheus/counter :metabase-sdk/response-error
+                       {:description "Number of errors when responding to SDK requests."})
+   (prometheus/counter :metabase-scim/response-ok
+                       {:description "Number of successful responses from SCIM endpoints"})
+   (prometheus/counter :metabase-scim/response-error
+                       {:description "Number of error responses from SCIM endpoints"})
+   (prometheus/counter :metabase-query-processor/metrics-adjust
+                       {:description "Number of queries with metrics processed by the metrics adjust middleware."})
+   (prometheus/counter :metabase-query-processor/metrics-adjust-errors
+                       {:description "Number of errors when processing metrics in the metrics adjust middleware."})])
+
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
@@ -203,11 +222,7 @@
            (concat (jvm-collectors)
                    (jetty-collectors)
                    [@c3p0-collector]
-                   ; Iapetos will use "default" if we do not provide a namespace, so explicitly set `metabase-email`:
-                   [(prometheus/counter :metabase-email/messages
-                                        {:description (trs "Number of emails sent.")})
-                    (prometheus/counter :metabase-email/message-errors
-                                        {:description (trs "Number of errors when sending emails.")})]))))
+                   (product-collectors)))))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
@@ -229,8 +244,7 @@
   []
   (let [port (prometheus-server-port)]
     (when-not port
-      (throw (ex-info (trs "Attempting to set up prometheus metrics with no web-server port provided")
-                      {})))
+      (log/info "Running prometheus metrics without a webserver."))
     (when-not system
       (locking #'system
         (when-not system
@@ -250,7 +264,7 @@
              (catch Exception e
                (log/warn e "Error stopping prometheus web-server")))))))
 
-(defn inc
+(defn inc!
   "Call iapetos.core/inc on the metric in the global registry,
    if it has already been initialized and the metric is registered."
   [metric]

@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import {
   isEditableCollection,
-  isRootTrashCollection,
   isInstanceAnalyticsCollection,
+  isRootTrashCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import {
@@ -48,7 +48,7 @@ export const CollectionCaption = ({
   );
 
   return (
-    <CaptionRoot>
+    <CaptionRoot data-testid="collection-caption">
       <CaptionTitleContainer>
         <CollectionCaptionIcon collection={collection} />
         <CaptionTitle
@@ -62,15 +62,19 @@ export const CollectionCaption = ({
       </CaptionTitleContainer>
       {(isEditable || hasDescription) && (
         <CaptionDescription
-          key={collection.id}
-          initialValue={collection.description}
+          key={
+            // Including the description in the key prevents a stale value from
+            // being stored in the state of EditableText if the collection's
+            // description is modified in another component
+            `${collection.id}-${collection.description}`
+          }
+          description={collection.description}
           placeholder={t`Add description`}
           isVisible={Boolean(collection.description)}
-          isDisabled={!isEditable}
-          isOptional
-          isMultiline
-          isMarkdown
+          canWrite={isEditable}
           onChange={handleChangeDescription}
+          data-testid="collection-description-in-caption"
+          left={0}
         />
       )}
     </CaptionRoot>

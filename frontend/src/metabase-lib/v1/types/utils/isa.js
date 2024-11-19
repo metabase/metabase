@@ -1,21 +1,21 @@
 import { isa as cljs_isa } from "cljs/metabase.types";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
-  TYPE,
-  TYPE_HIERARCHIES,
-  TEMPORAL,
-  LOCATION,
+  BOOLEAN,
+  CATEGORY,
   COORDINATE,
   FOREIGN_KEY,
+  INTEGER,
+  LOCATION,
+  NUMBER,
   PRIMARY_KEY,
+  SCOPE,
   STRING,
   STRING_LIKE,
-  NUMBER,
-  INTEGER,
-  BOOLEAN,
   SUMMABLE,
-  SCOPE,
-  CATEGORY,
+  TEMPORAL,
+  TYPE,
+  TYPE_HIERARCHIES,
 } from "metabase-lib/v1/types/constants";
 
 /**
@@ -106,14 +106,20 @@ export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isInteger = isFieldType.bind(null, INTEGER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
+export const isStringLike = isFieldType.bind(null, STRING_LIKE);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isScope = isFieldType.bind(null, SCOPE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
+const hasNonMetricName = col => {
+  const name = col.name.toLowerCase();
+  return name === "id" || name.endsWith("_id") || name.endsWith("-id");
+};
+
 export const isDimension = col => col && col.source !== "aggregation";
 export const isMetric = col =>
-  col && col.source !== "breakout" && isSummable(col);
+  col && col.source !== "breakout" && isSummable(col) && !hasNonMetricName(col);
 
 export const isFK = field => field && isTypeFK(field.semantic_type);
 export const isPK = field => field && isTypePK(field.semantic_type);

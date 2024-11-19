@@ -1,4 +1,4 @@
-export type TagType = typeof TAG_TYPES[number];
+export type TagType = (typeof TAG_TYPES)[number];
 
 export const TAG_TYPES = [
   "action",
@@ -7,12 +7,14 @@ export const TAG_TYPES = [
   "bookmark",
   "card",
   "cloud-migration",
+  "channel",
   "collection",
   "dashboard",
   "database",
   "field",
   "field-values",
   "indexed-entity",
+  "model-index",
   "parameter-values",
   "permissions-group",
   "persisted-info",
@@ -22,11 +24,17 @@ export const TAG_TYPES = [
   "segment",
   "snippet",
   "subscription",
+  "subscription-channel",
   "table",
   "task",
   "timeline",
   "timeline-event",
   "user",
+  "public-dashboard",
+  "embed-dashboard",
+  "public-card",
+  "embed-card",
+  "public-action",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

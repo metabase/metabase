@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
-import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
+import { substitute_tags } from "cljs/metabase.models.params.shared";
+import { siteLocale, withInstanceLanguage } from "metabase/lib/i18n";
 
 export function fillParametersInText({
   dashcard,

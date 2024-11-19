@@ -1,14 +1,15 @@
+import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
 import {
-  ColumnItemIcon,
-  ColumnItemSpan,
-  ColumnItemContent,
-  ColumnItemContainer,
-  ColumnItemRoot,
-  ColumnItemDragHandle,
   ColumnItemColorPicker,
+  ColumnItemContainer,
+  ColumnItemContent,
+  ColumnItemDragHandle,
+  ColumnItemIcon,
+  ColumnItemRoot,
+  ColumnItemSpan,
 } from "./ColumnItem.styled";
 
 interface ColumnItemProps {
@@ -18,12 +19,14 @@ interface ColumnItemProps {
   role?: string;
   draggable?: boolean;
   icon?: IconProps["name"];
+  removeIcon?: IconProps["name"];
   onClick?: () => void;
   onAdd?: (target: HTMLElement) => void;
   onRemove?: (target: HTMLElement) => void;
   onEdit?: (target: HTMLElement) => void;
   onEnable?: (target: HTMLElement) => void;
   onColorChange?: (newColor: string) => void;
+  accentColorOptions?: AccentColorOptions;
 }
 
 const BaseColumnItem = ({
@@ -33,12 +36,14 @@ const BaseColumnItem = ({
   role,
   draggable = false,
   icon,
+  removeIcon = "eye_outline",
   onClick,
   onAdd,
   onRemove,
   onEdit,
   onEnable,
   onColorChange,
+  accentColorOptions,
 }: ColumnItemProps) => {
   return (
     <ColumnItemRoot
@@ -57,6 +62,7 @@ const BaseColumnItem = ({
             value={color}
             onChange={onColorChange}
             pillSize="small"
+            accentColorOptions={accentColorOptions}
           />
         )}
         <ColumnItemContent>
@@ -80,7 +86,7 @@ const BaseColumnItem = ({
           )}
           {onRemove && (
             <ActionIcon
-              icon="eye_outline"
+              icon={removeIcon}
               onClick={onRemove}
               data-testid={`${title}-hide-button`}
             />

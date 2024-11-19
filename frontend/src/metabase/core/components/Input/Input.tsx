@@ -2,19 +2,18 @@ import type { InputHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import type { InputSize } from "../../style/types";
 
 import {
   InputField,
   InputLeftButton,
+  InputResetButton,
   InputRightButton,
   InputRoot,
   InputSubtitle,
-  InputResetButton,
 } from "./Input.styled";
 
 export type InputColorScheme = "brand" | "filter";
@@ -32,7 +31,7 @@ export interface InputProps extends InputAttributes {
   leftIcon?: IconName;
   leftIconTooltip?: ReactNode;
   rightIcon?: IconName;
-  rightIconTooltip?: ReactNode;
+  rightIconTooltip?: string;
   subtitle?: string;
   colorScheme?: InputColorScheme;
   onLeftIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -90,7 +89,11 @@ const BaseInput = forwardRef(function Input(
         onChange={onChange}
       />
       {leftIcon && (
-        <Tooltip tooltip={leftIconTooltip} placement="left">
+        <Tooltip
+          disabled={!leftIconTooltip}
+          label={leftIconTooltip}
+          position="left"
+        >
           <InputLeftButton
             data-testid="input-left-icon-button"
             size={size}
@@ -102,7 +105,11 @@ const BaseInput = forwardRef(function Input(
         </Tooltip>
       )}
       {rightIcon && (
-        <Tooltip tooltip={rightIconTooltip} placement="right">
+        <Tooltip
+          disabled={!rightIconTooltip}
+          label={rightIconTooltip}
+          position="right"
+        >
           <InputRightButton
             data-testid="input-right-icon-button"
             size={size}
@@ -115,7 +122,7 @@ const BaseInput = forwardRef(function Input(
       )}
 
       {showResetButton && (
-        <Tooltip tooltip={t`Clear`} placement="right">
+        <Tooltip label={t`Clear`} position="right">
           <InputResetButton
             data-testid="input-reset-button"
             size={size}

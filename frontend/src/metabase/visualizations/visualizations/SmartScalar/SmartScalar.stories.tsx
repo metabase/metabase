@@ -1,4 +1,4 @@
-import type { Story } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import {
   SdkVisualizationWrapper,
@@ -29,21 +29,21 @@ const MOCK_SERIES = mockSeries({
   insights: [{ unit: "month", col: "Count" }],
 });
 
-export const Default: Story = () => (
+export const Default: StoryFn = () => (
   <VisualizationWrapper>
     <Visualization rawSeries={MOCK_SERIES} width={500} />
   </VisualizationWrapper>
 );
 
 // Example of how themes can be applied in the SDK.
-export const EmbeddingTheme: Story = () => {
+export const EmbeddingTheme: StoryFn = () => {
   const theme: MetabaseTheme = {
     colors: {
       positive: "#4834d4",
       negative: "#e84118",
     },
     components: {
-      scalar: {
+      number: {
         value: { fontSize: "24px", lineHeight: "20px" },
       },
     },

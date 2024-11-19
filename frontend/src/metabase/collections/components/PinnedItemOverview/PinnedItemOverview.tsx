@@ -188,6 +188,7 @@ function PinnedItemOverview({
           <div>
             <SectionTitle
               title={t`Models`}
+              icon="model"
               description={
                 isRootCollection(collection)
                   ? t`Start new explorations here`

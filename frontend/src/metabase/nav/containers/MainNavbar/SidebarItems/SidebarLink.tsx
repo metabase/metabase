@@ -6,14 +6,14 @@ import { TreeNode } from "metabase/components/tree/TreeNode";
 import type { IconName, IconProps } from "metabase/ui";
 
 import {
+  FullWidthButton,
   FullWidthLink,
   ItemName,
+  LeftElementContainer,
   NameContainer,
   NodeRoot,
-  SidebarIcon,
-  FullWidthButton,
-  LeftElementContainer,
   RightElementContainer,
+  SidebarIcon,
 } from "./SidebarItems.styled";
 
 interface SidebarLinkProps {

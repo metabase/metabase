@@ -1,7 +1,7 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { color as c, alpha } from "metabase/lib/colors";
+import { alpha, color as c } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 

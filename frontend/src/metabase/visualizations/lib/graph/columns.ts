@@ -3,9 +3,9 @@ import _ from "underscore";
 import { isNotNull } from "metabase/lib/types";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type {
+  DatasetColumn,
   DatasetData,
   VisualizationSettings,
-  DatasetColumn,
 } from "metabase-types/api";
 
 export type ColumnDescriptor = {

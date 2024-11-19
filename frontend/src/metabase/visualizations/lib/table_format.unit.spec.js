@@ -1,7 +1,7 @@
 import { ALL_OPERATOR_NAMES } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
-  canCompareSubstrings,
   OPERATOR_FORMATTER_FACTORIES,
+  canCompareSubstrings,
   compileFormatter,
   extent,
 } from "metabase/visualizations/lib/table_format";

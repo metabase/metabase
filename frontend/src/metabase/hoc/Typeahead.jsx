@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import _ from "underscore";
 
-import { KEYCODE_ENTER, KEYCODE_UP, KEYCODE_DOWN } from "metabase/lib/keyboard";
+import { KEYCODE_DOWN, KEYCODE_ENTER, KEYCODE_UP } from "metabase/lib/keyboard";
 
 const DEFAULT_FILTER_OPTIONS = (value, option) => {
   try {

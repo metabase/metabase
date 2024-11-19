@@ -1,10 +1,11 @@
 (ns metabase.pulse.test-util
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.integrations.slack :as slack]
-   [metabase.pulse :as pulse]
+   [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.send :as pulse.send]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -13,21 +14,22 @@
 
 (set! *warn-on-reflection* true)
 
-(defn send-pulse-created-by-user!
+(defn send-alert-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]
-  (t2.with-temp/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)
-                                                   :alert_condition "rows"}
-                           :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
-    (let [pulse-result       (atom nil)
-          orig-execute-pulse @#'pulse/execute-pulse]
-     (with-redefs [channel/send!               (fn [& _args]
-                                                 :noop)
-                   pulse/execute-pulse          (fn [& args]
-                                                  (u/prog1 (apply orig-execute-pulse args)
-                                                    (reset! pulse-result <>)))]
-      (pulse/send-pulse! pulse)
-      (qp.test-util/rows (:result (first @pulse-result)))))))
+  (notification.tu/with-notification-testing-setup
+    (t2.with-temp/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)
+                                                     :alert_condition "rows"}
+                             :model/PulseChannel _   {:pulse_id (:id pulse), :channel_type :email}
+                             :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
+      (let [pulse-result      (atom nil)
+            orig-execute-card @#'notification.payload.execute/execute-card]
+        (with-redefs [channel/send!                             (constantly :noop)
+                      notification.payload.execute/execute-card (fn [& args]
+                                                                  (u/prog1 (apply orig-execute-card args)
+                                                                    (reset! pulse-result <>)))]
+          (pulse.send/send-pulse! pulse)
+          (qp.test-util/rows (:result @pulse-result)))))))
 
 (def card-name "Test card")
 
@@ -54,49 +56,28 @@
 (defn rasta-id []
   (mt/user->id :rasta))
 
-(defn realize-lazy-seqs
-  "It's possible when data structures contain lazy sequences that the database will be torn down before the lazy seq
-  is realized, causing the data returned to be nil. This function walks the datastructure, realizing all the lazy
-  sequences it finds"
-  [data]
-  (walk/postwalk identity data))
-
-(defn do-with-site-url
-  [f]
+(defn do-with-site-url!
+  [thunk]
   (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-    (f)))
+    (thunk)))
 
-(defmacro email-test-setup
+(defmacro email-test-setup!
   "Macro that ensures test-data is present and will use a fake inbox for emails"
   [& body]
   `(mt/with-fake-inbox
-     (do-with-site-url (fn [] ~@body))))
+     (do-with-site-url! (fn [] ~@body))))
 
 (defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [channel/send!       (fn [& _args#]
-                                       :noop)
+  `(with-redefs [channel/send!       (constantly :noop)
                  slack/files-channel (constantly "FOO")]
-     (do-with-site-url (fn [] ~@body))))
-
-(def ^:dynamic *channel-messages* nil)
-
-(defn do-with-captured-channel-send-messages!
-  [thunk]
-  (let [channel-messages (atom nil)]
-    (with-redefs [channel/send! (fn [channel-type message]
-                                  (swap! channel-messages update channel-type conj message))]
-      (thunk)
-      @channel-messages)))
+     (do-with-site-url! (fn [] ~@body))))
 
 (defmacro with-captured-channel-send-messages!
-  "Macro that captures all messages sent to channels in the body of the macro.
-  Returns a map of channel-type -> messages sent to that channel."
   [& body]
-  `(do-with-captured-channel-send-messages!
-      (fn []
-        ~@body)))
+  `(notification.tu/with-captured-channel-send!
+     ~@body))
 
 (def png-attachment
   {:type         :inline

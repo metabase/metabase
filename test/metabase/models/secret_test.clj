@@ -179,18 +179,18 @@
   (let [value-key (keyword (str property "-value"))
         options-key (keyword (str property "-options"))]
     (:value (secret/db-details-prop->secret-map
-                  {:ssl true
-                   :ssl-mode "verify-ca"
-                   value-key (format "data:%s;base64,%s" mime-type (u/encode-base64 content))
-                   options-key "uploaded"
-                   :port 5432,
-                   :advanced-options false
-                   :dbname "the-bean-base"
-                   :host "localhost"
-                   :tunnel-enabled false
-                   :engine :postgres
-                   :user "human-bean"}
-                  property))))
+             {:ssl true
+              :ssl-mode "verify-ca"
+              value-key (format "data:%s;base64,%s" mime-type (u/encode-base64 content))
+              options-key "uploaded"
+              :port 5432,
+              :advanced-options false
+              :dbname "the-bean-base"
+              :host "localhost"
+              :tunnel-enabled false
+              :engine :postgres
+              :user "human-bean"}
+             property))))
 
 (deftest ssl-cert-base
   (testing "db-details-prop->secret-map"

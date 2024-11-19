@@ -1,28 +1,41 @@
-import { useCallback } from "react";
-
+import { useBookmarkListQuery } from "metabase/common/hooks";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
-import type { Dashboard } from "metabase-types/api";
+import { getDashboard } from "metabase/dashboard/selectors";
+import Bookmark from "metabase/entities/bookmarks";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 
 export interface DashboardBookmarkProps {
-  dashboard: Dashboard;
   isBookmarked: boolean;
-  onCreateBookmark: (dashboard: Dashboard) => void;
-  onDeleteBookmark: (dashboard: Dashboard) => void;
 }
 
-export const DashboardBookmark = ({
-  dashboard,
-  isBookmarked,
-  onCreateBookmark,
-  onDeleteBookmark,
-}: DashboardBookmarkProps): JSX.Element | null => {
-  const handleCreateBookmark = useCallback(() => {
-    onCreateBookmark(dashboard);
-  }, [dashboard, onCreateBookmark]);
+export const DashboardBookmark = (): JSX.Element | null => {
+  const { data: bookmarks = [] } = useBookmarkListQuery();
 
-  const handleDeleteBookmark = useCallback(() => {
-    onDeleteBookmark(dashboard);
-  }, [dashboard, onDeleteBookmark]);
+  const dispatch = useDispatch();
+
+  const dashboard = useSelector(getDashboard);
+
+  const isBookmarked = dashboard
+    ? getIsBookmarked({
+        dashboardId: dashboard.id,
+        bookmarks,
+      })
+    : false;
+
+  const handleCreateBookmark = () => {
+    if (dashboard) {
+      const id = dashboard.id;
+      dispatch(Bookmark.actions.create({ id, type: "dashboard" }));
+    }
+  };
+
+  const handleDeleteBookmark = () => {
+    if (dashboard) {
+      const id = dashboard.id;
+      dispatch(Bookmark.actions.delete({ id, type: "dashboard" }));
+    }
+  };
 
   return (
     <BookmarkToggle
@@ -32,3 +45,17 @@ export const DashboardBookmark = ({
     />
   );
 };
+
+type IsBookmarkedSelectorProps = {
+  bookmarks: IBookmark[];
+  dashboardId: DashboardId;
+};
+
+export const getIsBookmarked = ({
+  bookmarks,
+  dashboardId,
+}: IsBookmarkedSelectorProps) =>
+  bookmarks.some(
+    bookmark =>
+      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
+  );

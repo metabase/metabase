@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
+import { ParameterValueWidget } from "metabase/parameters/components/ParameterValueWidget";
 
 export const TagContainer = styled.div`
   padding: 1.5rem 1.5rem 0 1.5rem;
@@ -27,7 +27,6 @@ export const ContainerLabel = styled.div<ContainerLabelProps>`
 `;
 
 export const ErrorSpan = styled.span`
-  margin: 0 0.5rem;
   color: var(--mb-color-error);
 `;
 
@@ -40,12 +39,12 @@ export const InputContainer = styled.label<InputContainerProps>`
 `;
 
 export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
-  padding: 0.5rem;
-  font-weight: 700;
-  color: var(--mb-color-text-medium);
-  border-radius: 0.5rem;
+  color: var(--mb-color-text-dark);
+  padding: 0.75rem 0.75rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 4px;
   background-color: var(--mb-color-bg-white);
-  border: 2px solid var(--mb-color-border);
+  font-weight: normal;
 `;
 
 export const ToggleContainer = styled.div`

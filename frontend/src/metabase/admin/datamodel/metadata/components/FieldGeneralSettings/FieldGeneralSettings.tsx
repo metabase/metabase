@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { humanizeCoercionStrategy } from "metabase/admin/datamodel/utils/humanizeCoercionStrategy";
 import {
   useDiscardFieldValuesMutation,
   useRescanFieldValuesMutation,
@@ -223,7 +224,10 @@ const FieldCoercionStrategySection = ({
 }: FieldCoercionStrategySectionProps) => {
   const options = useMemo(
     () => [
-      ...field.coercionStrategyOptions().map(value => ({ name: value, value })),
+      ...field.coercionStrategyOptions().map(value => ({
+        name: humanizeCoercionStrategy(value),
+        value,
+      })),
       { name: t`Don't cast`, value: null },
     ],
     [field],

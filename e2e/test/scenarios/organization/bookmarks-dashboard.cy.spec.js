@@ -1,8 +1,8 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
   navigationSidebar,
   openNavigationSidebar,
+  restore,
   visitDashboard,
 } from "e2e/support/helpers";
 

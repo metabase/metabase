@@ -16,6 +16,7 @@ export * from "./join";
 export * from "./limit";
 export * from "./metadata";
 export * from "./metrics";
+export * from "./moving-average";
 export * from "./native";
 export * from "./offset";
 export * from "./order_by";

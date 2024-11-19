@@ -1,21 +1,23 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
-  setActionsEnabledForDB,
   createAction,
-  visitDashboardAndCreateTab,
   describeEE,
+  modal,
+  openSharingMenu,
+  restore,
+  setActionsEnabledForDB,
+  setTokenFeatures,
   setupSMTP,
   sidebar,
-  visitQuestion,
+  updateSetting,
   visitDashboard,
-  setTokenFeatures,
+  visitDashboardAndCreateTab,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -293,9 +295,7 @@ describeEE(
     }
 
     function setAllowedDomains() {
-      cy.request("PUT", "/api/setting/subscription-allowed-domains", {
-        value: allowedDomain,
-      });
+      updateSetting("subscription-allowed-domains", allowedDomain);
     }
 
     beforeEach(() => {
@@ -309,10 +309,11 @@ describeEE(
     it("should validate approved email domains for a question alert", () => {
       visitQuestion(ORDERS_QUESTION_ID);
 
-      cy.icon("bell").click();
-      cy.button("Set up an alert").click();
+      openSharingMenu("Create alert");
+      modal().findByText("Set up an alert").click();
 
-      cy.findByRole("heading", { name: "Email" })
+      modal()
+        .findByRole("heading", { name: "Email" })
         .closest("li")
         .within(() => {
           addEmailRecipient(deniedEmail);
@@ -323,7 +324,7 @@ describeEE(
 
     it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.icon("subscription").click();
+      openSharingMenu("Subscriptions");
 
       cy.findByRole("heading", { name: "Email it" }).click();
 

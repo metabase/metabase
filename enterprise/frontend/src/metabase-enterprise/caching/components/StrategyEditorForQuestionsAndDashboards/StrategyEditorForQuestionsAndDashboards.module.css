@@ -1,0 +1,60 @@
+.NoResultsTableRow,
+.SkeletonTableRow {
+  &:hover {
+    background-color: transparent !important;
+  }
+}
+
+.SkeletonTableRow {
+  height: 3rem;
+
+  td {
+    width: 20rem;
+  }
+}
+
+.CacheableItemTable {
+  table-layout: fixed;
+  background-color: var(--mb-color-text-white);
+
+  col {
+    width: 30%;
+  }
+
+  td {
+    padding: 0.75rem !important;
+  }
+
+  tbody > tr:hover {
+    background-color: var(--mb-color-brand-alpha-04) !important;
+  }
+
+  tbody > tr.currentTarget {
+    background-color: var(--mb-color-brand-lighter) !important;
+  }
+}
+
+.StrategyFormPanel {
+  border-left: 1px solid var(--mb-color-border);
+  position: relative;
+  max-width: 30rem;
+
+  @media screen and (--breakpoint-max-lg) {
+    max-width: 25rem;
+  }
+}
+
+.ItemLink {
+  font-size: inherit !important;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.ItemLink,
+.CollectionLink {
+  :hover {
+    color: var(--mb-color-brand);
+  }
+}

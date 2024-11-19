@@ -17,11 +17,7 @@ export function getColumnIcon(column: Lib.ColumnMetadata): IconName {
     return "location";
   }
 
-  if (
-    Lib.isDate(column) ||
-    Lib.isDateWithoutTime(column) ||
-    Lib.isTime(column)
-  ) {
+  if (Lib.isTemporal(column)) {
     return "calendar";
   }
 
@@ -37,5 +33,5 @@ export function getColumnIcon(column: Lib.ColumnMetadata): IconName {
     return "int";
   }
 
-  return "unknown";
+  return "list";
 }

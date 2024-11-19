@@ -5,6 +5,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test.data :as data]
+   [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -38,11 +39,16 @@
   "Implementation of `with-restored-perms` and related helper functions. Optionally takes `group-ids` to restore only the
   permissions for a set of groups."
   [group-ids thunk]
+  ;; make sure app DB is set up and test users are created
+  (initialize/initialize-if-needed! :db :test-users)
+  ;; make sure at least the normal test-data DB is loaded
+  (data/db)
   (let [select-condition (if-not group-ids
                            true
                            [:in :group_id group-ids])
         original-perms (t2/select :model/DataPermissions {:where select-condition})]
     (try
+      ;; TODO -- should this disabled the cache [[data-perms/*use-perms-cache?*]] ??
       (thunk)
       (finally
         (let [existing-db-ids    (t2/select-pks-set :model/Database)
@@ -74,13 +80,15 @@
   "Implementation of `with-no-data-perms-for-all-users`. Sets every data permission for all databases to the
   least permissive value for the All Users permission group for the duration of the test."
   [thunk]
+  ;; force creation of test-data if it is not already created
+  (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
-       (data-perms/set-database-permission! (perms-group/all-users)
-                                            db-id
-                                            perm-type
-                                            (data-perms/least-permissive-value perm-type)))
+      (data-perms/set-database-permission! (perms-group/all-users)
+                                           db-id
+                                           perm-type
+                                           (data-perms/least-permissive-value perm-type)))
     (thunk)))
 
 (defmacro with-no-data-perms-for-all-users!
@@ -96,10 +104,10 @@
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
-       (data-perms/set-database-permission! (perms-group/all-users)
-                                            db-id
-                                            perm-type
-                                            (data-perms/most-permissive-value perm-type)))
+      (data-perms/set-database-permission! (perms-group/all-users)
+                                           db-id
+                                           perm-type
+                                           (data-perms/most-permissive-value perm-type)))
     (thunk)))
 
 (defmacro with-full-data-perms-for-all-users!
@@ -113,8 +121,8 @@
   for the given permission group for the duration of the test."
   [group-or-id perm-type value thunk]
   (with-restored-data-perms-for-group! (u/the-id group-or-id)
-   (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
-   (thunk)))
+    (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
+    (thunk)))
 
 (defn do-with-perm-for-group-and-table!
   "Implementation of `with-perm-for-group-and-table`. Sets the data permission for the test dataset/table to the given

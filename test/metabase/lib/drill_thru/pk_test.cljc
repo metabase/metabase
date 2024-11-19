@@ -1,21 +1,21 @@
 (ns metabase.lib.drill-thru.pk-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private multi-pk-provider
   ;; simulate a table with multiple PK columns: mark orders.product-id as a PK column
   (lib.tu/merged-mock-metadata-provider
-    meta/metadata-provider
-    {:fields [{:id            (meta/id :orders :product-id)
-               :semantic-type :type/PK}]}))
+   meta/metadata-provider
+   {:fields [{:id            (meta/id :orders :product-id)
+              :semantic-type :type/PK}]}))
 
 (defn- find-drill [query context]
   (m/find-first #(= (:type %) :drill-thru/pk)
@@ -23,13 +23,13 @@
 
 (deftest ^:parallel pk-unavailable-for-non-cell-test
   (canned/canned-test
-    :drill-thru/pk
-    (fn [_test-case _context {:keys [click]}]
+   :drill-thru/pk
+   (fn [_test-case _context {:keys [click]}]
       ;; Tricky logic, so other tests check the cell clicks.
       ;; Non-cell clicks are not available.
-      (if (= click :cell)
-        ::canned/skip
-        false))))
+     (if (= click :cell)
+       ::canned/skip
+       false))))
 
 (deftest ^:parallel do-not-return-pk-for-nil-test
   (testing "do not return pk drills for nil PK values (#36126)"
@@ -106,7 +106,7 @@
             (testing "Should add one filter for each PK column (#36426)"
               (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :orders :id)] 100]
                                            [:= {} [:field {} (meta/id :orders :product-id)] 200]]}]}
-                      (lib/drill-thru query -1 drill)))))))
+                      (lib/drill-thru query drill)))))))
       (testing "only one PK has a value: ignore the PK without a value"
         (let [context (context-with-values 10 100 nil)
               drill   (find-drill query context)]
@@ -117,7 +117,7 @@
                   drill))
           (testing "\nShould add one filter for each PK column (#36426)"
             (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :orders :id)] 100]]}]}
-                    (lib/drill-thru query -1 drill))))))
+                    (lib/drill-thru query drill))))))
       (testing "neither PK has a value: don't return a drill at all"
         (let [context (context-with-values 10 nil nil)]
           (is (nil? (find-drill query context)))))

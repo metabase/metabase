@@ -56,7 +56,7 @@
       (yaml/from-file {:key-fn parse-key})
       read-timestamps))
 
-(def ^:private legal-top-level-paths
+(def legal-top-level-paths "Known top-level paths for directory with serialization output"
   #{"actions" "collections" "databases" "snippets"}) ; But return the hierarchy without labels.
 
 (defn- ingest-all [^File root-dir]
@@ -91,11 +91,12 @@
           kw-id        (keyword id)]
       (if (= ["Setting"] (mapv :model abs-path))
         {:serdes/meta abs-path :key kw-id :value (get settings kw-id)}
-        (->> abs-path
-             strip-labels
-             (get @cache)
-             second
-             ingest-file)))))
+        (if-let [target (get @cache (strip-labels abs-path))]
+          (try
+            (ingest-file (second target))
+            (catch Exception e
+              (throw (ex-info "Unable to ingest file" {:abs-path abs-path} e))))
+          (throw (ex-info "Cannot find file" {:abs-path abs-path})))))))
 
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by

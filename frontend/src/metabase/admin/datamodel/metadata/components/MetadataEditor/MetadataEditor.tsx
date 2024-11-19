@@ -12,10 +12,10 @@ import MetadataTable from "../MetadataTable";
 import MetadataTablePicker from "../MetadataTablePicker";
 
 import {
-  MetadataMain,
   MetadataContent,
-  MetadataWrapper,
+  MetadataMain,
   MetadataSidebar,
+  MetadataWrapper,
 } from "./MetadataEditor.styled";
 
 interface RouteParams {

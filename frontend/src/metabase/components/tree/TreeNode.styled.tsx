@@ -27,7 +27,6 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
 `;
 
 export const ExpandToggleButton = styled.button`
-  display: flex;
   cursor: pointer;
   padding: 0.5rem 0.25rem 0.5rem 0.25rem;
   display: block;
@@ -39,7 +38,9 @@ interface ExpandToggleIconProps {
   isExpanded: boolean;
 }
 
-export const ExpandToggleIcon = styled(Icon)<ExpandToggleIconProps & IconProps>`
+export const ExpandToggleIcon = styled(Icon, {
+  shouldForwardProp: propName => propName !== "isExpanded",
+})<ExpandToggleIconProps & IconProps>`
   transition: transform 200ms;
 
   ${props =>

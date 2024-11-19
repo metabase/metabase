@@ -1,18 +1,18 @@
 import type { Location } from "history";
 import { useState } from "react";
 import { useAsync } from "react-use";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { NotFound } from "metabase/components/ErrorPages";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/components/LogoIcon";
 import {
-  StyledMetabotLogo,
+  CheckmarkIcon,
   LayoutBody,
   LayoutCard,
   LayoutIllustration,
   LayoutRoot,
-  CheckmarkIcon,
+  StyledMetabotLogo,
 } from "metabase/containers/Unsubscribe.styled";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -20,7 +20,7 @@ import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import { SessionApi } from "metabase/services";
+import { PulseUnsubscribeApi } from "metabase/services";
 import { Center, Stack, Text } from "metabase/ui";
 
 const ERRORS = {
@@ -32,7 +32,7 @@ const SUBSCRIPTION = {
   RESUBSCRIBE: "resubscribe",
 } as const;
 
-type Subscription = typeof SUBSCRIPTION[keyof typeof SUBSCRIPTION];
+type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 
 export const UnsubscribePage = ({
   location,
@@ -99,7 +99,9 @@ function SuccessfulUnsubscribe({
   return (
     <SuccessfulRequestWrapper
       text={jt`You've unsubscribed ${(
-        <ExternalLink href={`mailto:${email}`}>{email}</ExternalLink>
+        <ExternalLink key="link" href={`mailto:${email}`}>
+          {email}
+        </ExternalLink>
       )} from the "${alertTitle}" alert.`}
       buttonText={t`Undo`}
       action={action}
@@ -115,7 +117,9 @@ function SuccessfulResubscribe({
   return (
     <SuccessfulRequestWrapper
       text={jt`Okay, ${(
-        <ExternalLink href={`mailto:${email}`}>{email}</ExternalLink>
+        <ExternalLink key="link" href={`mailto:${email}`}>
+          {email}
+        </ExternalLink>
       )} is subscribed to the "${alertTitle}" alert again.`}
       buttonText={t`Unsubscribe`}
       action={action}
@@ -160,7 +164,7 @@ function useUnsubscribeRequest({
     }
 
     if (subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE) {
-      return await SessionApi.unsubscribe({
+      return await PulseUnsubscribeApi.unsubscribe({
         hash,
         email,
         "pulse-id": pulseId,
@@ -168,7 +172,7 @@ function useUnsubscribeRequest({
     }
 
     if (subscriptionChange === SUBSCRIPTION.RESUBSCRIBE) {
-      return await SessionApi.undo_unsubscribe({
+      return await PulseUnsubscribeApi.undo_unsubscribe({
         hash,
         email,
         "pulse-id": pulseId,

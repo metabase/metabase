@@ -1,14 +1,15 @@
 (ns metabase.test.data.sql-jdbc.load-data
+  "There are tests for some of this stuff in [[metabase.test.data.sql-jdbc.load-data-test]]."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
-   [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -17,171 +18,178 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(defmulti load-data!
-  "Load the rows for a specific table (which has already been created) into a DB. `load-data-chunked!` is the default
-  implementation (see below); several other implementations like `load-data-all-at-once!` are already defined; see
-  below. It will likely take some experimentation to see which implementation works correctly and performs best with
-  your driver."
-  {:arglists '([driver dbdef tabledef])}
+(defmulti row-xform
+  "Return a transducer that should be applied to each row when loading test data. Default is [[identity]], e.g. apply no
+  transform, but a few common ones are available, such as [[add-ids-xform]] and [[maybe-add-ids-xform]].
+
+    (defmethod row-xform :my-driver
+      [_driver _dbdef _tabledef]
+      (add-ids-xform))
+
+  Do not rely on the 0-arity (init) or 1-arity (completing) of the transducer, since they may not be called, or may be
+  called with transient objects."
+  {:arglists '([driver dbdef tabledef]), :added "0.51.0"}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmulti do-insert!
-  "Low-level method used internally by `load-data!`. Insert `row-or-rows` into table with `table-identifier`.
+(defmethod row-xform :sql-jdbc/test-extensions
+  [_driver _dbdef _tabledef]
+  identity)
 
-  You usually do not need to override this, and can instead use a different implementation of `load-data!`. You can
-  also override `ddl/insert-rows-honeysql-form` or `ddl/insert-rows-ddl-statements` instead if you only need to change
-  DDL statement(s) themselves, rather than how they are executed."
-  {:arglists '([driver spec table-identifier row-or-rows])}
+(defmulti chunk-size
+  "When loading test data, load rows in chunks of this size. Default is 200. To load data all at once without chunking,
+  override this and return `nil`."
+  {:arglists '([driver dbdef tabledef]), :added "0.51.0"}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  Loading Data                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;; Loading Table Data
-
-;; Since different DBs have constraints on how we can do this, the logic is broken out into a few different functions
-;; you can compose together a driver that works with a given DB.
-;;
-;; (ex. SQL Server has a low limit on how many ? args we can have in a prepared statement, so it needs to be broken
-;;  out into chunks; Oracle doesn't understand the normal syntax for inserting multiple rows at a time so we'll insert
-;;  them one-at-a-time instead)
-
-
-;;; ------------------------------------ make-load-data-fn! middleware functions -------------------------------------
-
-;; These functions ultimately get composed together with a call to `comp` and work in a middleware pattern. Each
-;; function takes one arg, an `insert!` function which ultimately performs the INSERTing or rows, and should return a
-;; one-arg function that accepts a sequence of `rows` (as maps). These middleware functions can modify rows as
-;; appropriate before inserting them (such as adding IDs) or insert them in smaller chunks (or even one at a time) by
-;; calling `insert!` multiple times. (`insert!` accepts either a sequence of rows or one row at a time.)
-;;
-;; `insert!`  -->  <middleware function>  -->  (fn [rows] (insert! rows))
-
-(defn- add-ids
-  "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
-  specified. (This isn't meant for composition with `load-data-get-rows`; "
-  [rows]
-  (for [[i row] (m/indexed rows)]
-    (into {:id (inc i)} row)))
-
-(defn load-data-add-ids
-  "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
-  insert. This function should go before `load-data-chunked` in the `make-load-data-fn`
-  args."
-  [insert!]
-  (fn [rows]
-    (insert! (vec (add-ids rows)))))
-
-(def ^:dynamic *chunk-size*
-  "Default chunk size for [[load-data-chunked]]."
+(defmethod chunk-size :sql-jdbc/test-extensions
+  [_driver _dbdef _tabledef]
   200)
 
-(defn load-data-chunked
-  "Middleware function intended for use with [[make-load-data-fn]]. Insert rows in chunks, which default to 200 rows
-  each. You can use [[*chunk-size*]] to adjust this."
-  ([insert!]                   (load-data-chunked map insert!))
-  ([map-fn insert!]            (load-data-chunked map-fn *chunk-size* insert!))
-  ([map-fn chunk-size insert!] (fn [rows]
-                                 (dorun (map-fn insert! (partition-all chunk-size rows))))))
+(defmulti chunk-xform
+  "Transducer that should be applied to each chunk of rows to be loaded (based on [[chunk-size]]). Applied to rows that
+  have been transformed with [[row-xform]]. An example implementation might be something that writes each chunk to a CSV file like
 
+    (defmethod chunk-xform :my-driver
+      [_driver _dbdef _tabledef]
+      (map (fn [rows]
+             (write-rows-to-csv! rows)
+             rows)))
 
-;;; -------------------------------- Making a load-data! impl with make-load-data-fn ---------------------------------
+  Do not rely on the 0-arity (init) or 1-arity (completing) of the transducer, since they may not be called, or may be
+  called with transient objects."
+  {:arglists '([driver dbdef tabledef]), :added "0.51.0"}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
 
-(defn load-data-get-rows
-  "Used by `make-load-data-fn`; get a sequence of row maps for use in a `insert!` when loading table data."
-  [_driver _dbdef tabledef]
+(defmethod chunk-xform :sql-jdbc/test-extensions
+  [_driver _dbdef _tabledef]
+  identity)
+
+(defmulti do-insert!
+  "Low-level method used internally to load a chunk of `rows` into table with `table-identifier`. Chunk size is
+  dependent on [[chunk-size]].
+
+  You usually do not need to override this -- you can usually override [[row-xform]] or [[chunk-xform]] instead. You
+  can also override [[metabase.test.data.sql.ddl/insert-rows-honeysql-form]]
+  or [[metabase.test.data.sql.ddl/insert-rows-ddl-statements]] instead if you only need to change DDL statement(s)
+  themselves, rather than how they are executed."
+  {:arglists '([driver ^java.sql.Connection conn table-identifier rows])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defn add-ids-xform
+  "Add an `:id` column to each row in each row chunk, for databases that should have data inserted with the ID
+  explicitly specified."
+  []
+  (let [id-counter (atom 0)]
+    (map (fn [row]
+           (assoc row :id (swap! id-counter inc))))))
+
+(defn maybe-add-ids-xform
+  "Like [[add-ids-xform]], but only adds `:id` to tables that don't have a `:pk` column."
+  [tabledef]
+  (if-not (some :pk? (:field-definitions tabledef))
+    (add-ids-xform)
+    identity))
+
+(defn- row-maps-xform
+  "Transform applied by default that converts each row from a vector to a map keyed by `:field-name` from the table
+  definition."
+  [tabledef]
   (let [fields-for-insert (mapv (comp keyword :field-name)
                                 (:field-definitions tabledef))]
-    ;; TIMEZONE FIXME
-    (for [row (:rows tabledef)]
-      (zipmap fields-for-insert row))))
+    (map (fn [row]
+           (zipmap fields-for-insert row)))))
 
-(defn- make-insert!
-  "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
-  described above."
-  [driver spec {:keys [database-name], :as _dbdef} {:keys [table-name], :as _tabledef}]
-  (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
-                           (ddl.i/format-name driver (u/qualified-name component)))
-        table-identifier (sql.qp/->honeysql driver (apply h2x/identifier :table components))]
-    (partial do-insert! driver spec table-identifier)))
+(defn- table-identifier
+  "Make a Honey SQL table identifier for the table we're loading."
+  [driver {:keys [database-name], :as _dbdef} {:keys [table-name], :as _tabledef}]
+  (let [components (for [component (sql.tx/qualified-name-components driver database-name table-name)]
+                     (ddl.i/format-name driver (u/qualified-name component)))]
+    (sql.qp/->honeysql driver (apply h2x/identifier :table components))))
 
-(defn make-load-data-fn
-  "Create an implementation of `load-data!`. This creates a function to actually insert a row or rows, wraps it with any
-  `insert-middleware-fns`, the calls the resulting function with the rows to insert."
-  [& insert-middleware-fns]
-  (let [insert-middleware (apply comp insert-middleware-fns)]
-    (fn [driver dbdef tabledef]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       (spec/dbdef->spec driver :db dbdef)
-       {:write? true}
-       (fn [^java.sql.Connection conn]
-         (.setAutoCommit conn false)
-         (let [insert! (insert-middleware (make-insert! driver {:connection conn} dbdef tabledef))
-               rows    (load-data-get-rows driver dbdef tabledef)]
-           (log/tracef "Inserting rows like: %s" (first rows))
-           (insert! rows)))))))
+(mr/def ::rf
+  [:function
+   [:=> [:cat]           :any]
+   [:=> [:cat :any]      :any]
+   [:=> [:cat :any :any] :any]])
 
+(mr/def ::xform
+  [:=> [:cat ::rf] ::rf])
 
-;;; ------------------------------------------ Predefinied load-data! impls ------------------------------------------
+(mu/defn- reducible-chunked-rows :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
+  [rows        :- [:sequential :any]    ; rows is allowed to be empty.
+   chunk-size  :- [:maybe [:int {:min 1}]]
+   row-xform   :- ::xform
+   chunk-xform :- ::xform]
+  (let [xform (comp (map (fn [chunk]
+                           (into [] row-xform chunk)))
+                    chunk-xform)]
+    (reify clojure.lang.IReduceInit
+      (reduce [_this rf init]
+        (let [rf (xform rf)]
+          (if chunk-size
+            (transduce
+             (partition-all chunk-size)
+             ;; we are very deliberately not passing `rf` directly here, because calling the completing arity with it
+             ;; breaks things since we're not supposed to be doing that inside `reduce`. We have to use `transduce` here
+             ;; to get the `partition-all` transducer to work correctly tho which is why we're not just using reduce
+             (fn
+               ([acc]
+                acc)
+               ([acc chunk]
+                (rf acc chunk)))
+             init
+             rows)
+            (rf init rows)))))))
 
-;; You can use one of these alternative implementations instead of `load-data-chunked!` if that doesn't work with your
-;; DB or one of these other ones performs faster
+(mu/defn- reducible-chunks  :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
+  [driver   :- :keyword
+   dbdef    :- [:map [:database-name :string]]
+   tabledef :- [:map [:table-name :string]]]
+  (let [rows        (:rows tabledef)
+        chunk-size  (chunk-size driver dbdef tabledef)
+        row-xform   (comp
+                     (row-maps-xform tabledef)
+                     (row-xform driver dbdef tabledef))
+        chunk-xform (chunk-xform driver dbdef tabledef)]
+    (reducible-chunked-rows rows chunk-size row-xform chunk-xform)))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-all-at-once!
-  "Implementation of `load-data!`. Insert all rows at once."
-  (make-load-data-fn))
+(defn- load-data-for-table-definition!
+  [driver ^java.sql.Connection conn dbdef tabledef]
+  (let [table-identifier (table-identifier driver dbdef tabledef)
+        xform            (map (fn [chunk]
+                                (log/tracef "Inserting %d rows like: %s" (count chunk) (first chunk))
+                                (do-insert! driver conn table-identifier chunk)
+                                chunk))
+        rf               (xform (constantly nil))
+        init             nil]
+    (reduce
+     rf
+     init
+     (reducible-chunks driver dbdef tabledef))))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-chunked!
-  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time."
-  (make-load-data-fn load-data-chunked))
-
-(defn load-data-maybe-add-ids!
-  "Implementation of `load-data!`. Insert all rows at once;
-  Add IDs if tabledef does not contains PK."
-  [driver dbdef tabledef]
-  (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
-                    (make-load-data-fn load-data-add-ids)
-                    (make-load-data-fn load-data-chunked))]
-    (load-data! driver dbdef tabledef)))
-
-(defn load-data-maybe-add-ids-chunked!
-  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time;
-  Add IDs if tabledef does not contains PK."
-  [driver dbdef tabledef]
-  (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
-                    (make-load-data-fn load-data-add-ids load-data-chunked)
-                    (make-load-data-fn load-data-chunked))]
-    (load-data! driver dbdef tabledef)))
-
-;; Default impl
-
-(defmethod load-data! :sql-jdbc/test-extensions [driver dbdef tabledef]
-  (load-data-chunked! driver dbdef tabledef))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              CREATING DBS/TABLES                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; default impl
-(defmethod do-insert! :sql-jdbc/test-extensions
-  [driver spec table-identifier row-or-rows]
-  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
+;;; default impl
+(mu/defmethod do-insert! :sql-jdbc/test-extensions
+  [driver                    :- :keyword
+   ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
+   table-identifier
+   rows]
+  (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
     ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
     ;; DB hasn't been synced yet
     (when-let [set-timezone-format-string #_{:clj-kondo/ignore [:deprecated-var]} (sql-jdbc.execute/set-timezone-sql driver)]
       (let [set-timezone-sql (format set-timezone-format-string "'UTC'")]
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
-        (jdbc/execute! spec [set-timezone-sql])))
+        (jdbc/execute! {:connection conn} [set-timezone-sql])))
     (mt/with-database-timezone-id nil
       (doseq [sql-args statements
               :let     [sql-args (if (string? sql-args)
@@ -193,8 +201,8 @@
         (try
           ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
           ;; Tech Debt Issue: #39375
-          (jdbc/execute! spec sql-args {:set-parameters (fn [stmt params]
-                                                          (sql-jdbc.execute/set-parameters! driver stmt params))})
+          (jdbc/execute! {:connection conn} sql-args {:set-parameters (fn [stmt params]
+                                                                        (sql-jdbc.execute/set-parameters! driver stmt params))})
           (catch Throwable e
             (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
                             {:driver   driver
@@ -205,42 +213,76 @@
 (defonce ^:private reference-load-durations
   (delay (edn/read-string (slurp "test_resources/load-durations.edn"))))
 
-(defn create-db!
-  "Default implementation of `create-db!` for SQL drivers."
-  {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
-  [driver {:keys [table-definitions] :as dbdef} & options]
-  ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
-  (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
-    (execute/execute-sql! driver :server dbdef statement))
-  ;; now execute statements to create the DB
-  (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
-    (execute/execute-sql! driver :server dbdef statement))
-  ;; next, get a set of statements for creating the tables
-  (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
-    ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
-    ;; DB rather than on `:server` (no DB in particular)
-    (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
-  ;; Now load the data for each Table
+(defn- create-db-execute-server-statements!
+  "Execute statements to create the DB e.g. the `CREATE DATABASE` statements."
+  [driver dbdef]
+  (when-let [statements (seq (ddl/create-db-ddl-statements driver dbdef))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     ;; `:server` context = no DB in particular
+     (spec/dbdef->spec driver :server dbdef)
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       ;; make sure we're committing right away, and NOT trying to execute these in a transaction
+       (.setAutoCommit conn true)
+       (doseq [statement statements]
+         (execute/execute-sql! driver conn statement))))))
+
+(defn- create-db-execute-db-ddl-statements!
+  "Execute DDL statements like `CREATE TABLE`."
+  [driver ^java.sql.Connection conn dbdef options]
+  (doseq [statement (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
+    (execute/execute-sql! driver conn statement)))
+
+(defn- create-db-load-data!
+  "Load the data for each Table."
+  [driver ^java.sql.Connection conn {:keys [table-definitions] :as dbdef}]
   (doseq [tabledef table-definitions
           :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
                                                    u/format-nanoseconds)
                                            "NONE")]]
     (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
                        (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-               (try
-                (load-data! driver dbdef tabledef)
-                (catch Throwable e
-                  (throw (ex-info (format "Error loading data: %s" (ex-message e))
-                                  {:driver driver, :tabledef (update tabledef :rows (fn [rows]
-                                                                                      (concat (take 10 rows) ['...])))}
-                                  e)))))))
+      (try
+        (load-data-for-table-definition! driver conn dbdef tabledef)
+        (catch Throwable e
+          (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                          {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                              (concat (take 10 rows) ['...])))}
+                          e)))))))
+
+(defn create-db!
+  "Default implementation of [[tx/create-db!]] for SQL drivers. Loads test data into a data
+  warehouse (creates tables/columns and inserts rows)."
+  {:arglists '([driver dbdef & {:as _options}])}
+  [driver dbdef & options]
+  (create-db-execute-server-statements! driver dbdef)
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   ;; `:db` context = use the specific database we created in [[create-db-execute-server-statements!]]
+   (spec/dbdef->spec driver :db dbdef)
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (try (.setAutoCommit conn true)
+          (catch Throwable _
+            (log/debugf "`.setAutoCommit` failed with engine `%s`" (name driver))))
+     (create-db-execute-db-ddl-statements! driver conn dbdef options)
+     (create-db-load-data! driver conn dbdef))))
 
 (defn destroy-db!
   "Default impl of [[metabase.test.data.interface/destroy-db!]] for SQL drivers."
   [driver dbdef]
   (try
-    (doseq [statement (ddl/drop-db-ddl-statements driver dbdef)]
-      (execute/execute-sql! driver :server dbdef statement))
+    (when-let [statements (seq (ddl/drop-db-ddl-statements driver dbdef))]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       ;; `:db` context = use the specific database we created in [[create-db-execute-server-statements!]]
+       (spec/dbdef->spec driver :server dbdef)
+       {:write? true}
+       (fn [^java.sql.Connection conn]
+         (.setAutoCommit conn true)
+         (doseq [statement statements]
+           (execute/execute-sql! driver conn statement)))))
     (catch Throwable e
       (throw (ex-info "Error destroying database"
                       {:driver driver, :dbdef dbdef}

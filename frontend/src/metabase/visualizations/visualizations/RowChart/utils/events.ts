@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isNotNull } from "metabase/lib/types";
-import { sumMetric } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {
   CartesianChartColumns,
   ColumnDescriptor,
@@ -51,7 +51,11 @@ const getMetricColumnData = (
   });
 };
 
-const getColumnData = (columns: ColumnDescriptor[], datum: GroupedDatum) => {
+const getColumnData = (
+  columns: ColumnDescriptor[],
+  datum: GroupedDatum,
+  seriesIndex: number,
+) => {
   return columns
     .map(columnDescriptor => {
       const { column, index } = columnDescriptor;
@@ -66,8 +70,7 @@ const getColumnData = (columns: ColumnDescriptor[], datum: GroupedDatum) => {
 
         value = formatNullable(metricSum);
       } else {
-        const distinctValues = new Set(datum.rawRows.map(row => row[index]));
-        value = distinctValues.size === 1 ? datum.rawRows[0][index] : null;
+        value = datum.rawRows[seriesIndex][index];
       }
 
       return value != null
@@ -84,6 +87,7 @@ const getColumnData = (columns: ColumnDescriptor[], datum: GroupedDatum) => {
 const getColumnsData = (
   chartColumns: CartesianChartColumns,
   series: Series<GroupedDatum, unknown>,
+  seriesIndex: number,
   datum: GroupedDatum,
   datasetColumns: DatasetColumn[],
   visualizationSettings: VisualizationSettings,
@@ -121,7 +125,7 @@ const getColumnsData = (
     datasetColumns,
   );
 
-  data.push(...getColumnData(otherColumnsDescriptiors, datum));
+  data.push(...getColumnData(otherColumnsDescriptiors, datum, seriesIndex));
   return data;
 };
 
@@ -131,10 +135,11 @@ export const getClickData = (
   chartColumns: CartesianChartColumns,
   datasetColumns: DatasetColumn[],
 ): ClickObject => {
-  const { series, datum } = bar;
+  const { series, seriesIndex, datum } = bar;
   const data = getColumnsData(
     chartColumns,
     series,
+    seriesIndex,
     datum,
     datasetColumns,
     visualizationSettings,
@@ -191,28 +196,34 @@ export const getLegendClickData = (
   };
 };
 
-const getBreakoutsTooltipRows = <TDatum>(
+export const getStackedTooltipRows = <TDatum>(
   bar: BarData<TDatum>,
   settings: VisualizationSettings,
   multipleSeries: Series<TDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
 ): TooltipRowModel[] =>
-  multipleSeries.map(series => {
-    const value = series.xAccessor(bar.datum);
-    return {
-      name: series.seriesName,
-      color: seriesColors[series.seriesKey],
-      value,
-      formatter: value =>
-        String(
-          formatValueForTooltip({
-            value,
-            settings,
-            column: series.seriesInfo?.metricColumn,
-          }),
-        ),
-    };
-  });
+  multipleSeries
+    .map(series => {
+      const value = series.xAccessor(bar.datum);
+      if (value == null) {
+        return null;
+      }
+
+      return {
+        name: series.seriesName,
+        color: seriesColors[series.seriesKey],
+        value,
+        formatter: (value: unknown) =>
+          String(
+            formatValueForTooltip({
+              value,
+              settings,
+              column: series.seriesInfo?.metricColumn,
+            }),
+          ),
+      };
+    })
+    .filter(isNotNull);
 
 export const getTooltipModel = <TDatum>(
   bar: BarData<TDatum>,
@@ -233,7 +244,7 @@ export const getTooltipModel = <TDatum>(
   );
 
   const hasBreakout = "breakout" in chartColumns;
-  const rows = getBreakoutsTooltipRows(
+  const rows = getStackedTooltipRows(
     bar,
     settings,
     multipleSeries,
@@ -293,6 +304,7 @@ export const getHoverData = (
     const data = getColumnsData(
       chartColumns,
       bar.series,
+      bar.seriesIndex,
       bar.datum,
       datasetColumns,
       settings,

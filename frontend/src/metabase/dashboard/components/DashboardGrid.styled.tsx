@@ -2,7 +2,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
+import { isEmbeddingSdk } from "metabase/env";
 import type { MantineTheme } from "metabase/ui";
+import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 import { FIXED_WIDTH } from "./Dashboard/Dashboard.styled";
 
@@ -13,7 +15,6 @@ interface DashboardCardProps {
 export const DashboardCardContainer = styled.div<DashboardCardProps>`
   position: relative;
   z-index: 1;
-
   container-name: DashboardCard;
   container-type: inline-size;
 
@@ -39,6 +40,23 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
 
     ${({ theme }) => getDashboardCardShadowOrBorder(theme)}
   }
+
+  .${SAVING_DOM_IMAGE_CLASS} & .${DashboardS.Card} {
+    /* the renderer we use for saving to image/pdf doesn't support box-shadow
+       so we replace it with a border */
+    box-shadow: none;
+    border: 1px solid var(--mb-color-border);
+  }
+
+  /* the renderer for saving to image/pdf does not support text overflow
+     with line height in custom themes in the embedding sdk.
+     this is a workaround to make sure the text is not clipped vertically */
+  ${isEmbeddingSdk &&
+  css`
+    .${SAVING_DOM_IMAGE_CLASS} & .${DashboardS.Card} * {
+      overflow: visible !important;
+    }
+  `};
 
   ${props =>
     props.isAnimationDisabled
@@ -94,6 +112,6 @@ function getDashboardCardShadowOrBorder(theme: MantineTheme) {
   }
 
   return css`
-    box-shadow: 0px 1px 3px var(--mb-color-shadow);
+    box-shadow: 0 1px 3px var(--mb-color-shadow);
   `;
 }

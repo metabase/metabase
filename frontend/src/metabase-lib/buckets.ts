@@ -1,7 +1,7 @@
 import { binning, isBinnable, withDefaultBinning } from "./binning";
 import {
-  temporalBucket,
   isTemporalBucketable,
+  temporalBucket,
   withDefaultTemporalBucket,
 } from "./temporal_bucket";
 import type { ColumnMetadata, Query } from "./types";

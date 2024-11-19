@@ -60,13 +60,13 @@ datetimeDiff([Aging Start], now, "day")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeDiff` |
-| ------------------------------------------------------------------------------------------------ | ------------------------- |
-| String                                                                                           | ❌                        |
-| Number                                                                                           | ❌                        |
-| Timestamp                                                                                        | ✅                        |
-| Boolean                                                                                          | ❌                        |
-| JSON                                                                                             | ❌                        |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeDiff` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| String                                                                                                                         | ❌                        |
+| Number                                                                                                                         | ❌                        |
+| Timestamp                                                                                                                      | ✅                        |
+| Boolean                                                                                                                        | ❌                        |
+| JSON                                                                                                                           | ❌                        |
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 
@@ -103,7 +103,7 @@ is equivalent to the Metabase `datetimeDiff` expression:
 datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
-Some databases, such as Snowflake and BigQuery, support functions like `DATEDIFF` or `DATE_DIFF`. For more info, check out our list of [common SQL reference guides](https://www.metabase.com/learn/debugging-sql/sql-syntax#common-sql-reference-guides).
+Some databases, such as Snowflake and BigQuery, support functions like `DATEDIFF` or `DATE_DIFF`. For more info, check out our list of [common SQL reference guides](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#common-sql-reference-guides).
 
 ### Spreadsheets
 
@@ -138,5 +138,5 @@ datetimeDiff([Aging Start], [Aging End], "month")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
-- [Time series analysis](https://www.metabase.com/learn/time-series/start)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
+- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)

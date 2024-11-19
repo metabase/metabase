@@ -3,20 +3,13 @@ import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
 import { formatValue } from "metabase/lib/formatting";
 
-const defaultRenderNormal = ({ value, column }) => (
-  <span className={CS.textBold}>{value}</span>
-);
+const defaultRenderNormal = ({ value }) => <span>{value}</span>;
 
-const defaultRenderRemapped = ({
-  value,
-  displayValue,
-  column,
-  displayColumn,
-}) => (
+const defaultRenderRemapped = ({ value, displayValue, column }) => (
   <span>
     <span className={CS.textBold}>{displayValue}</span>
     {/* Show the underlying ID for PK/FK */}
-    {column.isID() && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}
+    {column?.isID() && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}
   </span>
 );
 
@@ -57,13 +50,12 @@ export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 export const FieldRemappedValue = props => (
   <RemappedValueContent
     {...props}
-    displayValue={props.column.remappedValue(props.value)}
-    displayColumn={props.column.remappedField()}
+    displayValue={props.displayValue ?? props.column.remappedValue(props.value)}
   />
 );
 
 const RemappedValue = ({ autoLoad = true, ...props }) =>
-  autoLoad ? (
+  autoLoad && !props.displayValue ? (
     <AutoLoadRemappedValue {...props} />
   ) : (
     <FieldRemappedValue {...props} />

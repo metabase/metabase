@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import {
+  CloseIcon,
+  TabIcon,
   ToastCard,
   ToastMessage,
-  TabIcon,
-  CloseIcon,
 } from "./TabHintToast.styled";
 
 type Props = {

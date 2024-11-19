@@ -1,11 +1,12 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import type { RadioOption } from "metabase/core/components/Radio";
 import Radio from "metabase/core/components/Radio";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
@@ -14,18 +15,26 @@ import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import { useSelector } from "metabase/lib/redux";
+import { getLearnUrl } from "metabase/selectors/settings";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Box, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
+import {
+  getParameterType,
+  isNumberParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  Parameter,
+  ParameterValue,
+  ParameterValues,
   ValuesSourceConfig,
   ValuesSourceType,
-  Parameter,
-  ParameterValues,
-  ParameterValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -33,19 +42,19 @@ import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
+import S from "./ValuesSourceTypeModal.module.css";
 import {
+  ModalBodyWithPane,
+  ModalEmptyState,
+  ModalErrorMessage,
   ModalHelpMessage,
   ModalLabel,
-  ModalBodyWithPane,
   ModalMain,
   ModalPane,
   ModalSection,
   ModalTextArea,
-  ModalErrorMessage,
-  ModalEmptyState,
 } from "./ValuesSourceTypeModal.styled";
-
-const NEW_LINE = "\n";
+import { getStaticValues, getValuesText } from "./utils";
 
 interface ModalOwnProps {
   parameter: UiParameter;
@@ -257,8 +266,8 @@ const CardSourceModal = ({
   onChangeSourceConfig,
 }: CardSourceModalProps) => {
   const fields = useMemo(() => {
-    return question ? getSupportedFields(question) : [];
-  }, [question]);
+    return question ? getSupportedFields(question, parameter) : [];
+  }, [question, parameter]);
 
   const selectedField = useMemo(() => {
     return getFieldByReference(fields, sourceConfig.value_field);
@@ -325,7 +334,7 @@ const CardSourceModal = ({
               </Select>
             ) : (
               <ModalErrorMessage>
-                {getErrorMessage(question)}{" "}
+                {getErrorMessage(question, parameter)}{" "}
                 {t`Please pick a different model or question.`}
               </ModalErrorMessage>
             )}
@@ -347,8 +356,19 @@ const CardSourceModal = ({
   );
 };
 
-const getErrorMessage = (question: Question) => {
+const getErrorMessage = (question: Question, parameter: Parameter) => {
+  const parameterType = getParameterType(parameter);
   const type = question.type();
+
+  if (parameterType === "number") {
+    if (type === "question") {
+      return t`This question doesn’t have any number columns.`;
+    }
+
+    if (type === "model") {
+      return t`This model doesn’t have any number columns.`;
+    }
+  }
 
   if (type === "question") {
     return t`This question doesn’t have any text columns.`;
@@ -360,6 +380,12 @@ const getErrorMessage = (question: Question) => {
 
   throw new Error(`Unsupported or unknown question.type(): ${type}`);
 };
+
+const getLabel = (value: string | ParameterValue): string | undefined =>
+  Array.isArray(value) ? value[1] : undefined;
+
+const valueHasLabel = (value: string | ParameterValue) =>
+  getLabel(value) !== undefined;
 
 interface ListSourceModalProps {
   parameter: Parameter;
@@ -383,6 +409,8 @@ const ListSourceModal = ({
     [onChangeSourceConfig],
   );
 
+  const hasCustomLabels = sourceConfig.values?.some(valueHasLabel);
+
   return (
     <ModalBodyWithPane>
       <ModalPane>
@@ -395,7 +423,9 @@ const ListSourceModal = ({
             onChangeSourceType={onChangeSourceType}
             onChangeSourceConfig={onChangeSourceConfig}
           />
-          <ModalHelpMessage>{t`Enter one value per line.`}</ModalHelpMessage>
+          <ModalHelpMessage>{t`Enter one value per line. You can optionally give each value a display label after a comma.`}</ModalHelpMessage>
+
+          {hasCustomLabels && <ModelHint />}
         </ModalSection>
       </ModalPane>
       <ModalMain>
@@ -409,29 +439,52 @@ const ListSourceModal = ({
   );
 };
 
-const getValuesText = (values: string[] = []) => {
-  return values.join(NEW_LINE);
-};
+function ModelHint() {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  const href = getLearnUrl("data-modeling/models");
+  const text = t`do it once in a model`;
+  const link = showMetabaseLinks ? (
+    <strong key="link">
+      <ExternalLink href={href}>{text}</ExternalLink>
+    </strong>
+  ) : (
+    <strong key="text">{text}</strong>
+  );
+
+  return (
+    <Box mt="lg" p="md" className={S.info}>
+      <Flex gap="md" align="center">
+        <Icon name="info_filled" color="text-dark" className={S.icon} />
+        <div>
+          {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
+        </div>
+      </Flex>
+    </Box>
+  );
+}
 
 const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
-};
-
-const getStaticValues = (value: string) => {
-  return value
-    .split(NEW_LINE)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
 };
 
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
   return fields.find(field => _.isEqual(field.reference(), fieldReference));
 };
 
-const getSupportedFields = (question: Question) => {
+const getFieldFilter = (parameter: Parameter) => {
+  const type = getParameterType(parameter);
+  if (type === "number") {
+    return (field: Field) => field.isNumeric();
+  }
+  return (field: Field) => field.isString();
+};
+
+const getSupportedFields = (question: Question, parameter: Parameter) => {
+  const fieldFilter = getFieldFilter(parameter);
   const fields =
     question.composeQuestionAdhoc().legacyQueryTable()?.fields ?? [];
-  return fields.filter(field => field.isString());
+  return fields.filter(fieldFilter);
 };
 
 /**
@@ -445,7 +498,11 @@ const getSourceTypeOptions = (
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
-    { name: t`From another model or question`, value: "card" },
+    ...(isNumberParameter(parameter)
+      ? []
+      : ([
+          { name: t`From another model or question`, value: "card" },
+        ] as const)),
     { name: t`Custom list`, value: "static-list" },
   ];
 };

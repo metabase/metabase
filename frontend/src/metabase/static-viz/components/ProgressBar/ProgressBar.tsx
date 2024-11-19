@@ -11,7 +11,7 @@ import { Text } from "../Text";
 import { CheckMarkIcon } from "./CheckMarkIcon";
 import { Pointer } from "./Pointer";
 import type { ProgressBarData } from "./types";
-import { getBarText, getColors, calculatePointerLabelShift } from "./utils";
+import { calculatePointerLabelShift, getBarText, getColors } from "./utils";
 
 const layout = {
   width: 440,
@@ -32,7 +32,7 @@ const layout = {
   fontSize: 13,
 };
 
-interface ProgressBarProps {
+export interface ProgressBarProps {
   data: ProgressBarData;
   settings: {
     color: string;

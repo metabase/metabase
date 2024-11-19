@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ngettext, msgid } from "ttag";
+import { msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import Search from "metabase/entities/search";
@@ -9,12 +9,12 @@ import type { SearchResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
-  NodeListItemLink,
-  NodeListItemName,
-  NodeListItemIcon,
-  NodeListTitle,
   NodeListContainer,
   NodeListIcon,
+  NodeListItemIcon,
+  NodeListItemLink,
+  NodeListItemName,
+  NodeListTitle,
   NodeListTitleText,
   QuestionId,
 } from "./NodeList.styled";

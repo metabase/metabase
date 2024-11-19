@@ -288,12 +288,12 @@
         "graph.series_order": null,
         "graph.show_values": true,
         "graph.metrics": ["change"],
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1558}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1559}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1560}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1558}": {},
+          "{:metabase.models.visualization-settings/field-id 1559}": {},
+          "{:metabase.models.visualization-settings/field-id 1560}": {}
         },
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT \"source\".\"_mb_row_id\" AS \"_mb_row_id\", \"source\".\"category\" AS \"category\", \"source\".\"change\" AS \"change\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_unaggregated_ordinal_20231218143207\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_unaggregated_ordinal_20231218143207\".\"category\" AS \"category\", \"csv_upload_data\".\"csv_upload_waterfall_unaggregated_ordinal_20231218143207\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_unaggregated_ordinal_20231218143207\") AS \"source\" LIMIT 2000",

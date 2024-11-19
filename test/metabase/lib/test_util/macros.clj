@@ -54,13 +54,13 @@
                    :query-with-table-joins-from-cards
                    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/join (lib/join-clause (lib.tu/query-with-stage-metadata-from-card
-                                                    meta/metadata-provider
-                                                    (lib.tu/mock-cards :people))
+                                                   meta/metadata-provider
+                                                   (lib.tu/mock-cards :people))
                                                   [(lib/= (meta/field-metadata :orders :user-id)
                                                           (meta/field-metadata :people :id))]))
                        (lib/join (lib/join-clause (lib.tu/query-with-stage-metadata-from-card
-                                                    meta/metadata-provider
-                                                    (lib.tu/mock-cards :products))
+                                                   meta/metadata-provider
+                                                   (lib.tu/mock-cards :products))
                                                   [(lib/= (meta/field-metadata :orders :product-id)
                                                           (meta/field-metadata :products :id))]))
                        (lib/append-stage))

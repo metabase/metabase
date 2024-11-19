@@ -57,9 +57,10 @@
   [& args]
   (apply execute/sequentially-execute-sql! args))
 
-(defmethod load-data/load-data! :mysql
-  [& args]
-  (apply load-data/load-data-all-at-once! args))
+(defmethod load-data/chunk-size :mysql
+  [_driver _dbdef _tabledef]
+  ;; load data all at once
+  nil)
 
 (defmethod sql.tx/pk-sql-type :mysql [_] "INTEGER NOT NULL AUTO_INCREMENT")
 

@@ -10,11 +10,11 @@ import type { CollectionId } from "metabase-types/api";
 import ModelActionDetails from "./ModelActionDetails";
 import ModelDetailHeader from "./ModelDetailHeader";
 import {
-  RootLayout,
   ModelMain,
-  TabRow,
+  RootLayout,
   TabPanel,
   TabPanelContent,
+  TabRow,
 } from "./ModelDetailPage.styled";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";

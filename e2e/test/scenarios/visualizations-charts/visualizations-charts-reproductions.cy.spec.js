@@ -1,35 +1,40 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  cartesianChartCircle,
-  withDatabase,
-  openSeriesSettings,
-  echartsContainer,
-  testPairedTooltipValues,
-  filter,
-  filterWidget,
-  filterField,
-  visitAlias,
-  queryBuilderMain,
-  queryBuilderHeader,
-  visitQuestionAdhoc,
-  sidebar,
-  chartPathWithFillColor,
-  summarize,
-  saveDashboard,
-  visitDashboard,
-  editDashboard,
-  createQuestion,
-  visualize,
-  openNotebook,
-  removeSummaryGroupingField,
   addSummaryField,
   addSummaryGroupingField,
-  selectFilterOperator,
-  saveSavedQuestion,
+  assertEChartsTooltip,
+  cartesianChartCircle,
+  chartPathWithFillColor,
+  createQuestion,
+  describeEE,
+  echartsContainer,
+  editDashboard,
+  filter,
+  filterField,
+  filterWidget,
+  leftSidebar,
+  openNotebook,
+  openSeriesSettings,
+  popover,
+  queryBuilderHeader,
+  queryBuilderMain,
+  removeSummaryGroupingField,
+  restore,
   runNativeQuery,
+  saveDashboard,
+  saveSavedQuestion,
+  selectFilterOperator,
+  setTokenFeatures,
+  sidebar,
+  summarize,
+  testPairedTooltipValues,
+  updateSetting,
+  visitAlias,
+  visitDashboard,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -55,6 +60,7 @@ describe("issue 13504", () => {
       "graph.metrics": ["count"],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -94,6 +100,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
     echartsContainer().get("text").contains("6,000");
   }
+
   beforeEach(() => {
     restore("mongo-5");
     cy.signInAsAdmin();
@@ -129,9 +136,14 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       cartesianChartCircle().eq(-2).trigger("mousemove");
 
-      popover().within(() => {
-        testPairedTooltipValues("Created At", "2019");
-        testPairedTooltipValues("Count", "6,524");
+      assertEChartsTooltip({
+        header: "2019",
+        rows: [
+          {
+            name: "Count",
+            value: "6,524",
+          },
+        ],
       });
     });
   });
@@ -171,6 +183,7 @@ describe("issue 17524", () => {
       "funnel.dimension": "CATEGORY",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -440,6 +453,7 @@ describe("issue 18776", () => {
       "graph.x_axis.axis_enabled": false,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -559,9 +573,15 @@ describe("issue 21452", () => {
 
     cartesianChartCircle().first().realHover();
 
-    popover().within(() => {
-      testPairedTooltipValues("Created At", "2022");
-      testPairedTooltipValues("Foo", "3,236");
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Foo",
+          value: "3,236",
+        },
+      ],
     });
 
     cy.get("@dataset.all").should("have.length", 1);
@@ -591,10 +611,10 @@ describe("issue 21504", () => {
     });
 
     cy.findByTestId("viz-settings-button").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Display").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 2022").should("be.visible");
+
+    leftSidebar().within(() => {
+      cy.findByText("January 2025").should("be.visible");
+    });
   });
 });
 
@@ -619,6 +639,7 @@ describe("issue 21665", () => {
       },
     });
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -629,7 +650,7 @@ describe("issue 21665", () => {
     }).then(({ dashboardId, questionId }) => {
       cy.intercept(
         "GET",
-        `/api/dashboard/${dashboardId}`,
+        `/api/dashboard/${dashboardId}*`,
         cy.spy().as("dashboardLoaded"),
       ).as("getDashboard");
 
@@ -853,17 +874,58 @@ describe("issue 27279", () => {
 
     // Extra step, just to be overly cautious
     chartPathWithFillColor("#98D9D9").realHover();
-    popover().within(() => {
-      testPairedTooltipValues("K", "F2021");
-      testPairedTooltipValues("O", "-3");
-      testPairedTooltipValues("Sum of V", "1");
+
+    assertEChartsTooltip({
+      header: "F2021",
+      rows: [
+        {
+          color: "#98D9D9",
+          name: "-3",
+          value: "1",
+        },
+        {
+          color: "#F2A86F",
+          name: "-2",
+          value: "(empty)",
+        },
+        {
+          color: "#F9D45C",
+          name: "-1",
+          value: "(empty)",
+        },
+        {
+          color: "#509EE3",
+          name: "0",
+          value: "(empty)",
+        },
+      ],
     });
 
     chartPathWithFillColor("#509EE3").realHover();
-    popover().within(() => {
-      testPairedTooltipValues("K", "F2022");
-      testPairedTooltipValues("O", "0");
-      testPairedTooltipValues("Sum of V", "4");
+    assertEChartsTooltip({
+      header: "F2022",
+      rows: [
+        {
+          color: "#98D9D9",
+          name: "-3",
+          value: "(empty)",
+        },
+        {
+          color: "#F2A86F",
+          name: "-2",
+          value: "(empty)",
+        },
+        {
+          color: "#F9D45C",
+          name: "-1",
+          value: "(empty)",
+        },
+        {
+          color: "#509EE3",
+          name: "0",
+          value: "4",
+        },
+      ],
     });
   });
 });
@@ -1083,5 +1145,120 @@ describe("issue 33208", () => {
     saveSavedQuestion("top category");
     runNativeQuery({ wait: false });
     cy.findByTestId("scalar-value").should("be.visible");
+  });
+});
+
+describe("issue 43077", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not fire an invalid API request when clicking a legend item on a cartesian chart with multiple aggregations", () => {
+    const cartesianQuestionDetails = {
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["sum", ["field", ORDERS.QUANTITY, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: 1,
+      },
+      display: "line",
+    };
+    const cardRequestSpy = cy.spy();
+    cy.intercept("/api/card/*", cardRequestSpy);
+
+    visitQuestionAdhoc(cartesianQuestionDetails);
+
+    cy.findAllByTestId("legend-item").first().click();
+
+    cy.wait(100).then(() => expect(cardRequestSpy).not.to.have.been.called);
+  });
+
+  it("should not fire an invalid API request when clicking a legend item on a row chart with multiple aggregations", () => {
+    const rowQuestionDetails = {
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["sum", ["field", ORDERS.QUANTITY, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: 1,
+      },
+      display: "row",
+    };
+    const cardRequestSpy = cy.spy();
+    cy.intercept("/api/card/*", cardRequestSpy);
+
+    visitQuestionAdhoc(rowQuestionDetails);
+
+    cy.findAllByTestId("legend-item").first().click();
+
+    cy.wait(100).then(() => expect(cardRequestSpy).not.to.have.been.called);
+  });
+});
+
+describeEE("issue 49160", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("pie chart should have a placeholder", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    // Shows pie placeholder
+    echartsContainer().findByText("18,760").should("be.visible");
+    cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
+
+    cy.findByLabelText("Rating").click();
+    echartsContainer().findByText("200").should("be.visible");
+    echartsContainer().findByText("TOTAL").should("be.visible");
+  });
+
+  it("pie chart should work when instance colors have overrides", () => {
+    updateSetting("application-colors", { "accent0-light": "#98b4ce" });
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    echartsContainer().findByText("200").should("be.visible");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    leftSidebar().findByText("Gizmo");
   });
 });

@@ -18,10 +18,10 @@ import R from "metabase/reference/Reference.module.css";
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
   getDatabase,
-  getTablesByDatabase,
-  getHasSingleSchema,
   getError,
+  getHasSingleSchema,
   getLoading,
+  getTablesByDatabase,
 } from "../selectors";
 
 const emptyStateData = {

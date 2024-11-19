@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";

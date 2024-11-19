@@ -554,7 +554,7 @@ describe("scenarios > visualizations > table column settings", () => {
       const testData = {
         column: "Count",
         columnName: "Count",
-        table: "question",
+        table: "summaries",
         sanityCheck: "Product ID",
         needsScroll: false,
       };
@@ -562,7 +562,7 @@ describe("scenarios > visualizations > table column settings", () => {
       const testData2 = {
         column: "Product ID",
         columnName: "Product ID",
-        table: "question",
+        table: "summaries",
         sanityCheck: "Count",
         needsScroll: false,
       };

@@ -4,13 +4,15 @@ global.ace.define = () => {};
 global.ace.require = () => {};
 
 global.window.matchMedia = () => ({
-  addListener: () => {},
-  removeListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
 });
 
 global.window.ResizeObserver = class ResizeObserver {
   observe() {}
+
   unobserve() {}
+
   disconnect() {}
 };
 

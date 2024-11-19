@@ -3,20 +3,21 @@ import { onlyOn } from "@cypress/skip-test";
 import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  openNavigationSidebar,
-  navigationSidebar,
-  visitDashboard,
-  modal,
-  rightSidebar,
   appBar,
-  getDashboardCard,
-  undoToast,
-  openDashboardMenu,
-  toggleDashboardInfoSidebar,
-  entityPickerModal,
+  closeDashboardInfoSidebar,
   collectionOnTheGoModal,
+  entityPickerModal,
+  getDashboardCard,
+  modal,
+  navigationSidebar,
+  openDashboardInfoSidebar,
+  openDashboardMenu,
+  openNavigationSidebar,
+  popover,
+  restore,
+  sidesheet,
+  undoToast,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -50,7 +51,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 dashboardDetails: { name: dashboardName },
               }).then(({ body: { dashboard_id } }) => {
                 cy.wrap(dashboard_id).as("originalDashboardId");
-                cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(
+                cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
                   "getDashboard",
                 );
                 cy.intercept("PUT", `/api/dashboard/${dashboard_id}`).as(
@@ -71,12 +72,13 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               assertOnRequest("updateDashboard");
               assertOnRequest("getDashboard");
 
-              toggleDashboardInfoSidebar();
+              openDashboardInfoSidebar();
 
-              rightSidebar()
+              sidesheet()
                 .findByPlaceholderText("Add description")
                 .type("Foo")
                 .blur();
+              closeDashboardInfoSidebar();
 
               assertOnRequest("updateDashboard");
               assertOnRequest("getDashboard");

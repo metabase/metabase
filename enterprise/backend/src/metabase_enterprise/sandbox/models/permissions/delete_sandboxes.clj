@@ -34,45 +34,34 @@
 
 (defn- delete-gtaps-for-group-table! [{:keys [group-id table-id] :as _context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Table %d. Graph changes: %s"
-             group-id table-id (pr-str changes))
-  (cond
-    (= changes :unrestricted)
+              group-id table-id (pr-str changes))
+  (if (not= changes :sandboxed)
     (do
       (log/debugf "Group %d now has full data perms for Table %d, deleting GTAP for this Table if one exists"
-                 group-id table-id)
+                  group-id table-id)
       (delete-gtaps-with-condition! group-id [:= :table.id table-id]))
-
-    (= changes :sandboxed)
     (log/debugf "Group %d now has full sandboxed query perms for Table %d. Do not need to delete GTAPs."
-               group-id table-id)))
+                group-id table-id)))
 
 (defn- delete-gtaps-for-group-schema! [{:keys [group-id database-id schema-name], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d, schema %s. Graph changes: %s"
-             group-id database-id (pr-str schema-name) (pr-str changes))
-  (cond
-    (= changes :unrestricted)
+              group-id database-id (pr-str schema-name) (pr-str changes))
+  (if (keyword? changes)
     (do
-      (log/debugf "Group %d changes has full data perms for Database %d schema %s, deleting all GTAPs for this schema"
-                  group-id database-id (pr-str schema-name))
+      (log/debugf "Group %d changes has %s perms for Database %d schema %s, deleting all sandboxes for this schema"
+                  group-id changes database-id (pr-str schema-name))
       (delete-gtaps-with-condition! group-id [:and [:= :table.db_id database-id] [:= :table.schema schema-name]]))
-
-    :else
     (doseq [table-id (set (keys changes))]
       (delete-gtaps-for-group-table! (assoc context :table-id table-id) (get changes table-id)))))
 
 (defn- delete-gtaps-for-group-database! [{:keys [group-id database-id], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d. Graph changes: %s"
               group-id database-id (pr-str changes))
-  (if (#{:unrestricted :legacy-no-self-service :blocked :impersonated} changes)
+  (if (keyword? changes)
+    ;; If we're setting a single permission type for the entire DB, clear all sandboxes in the DB
     (do
-      (log/debugf "Group %d %s for Database %d, deleting all GTAPs for this DB"
-                  group-id
-                  (case changes
-                    :unrestricted "now has full data perms"
-                    :legacy-no-self-service "now has full data perms"
-                    :blocked      "is now BLOCKED from all non-data-perms access"
-                    :impersonated "is now using connection impersonation")
-                  database-id)
+      (log/debugf "Group %d now has %s perms for Database %d, deleting all sandboxes for this schema"
+                  group-id changes database-id)
       (delete-gtaps-with-condition! group-id [:= :table.db_id database-id]))
     (doseq [schema-name (set (keys changes))]
       (delete-gtaps-for-group-schema!

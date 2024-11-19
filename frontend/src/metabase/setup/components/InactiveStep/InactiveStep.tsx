@@ -1,9 +1,9 @@
 import {
-  StepRoot,
-  StepTitle,
   StepLabel,
   StepLabelIcon,
   StepLabelText,
+  StepRoot,
+  StepTitle,
 } from "./InactiveStep.styled";
 
 interface InactiveStepProps {

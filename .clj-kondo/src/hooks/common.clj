@@ -13,6 +13,7 @@
 ;;;
 ;;;    (hooks.common/trace #'calculate-bird-scarcity)
 
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- trace* [f]
   {:pre [(fn? f)]}
   (fn traced-fn [node]
@@ -42,7 +43,8 @@
 ;;;; Common hook definitions
 
 (defn do*
-  "This is the same idea as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos or unused values."
+  "This is the same idea as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos or unused
+  values."
   [{{[_ & args] :children, :as node} :node}]
   (let [node* (-> (hooks/list-node
                    (list*
@@ -288,8 +290,8 @@
     (-> (hooks/vector-node
          [(hooks/vector-node (map :model binding-infos))
           (-> (hooks/list-node (list* (hooks/token-node `let)
-                                    (hooks/vector-node (mapcat (juxt :binding :value) binding-infos))
-                                    body))
+                                      (hooks/vector-node (mapcat (juxt :binding :value) binding-infos))
+                                      body))
               (with-meta (meta body)))])
         (with-meta (meta body)))))
 
@@ -364,14 +366,36 @@
   where the first arg should be linted and appear to be used."
   [{{[_ arg & body] :children} :node}]
   (let [node* (hooks/list-node
-                (list*
-                  (hooks/token-node 'let)
-                  (hooks/vector-node [(hooks/token-node (gensym "_"))
-                                      arg])
-                  body))]
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node [(hooks/token-node (gensym "_"))
+                                    arg])
+                body))]
     {:node node*}))
 
-(defn node->qualified-symbol [node]
+(defn with-vec-first-binding
+  "For macros like
+
+    (with-temp-file [binding \"temp.txt\" \"content\"]
+      (slurp binding))
+
+    =>
+    (let [binding nil]
+      (slurp binding))
+
+    where the first arg is a vector of bindings."
+  [{{[_ {[x & _args] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or x (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn node->qualified-symbol
+  "If the node is a symbol, return it as a qualified symbol if it's not already. Otherwise return nil."
+  [node]
   (try
     (when (hooks/token-node? node)
       (let [sexpr (hooks/sexpr node)]
@@ -381,8 +405,8 @@
               (and resolved (:ns resolved))
               (symbol (name (:ns resolved)) (name (:name resolved)))
 
-              ;; if it wasn't resolved but is still qualified it's probably using the full namespace name rather than an
-              ;; alias.
+             ;; if it wasn't resolved but is still qualified it's probably using the full namespace name rather than an
+             ;; alias.
               (qualified-symbol? sexpr)
               sexpr)))))
     ;; some symbols like `*count/Integer` aren't resolvable.
@@ -407,3 +431,17 @@
 
   ;; should be 1
   (format-string-specifier-count "%-02d"))
+
+(defn add-lsp-ignore-unused-public-var-metadata
+  "Add
+
+    ^{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+
+  metadata to a node to suppress LSP warnings."
+  [node]
+  (letfn [(update-ignores [existing-ignores]
+            (hooks/vector-node
+             (cons
+              (hooks/keyword-node :clojure-lsp/unused-public-var)
+              (:children existing-ignores))))]
+    (vary-meta node update :clj-kondo/ignore update-ignores)))

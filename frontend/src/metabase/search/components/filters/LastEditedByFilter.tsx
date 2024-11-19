@@ -5,7 +5,7 @@ import { SearchUserPicker } from "metabase/search/components/SearchUserPicker/Se
 import { SearchUserPickerContainer } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
 import { UserNameDisplay } from "metabase/search/components/UserNameDisplay/UserNameDisplay";
 import type { SearchFilterDropdown } from "metabase/search/types";
-import { stringifyUserIdArray, parseUserIdArray } from "metabase/search/utils";
+import { parseUserIdArray, stringifyUserIdArray } from "metabase/search/utils";
 
 export const LastEditedByFilter: SearchFilterDropdown<"last_edited_by"> = {
   iconName: "person",

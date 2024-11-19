@@ -16,3 +16,15 @@
     (with-redefs [env/env (assoc env/env :max-session-age nil)]
       (is (= "20160"
              (config/config-str :max-session-age))))))
+
+(deftest ^:parallel build-type-case-test
+  (testing "Make sure [[config/build-type-case]] works correctly for Clojure."
+    (is (= :dev
+           (config/build-type-case
+             :dev     :dev
+             :release :release)))
+    (is (= :clj/dev
+           (config/build-type-case
+             :clj/dev  :clj/dev
+             :cljs/dev :cljs/dev
+             :release  :release)))))

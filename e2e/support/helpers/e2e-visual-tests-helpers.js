@@ -81,6 +81,14 @@ export function cartesianChartCircleWithColors(colors) {
   return colors.map(color => cartesianChartCircleWithColor(color));
 }
 
+export function otherSeriesChartPaths() {
+  return chartPathWithFillColor("#949AAB");
+}
+
+export function scatterBubbleWithColor(color) {
+  return echartsContainer().find(`path[d="${CIRCLE_PATH}"][fill="${color}"]`);
+}
+
 export function getValueLabels() {
   return echartsContainer().find("text[stroke-width='3']");
 }
@@ -106,6 +114,104 @@ export function testStackedTooltipRows(rows = []) {
           cy.findByTestId("row-value").should("have.text", value);
           cy.findByTestId("row-percent").should("have.text", percent);
         });
+    });
+  });
+}
+
+export function pieSlices() {
+  return echartsContainer().find("path[stroke-linejoin='bevel']");
+}
+
+export function pieSliceWithColor(color) {
+  return echartsContainer().find(
+    `path[stroke-linejoin='bevel'][fill='${color}']`,
+  );
+}
+
+export function echartsTooltip() {
+  // ECharts may keep two dom instances of the tooltip
+  return cy
+    .findAllByTestId("echarts-tooltip")
+    .filter(":visible")
+    .should("have.length", 1)
+    .eq(0);
+}
+
+export function tooltipHeader() {
+  return cy.findByTestId("echarts-tooltip-header");
+}
+
+function tooltipFooter() {
+  return cy.findByTestId("echarts-tooltip-footer");
+}
+
+export function assertTooltipRow(
+  name,
+  { color, value, secondaryValue, index } = {},
+) {
+  cy.findAllByText(name)
+    .eq(index ?? 0)
+    .parent("tr")
+    .within(() => {
+      if (color) {
+        cy.get("td")
+          .eq(0)
+          .find("span")
+          .should("have.class", `marker-${color.replace("#", "")}`);
+      }
+
+      if (value) {
+        cy.findByText(value);
+      }
+
+      if (secondaryValue) {
+        cy.findByText(secondaryValue);
+      }
+    });
+}
+
+function assertTooltipFooter({ name, value, secondaryValue }) {
+  tooltipFooter().within(() => {
+    if (name) {
+      cy.findByText(name);
+    }
+    if (value) {
+      cy.findByText(value);
+    }
+    if (secondaryValue) {
+      cy.findByText(secondaryValue);
+    }
+  });
+}
+
+export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
+  echartsTooltip().should("be.visible");
+  echartsTooltip().within(() => {
+    if (header != null) {
+      tooltipHeader().should("have.text", header);
+    }
+
+    if (rows != null) {
+      rows.forEach(row => {
+        const { name, ...rest } = row;
+        assertTooltipRow(name, rest);
+      });
+    }
+
+    if (footer != null) {
+      assertTooltipFooter(footer);
+    }
+  });
+
+  if (blurAfter) {
+    echartsTriggerBlur();
+  }
+}
+
+export function assertEChartsTooltipNotContain(rows) {
+  echartsTooltip().within(() => {
+    rows.forEach(row => {
+      cy.findByText(row).should("not.exist");
     });
   });
 }

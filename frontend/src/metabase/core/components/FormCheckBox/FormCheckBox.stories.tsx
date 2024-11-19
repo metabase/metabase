@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { Form, FormProvider } from "metabase/forms";
 
@@ -9,7 +9,7 @@ export default {
   component: FormCheckBox,
 };
 
-const Template: ComponentStory<typeof FormCheckBox> = args => {
+const Template: StoryFn<typeof FormCheckBox> = args => {
   const initialValues = { value: false };
   const handleSubmit = () => undefined;
 
@@ -22,13 +22,19 @@ const Template: ComponentStory<typeof FormCheckBox> = args => {
   );
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  title: "Title",
+export const Default = {
+  render: Template,
+
+  args: {
+    title: "Title",
+  },
 };
 
-export const WithDescription = Template.bind({});
-WithDescription.args = {
-  title: "Title",
-  description: "Description",
+export const WithDescription = {
+  render: Template,
+
+  args: {
+    title: "Title",
+    description: "Description",
+  },
 };

@@ -12,11 +12,11 @@ import * as actions from "metabase/reference/reference";
 import SegmentQuestions from "metabase/reference/segments/SegmentQuestions";
 
 import {
-  getUser,
-  getSegment,
-  getSegmentId,
   getDatabaseId,
   getIsEditing,
+  getSegment,
+  getSegmentId,
+  getUser,
 } from "../selectors";
 
 import SegmentSidebar from "./SegmentSidebar";

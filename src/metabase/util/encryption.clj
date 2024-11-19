@@ -37,6 +37,11 @@
 (defonce ^:private ^{:tag 'bytes} default-secret-key
   (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
 
+(defn default-encryption-enabled?
+  "Is the `MB_ENCRYPTION_SECRET_KEY` set, enabling encryption?"
+  []
+  (boolean default-secret-key))
+
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*
   (log/info
@@ -56,11 +61,11 @@
   (^String [^String secret-key, ^bytes b]
    (let [initialization-vector (nonce/random-bytes 16)]
      (->> (crypto/encrypt b
-            secret-key
-            initialization-vector
-            {:algorithm :aes256-cbc-hmac-sha512})
-       (concat initialization-vector)
-       byte-array))))
+                          secret-key
+                          initialization-vector
+                          {:algorithm :aes256-cbc-hmac-sha512})
+          (concat initialization-vector)
+          byte-array))))
 
 (defn encrypt
   "Encrypt string `s` as hex bytes using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
@@ -129,7 +134,7 @@
     (u/ignore-exceptions
       (when-let [byte-length (alength b)]
         (zero? (mod (- byte-length aes256-tag-length)
-                 aes256-block-size))))))
+                    aes256-block-size))))))
 
 (defn possibly-encrypted-string?
   "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64

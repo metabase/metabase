@@ -14,18 +14,17 @@ isempty(text column)
 
 You can use `isempty` in [custom filters](../expressions.md#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../expressions/countif.md) and [`SumIf`](../expressions/sumif.md). To create a custom column using `isempty`, you must combine `isempty` with another function that accepts boolean values, like [`case`](./case.md).
 
-
 ## How Metabase handles empty strings and null values
 
-In Metabase, columns with string [data types][data-types] will display blank cells for empty strings, strings of whitespace characters,  _or_ `null` values (if the column is nullable in your database).
+In Metabase, columns with string [data types][data-types] will display blank cells for empty strings, strings of whitespace characters, _or_ `null` values (if the column is nullable in your database).
 The table below shows you examples of the output of `isempty`.
 
-| Metabase shows| Database value      | `isempty(value)`  |
-|---------------| --------------------| ------------------|
-|               | `null`              | `true`            |
-|               | `""` (empty string) | `true`            |
-|               | `"   "` (whitespace)| `false`           |
-|     kitten    |`"kitten"`           | `false`           |
+| Metabase shows | Database value      | `isempty(value)` |
+| -------------- | ------------------- | ---------------- |
+|                | `null`              | `true`           |
+|                | `""` (empty string) | `true`           |
+|                | `" "` (whitespace)  | `false`          |
+| kitten         | `"kitten"`          | `false`          |
 
 ## Creating a boolean custom column
 
@@ -36,23 +35,21 @@ For example, if you want to create a custom column that contains `true` when the
 case(isempty([Feedback]), true, false)
 ```
 
-
 ## Replacing empty strings with another value
 
 You can combine `isempty` with the [`case` expression](./case.md) to replace empty strings with something more descriptive.
 
 For example, you can create a new custom column that will contain `"No feedback"` when the original `[Feedback]` column is empty or null, and the feedback value when `[Feedback]` is has a non-empty value. The custom expression to do it is:
+
 ```
 case(isempty([Feedback]), "No feedback.", [Feedback])
 ```
 
-
-| Feedback              | `case(isempty([Feedback]), "No feedback.", [Feedback])`   |
-| ----------------------| ----------------------------------------------------------|
-| `""`                  | `"No feedback."`                                          |
-| `null`                | `"No feedback."`                                          |
-| `"I like your style."`| `"I like your style."`                                    |
-
+| Feedback               | `case(isempty([Feedback]), "No feedback.", [Feedback])` |
+| ---------------------- | ------------------------------------------------------- |
+| `""`                   | `"No feedback."`                                        |
+| `null`                 | `"No feedback."`                                        |
+| `"I like your style."` | `"I like your style."`                                  |
 
 ## Accepted data types
 
@@ -79,11 +76,11 @@ This section covers functions and formulas that can be used interchangeably with
 
 All examples below use the table from the [Replacing empty strings](#replacing-empty-strings-with-another-value) example:
 
-| Feedback              | `case(isempty([Feedback]), "No feedback.", [Feedback])`   |
-| ----------------------| ----------------------------------------------------------|
-| `""`                  | `"No feedback."`                                          |
-| `null`                | `"No feedback."`                                          |
-| `"I like your style."`| `"I like your style."`                                    |
+| Feedback               | `case(isempty([Feedback]), "No feedback.", [Feedback])` |
+| ---------------------- | ------------------------------------------------------- |
+| `""`                   | `"No feedback."`                                        |
+| `null`                 | `"No feedback."`                                        |
+| `"I like your style."` | `"I like your style."`                                  |
 
 ### SQL
 
@@ -134,8 +131,8 @@ case(isempty([Feedback]), "No feedback.", [Feedback])
 - [Custom expressions tutorial][custom-expressions-learn]
 
 [custom-expressions-doc]: ../expressions.md
-[custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
-[data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
+[custom-expressions-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
+[data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
 [notebook-editor-def]: https://www.metabase.com/glossary/query_builder
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/

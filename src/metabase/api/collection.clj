@@ -20,11 +20,12 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
    [metabase.public-settings.premium-features
@@ -82,7 +83,7 @@
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -101,16 +102,14 @@
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (perms/audit-namespace-clause :namespace namespace)
-                       (collection/visible-collection-ids->honeysql-filter-clause
+                       (collection/visible-collection-filter-clause
                         :id
-                        (collection/permissions-set->visible-collection-ids
-                         permissions-set
-                         {:include-archived-items (if archived
-                                                    :only
-                                                    :exclude)
-                          :include-trash-collection? true
-                          :permission-level :read
-                          :archive-operation-id nil}))]
+                        {:include-archived-items (if archived
+                                                   :only
+                                                   :exclude)
+                         :include-trash-collection? true
+                         :permission-level :read
+                         :archive-operation-id nil})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -141,8 +140,7 @@
                         :exclude-other-user-collections exclude-other-user-collections
                         :namespace                      namespace
                         :shallow                        false
-                        :personal-only                  personal-only
-                        :permissions-set                @api/*current-user-permissions-set*}) collections
+                        :personal-only                  personal-only}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
     (if (or archived personal-only)
       collections
@@ -213,15 +211,14 @@
                                          :exclude-other-user-collections exclude-other-user-collections
                                          :namespace                      namespace
                                          :shallow                        shallow
-                                         :collection-id                  collection-id
-                                         :permissions-set                @api/*current-user-permissions-set*})]
+                                         :collection-id                  collection-id})]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
                                           (update acc (case (keyword card-type)
-                                                       :model :dataset
-                                                       :metric :metric
-                                                       :card) conj collection-id))
+                                                        :model :dataset
+                                                        :metric :metric
+                                                        :card) conj collection-id))
                                         {:dataset #{}
                                          :metric  #{}
                                          :card    #{}}
@@ -323,7 +320,6 @@
     always-false-hsql-expr
     always-true-hsql-expr))
 
-
 (defmulti ^:private post-process-collection-children
   {:arglists '([model collection rows])}
   (fn [model _ _]
@@ -398,49 +394,42 @@
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
-                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                     :c.collection_id
-                     :c.archived_directly
-                     :c.archived
-                     :c.dataset_query
-                     [(h2x/literal (case card-type
-                                     :model "dataset"
-                                     :metric  "metric"
-                                     "card"))
-                      :model]
-                     [:u.id :last_edit_user]
-                     [:u.email :last_edit_email]
-                     [:u.first_name :last_edit_first_name]
-                     [:u.last_name :last_edit_last_name]
-                     [:r.timestamp :last_edit_timestamp]
-                     [{:select   [:status]
-                       :from     [:moderation_review]
-                       :where    [:and
-                                  [:= :moderated_item_type "card"]
-                                  [:= :moderated_item_id :c.id]
-                                  [:= :most_recent true]]
-                       ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                       ;; protecting against potential bugs
-                       :order-by [[:id :desc]]
-                       :limit    1}
-                      :moderated_status]]
-                    (= :model card-type)
+                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                    :last_used_at
+                    :c.collection_id
+                    :c.archived_directly
+                    :c.archived
+                    :c.dataset_query
+                    [(h2x/literal (case card-type
+                                    :model "dataset"
+                                    :metric  "metric"
+                                    "card"))
+                     :model]
+                    [:u.id :last_edit_user]
+                    [:u.email :last_edit_email]
+                    [:u.first_name :last_edit_first_name]
+                    [:u.last_name :last_edit_last_name]
+                    [:r.timestamp :last_edit_timestamp]
+                    [:mr.status :moderated_status]]
+                    (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :c.id]
                                    [:= :r.most_recent true]
                                    [:= :r.model (h2x/literal "Card")]]
+                   [:moderation_review :mr] [:and
+                                             [:= :mr.moderated_item_id :c.id]
+                                             [:= :mr.most_recent true]
+                                             [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        {:include-archived-items :all
-                                                                         :permission-level (if archived?
-                                                                                             :write
-                                                                                             :read)
-                                                                         :archive-operation-id nil}))
+                   (collection/visible-collection-filter-clause :collection_id
+                                                                {:include-archived-items :all
+                                                                 :permission-level (if archived?
+                                                                                     :write
+                                                                                     :read)
+                                                                 :archive-operation-id nil})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -516,8 +505,11 @@
       ;; true so that we still can try to generate a preview for the query and display an error.
       false)))
 
-(defn- fully-parameterized-query? [row]
-  (let [parsed-query (-> row :dataset_query json/parse-string)
+(defn fully-parameterized-query?
+  "Given a Card, returns `true` if its query is fully parameterized."
+  [row]
+  (let [parsed-query (cond-> (:dataset_query row)
+                       (string? (:dataset_query row)) json/parse-string)
         ;; TODO TB handle pMBQL native queries
         native-query (when (contains? parsed-query "native")
                        (-> parsed-query mbql.normalize/normalize :native))]
@@ -544,6 +536,7 @@
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+                   [:last_viewed_at :last_used_at]
                    :d.collection_id
                    :d.archived_directly
                    [(h2x/literal "dashboard") :model]
@@ -552,22 +545,25 @@
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]]
+                   [:r.timestamp :last_edit_timestamp]
+                   [:mr.status :moderated_status]]
        :from      [[:report_dashboard :d]]
-       :left-join [[:revision :r] [:and
+       :left-join [[:moderation_review :mr] [:and
+                                             [:= :mr.moderated_item_id :d.id]
+                                             [:= :mr.most_recent true]
+                                             [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
+                   [:revision :r] [:and
                                    [:= :r.model_id :d.id]
                                    [:= :r.most_recent true]
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        {:include-archived-items :all
-                                                                         :archive-operation-id nil
-                                                                         :permission-level (if archived?
-                                                                                             :write
-                                                                                             :read)}))
+                   (collection/visible-collection-filter-clause :collection_id
+                                                                {:include-archived-items :all
+                                                                 :archive-operation-id nil
+                                                                 :permission-level (if archived?
+                                                                                     :write
+                                                                                     :read)})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -585,7 +581,7 @@
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete)
-      (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+      (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :dashboard
@@ -636,23 +632,18 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                                   {:include-archived-items :all
-                                                                                    :archive-operation-id nil
-                                                                                    :permission-level :read})
-
-        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
+  (let [descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
                                                                          :id
-                                                                         visible-collection-ids))
+                                                                         {:include-archived-items :all}))
 
-        descendant-collection-ids (map u/the-id descendant-collections)
+        descendant-collection-ids (mapv u/the-id descendant-collections)
 
         child-type->coll-id-set
         (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
                   (update acc (case (keyword card-type)
-                               :model :dataset
-                               :metric :metric
-                               :card) conj collection-id))
+                                :model :dataset
+                                :metric :metric
+                                :card) conj collection-id))
                 {:dataset #{}
                  :metric  #{}
                  :card    #{}}
@@ -675,10 +666,9 @@
 
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
-        (->> descendant-collections
-             (reduce (fn [accu {:keys [location] :as _coll}]
-                       (let [effective-location (collection/effective-location-path location visible-collection-ids)
-                             parent-id (collection/location-path->parent-id effective-location)]
+        (->> (t2/hydrate descendant-collections :effective_parent)
+             (reduce (fn [accu {:keys [effective_parent] :as _coll}]
+                       (let [parent-id (:id effective_parent)]
                          (conj accu parent-id)))
                      #{}))
 
@@ -712,7 +702,7 @@
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
 
-(mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
+(mu/defn- coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]
@@ -781,7 +771,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :collection_type [:archived :boolean]
+   :collection_type [:archived :boolean] [:last_used_at :timestamp]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -833,43 +823,43 @@
   [sort-info db-type]
   (->> (into [(official-collections-first-sort-clause sort-info)
               normal-collections-first-sort-clause]
-        (case ((juxt :sort-column :sort-direction) sort-info)
-          [nil nil]               [[:%lower.name :asc]]
-          [:name :asc]            [[:%lower.name :asc]]
-          [:name :desc]           [[:%lower.name :desc]]
-          [:last-edited-at :asc]  [(if (= db-type :mysql)
-                                     [:%isnull.last_edit_timestamp]
-                                     [:last_edit_timestamp :nulls-last])
-                                   [:last_edit_timestamp :asc]
-                                   [:%lower.name :asc]]
-          [:last-edited-at :desc] [(case db-type
-                                     :mysql    [:%isnull.last_edit_timestamp]
-                                     :postgres [:last_edit_timestamp :desc-nulls-last]
-                                     :h2       nil)
-                                   [:last_edit_timestamp :desc]
-                                   [:%lower.name :asc]]
-          [:last-edited-by :asc]  [(if (= db-type :mysql)
-                                     [:%isnull.last_edit_last_name]
-                                     [:last_edit_last_name :nulls-last])
-                                   [:last_edit_last_name :asc]
-                                   (if (= db-type :mysql)
-                                     [:%isnull.last_edit_first_name]
-                                     [:last_edit_first_name :nulls-last])
-                                   [:last_edit_first_name :asc]
-                                   [:%lower.name :asc]]
-          [:last-edited-by :desc] [(case db-type
-                                     :mysql    [:%isnull.last_edit_last_name]
-                                     :postgres [:last_edit_last_name :desc-nulls-last]
-                                     :h2       nil)
-                                   [:last_edit_last_name :desc]
-                                   (case db-type
-                                     :mysql    [:%isnull.last_edit_first_name]
-                                     :postgres [:last_edit_last_name :desc-nulls-last]
-                                     :h2       nil)
-                                   [:last_edit_first_name :desc]
-                                   [:%lower.name :asc]]
-          [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
+             (case ((juxt :sort-column :sort-direction) sort-info)
+               [nil nil]               [[:%lower.name :asc]]
+               [:name :asc]            [[:%lower.name :asc]]
+               [:name :desc]           [[:%lower.name :desc]]
+               [:last-edited-at :asc]  [(if (= db-type :mysql)
+                                          [:%isnull.last_edit_timestamp]
+                                          [:last_edit_timestamp :nulls-last])
+                                        [:last_edit_timestamp :asc]
+                                        [:%lower.name :asc]]
+               [:last-edited-at :desc] [(case db-type
+                                          :mysql    [:%isnull.last_edit_timestamp]
+                                          :postgres [:last_edit_timestamp :desc-nulls-last]
+                                          :h2       nil)
+                                        [:last_edit_timestamp :desc]
+                                        [:%lower.name :asc]]
+               [:last-edited-by :asc]  [(if (= db-type :mysql)
+                                          [:%isnull.last_edit_last_name]
+                                          [:last_edit_last_name :nulls-last])
+                                        [:last_edit_last_name :asc]
+                                        (if (= db-type :mysql)
+                                          [:%isnull.last_edit_first_name]
+                                          [:last_edit_first_name :nulls-last])
+                                        [:last_edit_first_name :asc]
+                                        [:%lower.name :asc]]
+               [:last-edited-by :desc] [(case db-type
+                                          :mysql    [:%isnull.last_edit_last_name]
+                                          :postgres [:last_edit_last_name :desc-nulls-last]
+                                          :h2       nil)
+                                        [:last_edit_last_name :desc]
+                                        (case db-type
+                                          :mysql    [:%isnull.last_edit_first_name]
+                                          :postgres [:last_edit_last_name :desc-nulls-last]
+                                          :h2       nil)
+                                        [:last_edit_first_name :desc]
+                                        [:%lower.name :asc]]
+               [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
+               [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
        (remove nil?)
        (into [])))
 
@@ -912,7 +902,7 @@
       res
       limit-res)))
 
-(mu/defn ^:private collection-children
+(mu/defn- collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
@@ -932,7 +922,7 @@
        :offset mw.offset-paging/*offset*
        :models valid-models})))
 
-(mu/defn ^:private collection-detail
+(mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
@@ -963,6 +953,7 @@
   [include archived]
   {include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
+  (api/read-check collection/root-collection)
   (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                           :timeline/archived? archived}))
 
@@ -972,6 +963,7 @@
   {id       ms/PositiveInt
    include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
+  (api/read-check (t2/select-one :model/Collection :id id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
 
@@ -1005,7 +997,6 @@
                                                                                  true
                                                                                  (boolean official_collections_first))}})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
-
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
@@ -1070,13 +1061,15 @@
                        :official-collections-first? (or (nil? official_collections_first)
                                                         (boolean official_collections_first))}})))
 
-
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
 (defn- write-check-collection-or-root-collection
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
   [collection-id collection-namespace]
+  (when (collection/is-trash? collection-id)
+    (throw (ex-info (tru "You cannot modify the Trash Collection.")
+                    {:status-code 400})))
   (api/write-check (if collection-id
                      (t2/select-one Collection :id collection-id)
                      (cond-> collection/root-collection
@@ -1119,9 +1112,10 @@
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
-                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
-      (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
+    (when-let [alerts (not-empty (models.pulse/retrieve-alerts-for-cards
+                                  {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
+      (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
+      (events/publish-event! :event/card-update.alerts-deleted.card-archived {:alerts alerts, :actor actor}))))
 
 (defn- move-collection!
   "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do
@@ -1140,11 +1134,13 @@
         ;; ok, make sure we have perms to do this operation
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-           (collection/perms-for-moving collection-before-update new-parent)))
+                                                  (collection/perms-for-moving collection-before-update new-parent)))
 
         ;; We can't move a collection to the Trash
-        (api/check-400
-         (not (collection/is-trash? new-parent)))
+        (api/check
+         (not (collection/is-trash? new-parent))
+         [400 "You cannot modify the Trash Collection."])
+
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
@@ -1232,7 +1228,7 @@
   "Map describing permissions for 1 or more groups.
   Revision # is used for consistency"
   [:map
-   [:revision int?]
+   [:revision {:optional true} [:maybe int?]]
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
 (def ^:private graph-decoder
@@ -1243,16 +1239,34 @@
   ;; TODO: should use a coercer for this?
   (graph-decoder permission-graph))
 
+(defn- update-graph!
+  "Handles updating the graph for a given namespace."
+  [namespace graph skip-graph force?]
+  (graph/update-graph! namespace graph force?)
+  (if skip-graph
+    {:revision (c-perm-revision/latest-id)}
+    (graph/graph namespace)))
+
 (api/defendpoint PUT "/graph"
-  "Do a batch update of Collections Permissions by passing in a modified graph.
-  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
-  [:as {{:keys [namespace], :as body} :body}]
-  {body      :map
-   namespace [:maybe ms/NonBlankString]}
+  "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
+  are present in the request, and leave the rest unchanged.
+
+  If the `force` query parameter is `true`, a `revision` number is not required. The provided graph will be persisted
+  as-is, and has the potential to clobber other writes that happened since the last read.
+
+  If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
+  graph."
+  [:as {{:keys [namespace revision groups]} :body
+        {:keys [skip-graph force]} :params}]
+  {namespace  [:maybe ms/NonBlankString]
+   revision   [:maybe ms/Int]
+   groups     :map
+   force      [:maybe ms/BooleanValue]
+   skip-graph [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (->> (dissoc body :namespace)
-       decode-graph
-       (graph/update-graph! namespace))
-  (graph/graph namespace))
+  (update-graph! namespace
+                 (decode-graph {:revision revision :groups groups})
+                 skip-graph
+                 force))
 
 (api/define-routes)

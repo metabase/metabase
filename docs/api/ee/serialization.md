@@ -12,35 +12,30 @@ API endpoints for Serialization.
 
 Serialize and retrieve Metabase instance.
 
-  Parameters:
-  - `dirname`: str, name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)
-  - `all_collections`: bool, serialize all collections (default: true, unless you specify `collection`)
-  - `collection`: array of int, db id of a collection to serialize
-  - `settings`: bool, if Metabase settings should be serialized (default: `true`)
-  - `data_model`: bool, if Metabase data model should be serialized (default: `true`)
-  - `field_values`: bool, if cached field values should be serialized (default: `false`)
-  - `database_secrets`: bool, if details how to connect to each db should be serialized (default: `false`)
-
-  Outputs .tar.gz file with serialization results and an `export.log` file.
-  On error just returns serialization logs.
+  Outputs `.tar.gz` file with serialization results and an `export.log` file.
+  On error outputs serialization logs directly.
 
 You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`all_collections`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`field_values`** Serialize cached field values.
 
-*  **`collection`** nullable vector of value must be an integer greater than zero.
+-  **`data_model`** Serialize Metabase data model.
 
-*  **`settings`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`collection`** collections' db ids/entity-ids to serialize.
 
-*  **`data_model`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`dirname`** name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`).
 
-*  **`field_values`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`continue_on_error`** Do not break execution on errors.
 
-*  **`database_secrets`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`settings`** Serialize Metabase settings.
 
-*  **`dirname`**
+-  **`all_collections`** Serialize all collections (`true` unless you specify `collection`).
+
+-  **`full_stacktrace`** Show full stacktraces in the logs.
+
+-  **`database_secrets`** Serialize details how to connect to each db.
 
 ## `POST /api/ee/serialization/import`
 
@@ -55,7 +50,11 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`raw-params`**
+-  **`continue_on_error`** Do not break execution on errors.
+
+-  **`full_stacktrace`** Show full stacktraces in the logs.
+
+-  **`file`** .tgz with serialization data.
 
 ---
 

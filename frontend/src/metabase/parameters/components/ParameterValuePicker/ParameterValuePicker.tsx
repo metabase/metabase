@@ -4,7 +4,8 @@ import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
 import { fetchParameterValues } from "metabase/parameters/actions";
-import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
+import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts/TagEditorParam.styled";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
@@ -13,9 +14,9 @@ import { OwnDatePicker } from "./OwnDatePicker";
 import { ListPickerWrapper } from "./ParameterValuePicker.styled";
 import { PlainValueInput } from "./PlainValueInput";
 import {
-  shouldUsePlainInput,
-  shouldUseListPicker,
   getSingleStringOrNull,
+  shouldUseListPicker,
+  shouldUsePlainInput,
 } from "./core";
 
 interface ParameterValuePickerProps {
@@ -89,7 +90,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
   // The fallback
   return (
     <DefaultParameterValueWidget
-      parameter={DEPRECATED_getAmendedParameter(tag, parameter)}
+      parameter={DEPRECATED_getAmendedParameter(tag, parameter) as UiParameter}
       value={value}
       setValue={onValueChange}
       isEditing

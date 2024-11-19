@@ -13,17 +13,19 @@ Metabase’s Cypress tests are located in the `e2e/test/scenarios` source tree, 
 Our custom Cypress runner builds its own backend and creates a temporary H2 app db. Both are destroyed when this process is killed. The reserved default port is `4000` on the local host. There is nothing stopping you from running your local Metabase instance on `localhost:3000` at the same time. This might even be helpful for debugging purposes.
 
 ### Standard Development Flow
+
 1. Continuously build the frontend
 
-    a. If you need only the frontend, run `yarn build-hot`
+   a. If you need only the frontend, run `yarn build-hot`
 
-    b. If you want to run a local Metabase instance alongside Cypress, the easiest way to achieve this is by using `yarn dev` or `yarn dev-ee` (both rely on frontend hot reloading under the hood)
+   b. If you want to run a local Metabase instance alongside Cypress, the easiest way to achieve this is by using `yarn dev` or `yarn dev-ee` (both rely on frontend hot reloading under the hood)
 
 2. In a separate terminal session (without killing the previous one) run `yarn test-cypress-open`. This will open a Cypress GUI that will let you choose which tests to run. Alterantively, take a look at more running options below.
 
 ### Running Options
 
 To run all Cypress tests programmatically in the terminal:
+
 ```sh
 yarn run test-cypress-run
 ```
@@ -49,12 +51,12 @@ Specifying a browser makes most sense when running Cypress in a _run_ mode. On t
 Cypress test files are structured like Mocha tests, where `describe` blocks are used to group related tests, and `it` blocks are the tests themselves.
 
 ```js
-describe("homepage",() => {
-  it('should load the homepage and...', () => {
+describe("homepage", () => {
+  it("should load the homepage and...", () => {
     cy.visit("/metabase/url");
     // ...
-  })
-})
+  });
+});
 ```
 
 We strongly prefer using selectors like `cy.findByText()` and `cy.findByLabelText()` from [`@testing-library/cypress`](https://github.com/testing-library/cypress-testing-library) since they encourage writing tests that don't depend on implementation details like CSS class names.
@@ -63,21 +65,23 @@ Try to avoid repeatedly testing pieces of the application incidentally. For exam
 
 ## Cypress Documentation
 
-* Introduction: https://docs.cypress.io/guides/core-concepts/introduction-to-cypress.html
-* Commands: https://docs.cypress.io/api/api/table-of-contents.html
-* Assertions: https://docs.cypress.io/guides/references/assertions.html
+- Introduction: https://docs.cypress.io/guides/core-concepts/introduction-to-cypress.html
+- Commands: https://docs.cypress.io/api/api/table-of-contents.html
+- Assertions: https://docs.cypress.io/guides/references/assertions.html
 
 ## Tips/Gotchas
 
 ### `contains` vs `find` vs `get`
 
 Cypress has a set of similar commands for selecting elements. Here are some tips for using them:
-- [`contains`](https://docs.cypress.io/api/commands/contains) is (by default) case-sensitive to the text *in the DOM*. If it’s not matching text you’d expect, check that CSS hasn’t updated the case. You can explicitly tell it to ignore the case with the following option `{ matchCase: false }`.
-    - `contains` matches substrings. Given two strings “filter by” and “Add a filter”, `cy.contains(“filter”);` will match both. To avoid these issues, you can either pass a regexp that pins the start/end of the string or scope a string to a specific selector: `cy.contains(selector, content);`.
+
+- [`contains`](https://docs.cypress.io/api/commands/contains) is (by default) case-sensitive to the text _in the DOM_. If it’s not matching text you’d expect, check that CSS hasn’t updated the case. You can explicitly tell it to ignore the case with the following option `{ matchCase: false }`.
+  - `contains` matches substrings. Given two strings “filter by” and “Add a filter”, `cy.contains(“filter”);` will match both. To avoid these issues, you can either pass a regexp that pins the start/end of the string or scope a string to a specific selector: `cy.contains(selector, content);`.
 - [`find`](https://docs.cypress.io/api/commands/find) will let you search within your previous selection.
 - [`get`](https://docs.cypress.io/api/commands/get) will search the entire page even if chained, unless you explicitly tweak the `withinSubject` option.
 
 ### How to access Sample Database tables and field IDs?
+
 The Sample Database that we use in E2E tests can change at any time, and with it the references to its tables and fields. Never **ever** use hard coded numeric references to those IDs. We provide a helpful mechanism to achieve this that is guaranteed to produce correct results. Every time you spin Cypress up, it fetches the information about the Sample Database, extracts table and field IDs and writes that to the `e2e/support/cypress_sample_database` JSON that we then re-export and make available to all tests.
 
 ```js
@@ -86,7 +90,7 @@ const query = {
   "source-table": 1,
   aggregation: [["count"]],
   breakout: [["field", 7, null]],
-}
+};
 
 // Do this instead
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -96,7 +100,7 @@ const query = {
   "source-table": PRODUCTS_ID,
   aggregation: [["count"]],
   breakout: [["field", PRODUCTS.CATEGORY, null]],
-}
+};
 ```
 
 ### Increase viewport size to avoid scrolling
@@ -106,22 +110,31 @@ Sometimes Metabase views are a bit large for Cypress’ default 1280x800 viewpor
 ```js
 describe("foo", { viewportWidth: 1400 }, () => {});
 
-it("bar", { viewportWidth: 1600, viewportHeight: 1200 }, () => {})
+it("bar", { viewportWidth: 1600, viewportHeight: 1200 }, () => {});
 ```
 
 ### Code reloading vs test reloading
+
 When you edit a Cypress test file, the tests will refresh and run again. However, when you edit a code file, Cypress won’t detect that change. If you’re running `yarn build-hot`, the code will rebuild and update within Cypress. You’ll have to manually click rerun after the new code has loaded.
 
 ### Inspecting while the “contains helper” is open
+
 One great feature of Cypress is that you can use the Chrome inspector after each step of a test. They also helpfully provide a helper that can test out `contains` and `get` calls. This helper creates new UI that prevents inspecting from targeting the correct elements. If you want to inspect the DOM in Chrome, you should close this helper.
 
 ### Putting the wrong HTML template in the Uberjar
+
 `yarn build` and `yarn build-hot` each overwrite an HTML template to reference the correct JavaScript files. If you run `yarn build` before building an Uberjar for Cypress tests, you won’t see changes to your JavaScript reflected even if you then start `yarn build-hot`.
 
 ### Running Cypress on M1 machines
 
 You might run into problems when running Cypress on M1 machine.
 This is caused by the `@bahmutov/cypress-esbuild-preprocessor` that is using `esbuild` as a dependency. The error might look [like this](https://github.com/evanw/esbuild/issues/1819#issuecomment-1018771557). [The solution](https://github.com/evanw/esbuild/issues/1819#issuecomment-1080720203) is to install NodeJS using one of the Node version managers like [nvm](https://github.com/nvm-sh/nvm) or [n](https://github.com/tj/n).
+
+Another issue you will almost surely face is the inability to connect to our Mongo QA Database. You can solve it by providing the following env:
+
+```shell
+export EXPERIMENTAL_DOCKER_DESKTOP_FORCE_QEMU=1
+```
 
 ### Running tests that depend on Docker images
 
@@ -143,8 +156,24 @@ yarn test-cypress-open-qa
 
 Tests that depend on Snowplow expect a running server. To run them, you need to:
 
-- run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
 - pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
+
+## Testing with Snowplow
+
+Our end-to-end testing environment has been configured to run Snowplow Micro alongside the application.
+
+To run Snowplow locally use the following commands:
+
+```
+docker-compose -f ./snowplow/docker-compose.yml up -d
+export MB_SNOWPLOW_AVAILABLE=true
+export MB_SNOWPLOW_URL=http://localhost:9090
+```
+
+1. You can use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only run when a Snowplow instance is running
+2. Use `resetSnowplow()` test helper before each test to clear the queue of processed events.
+3. Use `expectGoodSnowplowEvents(count)` to assert that events have been sent and processed correctly. Use `expectGoodSnowPlowEvent({ ...payload})` to assert on the content of a snowplow event
+4. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
 
 ### Running tests that require SMTP server
 
@@ -160,12 +189,20 @@ We don't need to have [Lodash](https://lodash.com/) in our direct dependencies t
 
 ```js
 // Run the test N times
-Cypress._.times(N, ()=> {
-  it("should foo", ()=> {
+Cypress._.times(N, () => {
+  it("should foo", () => {
     // ...
   });
 });
 ```
+
+### Embedding SDK tests
+
+Tests located in `e2e/test/scenarios/embedding-sdk` are used to run automated checks for the Embedding SDK.
+
+Embedding SDK is a library, and not an application. We use Storybook to host public components, and we run tests against it.
+
+In order to run stories used for tests locally, please check [storybook setup docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md#storybook)
 
 ## DB Snapshots
 
@@ -221,13 +258,17 @@ These are the tags currently in use:
 Fixing a flaky test locally doesn't mean the fix works in GitHub's CI environment. The only way to be sure the fix works is to stress-test it in CI. That's what `.github/workflows/e2e-stress-test-flake-fix.yml` is made for. It allows you to quickly test the fix in your branch without waiting for the full build to complete.
 
 Please follow these steps:
+
 ### Prepare
+
 - Create a new branch with your proposed fix and push it to the remote
 - Either skip opening a PR altogether or open a **draft** pull request
 
 ### Trigger the stress-test workflow manually
+
 - Go to `https://github.com/metabase/metabase/actions/workflows/e2e-stress-test-flake-fix.yml`
 - Click on _Run workflow_ trigger next to "This workflow has a workflow_dispatch event trigger."
+
 1. Choose your own branch in the first field "Use workflow from" (this part is crucial!)
 2. Copy and paste the relative path of the spec you want to test (e.g. `e2e/test/scenarios/onboarding/urls.cy.spec.js`) - you don't have to wrap it in quotes
 3. Set the desired number of times to run the test
@@ -235,8 +276,9 @@ Please follow these steps:
 5. Click the green "Run workflow" button and wait for the results
 
 ### Things to keep in mind when using this workflow
+
 - It will automatically try to find and download the previously built Metabase uberjar stored as an artifact from one of the past commits / CI runs.
 - It was intended to be used for pure E2E fixes that don't require new Metabase uberjar.
 - If the fix required a source-code change (either backend of frontend), please open a regular PR instead and let the CI run all tests first. After this,
-you can trigger the stress-test workflow manually, as explained above, and it will automatically download newly built artifact from this CI run. Please,
-keep in mind that CI needs to fully finish running first. The workflow uses GitHub REST API which doesn't see artifacts otherwise.
+  you can trigger the stress-test workflow manually, as explained above, and it will automatically download newly built artifact from this CI run. Please,
+  keep in mind that CI needs to fully finish running first. The workflow uses GitHub REST API which doesn't see artifacts otherwise.

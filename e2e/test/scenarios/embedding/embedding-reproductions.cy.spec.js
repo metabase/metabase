@@ -1,22 +1,33 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  visitDashboard,
-  visitIframe,
-  updateDashboardCards,
-  openStaticEmbeddingModal,
-  filterWidget,
-  modal,
-  visitEmbeddedPage,
-  visitQuestion,
-  setTokenFeatures,
-  getIframeBody,
   addOrUpdateDashboardCard,
+  assertEChartsTooltip,
+  createDashboardWithQuestions,
+  createNativeQuestion,
+  createQuestionAndDashboard,
   describeEE,
+  filterWidget,
+  getDashboardCard,
+  getIframeBody,
+  modal,
+  openStaticEmbeddingModal,
+  otherSeriesChartPaths,
+  popover,
+  queryBuilderMain,
+  restore,
+  setTokenFeatures,
+  toggleFilterWidgetValues,
+  updateDashboardCards,
+  visitDashboard,
+  visitEmbeddedPage,
+  visitIframe,
+  visitPublicDashboard,
+  visitPublicQuestion,
+  visitQuestion,
+  withDatabase,
 } from "e2e/support/helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe.skip("issue 15860", () => {
   const q1IdFilter = {
@@ -388,6 +399,7 @@ describe("issues 20845, 25031", () => {
       name: "25031",
       parameters: [dashboardFilter],
     };
+
     beforeEach(() => {
       cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
@@ -494,6 +506,170 @@ describe("issues 20845, 25031", () => {
   });
 });
 
+// TODO:
+// - Add tests for embedding previews in both cases
+// - Add tests for disabled, editable and locked parameters in both cases
+// BONUS: Ideally add tests for email subscriptions with the filter applied
+describe("issue 27643", () => {
+  const PG_DB_ID = 2;
+  const TEMPLATE_TAG_NAME = "expected_invoice";
+  const getQuestionDetails = fieldId => {
+    return {
+      name: "27643",
+      database: PG_DB_ID,
+      native: {
+        query:
+          "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]] limit 1",
+        "template-tags": {
+          [TEMPLATE_TAG_NAME]: {
+            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+            dimension: ["field", fieldId, null],
+            name: TEMPLATE_TAG_NAME,
+            "display-name": "Expected Invoice",
+            type: "dimension",
+            "widget-type": "string/=",
+          },
+        },
+      },
+      enable_embedding: true,
+      embedding_params: {
+        [TEMPLATE_TAG_NAME]: "enabled",
+      },
+    };
+  };
+
+  beforeEach(() => {
+    // This issue was only reproducible against the Postgres database.
+    restore("postgres-12");
+    cy.signInAsAdmin();
+    withDatabase(PG_DB_ID, ({ INVOICES }) => {
+      cy.wrap(INVOICES.EXPECTED_INVOICE).as(
+        "postgresInvoicesExpectedInvoiceId",
+      );
+    });
+  });
+
+  describe("should allow a dashboard filter to map to a boolean field filter parameter (metabase#27643)", () => {
+    beforeEach(() => {
+      const dashboardParameter = {
+        id: "2850aeab",
+        name: "Text filter for boolean field",
+        slug: "text_filter_for_boolean_field",
+        type: "string/=",
+      };
+
+      const dashboardDetails = {
+        name: "Dashboard with card with boolean field filter",
+        enable_embedding: true,
+        embedding_params: {
+          [dashboardParameter.slug]: "enabled",
+        },
+        parameters: [dashboardParameter],
+      };
+
+      cy.get("@postgresInvoicesExpectedInvoiceId")
+        .then(fieldId => {
+          cy.createNativeQuestionAndDashboard({
+            questionDetails: getQuestionDetails(fieldId),
+            dashboardDetails,
+          });
+        })
+        .then(({ body: dashboardCard }) => {
+          const { card_id, dashboard_id } = dashboardCard;
+
+          cy.wrap(dashboard_id).as("dashboardId");
+          cy.wrap(card_id).as("questionId");
+
+          const mapFilterToCard = {
+            parameter_mappings: [
+              {
+                parameter_id: dashboardParameter.id,
+                card_id,
+                target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
+              },
+            ],
+          };
+
+          cy.editDashboardCard(dashboardCard, mapFilterToCard);
+        });
+    });
+
+    it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
+      cy.log("Test the dashboard");
+      visitDashboard("@dashboardId");
+      getDashboardCard().should("contain", "true");
+      toggleFilterWidgetValues(["false"]);
+      getDashboardCard().should("contain", "false");
+
+      cy.log("Test the embedded dashboard");
+      cy.get("@dashboardId").then(dashboard => {
+        visitEmbeddedPage({
+          resource: { dashboard },
+          params: {},
+        });
+
+        getDashboardCard().should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        getDashboardCard().should("contain", "false");
+      });
+
+      cy.log("Test the public dashboard");
+      cy.get("@dashboardId").then(dashboardId => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
+        visitPublicDashboard(dashboardId);
+
+        getDashboardCard().should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        getDashboardCard().should("contain", "false");
+      });
+    });
+  });
+
+  describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {
+    beforeEach(() => {
+      cy.get("@postgresInvoicesExpectedInvoiceId").then(fieldId => {
+        createNativeQuestion(getQuestionDetails(fieldId), {
+          wrapId: true,
+          idAlias: "questionId",
+        });
+      });
+    });
+
+    it("in static embedding and in public question scenarios (metabase#27643-2)", () => {
+      cy.log("Test the question");
+      visitQuestion("@questionId");
+      cy.findAllByTestId("cell-data").should("contain", "true");
+      toggleFilterWidgetValues(["false"]);
+      queryBuilderMain().button("Get Answer").click();
+      cy.findAllByTestId("cell-data").should("contain", "false");
+
+      cy.log("Test the embedded question");
+      cy.get("@questionId").then(question => {
+        visitEmbeddedPage({
+          resource: { question },
+          params: {},
+        });
+
+        cy.findAllByTestId("cell-data").should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        cy.findAllByTestId("cell-data").should("contain", "false");
+      });
+
+      cy.log("Test the public question");
+      cy.get("@questionId").then(questionId => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
+        visitPublicQuestion(questionId);
+
+        cy.findAllByTestId("cell-data").should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        cy.findAllByTestId("cell-data").should("contain", "false");
+      });
+    });
+  });
+});
+
 describeEE("issue 30535", () => {
   const questionDetails = {
     name: "3035",
@@ -502,6 +678,7 @@ describeEE("issue 30535", () => {
       limit: 10,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -576,6 +753,7 @@ describe("dashboard preview", () => {
     type: "string/=",
     sectionId: "string",
   };
+
   beforeEach(() => {
     cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
       "previewDashboard",
@@ -776,6 +954,7 @@ describe("issue 40660", () => {
     name: "long dashboard",
     enable_embedding: true,
   };
+
   beforeEach(() => {
     cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
       "previewDashboard",
@@ -809,6 +988,247 @@ describe("issue 40660", () => {
       cy.findByRole("link", { name: "Powered by Metabase" }).should(
         "be.visible",
       );
+    });
+  });
+});
+
+// Skipped since it does not make sense when CSP is disabled
+describe.skip("issue 49142", () => {
+  const questionDetails = {
+    name: "Products",
+    query: { "source-table": PRODUCTS_ID, limit: 2 },
+  };
+
+  const dashboardDetails = {
+    name: "Embeddable dashboard",
+    enable_embedding: true,
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+  });
+
+  it("embedding preview should be always working", () => {
+    openStaticEmbeddingModal({
+      activeTab: "lookAndFeel",
+      previewMode: "preview",
+    });
+    cy.findByTestId("embed-preview-iframe")
+      .its("0.contentDocument.body")
+      .should("be.visible")
+      .and("contain", "Embeddable dashboard");
+  });
+});
+
+describe("issue 8490", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createDashboardWithQuestions({
+      dashboardDetails: {
+        name: "Dashboard to test locale",
+        enable_embedding: true,
+      },
+      questions: [
+        {
+          name: "Line chart",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            filter: [
+              "time-interval",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              -12,
+              "month",
+            ],
+          },
+          limit: 100,
+          visualization_settings: {
+            "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+            "graph.metrics": ["count"],
+            "graph.max_categories_enabled": true,
+            "graph.max_categories": 2,
+          },
+          display: "bar",
+          enable_embedding: true,
+        },
+        {
+          name: "Order quantity trend",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "sum",
+                ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+              ],
+            ],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            filter: [
+              "and",
+              [
+                "time-interval",
+                ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+                -2,
+                "month",
+              ],
+              [
+                "=",
+                [
+                  "field",
+                  PRODUCTS.VENDOR,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": ORDERS.PRODUCT_ID,
+                  },
+                ],
+                "Alfreda Konopelski II Group",
+              ],
+            ],
+          },
+          display: "smartscalar",
+        },
+        {
+          name: "Pie chart",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.VENDOR,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+            limit: 5,
+          },
+          visualization_settings: {
+            "pie.slice_threshold": 20,
+          },
+          display: "pie",
+        },
+      ],
+      cards: [{}, { col: 11 }],
+    }).then(({ dashboard, questions: [lineChartQuestion] }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+      cy.wrap(lineChartQuestion.id).as("lineChartQuestionId");
+    });
+  });
+
+  it("static embeddings should respect `#locale` hash in the URL (metabase#8490)", () => {
+    cy.log("test a static embedded dashboard");
+    cy.get("@dashboardId").then(dashboardId => {
+      visitEmbeddedPage(
+        {
+          resource: { dashboard: dashboardId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      // PDF export
+      cy.findByText("PDF로 내보내기").should("be.visible");
+      // Powered by
+      cy.findByText("제공:").should("be.visible");
+
+      cy.log("assert the line chart");
+      getDashboardCard(0).within(() => {
+        // X-axis labels: Jan 2024
+        cy.findByText("1월 2024").should("be.visible");
+        // Aggregation "count"
+        cy.findByText("카운트").should("be.visible");
+        // "Other" bar tooltip
+        otherSeriesChartPaths().first().realHover();
+      });
+    });
+
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "Gizmo",
+          value: "4",
+        },
+        {
+          name: "Widget",
+          value: "2",
+        },
+        {
+          name: "합계",
+          value: "6",
+        },
+      ],
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      cy.log("assert the trend chart");
+      getDashboardCard(2).within(() => {
+        // N/A
+        cy.findByText("해당 없음").should("be.visible");
+        // (No data)
+        cy.findByText("(데이터 없음)").should("be.visible");
+      });
+
+      cy.log("assert the pie chart");
+      getDashboardCard(1).within(() => {
+        // Total
+        cy.findByText("합계").should("be.visible");
+        // Other
+        cy.findByTestId("chart-legend").findByText("기타").should("be.visible");
+      });
+    });
+
+    cy.log("test a static embedded question");
+
+    cy.log("assert the line chart");
+    cy.get("@lineChartQuestionId").then(lineChartQuestionId => {
+      visitEmbeddedPage(
+        {
+          resource: { question: lineChartQuestionId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      // X-axis labels: Jan 2023
+      cy.findByText("11월 2023").should("be.visible");
+      // Powered by
+      cy.findByText("제공:").should("be.visible");
+      // Aggregation "count"
+      cy.findByText("카운트").should("be.visible");
     });
   });
 });

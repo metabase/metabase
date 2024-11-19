@@ -1,17 +1,20 @@
 (ns metabase.events.view-log-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
+   [java-time.api :as t]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
    [metabase.api.public-test :as public-test]
    [metabase.events :as events]
+   [metabase.events.view-log :as events.view-log]
    [metabase.http-client :as client]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn latest-view
   "Returns the most recent view for a given user and model ID"
@@ -57,6 +60,34 @@
               :context    nil}
              (latest-view (mt/user->id :crowberto) (u/id coll))))))))
 
+(deftest update-view-dashboard-timestamp-test
+  ;; the DB might save `last_used_at` with a different level of precision than the JVM does, on some machines
+  ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_viewed_at` is coming back with
+  ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
+  ;; times we're comparing.
+  (let [now           (-> (t/offset-date-time)
+                          (.withNano 0))
+        one-hour-ago  (t/minus now (t/hours 1))
+        two-hours-ago (t/minus now (t/hours 2))]
+    (testing "update with multiple dashboards of the same ids will set timestamp to the latest"
+      (mt/with-temp
+        [:model/Dashboard {dashboard-id-1 :id} {:last_viewed_at two-hours-ago}]
+        (#'events.view-log/update-dashboard-last-viewed-at!* [{:id dashboard-id-1 :timestamp one-hour-ago}
+                                                              {:id dashboard-id-1 :timestamp two-hours-ago}])
+        (is (= one-hour-ago
+               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-1)
+                   t/offset-date-time
+                   (.withNano 0))))))
+
+    (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
+      (mt/with-temp
+        [:model/Dashboard {dashboard-id-2 :id} {:last_viewed_at now}]
+        (#'events.view-log/update-dashboard-last-viewed-at!* [{:id dashboard-id-2 :timestamp one-hour-ago}])
+        (is (= now
+               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-2)
+                   t/offset-date-time
+                   (.withNano 0))))))))
+
 (deftest table-read-ee-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User user {}]
@@ -73,10 +104,12 @@
 
         (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
           (mt/with-full-data-perms-for-all-users!
-            (binding [api/*current-user-id* (u/id user)]
+            (mt/with-current-user (u/id user)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-              (is (true? (:has_access (latest-view (u/id user) (u/id table)))))
+              (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
 
+            ;; Bind the user again to flush the perms cache
+            (mt/with-current-user (u/id user)
               (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
@@ -100,52 +133,74 @@
           (testing "Card read events are not recorded when viewing a dashboard"
             (is (nil? (latest-view (u/id user) (u/id card))))))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest card-read-view-count-test
-  (mt/with-temp [:model/User user {}
-                 :model/Card card {:creator_id (u/id user)}]
-    (testing "Card read events are recorded by a card's view_count"
-      (is (= 0 (:view_count card))
-          "view_count should be 0 before the event is published")
-      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-      (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
-      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-      (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/User user {}
+                     :model/Card card {:creator_id (u/id user)}]
+        (testing "Card read events are recorded by a card's view_count"
+          (is (= 0 (:view_count card))
+              "view_count should be 0 before the event is published")
+          (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
+          (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
+          (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
+          (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest dashboard-read-view-count-test
-  (mt/with-temp [:model/User          user      {}
-                 :model/Dashboard     dashboard {:creator_id (u/id user)}
-                 :model/Card          card      {:name "Dashboard Test Card"}
-                 :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
-    (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
-      (testing "Dashboard read events are recorded by a dashboard's view_count"
-        (is (= 0 (:view_count dashboard) (:view_count card))
-            "view_count should be 0 before the event is published")
-        (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-        (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
-        (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
-            "view_count for cards on the dashboard should not be incremented")
-        (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-        (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/User          user      {}
+                     :model/Dashboard     dashboard {:creator_id (u/id user)}
+                     :model/Card          card      {:name "Dashboard Test Card"}
+                     :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
+        (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
+          (testing "Dashboard read events are recorded by a dashboard's view_count"
+            (is (= 0 (:view_count dashboard) (:view_count card))
+                "view_count should be 0 before the event is published")
+            (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
+            (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
+            (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
+                "view_count for cards on the dashboard should not be incremented")
+            (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
+            (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))))
 
-;; Disable view_count updates to handle perf issues  (for now) (#44359)
-#_
 (deftest table-read-view-count-test
-  (mt/with-temp [:model/User  user  {}
-                 :model/Table table {}]
-    (testing "Card read events are recorded by a card's view_count"
-      (is (= 0 (:view_count table))
-          "view_count should be 0 before the event is published")
-      (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-      (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
-          "view_count should be incremented")
-      (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-      (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
-          "view_count should be incremented"))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/User  user  {}
+                     :model/Table table {}]
+        (testing "Card read events are recorded by a card's view_count"
+          (is (= 0 (:view_count table))
+              "view_count should be 0 before the event is published")
+          (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
+          (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
+              "view_count should be incremented")
+          (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
+          (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
+              "view_count should be incremented"))))))
 
+(deftest increment-view-counts!*-test
+  (mt/with-temp [:model/Card  {card-1-id :id} {}
+                 :model/Card  {card-2-id :id} {:view_count 2}
+                 :model/Table {table-id :id}  {}]
+    (t2/with-call-count [call-count]
+      (testing "increment-view-counts!* update the view_count correctly"
+        (#'events.view-log/increment-view-counts!* [;; table-id : 1 views, card-id-1: 2 views, card-id 2: 2 views
+                                                    {:model :model/Table :id table-id}
+                                                    {:model :model/Card  :id card-1-id}
+                                                    {:model :model/Card  :id card-1-id}
+                                                    {:model :model/Card  :id card-2-id}
+                                                    {:model :model/Card  :id card-2-id}])
+        (is (= 2 ;; one for update card, one for table
+               (call-count))
+            "and groups db calls by frequency")
+        (is (= 1 (t2/select-one-fn :view_count :model/Table table-id))
+            "view_count for table-id should be 1")
+        (is (= 2 (t2/select-one-fn :view_count :model/Card card-1-id))
+            "view_count for card-1 should be 2")
+        (is (= 4 ;; 2 old + 2 new
+               (t2/select-one-fn :view_count :model/Card card-2-id))
+            "view_count for card-2 should be 2")))))
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
@@ -222,7 +277,7 @@
 (deftest get-embedded-card-embedding-logs-view-test
   (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card card {:enable_embedding true}]
           (testing "GET /api/embed/card/:token"
             (client/client :get 200 (embed-test/card-url card))
@@ -232,7 +287,7 @@
 (deftest embedded-dashboard-card-query-view-log-test
   (mt/with-premium-features #{:audit-app}
     (testing "Running a query for a card in a public dashboard logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}
                        :model/Card          card     {}
                        :model/DashboardCard dashcard {:dashboard_id (:id dash)
@@ -245,7 +300,7 @@
 (deftest get-embedded-dashboard-logs-view-test
   (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
           (testing "GET /api/embed/dashboard/:token"
             (client/client :get 200 (embed-test/dashboard-url dash))

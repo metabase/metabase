@@ -1,7 +1,6 @@
 (ns metabase.models.collection-permission-graph-revision
   (:require
    [metabase.models.interface :as mi]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,13 +19,9 @@
   {:before mi/transform-json
    :after  mi/transform-json})
 
-(t2/define-before-update :model/CollectionPermissionGraphRevision
-  [_]
-  (throw (Exception. (tru "You cannot update a CollectionPermissionGraphRevision!"))))
-
 (defn latest-id
   "Return the ID of the newest `CollectionPermissionGraphRevision`, or zero if none have been made yet.
    (This is used by the collection graph update logic that checks for changes since the original graph was fetched)."
   []
-  (or (:id (t2/select-one [CollectionPermissionGraphRevision [:%max.id :id]]))
+  (or (:id (t2/select-one [:model/CollectionPermissionGraphRevision [:%max.id :id]]))
       0))

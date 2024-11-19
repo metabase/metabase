@@ -1,15 +1,15 @@
 import {
-  restore,
-  popover,
   clearFilterWidget,
-  filterWidget,
   editDashboard,
-  saveDashboard,
+  filterWidget,
   getDashboardCard,
+  popover,
+  restore,
+  saveDashboard,
   setFilter,
-  visitQuestion,
   sidebar,
   visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";

@@ -7,8 +7,8 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.store :as qp.store]
-   [metabase.shared.util.i18n :refer [tru]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (def audit-db-view-names
@@ -44,12 +44,12 @@
   (when (= query-type :native)
     (throw (ex-info (tru "Native queries are not allowed on the audit database")
                     outer-query)))
-  (let [table-ids-or-native-kw (query-perms/query->source-table-ids query)]
+  (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)]
+    (when native?
+      (throw (ex-info (tru "Native queries are not allowed on the audit database")
+                      outer-query)))
     (qp.store/with-metadata-provider database-id
-      (doseq [table-id table-ids-or-native-kw]
-        (when (= table-id ::query-perms/native)
-          (throw (ex-info (tru "Native queries are not allowed on the audit database")
-                          outer-query)))
+      (doseq [table-id table-ids]
         (when-not (audit-db-view-names
                    (u/lower-case-en (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
           (throw (ex-info (tru "Audit queries are only allowed on audit views")
@@ -62,12 +62,12 @@
   :feature :audit-app
   [group-id changes]
   (let [[change-id tyype] (first (filter #(= (first %) (:id (audit/default-audit-collection))) changes))]
-      (when change-id
-        (let [create-queries-value (case tyype
-                                     :read  :query-builder
-                                     :none  :no
-                                     :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
-                                                            {:status-code 400})))
-              view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
-          (doseq [table view-tables]
-            (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))
+    (when change-id
+      (let [create-queries-value (case tyype
+                                   :read  :query-builder
+                                   :none  :no
+                                   :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
+                                                          {:status-code 400})))
+            view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
+        (doseq [table view-tables]
+          (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))

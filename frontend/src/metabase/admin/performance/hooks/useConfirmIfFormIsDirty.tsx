@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { t } from "ttag";
 

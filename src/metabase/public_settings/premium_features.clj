@@ -6,6 +6,8 @@
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [diehard.circuit-breaker :as dh.cb]
+   [diehard.core :as dh]
    [environ.core :refer [env]]
    [malli.core :as mc]
    [metabase.api.common :as api]
@@ -57,6 +59,10 @@
 
 (declare premium-embedding-token)
 
+(def ^:private ^:const active-users-count-cache-ttl
+  "Amount of time before we re-fetch the count of active users."
+  (u/minutes->ms 5))
+
 ;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
 ;; at a time.
 (let [f        (fn []
@@ -71,31 +77,30 @@
                    result))
       memoized (memoize/ttl
                 f
-                :ttl/threshold (u/minutes->ms 5))
+                :ttl/threshold (u/minutes->ms active-users-count-cache-ttl))
       lock     (Object.)]
-  (defn cached-active-users-count
-    "Primarily used for the settings because we don't wish it to be 100%. (HUH?)"
+  (defn- cached-active-users-count'
+    "Returns a count of users on the system, cached for 5 minutes."
     []
     (locking lock
       (memoized))))
 
-(defsetting active-users-count
+(defsetting cached-active-users-count
   (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
   :visibility :admin
   :type       :integer
   :audit      :never
   :setter     :none
   :default    0
+  :export?    false
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
-                 0
-                 (cached-active-users-count))))
+                  0
+                  (cached-active-users-count'))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
-
-(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (def TokenStatus
   "Schema for a response from the token status API."
@@ -104,38 +109,90 @@
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
    [:features      {:optional true} [:sequential [:string {:min 1}]]]
+   [:plan-alias    {:optional true} :string]
    [:trial         {:optional true} :boolean]
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]])
 
-(defn- fetch-token-and-parse-body*
-  [token base-url site-uuid]
-  (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users      (cached-active-users-count)
-                                    :site-uuid  site-uuid
-                                    :mb-version (:tag config/mb-version-info)}})
-          :body
-          (json/parse-string keyword)))
+(def ^:private ^:const token-status-cache-ttl
+  "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
+  (u/hours->ms 12))
+
+(def ^{:arglists '([token base-url site-uuid active-users-count])} fetch-token-and-parse-body*
+  "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
+  cached, but may trigger the *store-circuit-breaker*."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[token base-url site-uuid _active-users-count]]
+                         [token base-url site-uuid])}
+   (fn [token base-url site-uuid active-users-count]
+     (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
+     (let [{:keys [body status] :as resp} (some-> (token-status-url token base-url)
+                                                  (http/get {:query-params     {:users      active-users-count
+                                                                                :site-uuid  site-uuid
+                                                                                :mb-version (:tag config/mb-version-info)}
+                                                             :throw-exceptions false}))]
+       (cond
+         (http/success? resp) (some-> body (json/parse-string keyword))
+
+         (<= 400 status 499) (some-> body (json/parse-string keyword))
+
+         ;; exceptions are not cached.
+         :else (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                                   :body body})))))
+
+   :ttl/threshold token-status-cache-ttl))
+
+(def ^:private store-circuit-breaker-config
+  {;; if 10 requests within 10 seconds fail, open the circuit breaker.
+   ;; (a lower threshold ratio wouldn't make sense here because successful results are cached, so as soon as we get
+   ;; one successful response we're guaranteed to only get successes until cache expiration)
+   :failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
+   ;; after the circuit is opened, wait 30 seconds before making any more requests to the store
+   :delay-ms (u/seconds->ms 30)
+   ;; when the circuit breaker is half-open, one request will be permitted. if it's successful, return to normal.
+   ;; otherwise we'll wait another 30 seconds.
+   :success-threshold 1})
+
+(def ^:dynamic *store-circuit-breaker*
+  "A circuit breaker that short-circuits when requests to the API have repeatedly failed.
+
+  This prevents a pathological scenario where the store has a temporary outage (long enough for the cache to expire)
+  and then all instances everywhere fire off constant requests to get token status. Instead, execution will constantly
+  fail instantly until the circuit breaker is closed."
+  (dh.cb/circuit-breaker store-circuit-breaker-config))
+
+(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
-  (let [fut    (future (fetch-token-and-parse-body* token base-url site-uuid))
-        result (deref fut fetch-token-status-timeout-ms ::timed-out)]
-    (if (not= result ::timed-out)
-      result
-      (do
-        (future-cancel fut)
+  (let [active-user-count (cached-active-users-count)]
+    (try
+      (dh/with-circuit-breaker *store-circuit-breaker*
+        (dh/with-timeout {:timeout-ms fetch-token-status-timeout-ms
+                          :interrupt? true}
+          (try (fetch-token-and-parse-body* token base-url site-uuid active-user-count)
+               (catch Exception e
+                 (throw e)))))
+      (catch dev.failsafe.TimeoutExceededException _e
         {:valid         false
          :status        (tru "Unable to validate token")
-         :error-details (tru "Token validation timed out.")}))))
+         :error-details (tru "Token validation timed out.")})
+      (catch dev.failsafe.CircuitBreakerOpenException _e
+        {:valid         false
+         :status        (tru "Unable to validate token")
+         :error-details (tru "Token validation is currently unavailable.")})
+      ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before rethrowing.
+      (catch dev.failsafe.FailsafeException e
+        (throw (.getCause e))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
+
 (declare decode-airgap-token)
 
-(mu/defn max-users-allowed
+(mu/defn max-users-allowed :- [:maybe pos-int?]
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
-  [] :- [:or pos-int? :nil]
+  []
   (when-let [token (premium-embedding-token)]
     (when (str/starts-with? token "airgap_")
       (let [max-users (:max-users (decode-airgap-token token))]
@@ -148,37 +205,33 @@
     (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
       (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
 
-(mu/defn ^:private fetch-token-status* :- TokenStatus
+(mu/defn- fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- TokenStr]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/
   (cond (mc/validate [:re RemoteCheckedToken] token)
-        ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
-        ;; reasonable amount of time throw a timeout exception
-        (do
-          (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
-          (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
-            (try (fetch-token-and-parse-body token token-check-url site-uuid)
-                 (catch Exception e1
-                   ;; Unwrap exception from inside the future
-                   (let [e1 (ex-cause e1)]
-                     (log/errorf e1 "Error fetching token status from %s:" token-check-url)
-                     ;; Try the fallback URL, which was the default URL prior to 45.2
-                     (try (fetch-token-and-parse-body token store-url site-uuid)
-                          ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                          ;; first error and return a generic message about the token being invalid. This message
-                          ;; will get displayed in the Settings page in the admin panel so we do not want something
-                          ;; complicated
-                          (catch Exception e2
-                            (log/errorf (ex-cause e2) "Error fetching token status from %s:" store-url)
-                            (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                              (or
-                               body
-                               {:valid         false
-                                :status        (tru "Unable to validate token")
-                                :error-details (.getMessage e1)})))))))))
+    ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
+    ;; reasonable amount of time throw a timeout exception
+        (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+          (try (fetch-token-and-parse-body token token-check-url site-uuid)
+               (catch Exception e1
+                 (log/errorf e1 "Error fetching token status from %s:" token-check-url)
+                 ;; Try the fallback URL, which was the default URL prior to 45.2
+                 (try (fetch-token-and-parse-body token store-url site-uuid)
+                      ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                      ;; first error and return a generic message about the token being invalid. This message
+                      ;; will get displayed in the Settings page in the admin panel so we do not want something
+                      ;; complicated
+                      (catch Exception e2
+                        (log/errorf e2 "Error fetching token status from %s:" store-url)
+                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                          (or
+                           body
+                           {:valid         false
+                            :status        (tru "Unable to validate token")
+                            :error-details (.getMessage e1)})))))))
 
         (mc/validate [:re AirgapToken] token)
         (do
@@ -193,33 +246,17 @@
            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
 (def ^{:arglists '([token])} fetch-token-status
-  "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
-  too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
-  otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
-  because checks failed."
-  ;; don't blast the token status check API with requests if this gets called a bunch of times all at once -- wait for
-  ;; the first request to finish
-  (let [lock (Object.)
-        f    (memoize/ttl
-              (fn [token]
-                ;; this is a sanity check to make sure we can actually get the active user count BEFORE we try to call
-                ;; [[fetch-token-status*]], because `fetch-token-status*` catches Exceptions and therefore caches failed
-                ;; results. We were running into issues in the e2e tests where `active-users-count` was timing out
-                ;; because of to weird timeouts after restoring the app DB from a snapshot, which would cause other
-                ;; tests to fail because a timed-out token check would get cached as a result.
-                (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
-                (u/with-timeout (u/seconds->ms 5)
-                  (cached-active-users-count))
-                (fetch-token-status* token))
-              :ttl/threshold (u/minutes->ms 5))]
+  "Locked version of `fetch-token-status` allowing one request at a time."
+  (let [lock (Object.)]
     (fn [token]
       (locking lock
-        (f token)))))
+        (fetch-token-status* token)))))
 
 (declare token-valid-now?)
 
-(mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
+(mu/defn- valid-token->features :- [:set ms/NonBlankString]
   [token :- TokenStr]
+  (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
   (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
@@ -234,18 +271,6 @@
     ;; otherwise return the features this token supports
     (set features)))
 
-(def ^:private ^:const valid-token-recheck-interval-ms
-  "Amount of time to cache the status of a valid embedding token before forcing a re-check"
-  (u/hours->ms 24)) ; once a day
-
-(def ^:private ^{:arglists '([token])} valid-token->features
-  "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
-  ;; this is just `valid-token->features*` with some light caching
-  (let [f (memoize/ttl valid-token->features* :ttl/threshold valid-token-recheck-interval-ms)]
-    (fn [token]
-      (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
-      (f token))))
-
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
   :visibility :admin
@@ -254,7 +279,6 @@
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -262,6 +286,7 @@
 (defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
   :audit :never
+  :sensitive? true
   :setter
   (fn [new-value]
     ;; validate the new value if we're not unsetting it
@@ -282,10 +307,14 @@
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
 
-(defn is-airgapped?
+(defsetting airgap-enabled
   "Returns true if the current instance is airgapped."
-  []
-  (mc/validate AirgapToken (premium-embedding-token)))
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :audit      :never
+  :export?    false
+  :getter     (fn [] (mc/validate AirgapToken (premium-embedding-token))))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
@@ -303,6 +332,13 @@
       (catch Throwable e
         (cached-logger (premium-embedding-token) e)
         #{}))))
+
+(mu/defn plan-alias :- [:maybe :string]
+  "Returns a string representing the instance's current plan, if included in the last token status request."
+  []
+  (some-> (premium-embedding-token)
+          fetch-token-status
+          :plan-alias))
 
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."
@@ -322,7 +358,7 @@
   [feature-name]
   (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                 feature-name)
-           {:status-code 402}))
+           {:status-code 402 :status "error-premium-feature-not-available"}))
 
 (mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.
@@ -361,10 +397,10 @@
                         :getter     `(default-premium-feature-getter ~(some-> feature name))}
                        options)]
     `(do
-      (swap! premium-features conj ~feature)
-      (defsetting ~setting-name
-        ~docstring
-        ~@(mapcat identity options)))))
+       (swap! premium-features conj ~feature)
+       (defsetting ~setting-name
+         ~docstring
+         ~@(mapcat identity options)))))
 
 (define-premium-feature hide-embed-branding?
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
@@ -374,6 +410,10 @@
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
+
+(define-premium-feature enable-embedding-sdk-origins?
+  "Should we allow users embed the SDK in sites other than localhost?"
+  :embedding-sdk)
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
@@ -470,6 +510,10 @@
   "Enable automatic descriptions of questions and dashboards by LLMs?"
   :llm-autodescription)
 
+(define-premium-feature ^{:added "0.51.0"} enable-query-reference-validation?
+  "Enable the Query Validator Tool?"
+  :query-reference-validation)
+
 (define-premium-feature enable-upload-management?
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)
@@ -484,7 +528,10 @@
   :visibility :public
   :setter     :none
   :audit      :never
-  :getter     (fn [] (boolean ((*token-features*) "hosting")))
+  :getter     (fn [] (boolean
+                      (and
+                       ((*token-features*) "hosting")
+                       (not (airgap-enabled)))))
   :doc        false)
 
 (defn log-enabled?
@@ -505,6 +552,14 @@
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
   :enhancements
   :getter #(and config/ee-available? (has-any-features?)))
+
+(define-premium-feature ^{:added "0.51.0"} enable-collection-cleanup?
+  "Should we enable Collection Cleanup?"
+  :collection-cleanup)
+
+(define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?
+  "Should we enable database auth-providers?"
+  :database-auth-providers)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Defenterprise Macro                                                |
@@ -543,18 +598,19 @@
   availability of EE code and the necessary premium feature. Returns a fn which, when invoked, applies its args to one
   of the EE implementation, the OSS implementation, or the fallback function."
   [ee-ns ee-fn-name]
-  (fn [& args]
-    (u/ignore-exceptions (classloader/require ee-ns))
-    (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
-      (cond
-        (and ee (check-feature feature))
-        (apply ee args)
+  (let [try-require-ee-ns-once (delay (u/ignore-exceptions (classloader/require ee-ns)))]
+    (fn [& args]
+      @try-require-ee-ns-once
+      (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
+        (cond
+          (and ee (check-feature feature))
+          (apply ee args)
 
-        (and ee (fn? fallback))
-        (apply fallback args)
+          (and ee (fn? fallback))
+          (apply fallback args)
 
-        :else
-        (apply oss args)))))
+          :else
+          (apply oss args))))))
 
 (defn- validate-ee-args
   "Throws an exception if the required :feature option is not present."
@@ -623,7 +679,7 @@
 
 (s/def ::defenterprise-schema-args
   (s/cat :return-schema      (s/? (s/cat :- #{:-}
-                                             :schema any?))
+                                         :schema any?))
          :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise
@@ -697,6 +753,20 @@
   Will throw an error if [[api/*current-user-id*]] is not bound."
   metabase-enterprise.advanced-permissions.api.util
   []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be using impersonations.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
+  ;; ee version becomes available
+  false)
+
+(defenterprise impersonation-enforced-for-db?
+  "Returns a boolean if the current user has an enforced connection impersonation policy for a provided database. In OSS
+  this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.advanced-permissions.api.util
+  [_db-or-id]
   (when-not api/*current-user-id*
     ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
     ;; returning `false` for users who should actually be using impersonations.

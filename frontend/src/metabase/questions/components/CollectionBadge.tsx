@@ -4,8 +4,8 @@ import { Badge } from "metabase/components/Badge";
 import Collection from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
-  Collection as CollectionType,
   CollectionId,
+  Collection as CollectionType,
 } from "metabase-types/api";
 import type { WrappedEntity } from "metabase-types/entities";
 import type { State } from "metabase-types/store";

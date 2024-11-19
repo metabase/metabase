@@ -7,8 +7,8 @@ import CS from "metabase/css/core/index.css";
 
 import {
   LicenseErrorMessage,
-  LicenseTextInput,
   LicenseInputContainer,
+  LicenseTextInput,
 } from "./LicenseInput.styled";
 
 export interface LicenseInputProps {

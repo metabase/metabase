@@ -14,7 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^:private parse-value-for-base-type
+(mu/defn- parse-value-for-base-type
   [v         :- :string
    base-type :- ::lib.schema.common/base-type]
   {:pre [(string? v)]}

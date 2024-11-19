@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
+import { CellMeasurer, CellMeasurerCache, List } from "react-virtualized";
 import _ from "underscore";
 
 import { Icon } from "metabase/ui";

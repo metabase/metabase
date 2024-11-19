@@ -37,15 +37,15 @@
     (when (seq to-remove)
       (log/debugf "Removing user %s from group(s) %s" user-id to-remove)
       (try
-       (t2/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
-       (catch clojure.lang.ExceptionInfo e
+        (t2/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
+        (catch clojure.lang.ExceptionInfo e
          ;; in case sync attempts to delete the last admin, the pre-delete hooks of
          ;; [[metabase.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
          ;; but we don't want to block user from logging-in, so catch this exception and log a warning
-         (if (= (ex-message e) (str perms-group-membership/fail-to-remove-last-admin-msg))
-           (log/warn "Attempted to remove the last admin during group sync!"
-                     "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
-           (throw e)))))
+          (if (= (ex-message e) (str perms-group-membership/fail-to-remove-last-admin-msg))
+            (log/warn "Attempted to remove the last admin during group sync!"
+                      "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
+            (throw e)))))
     ;; add new memberships for any groups as needed
     (doseq [id    to-add
             :when (not (excluded-group-ids id))]
@@ -61,7 +61,8 @@
   (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")
   (fn [] (if (premium-features/enable-any-sso?)
            :ee
-           :oss)))
+           :oss))
+  :type :boolean)
 
 (define-multi-setting-impl send-new-sso-user-admin-email? :oss
   :getter (fn [] (constantly true))

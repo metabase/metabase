@@ -47,7 +47,7 @@
    [:description     {:optional true} [:maybe :string]]
    [:display         {:optional true} [:maybe :string]]])
 
-(mu/defn ^:private normalize-bookmark-result :- BookmarkResult
+(mu/defn- normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
   points to one of them. Normalizes it so it has just the desired fields."
   [result]

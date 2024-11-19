@@ -9,7 +9,7 @@
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
-   [metabase.pulse]
+   [metabase.pulse.send :as pulse.send]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
@@ -30,33 +30,72 @@
                (t2/count PulseChannel)))
         (is (:archived (t2/select-one Pulse :id pulse-id)))))
 
-    (testing "Has PulseChannelRecipient"
-      (mt/with-temp [Pulse                 {pulse-id :id} {}
-                     PulseChannel          {pc-id :id} {:pulse_id     pulse-id
-                                                        :channel_type :email}
-                     PulseChannelRecipient _           {:user_id          (mt/user->id :rasta)
-                                                        :pulse_channel_id pc-id}]
-        (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
-        (is (= 1
-               (t2/count PulseChannel)))))
+    (testing "emails"
+      (testing "keep if has PulseChannelRecipient"
+        (mt/with-temp [Pulse                 {pulse-id :id} {}
+                       PulseChannel          {pc-id :id} {:pulse_id     pulse-id
+                                                          :channel_type :email}
+                       PulseChannelRecipient _           {:user_id          (mt/user->id :rasta)
+                                                          :pulse_channel_id pc-id}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 1
+                 (t2/count PulseChannel)))))
 
-    (testing "Has email"
-      (mt/with-temp [Pulse        {pulse-id :id} {}
-                     PulseChannel _ {:pulse_id     pulse-id
-                                     :channel_type :email
-                                     :details      {:emails ["test@metabase.com"]}}]
-        (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
-        (is (= 1
-               (t2/count PulseChannel)))))
+      (testing "keep if has external email"
+        (mt/with-temp [Pulse        {pulse-id :id} {}
+                       PulseChannel _ {:pulse_id     pulse-id
+                                       :channel_type :email
+                                       :details      {:emails ["test@metabase.com"]}}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 1
+                 (t2/count PulseChannel)))))
 
-    (testing "Has channel"
-      (mt/with-temp [Pulse        {pulse-id :id} {}
-                     PulseChannel _ {:pulse_id     pulse-id
-                                     :channel_type :slack
-                                     :details      {:channel ["#test"]}}]
-        (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
-        (is (= 1
-               (t2/count PulseChannel)))))))
+      (testing "clear if no recipients"
+        (mt/with-temp [Pulse        {pulse-id :id} {}
+                       PulseChannel _ {:pulse_id     pulse-id
+                                       :channel_type :email}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 0
+                 (t2/count PulseChannel))))))
+
+    (testing "slack"
+      (testing "Has channel"
+        (mt/with-temp [Pulse        {pulse-id :id} {}
+                       PulseChannel _ {:pulse_id     pulse-id
+                                       :channel_type :slack
+                                       :details      {:channel "#test"}}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 1
+                 (t2/count PulseChannel)))))
+
+      (testing "No channel"
+        (mt/with-temp [Pulse        {pulse-id :id} {}
+                       PulseChannel _ {:pulse_id     pulse-id
+                                       :channel_type :slack
+                                       :details      {:channel nil}}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 0
+                 (t2/count PulseChannel))))))
+
+    (testing "http"
+      (testing "do not clear if has a channel_id"
+        (mt/with-temp [:model/Channel {channel-id :id} {:type :channel/metabase-test
+                                                        :details {}}
+                       :model/Pulse  {pulse-id :id} {}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_id   channel-id
+                                              :channel_type "http"}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 1
+                 (t2/count :model/PulseChannel)))))
+
+      (testing "clear if there is no channel_id"
+        (mt/with-temp [:model/Pulse  {pulse-id :id} {}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type :http}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 0
+                 (t2/count :model/PulseChannel))))))))
 
 (def ^:private daily-at-1am
   {:schedule_type  "daily"
@@ -73,8 +112,8 @@
 (deftest send-pulse!*-delete-pcs-no-recipients-test
   (testing "send-pulse!* should delete PulseChannels and only send to enabled channels"
     (let [sent-channel-ids (atom #{})]
-      (with-redefs [metabase.pulse/send-pulse! (fn [_pulse-id & {:keys [channel-ids]}]
-                                                 (swap! sent-channel-ids set/union channel-ids))]
+      (with-redefs [pulse.send/send-pulse! (fn [_pulse-id & {:keys [channel-ids]}]
+                                             (swap! sent-channel-ids set/union channel-ids))]
         (mt/with-temp
           [:model/Pulse        {pulse :id}            {}
            :model/PulseChannel {pc :id}               (merge
@@ -93,32 +132,12 @@
                                                         :channel_type :slack
                                                         :details      {}}
                                                        daily-at-1am)]
-          (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc pc-disabled pc-no-recipient})
+          (#'task.send-pulses/send-pulse!* pulse #{pc pc-disabled pc-no-recipient})
           (testing "only send to enabled channels that has recipients"
             (is (= #{pc} @sent-channel-ids)))
 
           (testing "channels that has no recipients are deleted"
             (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
-
-(deftest send-pulse!*-update-trigger-priority-test
-  (testing "send-pulse!* should update the priority of the trigger based on the duration of the pulse"
-    (pulse-channel-test/with-send-pulse-setup!
-     (with-redefs [task.send-pulses/ms-duration->priority (constantly 7)
-                   metabase.pulse/send-pulse!             (constantly nil)]
-       (mt/with-temp
-         [:model/Pulse        {pulse :id} {}
-          :model/PulseChannel {pc :id}    (merge
-                                           {:pulse_id     pulse
-                                            :channel_type :slack
-                                            :details      {:channel "#random"}}
-                                           daily-at-1am)]
-         (testing "priority is 6 to start with"
-           (is (= 6 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
-         (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
-         (testing "send pulse should update its priority"
-           ;; 5 is the default priority of a trigger, we need it to be higher than that because
-           ;; pulse is time sensitive compared to other tasks like sync
-           (is (= 7 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority)))))))))
 
 (deftest init-send-pulse-triggers!-group-runs-test
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"

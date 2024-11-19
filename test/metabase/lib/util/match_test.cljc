@@ -197,8 +197,8 @@
                          [:field "Wow" {:base-type :type/*}]]
               :fields   [[:field 40 {:source-field 30}]]}
              (lib.util.match/replace-in a-query [:breakout]
-                                        [:field (id :guard integer?) nil]
-                                        [:field id {:temporal-unit :day}])))))
+               [:field (id :guard integer?) nil]
+               [:field id {:temporal-unit :day}])))))
 
 (t/deftest ^:parallel replace-multiple-patterns-test
   (t/testing "can we use multiple patterns at the same time?!"
@@ -207,11 +207,11 @@
                          [:field "Wow" {:base-type :type/*, :temporal-unit :month}]]
               :fields   [[:field 40 {:source-field 30}]]}
              (lib.util.match/replace-in a-query [:breakout]
-                                        [:field (id :guard integer?) nil]
-                                        [:field id {:temporal-unit :day}]
+               [:field (id :guard integer?) nil]
+               [:field id {:temporal-unit :day}]
 
-                                        [:field (id :guard string?) opts]
-                                        [:field id (assoc opts :temporal-unit :month)])))))
+               [:field (id :guard string?) opts]
+               [:field id (assoc opts :temporal-unit :month)])))))
 
 (t/deftest ^:parallel replace-field-ids-test
   (t/testing "can we use `replace` to replace the ID of the Field in :field clauses?"
@@ -228,11 +228,11 @@
     (t/is (= {:query {:fields [[:fk-> [:field 1 nil] [:field 2 nil]]
                                [:fk-> [:field 3 nil] [:field 4 nil]]]}}
              (lib.util.match/replace-in
-              {:query {:fields [[:fk-> 1 2]
-                                [:fk-> [:field 3 nil] [:field 4 nil]]]}}
-              [:query :fields]
-              [:fk-> (source :guard integer?) (dest :guard integer?)]
-              [:fk-> [:field source nil] [:field dest nil]])))))
+               {:query {:fields [[:fk-> 1 2]
+                                 [:fk-> [:field 3 nil] [:field 4 nil]]]}}
+               [:query :fields]
+               [:fk-> (source :guard integer?) (dest :guard integer?)]
+               [:fk-> [:field source nil] [:field dest nil]])))))
 
 (t/deftest ^:parallel replace-raw-keyword-patterns-test
   (t/testing "does `replace` accept a raw keyword as the pattern the way `match` does?"

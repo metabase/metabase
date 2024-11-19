@@ -20,7 +20,6 @@ export const ListItemName = styled.span`
 export const ListItemLink = styled(Link)`
   display: flex;
   align-items: center;
-
   color: var(--mb-color-brand);
 
   ${ListItemName} {

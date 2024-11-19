@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [compojure.core :refer [GET]]
    [malli.core :as mc]
    [metabase.api.common :as api]
@@ -111,29 +112,57 @@
 
 (defsetting custom-geojson
   (deferred-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
-  :type    :json
-  :getter  (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
-  :setter  (fn [new-value]
-             ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.
-             (let [new-value (not-empty (reduce dissoc new-value (keys (builtin-geojson))))]
-               (when new-value
-                 (validate-geojson new-value))
-               (setting/set-value-of-type! :json :custom-geojson new-value)))
+  :encryption :no
+  :type       :json
+  :getter     (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
+  :setter     (fn [new-value]
+                ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.
+                (let [new-value (not-empty (reduce dissoc new-value (keys (builtin-geojson))))]
+                  (when new-value
+                    (validate-geojson new-value))
+                  (setting/set-value-of-type! :json :custom-geojson new-value)))
   :visibility :public
   :export?    true
   :audit      :raw-value)
 
 (def ^:private connection-timeout-ms 8000)
 
+(defn- url->geojson
+  [url]
+  (let [resp (try (http/get url {:as                 :reader
+                                 :redirect-strategy  :none
+                                 :socket-timeout     connection-timeout-ms
+                                 :connection-timeout connection-timeout-ms
+                                 :throw-exceptions   false})
+                  (catch Throwable _
+                    (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
+        success? (<= 200 (:status resp) 399)
+        allowed-content-types #{"application/geo+json"
+                                "application/vnd.geo+json"
+                                "application/json"
+                                "text/plain"}
+        ;; if the content-type header is missing, just pretend it's `text/plain` and let it through
+        content-type (get-in resp [:headers :content-type] "text/plain")
+        ok-content-type? (some #(str/starts-with? content-type %)
+                               allowed-content-types)]
+    (cond
+      (not success?)
+      (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))
+
+      (not ok-content-type?)
+      (throw (ex-info (tru "GeoJSON URL returned invalid content-type") {:status-code 400}))
+
+      :else (:body resp))))
+
+(defn- url->reader [url]
+  (if-let [resource (io/resource url)]
+    (io/reader resource)
+    (url->geojson url)))
+
 (defn- read-url-and-respond
   "Reads the provided URL and responds with the contents as a stream."
   [url respond]
-  (with-open [^BufferedReader reader (if-let [resource (io/resource url)]
-                                       (io/reader resource)
-                                       (:body (http/get url {:as                 :reader
-                                                             :redirect-strategy  :none
-                                                             :socket-timeout     connection-timeout-ms
-                                                             :connection-timeout connection-timeout-ms})))
+  (with-open [^BufferedReader reader (url->reader url)
               is                     (ReaderInputStream. reader)]
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))
@@ -148,8 +177,8 @@
   (if-let [url (get-in (custom-geojson) [(keyword key) :url])]
     (try
       (read-url-and-respond url respond)
-      (catch Throwable _e
-        (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
+      (catch Throwable e
+        (raise e)))
     (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
 
 (api/defendpoint-async GET "/"
@@ -164,10 +193,7 @@
     (try
       (when-not (valid-geojson-url? decoded-url)
         (throw (ex-info (invalid-location-msg) {:status-code 400})))
-      (try
-        (read-url-and-respond decoded-url respond)
-        (catch Throwable _
-          (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
+      (read-url-and-respond decoded-url respond)
       (catch Throwable e
         (raise e)))))
 

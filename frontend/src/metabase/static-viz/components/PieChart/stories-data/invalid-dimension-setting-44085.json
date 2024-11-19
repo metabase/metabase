@@ -1,0 +1,278 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 138,
+      "collection_position": null,
+      "table_id": null,
+      "can_run_adhoc_query": true,
+      "result_metadata": [
+        {
+          "display_name": "valid_dimension_col",
+          "field_ref": [
+            "field",
+            "valid_dimension_col",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "valid_dimension_col",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 11
+              }
+            }
+          }
+        },
+        {
+          "display_name": "count",
+          "field_ref": [
+            "field",
+            "count",
+            {
+              "base-type": "type/BigInteger"
+            }
+          ],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": "type/Quantity",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 6,
+                "q1": 7.5,
+                "q3": 33,
+                "max": 40,
+                "sd": 18.14754345175493,
+                "avg": 19.333333333333332
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "person@metabase.com",
+        "first_name": "person",
+        "last_login": "2024-06-03T09:10:34.386373Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 155,
+        "last_name": "person",
+        "date_joined": "2023-02-13T10:28:16.829969Z",
+        "common_name": "person person"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 26,
+      "enable_embedding": false,
+      "collection_id": 201,
+      "query_type": "native",
+      "name": "Some time",
+      "last_query_start": "2024-06-24T18:59:09.163074Z",
+      "dashboard_count": 1,
+      "last_used_at": "2024-06-24T18:59:10.51021Z",
+      "type": "question",
+      "average_query_time": 621.0131578947369,
+      "creator_id": 155,
+      "can_restore": false,
+      "moderation_reviews": [],
+      "updated_at": "2024-06-24T18:59:10.52261Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "type": "native",
+        "database": 26,
+        "native": {
+          "query": "",
+          "template-tags": {}
+        }
+      },
+      "id": 14106,
+      "parameter_mappings": [],
+      "display": "pie",
+      "archived_directly": false,
+      "entity_id": "-42R-OXQopRSdUQX9CpiV",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 155,
+        "email": "person@metabase.com",
+        "first_name": "person",
+        "last_name": "person",
+        "timestamp": "2023-11-28T11:11:51.413897Z"
+      },
+      "visualization_settings": {
+        "graph.show_goal": false,
+        "graph.y_axis.title_text": "number",
+        "graph.show_values": false,
+        "table.pivot": false,
+        "pie.percent_visibility": "off",
+        "pie.dimension": "invalid_dimension",
+        "table.cell_column": "count",
+        "graph.x_axis.title_text": "axis_title",
+        "pie.colors": {
+          "24-48 hours": "#A7D07C",
+          "over 48 hours": "#E75454",
+          "≤24 hours": "#689636"
+        },
+        "graph.metrics": ["count"],
+        "table.pivot_column": "valid_dimension_col",
+        "column_settings": {},
+        "graph.dimensions": ["valid_dimension_col"]
+      },
+      "collection": {
+        "authority_level": "official",
+        "description": null,
+        "archived": false,
+        "slug": "engineering",
+        "archive_operation_id": null,
+        "name": "Engineering",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 201,
+        "archived_directly": null,
+        "entity_id": "aFOzW4OpRGbAsmD7OMriX",
+        "location": "/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2016-01-25T01:23:13.767Z"
+      },
+      "metabase_version": "vUNKNOWN (7c47e04)",
+      "parameters": [],
+      "created_at": "2023-10-31T15:15:28.998225Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": false
+    },
+    "data": {
+      "rows": [
+        ["24-48 hours", 12],
+        ["≤24 hours", 40],
+        ["over 48 hours", 6]
+      ],
+      "results_timezone": "US/Pacific",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "valid_dimension_col",
+            "field_ref": [
+              "field",
+              "valid_dimension_col",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "valid_dimension_col",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 11
+                }
+              }
+            }
+          },
+          {
+            "display_name": "count",
+            "field_ref": [
+              "field",
+              "count",
+              {
+                "base-type": "type/BigInteger"
+              }
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": "type/Quantity",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 6,
+                  "q1": 7.5,
+                  "q3": 33,
+                  "max": 40,
+                  "sd": 18.14754345175493,
+                  "avg": 19.333333333333332
+                }
+              }
+            }
+          }
+        ]
+      },
+      "requested_timezone": "US/Pacific",
+      "format-rows?": true,
+      "cols": [
+        {
+          "display_name": "valid_dimension_col",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "valid_dimension_col",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "valid_dimension_col",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "count",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "count",
+            {
+              "base-type": "type/BigInteger"
+            }
+          ],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": ""
+      },
+      "is_sandboxed": false,
+      "insights": null
+    }
+  }
+]

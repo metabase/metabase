@@ -13,12 +13,16 @@ describe("getLegendItems", () => {
 
   it("should return legend items when there are multiple series", () => {
     const legendItems = getLegendItems([
-      createMockSeriesModel({ name: "Series 1", color: "red" }),
-      createMockSeriesModel({ name: "Series 2", color: "blue" }),
+      createMockSeriesModel({ name: "Series 1", color: "red", visible: true }),
+      createMockSeriesModel({
+        name: "Series 2",
+        color: "blue",
+        visible: false,
+      }),
     ]);
     expect(legendItems).toStrictEqual([
-      { name: "Series 1", color: "red", key: "dataKey" },
-      { name: "Series 2", color: "blue", key: "dataKey" },
+      { name: "Series 1", color: "red", key: "dataKey", visible: true },
+      { name: "Series 2", color: "blue", key: "dataKey", visible: false },
     ]);
   });
 
@@ -27,7 +31,7 @@ describe("getLegendItems", () => {
       createMockBreakoutSeriesModel({ name: "breakout series" }),
     ]);
     expect(legendItems).toEqual([
-      { name: "breakout series", color: "red", key: "dataKey" },
+      { name: "breakout series", color: "red", key: "dataKey", visible: true },
     ]);
   });
 });

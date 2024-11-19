@@ -4,15 +4,15 @@ import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 
 import {
-  GAUGE_ARC_ANGLE,
   BASE_FONT_SIZE,
-  VALUE_MARGIN,
-  GAUGE_OUTER_RADIUS,
-  SEGMENT_LABEL_MARGIN,
   DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
+  GAUGE_ARC_ANGLE,
+  GAUGE_OUTER_RADIUS,
   SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE,
   SEGMENT_LABEL_FONT_SIZE,
+  SEGMENT_LABEL_MARGIN,
   START_ANGLE,
+  VALUE_MARGIN,
 } from "./constants";
 import type {
   GaugeLabelData,

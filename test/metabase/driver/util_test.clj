@@ -209,12 +209,12 @@
              :required    true}
             {:name "last-prop"}]
            (driver.u/connection-props-server->client
-             nil
-             [{:name "first-prop"}
-              {:name         "my-schema-filters"
-               :type         :schema-filters
-               :display-name "Schemas"}
-              {:name "last-prop"}])))))
+            nil
+            [{:name "first-prop"}
+             {:name         "my-schema-filters"
+              :type         :schema-filters
+              :display-name "Schemas"}
+             {:name "last-prop"}])))))
 
 (deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
@@ -222,9 +222,9 @@
                       {:name "prop-b", :visible-if {:prop-a "something else"}}
                       {:name "prop-c", :visible-if {:prop-b "something else entirely"}}]]
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Cycle detected"
-            (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
+           clojure.lang.ExceptionInfo
+           #"Cycle detected"
+           (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
 (deftest ^:parallel connection-details-client->server-test
   (testing "db-details-client->server works as expected"
@@ -275,8 +275,8 @@
 
 (deftest ^:parallel mark-h2-superseded-test
   (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
-   (is (=? {:driver-name "H2", :superseded-by :deprecated}
-           (:h2 (driver.u/available-drivers-info))))))
+    (is (=? {:driver-name "H2", :superseded-by :deprecated}
+            (:h2 (driver.u/available-drivers-info))))))
 
 (deftest ^:parallel database-id->driver-use-qp-store-test
   (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
@@ -288,20 +288,37 @@
   (let [fake-test-db (mt/db)]
     (testing "supports? returns false when `driver/database-supports?` throws an exception"
       (with-redefs [driver/database-supports? (fn [_ _ _] (throw (Exception. "test exception message")))]
-        (let [log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
-                             (is (false? (driver.u/supports? :test-driver :test-feature fake-test-db))))]
-          (is (some (fn [[level ^Throwable exception message]]
-                      (and (= level :error)
-                           (= (.getMessage exception) "test exception message")
-                           (= message (u/format-color 'red "Failed to check feature 'test-feature' for database 'test-data'"))))
-                    log-messages)))))
-    (testing "supports? returns false when `driver/database-supports?` takes longer than the timeout"
-      (with-redefs [driver.u/supports?-timeout-ms 100
-                    driver/database-supports?     (fn [_ _ _] (Thread/sleep 200) true)]
-        (let [log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
-                             (is (false? (driver.u/supports? :test-driver :test-feature fake-test-db))))]
-          (is (some (fn [[level ^Throwable exception message]]
-                      (and (= level :error)
-                           (= (.getMessage exception) "Timed out after 100.0 ms")
-                           (= message (u/format-color 'red "Failed to check feature 'test-feature' for database 'test-data'"))))
-                    log-messages)))))))
+        (let [db      (assoc fake-test-db :name (mt/random-name))
+              feature (keyword (name (ns-name *ns*)) (mt/random-name))]
+          (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
+            (is (false? (driver.u/supports? :test-driver feature db)))
+            (is (some (fn [{:keys [level e message]}]
+                        (and (= level :error)
+                             (= (ex-message e) "test exception message")
+                             (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                                                        (u/qualified-name feature)
+                                                        (:name db)))))
+                      (log-messages)))))))))
+
+(deftest supports?-failure-test-2
+  (let [fake-test-db (mt/db)]
+    (binding [driver.u/*memoize-supports?* true]
+      (testing "supports? returns false when `driver/database-supports?` takes longer than the timeout"
+        (let [db      (assoc fake-test-db :name (mt/random-name))
+              feature (keyword (name (ns-name *ns*)) (mt/random-name))]
+          (with-redefs [driver.u/supports?-timeout-ms 100
+                        driver/database-supports? (fn [_ _ _] (Thread/sleep 200) true)]
+            (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
+              (is (false? (driver.u/supports? :test-driver feature db)))
+              (is (some (fn [{:keys [level e message]}]
+                          (and (= level :error)
+                               (= (ex-message e) "Timed out after 100.0 ms")
+                               (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                                                          (u/qualified-name feature)
+                                                          (:name db)))))
+                        (log-messages)))))
+          (testing "we memoize the results for the same database, so we don't log the error again"
+            (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
+              (is (false? (driver.u/supports? :test-driver feature db)))
+              (is (= []
+                     (log-messages))))))))))

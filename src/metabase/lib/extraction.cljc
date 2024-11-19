@@ -10,7 +10,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defn- column-extract-temporal-units [column]
@@ -81,8 +81,7 @@
 (mu/defn extraction-expression :- ::lib.schema.expression/expression
   "Given an `extraction` as returned by [[column-extractions]], return the expression clause that should be added to a
   query."
-  [{:keys [column tag] :as _expression} :- ::lib.schema.extraction/extraction
-   ]
+  [{:keys [column tag] :as _expression} :- ::lib.schema.extraction/extraction]
   (case tag
     ;; Temporal extractions
     :hour-of-day     (lib.expression/get-hour column)

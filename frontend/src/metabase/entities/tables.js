@@ -33,9 +33,9 @@ import {
 } from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
-  getQuestionVirtualTableId,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
+  getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS
@@ -224,6 +224,24 @@ const Tables = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
+    if (type === Fields.actionTypes.UPDATE && !error) {
+      const updatedField = payload.field;
+      const tableId = updatedField.table_id;
+      const table = state[tableId];
+
+      if (table) {
+        return {
+          ...state,
+          [tableId]: {
+            ...table,
+            original_fields: table.original_fields?.map(field => {
+              return field.id === updatedField.id ? updatedField : field;
+            }),
+          },
+        };
+      }
+    }
+
     if (type === Questions.actionTypes.CREATE && !error) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);

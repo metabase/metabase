@@ -1,15 +1,16 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
-  isValidCollectionId,
   canonicalCollectionId,
   isTrashedCollection,
+  isValidCollectionId,
 } from "metabase/collections/utils";
 import type {
   CollectionPickerItem,
+  CollectionPickerModalProps,
   CollectionPickerOptions,
 } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
@@ -33,6 +34,7 @@ export interface FormCollectionPickerProps
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   zIndex?: number;
+  collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
 function ItemName({
@@ -57,6 +59,7 @@ function FormCollectionPicker({
   placeholder = t`Select a collection`,
   type = "collections",
   filterPersonalCollections,
+  collectionPickerModalProps,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -102,6 +105,7 @@ function FormCollectionPicker({
       hasConfirmButtons: true,
       namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
+      hasRecents: type !== "snippet-collections",
     }),
     [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
@@ -151,6 +155,7 @@ function FormCollectionPicker({
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
           options={options}
+          {...collectionPickerModalProps}
         />
       )}
     </>

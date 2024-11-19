@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -19,9 +19,9 @@ import PermissionsPageLayout from "../../components/PermissionsPageLayout";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
   initializeCollectionPermissions,
-  updateCollectionPermission,
-  saveCollectionPermissions,
   loadCollectionPermissions,
+  saveCollectionPermissions,
+  updateCollectionPermission,
 } from "../../permissions";
 import type {
   CollectionIdProps,
@@ -29,11 +29,11 @@ import type {
   CollectionSidebarType,
 } from "../../selectors/collection-permissions";
 import {
-  getCollectionsSidebar,
-  getCollectionsPermissionEditor,
-  getCollectionEntity,
-  getIsDirty,
   collectionsQuery,
+  getCollectionEntity,
+  getCollectionsPermissionEditor,
+  getCollectionsSidebar,
+  getIsDirty,
 } from "../../selectors/collection-permissions";
 
 const mapDispatchToProps = {

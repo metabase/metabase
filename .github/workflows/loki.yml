@@ -52,7 +52,9 @@ jobs:
         run: yarn build-pure:cljs
 
       - name: Build Storybook
-        run: yarn build-storybook
+        # We won't be able to use Storybook play's `userEvent` with production build
+        # see https://github.com/storybookjs/storybook/issues/19758
+        run: NODE_ENV=development yarn build-storybook
 
       - name: Serve Storybook
         run: yarn http-server storybook-static -p 6006 &
@@ -69,7 +71,7 @@ jobs:
 
       - name: Run Loki Visual Tests
         run: |
-          yarn loki test
+          yarn test-visual:loki
 
       - name: Generate Visual Report on Failure
         if: failure()
@@ -81,5 +83,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: loki-report
+          include-hidden-files: true
           path: .loki/
           if-no-files-found: ignore

@@ -1,5 +1,8 @@
 (ns metabase.lib.drill-thru.underlying-records-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
+       :clj  ([java-time.api :as t]
+              [metabase.util.malli.fn :as mu.fn]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -10,19 +13,15 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
-       :clj  ([java-time.api :as jt]
-              [metabase.util.malli.fn :as mu.fn]))))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel underlying-records-availability-test
   (testing "underlying-records is available for non-header clicks with at least one breakout"
     (canned/canned-test
-      :drill-thru/underlying-records
-      (fn [test-case context {:keys [click column-kind]}]
+     :drill-thru/underlying-records
+     (fn [test-case context {:keys [click column-kind]}]
         ;; TODO: The docs claim that underlying-records works on pivot cells, and so it does, but the so-called pivot case
         ;; never occurs in actual pivot tables!
         ;; - Clicks on row/column "headers", (that is, breakout values like a month or product category) look like regular
@@ -32,16 +31,17 @@
         ;; That all makes sense to me (Braden) and I think this is a bug in the docs, but it also might be a bug in the FE
         ;; code that should be setting the aggregation :value for cell clicks?
         ;; Tech debt issue: #39380
-        (and (#{:cell #_:pivot :legend} click)
-             (not (:native? test-case))
-             (or (seq (:dimensions context))
-                 (= column-kind :aggregation)))))))
+       (and (#{:cell #_:pivot :legend} click)
+            (not (:native? test-case))
+            (or (seq (:dimensions context))
+                (= column-kind :aggregation)))))))
 
 (deftest ^:parallel returns-underlying-records-test-1
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type  :drill-thru/underlying-records
     :click-type  :cell
     :query-type  :aggregated
+    :query-kinds [:mbql]
     :column-name "count"
     :expected    {:type :drill-thru/underlying-records, :row-count 77, :table-name "Orders"}}))
 
@@ -50,6 +50,7 @@
    {:drill-type  :drill-thru/underlying-records
     :click-type  :cell
     :query-type  :aggregated
+    :query-kinds [:mbql]
     :column-name "sum"
     :expected    {:type :drill-thru/underlying-records, :row-count 1, :table-name "Orders"}}))
 
@@ -58,6 +59,7 @@
    {:drill-type  :drill-thru/underlying-records
     :click-type  :cell
     :query-type  :aggregated
+    :query-kinds [:mbql]
     :column-name "max"
     :expected    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}}))
 
@@ -66,6 +68,7 @@
    {:drill-type   :drill-thru/underlying-records
     :click-type   :cell
     :query-type   :aggregated
+    :query-kinds [:mbql]
     :column-name  "count"
     :custom-query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :orders))
                       (lib/aggregate (lib/count))
@@ -77,19 +80,12 @@
 
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "underlying-records should only get shown once for aggregated query (#34439)"
-    (let [test-case           {:click-type  :cell
-                               :query-type  :aggregated
-                               :column-name "max"}
-          {:keys [query row]} (lib.drill-thru.tu/query-and-row-for-test-case test-case)
-          context             (lib.drill-thru.tu/test-case-context query row test-case)]
-      (testing (str "\nQuery = \n"   (u/pprint-to-str query)
-                    "\nContext =\n" (u/pprint-to-str context))
-        (let [drills (lib/available-drill-thrus query context)]
-          (testing (str "\nAvailable drills =\n" (u/pprint-to-str drills))
-            (is (= 1
-                   (count (filter #(= (:type %) :drill-thru/underlying-records)
-                                  drills))))))))))
-
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :cell
+      :query-type  :aggregated
+      :query-kinds [:mbql]
+      :column-name "max"
+      :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
 
 (def ^:private last-month
   #?(:cljs (let [now    (js/Date.)
@@ -98,9 +94,9 @@
              (-> (js/Date.UTC year (dec month))
                  (js/Date.)
                  (.toISOString)))
-     :clj  (let [last-month (-> (jt/zoned-date-time (jt/year) (jt/month))
-                                (jt/minus (jt/months 1)))]
-             (jt/format :iso-offset-date-time last-month))))
+     :clj  (let [last-month (-> (t/zoned-date-time (t/year) (t/month))
+                                (t/minus (t/months 1)))]
+             (t/format :iso-offset-date-time last-month))))
 
 (defn- underlying-state [query agg-index agg-value breakout-values exp-filters-fn]
   (let [columns                         (lib/returned-columns query)
@@ -130,7 +126,7 @@
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
               (->> (lib.drill-thru/available-drill-thrus query context)
                    (m/find-first #(= (:type %) :drill-thru/underlying-records))
-                   (lib.drill-thru/drill-thru query -1)))))))
+                   (lib.drill-thru/drill-thru query -1 nil)))))))
 
 (deftest ^:parallel underlying-records-apply-test
   (testing "sum(subtotal) over time"
@@ -152,9 +148,9 @@
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
     (underlying-state (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/aggregate (lib/sum-where
-                                           (meta/field-metadata :orders :subtotal)
-                                           (lib/= (meta/field-metadata :products :category)
-                                                  "Doohickey")))
+                                          (meta/field-metadata :orders :subtotal)
+                                          (lib/= (meta/field-metadata :products :category)
+                                                 "Doohickey")))
                           (lib/breakout (lib/with-temporal-bucket
                                           (meta/field-metadata :orders :created-at)
                                           :month)))
@@ -309,7 +305,7 @@
                          :aggregation (symbol "nil #_\"key is not present.\"")
                          :breakout    (symbol "nil #_\"key is not present.\"")
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
-              (lib.drill-thru/drill-thru query -1 drill))))))
+              (lib.drill-thru/drill-thru query drill))))))
 
 (deftest ^:parallel preserve-temporal-bucket-test
   (testing "preserve the temporal bucket on a breakout column in the previous stage (#13504 #36582)"

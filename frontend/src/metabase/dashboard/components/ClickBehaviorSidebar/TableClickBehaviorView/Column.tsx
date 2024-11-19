@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { t, jt, ngettext, msgid } from "ttag";
+import { jt, msgid, ngettext, t } from "ttag";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
@@ -32,14 +32,14 @@ const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
   }
   if (clickBehavior.linkType === "question") {
     return (
-      <Quoted>
+      <Quoted key="link-question">
         <Questions.Name id={targetId} />
       </Quoted>
     );
   }
   if (clickBehavior.linkType === "dashboard") {
     return (
-      <Quoted>
+      <Quoted key="link-dashboard">
         <Dashboards.Name id={targetId} />
       </Quoted>
     );

@@ -1,12 +1,12 @@
 (ns metabase.lib.extraction-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel column-extraction-test-1-datetime-column
   (testing "extract on a regular datetime column without aggregations adds the column in this stage"
@@ -80,8 +80,8 @@
                          :effective-type :type/Time
                          :semantic-type  :type/Time)
         mp        (lib/composed-metadata-provider
-                    (lib.tu/mock-metadata-provider {:fields [ship-time]})
-                    meta/metadata-provider)
+                   (lib.tu/mock-metadata-provider {:fields [ship-time]})
+                   meta/metadata-provider)
         query     (lib/query mp (lib.metadata/table mp (meta/id :orders)))]
     (is (=? [{:tag :hour-of-day}]
             (->> (lib/returned-columns query)
@@ -97,8 +97,8 @@
                          :effective-type :type/Date
                          :semantic-type  :type/Date)
         mp        (lib/composed-metadata-provider
-                    (lib.tu/mock-metadata-provider {:fields [arrival]})
-                    meta/metadata-provider)
+                   (lib.tu/mock-metadata-provider {:fields [arrival]})
+                   meta/metadata-provider)
         query     (lib/query mp (lib.metadata/table mp (meta/id :orders)))]
     (is (=? [{:tag :day-of-month}
              {:tag :day-of-week}
@@ -122,8 +122,8 @@
   ([] (homepage-provider meta/metadata-provider))
   ([base-provider]
    (lib/composed-metadata-provider
-     (lib.tu/mock-metadata-provider {:fields [homepage]})
-     base-provider)))
+    (lib.tu/mock-metadata-provider {:fields [homepage]})
+    base-provider)))
 
 (deftest ^:parallel extract-from-url-test
   ;; There's no URL columns in the same dataset, but let's pretend there's one called People.HOMEPAGE.

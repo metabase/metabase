@@ -1,0 +1,299 @@
+[
+  {
+    "card": {
+      "original_card_id": 344,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-05T23:00:06.2943Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (a727fad)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {
+        "pie.show_total": false
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-06-05T23:00:06.586079Z"
+      },
+      "collection_preview": true,
+      "entity_id": "iatSGTx7Kkgl0lj2KBcIP",
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 344,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                "total_accident",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "year"
+              }
+            ]
+          ],
+          "source-table": "card__101"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-06T00:10:11.798844Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 217.11764705882354,
+      "type": "question",
+      "last_used_at": "2024-06-06T00:10:11.798844Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-06-06T00:10:11.213995Z",
+      "name": "Pie - No Total - UK Car Accidents Sum by Year",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-06-05T21:21:49.288174Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": "type/CreationDate",
+          "unit": "year",
+          "name": "date",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 1417,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Sum of Total Accident",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 129982,
+                "q1": 133301.5,
+                "q3": 143189,
+                "max": 146322,
+                "sd": 6817.433406348756,
+                "avg": 138245.25
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 154,
+      "collection_position": null,
+      "view_count": 14,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2014-01-01T00:00:00-08:00", 146322],
+        ["2015-01-01T00:00:00-08:00", 140056],
+        ["2016-01-01T00:00:00-08:00", 136621],
+        ["2017-01-01T00:00:00-08:00", 129982]
+      ],
+      "cols": [
+        {
+          "database_type": "date",
+          "semantic_type": "type/CreationDate",
+          "table_id": 154,
+          "unit": "year",
+          "name": "date",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 1417,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "semantic_type": "type/Quantity",
+          "base_type": "type/Decimal",
+          "name": "sum",
+          "display_name": "Sum of Total Accident",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', CAST(\"source\".\"date\" AS timestamp)) AS \"date\", SUM(\"source\".\"total_accident\") AS \"sum\" FROM (SELECT \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"total_accident\", 0 - \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"Total Accident Inverted\" FROM \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\") AS \"source\" GROUP BY DATE_TRUNC('year', CAST(\"source\".\"date\" AS timestamp)) ORDER BY DATE_TRUNC('year', CAST(\"source\".\"date\" AS timestamp)) ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/CreationDate",
+            "unit": "year",
+            "name": "date",
+            "field_ref": [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 1417,
+            "visibility_type": "normal",
+            "display_name": "Date",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1460,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2014-01-01",
+                  "latest": "2017-12-31"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Total Accident",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 129982,
+                  "q1": 133301.5,
+                  "q3": 143189,
+                  "max": 146322,
+                  "sd": 6817.433406348756,
+                  "avg": 138245.25
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 136621,
+          "unit": "year",
+          "offset": 376895.5551740809,
+          "last-change": -0.04859428638349888,
+          "col": "sum",
+          "slope": -14.360016156571868,
+          "last-value": 129982,
+          "best-fit": ["*", 2709638462088.3906, ["pow", "x", -1.72792324512355]]
+        }
+      ]
+    }
+  }
+]

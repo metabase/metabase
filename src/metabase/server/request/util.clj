@@ -79,16 +79,21 @@
 
 (defn ip-address
   "The IP address a Ring `request` came from. Looks at the `public-settings/source-address-header` header (by default
-  `X-Forwarded-For`, or the `(:remote-addr request)` if not set."
+  `X-Forwarded-For`, or the `(:remote-addr request)` if not set, or if disabled via MB_NOT_BEHIND_PROXY=true."
   [{:keys [headers remote-addr]}]
-  (some-> (or (some->> (public-settings/source-address-header) (get headers))
-              remote-addr)
-          ;; first IP (if there are multiple) is the actual client -- see
-          ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
-          (str/split #"\s*,\s*")
-          first
-          ;; strip out non-ip-address characters like square brackets which we get sometimes
-          (str/replace #"[^0-9a-fA-F.:]" "")))
+  (let [header-ip-address (some->> (public-settings/source-address-header)
+                                   (get headers))
+        source-address    (if (or (public-settings/not-behind-proxy)
+                                  (not header-ip-address))
+                            remote-addr
+                            header-ip-address)]
+    (some-> source-address
+            ;; first IP (if there are multiple) is the actual client -- see
+            ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
+            (str/split #"\s*,\s*")
+            first
+            ;; strip out non-ip-address characters like square brackets which we get sometimes
+            (str/replace #"[^0-9a-fA-F.:]" ""))))
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
@@ -158,18 +163,18 @@
     (when (seq ip-addresses)
       (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
         (try
-         (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
-                                           :socket-timeout     gecode-ip-address-timeout-ms
-                                           :connection-timeout gecode-ip-address-timeout-ms})
-                            :body
-                            (json/parse-string true))]
-           (into {} (for [info response]
-                      [(:ip info) {:description (or (describe-location info)
-                                                    "Unknown location")
-                                   :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
-         (catch Throwable e
-           (log/error e "Error geocoding IP addresses" {:url url})
-           nil))))))
+          (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                            :socket-timeout     gecode-ip-address-timeout-ms
+                                            :connection-timeout gecode-ip-address-timeout-ms})
+                             :body
+                             (json/parse-string true))]
+            (into {} (for [info response]
+                       [(:ip info) {:description (or (describe-location info)
+                                                     "Unknown location")
+                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+          (catch Throwable e
+            (log/error e "Error geocoding IP addresses" {:url url})
+            nil))))))
 
 (def response-unauthentic
   "Generic `401 (Unauthenticated)` Ring response map."

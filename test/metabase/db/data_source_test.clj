@@ -26,6 +26,32 @@
                                                                       :password "1234"
                                                                       :db       "metabase"}))))
 
+  (testing :azure-managed-identity
+    (is (= (->DataSource
+            "jdbc:postgresql://localhost:5432/metabase"
+            {"ApplicationName"                  config/mb-version-and-process-identifier
+             "OpenSourceSubProtocolOverride"    "true"
+             "user"                             "cam"
+             "azure-managed-identity-client-id" "client ID"})
+           (mdb.data-source/broken-out-details->DataSource :postgres {:host                             "localhost"
+                                                                      :port                             5432
+                                                                      :user                             "cam"
+                                                                      :azure-managed-identity-client-id "client ID"
+                                                                      :db                               "metabase"})))
+    (testing "password takes precedence"
+      (is (= (->DataSource
+              "jdbc:postgresql://localhost:5432/metabase"
+              {"password"                      "1234"
+               "ApplicationName"               config/mb-version-and-process-identifier
+               "OpenSourceSubProtocolOverride" "true"
+               "user"                          "cam"})
+             (mdb.data-source/broken-out-details->DataSource :postgres {:host                             "localhost"
+                                                                        :port                             5432
+                                                                        :user                             "cam"
+                                                                        :password                         "1234"
+                                                                        :azure-managed-identity-client-id "client ID"
+                                                                        :db                               "metabase"})))))
+
   (testing :h2
     (is (= (->DataSource
             "jdbc:h2:file:/metabase/metabase.db"
@@ -102,19 +128,28 @@
       (is (= (->DataSource
               "jdbc:postgresql://metabase"
               {"user" "cam", "password" "1234"})
-             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "1234"))))
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "1234" nil)
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "1234" "client ID"))))
     (testing "username only"
       (is (= (->DataSource
               "jdbc:postgresql://metabase"
               {"user" "cam"})
-             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil)
-             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" ""))))
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil nil)
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "" nil))))
+    (testing "username and azure-managed-identity-client-id"
+      (is (= (->DataSource
+              "jdbc:postgresql://metabase"
+              {"user" "cam"
+               "azure-managed-identity-client-id" "client ID"})
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil "client ID")
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "" "client ID"))))
     (testing "password only"
       (is (= (->DataSource
               "jdbc:postgresql://metabase"
               {"password" "1234"})
-             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" nil "1234")
-             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "" "1234"))))))
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" nil "1234" nil)
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "" "1234" nil)
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "" "1234" "client ID"))))))
 
 (deftest ^:parallel equality-test
   (testing "Two DataSources with the same URL should be equal"

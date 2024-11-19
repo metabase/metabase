@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "e2e/support/helpers";
+import { openNativeEditor, restore } from "e2e/support/helpers";
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import {
@@ -14,7 +14,7 @@ const dateFilters = Object.entries(DATE_FILTER_SUBTYPES);
 describe("scenarios > filters > sql filters > field filter > Date", () => {
   function openDateFilterPicker(isFilterRequired) {
     const selector = isFilterRequired
-      ? cy.findByPlaceholderText("Select a default value…")
+      ? cy.findByText("Select a default value…")
       : cy.get("fieldset");
 
     return selector.click();
@@ -24,6 +24,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     filterType,
     filterValue,
     isFilterRequired = false,
+    buttonLabel = "Add filter",
   } = {}) {
     openDateFilterPicker(isFilterRequired);
 
@@ -38,20 +39,20 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
       case "Single Date":
         DateFilter.setSingleDate(filterValue);
-        cy.findByText("Add filter").click();
+        cy.findByText(buttonLabel).click();
         break;
 
       case "Date Range":
         DateFilter.setDateRange(filterValue);
-        cy.findByText("Add filter").click();
+        cy.findByText(buttonLabel).click();
         break;
 
       case "Relative Date":
         DateFilter.setRelativeDate(filterValue);
         break;
 
-      case "Date Filter":
-        DateFilter.setAdHocFilter(filterValue);
+      case "All Options":
+        DateFilter.setAdHocFilter(filterValue, buttonLabel);
         break;
 
       default:
@@ -107,6 +108,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         filterType: subType,
         filterValue: value,
         isFilterRequired: true,
+        buttonLabel: "Update filter",
       });
 
       SQLFilter.runQuery();
@@ -120,6 +122,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
 describe("scenarios > filters > sql filters > field filter > Number", () => {
   const numericFilters = Object.entries(NUMBER_FILTER_SUBTYPES);
+
   beforeEach(() => {
     restore();
     cy.intercept("POST", "api/dataset").as("dataset");
@@ -164,7 +167,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
         FieldFilter.setWidgetType(subType);
 
-        FieldFilter.addDefaultNumberFilter(value);
+        FieldFilter.addDefaultNumberFilter(value, "Update filter");
 
         SQLFilter.runQuery();
 
@@ -178,6 +181,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
 describe("scenarios > filters > sql filters > field filter > String", () => {
   const stringFilters = Object.entries(STRING_FILTER_SUBTYPES);
+
   beforeEach(() => {
     restore();
     cy.intercept("POST", "api/dataset").as("dataset");
@@ -233,7 +237,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
         FieldFilter.setWidgetType(subType);
 
         searchTerm
-          ? FieldFilter.pickDefaultValue(searchTerm, value)
+          ? FieldFilter.pickDefaultValue(searchTerm, value, "Update filter")
           : FieldFilter.addDefaultStringFilter(value);
 
         SQLFilter.runQuery();

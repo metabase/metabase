@@ -12,7 +12,6 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "case-sensitivity-string-filter-options",
   "expression-aggregations",
   "expressions",
-  "foreign-keys",
   "native-parameters",
   "nested-queries",
   "standard-deviation-aggregations",

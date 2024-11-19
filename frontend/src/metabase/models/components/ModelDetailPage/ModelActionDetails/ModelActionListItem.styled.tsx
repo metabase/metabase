@@ -66,7 +66,6 @@ export const CodeBlock = styled.pre`
   font-size: 0.7rem;
   white-space: pre-wrap;
   margin: 0;
-
   color: var(--mb-color-text-white);
   background-color: var(--mb-color-text-dark);
 `;
@@ -87,9 +86,7 @@ export const ImplicitActionCardContentRoot = styled.div`
 
   display: flex;
   align-items: center;
-
   color: var(--mb-color-text-medium);
   background-color: var(--mb-color-bg-medium);
-
   font-weight: 400;
 `;

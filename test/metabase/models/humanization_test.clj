@@ -7,7 +7,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn- get-humanized-display-name [actual-name strategy]
+(defn- get-humanized-display-name! [actual-name strategy]
   (with-redefs [humanization/humanization-strategy (constantly strategy)]
     (t2.with-temp/with-temp [Table {table-id :id} {:name actual-name}]
       (t2/select-one-fn :display_name Table, :id table-id))))
@@ -21,7 +21,7 @@
             [strategy expected]        strategy->expected]
       (testing (pr-str (list 'get-humanized-display-name input strategy))
         (is (= expected
-               (get-humanized-display-name input strategy)))))))
+               (get-humanized-display-name! input strategy)))))))
 
 (deftest rehumanize-test
   (testing "check that existing tables have their :display_names updated appropriately when strategy is changed"

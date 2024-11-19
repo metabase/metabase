@@ -13,8 +13,8 @@ import RowChartView from "../RowChartView/RowChartView";
 import type { BarData, RowChartTheme, Series, StackOffset } from "./types";
 import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
 import {
-  getMaxYValuesCount,
   getChartMargin,
+  getMaxYValuesCount,
   getRowChartGoal,
 } from "./utils/layout";
 import { addSideSpacingForTicksAndLabels, getChartScales } from "./utils/scale";

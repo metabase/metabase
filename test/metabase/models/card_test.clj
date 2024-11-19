@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
@@ -12,6 +11,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card :as card]
    [metabase.models.interface :as mi]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.card-test :as qp.card-test]
@@ -181,16 +181,6 @@
           ;; actions still exists
           (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
           (is (= 2 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
-
-(deftest replace-fields-and-tables!-test
-  (testing "fields and tables in a native card can be replaced"
-    ;; We need the user to be defined in order to population the new revision related to the card update
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
-        (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
-                                               :tables {(mt/id :orders) (mt/id :people)}})
-        (is (= "SELECT NAME FROM PEOPLE"
-               (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id)))))))))
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
@@ -432,13 +422,13 @@
       (testing "Should not be able to create new Card with a filter with the wrong Database ID"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""
+             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
              (t2.with-temp/with-temp [:model/Card _ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
         (t2.with-temp/with-temp [:model/Card {card-id :id} good-card-data]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""
+               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
                (t2/update! :model/Card card-id bad-card-data))))))))
 
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
@@ -577,6 +567,18 @@
         (is (= []
                (t2/select :model/ParameterCard :card_id source-card-id)))))))
 
+(deftest do-not-update-parameter-card-if-it-doesn't-change-test
+  (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
+    (mt/with-temp [:model/Card  {source-card-id :id} {}
+                   :model/Card  {card-id-1 :id}      {:parameters [{:name       "Category Name"
+                                                                    :slug       "category_name"
+                                                                    :id         "_CATEGORY_NAME_"
+                                                                    :type       "category"
+                                                                    :values_source_type    "card"
+                                                                    :values_source_config {:card_id source-card-id}}]}]
+      (mt/with-dynamic-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
+        (t2/update! :model/Card card-id-1 {:name "new name"})))))
+
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset test-data
     (mt/with-temp
@@ -660,7 +662,7 @@
                    :model/Card card2 {:name "derived card"
                                       :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]
       (is (empty? (serdes/descendants "Card" (:id card1))))
-      (is (= #{["Card" (:id card1)]}
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest ^:parallel descendants-test-3
@@ -674,7 +676,7 @@
                                                                :snippet-name "snippet"
                                                                :snippet-id   (:id snippet)}}
                                      :query "select * from products where {{snippet}}"}}}]
-      (is (= #{["NativeQuerySnippet" (:id snippet)]}
+      (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
              (serdes/descendants "Card" (:id card)))))))
 
 (deftest ^:parallel descendants-test-4
@@ -685,7 +687,7 @@
                                                     :type                 "id"
                                                     :values_source_type   "card"
                                                     :values_source_config {:card_id (:id card1)}}]}]
-      (is (= #{["Card" (:id card1)]}
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest ^:parallel extract-test
@@ -728,12 +730,11 @@
                  :visualization_settings
                  (json/parse-string keyword)))))))
 
-
 ;;; -------------------------------------------- Revision tests  --------------------------------------------
 
 (deftest ^:parallel diff-cards-str-test
   (are [x y expected] (= expected
-                       (u/build-sentence (revision/diff-strings :model/Card x y)))
+                         (u/build-sentence (revision/diff-strings :model/Card x y)))
     {:name        "Diff Test"
      :description nil}
     {:name        "Diff Test Changed"
@@ -791,6 +792,7 @@
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp
     [:model/Database   db   {:name "random db"}
+     :model/Card       base-card {}
      :model/Card       card {:name                "A Card"
                              :description         "An important card"
                              :collection_position 0
@@ -818,6 +820,7 @@
                             (= col :embedding_params)  {:category_name "locked"}
                             (= col :public_uuid)       (str (random-uuid))
                             (= col :table_id)          (mt/id :venues)
+                            (= col :source_card_id)    (:id base-card)
                             (= col :database_id)       (:id db)
                             (= col :query_type)        :native
                             (= col :type)              "model"
@@ -834,13 +837,11 @@
             (t2/delete! :model/Revision :model "Card" :model_id (:id card))
             (t2/update! :model/Card (:id card) changes)
             (create-card-revision! (:id card) false)
-
             (testing (format "we should track when %s changes" col)
               (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
-
             (when-not (#{;; these columns are expected to not have a description because it's always
                          ;; comes with a dataset_query changes
-                         :table_id :database_id :query_type
+                         :table_id :database_id :query_type :source_card_id
                          ;; we don't need a description for made_public_by_id because whenever this field changes
                          ;; public_uuid will change and we have a description for it.
                          :made_public_by_id
@@ -939,10 +940,10 @@
                                  :parameter_id              "param_3"
                                  :parameterized_object_type "card"
                                  :parameterized_object_id (:id card3)}]
-   (is (= [2 1 0]
-          (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
+    (is (= [2 1 0]
+           (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
 
-(deftest average-query-time-and-last-query-started-test
+(deftest ^:parallel average-query-time-and-last-query-started-test
   (let [now       (t/offset-date-time)
         yesterday (t/minus now (t/days 1))]
     (mt/with-temp
@@ -956,7 +957,14 @@
                                    :cache_hit    false
                                    :running_time 100}]
       (is (= 75 (-> card (t2/hydrate :average_query_time) :average_query_time int)))
-      (is (= now (-> card (t2/hydrate :last_query_start) :last_query_start))))))
+      ;; the DB might save last_query_start with a different level of precision than the JVM does, on my machine
+      ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_query_start` is coming back with
+      ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
+      ;; times we're comparing.
+      (is (= (.withNano now 0)
+             (-> (-> card (t2/hydrate :last_query_start) :last_query_start)
+                 t/offset-date-time
+                 (.withNano 0)))))))
 
 (deftest save-mlv2-card-test
   (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
@@ -1005,7 +1013,7 @@
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:dataset_query query}
                      :model/Card no-query {}]
         (is (=? {:can_run_adhoc_query true}
@@ -1029,3 +1037,55 @@
           (mt/with-test-user :crowberto
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
+
+(deftest breakouts-->identifier->action-fn-test
+  (are [b1 b2 expected--identifier->action] (= expected--identifier->action
+                                               (#'card/breakouts-->identifier->action b1 b2))
+    [[:field 10 {:temporal-unit :day}]]
+    nil
+    nil
+
+    [[:expression "x" {:temporal-unit :day}]]
+    nil
+    nil
+
+    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :month}]]
+    {[:expression "x"] [:update [:expression "x" {:temporal-unit :month}]]}
+
+    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :day}]]
+    nil
+
+    [[:field 10 {:temporal-unit :day}] [:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :day}] [:field 10 {:temporal-unit :month}]]
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+
+    [[:field 10 {:temporal-unit :year}] [:field 10 {:temporal-unit :day-of-week}]]
+    [[:field 10 {:temporal-unit :year}]]
+    nil))
+
+(deftest update-for-dashcard-fn-test
+  (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
+       (= expected-quasi-dashcards
+          (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:parameter_mappings []}]
+    nil
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]
+
+    {[:field 10] [:noop]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    nil
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :year}]]}
+                                 {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                                 {:target [:dimension [:field 10 {:temporal-unit :day}]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))

@@ -8,7 +8,7 @@ redirect_from:
 
 If you can't connect to your database, you'll need to figure out if the problem is happening with Metabase or your database server.
 
-If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser), go to [Troubleshooting missing tables](./cant-see-tables.md).
+If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser), go to [Troubleshooting missing tables](./cant-see-tables.md).
 
 ## Troubleshooting connections to Metabase
 
@@ -102,7 +102,7 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Test the connection to your database by running:
-   ```
+   ```sql
    SELECT 1
    ```
 

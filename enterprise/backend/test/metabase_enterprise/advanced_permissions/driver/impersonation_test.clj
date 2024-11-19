@@ -1,6 +1,7 @@
-(ns metabase-enterprise.advanced-permissions.driver.impersonation-test
+(ns ^:mb/driver-tests metabase-enterprise.advanced-permissions.driver.impersonation-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.api.util-test
     :as advanced-perms.api.tu]
@@ -9,6 +10,7 @@
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.database :refer [Database]]
+   [metabase.query-processor :as qp]
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -50,7 +52,7 @@
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                  :attributes     {"impersonation_attr" "impersonation_role"}}
       (mw.session/as-admin
-       (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
+        (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
   (testing "Does not throw an exception if passed a nil `database-or-id`"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
@@ -63,6 +65,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"User does not have attribute required for connection impersonation."
+           (@#'impersonation/connection-impersonation-role (mt/db))))))
+
+  (testing "Throws an exception if impersonation should be enforced, but the user's attribute is not a single string"
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                 :attributes     {"impersonation_attr" ["one" "two" "three"]}}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Connection impersonation attribute is invalid: role must be a single non-empty string."
            (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
 (deftest conn-impersonation-test-postgres
@@ -91,11 +101,11 @@
                          mt/process-query
                          mt/rows)))
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                     #"permission denied"
-                     (-> {:query "SELECT * FROM \"table_without_access\";"}
-                         mt/native-query
-                         mt/process-query
-                         mt/rows))))))))))
+                                    #"permission denied"
+                                    (-> {:query "SELECT * FROM \"table_without_access\";"}
+                                        mt/native-query
+                                        mt/process-query
+                                        mt/rows))))))))))
 
 (deftest conn-impersonation-test-redshift
   (mt/test-driver :redshift
@@ -131,10 +141,10 @@
                                           mt/process-query
                                           mt/rows)))))
             (finally
-             (doseq [statement [(format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\"" schema user)
-                                (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\";" schema user)
-                                (format "DROP USER IF EXISTS %s;" user)]]
-                 (jdbc/execute! spec [statement])))))))))
+              (doseq [statement [(format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\"" schema user)
+                                 (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\";" schema user)
+                                 (format "DROP USER IF EXISTS %s;" user)]]
+                (jdbc/execute! spec [statement])))))))))
 
 (deftest conn-impersonation-test-snowflake
   (mt/test-driver :snowflake
@@ -147,13 +157,13 @@
              clojure.lang.ExceptionInfo
              #"Connection impersonation is enabled for this database, but no default role is found"
              (mt/run-mbql-query venues
-                                {:aggregation [[:count]]})))
+               {:aggregation [[:count]]})))
         (mw.session/as-admin
-         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Connection impersonation is enabled for this database, but no default role is found"
-              (mt/run-mbql-query venues
-                                 {:aggregation [[:count]]}))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Connection impersonation is enabled for this database, but no default role is found"
+               (mt/run-mbql-query venues
+                 {:aggregation [[:count]]}))))
 
         ;; Update the test database with a default role that has full permissions
         (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
@@ -165,13 +175,57 @@
                clojure.lang.ExceptionInfo
                #"SQL compilation error:\nDatabase.*does not exist or not authorized"
                (mt/run-mbql-query venues
-                                  {:aggregation [[:count]]})))
+                 {:aggregation [[:count]]})))
 
           ;; Non-impersonated user should stil be able to query the table
           (mw.session/as-admin
-           (is (= [100]
-                  (mt/first-row
-                   (mt/run-mbql-query venues
-                                      {:aggregation [[:count]]})))))
+            (is (= [100]
+                   (mt/first-row
+                    (mt/run-mbql-query venues
+                      {:aggregation [[:count]]})))))
           (finally
             (t2/update! :model/Database :id (mt/id) (update (mt/db) :details dissoc :role))))))))
+
+(deftest persistence-disabled-when-impersonated-test
+  ;; Test explicitly with postgres since it supports persistence and impersonation
+  (mt/test-driver :postgres
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card model {:type          :model
+                                          :dataset_query (mt/mbql-query products)}]
+          (mt/with-persistence-enabled! [persist-models!]
+            (mt/as-admin (persist-models!))
+            (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                         :attributes     {"impersonation_attr" "impersonation_role"}}
+              (let [details (t2/select-one-fn :details :model/Database (mt/id))
+                    spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+                ;; Create impersonation_role on test DB so that the non-admin can execute queries
+                (doseq [statement ["DROP ROLE IF EXISTS \"impersonation_role\";"
+                                   "CREATE ROLE \"impersonation_role\";"
+                                   "GRANT ALL PRIVILEGES ON TABLE \"products\" to \"impersonation_role\";"]]
+                  (jdbc/execute! spec [statement]))
+                (try
+                  (let [persisted-info (t2/select-one :model/PersistedInfo
+                                                      :database_id (mt/id)
+                                                      :card_id (:id model))
+                        query          {:type     :query
+                                        :query    {:aggregation  [:count]
+                                                   :source-table (str "card__" (:id model))}
+                                        :database (mt/id)}]
+                    (let [impersonated-result (mt/with-test-user :rasta (qp/process-query query))
+                          ;; Make sure we run admin query second to reset the DB role on the connection for other tests!
+                          admin-result        (mt/as-admin (qp/process-query query))]
+                      (testing "Impersonated user (rasta) does not hit the model cache"
+                        (is (not (str/includes? (-> impersonated-result :data :native_form :query)
+                                                (:table_name persisted-info)))
+                            "Erroneously used the persisted model cache"))
+
+                      (testing "Query from admin hits the model cache"
+                        (is (str/includes? (-> admin-result :data :native_form :query)
+                                           (:table_name persisted-info))
+                            "Did not use the persisted model cache"))))
+
+                  (finally
+                    (doseq [statement ["REVOKE ALL PRIVILEGES ON TABLE \"products\" FROM \"impersonation_role\";"
+                                       "DROP ROLE IF EXISTS \"impersonation_role\";"]]
+                      (jdbc/execute! spec [statement]))))))))))))

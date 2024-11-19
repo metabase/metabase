@@ -17,10 +17,8 @@ const _SidebarGroup = styled.div`
 
 const SidebarGroupName = styled.span`
   display: block;
-
   font-size: 1em;
   font-weight: bold;
-
   margin-bottom: 1em;
 `;
 
@@ -38,7 +36,6 @@ export const SidebarGroup = Object.assign(_SidebarGroup, {
 
 export const SidebarContent = styled.div`
   padding: 1.5rem;
-
   background-color: var(--mb-color-bg-light);
   border-radius: 8px;
 

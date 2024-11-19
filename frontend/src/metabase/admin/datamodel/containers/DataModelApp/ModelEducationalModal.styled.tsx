@@ -13,7 +13,6 @@ export const Description = styled.p`
   line-height: 1.5em;
   color: var(--mb-color-text-dark);
   text-align: center;
-
   width: 80%;
   margin-top: 24px;
   margin-bottom: 24px;

@@ -2,8 +2,8 @@ import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import {
-  buildDetailsPermission,
   DETAILS_PERMISSION_OPTIONS,
+  buildDetailsPermission,
 } from "./details-permission";
 
 const defaultGroupId = 1;
@@ -23,7 +23,7 @@ const getPermissionGraph = (value = "yes"): GroupsPermissions =>
         details: value,
       },
     },
-  } as any);
+  }) as any;
 
 const isAdmin = true;
 const isNotAdmin = false;

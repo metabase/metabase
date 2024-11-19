@@ -3,7 +3,7 @@ import { checkNotNull } from "metabase/lib/types";
 import type { Database, Schema } from "metabase-types/api";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 
-import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
+import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
 
 interface SetupOpts {
   databases: Database[];
@@ -52,6 +52,7 @@ describe("Admin > UploadSettings > utils", () => {
         { name: "Database", value: 300 },
       ]);
     });
+
     it("should return an empty array if there are no databases", () => {
       expect(getDatabaseOptions([])).toEqual([]);
     });

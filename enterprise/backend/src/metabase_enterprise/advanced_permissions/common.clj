@@ -25,8 +25,9 @@
      db-id
      (:table_id instance))))
 
-(defenterprise current-user-can-read-schema?
-  "Enterprise version. Returns a boolean whether the current user can read the given schema"
+(defenterprise current-user-can-manage-schema-metadata?
+  "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
+  in the schema"
   :feature :advanced-permissions
   [db-id schema-name]
   (data-perms/user-has-permission-for-schema?
@@ -70,8 +71,9 @@
             :can_access_db_details   (data-perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
             :is_group_manager        api/*is-group-manager?*})))
 
-(defn current-user-has-application-permissions?
+(defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."
+  :feature :advanced-permissions
   [perm-type]
   (or api/*is-superuser?*
       (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* perm-type)))
@@ -80,7 +82,7 @@
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
   (t2/select-one-fn :is_group_manager PermissionsGroupMembership
-                       :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
+                    :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
 
 (defn filter-tables-by-data-model-perms
   "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions."
@@ -147,7 +149,7 @@
          (if tables
            (conj result (update db :tables filter-tables-by-data-model-perms))
            (conj result db))
-        result))
+         result))
      []
      dbs)))
 
@@ -174,6 +176,19 @@
         (premium-features/enable-sandboxes?)
         (t2/exists? :model/GroupTableAccessPolicy
                     :group_id group-id)))
+    :blocked
+    :unrestricted))
+
+(defenterprise new-table-view-data-permission-level
+  "Returns the view-data permission level to set for a new table in a given group and database. This is `blocked`
+  if the group has `blocked` for the DB or any table in the DB; otherwise it is `unrestricted`."
+  :feature :advanced-permissions
+  [db-id group-id]
+  (if (t2/exists? :model/DataPermissions
+                  :db_id db-id
+                  :perm_type :perms/view-data
+                  :perm_value :blocked
+                  :group_id group-id)
     :blocked
     :unrestricted))
 

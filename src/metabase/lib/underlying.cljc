@@ -15,7 +15,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private pop-until-aggregation-or-breakout :- [:maybe ::lib.schema/query]
+(mu/defn- pop-until-aggregation-or-breakout :- [:maybe ::lib.schema/query]
   "Strips off any trailing stages that do not contain aggregations.
 
   If there are no such stages, returns nil."
@@ -63,3 +63,8 @@
                 prev-col  (lib.equality/find-matching-column query -2 (lib.ref/ref column) prev-cols)]
             (when prev-col
               (recur (update query :stages pop) prev-col))))))))
+
+(mu/defn has-aggregation-or-breakout?
+  "Whether the `query` has an aggregation or breakout clause in some query stage."
+  [query :- ::lib.schema/query]
+  (some? (pop-until-aggregation-or-breakout query)))

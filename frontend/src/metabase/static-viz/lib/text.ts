@@ -6,7 +6,6 @@ import {
   CHAR_SIZES_FONT_WEIGHT,
 } from "../constants/char-sizes";
 
-const CHAR_ELLIPSES = "…";
 const FONT_WEIGHT_WIDTH_FACTOR = 0.039;
 
 export const { getTextWidth } = init(CHAR_SIZES);
@@ -32,26 +31,6 @@ export const measureTextWidth = (
 
 export const measureTextHeight = (fontSize: number) => {
   return fontSize * 1.3;
-};
-
-export const truncateText = (
-  text: string,
-  width: number,
-  fontSize: number,
-  fontWeight = CHAR_SIZES_FONT_WEIGHT,
-) => {
-  if (measureTextWidth(text, fontSize, fontWeight) <= width) {
-    return text;
-  }
-
-  while (
-    text.length &&
-    measureTextWidth(text + CHAR_ELLIPSES, fontSize, fontWeight) > width
-  ) {
-    text = text.substring(0, text.length - 1).trim();
-  }
-
-  return text + CHAR_ELLIPSES;
 };
 
 const parseEChartsFontString = (fontString: string) => {

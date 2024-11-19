@@ -122,7 +122,7 @@ interface ExpressionEditorTextfieldProps {
   stageIndex: number;
   metadata: Metadata;
   startRule: "expression" | "aggregation" | "boolean";
-  expressionPosition?: number;
+  expressionIndex?: number;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
@@ -162,7 +162,7 @@ function transformPropsToState(
     clause,
     query,
     stageIndex,
-    expressionPosition,
+    expressionIndex,
     metadata,
     reportTimezone,
     showMetabaseLinks,
@@ -176,6 +176,7 @@ function transformPropsToState(
     startRule,
     stageIndex,
     query,
+    expressionIndex,
   });
 
   const { suggestions = [], helpText = null } = suggestWithExtras({
@@ -183,7 +184,7 @@ function transformPropsToState(
     startRule,
     source,
     targetOffset: 0,
-    expressionPosition,
+    expressionIndex,
     query,
     stageIndex,
     metadata,
@@ -238,7 +239,14 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { expression, clause, startRule, query, stageIndex } = newProps;
+    const {
+      expression,
+      clause,
+      startRule,
+      query,
+      stageIndex,
+      expressionIndex,
+    } = newProps;
     const hasLegacyExpressionChanged = !_.isEqual(
       this.props.expression,
       expression,
@@ -255,6 +263,7 @@ class ExpressionEditorTextfield extends React.Component<
         startRule,
         stageIndex,
         query,
+        expressionIndex,
       });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
@@ -277,6 +286,28 @@ class ExpressionEditorTextfield extends React.Component<
     this.handleEnter();
   };
 
+  handleKeyDownCapture = (event: KeyboardEvent) => {
+    // We want the Tab key to cause focus change when there are no suggestions shown.
+    // If there are suggestions shown, it means 1 of them is selected, and in that case
+    // we want the Tab key to apply that suggestion - we let Ace take care of that.
+    // Ace handles Shift + Tab correctly, so we don't handle that case here.
+    if (
+      event.key === "Tab" &&
+      !event.shiftKey &&
+      this.state.suggestions.length === 0
+    ) {
+      // Do not let Ace editor get this event.
+      event.stopPropagation();
+
+      // Redispatch the event from parent node of the Ace editor
+      // so that listeners up in the tree can still handle it, e.g.
+      // to contain focus within the popover/modal.
+      this.suggestionTarget.current?.dispatchEvent(
+        new KeyboardEvent("keydown", event),
+      );
+    }
+  };
+
   textarea() {
     return this.input.current?.refEditor?.getElementsByTagName("textarea")[0];
   }
@@ -294,6 +325,12 @@ class ExpressionEditorTextfield extends React.Component<
       // Without this hack, popups get blocked since they are not
       // considered by the browser to be in response to a user action.
       this.textarea()?.addEventListener("keypress", this.handleKeypress);
+
+      // HACK: Ace will sometimes unexpectedly prevent changing focus with the Tab key.
+      // See https://github.com/metabase/metabase/issues/49036
+      this.textarea()?.addEventListener("keydown", this.handleKeyDownCapture, {
+        capture: true, // otherwise Ace will call preventDefault() on this event in its own keydown handler
+      });
 
       editor.getSession().setMode(mode);
 
@@ -528,7 +565,7 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { query, stageIndex, startRule, name } = this.props;
+    const { query, stageIndex, startRule, name, expressionIndex } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
@@ -538,6 +575,7 @@ class ExpressionEditorTextfield extends React.Component<
       query,
       stageIndex,
       startRule,
+      expressionIndex,
     });
 
     return { expression, expressionClause };
@@ -550,7 +588,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       metadata,
     } = this.props;
 
@@ -564,7 +602,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       metadata,
     });
   }
@@ -576,7 +614,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
-      expressionPosition,
+      expressionIndex,
     } = this.props;
     const { source } = this.state;
 
@@ -585,7 +623,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
     });
 
     this.setState({ errorMessage });
@@ -630,7 +668,7 @@ class ExpressionEditorTextfield extends React.Component<
       reportTimezone,
       stageIndex,
       metadata,
-      expressionPosition,
+      expressionIndex,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       showMetabaseLinks,
       shortcuts = [],
@@ -641,7 +679,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       source,
       targetOffset: cursor.column,
-      expressionPosition,
+      expressionIndex,
       query,
       stageIndex,
       metadata,

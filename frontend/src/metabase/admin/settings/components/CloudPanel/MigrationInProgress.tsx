@@ -8,14 +8,14 @@ import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
-  Flex,
-  Text,
-  List,
-  Button,
   Box,
+  Button,
+  Flex,
+  Icon,
+  List,
   Modal,
   Progress,
-  Icon,
+  Text,
 } from "metabase/ui";
 
 import { MigrationCard } from "./CloudPanel.styled";

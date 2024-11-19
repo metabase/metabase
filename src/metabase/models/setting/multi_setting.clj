@@ -46,7 +46,7 @@
                                        (get-multi-setting ~setting-key (dispatch-multi-setting ~setting-key)))
                             :setter `(fn [new-value#]
                                        (set-multi-setting ~setting-key (dispatch-multi-setting ~setting-key) new-value#))}
-                       options)]
+                           options)]
     `(do
        (let [dispatch-thunk# ~dispatch-thunk]
          (defmethod dispatch-multi-setting ~setting-key

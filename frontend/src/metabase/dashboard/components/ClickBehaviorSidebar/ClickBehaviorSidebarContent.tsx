@@ -6,9 +6,9 @@ import { isTableDisplay } from "metabase/lib/click-behavior";
 import { useSelector } from "metabase/lib/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Dashboard,
-  QuestionDashboardCard,
   ClickBehavior,
+  Dashboard,
+  DashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
 
@@ -20,7 +20,7 @@ import { getClickBehaviorForColumn } from "./utils";
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   clickBehavior?: ClickBehavior;
   isTypeSelectorVisible: boolean | null;

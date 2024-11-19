@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.sync-metadata.comments-test
+(ns ^:mb/driver-tests metabase.sync.sync-metadata.comments-test
   "Test for the logic that syncs Table column descriptions with the comments fetched from a DB."
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -25,7 +25,7 @@
      {:field-name "no_comment", :base-type :type/Text}]
     [["foo" "bar"]]]])
 
-(deftest basic-field-comments-test
+(deftest ^:parallel basic-field-comments-test
   (testing "test basic field comments sync"
     (mt/test-drivers #{:h2 :postgres}
       (mt/dataset basic-field-comments
@@ -61,10 +61,10 @@
 (deftest sync-comment-on-existing-field-test
   (testing "test adding a comment to the source data that was initially empty, so we can check that the resync picks it up"
     (mt/test-drivers #{:h2 :postgres}
+      ;; modify the source DB to add the comment and resync. The easiest way to do this is just destroy the entire DB
+      ;; and re-create a modified version. As such, let the SQL JDBC driver know the DB is being "modified" so it can
+      ;; destroy its current connection pool
       (mt/dataset comment-after-sync
-        ;; modify the source DB to add the comment and resync. The easiest way to do this is just destroy the entire DB
-        ;; and re-create a modified version. As such, let the SQL JDBC driver know the DB is being "modified" so it can
-        ;; destroy its current connection pool
         (driver/notify-database-updated driver/*driver* (mt/db))
         (let [modified-dbdef (update
                               comment-after-sync
@@ -75,6 +75,7 @@
                                   :field-definitions
                                   (fn [[fielddef]]
                                     [(assoc fielddef :field-comment "added comment")]))]))]
+          (tx/destroy-db! driver/*driver* modified-dbdef)
           (tx/create-db! driver/*driver* modified-dbdef))
         (sync/sync-table! (t2/select-one Table :id (mt/id "comment_after_sync")))
         (is (= #{{:name (mt/format-name "id"), :description nil}
@@ -91,7 +92,7 @@
 (defn- db->tables [db]
   (set (map (partial into {}) (t2/select [:model/Table :name :description] :db_id (u/the-id db)))))
 
-(deftest table-comments-test
+(deftest ^:parallel table-comments-test
   (testing "test basic comments on table"
     (mt/test-drivers #{:h2 :postgres}
       (mt/dataset (basic-table "table_with_comment" "table comment")
@@ -117,16 +118,13 @@
       (let [table-name (apply str (take 10 (mt/random-name)))
             added-comment (mt/random-name)
             dbdef (basic-table table-name nil)]
-       (mt/dataset dbdef
-         ;; modify the source DB to add the comment and resync
-         (driver/notify-database-updated driver/*driver* (mt/db))
-         (tx/create-db! driver/*driver* dbdef)
+        (mt/dataset dbdef
          ;; create the comment
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        [(sql.tx/standalone-table-comment-sql
-                          driver/*driver*
-                          dbdef
-                          (tx/map->TableDefinition {:table-name table-name
-                                                    :table-comment added-comment}))])
-         (sync-tables/sync-tables-and-database! (mt/db))
-         (is (true? (t2/exists? :model/Table :db_id (u/the-id (mt/db)) :description added-comment))))))))
+          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                         [(sql.tx/standalone-table-comment-sql
+                           driver/*driver*
+                           dbdef
+                           (tx/map->TableDefinition {:table-name table-name
+                                                     :table-comment added-comment}))])
+          (sync-tables/sync-tables-and-database! (mt/db))
+          (is (true? (t2/exists? :model/Table :db_id (u/the-id (mt/db)) :description added-comment))))))))

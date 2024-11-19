@@ -1,18 +1,18 @@
 import type {
-  RecentItem,
   CreateRecentRequest,
-  RecentsResponse,
   PopularItem,
   PopularItemsResponse,
+  RecentItem,
   RecentsRequest,
+  RecentsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
-  provideActivityItemListTags,
-  invalidateTags,
-  idTag,
   TAG_TYPE_MAPPING,
+  idTag,
+  invalidateTags,
+  provideActivityItemListTags,
 } from "./tags";
 
 export const activityApi = Api.injectEndpoints({

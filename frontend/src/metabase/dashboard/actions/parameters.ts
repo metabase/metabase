@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import {
-  closeAutoWireParameterToast,
   closeAddCardAutoWireToasts,
+  closeAutoWireParameterToast,
 } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
@@ -16,12 +16,11 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { buildTemporalUnitOption } from "metabase-lib/v1/parameters/utils/operators";
+import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
-  isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
+  isParameterValueEmpty,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
@@ -45,21 +44,22 @@ import {
 } from "../analytics";
 import {
   getAutoApplyFiltersToastId,
+  getDashCardById,
   getDashboard,
   getDashboardBeforeEditing,
   getDashboardId,
-  getDashCardById,
   getDashcards,
   getDraftParameterValues,
+  getFiltersToReset,
   getIsAutoApplyFilters,
-  getParameters,
-  getParameterValues,
   getParameterMappingsBeforeEditing,
+  getParameterValues,
+  getParameters,
   getSelectedTabId,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
-import { setDashboardAttributes, setDashCardAttributes } from "./core";
+import { setDashCardAttributes, setDashboardAttributes } from "./core";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
@@ -145,15 +145,6 @@ export const addParameter = createThunkAction(
   },
 );
 
-export const ADD_TEMPORAL_UNIT_PARAMETER =
-  "metabase/dashboard/ADD_TEMPORAL_UNIT_PARAMETER";
-export const addTemporalUnitParameter = createThunkAction(
-  ADD_TEMPORAL_UNIT_PARAMETER,
-  () => async dispatch => {
-    await dispatch(addParameter(buildTemporalUnitOption()));
-  },
-);
-
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
@@ -211,7 +202,7 @@ export const setParameterMapping = createThunkAction(
 export const RESET_PARAMETER_MAPPINGS =
   "metabase/dashboard/RESET_PARAMETER_MAPPINGS";
 export const resetParameterMapping = createThunkAction(
-  SET_PARAMETER_MAPPING,
+  RESET_PARAMETER_MAPPINGS,
   (parameterId: ParameterId, dashcardId?: DashCardId) => {
     return (dispatch, getState) => {
       const dashboard = getDashboard(getState());
@@ -322,6 +313,8 @@ export const setParameterType = createThunkAction(
         );
       }
 
+      restoreValueConfigIfNeeded(getState, dispatch, parameterId, sectionId);
+
       return { id: parameterId, type };
     },
 );
@@ -358,9 +351,8 @@ function restoreParameterMappingsIfNeeded(
     setParamType(parameterToRestore, parameterToRestore.type, sectionId),
   );
 
-  const parameterMappingsBeforeEditing = getParameterMappingsBeforeEditing(
-    getState(),
-  );
+  const parameterMappingsBeforeEditing =
+    getParameterMappingsBeforeEditing(getState());
   const parameterMappings = parameterMappingsBeforeEditing[parameterId];
 
   if (!parameterMappings) {
@@ -375,6 +367,55 @@ function restoreParameterMappingsIfNeeded(
       setParameterMapping(parameterId, Number(dashcardId), card_id, target),
     );
   });
+
+  return true;
+}
+
+function restoreValueConfigIfNeeded(
+  getState: GetState,
+  dispatch: Dispatch,
+  parameterId: ParameterId,
+  sectionId: string,
+): boolean {
+  const dashboardBeforeEditing = getDashboardBeforeEditing(getState());
+  if (!dashboardBeforeEditing) {
+    return false;
+  }
+
+  const parametersBeforeEditing = dashboardBeforeEditing.parameters;
+  const parameterToRestore = parametersBeforeEditing?.find(
+    ({ id }) => id === parameterId,
+  );
+
+  if (!parameterToRestore) {
+    return false;
+  }
+
+  if (sectionId !== parameterToRestore.sectionId) {
+    return false;
+  }
+
+  if (parameterToRestore.values_source_config) {
+    dispatch(
+      setParameterSourceConfig(
+        parameterId,
+        parameterToRestore.values_source_config,
+      ),
+    );
+  }
+  if (parameterToRestore.values_source_type) {
+    dispatch(
+      setParameterSourceType(
+        parameterId,
+        parameterToRestore.values_source_type,
+      ),
+    );
+  }
+  if (parameterToRestore.values_query_type) {
+    dispatch(
+      setParameterQueryType(parameterId, parameterToRestore.values_query_type),
+    );
+  }
 
   return true;
 }
@@ -430,6 +471,7 @@ export const setParameterDefaultValue = createThunkAction(
       ...parameter,
       default: defaultValue,
     }));
+    dispatch(setParameterValue(parameterId, defaultValue));
     return { id: parameterId, defaultValue };
   },
 );
@@ -446,6 +488,24 @@ export const setParameterValueToDefault = createThunkAction(
     if (defaultValue) {
       dispatch(setParameterValue(parameterId, defaultValue));
     }
+  },
+);
+
+export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
+export const resetParameters = createThunkAction(
+  RESET_PARAMETERS,
+  () => (_dispatch, getState) => {
+    const parameters = getFiltersToReset(getState());
+
+    return parameters.map(parameter => {
+      const newValue = parameter.default ?? null;
+      const isValueEmpty = isParameterValueEmpty(newValue);
+
+      return {
+        id: parameter.id,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : newValue,
+      };
+    });
   },
 );
 
@@ -478,14 +538,21 @@ export const SET_PARAMETER_IS_MULTI_SELECT =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 export const setParameterIsMultiSelect = createThunkAction(
   SET_PARAMETER_IS_MULTI_SELECT,
-  (parameterId: ParameterId, isMultiSelect: boolean) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      isMultiSelect: isMultiSelect,
-    }));
+  (parameterId: ParameterId, isMultiSelect: boolean) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        isMultiSelect: isMultiSelect,
+        default:
+          !isMultiSelect &&
+          Array.isArray(parameter.default) &&
+          parameter.default.length > 1
+            ? [parameter.default[0]]
+            : parameter.default,
+      }));
 
-    return { id: parameterId, isMultiSelect };
-  },
+      return { id: parameterId, isMultiSelect };
+    },
 );
 
 export const SET_PARAMETER_TEMPORAL_UNITS =
@@ -664,7 +731,7 @@ export const closeAutoApplyFiltersToast = createThunkAction(
   () => (dispatch, getState) => {
     const toastId = getAutoApplyFiltersToastId(getState());
     if (toastId) {
-      dispatch(dismissUndo({ undoId: toastId, track: false }));
+      dispatch(dismissUndo({ undoId: toastId }));
     }
   },
 );

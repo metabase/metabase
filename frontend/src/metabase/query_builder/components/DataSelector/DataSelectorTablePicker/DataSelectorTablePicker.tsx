@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import {
   HoverParent,
   TableInfoIcon,
@@ -10,10 +11,9 @@ import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
-import { rem, Box, Icon, DelayGroup, Flex } from "metabase/ui";
+import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -145,28 +145,31 @@ const DataSelectorTablePicker = ({
   }
 };
 
-const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
-  <Box
-    p="md"
-    ta="center"
-    bg={color("bg-light")}
-    style={{
-      borderTop: "1px solid var(--mb-color-border)",
-    }}
-  >
-    {t`Is a question missing?`}
-    <ExternalLink
-      // eslint-disable-next-line no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
-      href={MetabaseSettings.docsUrl(
-        "questions/native-editor/referencing-saved-questions-in-queries",
-      )}
-      target="_blank"
-      className={cx(CS.block, CS.link)}
+const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
+  const { url: docsUrl } = useDocsUrl(
+    "questions/native-editor/referencing-saved-questions-in-queries",
+  );
+  return (
+    <Box
+      p="md"
+      ta="center"
+      bg={color("bg-light")}
+      style={{
+        borderTop: "1px solid var(--mb-color-border)",
+      }}
     >
-      {t`Learn more about nested queries`}
-    </ExternalLink>
-  </Box>
-);
+      {t`Is a question missing?`}
+      <ExternalLink
+        href={docsUrl}
+        target="_blank"
+        className={cx(CS.block, CS.link)}
+      >
+        {t`Learn more about nested queries`}
+      </ExternalLink>
+    </Box>
+  );
+};
 
 const Header = ({
   onBack,

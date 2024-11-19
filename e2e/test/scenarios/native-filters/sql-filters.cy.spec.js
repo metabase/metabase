@@ -1,8 +1,8 @@
 import {
-  restore,
-  openNativeEditor,
   filterWidget,
+  openNativeEditor,
   popover,
+  restore,
 } from "e2e/support/helpers";
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
@@ -78,7 +78,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.toggleRequired();
         filterWidget().within(() => {
           cy.get("input").type("abc").should("have.value", "defaultabc");
-          cy.icon("time_history").click();
+          cy.icon("revert").click();
           cy.get("input").should("have.value", "default");
         });
       });
@@ -148,7 +148,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.toggleRequired();
         filterWidget().within(() => {
           cy.get("input").type(".11").should("have.value", "3.11");
-          cy.icon("time_history").click();
+          cy.icon("revert").click();
           cy.get("input").should("have.value", "3");
         });
       });
@@ -186,11 +186,11 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       SQLFilter.toggleRequired();
 
       cy.findByTestId("sidebar-content")
-        .findByPlaceholderText("Select a default value…")
+        .findByText("Select a default value…")
         .click();
       popover().within(() => {
         cy.findByText("15").click();
-        cy.findByText("Add filter").click();
+        cy.findByText("Update filter").click();
       });
 
       SQLFilter.runQuery();
@@ -202,7 +202,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     function setDefaultDate(year = "2024", month = "01", day = "22") {
       cy.findByTestId("sidebar-content")
-        .findByPlaceholderText("Select a default value…")
+        .findByText("Select a default value…")
         .click();
       popover().within(() => {
         DateFilter.setSingleDate(`${month}/${day}/${year}`);
@@ -234,7 +234,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           cy.findByText("15").click();
           cy.findByText("Update filter").click();
         });
-        filterWidget().icon("time_history").click();
+        filterWidget().icon("revert").click();
         filterWidget()
           .findByTestId("field-set-content")
           .should("have.text", "November 1, 2023");

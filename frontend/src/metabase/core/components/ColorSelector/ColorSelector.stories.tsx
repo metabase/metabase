@@ -1,16 +1,16 @@
-import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import { useArgs } from "@storybook/preview-api";
+import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ColorSelector from "./ColorSelector";
+import ColorSelector, { type ColorSelectorProps } from "./ColorSelector";
 
 export default {
   title: "Core/ColorSelector",
   component: ColorSelector,
 };
 
-const Template: ComponentStory<typeof ColorSelector> = args => {
+const Template: StoryFn<ColorSelectorProps> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value: string) => {
@@ -20,8 +20,11 @@ const Template: ComponentStory<typeof ColorSelector> = args => {
   return <ColorSelector {...args} value={value} onChange={handleChange} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  value: color("brand"),
-  colors: [color("brand"), color("summarize"), color("filter")],
+export const Default = {
+  render: Template,
+
+  args: {
+    value: color("brand"),
+    colors: [color("brand"), color("summarize"), color("filter")],
+  },
 };

@@ -7,9 +7,11 @@ export const ActionCreatorBodyContainer = styled.div`
   display: grid;
   grid-template-columns: 4fr 3fr;
   border-top: 1px solid var(--mb-color-border);
+
   .react-resizable-handle {
     display: none;
   }
+
   flex: 1;
   overflow-y: auto;
 `;

@@ -1,4 +1,4 @@
-import { getSize, type MantineSize, rem } from "@mantine/core";
+import { type MantineSize, getSize, rem } from "@mantine/core";
 
 const FONT_SIZES = {
   xs: rem(12),

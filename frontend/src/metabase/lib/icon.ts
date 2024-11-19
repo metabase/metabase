@@ -5,11 +5,11 @@ import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
   CardDisplayType,
   Collection,
-  SearchModel,
   CollectionItemModel,
+  SearchModel,
 } from "metabase-types/api";
 
-type IconModel = SearchModel | CollectionItemModel | "schema";
+export type IconModel = SearchModel | CollectionItemModel | "schema";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -22,7 +22,7 @@ export type ObjectWithModel = {
   is_personal?: boolean;
 };
 
-const modelIconMap: Record<IconModel, IconName> = {
+export const modelIconMap: Record<IconModel, IconName> = {
   collection: "folder",
   database: "database",
   table: "table",

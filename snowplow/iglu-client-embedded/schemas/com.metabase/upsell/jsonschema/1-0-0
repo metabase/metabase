@@ -3,7 +3,7 @@
   "description": "Upsell events",
   "self": {
     "vendor": "com.metabase",
-    "name": "settings",
+    "name": "upsell",
     "format": "jsonschema",
     "version": "1-0-0"
   },

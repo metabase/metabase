@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import L from "leaflet";
 import { Component } from "react";
 import { t } from "ttag";
@@ -132,9 +132,13 @@ export default class PinMap extends Component {
     ]);
 
     // only use points with numeric coordinates & metric
-    const validPoints = allPoints.map(
-      ([lat, lng, metric]) => lat != null && lng != null && metric != null,
-    );
+    const validPoints = allPoints.map(([lat, lng, metric]) => {
+      if (settings["map.type"] === "pin") {
+        return lat != null && lng != null;
+      }
+
+      return lat != null && lng != null && metric != null;
+    });
     const points = allPoints.filter((_, i) => validPoints[i]);
     const updatedRows = rows.filter((_, i) => validPoints[i]);
 
@@ -251,33 +255,38 @@ export default class PinMap extends Component {
               {t`Save as default view`}
             </div>
           ) : null}
-          {!isDashboard && (
-            <div
-              className={cx(
-                "PinMapUpdateButton",
-                ButtonsS.Button,
-                ButtonsS.ButtonSmall,
-                CS.mb1,
-              )}
-              onClick={() => {
-                if (
-                  !this.state.filtering &&
-                  this._map &&
-                  this._map.startFilter
-                ) {
-                  this._map.startFilter();
-                } else if (
-                  this.state.filtering &&
-                  this._map &&
-                  this._map.stopFilter
-                ) {
-                  this._map.stopFilter();
-                }
-              }}
-            >
-              {!this.state.filtering ? t`Draw box to filter` : t`Cancel filter`}
-            </div>
-          )}
+          {!isDashboard &&
+            this._map &&
+            this._map.supportsFilter &&
+            this._map.supportsFilter() && (
+              <div
+                className={cx(
+                  "PinMapUpdateButton",
+                  ButtonsS.Button,
+                  ButtonsS.ButtonSmall,
+                  CS.mb1,
+                )}
+                onClick={() => {
+                  if (
+                    !this.state.filtering &&
+                    this._map &&
+                    this._map.startFilter
+                  ) {
+                    this._map.startFilter();
+                  } else if (
+                    this.state.filtering &&
+                    this._map &&
+                    this._map.stopFilter
+                  ) {
+                    this._map.stopFilter();
+                  }
+                }}
+              >
+                {!this.state.filtering
+                  ? t`Draw box to filter`
+                  : t`Cancel filter`}
+              </div>
+            )}
         </div>
       </div>
     );

@@ -53,17 +53,18 @@
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
+(def ^:private Perms
+  "Perms that get reused for TablePerms and SchemaPerms"
+  [:enum
+   :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no :blocked])
+
 (def ^:private TablePerms
-  [:or
-   [:enum :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no]
-   [:map
-    [:read {:optional true} [:enum :all :none]]
-    [:query {:optional true} [:enum :all :none :segmented]]]])
+  [:or Perms [:map
+              [:read {:optional true} [:enum :all :none]]
+              [:query {:optional true} [:enum :all :none :segmented]]]])
 
 (def ^:private SchemaPerms
-  [:or
-   [:enum :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no]
-   [:map-of Id TablePerms]])
+  [:or Perms [:map-of Id TablePerms]])
 
 (def ^:private SchemaGraph
   [:map-of
@@ -103,20 +104,6 @@
     (fn [{:keys [native schemas]}]
       (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))]])
 
-(def ^:private DbGraph
-  [:schema {:registry {"DataPerms" DataPerms}}
-   [:map-of
-    Id
-    [:map
-     [:view-data {:optional true} Schemas]
-     [:create-queries {:optional true} Schemas]
-     [:data {:optional true} "DataPerms"]
-     [:download {:optional true} "DataPerms"]
-     [:data-model {:optional true} "DataPerms"]
-     ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
-     ;; consistency with the language used on the frontend.
-     [:details {:optional true} [:enum :yes :no]]]]])
-
 (def StrictDbGraph
   "like db-graph, but with added validations:
    - Ensures 'view-data' is not 'blocked' if 'create-queries' is 'query-builder-and-native'."
@@ -138,14 +125,15 @@
 
 (def DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
-  [:map [:groups [:map-of GroupId [:maybe DbGraph]]]])
-
-(def StrictData
-  "Top level strict data graph schema"
   [:map
-   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
-   [:revision int?]])
+   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]])
 
+(def StrictApiPermissionsGraph
+  "Top level strict data graph schema expected over the API. Includes revision ID for avoiding concurrent updates."
+  [:map
+   [:revision {:optional true} [:maybe int?]]
+   [:force {:optional true} [:maybe boolean?]]
+   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]])
 
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 

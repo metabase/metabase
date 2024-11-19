@@ -1,0 +1,4 @@
+[["space table" [{:field-name "space column"
+                 :base-type  :type/Integer}]
+  [[10]
+   [20]]]]

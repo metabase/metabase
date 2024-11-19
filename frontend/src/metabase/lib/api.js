@@ -36,6 +36,11 @@ export class Api extends EventEmitter {
 
   onBeforeRequest;
 
+  /**
+   * @type {string|{name: string, version: string}}
+   */
+  requestClient;
+
   GET;
   POST;
   PUT;
@@ -50,6 +55,8 @@ export class Api extends EventEmitter {
   }
 
   _makeMethod(method, creatorOptions = {}) {
+    const self = this;
+
     return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
@@ -102,13 +109,27 @@ export class Api extends EventEmitter {
         }
 
         if (this.sessionToken) {
-          // eslint-disable-next-line no-literal-metabase-strings -- not a UI string
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
           headers["X-Metabase-Session"] = this.sessionToken;
         }
 
         if (isWithinIframe()) {
           // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
           headers["X-Metabase-Embedded"] = "true";
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+          headers["X-Metabase-Client"] = "embedding-iframe";
+        }
+
+        if (self.requestClient) {
+          if (typeof self.requestClient === "object") {
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client"] = self.requestClient.name;
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client-Version"] = self.requestClient.version;
+          } else {
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client"] = self.requestClient;
+          }
         }
 
         if (ANTI_CSRF_TOKEN) {
@@ -316,3 +337,12 @@ const instance = new Api();
 
 export default instance;
 export const { GET, POST, PUT, DELETE } = instance;
+
+export const setLocaleHeader = locale => {
+  /* `X-Metabase-Locale` is a header that the BE stores as *user* locale for the scope of the request.
+   * We need it to localize downloads. It *currently* only work if there is a user, so it won't work
+   * for public/static embedding.
+   */
+  // eslint-disable-next-line no-literal-metabase-strings -- Header name, not a user facing string
+  DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined;
+};

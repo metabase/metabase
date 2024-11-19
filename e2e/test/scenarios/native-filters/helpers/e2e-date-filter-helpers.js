@@ -3,14 +3,18 @@ import { popover } from "e2e/support/helpers";
 const currentYearString = new Date().getFullYear().toString();
 
 export function setMonthAndYear({ month, year } = {}) {
-  cy.findByText(currentYearString).click();
+  cy.findByTestId("select-year-picker")
+    .should("have.value", currentYearString)
+    .click();
 
   cy.findByText(year).click();
   cy.findByText(month).click();
 }
 
 export function setQuarterAndYear({ quarter, year } = {}) {
-  popover().findByText(currentYearString).click();
+  cy.findByTestId("select-year-picker")
+    .should("have.value", currentYearString)
+    .click();
 
   popover().last().findByText(year).click();
   popover().findByText(quarter).click();
@@ -41,12 +45,10 @@ export function setRelativeDate(term) {
   cy.findByText(term).click();
 }
 
-export function setAdHocFilter({
-  condition,
-  quantity,
-  timeBucket,
-  includeCurrent = false,
-} = {}) {
+export function setAdHocFilter(
+  { condition, quantity, timeBucket, includeCurrent = false } = {},
+  buttonLabel = "Add filter",
+) {
   cy.findByText("Relative dates...").click();
   if (condition) {
     cy.findByText(condition).click({ force: true });
@@ -59,7 +61,9 @@ export function setAdHocFilter({
   }
 
   if (timeBucket) {
-    cy.findAllByTestId("relative-datetime-unit").contains("days").click();
+    cy.findAllByTestId("relative-datetime-unit")
+      .should("have.value", "days")
+      .click();
 
     popover().last().contains(timeBucket).click();
   }
@@ -71,5 +75,5 @@ export function setAdHocFilter({
     cy.findByText(/^Include/).click();
   }
 
-  cy.button("Add filter").click();
+  cy.button(buttonLabel).click();
 }

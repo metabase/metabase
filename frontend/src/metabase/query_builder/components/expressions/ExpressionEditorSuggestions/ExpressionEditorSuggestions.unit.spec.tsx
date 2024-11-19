@@ -1,9 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
+  fireEvent,
   renderWithProviders,
   screen,
   waitFor,
-  fireEvent,
 } from "__support__/ui";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type * as Lib from "metabase-lib";
@@ -39,9 +39,10 @@ function Wrapper(props: WrapperProps) {
 type SetupOpts = {
   source?: string;
   startRule: string;
+  expressionIndex?: number;
 };
 
-function setup({ source = "", startRule }: SetupOpts) {
+function setup({ source = "", startRule, expressionIndex }: SetupOpts) {
   const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const { suggestions } = suggest({
@@ -51,6 +52,7 @@ function setup({ source = "", startRule }: SetupOpts) {
     metadata: METADATA,
     startRule: "expression",
     getColumnIcon,
+    expressionIndex,
   });
 
   const onHighlightSuggestion = jest.fn();

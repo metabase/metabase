@@ -3,9 +3,9 @@ import { createSelector } from "@reduxjs/toolkit";
 import type { Location } from "history";
 
 import {
-  getIsEditing as getIsEditingDashboard,
   getDashboard,
   getDashboardId,
+  getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
 import {
   getIsSavedQuestionChanged,
@@ -37,6 +37,7 @@ const PATHS_WITHOUT_NAVBAR = [
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/question\//,
   /\/model\//,
+  /\/metric\//,
   /\/dashboard\//,
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
@@ -223,3 +224,6 @@ export const getCustomHomePageDashboardId = createSelector(
 export const getHasDismissedCustomHomePageToast = (state: State) => {
   return getSetting(state, "dismissed-custom-dashboard-toast");
 };
+
+export const getIsErrorDiagnosticModalOpen = (state: State) =>
+  state.app.isErrorDiagnosticsOpen;

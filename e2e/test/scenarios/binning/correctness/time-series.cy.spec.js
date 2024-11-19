@@ -1,10 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
   getBinningButtonForDimension,
-  summarize,
+  popover,
+  restore,
   rightSidebar,
+  summarize,
 } from "e2e/support/helpers";
 
 import { TIME_OPTIONS } from "./shared/constants";

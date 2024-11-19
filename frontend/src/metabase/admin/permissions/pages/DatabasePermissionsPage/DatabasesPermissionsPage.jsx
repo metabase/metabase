@@ -10,21 +10,23 @@ import _ from "underscore";
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
-import { Loader, Center } from "metabase/ui";
+import { Center, Loader } from "metabase/ui";
 
 import {
   PermissionsEditor,
   PermissionsEditorEmptyState,
 } from "../../components/PermissionsEditor";
+import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
-  updateDataPermission,
   LOAD_DATA_PERMISSIONS_FOR_DB,
+  updateDataPermission,
 } from "../../permissions";
 import {
-  getGroupsDataPermissionEditor,
   getDataFocusSidebar,
+  getGroupsDataPermissionEditor,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
@@ -85,6 +87,10 @@ function DatabasesPermissionsPage({
   const dispatch = useDispatch();
   const permissionEditor = useSelector(state =>
     getGroupsDataPermissionEditor(state, { params }),
+  );
+
+  const showSplitPermsMessage = useSelector(state =>
+    getSetting(state, "show-updated-permission-banner"),
   );
 
   const { loading: isLoading } = useAsync(async () => {
@@ -157,7 +163,12 @@ function DatabasesPermissionsPage({
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
           onChange={handlePermissionChange}
           onAction={handleAction}
-          warnings={() => (
+          preHeaderContent={() => (
+            <>
+              {showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />}
+            </>
+          )}
+          postHeaderContent={() => (
             <>
               {showLegacyNoSelfServiceWarning && (
                 <PermissionsEditorLegacyNoSelfServiceWarning />

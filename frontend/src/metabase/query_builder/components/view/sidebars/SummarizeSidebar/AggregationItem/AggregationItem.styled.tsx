@@ -11,7 +11,9 @@ export const Root = styled.button`
   border-radius: 6px;
   color: var(--mb-color-text-white);
   background-color: var(--mb-color-summarize);
-  transition: background 300ms linear, border 300ms linear;
+  transition:
+    background 300ms linear,
+    border 300ms linear;
   min-height: 34px;
   min-width: 34px;
   cursor: pointer;
@@ -30,7 +32,6 @@ export const AggregationName = styled.span`
 export const RemoveIcon = styled(Icon)`
   display: flex;
   margin-left: auto;
-
   opacity: 0.4;
   transition: opacity 0.3s;
 

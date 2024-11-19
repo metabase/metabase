@@ -30,14 +30,16 @@
       (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :mb-config-file-path filename)]
         (is (= {:version 1
                 :config  {:settings {:my-setting "abc123"}}}
-               (#'advanced-config.file/config))))))
+               (#'advanced-config.file/config)))))))
+
+(deftest ^:parallel config-test-2
   (testing "Support overriding config with dynamic var for mocking purposes"
     (binding [advanced-config.file/*config* mock-yaml]
       (is (= {:version 1
               :config  {:settings {:my-setting "abc123"}}}
              (#'advanced-config.file/config))))))
 
-(deftest validate-config-test
+(deftest ^:parallel validate-config-test
   (testing "Config should throw an error"
     (testing "if it is not a map"
       (binding [advanced-config.file/*config* [1 2 3 4]]
@@ -71,14 +73,16 @@
 (defn- mock-config-with-setting [s]
   {:version 1.0, :config {:settings {:my-setting s}}})
 
-(deftest expand-template-forms-test
+(deftest ^:parallel expand-template-forms-test
   (testing "Ignore single curly brackets, or brackets with spaces between them"
     (are [s] (= (mock-config-with-setting s)
                 (binding [advanced-config.file/*config* (mock-config-with-setting s)]
                   (#'advanced-config.file/config)))
       "{}}"
       "{}}"
-      "{ {}}"))
+      "{ {}}")))
+
+(deftest ^:parallel expand-template-forms-test-2
   (testing "Invalid template forms"
     (are [template error-pattern] (thrown-with-msg?
                                    clojure.lang.ExceptionInfo
@@ -95,14 +99,14 @@
       ;; unknown template type
       "{{bird \"Parrot Hilton\"}}" (re-quote "bird - failed: valid-template-type?"))))
 
-(deftest recursive-template-form-expansion-test
+(deftest ^:parallel recursive-template-form-expansion-test
   (testing "Recursive expansion is unsupported, for now."
     (binding [advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :x "{{env Y}}", :y "Y")
               advanced-config.file/*config* (mock-config-with-setting "{{env X}}")]
       (is (= (mock-config-with-setting "{{env Y}}")
              (#'advanced-config.file/config))))))
 
-(deftest expand-template-env-var-values-test
+(deftest ^:parallel expand-template-env-var-values-test
   (testing "env var values"
     (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :config-file-bird-name "Parrot Hilton")]
       (testing "Nothing weird"
@@ -128,7 +132,7 @@
           (is (= (mock-config-with-setting "Parrot Hilton")
                  (#'advanced-config.file/config))))))))
 
-(deftest expand-template-env-var-values-validation-test
+(deftest ^:parallel expand-template-env-var-values-validation-test
   (testing "(config) should walk the config map and expand {{template}} forms"
     (testing "env var values"
       (testing "validation"
@@ -144,7 +148,7 @@
           ;; wrong env var type
           "{{env :SOME_ENV_VAR}}"             (re-quote "SOME_ENV_VAR - failed: symbol?"))))))
 
-(deftest optional-template-test
+(deftest ^:parallel optional-template-test
   (testing "[[optional {{template}}]] values"
     (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")]
       (testing "env var exists"
@@ -173,11 +177,11 @@
 (deftest initialize-section-test
   (testing "Ignore unknown sections"
     (binding [advanced-config.file/*config* {:version 1.0, :config {:unknown-section {}}}]
-      (let [log-messages (mt/with-log-messages-for-level [metabase-enterprise.advanced-config.file.interface :warn]
-                           (is (= :ok
-                                  (advanced-config.file/initialize!))))]
-        (is (= [[:warn nil (u/colorize :yellow "Ignoring unknown config section :unknown-section.")]]
-               log-messages))))))
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.advanced-config.file.interface :warn]]
+        (is (= :ok
+               (advanced-config.file/initialize!)))
+        (is (=? [{:level :warn, :message (u/colorize :yellow "Ignoring unknown config section :unknown-section.")}]
+                (messages)))))))
 
 (deftest require-advanced-config-test
   (testing "Config files should require the `:config-text-file` token feature"
@@ -188,7 +192,7 @@
              #"Metabase config files require a Premium token with the :config-text-file feature"
              (advanced-config.file/initialize!)))))))
 
-(deftest error-validation-do-not-leak-env-vars-test
+(deftest ^:parallel error-validation-do-not-leak-env-vars-test
   (testing "spec errors should not include contents of env vars -- expand templates after spec validation."
     (binding [advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")
               advanced-config.file/*config* {:version 1

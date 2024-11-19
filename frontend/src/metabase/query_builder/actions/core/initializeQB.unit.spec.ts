@@ -25,20 +25,21 @@ import type {
 } from "metabase-types/api";
 import { createMockSegment, createMockUser } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createAdHocCard,
-  createSavedStructuredCard,
-  createAdHocNativeCard,
-  createSavedNativeCard,
-  createStructuredModelCard,
-  createNativeModelCard,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createAdHocCard,
+  createAdHocNativeCard,
+  createNativeModelCard,
+  createSampleDatabase,
+  createSavedNativeCard,
+  createSavedStructuredCard,
+  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
 import * as querying from "../querying";
 
+import * as cardActions from "./card";
 import * as core from "./core";
 import { initializeQB } from "./initializeQB";
 
@@ -131,7 +132,9 @@ async function setup({
     fetchMock.get(`path:/api/card/${card.id}`, card);
   }
 
-  jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
+  jest
+    .spyOn(cardActions, "loadCard")
+    .mockReturnValue(Promise.resolve({ ...card }));
 
   return baseSetup({ location, params, ...opts });
 }
@@ -440,7 +443,7 @@ describe("QB Actions > initializeQB", () => {
         fetchMock.get(`path:/api/card/${originalCard.id}`, originalCard);
 
         jest
-          .spyOn(CardLib, "loadCard")
+          .spyOn(cardActions, "loadCard")
           .mockReturnValueOnce(Promise.resolve({ ...originalCard }));
 
         return setup({ card: q, ...opts });

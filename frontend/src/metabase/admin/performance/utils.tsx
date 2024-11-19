@@ -1,11 +1,11 @@
-import dayjs from "dayjs";
+import { match } from "ts-pattern";
+import { c, t } from "ttag";
 import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import {
   Cron,
-  optionNameTranslations,
-  weekdays,
+  getScheduleStrings,
 } from "metabase/components/Schedule/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -22,12 +22,13 @@ import type {
 } from "metabase-types/api";
 
 import { defaultMinDurationMs, rootId } from "./constants/simple";
-import type { StrategyLabel } from "./types";
+import type { PerformanceTabId, StrategyData, StrategyLabel } from "./types";
 
 const AM = 0;
 const PM = 1;
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
+  const { weekdays } = getScheduleStrings();
   const index = weekdays.findIndex(o => o.value === day);
   if (index === -1) {
     throw new Error(`Invalid day: ${day}`);
@@ -93,6 +94,8 @@ export const cronToScheduleSettings_unmemoized = (
     return defaultSchedule;
   }
 
+  const { weekdays } = getScheduleStrings();
+
   // The Quartz cron library used in the backend distinguishes between 'no specific value' and 'all values',
   // but for simplicity we can treat them as the same here
   cron = cron.replace(
@@ -124,12 +127,24 @@ export const cronToScheduleSettings_unmemoized = (
     if (weekday === Cron.AllValues) {
       schedule_frame = frameFromCron(dayOfMonth);
     } else {
-      // Split on transition from number to non-number
-      const weekdayParts = weekday.split(/(?<=\d)(?=\D)/);
-      const day = parseInt(weekdayParts[0]);
+      const dayStr = weekday.match(/^\d+/)?.[0];
+      if (!dayStr) {
+        throw new Error(
+          t`The cron expression contains an invalid weekday: ${weekday}`,
+        );
+      }
+      const day = parseInt(dayStr);
       schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
       if (dayOfMonth === Cron.AllValues) {
-        const frameInCronFormat = weekdayParts[1].replace(/^#/, "");
+        // Match the part after the '#' in a string like '6#1' or the letter in '6L'
+        const frameInCronFormat = weekday
+          .match(/^\d+(\D.*)$/)?.[1]
+          .replace(/^#/, "");
+        if (!frameInCronFormat) {
+          throw new Error(
+            t`The cron expression contains an invalid weekday: ${weekday}`,
+          );
+        }
         schedule_frame = frameFromCron(frameInCronFormat);
       } else {
         schedule_frame = frameFromCron(dayOfMonth);
@@ -161,13 +176,13 @@ export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 const isValidAmPm = (amPm: number) => amPm === AM || amPm === PM;
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
+
 export const hourTo24HourFormat = (hour: number, amPm: number): number => {
   if (!isValidAmPm(amPm)) {
     amPm = AM;
   }
-  const amPmString = amPm === AM ? "AM" : "PM";
-  const convertedString = dayjs(`${hour} ${amPmString}`, "h A").format("HH");
-  return parseInt(convertedString);
+  const hour24 = amPm === PM ? (hour % 12) + 12 : hour % 12;
+  return hour24 === 24 ? 0 : hour24;
 };
 
 type ErrorWithMessage = { data: { message: string } };
@@ -194,9 +209,10 @@ export const resolveSmoothly = async (
 
 export const getFrequencyFromCron = (cron: string) => {
   const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  const { scheduleOptionNames } = getScheduleStrings();
   return isNullOrUndefined(scheduleType)
     ? ""
-    : optionNameTranslations[scheduleType];
+    : scheduleOptionNames[scheduleType];
 };
 
 export const isValidStrategyName = (
@@ -220,19 +236,42 @@ export const getShortStrategyLabel = (
   }
   const type = strategies[strategy.type];
   const mainLabel = getLabelString(type.shortLabel ?? type.label, model);
-  if (strategy.type === "schedule") {
-    const frequency = getFrequencyFromCron(strategy.schedule);
-    return `${mainLabel}: ${frequency}`;
+  /** Part of the label shown after the colon */
+  const subLabel = match(strategy)
+    .with({ type: "schedule" }, strategy =>
+      getFrequencyFromCron(strategy.schedule),
+    )
+    .with(
+      { type: "duration" },
+      strategy =>
+        c(
+          "{0} is a number. Indicates a number of hours (the length of a cache)",
+        ).t`${strategy.duration}h`,
+    )
+    .otherwise(() => null);
+  if (subLabel) {
+    return c(
+      "{0} is the primary label for a cache invalidation strategy. {1} is a further description.",
+    ).t`${mainLabel}: ${subLabel}`;
   } else {
     return mainLabel;
   }
 };
 
+export const getStrategyValidationSchema = (strategyData: StrategyData) => {
+  if (typeof strategyData.validationSchema === "function") {
+    return strategyData.validationSchema();
+  } else {
+    return strategyData.validationSchema;
+  }
+};
+
 export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   const { strategies } = PLUGIN_CACHING;
-  const strategy = strategies[strategyType];
-  const validationSchemaDescription =
-    strategy.validateWith.describe() as SchemaObjectDescription;
+  const strategyData = strategies[strategyType];
+  const validationSchemaDescription = getStrategyValidationSchema(
+    strategyData,
+  ).describe() as SchemaObjectDescription;
   const fieldRecord = validationSchemaDescription.fields;
   const fields = Object.keys(fieldRecord);
   return fields;
@@ -276,3 +315,18 @@ export const translateConfigFromAPI = (config: CacheConfig): CacheConfig =>
 /** Translate a config from the frontend's format into the API's preferred format */
 export const translateConfigToAPI = (config: CacheConfig): CacheConfig =>
   translateConfig(config, "toAPI");
+
+export const getPerformanceTabName = (tabId: PerformanceTabId) =>
+  PLUGIN_CACHING.getTabMetadata().find(
+    ({ key }) => key === `performance-${tabId}`,
+  )?.name;
+
+export const getDefaultValueForField = (
+  strategyType: CacheStrategyType,
+  fieldName?: string,
+) => {
+  const schema = getStrategyValidationSchema(
+    PLUGIN_CACHING.strategies[strategyType],
+  );
+  return fieldName ? schema.cast({})[fieldName] : "";
+};

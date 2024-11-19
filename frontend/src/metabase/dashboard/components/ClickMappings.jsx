@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { getIn, assocIn, dissocIn } from "icepick";
+import { assocIn, dissocIn, getIn } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";

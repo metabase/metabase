@@ -1,4 +1,4 @@
-import type { WritebackAction, CardId } from "metabase-types/api";
+import type { CardId, WritebackAction } from "metabase-types/api";
 
 type ModelId = CardId;
 

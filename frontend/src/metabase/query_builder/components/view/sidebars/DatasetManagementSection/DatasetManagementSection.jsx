@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
 } from "metabase/query_builder/actions";
 import Question from "metabase-lib/v1/Question";
 
@@ -21,19 +21,19 @@ import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator
 
 const mapDispatchToProps = {
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
 };
 
 DatasetManagementSection.propTypes = {
   dataset: PropTypes.instanceOf(Question).isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
-  turnDatasetIntoQuestion: PropTypes.func.isRequired,
+  turnModelIntoQuestion: PropTypes.func.isRequired,
 };
 
 function DatasetManagementSection({
   dataset,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
 }) {
   const onEditQueryDefinitionClick = () => {
     setQueryBuilderMode("dataset", {
@@ -66,7 +66,7 @@ function DatasetManagementSection({
         </Row>
         <Button
           icon="insight"
-          onClick={turnDatasetIntoQuestion}
+          onClick={turnModelIntoQuestion}
         >{t`Turn back into a saved question`}</Button>
         <PLUGIN_MODERATION.QuestionModerationSection
           question={dataset}

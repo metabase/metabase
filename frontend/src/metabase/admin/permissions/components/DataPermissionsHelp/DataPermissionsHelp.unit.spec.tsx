@@ -36,7 +36,7 @@ describe("DataPermissionsHelp", () => {
     screen.getAllByText("Upgrade to Pro").every(link => {
       expect(link).toHaveAttribute(
         "href",
-        "https://www.metabase.com/upgrade?utm_media=admin_permissions&utm_source=oss",
+        "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=admin_permissions&source_plan=oss",
       );
     });
   });

@@ -1,19 +1,19 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
+   [clojure.set :as set]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.audit :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.walk :as lib.walk]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.interface :as mi]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -41,22 +41,32 @@
   metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   [_query])
 
-(mu/defn ^:private check-card-read-perms
-  "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
-  [database-id :- ::lib.schema.id/database
-   card-id     :- ::lib.schema.id/card]
+(defn- throw-inactive-table-error
+  [{db-id :id db-name :name} {table-id :id table-name :name schema :schema}]
+  ;; We don't cache perms for inactive tables, so we need to manually bypass the cache here
+  (binding [data-perms/*use-perms-cache?* false]
+    (let [show-table-name? (data-perms/user-has-permission-for-table? *current-user-id*
+                                                                      :perms/view-data
+                                                                      :unrestricted
+                                                                      db-id
+                                                                      table-id)]
+      (throw (Exception. (tru "Table {0} is inactive." (if show-table-name?
+                                                         (format "\"%s.%s.%s\"" db-name schema table-name)
+                                                         table-id)))))))
+
+(defn- check-query-does-not-access-inactive-tables
+  "Throws an exception if any of the tables referenced by this query are marked as inactive in the app DB.
+  These queries would (likely) fail anyway since an inactive table one is either deleted, or Metabase's connection
+  doesn't have access to it. But we can reject them preemptively for a more consistent experience, and to avoid
+  needing to cache permissions for inactive tables."
+  [{database-id :database, :as outer-query}]
   (qp.store/with-metadata-provider database-id
-    (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
-                           (update-keys u/->snake_case_en)
-                           (vary-meta assoc :type :model/Card))
-                   (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                   {:type    qp.error-type/invalid-query
-                                    :card-id card-id})))]
-      (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
-      (when-not (mi/can-read? card)
-        (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
-                                (mi/perms-objects-set card :read)
-                                {:card-id *card-id*}))))))
+    (let [table-ids (query-perms/query->source-table-ids outer-query)]
+      (doseq [table-id table-ids]
+        (let [table (lib.metadata.protocols/table (qp.store/metadata-provider) table-id)]
+          (when-not (:active table)
+            (throw-inactive-table-error (lib.metadata.protocols/database (qp.store/metadata-provider))
+                                        table)))))))
 
 (def ^:dynamic *param-values-query*
   "Used to allow users looking at a dashboard to view (possibly chained) filters."
@@ -76,33 +86,53 @@
   [query]
   (dissoc query ::query-perms/perms))
 
+(defn remove-source-card-keys
+  "Pre-processing middleware. Removes any instances of the `:qp/stage-is-from-source-card` key which is added by the
+  fetch-source-query middleware when source cards are resolved in a query. Since we rely on this for permission enforcement,
+  we want to disallow users from passing it in themselves (like `remove-permissions-key` above)."
+  [query]
+  (lib.walk/walk
+   query
+   (fn [_query _path-type _path stage-or-join]
+     (dissoc stage-or-join :qp/stage-is-from-source-card))))
+
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
+  [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user permissions = %s"
                 (pr-str (data-perms/permissions-for-user *current-user-id*)))
     (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
-    (let [card-id (or *card-id* (:qp/source-card-id outer-query))
-          required-perms (query-perms/required-perms outer-query :already-preprocessed? true)]
+    (check-query-does-not-access-inactive-tables outer-query)
+    (let [card-id         (or *card-id* (:qp/source-card-id outer-query))
+          required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+          source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
+      ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
+      ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
+      (check-block-permissions outer-query)
       (cond
         card-id
-        (do
-          (check-card-read-perms database-id card-id)
-          (when-not (query-perms/check-data-perms outer-query required-perms :throw-exceptions? false)
-            (check-block-permissions outer-query)))
+        (query-perms/check-card-read-perms database-id card-id)
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
         *param-values-query*
-        (when-not (query-perms/check-data-perms outer-query required-perms :throw-exceptions? false)
-          (check-block-permissions outer-query))
+        (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+          (throw (query-perms/perms-exception required-perms)))
 
+        ;; Ad-hoc query (not a saved question)
         :else
         (do
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
-          ;; check perms for any Cards referenced by this query (if it is a native query)
+
+          ;; Recursively check permissions for any source Cards
+          (doseq [card-id source-card-ids]
+            (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
+              (binding [*card-id* card-id]
+                (check-query-permissions* query))))
+
+          ;; Recursively check permissions for any Cards referenced by this query via template tags
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
                                           (lib/query (qp.store/metadata-provider) outer-query))]
             (check-query-permissions* query)))))))
@@ -128,10 +158,10 @@
                                                 [:type [:enum :query :native]]]]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
-    (check-card-read-perms database-id *card-id*))
+    (query-perms/check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
              outer-query
-             (query-perms/required-perms outer-query :already-preprocessed? true)
+             (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
              :throw-exceptions? false)
     (check-block-permissions outer-query)))
 
@@ -141,7 +171,6 @@
   (fn [query rff]
     (check-query-action-permissions* query)
     (qp query rff)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Non-middleware util fns                                             |

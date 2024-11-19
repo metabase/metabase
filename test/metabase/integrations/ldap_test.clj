@@ -16,7 +16,7 @@
 
 ;; The connection test should pass with valid settings
 (deftest connection-test
-  (ldap.test/with-ldap-server
+  (ldap.test/with-ldap-server!
     (testing "anonymous binds"
       (testing "successfully connect to IPv4 host"
         (is (= {:status :SUCCESS}
@@ -70,7 +70,7 @@
 (deftest find-test
   ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
   (mt/with-premium-features #{}
-    (ldap.test/with-ldap-server
+    (ldap.test/with-ldap-server!
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
                 :first-name "John"
@@ -104,7 +104,7 @@
                (ldap/find-user "jane.miller@metabase.com")))))
 
     ;; Test group lookups for directory servers that use the memberOf attribute overlay, such as Active Directory
-    (ldap.test/with-active-directory-ldap-server
+    (ldap.test/with-active-directory-ldap-server!
       (testing "find user with one group using memberOf attribute"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
                 :first-name "John"
@@ -125,7 +125,7 @@
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
   (mt/with-premium-features #{}
-    (ldap.test/with-ldap-server
+    (ldap.test/with-ldap-server!
       (testing "a new user is created when they don't already exist"
         (try
           (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
@@ -182,7 +182,7 @@
 ;; This isn't a failure of the code, it's a failure of the host.
 (deftest ipv6-test
   (testing "successfully connect to IPv6 host"
-    (let [actual (ldap.test/with-ldap-server
+    (let [actual (ldap.test/with-ldap-server!
                    (ldap/test-ldap-connection (assoc (ldap.test/get-ldap-details)
                                                      :host "[::1]")))]
       (if (= (:status actual) :ERROR)

@@ -75,7 +75,7 @@ export const EditorContainer = styled.div<{
   .ace_content .error {
     position: absolute;
     border-bottom: 2px solid var(--mb-color-error);
-    border-radius: 0px;
+    border-radius: 0;
     background-color: var(--mb-color-bg-error);
   }
 `;
@@ -85,7 +85,9 @@ EditorContainer.defaultProps = {
 };
 
 export const EditorEqualsSign = styled.div`
-  font: 12px / normal "Monaco", monospace;
+  font:
+    12px / normal Monaco,
+    monospace;
   height: 12px;
   font-weight: 700;
   margin: 0 3px 0 ${space(0)};

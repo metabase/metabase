@@ -1,33 +1,37 @@
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  openOrdersTable,
-  tabsShouldBe,
-  popover,
-  restore,
-  visualize,
-  startNewQuestion,
-  visitQuestionAdhoc,
-  saveQuestion,
-  getPersonalCollectionName,
-  visitCollection,
-  queryBuilderHeader,
+  collectionOnTheGoModal,
+  createDashboard,
+  createQuestion,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalTab,
-  collectionOnTheGoModal,
+  getPersonalCollectionName,
   modal,
-  pickEntity,
-  visitQuestion,
-  tableHeaderClick,
+  notebookButton,
   onlyOnOSS,
-  createQuestion,
+  openNotebook,
+  openOrdersTable,
+  pickEntity,
+  popover,
+  queryBuilderHeader,
+  restore,
+  saveQuestion,
+  shouldDisplayTabs,
+  startNewQuestion,
+  tableHeaderClick,
+  tabsShouldBe,
+  visitCollection,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -66,12 +70,19 @@ describe("scenarios > question > new", () => {
 
         entityPickerModalTab("Search").should("not.exist");
 
-        cy.findByPlaceholderText("Search…").type("  ").blur();
-        cy.findByPlaceholderText("Search…").type("ord");
+        cy.findByPlaceholderText("Search this collection or everywhere…")
+          .type("  ")
+          .blur();
+        cy.findByText("Everywhere").click();
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "ord",
+        );
         cy.wait("@search");
         // should not trigger search for an empty string
         cy.get("@searchQuery").should("have.been.calledOnce");
 
+        cy.findAllByTestId("result-item").should("not.exist");
+        cy.findByText("Everywhere").click();
         cy.findAllByTestId("result-item").should("have.length.at.least", 4);
 
         const searchResultItems = cy.findAllByTestId("result-item");
@@ -88,7 +99,9 @@ describe("scenarios > question > new", () => {
         });
 
         // Discarding the search query should take us back to the original tab
-        cy.findByPlaceholderText("Search…").clear().blur();
+        cy.findByPlaceholderText("Search this collection or everywhere…")
+          .clear()
+          .blur();
         entityPickerModalTab("Search").should("not.exist");
         tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
 
@@ -96,11 +109,17 @@ describe("scenarios > question > new", () => {
         cy.findByText("Orders, Count").click();
       });
 
+      cy.log("toggle notebook button should be hidden for brand new questions");
+      notebookButton().should("not.exist");
+
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
       // should reopen saved question picker after returning back to editor mode
-      cy.icon("notebook").click();
+      openNotebook();
+
+      notebookButton().should("be.visible");
+
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
       entityPickerModal().within(() => {
         // It is now possible to choose another saved question
@@ -265,6 +284,20 @@ describe("scenarios > question > new", () => {
       cy.findByText("Orders").click();
     });
 
+    cy.log(
+      "The selected table should be saved and show in recents (metabase#45003)",
+    );
+
+    cy.findByRole("button", { name: /Orders/ }).click();
+    shouldDisplayTabs(["Recents", "Models", "Tables", "Saved questions"]);
+    entityPickerModalTab("Recents").click();
+    cy.findByRole("dialog", { name: "Pick your starting data" })
+      .findByRole("button", { name: /Orders/ })
+      .should("exist");
+    cy.findByRole("dialog", { name: "Pick your starting data" })
+      .findByRole("button", { name: /Close/ })
+      .click();
+
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
     });
@@ -366,8 +399,13 @@ describe("scenarios > question > new", () => {
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
-      cy.createCollection(collectionInRoot);
-      cy.createDashboard(dashboardInRoot);
+      cy.createCollection(collectionInRoot).then(({ body: { id } }) => {
+        createDashboard({
+          name: "Extra Dashboard",
+          collection_id: id,
+        });
+      });
+      createDashboard(dashboardInRoot);
       // Can't use `startNewQuestion` because it's missing `display: "table"` and
       // adding that will fail a lot of other tests and I don't want to deal with that yet.
       cy.visit("/");
@@ -442,6 +480,117 @@ describe("scenarios > question > new", () => {
         cy.findByText("Create a new dashboard").should("be.visible");
       });
     });
+
+    describe("creating a new dashboard", () => {
+      beforeEach(() => {
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Orders").click();
+        });
+
+        queryBuilderHeader().button("Save").click();
+        cy.log("default selected collection is the root collection");
+
+        cy.findByTestId("save-question-modal").within(modal => {
+          cy.findByText("Save").click();
+          cy.wait("@createQuestion");
+        });
+
+        cy.get("#QuestionSavedModal").within(() => {
+          cy.findByText("Yes please!").click();
+        });
+      });
+
+      it("when selecting a collection", () => {
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Dashboards").click();
+          entityPickerModalItem(1, "Collection in root collection").click();
+          cy.button(/Create a new dashboard/).click();
+        });
+
+        cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
+          () => {
+            cy.findByRole("textbox").type("New Dashboard");
+            cy.button("Create").click();
+          },
+        );
+
+        entityPickerModalItem(1, "Collection in root collection").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModalItem(2, "New Dashboard").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModal()
+          .button(/Select/)
+          .click();
+        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+      });
+
+      it("when selecting a collection with no child dashboards (metabase#47000)", () => {
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Dashboards").click();
+          entityPickerModalItem(1, "First collection").click();
+          cy.button(/Create a new dashboard/).click();
+        });
+
+        cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
+          () => {
+            cy.findByRole("textbox").type("New Dashboard");
+            cy.button("Create").click();
+          },
+        );
+
+        entityPickerModalItem(1, "First collection").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModalItem(2, "New Dashboard").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModal()
+          .button(/Select/)
+          .click();
+        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+      });
+
+      it("when a dashboard is currently selected", () => {
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Dashboards").click();
+          entityPickerModalItem(1, "Orders in a dashboard").click();
+          cy.button(/Create a new dashboard/).click();
+        });
+
+        cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
+          () => {
+            cy.findByRole("textbox").type("New Dashboard");
+            cy.button("Create").click();
+          },
+        );
+
+        entityPickerModalItem(1, "New Dashboard").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModal()
+          .button(/Select/)
+          .click();
+        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+      });
+    });
   });
 });
 
@@ -500,12 +649,30 @@ describe(
         type: "model",
       });
 
-      cy.visit("/question/new");
+      cy.intercept("POST", "/api/activity/recents").as("recents");
+
+      cy.visit("/question/notebook");
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").should("be.visible");
         entityPickerModalTab("Models").should("be.visible");
         entityPickerModalTab("Tables").should("be.visible");
+        entityPickerModalItem(1, "Orders Model").click();
+      });
+
+      cy.wait("@recents");
+
+      cy.button(/Orders Model/).click();
+
+      entityPickerModal().within(() => {
+        tabsShouldBe("Models", [
+          "Recents",
+          "Models",
+          "Tables",
+          "Saved questions",
+        ]);
+        entityPickerModalTab("Recents").click();
+        cy.findByTestId("result-item").should("contain.text", "Orders Model");
       });
     });
   },

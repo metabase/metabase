@@ -74,11 +74,19 @@
   (when email
     (if-not (email/email-configured?)
       (log/error "Could not invite user because email is not configured.")
-      (u/prog1 (user/create-and-invite-user! user invitor true)
+      (u/prog1 (user/insert-new-user! user)
         (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
-        (events/publish-event! :event/user-invited {:object (assoc <> :invite_method "email")})
-        (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id (u/the-id <>)
-                                                                             :source          "setup"})))))
+        (events/publish-event! :event/user-invited
+                               {:object
+                                (assoc <>
+                                       :is_from_setup true
+                                       :invite_method "email"
+                                       :sso_source    (:sso_source <>))
+                                :details {:invitor (select-keys invitor [:email :first_name])}})
+        (snowplow/track-event! ::snowplow/invite
+                               {:event           :invite-sent
+                                :invited-user-id (u/the-id <>)
+                                :source          "setup"})))))
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
@@ -135,7 +143,7 @@
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
-      (snowplow/track-event! ::snowplow/new-user-created user-id)
+      (snowplow/track-event! ::snowplow/account {:event :new-user-created} user-id)
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
@@ -167,13 +175,13 @@
              [:collection :boolean]
              [:embedded-resource :boolean]]]])
 
-(mu/defn ^:private state-for-checklist :- ChecklistState
+(mu/defn- state-for-checklist :- ChecklistState
   []
   {:db-type    (mdb/db-type)
    :hosted?    (premium-features/is-hosted?)
    :embedding  {:interested? (not (= (embed.settings/embedding-homepage) :hidden))
                 :done?       (= (embed.settings/embedding-homepage) :dismissed-done)
-                :app-origin  (boolean (embed.settings/embedding-app-origin))}
+                :app-origin  (boolean (embed.settings/embedding-app-origins-interactive))}
    :configured {:email (email/email-configured?)
                 :slack (slack/slack-configured?)
                 :sso   (google/google-auth-enabled)}
@@ -213,7 +221,7 @@
    {:title       (tru "Set Slack credentials")
     :group       (tru "Get connected")
     :description (tru "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions.")
-    :link        "/admin/settings/slack"
+    :link        "/admin/settings/notifications/slack"
     :completed   (configured :slack)
     :triggered   :always}
    {:title       (tru "Setup embedding")
@@ -263,7 +271,7 @@
     :completed   (exists :model)
     :triggered   (not (exists :model))}])
 
-(mu/defn ^:private checklist-items
+(mu/defn- checklist-items
   [info :- ChecklistState]
   (remove nil?
           [{:name  (tru "Get connected")

@@ -5,10 +5,10 @@ import Toggle from "metabase/core/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 
 import {
-  ToggleContainer,
-  Label,
   Description,
   Error,
+  Label,
+  ToggleContainer,
 } from "./ModelActionsSection.styled";
 
 export interface ModelActionsSectionProps {

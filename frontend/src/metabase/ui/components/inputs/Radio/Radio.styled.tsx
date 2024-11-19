@@ -1,9 +1,5 @@
-import type {
-  RadioStylesParams,
-  MantineTheme,
-  MantineThemeOverride,
-} from "@mantine/core";
-import { getStylesRef, getSize, rem } from "@mantine/core";
+import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
+import { getSize, getStylesRef, rem } from "@mantine/core";
 
 const SIZES = {
   md: rem(20),
@@ -14,11 +10,7 @@ export const getRadioOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       size: "md",
     },
-    styles: (
-      theme: MantineTheme,
-      { labelPosition: _labelPosition }: RadioStylesParams,
-      { size = "md" },
-    ) => ({
+    styles: (theme: MantineTheme, { size = "md" }) => ({
       root: {
         [`&:has(.${getStylesRef("input")}:disabled)`]: {
           [`.${getStylesRef("label")}`]: {

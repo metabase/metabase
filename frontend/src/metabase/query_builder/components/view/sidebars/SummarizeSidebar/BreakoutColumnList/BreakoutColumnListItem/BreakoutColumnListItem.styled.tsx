@@ -1,4 +1,4 @@
-import { css, type Theme } from "@emotion/react";
+import { type Theme, css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
@@ -28,7 +28,6 @@ export const TitleContainer = styled.div`
 export const RemoveButton = styled(Button)`
   color: var(--mb-color-text-white);
   background-color: transparent;
-
   opacity: 0.6;
   transition: all 100ms;
 

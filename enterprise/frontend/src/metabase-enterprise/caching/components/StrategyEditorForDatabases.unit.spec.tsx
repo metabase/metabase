@@ -4,11 +4,17 @@ import fetchMock from "fetch-mock";
 import { act, screen } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
+  setupStrategyEditorForDatabases as baseSetup,
   changeInput,
   getSaveButton,
-  setupStrategyEditorForDatabases as baseSetup,
 } from "metabase/admin/performance/components/test-utils";
+import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import {
+  CacheDurationUnit,
+  type DurationStrategy,
+  type ScheduleStrategy,
+} from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 function setup(opts: SetupOpts = {}) {
@@ -23,17 +29,22 @@ describe("StrategyEditorForDatabases", () => {
   beforeEach(() => {
     setup();
   });
+
   afterEach(() => {
     fetchMock.restore();
   });
+
   it("lets user override root strategy on enterprise instance", async () => {
     expect(PLUGIN_CACHING.canOverrideRootStrategy).toBe(true);
   });
+
   it("should show strategy form launchers", async () => {
     const rootStrategyHeading = await screen.findByText("Default policy");
     expect(rootStrategyHeading).toBeInTheDocument();
     expect(
-      await screen.findByLabelText("Edit default policy (currently: Duration)"),
+      await screen.findByLabelText(
+        "Edit default policy (currently: Duration: 1h)",
+      ),
     ).toBeInTheDocument();
     expect(
       await screen.findAllByLabelText(/Edit policy for database/),
@@ -50,19 +61,19 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByLabelText(
-        "Edit policy for database 'Database 3' (currently: Duration)",
+        "Edit policy for database 'Database 3' (currently: Duration: 1h)",
       ),
     ).toBeInTheDocument();
     expect(
       await screen.findByLabelText(
-        "Edit policy for database 'Database 4' (currently inheriting the default policy, Duration)",
+        "Edit policy for database 'Database 4' (currently inheriting the default policy, Duration: 1h)",
       ),
     ).toBeInTheDocument();
   });
 
   it("lets user change the default policy from 'Duration' to 'Adaptive' to 'Don't cache results'", async () => {
     const editButton = await screen.findByLabelText(
-      `Edit default policy (currently: Duration)`,
+      `Edit default policy (currently: Duration: 1h)`,
     );
     await userEvent.click(editButton);
     expect(
@@ -83,7 +94,9 @@ describe("StrategyEditorForDatabases", () => {
     );
 
     expect(
-      await screen.findByLabelText(`Edit default policy (currently: Duration)`),
+      await screen.findByLabelText(
+        `Edit default policy (currently: Duration: 48h)`,
+      ),
     ).toBeInTheDocument();
 
     const noCacheStrategyRadioButton = await screen.findByRole("radio", {
@@ -174,7 +187,7 @@ describe("StrategyEditorForDatabases", () => {
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),
     ).toHaveAttribute(
       "aria-label",
-      "Edit policy for database 'Database 1' (currently: Duration)",
+      "Edit policy for database 'Database 1' (currently: Duration: 48h)",
     );
 
     // Switch to Adaptive strategy
@@ -199,5 +212,24 @@ describe("StrategyEditorForDatabases", () => {
         `Edit policy for database 'Database 1' (currently: Adaptive)`,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("can abbreviate a 'Schedule' strategy", () => {
+    const strategy: ScheduleStrategy = {
+      type: "schedule",
+      schedule: "0 0 * * * ?",
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Scheduled: hourly");
+  });
+
+  it("can abbreviate a 'Duration' strategy", () => {
+    const strategy: DurationStrategy = {
+      type: "duration",
+      duration: 5,
+      unit: CacheDurationUnit.Hours,
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Duration: 5h");
   });
 });

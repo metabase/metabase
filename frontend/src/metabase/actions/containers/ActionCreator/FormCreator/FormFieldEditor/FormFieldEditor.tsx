@@ -23,9 +23,9 @@ import {
   FormFieldContainer,
   Header,
   InputContainer,
-  Title,
-  Subtitle,
   PreviewContainer,
+  Subtitle,
+  Title,
 } from "./FormFieldEditor.styled";
 
 export interface FormFieldEditorProps {

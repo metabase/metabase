@@ -1,4 +1,4 @@
-import { isEE } from "e2e/support/helpers";
+import { isEE, updateSetting } from "e2e/support/helpers";
 
 const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
 const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
@@ -10,7 +10,7 @@ export const describeWithSnowplowEE =
   HAS_SNOWPLOW && isEE ? describe : describe.skip;
 
 export const enableTracking = () => {
-  cy.request("PUT", "/api/setting/anon-tracking-enabled", { value: true });
+  updateSetting("anon-tracking-enabled", true);
 };
 
 export const resetSnowplow = () => {
@@ -28,15 +28,27 @@ export const blockSnowplow = () => {
  * @param {number} count - number of matching events you expect to find. defaults to 1
  */
 export const expectGoodSnowplowEvent = (eventData, count = 1) => {
+  let lastReceivedEvent = null;
   retrySnowplowRequest(
     "micro/good",
-    ({ body }) =>
-      body.filter(snowplowEvent =>
-        isDeepMatch(
-          snowplowEvent?.event?.unstruct_event?.data?.data,
-          eventData,
-        ),
-      ).length === count,
+    ({ body }) => {
+      lastReceivedEvent = body?.[0].event?.unstruct_event?.data?.data;
+
+      return (
+        body.filter(snowplowEvent =>
+          isDeepMatch(
+            snowplowEvent?.event?.unstruct_event?.data?.data,
+            eventData,
+          ),
+        ).length === count
+      );
+    },
+    () =>
+      `Expected ${count} good Snowplow events with data: ${JSON.stringify(
+        eventData,
+        null,
+        2,
+      )}\n Last event found was ${JSON.stringify(lastReceivedEvent, null, 2)}`,
   ).should("be.ok");
 };
 
@@ -104,15 +116,29 @@ const sendSnowplowRequest = url => {
   });
 };
 
-const retrySnowplowRequest = (url, condition, timeout = SNOWPLOW_TIMEOUT) => {
+const retrySnowplowRequest = (
+  url,
+  condition,
+  messageOrMessageFn = null,
+  timeout = SNOWPLOW_TIMEOUT,
+) => {
   return sendSnowplowRequest(url).then(response => {
     if (condition(response)) {
       return cy.wrap(response);
     } else if (timeout > 0) {
       cy.wait(SNOWPLOW_INTERVAL);
-      return retrySnowplowRequest(url, condition, timeout - SNOWPLOW_INTERVAL);
+      return retrySnowplowRequest(
+        url,
+        condition,
+        messageOrMessageFn,
+        timeout - SNOWPLOW_INTERVAL,
+      );
     } else {
-      throw new Error("Snowplow retry timeout");
+      const message =
+        typeof messageOrMessageFn === "function"
+          ? messageOrMessageFn()
+          : messageOrMessageFn;
+      throw new Error("Snowplow retry timeout " + message);
     }
   });
 };

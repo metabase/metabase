@@ -9,9 +9,9 @@ import type {
 } from "metabase-types/api";
 
 import {
+  BreadcrumbsPathSeparator,
   ExpandButton,
   PathContainer,
-  BreadcrumbsPathSeparator,
 } from "./CollectionBreadcrumbs.styled";
 import { getCollectionList } from "./utils";
 

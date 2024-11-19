@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -5,18 +7,18 @@ import { Icon } from "metabase/ui";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 
 import {
-  StatusCardRoot,
-  StatusCardIcon,
+  StatusBody,
   StatusCardBody,
-  StatusCardTitle,
   StatusCardDescription,
-  StatusCardSpinner,
+  StatusCardIcon,
   StatusCardIconContainer,
-  StatusRoot,
+  StatusCardRoot,
+  StatusCardSpinner,
+  StatusCardTitle,
   StatusHeader,
+  StatusRoot,
   StatusTitle,
   StatusToggle,
-  StatusBody,
 } from "./StatusLarge.styled";
 
 type Status = {
@@ -54,12 +56,12 @@ const StatusLarge = ({
           <Ellipsified>{status.title}</Ellipsified>
         </StatusTitle>
         {onCollapse && (
-          <StatusToggle onClick={onCollapse}>
+          <StatusToggle onClick={onCollapse} aria-label={t`Collapse`}>
             <Icon name="chevrondown" />
           </StatusToggle>
         )}
         {onDismiss && (
-          <StatusToggle onClick={onDismiss}>
+          <StatusToggle onClick={onDismiss} aria-label={t`Dismiss`}>
             <Icon name="close" />
           </StatusToggle>
         )}

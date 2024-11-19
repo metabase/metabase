@@ -2,24 +2,25 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
+import { useSetting } from "metabase/common/hooks";
 import { Text } from "metabase/ui";
-import type { BillingInfoLineItem, BillingInfo } from "metabase-types/api";
+import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
 
 import {
+  BillingExternalLink,
+  BillingExternalLinkIcon,
   BillingInfoCard,
   BillingInfoRowContainer,
   BillingInternalLink,
-  BillingExternalLink,
-  BillingExternalLinkIcon,
 } from "./BillingInfo.styled";
 import {
-  getBillingInfoId,
-  isSupportedLineItem,
   formatBillingValue,
-  isUnsupportedInternalLink,
+  getBillingInfoId,
   internalLinkMap,
+  isSupportedLineItem,
+  isUnsupportedInternalLink,
 } from "./utils";
 
 const BillingInfoValue = ({
@@ -115,6 +116,7 @@ export const BillingInfoTable = ({
 }: {
   billingInfo: BillingInfo;
 }) => {
+  const airgap_enabled = useSetting("airgap-enabled");
   return (
     <>
       <SectionHeader>{t`Billing`}</SectionHeader>
@@ -127,7 +129,7 @@ export const BillingInfoTable = ({
           />
         ))}
       </BillingInfoCard>
-      <StillNeedHelp />
+      {airgap_enabled && <StillNeedHelp />}
     </>
   );
 };

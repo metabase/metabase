@@ -2,7 +2,7 @@ import { c, t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
-import { Flex, Icon, Text, Box } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
 

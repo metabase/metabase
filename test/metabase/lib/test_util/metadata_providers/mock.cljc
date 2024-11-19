@@ -66,6 +66,19 @@
                     (assoc object :lib/type metadata-type))))
           (get metadata k))))
 
+(defn- mock-metadatas-for-card [metadata metadata-type card-id]
+  (let [k (case metadata-type
+            :metadata/metric :cards)]
+    (into []
+          (keep (fn [object]
+                  (when (and (= (:source-card-id object) card-id)
+                             (if (= metadata-type :metadata/metric)
+                               (and (= (:type object) :metric)
+                                    (not (:archived object)))
+                               true))
+                    (assoc object :lib/type metadata-type))))
+          (get metadata k))))
+
 (defn- mock-setting [metadata setting-key]
   (get-in metadata [:settings (keyword setting-key)]))
 
@@ -79,6 +92,8 @@
     (mock-tables metadata))
   (metadatas-for-table [_this metadata-type table-id]
     (mock-metadatas-for-table metadata metadata-type table-id))
+  (metadatas-for-card [_this metadata-type card-id]
+    (mock-metadatas-for-card metadata metadata-type card-id))
   (setting [_this setting-key]
     (mock-setting metadata setting-key))
 

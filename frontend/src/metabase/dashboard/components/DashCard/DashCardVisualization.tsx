@@ -11,6 +11,8 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -19,13 +21,13 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
-  Dashboard,
   DashCardId,
+  Dashboard,
+  DashboardCard,
   Dataset,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
-  DashboardCard,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
@@ -33,7 +35,7 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
-import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
+import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import type {
   CardSlownessStatus,
@@ -46,7 +48,7 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
   mode?: QueryClickActionsMode | Mode;
-  href: string | undefined;
+  getHref?: () => string | undefined;
 
   gridSize: {
     width: number;
@@ -84,6 +86,9 @@ interface DashCardVisualizationProps {
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+  onTogglePreviewing: () => void;
+
+  downloadsEnabled: boolean;
 }
 
 // This is done to add the `getExtraDataForClick` prop.
@@ -94,7 +99,7 @@ export function DashCardVisualization({
   dashboard,
   series,
   mode,
-  href,
+  getHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -117,9 +122,11 @@ export function DashCardVisualization({
   isEditingParameter,
   withTitle = true,
   onChangeCardAndRun,
+  onTogglePreviewing,
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
+  downloadsEnabled,
 }: DashCardVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
@@ -150,6 +157,7 @@ export function DashCardVisualization({
             text: t`Text Card`,
             heading: t`Heading Card`,
             placeholder: t`Placeholder Card`,
+            iframe: t`Iframe Card`,
           }[virtualDashcardType] ??
           t`This card does not support click mappings`;
 
@@ -195,13 +203,13 @@ export function DashCardVisualization({
     }
 
     const mainSeries = series[0] as unknown as Dataset;
-    const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
+    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
       question,
       result: mainSeries,
       isXray,
-      isEmbed,
       isPublicOrEmbedded,
       isEditing,
+      downloadsEnabled,
     });
 
     if (!shouldShowDashCardMenu) {
@@ -209,24 +217,30 @@ export function DashCardVisualization({
     }
 
     return (
-      <DashCardMenuConnected
+      <DashCardMenu
+        downloadsEnabled={downloadsEnabled}
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}
         dashboardId={dashboard.id}
-        token={isEmbed ? String(dashcard.dashboard_id) : undefined}
+        token={
+          isJWT(dashcard.dashboard_id)
+            ? String(dashcard.dashboard_id)
+            : undefined
+        }
+        uuid={isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined}
       />
     );
   }, [
     question,
-    dashcard.id,
-    dashcard.dashboard_id,
     series,
-    isEmbed,
+    isXray,
     isPublicOrEmbedded,
     isEditing,
-    isXray,
+    dashcard.id,
+    dashcard.dashboard_id,
     dashboard.id,
+    downloadsEnabled,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -235,8 +249,10 @@ export function DashCardVisualization({
 
   return (
     <Visualization
-      className={cx(CS.flexFull, CS.overflowHidden, {
+      className={cx(CS.flexFull, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
+        [CS.overflowAuto]: visualizationOverlay,
+        [CS.overflowHidden]: !visualizationOverlay,
       })}
       classNameWidgets={cx({
         [cx(CS.textLight, CS.textMediumHover)]: isEmbed,
@@ -246,7 +262,7 @@ export function DashCardVisualization({
       rawSeries={series}
       metadata={metadata}
       mode={mode}
-      href={href}
+      getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}
@@ -254,6 +270,7 @@ export function DashCardVisualization({
       error={error?.message}
       errorIcon={error?.icon}
       showTitle={withTitle}
+      canToggleSeriesVisibility={!isEditing}
       isAction={isAction}
       isDashboard
       isSlow={isSlow}
@@ -267,6 +284,7 @@ export function DashCardVisualization({
       replacementContent={visualizationOverlay}
       getExtraDataForClick={getExtraDataForClick}
       onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+      onTogglePreviewing={onTogglePreviewing}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
     />

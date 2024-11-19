@@ -1,8 +1,8 @@
 import {
+  formatNativeQuery,
   getEngineNativeAceMode,
   getEngineNativeType,
   getNativeQueryLanguage,
-  formatNativeQuery,
   isDeprecatedEngine,
 } from "metabase/lib/engine";
 import type { Engine } from "metabase-types/api";
@@ -85,10 +85,6 @@ describe("formatNativeQuery", () => {
   });
 
   it("should return `undefined` when the query and the engine don't match", () => {
-    expect(formatNativeQuery("select 1", "mongo")).toBeUndefined();
-    expect(formatNativeQuery("foo bar baz", "mongo")).toBeUndefined();
-    expect(formatNativeQuery("", "mongo")).toBeUndefined();
-
     expect(formatNativeQuery({}, "postgres")).toBeUndefined();
     expect(formatNativeQuery([], "postgres")).toBeUndefined();
     expect(formatNativeQuery([{}], "postgres")).toBeUndefined();
@@ -117,6 +113,7 @@ describe("formatNativeQuery", () => {
     expect(formatNativeQuery([], "mongo")).toEqual("[]");
     expect(formatNativeQuery(["foo"], "mongo")).toEqual('[\n  "foo"\n]');
     expect(formatNativeQuery({ a: 1 }, "mongo")).toEqual('{\n  "a": 1\n}');
+    expect(formatNativeQuery('["foo"]', "mongo")).toEqual('["foo"]');
   });
 });
 

@@ -3,13 +3,13 @@
    [metabase.async.streaming-response :as streaming-response]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.json :as qp.json]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -109,7 +109,7 @@
                         deduped-cols)]
     [ordered-cols output-order]))
 
-(mu/defn ^:private streaming-rff :- ::qp.schema/rff
+(mu/defn- streaming-rff :- ::qp.schema/rff
   [results-writer :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
@@ -133,21 +133,20 @@
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
-(mu/defn ^:private streaming-result-fn :- fn?
+(mu/defn- streaming-result-fn :- fn?
   [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
    ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
-  (let [orig qp.pipeline/*result*]
-    (fn result [result]
-      (when (= (:status result) :completed)
-        (log/debug "Finished writing results; closing results writer.")
-        (try
-          (qp.si/finish! results-writer result)
-          (catch EofException e
-            (log/error e "Client closed connection prematurely")))
-        (u/ignore-exceptions
-          (.flush os)
-          (.close os)))
-      (orig result))))
+  (fn result [result]
+    (when (= (:status result) :completed)
+      (log/debug "Finished writing results; closing results writer.")
+      (try
+        (qp.si/finish! results-writer result)
+        (catch EofException e
+          (log/error e "Client closed connection prematurely")))
+      (u/ignore-exceptions
+        (.flush os)
+        (.close os)))
+    (qp.pipeline/default-result-handler result)))
 
 (defn do-with-streaming-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of
@@ -171,17 +170,18 @@
     (do-with-streaming-rff
      export-format os
      (^:once fn* [rff]
-      (let [result (try
-                     (f rff)
-                     (catch Throwable e
-                       e))]
-        (assert (some? result) "QP unexpectedly returned nil.")
+       (let [result (try
+                      (binding [qp.pipeline/*canceled-chan* canceled-chan]
+                        (f rff))
+                      (catch Throwable e
+                        e))]
+         (assert (some? result) "QP unexpectedly returned nil.")
         ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
         ;; question to return a response directly instead of a core.async channel
-        (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
-        (when (or (instance? Throwable result)
-                  (= (:status result) :failed))
-          (streaming-response/write-error! os result)))))))
+         (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
+         (when (or (instance? Throwable result)
+                   (= (:status result) :failed))
+           (streaming-response/write-error! os result export-format)))))))
 
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure

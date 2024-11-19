@@ -6,10 +6,10 @@ import CS from "metabase/css/core/index.css";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
 
 import {
-  ItemLink,
-  IconContainer,
   CardContent,
   CollectionIcon,
+  IconContainer,
+  ItemLink,
 } from "./CollectionItem.styled";
 
 const propTypes = {

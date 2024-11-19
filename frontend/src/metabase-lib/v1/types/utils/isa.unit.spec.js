@@ -1,19 +1,20 @@
 import {
-  TYPE,
-  TEMPORAL,
+  BOOLEAN,
+  COORDINATE,
+  LOCATION,
+  NUMBER,
+  PRIMARY_KEY,
   STRING,
   STRING_LIKE,
-  NUMBER,
-  BOOLEAN,
-  LOCATION,
-  COORDINATE,
-  PRIMARY_KEY,
+  TEMPORAL,
+  TYPE,
 } from "metabase-lib/v1/types/constants";
 import {
   getFieldType,
-  isString,
-  isInteger,
   isDimension,
+  isInteger,
+  isMetric,
+  isString,
 } from "metabase-lib/v1/types/utils/isa";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -30,6 +31,30 @@ describe("isa", () => {
         isDimension(createMockColumn({ semantic_type: TYPE.Description })),
       ).toBe(true);
     });
+  });
+
+  describe("isMetric", () => {
+    it.each([
+      createMockColumn({ source: "aggregation", base_type: TYPE.Integer }),
+      createMockColumn({ base_type: TYPE.Integer }),
+      createMockColumn({ base_type: TYPE.BigInteger }),
+      createMockColumn({ base_type: TYPE.BigInteger, name: "solid" }),
+    ])("should should return true for numeric columns", column => {
+      expect(isMetric(column)).toBe(true);
+    });
+
+    it.each([
+      createMockColumn({ source: "breakout", base_type: TYPE.Integer }),
+      createMockColumn({ base_type: TYPE.Text }),
+      createMockColumn({ base_type: TYPE.BigInteger, name: "id" }),
+      createMockColumn({ base_type: TYPE.BigInteger, name: "orders_id" }),
+      createMockColumn({ base_type: TYPE.BigInteger, name: "orders-id" }),
+    ])(
+      "should should return false for breakout, ID, non-summable columns",
+      column => {
+        expect(isMetric(column)).toBe(false);
+      },
+    );
   });
 
   describe("getFieldType", () => {

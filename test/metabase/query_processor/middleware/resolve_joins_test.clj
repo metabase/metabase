@@ -212,7 +212,7 @@
                                   :strategy     :left-join
                                   :condition    [:= $id [:field "USER_ID" {:base-type :type/Integer, :join-alias "c"}]]
                                   :fields       [&c.checkins.id
-                                                 !default.&c.checkins.date
+                                                 &c.checkins.date
                                                  &c.checkins.user_id
                                                  &c.checkins.venue_id]}]
                    :aggregation [[:sum [:field "id" {:base-type :type/Float, :join-alias "c"}]]]

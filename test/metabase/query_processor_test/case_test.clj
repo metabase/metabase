@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.case-test
+(ns ^:mb/driver-tests metabase.query-processor-test.case-test
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Card Segment]]
@@ -118,11 +118,12 @@
   (testing "We should support expressions with two case statements (#15107)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
       (is (= [[1] [0]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query products
-                 {:fields      [[:expression "two-cases"]]
-                  :expressions {"two-cases" [:+
-                                             [:case [[[:= $category "Widget"] 1]] {:default 0}]
-                                             [:case [[[:> $rating 4] 1]] {:default 0}]]}
-                  :limit    2
-                  :order-by [[:asc $id]]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query products
+                {:fields      [[:expression "two-cases"]]
+                 :expressions {"two-cases" [:+
+                                            [:case [[[:= $category "Widget"] 1]] {:default 0}]
+                                            [:case [[[:> $rating 4] 1]] {:default 0}]]}
+                 :limit    2
+                 :order-by [[:asc $id]]})))))))

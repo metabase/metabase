@@ -19,23 +19,6 @@ export function isValidField(field) {
     (isAggregateField(field) && typeof field[1] === "number")
   );
 }
-
-function isNotComparingLocalFieldRefs(refA, refB) {
-  return !isLocalField(refA) || !isLocalField(refB);
-}
-
-export function isSameField(
-  fieldA,
-  fieldB,
-  useDeepEquality = isNotComparingLocalFieldRefs(fieldA, fieldB),
-) {
-  if (useDeepEquality) {
-    return _.isEqual(fieldA, fieldB);
-  } else {
-    return getFieldTargetId(fieldA) === getFieldTargetId(fieldB);
-  }
-}
-
 /**
  * Get the target field ID (recursively) from a Field clause. For Field clauses that use string Field names, this
  * returns the Field clause directly. FIXME !!!

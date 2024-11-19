@@ -14,14 +14,12 @@ const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
 // this map should be synced with "tsconfig.sdk.json"
 const REPLACES_MAP = {
-  "metabase-enterprise/": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/metabase-enterprise/`,
-  "metabase-lib/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib/`,
+  "metabase-enterprise": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/metabase-enterprise`,
   "metabase-lib": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib`,
-  "metabase-shared/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-shared/`,
-  "metabase-types/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-types/`,
-  "metabase/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase/`,
-  "embedding-sdk/": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/embedding-sdk/`,
-  "cljs/": `${SDK_PACKAGE_NAME}/dist/target/cljs_release/`,
+  "metabase-types": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-types`,
+  metabase: `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase`,
+  "embedding-sdk": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/embedding-sdk`,
+  cljs: `${SDK_PACKAGE_NAME}/dist/target/cljs_release`,
 };
 
 const traverseFilesTree = dir => {
@@ -49,7 +47,10 @@ const replaceAliasedImports = filePath => {
 
   Object.entries(REPLACES_MAP).forEach(([alias, replacement]) => {
     fileContent = fileContent
-      .replaceAll(`from "${alias}`, `from "${replacement}`)
+      // replaces "metabase-lib/foo" with "<sdk>/metabase-lib/foo"
+      .replaceAll(`from "${alias}/`, `from "${replacement}/`)
+      // replaces "metabase-lib" with "<sdk>/metabase-lib"
+      .replaceAll(`from "${alias}"`, `from "${replacement}"`)
       .replaceAll(`import("${alias}`, `import("${replacement}`)
       .replace(
         // replace dynamic imports using alias, with possible relative paths - "../../" and "frontend/src/"
@@ -67,9 +68,62 @@ const replaceAliasedImports = filePath => {
 };
 
 const fixupTypesAfterCompilation = () => {
+  console.log("[dts fixup] Fixing SDK d.ts files...");
+
   const dtsFilePaths = traverseFilesTree(SDK_DIST_DIR_PATH);
 
   dtsFilePaths.forEach(replaceAliasedImports);
+
+  console.log("[dts fixup] Done!");
 };
 
-fixupTypesAfterCompilation();
+const watchFilesAndFixThem = () => {
+  console.log("[dts fixup] Watching for changes in the SDK d.ts files...");
+  // we need to keep track of the files that just edited
+  // as they trigger a file save event otherwise we'd end up in a loop
+
+  // NOTE: if this solution ends up being flaky for some reason, we could
+  // just check if the file includes "@metabase/embedding-sdk-react", if it does
+  // it means we can skip it
+  const dirty = new Map();
+
+  fs.watch(
+    SDK_DIST_DIR_PATH,
+    { recursive: true },
+    async (eventType, filename) => {
+      if (filename && filename.endsWith(".d.ts")) {
+        if (dirty.get(filename)) {
+          return dirty.set(filename, false);
+        }
+        console.log(
+          "[dts fixup]",
+          `File ${filename} changed, fixing the imports`,
+        );
+        dirty.set(filename, true);
+        replaceAliasedImports(path.resolve(SDK_DIST_DIR_PATH, filename));
+      }
+    },
+  );
+};
+
+const waitForFolder = async folderPath => {
+  while (!fs.existsSync(folderPath)) {
+    console.log(`Waiting for ${folderPath} to be created...`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+};
+
+const isWatchMode = process.argv.includes("--watch");
+
+const run = async () => {
+  // when running on a clean state and with --watch, the folder might not exist yet
+  await waitForFolder(SDK_DIST_DIR_PATH);
+  fixupTypesAfterCompilation();
+
+  if (isWatchMode) {
+    console.log("\n\n\n");
+    watchFilesAndFixThem();
+  }
+};
+
+run();

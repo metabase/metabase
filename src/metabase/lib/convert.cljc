@@ -1,5 +1,6 @@
 (ns metabase.lib.convert
   (:require
+   #?@(:clj ([metabase.util.log :as log]))
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -16,8 +17,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   #?@(:clj ([metabase.util.log :as log])))
+   [metabase.util.malli.registry :as mr])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -75,7 +75,7 @@
 
 (defn- clean-stage-ref-errors [almost-stage]
   (reduce (fn [almost-stage [loc _]]
-              (clean-location almost-stage ::lib.schema/invalid-ref loc))
+            (clean-location almost-stage ::lib.schema/invalid-ref loc))
           almost-stage
           (lib.schema/ref-errors-for-stage almost-stage)))
 
@@ -84,16 +84,23 @@
       clean-stage-schema-errors
       clean-stage-ref-errors))
 
+(def ^:dynamic *clean-query*
+  "If true (this is the default), the query is cleaned.
+  When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
+  true)
+
 (defn- clean [almost-query]
-  (loop [almost-query almost-query
-         stage-index 0]
-    (let [current-stage (nth (:stages almost-query) stage-index)
-          new-stage (clean-stage current-stage)]
-      (if (= current-stage new-stage)
-        (if (= stage-index (dec (count (:stages almost-query))))
-          almost-query
-          (recur almost-query (inc stage-index)))
-        (recur (update almost-query :stages assoc stage-index new-stage) stage-index)))))
+  (if-not *clean-query*
+    almost-query
+    (loop [almost-query almost-query
+           stage-index 0]
+      (let [current-stage (nth (:stages almost-query) stage-index)
+            new-stage (clean-stage current-stage)]
+        (if (= current-stage new-stage)
+          (if (= stage-index (dec (count (:stages almost-query))))
+            almost-query
+            (recur almost-query (inc stage-index)))
+          (recur (update almost-query :stages assoc stage-index new-stage) stage-index))))))
 
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
@@ -290,6 +297,10 @@
   [[_tag field n unit options]]
   (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
+(defmethod ->pMBQL :relative-time-interval
+  [[_tag & [_column _value _bucket _offset-value _offset-bucket :as args]]]
+  (lib.options/ensure-uuid (into [:relative-time-interval {}] (map ->pMBQL) args)))
+
 ;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
 (defmethod ->pMBQL :offset
   [[tag opts expr n, :as clause]]
@@ -348,17 +359,18 @@
   `:effective-type`, which is not used in options maps in legacy MBQL."
   [m]
   (not-empty
-   (into {}
-         (comp (disqualify)
-               (remove (fn [[k _v]]
-                         (= k :effective-type))))
-         ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
-         ;; were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
-         (if (contains? m :metabase.lib.query/transformation-added-base-type)
-           (dissoc m
-                   :metabase.lib.query/transformation-added-base-type
-                   :base-type)
-           m))))
+   (-> (into {}
+             (comp (disqualify)
+                   (remove (fn [[k _v]]
+                             (= k :effective-type))))
+             ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where
+             ;; those were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
+             (if (contains? m :metabase.lib.query/transformation-added-base-type)
+               (dissoc m
+                       :metabase.lib.query/transformation-added-base-type
+                       :base-type)
+               m))
+       (m/assoc-some :original-temporal-unit (:metabase.lib.field/original-temporal-unit m)))))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}
@@ -413,7 +425,7 @@
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract
-             :concat :substring :replace :regexextract :regex-match-first
+             :concat :substring :replace :regex-match-first
              :length :trim :ltrim :rtrim :upper :lower]]
   (lib.hierarchy/derive tag ::expression))
 
@@ -427,7 +439,7 @@
               (map ->legacy-MBQL))
         (:columns stage-metadata)))
 
-(mu/defn ^:private chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
+(mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
   ;; :source-query.
@@ -518,7 +530,7 @@
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base (cond-> (disqualify join)
-               (str/starts-with? (:alias join) legacy-default-join-alias) (dissoc :alias))]
+               (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
@@ -573,8 +585,9 @@
                         :native
                         :query)]
       (merge (dissoc base :stages :parameters :lib.convert/converted?)
-             (cond-> {:type query-type query-type inner-query}
-               (seq parameters) (assoc :parameters parameters))))
+             (cond-> {:type query-type}
+               (seq inner-query) (assoc query-type inner-query)
+               (seq parameters)  (assoc :parameters parameters))))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
                       {:query query}

@@ -9,26 +9,27 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import {
+  NEW_PULSE_TEMPLATE,
   cleanPulse,
   createChannel,
-  NEW_PULSE_TEMPLATE,
 } from "metabase/lib/pulse";
 import {
-  updateEditingPulse,
-  saveEditingPulse,
   cancelEditingPulse,
   fetchPulseFormInput,
+  saveEditingPulse,
   testPulse,
+  updateEditingPulse,
 } from "metabase/pulse/actions";
 import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
 import {
-  AddEditSlackSidebar,
   AddEditEmailSidebar,
+  AddEditSlackSidebar,
 } from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
 import { NewPulseSidebar } from "metabase/sharing/components/NewPulseSidebar";
 import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
+import { isVirtualCardDisplayType } from "metabase-types/api/visualization";
 
 export const CHANNEL_ICONS = {
   email: "mail",
@@ -66,9 +67,9 @@ const cardsFromDashboard = dashboard => {
   }));
 };
 
-const getSupportedCardsForSubscriptions = dashboard => {
+export const getSupportedCardsForSubscriptions = dashboard => {
   return cardsFromDashboard(dashboard).filter(
-    card => !["text", "heading", "action", "link"].includes(card.display),
+    card => !isVirtualCardDisplayType(card.display),
   );
 };
 
@@ -78,6 +79,7 @@ const cardsToPulseCards = (cards, pulseCards) => {
     return {
       ...card,
       format_rows: pulseCard.format_rows,
+      pivot_results: pulseCard.pivot_results,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
     };

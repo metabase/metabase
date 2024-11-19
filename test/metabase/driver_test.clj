@@ -1,4 +1,4 @@
-(ns metabase.driver-test
+(ns ^:mb/driver-tests metabase.driver-test
   (:require
    [cheshire.core :as json]
    [clojure.set :as set]
@@ -8,6 +8,8 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
@@ -19,17 +21,16 @@
 
 (driver/register! ::test-driver, :abstract? true)
 
-(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature _db] true)
-(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature db] (= db "dummy"))
+(defmethod driver/database-supports? [::test-driver :metadata/key-constraints] [_driver _feature db] (= db "dummy"))
 
 (deftest ^:parallel database-supports?-test
-  (is (driver/database-supports? ::test-driver :foreign-keys "dummy"))
-  (is (not (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
+  (is (driver/database-supports? ::test-driver :metadata/key-constraints "dummy"))
+  (is (not (driver/database-supports? ::test-driver :metadata/key-constraints "not-dummy")))
   (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
   (is (thrown-with-msg?
-        java.lang.Exception
-        #"Invalid driver feature: .*"
-        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
+       java.lang.Exception
+       #"Invalid driver feature: .*"
+       (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
@@ -84,7 +85,7 @@
 
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
-    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -116,20 +117,21 @@
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
           (let [db (mt/db)
                 cant-sync-logged? (fn []
-                                    (some?
-                                     (some
-                                      (fn [[log-level throwable message]]
-                                        (and (= log-level :warn)
-                                             (instance? clojure.lang.ExceptionInfo throwable)
-                                             (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
-                                      (mt/with-log-messages-for-level :warn
-                                        (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
+                                    (mt/with-log-messages-for-level [messages :warn]
+                                      (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))
+                                      (some?
+                                       (some
+                                        (fn [{:keys [level e message]}]
+                                          (and (= level :warn)
+                                               (instance? clojure.lang.ExceptionInfo e)
+                                               (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
+                                        (messages)))))]
             (testing "sense checks before deleting the database"
               (testing "sense check 1: sync-and-analyze-database! should not log a warning"
                 (is (false? (cant-sync-logged?))))
@@ -193,6 +195,15 @@
             (is (= query
                    (json/parse-string weird-formatted-query)))))))))
 
+(deftest ^:parallel prettify-native-form-executable-test
+  (mt/test-drivers
+    (set (filter (partial get-method driver/prettify-native-form) (mt/normal-drivers)))
+    (is (=? {:status :completed}
+            (qp/process-query {:database (mt/id)
+                               :type     :native
+                               :native   (-> (qp.compile/compile (mt/mbql-query orders {:limit 1}))
+                                             (update :query (partial driver/prettify-native-form driver/*driver*)))})))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Begin tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -200,9 +211,10 @@
 (defn- describe-fields-for-table [db table]
   (sort-by :database-position
            (if (driver/database-supports? driver/*driver* :describe-fields db)
-             (vec (driver/describe-fields driver/*driver* db
-                                          :schema-names [(:schema table)]
-                                          :table-names [(:name table)]))
+             (mapv #(dissoc % :table-name :table-schema)
+                   (driver/describe-fields driver/*driver* db
+                                           :schema-names [(:schema table)]
+                                           :table-names [(:name table)]))
              (:fields (driver/describe-table driver/*driver* db table)))))
 
 (deftest ^:parallel describe-fields-or-table-test
@@ -227,7 +239,7 @@
 
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :foreign-keys)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :metadata/key-constraints)
                                      (mt/normal-drivers-with-feature :describe-fks))
       (let [orders   (t2/select-one :model/Table (mt/id :orders))
             products (t2/select-one :model/Table (mt/id :products))
@@ -244,7 +256,7 @@
 
 (deftest ^:parallel describe-fks-test
   (testing "`describe-fks` works for drivers that support `describe-fks`"
-    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :describe-fks)
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints :describe-fks)
       (let [fmt           (partial ddl.i/format-name driver/*driver*)
             orders        (t2/select-one :model/Table (mt/id :orders))
             products      (t2/select-one :model/Table (mt/id :products))

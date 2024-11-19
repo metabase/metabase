@@ -5,10 +5,10 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useGetCardQuery, skipToken, useGetTableQuery } from "metabase/api";
+import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import {
-  getQuestionPickerValue,
   QuestionPickerModal,
+  getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
 import ActionButton from "metabase/components/ActionButton";
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -18,7 +18,7 @@ import { EntityName } from "metabase/entities/containers/EntityName";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
-import { Icon, Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -133,16 +133,17 @@ const EditSandboxingModal = ({
 
   return (
     <div>
-      <h2 className={CS.p3}>{t`Grant sandboxed access to this table`}</h2>
+      <h2 className={CS.p3}>{t`Restrict access to this table`}</h2>
 
       <div>
         <div className={cx(CS.px3, CS.pb3)}>
-          <div className={CS.pb3}>
-            {t`When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question.`}
+          <div className={CS.pb2}>
+            {t`When the following rules are applied, this group will see a customized version of the table.`}
           </div>
-          <h4 className={CS.pb1}>
-            {t`How do you want to filter this table for users in this group?`}
-          </h4>
+          <div className={CS.pb4}>
+            {t`These rules don’t apply to native queries.`}
+          </div>
+          <h4 className={CS.pb1}>{t`How do you want to filter this table?`}</h4>
           <Radio
             value={!shouldUseSavedQuestion}
             options={[
@@ -252,7 +253,7 @@ const EditSandboxingModal = ({
             {typeof error === "string"
               ? error
               : // @ts-expect-error provide correct type for error
-                error.data.message ?? ERROR_MESSAGE}
+                (error.data.message ?? ERROR_MESSAGE)}
           </div>
         )}
       </div>

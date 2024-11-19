@@ -5,8 +5,8 @@ import { Route } from "react-router";
 import { callMockEvent } from "__support__/events";
 import {
   setupDatabasesEndpoints,
-  setupPermissionsGraphEndpoints,
   setupGroupsEndpoint,
+  setupPermissionsGraphEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,

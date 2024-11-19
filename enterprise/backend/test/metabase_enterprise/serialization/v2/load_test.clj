@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.load-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -7,17 +8,14 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Action Card Collection Dashboard DashboardCard Database Field
+    :refer [Card Collection Dashboard DashboardCard Database Field
             FieldValues NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -32,7 +30,7 @@
        set))
 
 (defn- ingestion-in-memory [extractions]
-  (let [mapped (into {} (for [entity (into [] extractions)]
+  (let [mapped (into {} (for [entity (vec extractions)]
                           [(no-labels (serdes/path entity))
                            entity]))]
     (reify
@@ -141,11 +139,11 @@
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "serialization of databases is based on the :name"
-          (is (= #{(:name @db1s) (:name @db2s) "test-data"} ; TODO I'm not sure where the `test-data` one comes from.
+          (is (= #{(:name @db1s) (:name @db2s) "test-data (h2)"} ; TODO I'm not sure where the `test-data` one comes from.
                  (ids-by-model @serialized "Database"))))
 
         (testing "tables reference their databases by name"
-          (is (= #{(:name @db1s) (:name @db2s) "test-data"}
+          (is (= #{(:name @db1s) (:name @db2s) "test-data (h2)"}
                  (->> @serialized
                       (filter #(-> % :serdes/meta last :model (= "Table")))
                       (map :db_id)
@@ -173,7 +171,7 @@
 
             (is (= 3 (t2/count Database)))
             (is (every? #(= "complete" (:initial_sync_status %)) (t2/select Database)))
-            (is (= #{"db1" "db2" "test-data"}
+            (is (= #{"db1" "db2" "test-data (h2)"}
                    (t2/select-fn-set :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
                    (t2/select-fn-set :db_id Table :name "posts")))
@@ -293,7 +291,6 @@
           table2d    (atom nil)
           field2d    (atom nil)]
 
-
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
           (ts/with-db source-db
@@ -379,7 +376,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field3d    (atom nil)]
-
 
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
@@ -523,7 +519,6 @@
                   (is (= exp-dashcard
                          (-> dash :dashcards first :visualization_settings))))))))
 
-
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
@@ -620,7 +615,7 @@
                              [:collection_id               [:= (:entity_id @coll1s)]]
                              [:name                        [:= "Some events"]]
                              [:creator_id                  [:= "tom@bost.on"]]
-                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                             [:created_at                  :string]
                              [:entity_id                   [:= (:entity_id timeline1)]]
                              [:description                 [:maybe :string]]
                              [:events                      [:sequential
@@ -631,11 +626,9 @@
                                                              [:archived                    :boolean]
                                                              [:description                 [:maybe :string]]
                                                              [:creator_id                  :string]
-                                                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:created_at                  :string]
                                                              [:timestamp                   :string]
-                                                             [:icon {:optional true}       [:maybe :string]]
-                                                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]]]]
-                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:icon {:optional true}       [:maybe :string]]]]]
                              [:icon {:optional true}       [:maybe :string]]
                              [:default {:optional true}    :boolean]]
                             timeline1))
@@ -772,7 +765,7 @@
             (is (= 1
                    (->> @serialized
                         (filter #(= (:serdes/meta %)
-                                    [{:model "Database" :id "test-data"}
+                                    [{:model "Database" :id "test-data (h2)"}
                                      {:model "Schema"   :id "PUBLIC"}
                                      {:model "Table"    :id "VENUES"}
                                      {:model "Field"    :id "NAME"}]))
@@ -966,15 +959,15 @@
                                      :type :model
                                      :database_id (:id db)
                                      :dataset_query {:database (:id db)
-                                                     :native {:type   :native
-                                                              :native {:query "wow"}}})
+                                                     :type   :native
+                                                     :native {:query "select 1"}})
                 _action-id (action/insert! {:entity_id     eid
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query
-                                            :dataset_query "wow"
+                                            :dataset_query (mt/mbql-query users {:limit 1})
                                             :database_id   (:id db)})]
-            (reset! serialized (into [] (serdes.extract/extract {})))
+            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
                                                      (and (= model "Action") (= id eid)))
                                                    @serialized))]
@@ -984,8 +977,9 @@
       (testing "loading succeeds"
         (ts/with-db dest-db
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-          (let [action (t2/select-one Action :entity_id eid)]
+          (let [action (action/select-action :entity_id eid)]
             (is (some? action))
+            (is (some? (:dataset_query action)))
             (testing ":type should be a keyword again"
               (is (keyword? (:type action))))))))))
 
@@ -1004,7 +998,7 @@
           (reset! tab1s (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id @dash1s)))
           (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s) :dashboard_tab_id (:id tab1s)))
 
-          (reset! serialized (into [] (serdes.extract/extract {})))))
+          (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
 
       (testing "New dashcard will be removed on load"
         (ts/with-db dest-db
@@ -1039,51 +1033,70 @@
 (deftest dashcard-series-test
   (ts/with-dbs [source-db dest-db]
     (testing "Dashcard series are updated and deleted correctly"
-     (ts/with-db source-db
-       (let [dash1s        (ts/create! :model/Dashboard :name "My Dashboard")
-             tab1s         (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id dash1s))
-             card1s        (ts/create! Card :name "The Card")
-             series-card1s (ts/create! Card :name "The Series Card 1")
-             series-card2s (ts/create! Card :name "The Series Card 2")
-             series-card3s (ts/create! Card :name "The Series Card 3")
-             dashcard1s    (ts/create! :model/DashboardCard :card_id (:id card1s) :dashboard_id (:id dash1s) :dashboard_tab_id (:id tab1s))
-             series1s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card1s) :position 0)
-             series2s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card2s) :position 1)
-             series3s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card3s) :position 2)
-             extract1      (into [] (serdes.extract/extract {}))]
-         (ts/with-db dest-db
-           (serdes.load/load-metabase! (ingestion-in-memory extract1))
-           (ts/with-db source-db
+      (ts/with-db source-db
+        (let [dash1s        (ts/create! :model/Dashboard :name "My Dashboard")
+              tab1s         (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id dash1s))
+              card1s        (ts/create! Card :name "The Card")
+              series-card1s (ts/create! Card :name "The Series Card 1")
+              series-card2s (ts/create! Card :name "The Series Card 2")
+              series-card3s (ts/create! Card :name "The Series Card 3")
+              dashcard1s    (ts/create! :model/DashboardCard :card_id (:id card1s) :dashboard_id (:id dash1s) :dashboard_tab_id (:id tab1s))
+              series1s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card1s) :position 0)
+              series2s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card2s) :position 1)
+              series3s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card3s) :position 2)
+              extract1      (into [] (serdes.extract/extract {:no-settings true}))]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory extract1))
+            (ts/with-db source-db
              ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
-             (t2/delete! :model/DashboardCardSeries (:id series1s))
-             (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
-             (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
-             (let [extract2 (into [] (serdes.extract/extract {}))]
-               (ts/with-db dest-db
-                 (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
-                       series-card3d        (t2/select-one :model/Card :entity_id (:entity_id series-card3s))
+              (t2/delete! :model/DashboardCardSeries (:id series1s))
+              (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
+              (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
+              (let [extract2 (into [] (serdes.extract/extract {:no-settings true :no-data-model true}))]
+                (ts/with-db dest-db
+                  (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
+                        series-card3d        (t2/select-one :model/Card :entity_id (:entity_id series-card3s))
                        ;; we deleted the card that corresponds to `series1s`, so a shortcut is to get the one with position=0
-                       series-to-be-deleted (t2/select-one :model/DashboardCardSeries :position 0)]
-                   (testing "Sense check: there are 3 series for the dashboard card initially"
-                     (is (= 3
-                            (t2/count :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted)))))
-                   (serdes.load/load-metabase! (ingestion-in-memory extract2))
-                   (let [dash1d (-> (t2/select-one :model/Dashboard :name "My Dashboard")
-                                    (t2/hydrate [:dashcards :series]))]
-                     (testing "Dashboard cards have the same entity ID"
-                       (is (= (:entity_id dashcard1s)
-                              (get-in dash1d [:dashcards 0 :entity_id]))))
-                     (testing "The dashboard's series is updated"
-                       (is (=? [{:id (:id series-card3d)}
-                                {:id (:id series-card2d)}]
-                               (get-in dash1d [:dashcards 0 :series]))))
-                     (testing "Dashboard card series are correctly updated/deleted in the database"
-                       (is (=? [{:position 0
-                                 :card_id  (:id series-card3d)}
-                                {:position 1
-                                 :card_id  (:id series-card2d)}]
-                               (->> (t2/select :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted))
-                                    (sort-by :position))))))))))))))))
+                        series-to-be-deleted (t2/select-one :model/DashboardCardSeries :position 0)]
+                    (testing "Sense check: there are 3 series for the dashboard card initially"
+                      (is (= 3
+                             (t2/count :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted)))))
+                    (serdes.load/load-metabase! (ingestion-in-memory extract2))
+                    (let [dash1d (-> (t2/select-one :model/Dashboard :name "My Dashboard")
+                                     (t2/hydrate [:dashcards :series]))]
+                      (testing "Dashboard cards have the same entity ID"
+                        (is (= (:entity_id dashcard1s)
+                               (get-in dash1d [:dashcards 0 :entity_id]))))
+                      (testing "The dashboard's series is updated"
+                        (is (=? [{:id (:id series-card3d)}
+                                 {:id (:id series-card2d)}]
+                                (get-in dash1d [:dashcards 0 :series]))))
+                      (testing "Dashboard card series are correctly updated/deleted in the database"
+                        (is (=? [{:position 0
+                                  :card_id  (:id series-card3d)}
+                                 {:position 1
+                                  :card_id  (:id series-card2d)}]
+                                (->> (t2/select :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted))
+                                     (sort-by :position))))))))))))))))
+
+(deftest dashcard-series-multi-test
+  (ts/with-dbs [source-db dest-db]
+    (testing "Dashcard series works correctly with one card in multiple series"
+      (ts/with-db source-db
+        (mt/with-temp [:model/Dashboard           dash {:name "Dashboard"}
+                       :model/Card                c1   {:name "Card 1"}
+                       :model/Card                c2   {:name "Card 2"}
+                       :model/Card                sc   {:name "Series Card"}
+                       :model/DashboardCard       dc1  {:card_id (:id c1) :dashboard_id (:id dash)}
+                       :model/DashboardCard       dc2  {:card_id (:id c2) :dashboard_id (:id dash)}
+                       :model/DashboardCardSeries _s1  {:dashboardcard_id (:id dc1) :card_id (:id sc) :position 0}
+                       :model/DashboardCardSeries _s2  {:dashboardcard_id (:id dc2) :card_id (:id sc) :position 0}]
+          (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
+            (ts/with-db dest-db
+              (serdes.load/load-metabase! (ingestion-in-memory extract))
+              (testing "Both series get imported even though they point at the same card"
+                (is (= 2
+                       (t2/count :model/DashboardCardSeries)))))))))))
 
 (deftest extraneous-keys-test
   (let [serialized (atom nil)
@@ -1093,13 +1106,13 @@
         (ts/with-db source-db
           (let [db         (ts/create! Database :name "my-db")
                 card       (ts/create! Card
-                                 :name "the query"
-                                 :query_type :native
-                                 :type :model
-                                 :database_id (:id db)
-                                 :dataset_query {:database (:id db)
-                                                 :native   {:type   :native
-                                                            :native {:query "wow"}}})
+                                       :name "the query"
+                                       :query_type :native
+                                       :type :model
+                                       :database_id (:id db)
+                                       :dataset_query {:database (:id db)
+                                                       :native   {:type   :native
+                                                                  :native {:query "wow"}}})
                 parent     (ts/create! Collection :name "Parent Collection" :location "/")
                 _child     (ts/create! Collection
                                        :name "Child Collection"
@@ -1166,12 +1179,11 @@
                             :visualization_settings {:click_behavior {:type     "link"
                                                                       :linkType "dashboard"
                                                                       :targetId (:id dash1)}})
-          ser   (atom nil)]
-      (reset! ser (into [] (serdes.extract/extract {:no-settings   true
-                                                    :no-data-model true})))
+          ser   (into [] (serdes.extract/extract {:no-settings   true
+                                                  :no-data-model true}))]
       (t2/delete! DashboardCard :id [:in (map :id [dc1 dc2 dc3])])
       (testing "Circular dependencies are loaded correctly"
-        (is (serdes.load/load-metabase! (ingestion-in-memory @ser)))
+        (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
         (let [select-target #(-> % :visualization_settings :click_behavior :targetId)]
           (is (= (:id dash2)
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc1))))
@@ -1179,3 +1191,182 @@
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc2))))
           (is (= (:id dash1)
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))
+
+(deftest continue-on-error-test
+  (let [change-ser    (fn [ser changes] ;; kind of like left-join, but right side is indexed
+                        (vec (for [entity ser]
+                               (merge entity (get changes (:entity_id entity))))))
+        logs-extract  (fn [re logs]
+                        (keep #(rest (re-find re %))
+                              (map :message logs)))]
+    (mt/with-empty-h2-app-db
+      (mt/with-temp [Collection coll {:name "coll"}
+                     Card       c1   {:name "card1" :collection_id (:id coll)}
+                     Card       c2   {:name "card2" :collection_id (:id coll)}
+                     Card       _c3  {:name "card3" :collection_id (:id coll)}]
+        (testing "It's possible to skip a few errors during extract"
+          (let [extract-one serdes/extract-one]
+            (with-redefs [serdes/extract-one (fn [model-name opts instance]
+                                               (if (= (:entity_id instance) (:entity_id c1))
+                                                 (throw (ex-info "Skip me" {}))
+                                                 (extract-one model-name opts instance)))]
+              (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
+                (let [ser            (vec (serdes.extract/extract {:no-settings       true
+                                                                   :no-data-model     true
+                                                                   :continue-on-error true}))
+                      {errors true
+                       others false} (group-by #(instance? Exception %) ser)]
+                  (is (= 1 (count errors)))
+                  (is (= 3 (count others))))
+                (is (= [["Card" (str (:id c1))]]
+                       (logs-extract #"Skipping (\w+) (\d+)"
+                                     (messages))))))))
+        (testing "It's possible to skip a few errors during load"
+          (let [ser     (vec (serdes.extract/extract {:no-settings   true
+                                                      :no-data-model true}))
+                changed (change-ser ser {(:entity_id c2) {:collection_id "does-not-exist"}})]
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
+                (is (= 1 (count (:errors report))))
+                (is (= 3 (count (:seen report)))))
+              (is (= [["Failed to read file for Collection does-not-exist"]]
+                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}$"
+                                   (messages)))))))))))
+
+(deftest with-dbs-works-as-expected-test
+  (ts/with-dbs [source-db dest-db]
+    (ts/with-db source-db
+      (mt/with-temp
+        [:model/Card _ {:name "MY CARD"}]
+        (testing "card is available in the source db"
+          (is (some? (t2/select-one :model/Card :name "MY CARD"))))
+        (ts/with-db dest-db
+          (testing "card should not be available in the dest db"
+            (is (nil? (t2/select-one :model/Card :name "MY CARD")))))))))
+
+(deftest database-test
+  (ts/with-dbs [source-db dest-db]
+    (ts/with-db source-db
+      (mt/with-temp [Database   _ {:name    "My Database"
+                                   :details {:some "secret"}}]
+        (testing "without :include-database-secrets"
+          (let [extracted (vec (serdes.extract/extract {:no-settings true}))
+                dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
+            (is (= 1 (count dbs)))
+            (is (not-any? :details dbs))
+            (ts/with-db dest-db
+              (testing "loading still works even if there are no details"
+                (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                (is (= {}
+                       (t2/select-one-fn :details Database)))
+                (testing "If we did not export details - it won't override existing data"
+                  (t2/update! Database {:details {:other "secret"}})
+                  (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                  (is (= {:other "secret"}
+                         (t2/select-one-fn :details Database)))))))))
+
+      (mt/with-temp [Database   _ {:name    "My Database"
+                                   :details {:some "secret"}}]
+        (testing "with :include-database-secrets"
+          (let [extracted (vec (serdes.extract/extract {:no-settings true :include-database-secrets true}))
+                dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
+            (is (= 1 (count dbs)))
+            (is (every? :details dbs))
+            (ts/with-db dest-db
+              (testing "Details are imported if provided"
+                (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                (is (= (:details (first dbs))
+                       (t2/select-one-fn :details Database)))))))))))
+
+(deftest unique-dimensions-test
+  (ts/with-dbs [source-db dest-db]
+    (ts/with-db source-db
+      (mt/with-temp [:model/Dimension d1 {:name     "Some Dimension"
+                                          :field_id (mt/id :venues :price)
+                                          :type     "internal"}]
+        (let [ser (vec (serdes.extract/extract {:no-settings true}))]
+          (ts/with-db dest-db
+            (mt/with-temp [:model/Dimension d2 {:name     "Absolutely Other Dimension"
+                                                :field_id (mt/id :venues :price)
+                                                :type     "internal"}]
+              (serdes.load/load-metabase! (ingestion-in-memory ser))
+              (is (= (:entity_id d1)
+                     (t2/select-one-fn :entity_id :model/Dimension :field_id (mt/id :venues :price))))
+              (is (= nil
+                     (t2/select-one :model/Dimension :entity_id (:entity_id d2)))))))))))
+
+(deftest nested-identity-hashes-test ;; tests serdes/nested behavior for identity hashes
+  (let [ids (atom {})]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (mt/with-temp [:model/Collection    coll {:name "Coll"}
+                       :model/Dashboard     dash {:name "Dash"}
+                       :model/Card          c1   {:name "Card 1"}
+                       :model/DashboardCard dc1  {:dashboard_id (:id dash)
+                                                  :card_id      (:id c1)}]
+          (testing "Store deserialized data ids in preparation for test"
+            (let [ser1 (vec (serdes.extract/extract {:no-settings true}))]
+              (ts/with-db dest-db
+                (serdes.load/load-metabase! (ingestion-in-memory ser1))
+                (reset! ids
+                        (vec
+                         (for [[_name e] {:coll coll :dash dash :c1 c1 :dc1 dc1}]
+                           [(t2/model e) (:id (t2/select-one (t2/model e) :entity_id (:entity_id e)))]))))))
+
+          (testing "Convert everything to using identity hashes"
+            (t2/update! :model/Collection :id (:id coll) {:entity_id (serdes/identity-hash coll)})
+            (t2/update! :model/Dashboard :id (:id dash) {:entity_id (serdes/identity-hash dash)})
+            (t2/update! :model/Card :id (:id c1) {:entity_id (serdes/identity-hash c1)})
+            (t2/update! :model/DashboardCard :id (:id dc1) {:entity_id (serdes/identity-hash dc1)}))
+
+          (is (= 8 (count (serdes/entity-id "Card"
+                                            (t2/select-one [:model/Card :entity_id] :id (:id c1))))))
+
+          (testing "Identity hashes end up in target db in place of entity ids"
+            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true}))]
+              (testing "\nWe exported identity hashes"
+                (doseq [e ser2
+                        :when (:entity_id e)]
+                  (is (= 8 (count (-> e :entity_id str/trim))))))
+              (ts/with-db dest-db
+                (serdes.load/load-metabase! (ingestion-in-memory ser2))
+                (testing "\nAll entities (including nested dashcards) were updated"
+                  (doseq [[model id] @ids
+                          :let       [e (t2/select-one model :id id)]]
+                    (testing (format "%s has identity hash in the db" model)
+                      (is (= (serdes/identity-hash e)
+                             (serdes/entity-id (name model) e))))))))))))))
+
+(deftest identically-named-fields-test
+  (mt/with-empty-h2-app-db
+    (let [db (ts/create! Database :name "mydb")
+          t  (ts/create! Table :name "table" :db_id (:id db))
+          f1 (ts/create! Field :name "field" :table_id (:id t))
+          ;; name is the same, but parent_id is different
+          f2 (ts/create! Field :name "field" :table_id (:id t) :parent_id (:id f1))
+          f3 (ts/create! Field :name "field" :table_id (:id t) :parent_id (:id f2)
+                         :description "desc")
+
+          ser (into [] (serdes.extract/extract {}))]
+
+      (is (=? {:parent_id   ["mydb" nil "table" "field"]
+               :serdes/meta [{:model "Database" :id "mydb"}
+                             {:model "Table" :id "table"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}]}
+              (ts/extract-one "Field" (:id f2))))
+
+      (is (=? {:parent_id   ["mydb" nil "table" "field" "field"],
+               :serdes/meta [{:model "Database" :id "mydb"}
+                             {:model "Table" :id "table"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}]}
+              (ts/extract-one "Field" (:id f3))))
+
+      (t2/update! :model/Field (:id f3) {:description "some new one"})
+
+      (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+
+      (is (= "desc"
+             (t2/select-one-fn :description :model/Field (:id f3)))))))

@@ -41,7 +41,7 @@ describe("getLinkedIssues", () => {
       ).toBeNull();
     });
 
-    it("should return `null` when the issue doesn't immediatelly follow the closing keyword", () => {
+    it("should return `null` when the issue doesn't immediately follow the closing keyword", () => {
       // Two or more spaces
       expect(getLinkedIssues("Fix  #123")).toBeNull();
       // Newline
@@ -68,6 +68,12 @@ describe("getLinkedIssues", () => {
 
       it(`should return the issue id for ${closingKeyword.toLowerCase()}`, () => {
         expect(getLinkedIssues(`${closingKeyword.toLowerCase()} #123`)).toEqual(
+          ["123"],
+        );
+      });
+
+      it(`should return the issue id for ${closingKeyword.toLowerCase()} with a colon`, () => {
+        expect(getLinkedIssues(`${closingKeyword.toLowerCase()}: #123`)).toEqual(
           ["123"],
         );
       });
@@ -129,6 +135,14 @@ describe("getPRsFromCommitMessage", () => {
   it("should return the PR id for a message with multiple backport PRs", () => {
     expect(getPRsFromCommitMessage("Backport (#123) (#456)")).toEqual([123, 456]);
     expect(getPRsFromCommitMessage("Backport (#1234) and (#4567)")).toEqual([1234, 4567]);
+    expect(getPRsFromCommitMessage("Backport (#1234) and (#4567) (#8989)")).toEqual([1234, 4567, 8989]);
+  });
+
+  it("should ignore pr numbers outside the title", () => {
+    expect(getPRsFromCommitMessage("Backport (#123) (#456)\n\n(#888) (#999)")).toEqual([123, 456]);
+    expect(getPRsFromCommitMessage("Backport (#1234) and (#4567)\n\n(#888)")).toEqual([1234, 4567]);
+    expect(getPRsFromCommitMessage("Backport (#1234)\n\n and (#4567) (#8989)")).toEqual([1234]);
+    expect(getPRsFromCommitMessage("Backport\n\n (#1234)\n\n and (#4567) (#8989)")).toEqual(null);
   });
 });
 

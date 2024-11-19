@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import * as Urls from "metabase/lib/urls";
 
 import {
+  AuthorityLevelIcon,
   CollectionBadgeRoot,
   CollectionLink,
-  AuthorityLevelIcon,
 } from "./CollectionBadge.styled";
 
 const propTypes = {

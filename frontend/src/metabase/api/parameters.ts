@@ -34,3 +34,6 @@ export const parametersApi = Api.injectEndpoints({
     }),
   }),
 });
+
+export const { useGetParameterValuesQuery, useSearchParameterValuesQuery } =
+  parametersApi;

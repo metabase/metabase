@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { TemplateTag, ParameterOptions } from "metabase-types/api";
+import type { ParameterOptions, TemplateTag } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import {
   ID_OPTION,
@@ -32,7 +33,9 @@ export function getParameterOptions() {
 
 export function getParameterOptionsForField(field: Field) {
   return getParameterOptions()
-    .filter(option => fieldFilterForParameter(option)(field))
+    .filter(option =>
+      fieldFilterForParameter(createMockParameter(option))(field),
+    )
     .map(option => {
       return {
         ...option,

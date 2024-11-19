@@ -35,31 +35,28 @@
                   [:metabase_database.name :database-name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(mdb.query/qualify model-symb %)]
-     (cond-> {:where [:in (self-qualify :id) ids]}
-       (not= model "table")
-       (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})
-       (= model "table")
-       (merge {:left-join [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]})))))
-
-(defn- select-items! [model ids]
-  (when (seq ids)
-    (for [model (t2/hydrate (models-query model ids) :moderation_reviews)
-          :let [reviews (:moderation_reviews model)
-                status  (->> reviews
-                             (filter :most_recent)
-                             first
-                             :status)]]
-      (assoc model :moderated_status status))))
+     {:where [:in (self-qualify :id) ids]
+      :left-join (if (= model "table")
+                   [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
+                   [:collection [:= :collection.id (self-qualify :collection_id)]])})))
 
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
   [views]
-  (into {} (map (fn [[model models]]
-                  [model (->> models
-                              (map :model_id)
-                              (select-items! model)
-                              (m/index-by :id))]))
-        (group-by :model views)))
+  (let [grouped (group-by :model views)
+        ;; We perform selects for each model type separately, but then bring them back into a flat list to hydrate
+        ;; with moderation_reviews data all at once.
+        items (mapcat (fn [[model views']]
+                        (when (seq views')
+                          (->> (models-query model (map :model_id views'))
+                               (mapv #(assoc % :model model)))))
+                      grouped)
+        items (->> (t2/hydrate items :moderation_reviews)
+                   (map (fn [{:keys [moderation_reviews] :as item}]
+                          (let [status (some #(when (:most_recent %) (:status %)) moderation_reviews)]
+                            (assoc item :moderated_status status)))))]
+    ;; Now group the flat list of items into a map.
+    (update-vals (group-by :model items) #(m/index-by :id %))))
 
 (defn- views-and-runs
   "Query implementation for `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
@@ -103,11 +100,11 @@
                                                               [:= :context (h2x/literal :question)]]
                                                    :order-by [[:max_ts :desc]]
                                                    :limit    card-runs-limit})
-                                       (map #(dissoc % :row_count))
-                                       (map #(assoc % :model "card")))]
-    (->> (concat card-runs dashboard-and-table-views)
-         (sort-by :max_ts)
-         reverse)))
+                                       (mapv #(-> %
+                                                  (dissoc :row_count)
+                                                  (assoc :model "card"))))]
+    (->> (into card-runs dashboard-and-table-views)
+         (sort-by :max_ts #(compare %2 %1)))))
 
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
@@ -201,11 +198,11 @@
    "table"      4
    "collection" 5})
 
-(mu/defn get-popular-items-model-and-id
+(mu/defn get-popular-items-model-and-id :- [:sequential recent-views/Item]
   "Returns the 'popular' items for the current user. This is a list of 5 items that the user has viewed recently.
    The items are sorted by a weighted score that takes into account the total count of views, the recency of the view,
    whether the item is 'official' or 'verified', and more."
-  [] :- [:sequential recent-views/Item]
+  []
   ;; we do a weighted score which incorporates:
   ;; - total count -> higher = higher score
   ;; - recently viewed -> more recent = higher score

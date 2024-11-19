@@ -105,7 +105,22 @@ describe("AddSeriesModal", () => {
       dashcard: incompleteDashcard,
       dashcardData: {
         [incompleteDashcard.id]: {
-          [incompleteCard.id]: dataset,
+          [incompleteCard.id]: createMockDataset({
+            data: createMockDatasetData({
+              rows: [
+                ["1958-04-01T00:00:00+07:00"],
+                ["1958-05-01T00:00:00+07:00"],
+                ["1958-06-01T00:00:00+07:00"],
+                ["1958-07-01T00:00:00+07:00"],
+              ],
+              cols: [
+                createMockColumn({
+                  base_type: "type/Date",
+                  display_name: displayColumnName,
+                }),
+              ],
+            }),
+          }),
         },
       },
     });

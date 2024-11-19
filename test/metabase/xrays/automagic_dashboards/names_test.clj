@@ -48,7 +48,6 @@
       (testing unit
         (is (some? (names/humanize-datetime "1990-09-09T12:30:00" unit)))))))
 
-
 ;;; ------------------- Cell titles -------------------
 (deftest ^:parallel cell-title-test
   (mt/$ids venues
@@ -163,9 +162,9 @@
     (mt/dataset test-data
       (is (= "TestColumn is 2 and Created At is in February 2024"
              (#'names/humanize-filter-value
-               nil
-               ["and"
-                ["=" ["expression" "TestColumn" {:base-type "type/Integer"}] 2]
-                ["=" ["field" (mt/id :orders :created_at)
-                      {:base-type "type/DateTime", :temporal-unit "month"}]
-                 "2024-02-01T00:00:00Z"]]))))))
+              nil
+              ["and"
+               ["=" ["expression" "TestColumn" {:base-type "type/Integer"}] 2]
+               ["=" ["field" (mt/id :orders :created_at)
+                     {:base-type "type/DateTime", :temporal-unit "month"}]
+                "2024-02-01T00:00:00Z"]]))))))

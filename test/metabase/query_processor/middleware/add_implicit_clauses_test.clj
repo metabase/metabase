@@ -1,8 +1,9 @@
-(ns metabase.query-processor.middleware.add-implicit-clauses-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.add-implicit-clauses-test
   (:require
    [clojure.test :refer :all]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -12,7 +13,8 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel ordering-test
   (testing "check we fetch Fields in the right order"
@@ -22,7 +24,7 @@
                                                  :position -1}]})
       (let [ids (map second
                      (#'qp.add-implicit-clauses/sorted-implicit-fields-for-table (meta/id :venues)))]
-        (is (=? [ ;; sorted first because it has lowest positon
+        (is (=? [;; sorted first because it has lowest positon
                  {:position -1, :name "PRICE", :semantic-type :type/Category}
                  ;; PK
                  {:position 0, :name "ID", :semantic-type :type/PK}
@@ -37,58 +39,63 @@
 
 (deftest ^:parallel add-order-bys-for-breakouts-test
   (testing "we should add order-bys for breakout clauses"
-    (is (= {:source-table 1
-            :breakout     [[:field 1 nil]]
-            :order-by     [[:asc [:field 1 nil]]]}
-           (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
-            {:source-table 1
-             :breakout     [[:field 1 nil]]})))))
-
-(deftest ^:parallel add-order-bys-for-breakouts-test-2
-  (testing "we should add order-bys for breakout clauses"
-    (testing "Add Field to existing order-by"
-      (is (= {:source-table 1
-              :breakout     [[:field 2 nil]]
-              :order-by     [[:asc [:field 1 nil]]
-                             [:asc [:field 2 nil]]]}
-             (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
-              {:source-table 1
-               :breakout     [[:field 2 nil]]
-               :order-by     [[:asc [:field 1 nil]]]}))))))
-
-(deftest ^:parallel add-order-bys-for-breakouts-test-3
-  (testing "we should add order-bys for breakout clauses"
-    (testing "...but not if the Field is already in an order-by"
+    (mt/with-metadata-provider meta/metadata-provider
       (is (= {:source-table 1
               :breakout     [[:field 1 nil]]
               :order-by     [[:asc [:field 1 nil]]]}
              (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
               {:source-table 1
-               :breakout     [[:field 1 nil]]
-               :order-by     [[:asc [:field 1 nil]]]}))))))
+               :breakout     [[:field 1 nil]]}))))))
+
+(deftest ^:parallel add-order-bys-for-breakouts-test-2
+  (testing "we should add order-bys for breakout clauses"
+    (testing "Add Field to existing order-by"
+      (mt/with-metadata-provider meta/metadata-provider
+        (is (= {:source-table 1
+                :breakout     [[:field 2 nil]]
+                :order-by     [[:asc [:field 1 nil]]
+                               [:asc [:field 2 nil]]]}
+               (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
+                {:source-table 1
+                 :breakout     [[:field 2 nil]]
+                 :order-by     [[:asc [:field 1 nil]]]})))))))
+
+(deftest ^:parallel add-order-bys-for-breakouts-test-3
+  (testing "we should add order-bys for breakout clauses"
+    (testing "...but not if the Field is already in an order-by"
+      (mt/with-metadata-provider meta/metadata-provider
+        (is (= {:source-table 1
+                :breakout     [[:field 1 nil]]
+                :order-by     [[:asc [:field 1 nil]]]}
+               (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
+                {:source-table 1
+                 :breakout     [[:field 1 nil]]
+                 :order-by     [[:asc [:field 1 nil]]]})))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-4
   (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
-      (is (= {:source-table 1
-              :breakout     [[:field 1 nil]]
-              :order-by     [[:desc [:field 1 nil]]]}
-             (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
-              {:source-table 1
-               :breakout     [[:field 1 nil]]
-               :order-by     [[:desc [:field 1 nil]]]}))))))
+      (mt/with-metadata-provider meta/metadata-provider
+        (is (= {:source-table 1
+                :breakout     [[:field 1 nil]]
+                :order-by     [[:desc [:field 1 nil]]]}
+               (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
+                {:source-table 1
+                 :breakout     [[:field 1 nil]]
+                 :order-by     [[:desc [:field 1 nil]]]})))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-5
   (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
       (testing "With a datetime-field"
-        (is (= {:source-table 1
-                :breakout     [[:field 1 {:temporal-unit :day}]]
-                :order-by     [[:asc [:field 1 {:temporal-unit :day}]]]}
-               (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
-                {:source-table 1
-                 :breakout     [[:field 1 {:temporal-unit :day}]]
-                 :order-by     [[:asc [:field 1 {:temporal-unit :day}]]]})))))))
+        (mt/with-metadata-provider meta/metadata-provider
+          (is (= {:source-table 1
+                  :breakout     [[:field 1 {:temporal-unit :day}]]
+                  :order-by     [[:asc [:field 1 {:temporal-unit :day}]]]}
+                 (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
+                  {:source-table 1
+                   :breakout     [[:field 1 {:temporal-unit :day}]]
+                   :order-by     [[:asc [:field 1 {:temporal-unit :day}]]]}))))))))
 
 (defn- add-implicit-fields [inner-query]
   (if (qp.store/initialized?)
@@ -100,7 +107,7 @@
   (testing "We should add sorted implicit Fields for a query with no aggregations"
     (is (= (:query
             (lib.tu.macros/mbql-query venues
-              {:fields [ ;; :type/PK Fields should get sorted first
+              {:fields [;; :type/PK Fields should get sorted first
                         $id
                         ;; followed by :type/Name Fields
                         $name
@@ -124,7 +131,7 @@
                                                  :base-type :type/Text}]})
       (is (= (:query
               (lib.tu.macros/mbql-query venues
-                {:fields [ ;; all fields with lower positions should get sorted first according to rules above
+                {:fields [;; all fields with lower positions should get sorted first according to rules above
                           $id $name $category-id $latitude $longitude $price
                           ;; followed by position = 100, then position = 101
                           [:field 1 nil]
@@ -144,7 +151,7 @@
       (is (query= (:query
                    (lib.tu.macros/mbql-query venues
                      {:fields [$id $name
-                               [:field 1 {:temporal-unit :default}]
+                               [:field 1 nil]
                                $category-id $latitude $longitude $price]}))
                   (add-implicit-fields (:query (lib.tu.macros/mbql-query venues))))))))
 
@@ -171,8 +178,8 @@
            (mt/mbql-query venues {:expressions {"ccprice" $price}}))]
       (is (some #(when (= % [:field "ccprice" {:base-type :type/Integer}]) %)
                 (-> (lib.tu.macros/mbql-query nil
-                                              {:source-query    source-query
-                                               :source-metadata source-metadata})
+                      {:source-query    source-query
+                       :source-metadata source-metadata})
                     :query add-implicit-fields :fields))))))
 
 (deftest ^:parallel joined-field-test
@@ -222,9 +229,9 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (let [expected-cols (fn [query]
                             (qp.preprocess/query->expected-cols
-                              {:database (meta/id)
-                               :type     :query
-                               :query    query}))
+                             {:database (meta/id)
+                              :type     :query
+                              :query    query}))
             q1            (lib.tu.macros/$ids orders
                             {:source-table $$orders
                              :filter       [:= $id 1]
@@ -307,3 +314,23 @@
                                        :condition    [:= $category-id &cat.*categories.id]}]
                        :order-by     [[:asc $name]]
                        :limit        3}))))))))
+
+(deftest ^:synchronized model-breakout-sort-querying-test
+  (mt/test-drivers
+    (mt/normal-drivers)
+    (testing "Query with sort, breakout and _model as a source_ works correctly (#44653)."
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:type :model
+                                                          :dataset_query (mt/mbql-query orders)}]
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              field-id (mt/id :products :created_at)
+              {:keys [base-type name]} (lib.metadata/field mp field-id)]
+          (is (= [1 19 37 64 79]
+                 (->> (mt/run-mbql-query
+                        nil
+                        {:source-table (str "card__" card-id)
+                         :aggregation  [[:count]]
+                         :breakout     [[:field  name {:base-type base-type :temporal-unit :month}]]
+                         :order-by     [[:asc [:field field-id {:base-type base-type :temporal-unit :month}]]]
+                         :limit        5})
+                      mt/rows
+                      (mapv (comp int second))))))))))

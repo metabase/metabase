@@ -27,10 +27,10 @@
                                                            :name   "movies"
                                                            :active true))]
           (t2/insert! Field
-            :database_type "BOOL"
-            :base_type     :type/Boolean
-            :table_id      (u/the-id table)
-            :name          "filming")
+                      :database_type "BOOL"
+                      :base_type     :type/Boolean
+                      :table_id      (u/the-id table)
+                      :name          "filming")
           (testing "before"
             (is (= {:name        "movies"
                     :description nil

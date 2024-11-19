@@ -25,6 +25,9 @@
    :json-download
    :public-dashboard
    :public-question
+   :public-csv-download
+   :public-xlsx-download
+   :public-json-download
    :embedded-dashboard
    :embedded-question
    :embedded-csv-download

@@ -10,11 +10,11 @@ import {
   AGGREGATION_FUNCTIONS,
   EDITOR_FK_SYMBOLS,
   EXPRESSION_FUNCTIONS,
-  getMBQLName,
   MBQL_CLAUSES,
   POPULAR_AGGREGATIONS,
   POPULAR_FILTERS,
   POPULAR_FUNCTIONS,
+  getMBQLName,
 } from "metabase-lib/v1/expressions/config";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type {
@@ -67,7 +67,7 @@ export type SuggestArgs = {
   reportTimezone?: string;
   startRule: string;
   targetOffset?: number;
-  expressionPosition?: number;
+  expressionIndex: number | undefined;
   getColumnIcon: (column: Lib.ColumnMetadata) => string;
 };
 
@@ -79,7 +79,7 @@ export function suggest({
   metadata,
   reportTimezone,
   startRule,
-  expressionPosition,
+  expressionIndex,
   targetOffset = source.length,
 }: SuggestArgs): {
   helpText?: HelpText;
@@ -232,7 +232,7 @@ export function suggest({
 
   if (_.last(matchPrefix) !== "]") {
     suggestions.push(
-      ...Lib.expressionableColumns(query, stageIndex, expressionPosition).map(
+      ...Lib.expressionableColumns(query, stageIndex, expressionIndex).map(
         column => {
           const displayInfo = Lib.displayInfo(query, stageIndex, column);
 

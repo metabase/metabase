@@ -1,17 +1,15 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
+import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useRevisionListQuery, useUserListQuery } from "metabase/common/hooks";
+import { useRevisionListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";
-
-import { Timeline, Header } from "./QuestionActivityTimeline.styled";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
@@ -29,18 +27,15 @@ export function QuestionActivityTimeline({
   } = useRevisionListQuery({
     query: { model_type: "card", model_id: question.id() },
   });
-  const { data: users } = useUserListQuery();
 
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 
-  const usersById = useMemo(() => _.indexBy(users ?? [], "id"), [users]);
   const moderationReviews = question.getModerationReviews();
 
   const events = useMemo(() => {
     const moderationEvents = getModerationTimelineEvents(
       moderationReviews,
-      usersById,
       currentUser,
     );
     const revisionEvents = getTimelineEvents({ revisions, currentUser });
@@ -49,21 +44,18 @@ export function QuestionActivityTimeline({
       (a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
-  }, [moderationReviews, revisions, usersById, currentUser]);
+  }, [moderationReviews, revisions, currentUser]);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
-    <div>
-      <Header>{t`History`}</Header>
-      <Timeline
-        events={events}
-        data-testid="saved-question-history-list"
-        revert={revision => dispatch(revertToRevision(revision))}
-        canWrite={question.canWrite()}
-      />
-    </div>
+    <Timeline
+      events={events}
+      data-testid="saved-question-history-list"
+      revert={revision => dispatch(revertToRevision(revision))}
+      canWrite={question.canWrite()}
+    />
   );
 }

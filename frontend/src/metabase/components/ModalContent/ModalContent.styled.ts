@@ -26,6 +26,8 @@ export const HeaderText = styled.h2<{
   display: flex;
   align-items: center;
 
+  color: var(--mb-color-text-dark);
+
   ${({ textCentered }) =>
     textCentered &&
     css`

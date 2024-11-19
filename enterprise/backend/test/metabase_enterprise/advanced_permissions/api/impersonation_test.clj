@@ -81,9 +81,9 @@
       (testing "Test that a non-admin cannot delete a Connection Impersonation"
         (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
                                  :model/ConnectionImpersonation {impersonation-id :id :as impersonation}
-                                                                {:group_id group-id
-                                                                 :db_id    (mt/id)
-                                                                 :attribute "Attribute Name"}]
+                                 {:group_id group-id
+                                  :db_id    (mt/id)
+                                  :attribute "Attribute Name"}]
           (mt/user-http-request :rasta :delete 403 (format "ee/advanced-permissions/impersonation/%d" impersonation-id))
           (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))
 
@@ -91,9 +91,9 @@
       (mt/with-premium-features #{}
         (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
                                  :model/ConnectionImpersonation {impersonation-id :id :as impersonation}
-                                                                {:group_id group-id
-                                                                 :db_id    (mt/id)
-                                                                 :attribute "Attribute Name"}]
+                                 {:group_id group-id
+                                  :db_id    (mt/id)
+                                  :attribute "Attribute Name"}]
           (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/impersonation")
           (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))))
 
@@ -102,9 +102,9 @@
     (testing "A connection impersonation policy is deleted automatically if the data permissions are changed"
       (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
                                :model/ConnectionImpersonation {impersonation-id :id}
-                                                              {:group_id group-id
-                                                               :db_id    (mt/id)
-                                                               :attribute "Attribute Name"}]
+                               {:group_id group-id
+                                :db_id    (mt/id)
+                                :attribute "Attribute Name"}]
         ;; Grant full data access to the DB and group
         (let [graph (assoc-in (data-perms.graph/api-graph)
                               [:groups group-id (mt/id) :view-data]
@@ -115,9 +115,9 @@
     (testing "A connection impersonation policy is not deleted if unrelated permissions are changed"
       (t2.with-temp/with-temp [PermissionsGroup               {group-id :id} {}
                                :model/ConnectionImpersonation {impersonation-id :id}
-                                                              {:group_id group-id
-                                                               :db_id    (mt/id)
-                                                               :attribute "Attribute Name"}]
+                               {:group_id group-id
+                                :db_id    (mt/id)
+                                :attribute "Attribute Name"}]
         ;; Grant full database editing permissions
         (let [graph (assoc-in (data-perms.graph/api-graph)
                               [:groups group-id (mt/id) :details]

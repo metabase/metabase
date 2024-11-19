@@ -9,19 +9,19 @@
   padding: 0.5rem 0.75rem;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--mb-color-border), black 5%);
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   cursor: pointer;
   font-weight: bold;
   font-family: var(--mb-default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
+  transition: all 200ms linear;
+  transition-property: color, border-color, background-color;
 }
 
 .Button:hover {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-text-brand);
   border-color: color-mix(in srgb, var(--mb-color-border), black 12%);
   background: var(--mb-color-bg-light);
-  transition: all 200ms linear;
-  transition-property: color, border-color, background-color;
 }
 
 .Button:focus {

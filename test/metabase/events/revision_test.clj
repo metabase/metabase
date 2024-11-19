@@ -95,51 +95,51 @@
                                     (->> (t2/select-one-fn :object Revision
                                                            :model       "Card"
                                                            :model_id    card-id)
-                                     keys set)))))))
+                                         keys set)))))))
 
 (deftest dashboard-create-test
   (testing :event/dashboard-create
     (mt/with-test-user :rasta
-     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-       (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})
-       (is (= {:model        "Dashboard"
-               :model_id     dashboard-id
-               :user_id      (mt/user->id :rasta)
-               :object       (assoc (dashboard->revision-object dashboard) :cards [])
-               :is_reversion false
-               :is_creation  true}
-              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                             :model "Dashboard"
-                             :model_id dashboard-id)))))))
+      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+        (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})
+        (is (= {:model        "Dashboard"
+                :model_id     dashboard-id
+                :user_id      (mt/user->id :rasta)
+                :object       (assoc (dashboard->revision-object dashboard) :cards [])
+                :is_reversion false
+                :is_creation  true}
+               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                              :model "Dashboard"
+                              :model_id dashboard-id)))))))
 
 (deftest dashboard-update-test
   (testing :event/dashboard-update
     (mt/with-test-user :rasta
-     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
-       (is (= {:model        "Dashboard"
-               :model_id     dashboard-id
-               :user_id      (mt/user->id :rasta)
-               :object       (dashboard->revision-object dashboard)
-               :is_reversion false
-               :is_creation  false}
-              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                             :model    "Dashboard"
-                             :model_id dashboard-id)))))))
+      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+        (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+        (is (= {:model        "Dashboard"
+                :model_id     dashboard-id
+                :user_id      (mt/user->id :rasta)
+                :object       (dashboard->revision-object dashboard)
+                :is_reversion false
+                :is_creation  false}
+               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                              :model    "Dashboard"
+                              :model_id dashboard-id)))))))
 
 (deftest dashboard-update-shoud-not-contains-public-info-test
   (testing :event/dashboard-update
     (mt/with-test-user :rasta
-     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+        (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
 
        ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
        ;; otherwise revert a card to earlier revision might toggle the public sharing settings
-       (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
-                                     (->> (t2/select-one-fn :object Revision
-                                                            :model       "Dashboard"
-                                                            :model_id    dashboard-id)
-                                          keys set))))))))
+        (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
+                                      (->> (t2/select-one-fn :object Revision
+                                                             :model       "Dashboard"
+                                                             :model_id    dashboard-id)
+                                           keys set))))))))
 (deftest dashboard-add-cards-test
   (testing ":event/dashboard-update with adding dashcards"
     (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}

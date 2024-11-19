@@ -3,21 +3,21 @@ import * as Yup from "yup";
 
 import FormFooter from "metabase/core/components/FormFooter";
 import {
-  FormTextInput,
   Form,
-  FormProvider,
-  FormSubmitButton,
   FormErrorMessage,
   FormGroupsWidget,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-const localUserScmeha = Yup.object({
-  first_name: Yup.string().max(100, Errors.maxLength).default(""),
-  last_name: Yup.string().max(100, Errors.maxLength).default(""),
+const localUserSchema = Yup.object({
+  first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
+  last_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
   email: Yup.string().email().required(Errors.required),
 });
 
@@ -37,7 +37,7 @@ export const UserForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={localUserScmeha}
+      validationSchema={localUserSchema}
       enableReinitialize
       onSubmit={onSubmit}
     >

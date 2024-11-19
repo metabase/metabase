@@ -4,15 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       spec:
-        description: 'Relative path of the target spec'
+        description: "Relative path of the target spec"
         type: string
         required: true
       burn_in:
-        description: 'Number of times to run the test (e.g. 20)'
+        description: "Number of times to run the test (e.g. 20)"
         type: string
         required: true
       grep:
-        description: 'Grep and filter tests to run in isolation'
+        description: "Grep and filter tests to run in isolation"
         type: string
         required: false
 
@@ -45,10 +45,12 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
+      - name: Build cljs
+        run: yarn build:cljs
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           for i in {1..${{ github.event.inputs.burn_in }}}; do
-            yarn test-unit \
+            yarn jest --runInBand --ci --silent --no-cache \
               --testPathPattern '${{ github.event.inputs.spec }}' \
               --testNamePattern '${{ github.event.inputs.grep }}'
             if [[ "$?" != 0 ]]; then

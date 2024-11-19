@@ -4,7 +4,10 @@ import {
   addCustomColumn,
   addSummaryField,
   addSummaryGroupingField,
+  createQuestion,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   filter,
   filterField,
   getNotebookStep,
@@ -20,11 +23,9 @@ import {
   selectFilterOperator,
   startNewQuestion,
   summarize,
+  verifyNotebookQuery,
   visitQuestionAdhoc,
   visualize,
-  createQuestion,
-  entityPickerModal,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -47,7 +48,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.button("Visualize").click();
 
@@ -66,7 +67,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // count orders by user id, filter to the one user with 46 orders
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Pick the metric").click();
+    cy.contains("Pick a function or metric").click();
     popover().within(() => {
       cy.findByText("Count of rows").click();
     });
@@ -125,7 +126,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is between 96 and 97").click();
-    cy.findByDisplayValue("Between").click();
+    popover().findByText("Between").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Is not");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -312,7 +313,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
       // Initial summarize/metric popover usually renders initially without blocking the button
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").as("metric").click();
+      cy.findByText("Pick a function or metric").as("metric").click();
       // Click outside to close this popover
       cy.icon("gear").click();
       // Popover invoked again blocks the button making it impossible to click the button for the third time
@@ -330,7 +331,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should work on custom column with `case`", () => {
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom column").click();
 
       enterCustomColumnDetails({
         formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
@@ -592,7 +593,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     getNotebookStep("summarize")
-      .findByText("Pick the metric you want to see")
+      .findByText("Pick a function or metric")
       .click();
 
     popover().within(() => {
@@ -630,6 +631,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
+      cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell").should("contain", "Median of Price");
     });
 
@@ -660,6 +662,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
+      cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell")
         .should("contain", "Median of Median of Mega price")
         .should("contain", "Median of Count");
@@ -742,7 +745,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     }) {
       getNotebookStep(type).findByText(name).click();
       popover().within(() => {
-        moveDnDKitElement(cy.findByDisplayValue("Is"), {
+        moveDnDKitElement(cy.findByText("Is"), {
           horizontal,
           vertical,
         });
@@ -829,7 +832,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.get("@metricId").then(metricId => {
       const questionDetails = {
         query: {
-          "source-table": `card__${metricId}`,
+          "source-table": ORDERS_ID,
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
@@ -916,6 +919,105 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
             .should("eq", "50,072.98");
         });
     });
+  });
+
+  it.skip("should open only one bucketing popover at a time (metabase#45036)", () => {
+    visitQuestionAdhoc(
+      {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: { "source-table": PRODUCTS_ID, aggregation: [["count"]] },
+          parameters: [],
+        },
+      },
+      { mode: "notebook" },
+    );
+
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    popover()
+      .findByRole("option", { name: "Created At" })
+      .findByText("by month")
+      .click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Year").should("be.visible");
+        cy.findByText("Hour of day").should("not.exist");
+        cy.findByText("More…").click();
+        cy.findByText("Hour of day").should("be.visible");
+      });
+
+    popover()
+      .first()
+      .findByRole("option", { name: "Price" })
+      .findByText("Auto bin")
+      .click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Auto bin").should("be.visible");
+        cy.findByText("50 bins").should("be.visible");
+        cy.findByText("Don't bin").should("be.visible");
+
+        cy.findByText("Year").should("not.exist");
+        cy.findByText("Hour of day").should("not.exist");
+        cy.findByText("More…").should("not.exist");
+      });
+  });
+
+  it("should not shrink the remove clause button (metabase#50128)", () => {
+    const CUSTOM_COLUMN_LONG_NAME = "very-very-very-long-name";
+
+    // The issue is reproducible on all viewports, but the smaller the viewport is,
+    // the more likely the issue is going to occur.
+    cy.viewport(300, 800);
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [CUSTOM_COLUMN_LONG_NAME]: ["+", 1000, 1000],
+          },
+          filter: ["<", ["expression", CUSTOM_COLUMN_LONG_NAME, null], 1000000],
+          aggregation: [["avg", ["expression", CUSTOM_COLUMN_LONG_NAME, null]]],
+          breakout: [["expression", CUSTOM_COLUMN_LONG_NAME, null]],
+          "order-by": [["asc", ["expression", CUSTOM_COLUMN_LONG_NAME, null]]],
+        },
+      },
+      { visitQuestion: true },
+    );
+    openNotebook();
+
+    verifyNotebookQuery("Orders", [
+      {
+        expressions: [CUSTOM_COLUMN_LONG_NAME],
+        filters: [`${CUSTOM_COLUMN_LONG_NAME} is less than 1000000`],
+        aggregations: [`Average of ${CUSTOM_COLUMN_LONG_NAME}`],
+        breakouts: [CUSTOM_COLUMN_LONG_NAME],
+        sort: [{ column: CUSTOM_COLUMN_LONG_NAME, order: "asc" }],
+      },
+    ]);
+
+    cy.findAllByTestId("notebook-cell-item")
+      .filter(`:contains(${CUSTOM_COLUMN_LONG_NAME})`)
+      .then(items => {
+        for (let index = 0; index < items.length; ++index) {
+          cy.wrap(items[index]).within(() => {
+            assertRemoveClauseIconSize();
+          });
+        }
+      });
+
+    function assertRemoveClauseIconSize() {
+      cy.findByLabelText("close icon").invoke("outerWidth").should("eq", 16);
+      cy.findByLabelText("close icon").invoke("outerHeight").should("eq", 16);
+    }
   });
 });
 

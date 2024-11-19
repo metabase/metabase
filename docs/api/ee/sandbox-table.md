@@ -18,13 +18,13 @@ This endpoint essentially acts as a wrapper for the OSS version of this route. W
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`include_sensitive_fields`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`include_sensitive_fields`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`include_hidden_fields`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`include_hidden_fields`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
 
 ---
 

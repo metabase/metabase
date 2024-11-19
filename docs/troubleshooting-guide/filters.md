@@ -60,7 +60,7 @@ For example, let's say we want to create a filter named "Select Product ID" link
 
 To debug dashboard and question filters that involve timestamps, UUIDs, or numeric data:
 
-1. Find the [data type](https://www.metabase.com/learn/databases/data-types-overview) of the column that you want to filter on. You can find this info from:
+1. Find the [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of the column that you want to filter on. You can find this info from:
    - the [Data reference](../exploration-and-organization/data-model-reference.md),
    - the [Table Metadata page](../data-modeling/metadata-editing.md) (admins only), or
    - directly from the database.
@@ -75,6 +75,10 @@ If you're not a Metabase admin, you might have to ask your admin to help you wit
 Metabase needs to know the data type of a column in order to present you with a curated selection of filter types. Sometimes these columns are mistyped---if a column stores your numbers as strings, Metabase will only show you text or category filters (with options like "is", "is not") instead of number filters (with options like "greater than", "less than").
 
 Timestamps, in particular, are the root of all evil, so please be patient with your Metabase admin (or yourself!) when trying to get the data type right.
+
+## Field filters in BigQuery and Oracle
+
+If you are getting an error when using field filters with BigQuery or Oracle, make sure you use the correct syntax for the `FROM` clause. See [Field filters in BigQuery and Oracle](../questions/native-editor/sql-parameters.md#field-filters-in-bigquery-and-oracle).
 
 ## Missing or incorrect filter values
 

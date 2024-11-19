@@ -5,11 +5,11 @@ import PopoverS from "metabase/components/Popover/Popover.module.css";
 import FormS from "metabase/css/components/form.module.css";
 
 import {
+  Description,
+  InfoIcon,
+  InfoIconContainer,
   Root,
   Title,
-  Description,
-  InfoIconContainer,
-  InfoIcon,
 } from "./ChartSettingsWidget.styled";
 
 type Props = {

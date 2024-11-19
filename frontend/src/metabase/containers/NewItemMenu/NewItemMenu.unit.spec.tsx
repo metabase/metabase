@@ -11,8 +11,8 @@ import { NewModals } from "metabase/new/components/NewModals/NewModals";
 import type { Database } from "metabase-types/api";
 import {
   createMockCard,
-  createMockDatabase,
   createMockCollection,
+  createMockDatabase,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 

@@ -3,9 +3,12 @@ import { t } from "ttag";
 
 import _ConfirmContent from "metabase/components/ConfirmContent";
 import _Modal from "metabase/components/Modal";
+import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 
 const Modal = _Modal as any;
 const ConfirmContent = _ConfirmContent as any;
+
+export const CONFIRM_MODAL_Z_INDEX = DEFAULT_MODAL_Z_INDEX + 100;
 
 export type ConfirmationState = {
   title: string;
@@ -24,7 +27,12 @@ export const useConfirmation = () => {
   };
 
   const modalContent = confirmationState ? (
-    <Modal isOpen onClose={handleClose}>
+    <Modal
+      isOpen
+      onClose={handleClose}
+      zIndex={CONFIRM_MODAL_Z_INDEX}
+      data-testid="confirm-modal"
+    >
       <ConfirmContent
         title={confirmationState.title}
         message={confirmationState?.message}

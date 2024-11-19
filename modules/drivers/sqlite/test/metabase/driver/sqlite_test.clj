@@ -1,4 +1,4 @@
-(ns metabase.driver.sqlite-test
+(ns ^:mb/driver-tests metabase.driver.sqlite-test
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -111,8 +111,8 @@
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
                  (->> (t2/hydrate (t2/select Table :db_id db-id
-                                          {:where    [:in :name ["groupby_test" "v_groupby_test"]]
-                                           :order-by [:name]}) :fields)
+                                             {:where    [:in :name ["groupby_test" "v_groupby_test"]]
+                                              :order-by [:name]}) :fields)
                       (map table-fingerprint)))))))))
 
 (defn- default-table-result [table-name]

@@ -7,13 +7,13 @@
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
    [metabase.models :refer [Card Dashboard DashboardCard]]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
    [metabase.server.protocols :as server.protocols]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.pipeline :as t2.pipeline]
@@ -206,8 +206,11 @@
   ;; this only works if the map is small enough that it's an still an array map and thus preserving the original order
   (zipmap col-names (vals row)))
 
-;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
-;; TODO this test doesn't seem to run?
+;;; see also [[metabase.query-processor.streaming.xlsx-test/report-timezone-test]] (UPDATE: THIS TEST DOESN'T ACTUALLY
+;;; EXIST ANYMORE, BUT MAYBE YOU CAN GO LOOKING FOR IT IF YOU NEED TO?)
+;;;
+;;; This is only running against Postgres since we're just testing general behavior for formatting different types
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)"
     (mt/test-driver :postgres
@@ -294,7 +297,6 @@
                   :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
                   :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Export E2E tests                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -316,8 +318,8 @@
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
-                                         enable-embedding      true]
-        (embed-test/with-new-secret-key
+                                         enable-embedding-static true]
+        (embed-test/with-new-secret-key!
           (t2.with-temp/with-temp [Card          card      (if viz-settings
                                                              (assoc card-defaults :visualization_settings viz-settings)
                                                              card-defaults)
@@ -331,6 +333,7 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true
                                                       :query query-json
                                                       :visualization_settings viz-settings-json)]
                     ((-> assertions export-format) results))
@@ -338,7 +341,8 @@
                   :card
                   (let [results (mt/user-http-request user :post 200
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true)]
                     ((-> assertions export-format) results))
 
                   :dashboard
@@ -348,12 +352,13 @@
                                                               (u/the-id dashcard)
                                                               (u/the-id card)
                                                               (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true)]
                     ((-> assertions export-format) results))
 
                   :public
                   (let [results (mt/user-http-request user :get 200
-                                                      (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                      (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
@@ -379,32 +384,32 @@
 
 (deftest basic-export-test
   (do-test!
-    "A simple export of a table succeeds"
-    {:query      {:database (mt/id)
-                  :type     :query
-                  :query    {:source-table (mt/id :venues)
-                             :limit        2}}
+   "A simple export of a table succeeds"
+   {:query      {:database (mt/id)
+                 :type     :query
+                 :query    {:source-table (mt/id :venues)
+                            :limit        2}}
 
-     :assertions {:csv  (fn [results]
-                          (is (string? results))
+    :assertions {:csv  (fn [results]
+                         (is (string? results))
                           ;; CSVs round decimals to 2 digits without viz-settings
-                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                  ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
-                                  ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
-                                 (parse-csv-results results))))
+                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                 ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
+                                 ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
+                                (parse-csv-results results))))
 
-                  :json (fn [results]
-                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                  ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
-                                  ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
-                                 (parse-json-results results))))
+                 :json (fn [results]
+                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                 ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
+                                 ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
+                                (parse-json-results results))))
 
-                  :xlsx (fn [results]
-                          (is (bytes? results))
-                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                  [1.0 "Red Medicine" 4.0 "10.06460000° N" "165.37400000° W" 3.0]
-                                  [2.0 "Stout Burgers & Beers" 11.0 "34.09960000° N" "118.32900000° W" 2.0]]
-                                 (xlsx-test/parse-xlsx-results results))))}}))
+                 :xlsx (fn [results]
+                         (is (bytes? results))
+                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                 [1.0 "Red Medicine" 4.0 "10.06460000° N" "165.37400000° W" 3.0]
+                                 [2.0 "Stout Burgers & Beers" 11.0 "34.09960000° N" "118.32900000° W" 2.0]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest reordered-columns-test
   (do-test!
@@ -434,9 +439,9 @@
                                 (parse-json-results results))))
 
                  :xlsx (fn [results]
-                        (is (= [["Name" "ID" "Category ID" "Price"]
-                                ["Red Medicine" 1.0 4.0 3.0]]
-                               (xlsx-test/parse-xlsx-results results))))}}))
+                         (is (= [["Name" "ID" "Category ID" "Price"]
+                                 ["Red Medicine" 1.0 4.0 3.0]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest remapped-columns-test
   (letfn [(testfn [remap-type]
@@ -444,68 +449,108 @@
                              :internal "Category ID [internal remap]"
                              :external "Category ID [external remap]")]
               (do-test!
-                "Remapped values are used in exports"
-                {:query      {:database (mt/id)
-                              :type     :query
-                              :query    {:source-table (mt/id :venues)
-                                         :limit        1}}
+               "Remapped values are used in exports"
+               {:query      {:database (mt/id)
+                             :type     :query
+                             :query    {:source-table (mt/id :venues)
+                                        :limit        1}}
 
-                 :assertions {:csv  (fn [results]
-                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
-                                              ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
-                                             (parse-csv-results results))))
+                :assertions {:csv  (fn [results]
+                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                             ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
+                                            (parse-csv-results results))))
 
-                              :json (fn [results]
+                             :json (fn [results]
                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
                                              ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
                                             (parse-json-results results))))
 
-                              :xlsx (fn [results]
-                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
-                                              [1.0 "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" 3.0]]
-                                             (xlsx-test/parse-xlsx-results results))))}})))]
+                             :xlsx (fn [results]
+                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                             [1.0 "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" 3.0]]
+                                            (xlsx-test/parse-xlsx-results results))))}})))]
     (mt/with-column-remappings [venues.category_id categories.name]
-                               (testfn :external))
+      (testfn :external))
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-                               (testfn :internal))))
+      (testfn :internal))))
 
 (deftest join-export-test
   (do-test!
-    "A query with a join can be exported succesfully"
-    {:query       {:database (mt/id)
-                   :query
-                   {:source-table (mt/id :venues)
-                    :joins
-                    [{:fields       "all",
-                      :source-table (mt/id :categories)
-                      :condition    ["="
-                                     ["field" (mt/id :venues :category_id) nil]
-                                     ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
-                      :alias "Categories"}]
-                    :limit 1}
-                   :type "query"}
+   "A query with a join can be exported succesfully"
+   {:query       {:database (mt/id)
+                  :query
+                  {:source-table (mt/id :venues)
+                   :joins
+                   [{:fields       "all",
+                     :source-table (mt/id :categories)
+                     :condition    ["="
+                                    ["field" (mt/id :venues :category_id) nil]
+                                    ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
+                     :alias "Categories"}]
+                   :limit 1}
+                  :type "query"}
 
-     :viz-settings {:column_settings {},
-                    :table.columns
-                    [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
-                     {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
-                     {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
-                     {:name "NAME_2", :fieldRef [:field (mt/id :categories :name) {:join-alias "Categories"}], :enabled true}]}
+    :viz-settings {:column_settings {},
+                   :table.columns
+                   [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                    {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                    {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :categories :name) {:join-alias "Categories"}], :enabled true}]}
 
-     :assertions {:csv (fn [results]
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                ["1" "Red Medicine" "4" "Asian"]]
+                               (parse-csv-results results))))
+
+                 :json (fn [results]
                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
                                  ["1" "Red Medicine" "4" "Asian"]]
-                                (parse-csv-results results))))
+                                (parse-json-results results))))
 
-                  :json (fn [results]
-                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
-                                  ["1" "Red Medicine" "4" "Asian"]]
-                                 (parse-json-results results))))
+                 :xlsx (fn [results]
+                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
+                                 [1.0 "Red Medicine" 4.0 "Asian"]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
 
-                  :xlsx (fn [results]
-                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
-                                  [1.0 "Red Medicine" 4.0 "Asian"]]
-                                 (xlsx-test/parse-xlsx-results results))))}}))
+(deftest self-join-export-test
+  (do-test!
+   "Export respects renamed self-joined columns #48046"
+   {:query {:database (mt/id)
+            :query
+            {:source-table (mt/id :venues)
+             :joins
+             [{:fields       "all",
+               :source-table (mt/id :venues)
+               :condition    ["="
+                              ["field" (mt/id :venues :id) nil]
+                              ["field" (mt/id :venues :id) {:join-alias "Venues"}]],
+               :alias        "Venues"}]
+             :order-by     [["asc" ["field" (mt/id :venues :id) nil]]]
+             :limit        1}
+            :type     "query"}
+
+    :viz-settings {:column_settings
+                   {"[\"name\",\"NAME\"]"   {:column_title "Left Name"}
+                    "[\"name\",\"NAME_2\"]" {:column_title "Right Name"}}
+                   :table.columns
+                   [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                    {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :venues :name) {:join-alias "Venues"}], :enabled true}]}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "Left Name" "Right Name"]
+                                ["1" "Red Medicine" "Red Medicine"]]
+                               (parse-csv-results results))))
+
+                 :json (fn [results]
+                         (is (= [["ID" "Left Name" "Right Name"]
+                                 ["1" "Red Medicine" "Red Medicine"]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                         (is (= [["ID" "Left Name" "Right Name"]
+                                 [1.0 "Red Medicine" "Red Medicine"]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest native-query-test
   (mt/with-full-data-perms-for-all-users!
@@ -529,7 +574,6 @@
                            (is (= [["ID" "ID" "NAME"]
                                    [1.0 1.0 "Red Medicine"]]
                                   (xlsx-test/parse-xlsx-results results))))}})))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Streaming logic unit tests                                              |

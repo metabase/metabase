@@ -1,19 +1,17 @@
 import _ from "underscore";
 
 import {
-  USERS,
-  USER_GROUPS,
+  METABASE_SECRET_KEY,
   SAMPLE_DB_ID,
   SAMPLE_DB_TABLES,
-  METABASE_SECRET_KEY,
+  USERS,
+  USER_GROUPS,
 } from "e2e/support/cypress_data";
 import {
-  snapshot,
   restore,
+  snapshot,
+  updateSetting,
   withSampleDatabase,
-  setTokenFeatures,
-  describeEE,
-  deleteToken,
 } from "e2e/support/helpers";
 
 const {
@@ -70,29 +68,6 @@ describe("snapshots", () => {
     });
   });
 
-  describeEE("default-ee", () => {
-    it("default-ee", () => {
-      restore("blank");
-      setup();
-      updateSettings();
-      setTokenFeatures("all");
-      addUsersAndGroups(true);
-      createCollections();
-      withSampleDatabase(SAMPLE_DATABASE => {
-        ensureTableIdsAreCorrect(SAMPLE_DATABASE);
-        hideNewSampleTables(SAMPLE_DATABASE);
-        createQuestionsAndDashboards(SAMPLE_DATABASE);
-        createModels(SAMPLE_DATABASE);
-        cy.writeFile(
-          "e2e/support/cypress_sample_database.json",
-          SAMPLE_DATABASE,
-        );
-      });
-      deleteToken();
-      snapshot("default-ee");
-    });
-  });
-
   function setup() {
     cy.request("GET", "/api/session/properties").then(
       ({ body: properties }) => {
@@ -115,14 +90,21 @@ describe("snapshots", () => {
   }
 
   function updateSettings() {
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("PUT", "/api/setting/enable-embedding", { value: true }).then(
-      () => {
-        cy.request("PUT", "/api/setting/embedding-secret-key", {
-          value: METABASE_SECRET_KEY,
-        });
-      },
-    );
+    // Asynchronous updates greatly contribute to the non-determinism of our e2e tests,
+    // significantly increasing their flakiness. These failures hardly reflect real-life
+    // scenarios, as users do not interact with the UI as quickly as Cypress does.
+    // To mitigate this type of flakiness, we use synchronous updates by default in e2e tests.
+    //
+    // The most frequently flaky tests were the dashboard filter tests, often involving last_used_param_values.
+    updateSetting("synchronous-batch-updates", true);
+
+    updateSetting("enable-public-sharing", true);
+    // interactive is not enabled in the snapshots as it requires a premium feature
+    // updateSetting("enable-embedding-interactive", true);
+    updateSetting("enable-embedding-sdk", true);
+    updateSetting("enable-embedding-static", true).then(() => {
+      updateSetting("embedding-secret-key", METABASE_SECRET_KEY);
+    });
 
     // update the Sample db connection string so it is valid in both CI and locally
     cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then(response => {
@@ -132,9 +114,7 @@ describe("snapshots", () => {
     });
   }
 
-  function addUsersAndGroups(isEE = false) {
-    const lowest_read_data_permission = isEE ? "blocked" : "unrestricted";
-
+  function addUsersAndGroups() {
     // groups
     cy.request("POST", "/api/permissions/group", { name: "collection" }).then(
       ({ body }) => {
@@ -169,7 +149,7 @@ describe("snapshots", () => {
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
           // set the data permission so the UI doesn't warn us that "all users has higher permissions than X"
-          "view-data": lowest_read_data_permission,
+          "view-data": "unrestricted",
           "create-queries": "no",
         },
       },
@@ -187,13 +167,13 @@ describe("snapshots", () => {
       },
       [COLLECTION_GROUP]: {
         [SAMPLE_DB_ID]: {
-          "view-data": lowest_read_data_permission,
+          "view-data": "unrestricted",
           "create-queries": "no",
         },
       },
       [READONLY_GROUP]: {
         [SAMPLE_DB_ID]: {
-          "view-data": lowest_read_data_permission,
+          "view-data": "unrestricted",
           "create-queries": "no",
         },
       },

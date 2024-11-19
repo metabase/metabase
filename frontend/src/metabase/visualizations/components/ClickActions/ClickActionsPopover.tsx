@@ -2,25 +2,21 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import type * as tippy from "tippy.js";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
-  RegularClickAction,
   ClickObject,
-  PopoverClickAction,
   OnChangeCardAndRun,
+  PopoverClickAction,
+  RegularClickAction,
 } from "metabase/visualizations/types";
-import {
-  isPopoverClickAction,
-  isRegularClickAction,
-} from "metabase/visualizations/types";
+import { isPopoverClickAction } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { FlexTippyPopover } from "./ClickActionsPopover.styled";
 import { ClickActionsView } from "./ClickActionsView";
-import { getGALabelForAction } from "./utils";
 
 interface ChartClickActionsProps {
   clicked: ClickObject;
@@ -29,6 +25,7 @@ interface ChartClickActionsProps {
   dispatch: Dispatch;
   onChangeCardAndRun: OnChangeCardAndRun;
   onUpdateVisualizationSettings: () => void;
+  onUpdateQuestion?: (question: Question) => void;
   onClose?: () => void;
 }
 
@@ -54,28 +51,16 @@ export class ClickActionsPopover extends Component<
   };
 
   handleClickAction = (action: RegularClickAction) => {
-    const { dispatch, onChangeCardAndRun } = this.props;
+    const { dispatch, onChangeCardAndRun, onUpdateQuestion } = this.props;
     if (isPopoverClickAction(action)) {
-      MetabaseAnalytics.trackStructEvent(
-        "Actions",
-        "Open Click Action Popover",
-        getGALabelForAction(action),
-      );
       this.setState({ popoverAction: action });
     } else {
       const didPerform = performAction(action, {
         dispatch,
         onChangeCardAndRun,
+        onUpdateQuestion,
       });
       if (didPerform) {
-        if (isRegularClickAction(action)) {
-          MetabaseAnalytics.trackStructEvent(
-            "Actions",
-            "Executed Click Action",
-            getGALabelForAction(action),
-          );
-        }
-
         this.close();
       } else {
         console.warn("No action performed", action);
@@ -121,21 +106,9 @@ export class ClickActionsPopover extends Component<
             this.instance?.popperInstance?.update();
           }}
           onChangeCardAndRun={({ nextCard }) => {
-            if (popoverAction) {
-              MetabaseAnalytics.trackStructEvent(
-                "Action",
-                "Executed Click Action",
-                getGALabelForAction(popoverAction),
-              );
-            }
             onChangeCardAndRun({ nextCard });
           }}
           onClose={() => {
-            MetabaseAnalytics.trackStructEvent(
-              "Action",
-              "Dismissed Click Action Menu",
-              getGALabelForAction(popoverAction),
-            );
             this.close();
           }}
           series={series}
@@ -154,10 +127,6 @@ export class ClickActionsPopover extends Component<
           this.instance = instance;
         }}
         onClose={() => {
-          MetabaseAnalytics.trackStructEvent(
-            "Action",
-            "Dismissed Click Action Menu",
-          );
           this.close();
         }}
         placement="bottom-start"

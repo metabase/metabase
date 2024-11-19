@@ -4,11 +4,11 @@ import { t } from "ttag";
 import type { WritebackActionType } from "metabase-types/api";
 
 import {
-  Container,
-  LeftHeader,
-  EditableText,
-  CompactSelect,
   ActionButtons,
+  CompactSelect,
+  Container,
+  EditableText,
+  LeftHeader,
 } from "./ActionCreatorHeader.styled";
 
 type Props = {

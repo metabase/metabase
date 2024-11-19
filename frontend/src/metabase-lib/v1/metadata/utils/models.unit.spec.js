@@ -5,22 +5,22 @@ import Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
   checkCanRefreshModelCache,
-  getModelCacheSchemaName,
-  isAdHocModelQuestion,
   getDatasetMetadataCompletenessPercentage,
+  getModelCacheSchemaName,
+  isAdHocModelOrMetricQuestion,
 } from "metabase-lib/v1/metadata/utils/models";
 import {
-  getMockModelCacheInfo,
   COMMON_DATABASE_FEATURES,
+  getMockModelCacheInfo,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
   createNativeModelCard as _createNativeModelCard,
   createSavedNativeCard as _createSavedNativeCard,
   createSavedStructuredCard as _createSavedStructuredCard,
   createStructuredModelCard as _createStructuredModelCard,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 function getTemplateTag(tag = {}) {
@@ -118,10 +118,10 @@ describe("data model utils", () => {
         expect(checkCanBeModel(question)).toBe(true);
       });
 
-      it("returns false if database does not support nested queries", () => {
+      it("returns true if database does not support nested queries", () => {
         const { ordersTable } = setup({ hasNestedQueriesSupport: false });
         const question = ordersTable.question();
-        expect(checkCanBeModel(question)).toBe(false);
+        expect(checkCanBeModel(question)).toBe(true);
       });
     });
 
@@ -135,7 +135,7 @@ describe("data model utils", () => {
         expect(checkCanBeModel(question)).toBe(true);
       });
 
-      it("returns false if database does not support nested queries", () => {
+      it("returns true if database does not support nested queries", () => {
         const card = createSavedNativeCard();
         const { metadata } = setup({
           cards: [card],
@@ -144,8 +144,9 @@ describe("data model utils", () => {
 
         const question = metadata.question(card.id);
 
-        expect(checkCanBeModel(question)).toBe(false);
+        expect(checkCanBeModel(question)).toBe(true);
       });
+
       it("returns true when 'card' variables are used", () => {
         const card = createSavedNativeCard({
           tags: {
@@ -200,7 +201,7 @@ describe("data model utils", () => {
       const { metadata } = setup({ cards: [modelCard] });
       const question = new Question(composedModelCard, metadata);
 
-      expect(isAdHocModelQuestion(question)).toBe(false);
+      expect(isAdHocModelOrMetricQuestion(question)).toBe(false);
     });
 
     it("returns false for native questions", () => {
@@ -209,21 +210,18 @@ describe("data model utils", () => {
 
       const question = metadata.question(card.id);
 
-      expect(isAdHocModelQuestion(question, question)).toBe(false);
+      expect(isAdHocModelOrMetricQuestion(question, question)).toBe(false);
     });
 
     it("identifies when model goes into ad-hoc exploration mode", () => {
       const modelCard = createStructuredModelCard({ id: 1 });
-      const composedModelCard = createSavedStructuredCard({
-        id: 1,
-        sourceTable: "card__1",
-      });
       const { metadata } = setup({ cards: [modelCard] });
-
       const originalQuestion = metadata.question(modelCard.id);
-      const question = new Question(composedModelCard, metadata);
+      const question = originalQuestion.composeQuestion();
 
-      expect(isAdHocModelQuestion(question, originalQuestion)).toBe(true);
+      expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
+        true,
+      );
     });
 
     it("returns false when IDs don't match", () => {
@@ -237,7 +235,9 @@ describe("data model utils", () => {
       const originalQuestion = metadata.question(modelCard.id);
       const question = new Question(composedModelCard, metadata);
 
-      expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
+      expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
+        false,
+      );
     });
 
     it("returns false when questions are not models", () => {
@@ -251,7 +251,9 @@ describe("data model utils", () => {
       const originalQuestion = metadata.question(modelCard.id);
       const question = new Question(composedModelCard, metadata);
 
-      expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
+      expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
+        false,
+      );
     });
 
     it("returns false when potential ad-hoc model question is not self-referencing", () => {
@@ -265,13 +267,15 @@ describe("data model utils", () => {
       const originalQuestion = metadata.question(modelCard.id);
       const question = new Question(composedModelCard, metadata);
 
-      expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
+      expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
+        false,
+      );
     });
   });
 
   describe("checkCanRefreshModelCache", () => {
     const testCases = {
-      creating: false,
+      creating: true,
       refreshing: false,
       persisted: true,
       error: true,
@@ -282,6 +286,7 @@ describe("data model utils", () => {
 
     states.forEach(state => {
       const canRefresh = testCases[state];
+
       it(`returns '${canRefresh}' for '${state}' caching state`, () => {
         const info = getMockModelCacheInfo({ state });
         expect(checkCanRefreshModelCache(info)).toBe(canRefresh);

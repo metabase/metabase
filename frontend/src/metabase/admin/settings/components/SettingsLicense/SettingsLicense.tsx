@@ -22,7 +22,7 @@ interface StateProps {
 type SettingsLicenseProps = StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  upgradeUrl: getUpgradeUrl(state, { utm_media: "license" }),
+  upgradeUrl: getUpgradeUrl(state, { utm_content: "license" }),
 });
 
 const SettingsLicense = ({ upgradeUrl }: SettingsLicenseProps) => {

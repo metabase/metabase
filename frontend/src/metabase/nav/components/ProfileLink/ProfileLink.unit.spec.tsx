@@ -11,8 +11,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  createMockAdminState,
   createMockAdminAppState,
+  createMockAdminState,
 } from "metabase-types/store/mocks";
 
 const REGULAR_ITEMS = [
@@ -73,6 +73,7 @@ describe("ProfileLink", () => {
   beforeEach(() => {
     fetchMock.get("path:/api/util/bug_report_details", "mockBugReportDetails");
   });
+
   describe("self-hosted", () => {
     it("should show the proper set of items for normal users", async () => {
       setup({ isAdmin: false });

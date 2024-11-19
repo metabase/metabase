@@ -18,7 +18,6 @@
       (is (= expected
              (mbql.u/wrap-field-id-if-needed x))))))
 
-
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------
 
 (deftest ^:parallel hydrate-name-field-test
@@ -63,7 +62,6 @@
                (t2/hydrate :name_field)
                mt/derecordize)))))
 
-
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
 (deftest ^:parallel hydrate-param-fields-for-card-test
@@ -100,7 +98,7 @@
 
 (deftest hydate-param-fields-for-dashboard-test
   (testing "check that we can hydrate param_fields for a Dashboard"
-    (public-test/with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+    (public-test/with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"

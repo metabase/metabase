@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type {
   FontStyle,
   TextMeasurer,
@@ -27,5 +29,14 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
   };
 };
 
-export const measureTextWidth = (text: string, style: FontStyle) =>
-  measureText(text, style).width;
+const styleDefaults = {
+  size: "14px",
+  family: "sans-serif",
+  weight: "normal",
+};
+
+export const measureTextWidth = (text: string, style?: Partial<FontStyle>) =>
+  measureText(text, _.defaults(style, styleDefaults)).width;
+
+export const measureTextHeight = (text: string, style?: Partial<FontStyle>) =>
+  measureText(text, _.defaults(style, styleDefaults)).height;

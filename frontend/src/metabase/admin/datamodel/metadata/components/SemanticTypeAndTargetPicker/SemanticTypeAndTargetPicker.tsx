@@ -2,12 +2,11 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { currency } from "cljs/metabase.shared.util.currency";
+import { currency } from "cljs/metabase.util.currency";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { trackStructEvent } from "metabase/lib/analytics";
 import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -57,8 +56,11 @@ const SemanticTypeAndTargetPicker = ({
   hasSeparator,
   onUpdateField,
 }: SemanticTypeAndTargetPickerProps) => {
-  const hasIdFields = idFields.length > 0;
-  const includeSchema = hasMultipleSchemas(idFields);
+  const comparableIdFields = idFields.filter((idField: Field) =>
+    field.isComparableWith(idField),
+  );
+  const hasIdFields = comparableIdFields.length > 0;
+  const includeSchema = hasMultipleSchemas(comparableIdFields);
   const showFKTargetSelect = field.isFK();
   const showCurrencyTypeSelect = field.isCurrency();
 
@@ -73,8 +75,6 @@ const SemanticTypeAndTargetPicker = ({
       } else {
         onUpdateField(field, { semantic_type: semanticType });
       }
-
-      trackStructEvent("Data Model", "Update Field Special-Type", semanticType);
     },
     [field, onUpdateField],
   );
@@ -84,7 +84,6 @@ const SemanticTypeAndTargetPicker = ({
       onUpdateField(field, {
         settings: { ...field.settings, currency },
       });
-      trackStructEvent("Data Model", "Update Currency Type", currency);
     },
     [field, onUpdateField],
   );
@@ -92,7 +91,6 @@ const SemanticTypeAndTargetPicker = ({
   const handleChangeTarget = useCallback(
     ({ target: { value: fk_target_field_id } }: SelectChangeEvent<FieldId>) => {
       onUpdateField(field, { fk_target_field_id });
-      trackStructEvent("Data Model", "Update Field Target");
     },
     [field, onUpdateField],
   );
@@ -153,11 +151,11 @@ const SemanticTypeAndTargetPicker = ({
             hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
-          placeholder={getFkFieldPlaceholder(field, idFields)}
+          placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
           searchProp={SEARCH_PROPS}
           value={field.fk_target_field_id}
           onChange={handleChangeTarget}
-          options={idFields}
+          options={comparableIdFields}
           optionValueFn={getFieldId}
           optionNameFn={includeSchema ? getFieldNameWithSchema : getFieldName}
           optionIconFn={getFieldIcon}

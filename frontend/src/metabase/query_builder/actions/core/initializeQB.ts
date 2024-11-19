@@ -4,8 +4,7 @@ import querystring from "querystring";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
+import { deserializeCardFromUrl } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -36,6 +35,7 @@ import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
+import { loadCard } from "./card";
 import { resetQB } from "./core";
 import {
   getParameterValuesForQuestion,
@@ -48,7 +48,7 @@ type BlankQueryOptions = {
   segment?: string;
 };
 
-type QueryParams = BlankQueryOptions & {
+export type QueryParams = BlankQueryOptions & {
   slug?: string;
   objectId?: string;
 };
@@ -101,7 +101,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
   return question.setQuery(newQuery);
 }
 
-function deserializeCard(serializedCard: string) {
+export function deserializeCard(serializedCard: string) {
   const card = deserializeCardFromUrl(serializedCard);
   if (card.dataset_query.database != null) {
     // Ensure older MBQL is supported
@@ -158,7 +158,7 @@ type ResolveCardsResult = {
   originalCard?: Card;
 };
 
-async function resolveCards({
+export async function resolveCards({
   cardId,
   deserializedCard,
   options,
@@ -187,7 +187,7 @@ async function resolveCards({
       );
 }
 
-function parseHash(hash?: string) {
+export function parseHash(hash?: string) {
   let options: BlankQueryOptions = {};
   let serializedCard;
 
@@ -240,7 +240,6 @@ export async function updateTemplateTagNames(
   return query;
 }
 
-// TODO: extract getting params from URL, then use clear part in SDK - InteractiveQuestion
 async function handleQBInit(
   dispatch: Dispatch,
   getState: GetState,
@@ -303,12 +302,6 @@ async function handleQBInit(
     });
   }
 
-  MetabaseAnalytics.trackStructEvent(
-    "QueryBuilder",
-    hasCard ? "Query Loaded" : "Query Started",
-    card.dataset_query.type,
-  );
-
   if (isSavedCard(card)) {
     dispatch(fetchAlertsForQuestion(card.id));
   }
@@ -329,7 +322,6 @@ async function handleQBInit(
 
     if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
-      MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
     }
   }
 
@@ -354,9 +346,8 @@ async function handleQBInit(
 
   const objectId = params?.objectId || queryParams?.objectId;
 
-  uiControls.isShowingNotebookNativePreview = getIsNotebookNativePreviewShown(
-    getState(),
-  );
+  uiControls.isShowingNotebookNativePreview =
+    getIsNotebookNativePreviewShown(getState());
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
 
@@ -389,15 +380,6 @@ async function handleQBInit(
     );
   }
 }
-
-// Does the same thing as initializeQB, but doesn't catch errors.
-// This function is used for the SDK, and we want to use the errors
-// to determine loading states and show error messages
-export const initializeQBRaw =
-  (location: LocationDescriptorObject, params: QueryParams) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    await handleQBInit(dispatch, getState, { location, params });
-  };
 
 export const initializeQB =
   (location: LocationDescriptorObject, params: QueryParams) =>

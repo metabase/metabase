@@ -14,7 +14,7 @@
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (lib.hierarchy/derive :asc  ::order-by-clause)
@@ -57,7 +57,7 @@
     (throw (ex-info (i18n/tru "Can''t order by nil") {})))
   (lib.options/ensure-uuid [:asc (lib.ref/ref x)]))
 
-(mu/defn ^:private with-direction :- ::lib.schema.order-by/order-by
+(mu/defn- with-direction :- ::lib.schema.order-by/order-by
   "Update the direction of an order by clause."
   [clause    :- ::lib.schema.order-by/order-by
    direction :- ::lib.schema.order-by/direction]
@@ -95,7 +95,7 @@
      (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
                                                                         (conj (vec order-bys) new-order-by))))))
 
-(mu/defn order-bys :- [:maybe [:sequential ::lib.schema.order-by/order-by]]
+(mu/defn order-bys :- [:maybe ::lib.schema.order-by/order-bys]
   "Get the order-by clauses in a query."
   ([query :- ::lib.schema/query]
    (order-bys query -1))

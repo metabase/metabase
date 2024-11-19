@@ -81,7 +81,7 @@
                   (for [event results]
                     (merge {:timestamp (ts-getter event)} (:result event))))})
 
-(mu/defn ^:private col-names->getter-fns :- [:sequential [:or :keyword fn?]]
+(mu/defn- col-names->getter-fns :- [:sequential [:or :keyword fn?]]
   "Given a sequence of `columns` keywords, return a sequence of appropriate getter functions to get values from a single
   result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
   parse the result as an integer (for further explanation, see the docstring for
@@ -120,8 +120,8 @@
   (let [getters (vec (col-names->getter-fns actual-col-names annotate-col-names))]
     (when-not (seq getters)
       (throw (ex-info (tru "Don''t know how to retrieve results for columns {0}" (pr-str actual-col-names))
-               {:type    qp.error-type/driver
-                :results results})))
+                      {:type    qp.error-type/driver
+                       :results results})))
     (map (apply juxt getters) rows)))
 
 (defn- remove-bonus-keys

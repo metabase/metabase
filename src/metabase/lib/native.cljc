@@ -12,8 +12,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -29,7 +29,7 @@
 (def ^:private tag-regexes
   [variable-tag-regex snippet-tag-regex card-tag-regex])
 
-(mu/defn ^:private recognize-template-tags :- [:set ::common/non-blank-string]
+(mu/defn- recognize-template-tags :- [:set ::common/non-blank-string]
   "Given the text of a native query, extract a possibly-empty set of template tag strings from it."
   [query-text :- ::common/non-blank-string]
   (into #{}
@@ -129,9 +129,9 @@
   needed for MongoDB queries."
   [metadata-provider :- ::lib.schema.metadata/metadata-providerable]
   (let [db (lib.metadata/database metadata-provider)]
-   (cond-> #{}
-    (get-in db [:features :native-requires-specified-collection])
-    (conj :collection))))
+    (cond-> #{}
+      (get-in db [:features :native-requires-specified-collection])
+      (conj :collection))))
 
 (mu/defn with-native-extras :- ::lib.schema/query
   "Updates the extras required for the db to run this query.
@@ -140,17 +140,17 @@
    native-extras :- [:maybe ::native-extras]]
   (let [required-extras (required-native-extras query)]
     (lib.util/update-query-stage
-      query 0
-      (fn [stage]
-        (let [extras-to-remove (set/difference all-native-extra-keys required-extras)
-              stage-without-old-extras (apply dissoc stage extras-to-remove)
-              result (merge stage-without-old-extras (select-keys native-extras required-extras))
-              missing-keys (set/difference required-extras (set (keys native-extras)))]
-          (assert-native-query! (lib.util/query-stage query 0))
-          (assert (empty? missing-keys)
-                  (i18n/tru "Missing extra, required keys for native query: {0}"
-                            (pr-str missing-keys)))
-          result)))))
+     query 0
+     (fn [stage]
+       (let [extras-to-remove (set/difference all-native-extra-keys required-extras)
+             stage-without-old-extras (apply dissoc stage extras-to-remove)
+             result (merge stage-without-old-extras (select-keys native-extras required-extras))
+             missing-keys (set/difference required-extras (set (keys native-extras)))]
+         (assert-native-query! (lib.util/query-stage query 0))
+         (assert (empty? missing-keys)
+                 (i18n/tru "Missing extra, required keys for native query: {0}"
+                           (pr-str missing-keys)))
+         result)))))
 
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
@@ -197,24 +197,24 @@
   [query :- ::lib.schema/query
    inner-query :- ::common/non-blank-string]
   (lib.util/update-query-stage
-    query 0
-    (fn [{existing-tags :template-tags :as stage}]
-      (assert-native-query! stage)
-      (assoc stage
-        :native inner-query
-        :template-tags (extract-template-tags inner-query existing-tags)))))
+   query 0
+   (fn [{existing-tags :template-tags :as stage}]
+     (assert-native-query! stage)
+     (assoc stage
+            :native inner-query
+            :template-tags (extract-template-tags inner-query existing-tags)))))
 
 (mu/defn with-template-tags :- ::lib.schema/query
   "Updates the native query's template tags."
   [query :- ::lib.schema/query
    tags :- ::lib.schema.template-tag/template-tag-map]
   (lib.util/update-query-stage
-    query 0
-    (fn [{existing-tags :template-tags :as stage}]
-      (assert-native-query! stage)
-      (let [valid-tags (keys existing-tags)]
-        (assoc stage :template-tags
-               (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
+   query 0
+   (fn [{existing-tags :template-tags :as stage}]
+     (assert-native-query! stage)
+     (let [valid-tags (keys existing-tags)]
+       (assoc stage :template-tags
+              (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
 
 (mu/defn raw-native-query :- ::common/non-blank-string
   "Returns the native query string"
@@ -250,9 +250,9 @@
 (defmethod lib.query/can-run-method :mbql.stage/native
   [query _card-type]
   (and
-    (set/subset? (required-native-extras query)
-                 (set (keys (native-extras query))))
-    (not (str/blank? (raw-native-query query)))))
+   (set/subset? (required-native-extras query)
+                (set (keys (native-extras query))))
+   (not (str/blank? (raw-native-query query)))))
 
 (mu/defn engine :- :keyword
   "Returns the database engine.

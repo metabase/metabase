@@ -41,8 +41,10 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
   return type === "template-tag" ? tag : null;
 }
 
-// returns only real DB fields and not all mapped columns
-// for columns, use getMappingOptionByTarget
+/**
+ * Returns only real DB fields and not all mapped columns.
+ * Use getMappingOptionByTarget for columns.
+ */
 export function getParameterTargetField(
   question: Question,
   parameter: Parameter,
@@ -57,6 +59,10 @@ export function getParameterTargetField(
 
   // native queries
   if (isTemplateTagReference(fieldRef)) {
+    if (!Lib.queryDisplayInfo(question.query()).isNative) {
+      return null;
+    }
+
     const dimension = TemplateTagDimension.parseMBQL(
       fieldRef,
       metadata,
@@ -103,7 +109,9 @@ export function getParameterTargetField(
       return null;
     }
 
-    return metadata.field(fieldValuesInfo.fieldId);
+    // do not use `metadata.field(id)` because it only works for fields loaded
+    // with the original table, not coming from model metadata
+    return fields.find(field => field.id === fieldValuesInfo.fieldId);
   }
 
   return null;

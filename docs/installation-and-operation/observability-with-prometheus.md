@@ -1,5 +1,5 @@
 ---
-title: observability-with-prometheus
+title: Observability with Prometheus
 ---
 
 # Observability with Prometheus
@@ -10,23 +10,23 @@ You can export metrics in [Prometheus](https://prometheus.io/) format from your 
 
 To give you an idea of how Metabase and Prometheus would work in your production environment, we'll walk through how to set up Metabase and Prometheus locally.
 
-### Start up Metabase with `MB_PROMETHEUS_SERVER_PORT`
+## Start up Metabase with `MB_PROMETHEUS_SERVER_PORT`
 
 Download the latest [Metabase JAR](https://www.metabase.com/start/oss/), and run Metabase using an environment variable to specify the Prometheus server port:
 
-```
-MB_PROMETHEUS_SERVER_PORT=9191 java -jar metabase.jar
+```sh
+MB_PROMETHEUS_SERVER_PORT=9191 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 The `MB_PROMETHEUS_SERVER_PORT=9191` specifies which port (`9191`) Metabase will use to send data to Prometheus. To clarify the ports that will be involved here:
 
 - Port `3000` is the port Metabase uses to serve the Metabase app. You can set another port with `MB_JETTY_PORT` (e.g., `MB_JETTY_PORT=3001`).
-  - Port `9191` (or whichever port you specified with the `MB_PROMETHEUS_SERVER_PORT` environment variable) is the port Prometheus uses to scrape metrics from Metabase.
+- Port `9191` (or whichever port you specified with the `MB_PROMETHEUS_SERVER_PORT` environment variable) is the port Prometheus uses to scrape metrics from Metabase.
 - Port `9090` is the port Prometheus uses to serve the Prometheus application.
 
 When you start Metabase, the Metabase logs will tell you that Metabase is starting the `prometheus metrics collector` and `prometheus metrics web-server`.
 
-```
+```sh
 (truncated logs)
 2022-09-01 17:47:38,808 INFO metabase.util :: Database setup took 3.4 s
 2022-09-01 17:47:38,826 INFO metabase.core :: Setting up prometheus metrics
@@ -37,41 +37,43 @@ When you start Metabase, the Metabase logs will tell you that Metabase is starti
 
 You can view your locally running Metabase at `http://localhost:3000`.
 
-### Download and configure Prometheus
+## Download and configure Prometheus
 
 [Download Prometheus](https://prometheus.io/download), and extract the files.
 
 Change into the Prometheus directory, add the following YAML file to configure your Prometheus:
 
-#### Prometheus configuration file example
+## Prometheus configuration file example
 
-```
+```yaml
 global:
-  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+  scrape_interval: 15s # By default, scrape targets every 15 seconds.
 
   # Attach these labels to any time series or alerts when communicating with
   # external systems (federation, remote storage, Alertmanager).
   external_labels:
-    monitor: 'codelab-monitor'
+    monitor: "codelab-monitor"
 
 # A scrape configuration containing exactly one endpoint to scrape:
 # Here it's Prometheus itself.
 scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
 
     # Override the global default and scrape targets from this job every 5 seconds.
     scrape_interval: 5s
     # use whatever port here that you set for MB_PROMETHEUS_SERVER_PORT
     static_configs:
-      - targets: ['localhost:9191']
+      - targets: ["localhost:9191"]
 ```
 
-### Running Prometheus Locally
+You need to change the "target" to where Metabase is, for this particular example, Metabase resides in the same host where Prometheus is running ("localhost").
+
+## Running Prometheus Locally
 
 In a new terminal process in the Prometheus directory, run:
 
-```
+```sh
 ./prometheus --config.file=prometheus.yml
 ```
 
@@ -83,7 +85,7 @@ Then check `http://localhost:9090`. You should see the Prometheus app, and be ab
 
 Here is some sample output from Metabase:
 
-```
+```yaml
 '# HELP jvm_threads_current Current thread count of a JVM
 '# TYPE jvm_threads_current gauge
 jvm_threads_current 81.0
@@ -155,8 +157,13 @@ Metrics exported by Metabase include:
 - `process_max_fds`
 - `process_open_fds`
 - `process_start_time_seconds`
-
+- `process_virtual_memory_bytes`
+- `metabase_email_messages_total`
+- `metabase_email_messages_created`
+- `metabase_email_message_errors_total`
+- `metabase_email_message_errors_created`
 
 ## Further reading
 
+- [Running Metabase](../troubleshooting-guide/running.md)
 - [Monitoring Metabase](./monitoring-metabase.md)

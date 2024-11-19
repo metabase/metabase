@@ -1,7 +1,10 @@
 (ns metabase.api.embed.common
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -9,16 +12,18 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.eid-translation :as eid-translation]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
-   [metabase.pulse.parameters :as pulse-params]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n
     :as i18n
-    :refer [tru]]
+    :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -26,7 +31,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- valid-param?
+(defn- valid-param-value?
   "Is V a valid param value? (If it is a String, is it non-blank?)"
   [v]
   (or (not (string? v))
@@ -35,8 +40,8 @@
 (defn- check-params-are-allowed
   "Check that the conditions specified by `object-embedding-params` are satisfied."
   [object-embedding-params token-params user-params]
-  (let [all-params        (set/union token-params user-params)
-        duplicated-params (set/intersection token-params user-params)]
+  (let [all-params        (merge token-params user-params)
+        duplicated-params (set/intersection (set (keys token-params)) (set (keys user-params)))]
     (doseq [[param status] object-embedding-params]
       (case status
         ;; disabled means a param is not allowed to be specified by either token or user
@@ -47,14 +52,14 @@
                               [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
-                    (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
+                    (some? (get token-params param))    [400 (tru "You must specify a value for {0} in the JWT." param)]
                     (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."
   [object-embedding-params all-params]
   (let [embedding-params (set (keys object-embedding-params))]
-    (doseq [k all-params]
+    (doseq [[k _] all-params]
       (api/check (contains? embedding-params k)
                  [400 (format "Unknown parameter %s." k)]))))
 
@@ -69,7 +74,7 @@
              "token params:"            token-params
              "user params:"             user-params)
   (check-params-are-allowed object-embedding-params token-params user-params)
-  (check-params-exist object-embedding-params (set/union token-params user-params)))
+  (check-params-exist object-embedding-params (merge token-params user-params)))
 
 (defn- check-embedding-enabled-for-object
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
@@ -100,7 +105,7 @@
       api.public/combine-parameters-and-template-tags
       :parameters))
 
-(mu/defn ^:private resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
+(mu/defn- resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
   [[metabase.api.dashboard/process-query-for-dashcard]]."
@@ -117,6 +122,22 @@
                                         :slug                 slug
                                         :dashboard-parameters parameters})))
             :value value}))))
+
+(defn parse-query-params
+  "Parses parameter values from the query string in a backward compatible way.
+
+  Before (v50 and below) we passed parameter values as separate query string parameters \"?param1=A&param2=B\". The
+  problem with this approach is that we cannot reliably distinguish between numbers and numeric strings, as well as
+  booleans and boolean strings. To fix this issue we introduced another query string parameter `:parameters` which
+  contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
+  string parameters."
+  [query-params]
+  (or (try
+        (when-let [parameters (:parameters query-params)]
+          (json/parse-string parameters keyword))
+        (catch Throwable _
+          nil))
+      query-params))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
@@ -138,12 +159,17 @@
    token-params            :- [:map-of :keyword :any]
    user-params             :- [:map-of :keyword :any]]
   (check-param-sets object-embedding-params
-                    (set (keys (m/filter-vals valid-param? token-params)))
-                    (set (keys (m/filter-vals valid-param? user-params))))
-  ;; ok, everything checks out, now return the merged params map
-  (merge user-params token-params))
+                    (m/filter-vals valid-param-value? token-params)
+                    (m/filter-vals valid-param-value? user-params))
+  ;; ok, everything checks out, now return the merged params map,
+  ;; but first turn empty lists into nil
+  (-> (merge user-params token-params)
+      (update-vals (fn [v]
+                     (if (and (not (string? v)) (seqable? v))
+                       (seq v)
+                       v)))))
 
-(mu/defn ^:private param-values-merged-params :- [:map-of ms/NonBlankString :any]
+(mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
@@ -156,10 +182,9 @@
                                     v]))
         slug-query-params  (normalize-query-params slug-query-params)
         merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)]
-    (into {} (for [[slug value] merged-slug->value]
+    (into {} (for [[slug value] merged-slug->value
+                   :when        value]
                [(get slug->id (name slug)) value]))))
-
-
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
@@ -191,7 +216,7 @@
   [dashboard-or-card-params embedding-params]
   (:remove (classify-params-as-keep-or-remove dashboard-or-card-params embedding-params)))
 
-(mu/defn ^:private remove-locked-and-disabled-params
+(mu/defn- remove-locked-and-disabled-params
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
@@ -211,10 +236,10 @@
   make these parameters visible at all to the frontend."
   [dashboard token-params]
   (let [params             (:parameters dashboard)
-        dashcards      (:dashcards dashboard)
+        dashcards          (:dashcards dashboard)
         params-with-values (reduce
                             (fn [acc param]
-                             (if-let [value (get token-params (keyword (:slug param)))]
+                              (if-let [value (get token-params (keyword (:slug param)))]
                                 (conj acc (assoc param :value value))
                                 acc))
                             []
@@ -224,16 +249,16 @@
            (map
             (fn [card]
               (if (-> card :visualization_settings :virtual_card)
-                (pulse-params/process-virtual-dashcard card params-with-values)
+                (notification.payload/process-virtual-dashcard card params-with-values)
                 card))
             dashcards))))
 
-(mu/defn ^:private apply-slug->value :- [:maybe [:sequential
-                                                 [:map
-                                                  [:slug ms/NonBlankString]
-                                                  [:type :keyword]
-                                                  [:target :any]
-                                                  [:value :any]]]]
+(mu/defn- apply-slug->value :- [:maybe [:sequential
+                                        [:map
+                                         [:slug ms/NonBlankString]
+                                         [:type :keyword]
+                                         [:target :any]
+                                         [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
   [parameters slug->value]
@@ -251,6 +276,128 @@
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
+;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
+
+(def ^:private api-models
+  "The models that we will service for entity-id transformations."
+  (->> (descendants :metabase/model)
+       (filter #(= (namespace %) "model"))
+       (filter (fn has-entity-id?
+                 [model] (or ;; toucan1 models
+                          (isa? model :metabase.models.interface/entity-id)
+                          ;; toucan2 models
+                          (isa? model :hook/entity-id))))
+       (map keyword)
+       set))
+
+(def ^:private api-name->model
+  "Map of model names used on the API to their corresponding model."
+  (->> api/model->db-model
+       (map (fn [[k v]] [(keyword k) (:db-model v)]))
+       (filter (fn [[_ v]] (contains? api-models v)))
+       (into {})))
+
+(defn- ->model
+  "Takes a model keyword or an api-name and returns the corresponding model keyword."
+  [model-or-api-name]
+  (if (contains? api-models model-or-api-name)
+    model-or-api-name
+    (api-name->model model-or-api-name)))
+
+(def ^:private eid-api-names
+  "Sorted vec of api models that have an entity_id column"
+  (vec (sort (keys api-name->model))))
+
+(def ^:private eid-api-models
+  (vec (sort (vals api-name->model))))
+
+(def ^:private ApiName (into [:enum] eid-api-names))
+(def ^:private ApiModel (into [:enum] eid-api-models))
+
+(def ^:private EntityId
+  "A Malli schema for an entity id, this is a little more loose because it needs to be fast."
+  [:and {:description "entity_id"}
+   :string
+   [:fn {:error/fn (fn [{:keys [value]} _]
+                     (str "\"" value "\" should be 21 characters long, but it is " (count value)))}
+    (fn eid-length-good? [eid] (= 21 (count eid)))]])
+
+(def ^:private ModelToEntityIds
+  "A Malli schema for a map of model names to a sequence of entity ids."
+  (mc/schema [:map-of ApiName [:sequential :string]]))
+
+;; -------------------- Entity Id Translation Analytics --------------------
+
+(defsetting entity-id-translation-counter
+  (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
+  :encryption :no
+  :visibility :internal
+  :export?    false
+  :audit      :never
+  :type       :json
+  :default    eid-translation/default-counter
+  :doc false)
+
+(mu/defn update-translation-count!
+  "Update the entity-id translation counter with the results of a batch of entity-id translations."
+  [results :- [:sequential eid-translation/Status]]
+  (let [processed-result (frequencies results)]
+    (entity-id-translation-counter!
+     (merge-with + processed-result (entity-id-translation-counter)))))
+
+(mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
+                                                    ;; We want to pass incorrectly formatted entity-ids through here,
+                                                    ;; but this is assumed to be an entity-id:
+                                                    :string
+                                                    [:map [:status eid-translation/Status]]]]
+  "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
+  [api-name eids]
+  (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
+        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
+    (mapv (fn entity-id-info [entity-id]
+            [entity-id (if-let [id (get eid->id entity-id)]
+                         {:id id :type api-name :status :ok}
+                         ;; handle errors
+                         (if (mc/validate EntityId entity-id)
+                           {:type api-name
+                            :status :not-found}
+                           {:type api-name
+                            :status :invalid-format
+                            :reason (me/humanize (mc/explain EntityId entity-id))}))])
+          eids)))
+
+(defn model->entity-ids->ids
+  "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
+  [model-key->entity-ids]
+  (when-not (mc/validate ModelToEntityIds model-key->entity-ids)
+    (throw (ex-info "Invalid format." {:explanation (me/humanize
+                                                     (me/with-spell-checking
+                                                       (mc/explain ModelToEntityIds model-key->entity-ids)))
+                                       :allowed-models (sort (keys api-name->model))
+                                       :status-code 400})))
+  (u/prog1 (into {}
+                 (mapcat
+                  (fn [[model eids]] (entity-ids->id-for-model model eids))
+                  model-key->entity-ids))
+    (update-translation-count! (map :status (vals <>)))))
+
+(mu/defn ->id :- :int
+  "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
+   Please use that if you have to do man lookups at once."
+  [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
+  (if (string? id)
+    (let [model (->model api-name-or-model)
+          [[_ {:keys [status] :as info}]] (entity-ids->id-for-model api-name-or-model [id])]
+      (update-translation-count! [status])
+      (if-not (= :ok status)
+        (throw (ex-info "problem looking up id from entity_id"
+                        {:api-name-or-model api-name-or-model
+                         :model model
+                         :id id
+                         :status status}))
+        (:id info)))
+    id))
+
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token
@@ -258,7 +405,8 @@
   `public-card` function that fetches the Card."
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
-  (let [card-id      (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+  (let [pre-card-id  (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        card-id      (->id :model/Card pre-card-id)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-card :id card-id, constraints)
         api.public/combine-parameters-and-template-tags
@@ -327,7 +475,8 @@
   the `public-dashboard` function that fetches the Dashboard."
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
-  (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+  (let [pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard-id (->id :model/Dashboard pre-dashboard-id)
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
@@ -413,17 +562,30 @@
           (throw e))))))
 
 (defn dashboard-param-values
-  "Common implementation for fetching parameter values for embedding and preview-embedding."
-  [token searched-param-id prefix id-query-params]
-  (let [unsigned-token                       (embed/unsign token)
-        dashboard-id                         (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        _                                    (check-embedding-enabled-for-dashboard dashboard-id)
-        slug-token-params                    (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-        {parameters       :parameters
-         embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
-        id->slug                             (into {} (map (juxt :id :slug) parameters))
-        slug->id                             (into {} (map (juxt :slug :id) parameters))
-        searched-param-slug                  (get id->slug searched-param-id)]
+  "Common implementation for fetching parameter values for embedding and preview-embedding.
+  Optionally pass a map with `:preview` containing `true` (or some non-falsy value) to disable checking
+  if the dashboard is 'published'. This is intended to power the `preview_embed` api endpoints.
+  The `:preview` key will default to `false`."
+  [token searched-param-id prefix id-query-params
+   & {:keys [preview] :or {preview false}}]
+  (let [unsigned-token                                 (embed/unsign token)
+        pre-dashboard-id                               (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard-id                                   (->id :model/Dashboard pre-dashboard-id)
+        _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
+        slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        {parameters                 :parameters
+         published-embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
+        ;; when previewing an embed, embedding-params should come from the token,
+        ;; since a user may be changing them prior to publishing the Embed, which is what actually persists
+        ;; the settings to the Appdb.
+        embedding-params                               (if preview
+                                                         (merge
+                                                          published-embedding-params
+                                                          (get unsigned-token :_embedding_params))
+                                                         published-embedding-params)
+        id->slug                                       (into {} (map (juxt :id :slug) parameters))
+        slug->id                                       (into {} (map (juxt :slug :id) parameters))
+        searched-param-slug                            (get id->slug searched-param-id)]
     (try
       ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
       (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
@@ -436,7 +598,7 @@
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})
-                    api/*is-superuser?*                 true]
+                    api/*is-superuser?*                true]
             (api.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)

@@ -1,26 +1,26 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import type { CollectionEndpoints } from "__support__/server-mocks";
 import {
   setupCollectionByIdEndpoint,
-  setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   getBrokenUpTextMatcher,
+  mockGetBoundingClientRect,
+  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
-  mockGetBoundingClientRect,
-  mockScrollBy,
 } from "__support__/ui";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import * as qbSelectors from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
@@ -76,16 +76,22 @@ const setup = async (
   const onCloseMock = jest.fn();
 
   if (collectionEndpoints) {
+    setupCollectionByIdEndpoint({
+      collections: collectionEndpoints.collections,
+    });
     setupCollectionsEndpoints(collectionEndpoints);
   } else {
-    fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
-    fetchMock.get("path:/api/collection/root", ROOT_TEST_COLLECTION);
     setupCollectionByIdEndpoint({ collections: [BOBBY_TEST_COLLECTION] });
-    setupCollectionItemsEndpoint({
-      collection: BOBBY_TEST_COLLECTION,
-      collectionItems: [],
+    setupCollectionsEndpoints({
+      collections: TEST_COLLECTIONS,
+      rootCollection: ROOT_TEST_COLLECTION,
     });
   }
+
+  setupCollectionItemsEndpoint({
+    collection: BOBBY_TEST_COLLECTION,
+    collectionItems: [],
+  });
 
   setupRecentViewsAndSelectionsEndpoints([]);
 
@@ -98,13 +104,14 @@ const setup = async (
       originalCard: originalQuestion?.card(),
     }),
   });
-  renderWithProviders(
+  const { rerender: _rerender } = renderWithProviders(
     <SaveQuestionModal
       question={question}
       originalQuestion={originalQuestion}
       onCreate={onCreateMock}
       onSave={onSaveMock}
       onClose={onCloseMock}
+      opened={true}
     />,
     {
       storeInitialState: state,
@@ -112,7 +119,20 @@ const setup = async (
   );
   await screen.findByRole("button", { name: "Save" });
 
-  return { onSaveMock, onCreateMock, onCloseMock };
+  const rerender = () => {
+    _rerender(
+      <SaveQuestionModal
+        question={question}
+        originalQuestion={originalQuestion}
+        onCreate={onCreateMock}
+        onSave={onSaveMock}
+        onClose={onCloseMock}
+        opened={true}
+      />,
+    );
+  };
+
+  return { onSaveMock, onCreateMock, onCloseMock, rerender };
 };
 
 const EXPECTED_SUGGESTED_NAME = "Orders, Count";
@@ -240,7 +260,7 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.id()).toBeUndefined();
       expect(newQuestion.displayName()).toBe(EXPECTED_SUGGESTED_NAME);
       expect(newQuestion.description()).toBe(null);
-      expect(newQuestion.collectionId()).toBe(null);
+      expect(newQuestion.collectionId()).toBe(1);
     });
 
     it("should call onCreate correctly with edited form", async () => {
@@ -264,7 +284,7 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.id()).toBeUndefined();
       expect(newQuestion.displayName()).toBe("My favorite orders");
       expect(newQuestion.description()).toBe("So many of them");
-      expect(newQuestion.collectionId()).toBe(null);
+      expect(newQuestion.collectionId()).toBe(1);
     });
 
     it("should trim name and description", async () => {
@@ -288,7 +308,7 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.id()).toBeUndefined();
       expect(newQuestion.displayName()).toBe("My favorite orders");
       expect(newQuestion.description()).toBe("So many of them");
-      expect(newQuestion.collectionId()).toBe(null);
+      expect(newQuestion.collectionId()).toBe(1);
     });
 
     it('should correctly handle saving a question in the "root" collection', async () => {
@@ -311,7 +331,7 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.id()).toBeUndefined();
       expect(newQuestion.displayName()).toBe("foo");
       expect(newQuestion.description()).toBe("bar");
-      expect(newQuestion.collectionId()).toBe(null);
+      expect(newQuestion.collectionId()).toBe(1);
     });
 
     it("shouldn't call onSave when form is submitted", async () => {
@@ -632,6 +652,25 @@ describe("SaveQuestionModal", () => {
         screen.queryByText(/Replace original question, ".*"/),
       ).not.toBeInTheDocument();
     });
+
+    it("should not render empty content when render happens after question is saved (metabase#45416)", async () => {
+      const originalQuestion = getQuestion({ isSaved: true });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+
+      const { rerender } = await setup(dirtyQuestion, originalQuestion);
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      // simulate slow response and further re-render of the modal
+      jest
+        .spyOn(qbSelectors, "getIsSavedQuestionChanged")
+        .mockReturnValue(false);
+
+      rerender();
+
+      // verify that modal still has content
+      expect(screen.getByText(/replace or save as new/i)).toBeInTheDocument();
+    });
   });
 
   it("should call onClose when Cancel button is clicked", async () => {
@@ -691,6 +730,7 @@ describe("SaveQuestionModal", () => {
     const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
 
     const COLLECTION = {
+      USER: BOBBY_TEST_COLLECTION,
       ROOT: createMockCollection({
         ...ROOT_COLLECTION,
         can_write: true,
@@ -747,6 +787,7 @@ describe("SaveQuestionModal", () => {
       await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
     });
+
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       await setup(getQuestion());
       await userEvent.click(collDropdown());
@@ -757,6 +798,7 @@ describe("SaveQuestionModal", () => {
       await userEvent.click(cancelBtn());
       await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
     });
+
     describe("new collection location", () => {
       beforeEach(async () => {
         await setup(getQuestion(), null, {
@@ -765,23 +807,20 @@ describe("SaveQuestionModal", () => {
             rootCollection: COLLECTION.ROOT,
           },
         });
-        setupCollectionByIdEndpoint({ collections: [COLLECTION.PARENT] });
-        setupCollectionItemsEndpoint({
-          collection: BOBBY_TEST_COLLECTION,
-          collectionItems: [],
-        });
       });
+
       it("should create collection inside nested folder", async () => {
         await userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
         await userEvent.click(
           await screen.findByRole("button", {
-            name: new RegExp(COLLECTION.PARENT.name),
+            name: new RegExp(BOBBY_TEST_COLLECTION.name),
           }),
         );
         await userEvent.click(newCollBtn());
         await screen.findByText("Give it a name");
       });
+
       it("should create collection inside root folder", async () => {
         await userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());

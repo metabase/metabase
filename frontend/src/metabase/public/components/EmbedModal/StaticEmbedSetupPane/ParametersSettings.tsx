@@ -7,11 +7,11 @@ import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import type {
-  EmbeddingParameters,
-  EmbeddingParametersValues,
-  EmbeddingParameterVisibility,
   EmbedResourceParameter,
   EmbedResourceType,
+  EmbeddingParameterVisibility,
+  EmbeddingParameters,
+  EmbeddingParametersValues,
 } from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
 import { Box, Divider, Icon, Stack, Text } from "metabase/ui";

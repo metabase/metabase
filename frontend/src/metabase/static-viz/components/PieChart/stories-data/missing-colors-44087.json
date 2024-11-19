@@ -1,0 +1,290 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 623,
+      "collection_position": null,
+      "table_id": 36536,
+      "can_run_adhoc_query": true,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/Category",
+          "coercion_strategy": null,
+          "name": "first_col_name",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 537631, null],
+          "effective_type": "type/Text",
+          "id": 537631,
+          "visibility_type": "normal",
+          "display_name": "First Col Name",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0.02272727272727273
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0.0,
+                "percent-url": 0.0,
+                "percent-email": 0.0,
+                "percent-state": 0.0,
+                "average-length": 0
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Second Col Name",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "second_col_name",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0.0
+            },
+            "type": {
+              "type/Number": {
+                "min": 951565.0,
+                "q1": 1065887.4375,
+                "q3": 1979575.6875,
+                "max": 2169816.0,
+                "sd": 615401.1480946967,
+                "avg": 1510078.5833333333
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "person@metabase.com",
+        "first_name": "person",
+        "last_login": "2021-11-11T18:01:44.826286Z",
+        "is_qbnewb": false,
+        "is_superuser": false,
+        "id": 38,
+        "last_name": "person",
+        "date_joined": "2019-10-14T22:15:04.462Z",
+        "common_name": "person person"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 26,
+      "enable_embedding": false,
+      "collection_id": 358,
+      "query_type": "query",
+      "name": "Question Name",
+      "last_query_start": "2024-06-18T20:50:02.434431Z",
+      "dashboard_count": 3,
+      "last_used_at": "2024-06-18T20:50:02.975918Z",
+      "type": "question",
+      "average_query_time": 797.2504230118443316,
+      "creator_id": 38,
+      "moderation_reviews": [],
+      "updated_at": "2024-06-18T20:50:02.988311Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 26,
+        "query": {
+          "source-table": 36536,
+          "filter": [
+            "and",
+            ["not-empty", ["field", 537650, null]],
+            ["=", ["field", 537643, null], "active"],
+            ["=", ["field", 537641, null], "enterprise"],
+            ["not-empty", ["field", 537631, null]]
+          ],
+          "aggregation": [["second_col_name", ["field", 537640, null]]],
+          "breakout": [["field", 537631, null]]
+        },
+        "type": "query"
+      },
+      "id": 1610,
+      "parameter_mappings": [],
+      "display": "pie",
+      "archived_directly": false,
+      "entity_id": "EG21ArdaJJo5USvQamnz-",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 136,
+        "email": "person@metabase.com",
+        "first_name": "person",
+        "last_name": "person",
+        "timestamp": "2022-12-01T22:21:31.171663Z"
+      },
+      "visualization_settings": {
+        "pie.colors": {
+          "advanced": "#98D9D9",
+          "custom": "#74838f",
+          "standard": "#7172AD",
+          "basic": "#A989C5"
+        },
+        "pie.show_legend": true,
+        "column_settings": {
+          "[\"name\",\"second_col_name\"]": {
+            "number_style": "currency",
+            "decimals": 0
+          }
+        },
+        "pie.percent_visibility": "inside",
+        "version": 2
+      },
+      "collection": {
+        "authority_level": "official",
+        "description": null,
+        "archived": false,
+        "slug": "collection_name",
+        "archive_operation_id": null,
+        "name": "collection_name",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 358,
+        "archived_directly": null,
+        "entity_id": "zZH6XsgC7q2emNmdgZkPp",
+        "location": "/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2019-06-05T18:48:46.583Z"
+      },
+      "metabase_version": null,
+      "parameters": [],
+      "created_at": "2020-11-30T20:41:36.692406Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": true
+    },
+    "data": {
+      "rows": [
+        ["both", 100],
+        ["external", 100],
+        ["internal", 100]
+      ],
+      "results_timezone": "US/Pacific",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "first_col_name",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 537631, null],
+            "effective_type": "type/Text",
+            "id": 537631,
+            "visibility_type": "normal",
+            "display_name": "First Col Name",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.02272727272727273
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.581818181818182
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Second Col Name",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "second_col_name",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 0,
+                  "q3": 0,
+                  "max": 0,
+                  "sd": 0,
+                  "avg": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "requested_timezone": "US/Pacific",
+      "format-rows?": true,
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/Category",
+          "table_id": 36536,
+          "coercion_strategy": null,
+          "name": "first_col_name",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 537631, null],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 537631,
+          "position": 25,
+          "visibility_type": "normal",
+          "display_name": "First Col Name",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0.02272727272727273
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.581818181818182
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "semantic_type": null,
+          "name": "second_col_name",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/Float",
+          "aggregation_index": 0,
+          "display_name": "Second Col Name",
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "insights": null
+    }
+  }
+]

@@ -65,7 +65,7 @@
   "Schema for valid values of the `result_metadata` column."
   [:ref ::ResultsMetadata])
 
-(mu/defn ^:private maybe-infer-semantic-type :- ResultColumnMetadata
+(mu/defn- maybe-infer-semantic-type :- ResultColumnMetadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
   semantic type with a nil semantic type"
   [col]
@@ -76,10 +76,10 @@
      ;; If we already know the semantic type, becouse it is stored, don't classify again, but try to refine semantic
      ;; type set upstream for aggregation cols (which come back as :type/Number).
      (case original-value
-       (nil :type/Number) (classifiers.name/infer-semantic-type col)
+       (nil :type/Number) (classifiers.name/infer-semantic-type-by-name col)
        original-value))))
 
-(mu/defn ^:private col->ResultColumnMetadata :- ResultColumnMetadata
+(mu/defn- col->ResultColumnMetadata :- ResultColumnMetadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
   [column]
@@ -105,16 +105,16 @@
     (redux/post-complete
      (redux/juxt
       (apply fingerprinters/col-wise (for [{:keys [fingerprint], :as metadata} cols]
-                                      (if-not fingerprint
-                                        (fingerprinters/fingerprinter metadata)
-                                        (fingerprinters/constant-fingerprinter fingerprint))))
+                                       (if-not fingerprint
+                                         (fingerprinters/fingerprinter metadata)
+                                         (fingerprinters/constant-fingerprinter fingerprint))))
       (insights/insights cols))
      (fn [[fingerprints insights]]
-       {:metadata (map (fn [fingerprint metadata]
-                         (if (instance? Throwable fingerprint)
-                           metadata
-                           (assoc metadata :fingerprint fingerprint)))
-                       fingerprints
-                       cols)
+       {:metadata (mapv (fn [fingerprint metadata]
+                          (if (instance? Throwable fingerprint)
+                            metadata
+                            (assoc metadata :fingerprint fingerprint)))
+                        fingerprints
+                        cols)
         :insights (when-not (instance? Throwable insights)
                     insights)}))))

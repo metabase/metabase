@@ -1,6 +1,6 @@
 import { delay } from "__support__/utils";
 
-import { fetchData, updateData, mergeEntities } from "./utils";
+import { fetchData, mergeEntities, updateData } from "./utils";
 
 describe("Metadata", () => {
   const getDefaultArgs = ({
@@ -187,6 +187,7 @@ describe("Metadata", () => {
         ),
       ).toEqual({ 1: { id: 1, name: "foo" }, 2: { id: 2, name: "bar" } });
     });
+
     it("merge entity keys", () => {
       expect(
         mergeEntities(
@@ -195,6 +196,7 @@ describe("Metadata", () => {
         ),
       ).toEqual({ 1: { id: 1, name: "bar", prop1: 123, prop2: 456 } });
     });
+
     it("delete an entity", () => {
       expect(
         mergeEntities({ 1: { id: 1 }, 2: { id: 2 } }, { 2: null }),

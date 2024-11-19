@@ -14,25 +14,25 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 import {
-  createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
-  createProductsIdField,
-  createProductsEanField,
-  createProductsTitleField,
-  createProductsCategoryField,
-  createProductsVendorField,
-  createProductsPriceField,
-  createProductsRatingField,
-  createProductsCreatedAtField,
-  createSampleDatabase,
   PRODUCTS,
   PRODUCTS_ID,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsCategoryField,
+  createProductsCreatedAtField,
+  createProductsEanField,
+  createProductsIdField,
+  createProductsPriceField,
+  createProductsRatingField,
+  createProductsTable,
+  createProductsTitleField,
+  createProductsVendorField,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
-  getDataFromClicked,
   formatSourceForTarget,
+  getDataFromClicked,
   getTargetsForDashboard,
   getTargetsForQuestion,
 } from "./click-behavior";
@@ -219,6 +219,7 @@ describe("metabase/lib/click-behavior", () => {
           "type/Boolean",
           "type/Enum",
           "type/Text",
+          "type/TextLike",
         ].map(base_type => createMockColumn({ base_type })),
         parameter: [
           "id",
@@ -229,6 +230,7 @@ describe("metabase/lib/click-behavior", () => {
           "date/relative",
           "date/all-options",
           "date/month-year",
+          "temporal-unit",
         ].map(type => createMockParameter({ type })),
         userAttribute: ["attr"],
       };
@@ -287,6 +289,17 @@ describe("metabase/lib/click-behavior", () => {
             ],
             parameter: [createMockParameter({ type: "date/single" })],
             userAttribute: [],
+          },
+        ],
+        [
+          "temporal-unit",
+          {
+            column: [
+              createMockColumn({ base_type: "type/Text" }),
+              createMockColumn({ base_type: "type/TextLike" }),
+            ],
+            parameter: [createMockParameter({ type: "temporal-unit" })],
+            userAttribute: ["attr"],
           },
         ],
       ] as [string, Record<string, unknown>][]) {
@@ -504,11 +517,10 @@ describe("metabase/lib/click-behavior", () => {
       };
       const extraData = {
         // the UI wouldn't actually let you configure a text column -> date param link
-        dashboard: createMockDashboard({
-          parameters: [
-            createMockParameter({ id: "param123", type: "date/single" }),
-          ],
-        }),
+        dashboard: createMockDashboard(),
+        parameters: [
+          createMockParameter({ id: "param123", type: "date/single" }),
+        ],
       };
       const clickBehavior = { type: "crossfilter" as const };
       const value = formatSourceForTarget(source, target, {
@@ -540,11 +552,10 @@ describe("metabase/lib/click-behavior", () => {
         },
       };
       const extraData = {
-        dashboard: createMockDashboard({
-          parameters: [
-            createMockParameter({ id: "param123", type: "date/all-options" }),
-          ],
-        }),
+        dashboard: createMockDashboard(),
+        parameters: [
+          createMockParameter({ id: "param123", type: "date/all-options" }),
+        ],
       };
       const clickBehavior = { type: "crossfilter" as const };
       const value = formatSourceForTarget(source, target, {
@@ -573,11 +584,10 @@ describe("metabase/lib/click-behavior", () => {
         },
       };
       const extraData = {
-        dashboard: createMockDashboard({
-          parameters: [
-            createMockParameter({ id: "param123", type: "date/month-year" }),
-          ],
-        }),
+        dashboard: createMockDashboard(),
+        parameters: [
+          createMockParameter({ id: "param123", type: "date/month-year" }),
+        ],
       };
       const clickBehavior = { type: "crossfilter" as const };
       const value = formatSourceForTarget(source, target, {

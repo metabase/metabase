@@ -24,7 +24,7 @@
     {:error/message "Should not have :condition"}
     (complement :condition)]])
 
-(mu/defn ^:private add-join-alias
+(mu/defn- add-join-alias
   [{:keys [table-id], field-id :id, :as field}
    {:keys [joins source-query]}   :- InnerQuery
    [_ id-or-name opts :as clause] :- mbql.s/field:id]
@@ -66,7 +66,7 @@
       (when source-query
         (recur source-query))))
 
-(mu/defn ^:private add-join-alias-to-fields-if-needed*
+(mu/defn- add-join-alias-to-fields-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
   [{:keys [source-query joins], :as form} :- InnerQuery]
   ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`

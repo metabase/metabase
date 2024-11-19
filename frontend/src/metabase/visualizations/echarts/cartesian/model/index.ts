@@ -1,14 +1,15 @@
+import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import {
+  applyVisualizationSettingsDataTransformations,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   getSortedSeriesModels,
-  applyVisualizationSettingsDataTransformations,
-  sortDataset,
   scaleDataset,
+  sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardsSeriesModels,
@@ -16,18 +17,22 @@ import {
   getDimensionModel,
   getFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
-import type {
-  CartesianChartModel,
-  ShowWarning,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getSingleSeriesDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
+import { getAreDimensionsAndMetricsValid } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
+import type { ShowWarning } from "../../types";
+
+import {
+  createOtherGroupSeriesModel,
+  groupSeriesIntoOther,
+} from "./other-series";
 import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
@@ -40,18 +45,15 @@ const getSettingsWithDefaultMetricsAndDimensions = (series: SingleSeries) => {
   const {
     card: { visualization_settings: settings },
   } = series;
-  if (
-    settings["graph.dimensions"] != null &&
-    settings["graph.metrics"] != null
-  ) {
+  if (getAreDimensionsAndMetricsValid([series])) {
     return settings;
   }
 
   const { dimensions, metrics } = getSingleSeriesDimensionsAndMetrics(series);
   const settingsWithDefaults = { ...settings };
 
-  settingsWithDefaults["graph.dimensions"] ??= dimensions;
-  settingsWithDefaults["graph.metrics"] ??= metrics;
+  settingsWithDefaults["graph.dimensions"] = dimensions;
+  settingsWithDefaults["graph.metrics"] = metrics;
 
   return settingsWithDefaults;
 };
@@ -80,6 +82,7 @@ export const getCardsColumns = (
 export const getCartesianChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): CartesianChartModel => {
@@ -91,14 +94,9 @@ export const getCartesianChartModel = (
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    hiddenSeries,
     settings,
-    renderingContext,
   );
-
-  // We currently ignore sorting and visibility settings on combined cards
-  const seriesModels = hasMultipleCards
-    ? unsortedSeriesModels
-    : getSortedSeriesModels(unsortedSeriesModels, settings);
 
   const unsortedDataset = getJoinedCardsDataset(
     rawSeries,
@@ -110,14 +108,33 @@ export const getCartesianChartModel = (
     settings["graph.x_axis.scale"],
     showWarning,
   );
-  const scaledDataset = scaleDataset(dataset, seriesModels, settings);
+
+  const sortedSeriesModels = hasMultipleCards
+    ? unsortedSeriesModels
+    : getSortedSeriesModels(unsortedSeriesModels, settings);
+
+  const scaledDataset = scaleDataset(dataset, sortedSeriesModels, settings);
+
+  const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
+    groupSeriesIntoOther(sortedSeriesModels, settings);
+
+  const [sampleGroupedModel] = groupedSeriesModels;
+  if (sampleGroupedModel) {
+    seriesModels.push(
+      createOtherGroupSeriesModel(
+        sampleGroupedModel.column,
+        sampleGroupedModel.columnIndex,
+        settings,
+        !hiddenSeries.includes(OTHER_DATA_KEY),
+      ),
+    );
+  }
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
     scaledDataset,
     settings,
-    renderingContext,
     showWarning,
   );
   const yAxisScaleTransforms = getAxisTransforms(
@@ -131,6 +148,7 @@ export const getCartesianChartModel = (
     stackModels,
     xAxisModel,
     seriesModels,
+    groupedSeriesModels,
     yAxisScaleTransforms,
     settings,
     showWarning,
@@ -140,13 +158,7 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     isCompactFormatting,
-  } = getFormatters(
-    seriesModels,
-    stackModels,
-    scaledDataset,
-    settings,
-    renderingContext,
-  );
+  } = getFormatters(seriesModels, stackModels, scaledDataset, settings);
 
   const dataDensity = getComboChartDataDensity(
     seriesModels,
@@ -167,7 +179,6 @@ export const getCartesianChartModel = (
     true,
     stackModels,
     isCompactFormatting,
-    renderingContext,
   );
 
   const trendLinesModel = getTrendLines(
@@ -196,5 +207,6 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     dataDensity,
+    groupedSeriesModels,
   };
 };

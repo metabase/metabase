@@ -45,7 +45,7 @@ With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have mor
   - [Syncing user attributes][ldap-user-attributes]
 - [SAML][saml]
   - [Auth0][saml-auth0]
-  - [Azure AD][azure-ad]
+  - [Microsoft Entra ID][azure-ad]
   - [Google][saml-google]
   - [Keycloak][saml-keycloak]
   - [Okta][saml-okta]
@@ -66,6 +66,10 @@ Create keys to authenticate API calls.
 [saml-google]: ./saml-google.md
 [saml-keycloak]: ./saml-keycloak.md
 [sso-def]: https://www.metabase.com/glossary/sso
+
+## [User provisioning](./user-provisioning.md)
+
+Metabase supports user provisioning via the SCIM protocol.
 
 ## [Accessibility](./accessibility.md)
 

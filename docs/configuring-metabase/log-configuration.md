@@ -26,7 +26,6 @@ You can set different log levels for different areas of the application, e.g.,:
     <Logger name="metabase-enterprise" level="INFO"/>
     <Logger name="metabase.plugins" level="DEBUG"/>
     <Logger name="metabase.server.middleware" level="DEBUG"/>
-    <Logger name="metabase.query-processor.async" level="DEBUG"/>
     <Logger name="com.mchange" level="ERROR"/>
 
     <!-- Example: Add trace logging to the Metabase analysis process, which can help debugging trouble with syncing, fingerprinting and scanning -->
@@ -66,7 +65,7 @@ By default Metabase will include emoji characters in logs. You can disable emoji
 
 ```
 export MB_EMOJI_IN_LOGS="false"
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 [default-log-config]: https://github.com/metabase/metabase/blob/master/resources/log4j2.xml

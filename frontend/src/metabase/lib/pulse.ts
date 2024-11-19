@@ -1,17 +1,18 @@
 import _ from "underscore";
 
+import { getEmailDomain } from "metabase/lib/email";
 import MetabaseSettings from "metabase/lib/settings";
-import { getEmailDomain } from "metabase/lib/utils";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Channel,
+  ChannelApiResponse,
   ChannelSpec,
-  NotificationRecipient,
   Pulse,
   PulseParameter,
+  User,
 } from "metabase-types/api";
 
 export const NEW_PULSE_TEMPLATE = {
@@ -39,6 +40,8 @@ export function channelIsValid(channel: Channel, channelSpec: ChannelSpec) {
         fieldsAreValid(channel, channelSpec) &&
         scheduleIsValid(channel)
       );
+    case "http":
+      return channel.channel_id && scheduleIsValid(channel);
     default:
       return false;
   }
@@ -92,7 +95,7 @@ function pulseChannelsAreValid(pulse: Pulse, channelSpecs: any) {
   );
 }
 
-export function recipientIsValid(recipient: NotificationRecipient) {
+export function recipientIsValid(recipient: User) {
   if (recipient.id) {
     return true;
   }
@@ -101,7 +104,7 @@ export function recipientIsValid(recipient: NotificationRecipient) {
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
   return (
     _.isEmpty(allowedDomains) ||
-    (recipientDomain && allowedDomains.includes(recipientDomain))
+    !!(recipientDomain && allowedDomains.includes(recipientDomain))
   );
 }
 
@@ -178,18 +181,19 @@ export function getDefaultChannel(channelSpecs: ChannelSpecs) {
   }
 }
 
-export function createChannel(channelSpec: ChannelSpec) {
-  const details = {};
-
+export function createChannel(
+  channelSpec: ChannelSpec,
+  opts?: Partial<Channel>,
+): Channel {
   return {
     channel_type: channelSpec.type,
     enabled: true,
     recipients: [],
-    details: details,
     schedule_type: channelSpec.schedules[0],
     schedule_day: "mon",
     schedule_hour: 8,
     schedule_frame: "first",
+    ...opts,
   };
 }
 
@@ -211,3 +215,20 @@ export function getActivePulseParameters(
     (parameter: any) => parameter.value != null,
   );
 }
+
+export const getHasConfiguredAnyChannel = (
+  formInput: Partial<ChannelApiResponse>,
+) =>
+  (formInput.channels &&
+    _.some(Object.values(formInput.channels), c => c.configured)) ||
+  false;
+
+export const getHasConfiguredEmailChannel = (
+  formInput: Partial<ChannelApiResponse>,
+) =>
+  (formInput.channels &&
+    _.some(
+      Object.values(formInput.channels),
+      c => c.type === "email" && c.configured,
+    )) ||
+  false;

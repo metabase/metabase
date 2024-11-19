@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import type { GoogleAuthFormProps } from "./GoogleAuthForm";
@@ -10,7 +10,7 @@ describe("GoogleAuthForm", () => {
   it("should submit the form", async () => {
     const props = getProps();
 
-    render(<GoogleAuthForm {...props} />);
+    renderWithProviders(<GoogleAuthForm {...props} />);
     await userEvent.type(screen.getByLabelText("Client ID"), "id.test");
     await waitFor(() => expect(screen.getByText(/Save/)).toBeEnabled());
     screen.getByText("Save and enable").click();
@@ -38,7 +38,7 @@ describe("GoogleAuthForm", () => {
       ],
     });
 
-    render(<GoogleAuthForm {...props} />);
+    renderWithProviders(<GoogleAuthForm {...props} />);
     await userEvent.type(screen.getByLabelText("Domain"), "domain.test");
 
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
@@ -55,7 +55,7 @@ describe("GoogleAuthForm", () => {
       ],
     });
 
-    render(<GoogleAuthForm {...props} />);
+    renderWithProviders(<GoogleAuthForm {...props} />);
     await userEvent.type(screen.getByLabelText("Domain"), "domain.test");
     screen.getByText("Save changes").click();
 

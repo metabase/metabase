@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 
-import { setup, hasBasicFilterOptions } from "./setup";
+import { hasBasicFilterOptions, setup } from "./setup";
 
 describe("SharingSidebar Enterprise Bundle", () => {
   describe("Email Subscription sidebar", () => {

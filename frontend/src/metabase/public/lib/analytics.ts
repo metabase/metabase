@@ -1,22 +1,24 @@
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { trackSchemaEvent } from "metabase/lib/analytics";
+import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
 
 import type {
-  EmbeddingDisplayOptions,
   DisplayTheme,
   EmbedResource,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
+  EmbeddingParameterVisibility,
 } from "./types";
 
 const SCHEMA_NAME = "embed_flow";
-const SCHEMA_VERSION = "1-0-1";
 
+// We changed the UI to `Look and Feel` now
 type Appearance = {
+  background: boolean;
   titled: boolean;
   bordered: boolean;
   theme: DisplayTheme;
   font: "instance" | "custom";
-  hide_download_button: boolean | null;
+  downloads: boolean | null;
 };
 
 export const trackStaticEmbedDiscarded = ({
@@ -24,7 +26,7 @@ export const trackStaticEmbedDiscarded = ({
 }: {
   artifact: EmbedResourceType;
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "static_embed_discarded",
     artifact,
   });
@@ -38,11 +40,11 @@ export const trackStaticEmbedPublished = ({
 }: {
   artifact: EmbedResourceType;
   resource: EmbedResource;
-  params: Record<string, number>;
+  params: Record<EmbeddingParameterVisibility, number>;
   isExampleDashboard: boolean;
 }): void => {
   const now = Date.now();
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "static_embed_published",
     artifact,
     new_embed: !resource.initially_published_at,
@@ -69,7 +71,7 @@ export const trackStaticEmbedUnpublished = ({
   resource: EmbedResource;
 }): void => {
   const now = Date.now();
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "static_embed_unpublished",
     artifact,
     time_since_creation: toSecond(
@@ -94,7 +96,7 @@ export const trackStaticEmbedCodeCopied = ({
   code: "backend" | "view";
   displayOptions: EmbeddingDisplayOptions;
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "static_embed_code_copied",
     artifact,
     language,
@@ -108,11 +110,12 @@ function normalizeAppearance(
   displayOptions: EmbeddingDisplayOptions,
 ): Appearance {
   return {
+    background: displayOptions.background,
     titled: displayOptions.titled,
     bordered: displayOptions.bordered,
     theme: displayOptions.theme ?? "light",
     font: displayOptions.font ? "custom" : "instance",
-    hide_download_button: displayOptions.hide_download_button,
+    downloads: displayOptions.downloads,
   };
 }
 
@@ -121,12 +124,12 @@ export const trackPublicLinkCopied = ({
   format = null,
 }: {
   artifact: EmbedResourceType;
-  format?: ExportFormatType | null;
+  format?: ExportFormatType | "html";
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_copied",
     artifact,
-    format,
+    format: format as any, // ExportFormatType is untyped
   });
 };
 
@@ -137,7 +140,7 @@ export const trackPublicEmbedCodeCopied = ({
   artifact: EmbedResourceType;
   source: "public-embed" | "public-share";
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "public_embed_code_copied",
     artifact,
     source,
@@ -151,7 +154,7 @@ export const trackPublicLinkRemoved = ({
   artifact: EmbedResourceType;
   source: "public-embed" | "public-share";
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_removed",
     artifact,
     source,

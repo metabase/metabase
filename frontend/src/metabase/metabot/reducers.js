@@ -1,6 +1,7 @@
 import { handleActions } from "redux-actions";
 
 import {
+  CANCEL_QUERY,
   FETCH_QUERY_RESULTS,
   FETCH_QUESTION,
   INIT,
@@ -11,11 +12,10 @@ import {
   RUN_QUESTION_QUERY,
   RUN_QUESTION_QUERY_FULFILLED,
   RUN_QUESTION_QUERY_REJECTED,
+  SET_UI_CONTROLS,
   SUBMIT_FEEDBACK_FORM,
   UPDATE_PROMPT,
   UPDATE_QUESTION,
-  CANCEL_QUERY,
-  SET_UI_CONTROLS,
 } from "./actions";
 import { DEFAULT_UI_CONTROLS } from "./constants";
 

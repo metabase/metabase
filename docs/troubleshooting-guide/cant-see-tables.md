@@ -7,7 +7,7 @@ title: I can't see my tables
 You've connected Metabase to a database, but:
 
 - you don't see the tables in the [Table Metadata](../data-modeling/metadata-editing.md) section of the Admin Panel,
-- the tables don't appear in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser),
+- the tables don't appear in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser),
 - the tables don't show up as possible data sources when you create a query using the Query Builder, or
 - you can no longer see tables that you used to be able to see.
 
@@ -27,7 +27,7 @@ Sometimes your browser will show an old cached list of tables. Browser extension
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Test the connection to your database by running:
-   ```
+   ```sql
    SELECT 1
    ```
 
@@ -43,14 +43,14 @@ To make sure that your table is actually queryable by Metabase:
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Look for your table:
-   ```
+   ```sql
    SELECT *
    FROM your_table
    ```
 
 If there's a problem with your table name or database permissions, you'll get an error message like:
 
-- [Table not found](https://www.metabase.com/learn/debugging-sql/sql-syntax#column-or-table-name-is-not-found-or-not-recognized)
+- [Table not found](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#column-or-table-name-is-not-found-or-not-recognized)
 - [Permission denied](./data-permissions.md#getting-a-permission-denied-error-message)
 
 For less common errors, try searching or asking the [Metabase community](https://discourse.metabase.com/).

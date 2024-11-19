@@ -1,23 +1,27 @@
 import type {
-  ModerationReview,
   Card,
-  UnsavedCard,
-  VisualizationSettings,
-  SeriesOrderSetting,
-  StructuredDatasetQuery,
+  CardQueryMetadata,
+  ModerationReview,
   NativeDatasetQuery,
   PublicCard,
+  SeriesOrderSetting,
+  StructuredDatasetQuery,
   TableColumnOrderSetting,
-  CardQueryMetadata,
+  UnsavedCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 
+import { createMockEntityId } from "./entity-id";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
 } from "./query";
+import { createMockUser } from "./user";
 
+const MOCK_CARD_ENTITY_ID = createMockEntityId();
 export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
+  entity_id: MOCK_CARD_ENTITY_ID,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   name: "Question",
@@ -29,7 +33,6 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   result_metadata: [],
   type: "question",
   can_write: true,
-  can_run_adhoc_query: true,
   can_restore: false,
   can_delete: false,
   cache_ttl: null,
@@ -43,6 +46,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   enable_embedding: false,
   embedding_params: null,
   initially_published_at: null,
+  can_manage_db: true,
   ...opts,
 });
 
@@ -115,6 +119,7 @@ export const createMockModerationReview = (
   status: "verified",
   created_at: "2015-01-01T20:10:30.200",
   most_recent: true,
+  user: createMockUser({ id: 1 }),
   ...opts,
 });
 
@@ -122,7 +127,6 @@ export const createMockTableColumnOrderSetting = (
   opts?: Partial<TableColumnOrderSetting>,
 ): TableColumnOrderSetting => ({
   name: "Column",
-  key: '["ref",["field",1,null]]',
   enabled: true,
   ...opts,
 });

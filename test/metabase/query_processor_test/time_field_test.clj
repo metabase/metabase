@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.time-field-test
+(ns ^:mb/driver-tests metabase.query-processor-test.time-field-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -7,73 +7,108 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (defn- time-query [filter-type & filter-args]
-  (mt/formatted-rows [int identity identity]
-    (mt/dataset time-test-data
-      (mt/run-mbql-query users
-        {:fields   [$id $name $last_login_time]
-         :order-by [[:asc $id]]
-         :filter   (into [filter-type $last_login_time] filter-args)}))))
+  (mt/formatted-rows
+   [int identity identity]
+   (mt/dataset time-test-data
+     (mt/run-mbql-query users
+       {:fields   [$id $name $last_login_time]
+        :order-by [[:asc $id]]
+        :filter   (into [filter-type $last_login_time] filter-args)}))))
 
-(defn- normal-drivers-that-support-time-type []
-  (filter mt/supports-time-type? (mt/normal-drivers)))
+(defmulti basic-test-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod basic-test-expected-rows :default
+  [_driver]
+  [[1 "Plato Yeshua" "08:30:00Z"]
+   [4 "Simcha Yan"   "08:30:00Z"]])
+
+(defmethod basic-test-expected-rows :sqlite
+  [_driver]
+  [[1 "Plato Yeshua" "08:30:00"]
+   [4 "Simcha Yan"   "08:30:00"]])
 
 (deftest ^:parallel basic-test
-  (mt/test-drivers (normal-drivers-that-support-time-type)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (doseq [[message [start end]] {"Basic between query on a time field"
                                    ["08:00:00" "09:00:00"]
 
                                    "Basic between query on a time field with milliseconds in literal"
                                    ["08:00:00" "09:00:00"]}]
       (testing message
-        (is (= (if (= :sqlite driver/*driver*)
-                 [[1 "Plato Yeshua" "08:30:00"]
-                  [4 "Simcha Yan"   "08:30:00"]]
-
-                 [[1 "Plato Yeshua" "08:30:00Z"]
-                  [4 "Simcha Yan"   "08:30:00Z"]])
+        (is (= (basic-test-expected-rows driver/*driver*)
                (time-query :between start end)))))))
 
-(deftest ^:parallel greater-than-test
-  (mt/test-drivers (normal-drivers-that-support-time-type)
-    (is (= (if (= :sqlite driver/*driver*)
-             [[3 "Kaneonuskatew Eiran" "16:15:00"]
-              [5 "Quentin Sören" "17:30:00"]
-              [10 "Frans Hevel" "19:30:00"]]
+(defmulti greater-than-test-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
 
-             [[3 "Kaneonuskatew Eiran" "16:15:00Z"]
-              [5 "Quentin Sören" "17:30:00Z"]
-              [10 "Frans Hevel" "19:30:00Z"]])
+(defmethod greater-than-test-expected-rows :default
+  [_driver]
+  [[3 "Kaneonuskatew Eiran" "16:15:00Z"]
+   [5 "Quentin Sören" "17:30:00Z"]
+   [10 "Frans Hevel" "19:30:00Z"]])
+
+(defmethod greater-than-test-expected-rows :sqlite
+  [_driver]
+  [[3 "Kaneonuskatew Eiran" "16:15:00"]
+   [5 "Quentin Sören" "17:30:00"]
+   [10 "Frans Hevel" "19:30:00"]])
+
+(deftest ^:parallel greater-than-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
+    (is (= (greater-than-test-expected-rows driver/*driver*)
            (time-query :> "16:00:00Z")))))
 
+(defmulti equals-test-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod equals-test-expected-rows :default
+  [_driver]
+  [[3 "Kaneonuskatew Eiran" "16:15:00Z"]])
+
+(defmethod equals-test-expected-rows :sqlite
+  [_driver]
+  [[3 "Kaneonuskatew Eiran" "16:15:00"]])
+
 (deftest ^:parallel equals-test
-  (mt/test-drivers (normal-drivers-that-support-time-type)
-    (is (= (if (= :sqlite driver/*driver*)
-             [[3 "Kaneonuskatew Eiran" "16:15:00"]]
-             [[3 "Kaneonuskatew Eiran" "16:15:00Z"]])
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
+    (is (= (equals-test-expected-rows driver/*driver*)
            (time-query := "16:15:00Z")))))
 
+(defmulti report-timezone-test-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod report-timezone-test-expected-rows :default
+  [driver]
+  ;; Databases like PostgreSQL ignore timezone information when using a time field, the result below is what happens
+  ;; when the 08:00 time is interpreted as UTC, then not adjusted to Pacific time by the DB
+  (if (qp.test-util/supports-report-timezone? driver)
+    [[1 "Plato Yeshua" "08:30:00-08:00"]
+     [4 "Simcha Yan" "08:30:00-08:00"]]
+    [[1 "Plato Yeshua" "08:30:00Z"]
+     [4 "Simcha Yan" "08:30:00Z"]]))
+
+(defmethod report-timezone-test-expected-rows :sqlite
+  [_driver]
+  [[1 "Plato Yeshua" "08:30:00"]
+   [4 "Simcha Yan" "08:30:00"]])
+
 (deftest report-timezone-test
-  (mt/test-drivers (normal-drivers-that-support-time-type)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-      (is (= (cond
-               (= :sqlite driver/*driver*)
-               [[1 "Plato Yeshua" "08:30:00"]
-                [4 "Simcha Yan" "08:30:00"]]
-
-               ;; Databases like PostgreSQL ignore timezone information when
-               ;; using a time field, the result below is what happens when the
-               ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific
-               ;; time by the DB
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               [[1 "Plato Yeshua" "08:30:00-08:00"]
-                [4 "Simcha Yan" "08:30:00-08:00"]]
-
-               :else
-               [[1 "Plato Yeshua" "08:30:00Z"]
-                [4 "Simcha Yan" "08:30:00Z"]])
+      (is (= (report-timezone-test-expected-rows driver/*driver*)
              (apply time-query :between (if (qp.test-util/supports-report-timezone? driver/*driver*)
                                           ["08:00:00"       "09:00:00"]
                                           ["08:00:00-00:00" "09:00:00-00:00"])))))))
@@ -82,7 +117,7 @@
 ;;; not all of our drivers.
 
 (deftest ^:parallel attempted-murders-test
-  (mt/test-drivers (normal-drivers-that-support-time-type)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (testing "Sanity check: make sure time columns for attempted-murders test dataset (used in tests below) is loaded correctly"
       (mt/dataset attempted-murders
         (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -99,12 +134,13 @@
             ;;       [Local] TIME             W/ LOCAL TIME ZONE      W/ ZONE OFFSET
             (is (=? [[#"00:23:18(?:\.331)?Z?" #"07:23:18(?:\.331)?Z?" #"07:23:18(?:\.331)?Z?"]
                      [#"00:14:14(?:\.246)?Z?" #"07:14:14(?:\.246)?Z?" #"07:14:14(?:\.246)?Z?"]]
-                    (mt/formatted-rows [str str str]
-                      (qp/process-query query))))))))))
+                    (mt/formatted-rows
+                     [str str str]
+                     (qp/process-query query))))))))))
 
 (defn- test-time-bucketing [time-column unit f]
   (testing "#21269"
-    (mt/test-drivers (normal-drivers-that-support-time-type)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
       (mt/dataset attempted-murders
         (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
               attempts (lib.metadata/table metadata-provider (mt/id :attempts))
@@ -115,8 +151,9 @@
                            (lib/order-by id)
                            (lib/limit 2))]
           (mt/with-native-query-testing-context query
-            (f (mt/formatted-rows [int str]
-                 (qp/process-query query)))))))))
+            (f (mt/formatted-rows
+                [int str]
+                (qp/process-query query)))))))))
 
 (deftest ^:parallel bucket-time-column-hour-test
   (test-time-bucketing

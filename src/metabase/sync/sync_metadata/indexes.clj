@@ -19,7 +19,7 @@
     (let [normal-indexes           (->> indexes (filter #(= (:type %) :normal-column-index)) (map :value))
           nested-indexes           (->> indexes (filter #(= (:type %) :nested-column-index)) (map :value))
           normal-indexes-field-ids (when (seq normal-indexes)
-                                     (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id))
+                                     (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id :parent_id nil))
           nested-indexes-field-ids (remove nil? (map #(field/nested-field-names->field-id table-id %) nested-indexes))]
       (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
@@ -51,6 +51,8 @@
   "Sync the indexes for all tables in `database` if the driver supports storing index info."
   [database]
   (if (driver.u/supports? (driver.u/database->driver database) :index-info database)
-    (apply merge-with + empty-stats
-           (map #(maybe-sync-indexes-for-table! database %) (sync-util/db->sync-tables database)))
+    (transduce (map #(maybe-sync-indexes-for-table! database %))
+               (partial merge-with +)
+               empty-stats
+               (sync-util/reducible-sync-tables database))
     empty-stats))

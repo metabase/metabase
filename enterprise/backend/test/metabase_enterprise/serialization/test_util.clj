@@ -9,10 +9,13 @@
    [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                             Field NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.models.serialization :as serdes]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -61,10 +64,12 @@
 
 (defmacro with-db [data-source & body]
   `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
-     ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
-     ;;   redefs not great for parallelism
-    (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
-      ~@body)) )
+     (with-open [conn# (.getConnection mdb.connection/*application-db*)]
+       (binding [t2.conn/*current-connectable* conn#]
+         ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
+         ;;   redefs not great for parallelism
+         (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
+           ~@body)))))
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix "-" (mt/random-name))
@@ -83,9 +88,9 @@
     (recur (dec arity)
            (fn [& args]
              (do-with-in-memory-h2-db
-               (str "db-" arity)
-               (fn [data-source]
-                 (apply f data-source args)))))))
+              (str "db-" arity)
+              (fn [data-source]
+                (apply f data-source args)))))))
 
 (defmacro with-dbs
   "Create and set up in-memory H2 application databases for each symbol in the bindings vector, each of which is then
@@ -106,7 +111,7 @@
 
 (defn do-with-random-dump-dir [prefix f]
   (let [dump-dir (random-dump-dir (or prefix ""))]
-    (testing (format "\nDump dir = %s" (pr-str dump-dir))
+    (testing (format "\nDump dir = %s\n" (pr-str dump-dir))
       (try
         (f dump-dir)
         (finally
@@ -404,9 +409,9 @@
                                                                                         :aggregation [:sum [:field latitude-field-id nil]]
                                                                                         :breakout [[:field category-field-id nil]]}}
                                                                 :visualization_settings
-                                                                {:pivot_table.column_split {:columns [["field" latitude-field-id nil]]
-                                                                                            :rows    [["field" latitude-field-id nil]]
-                                                                                            :values  [["aggregation" 0]]}}}]
+                                                                {:pivot_table.column_split {:columns ["LATITUDE"]
+                                                                                            :rows    ["LONGITUDE"]
+                                                                                            :values  ["sum"]}}}]
     (f {:card-arch-id                 card-arch-id
         :card-id                      card-id
         :card-id-collection-to-root   card-id-collection-to-root
@@ -523,3 +528,11 @@
 
 ;; Don't memoize as IDs change in each `with-world` context
 (alter-var-root #'names/path->context (fn [_] #'names/path->context*))
+
+(defn extract-one [model-name where]
+  (let [where (cond
+                (nil? where)    true
+                (number? where) [:= :id where]
+                (string? where) [:= :entity_id where]
+                :else           where)]
+    (u/rfirst (serdes/extract-all model-name {:where where}))))

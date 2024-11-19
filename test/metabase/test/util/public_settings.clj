@@ -5,16 +5,18 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test.util.thread-local :as tu.thread-local]))
 
+;;; This is actually thread-safe by default unless you're using [[metabase.test/test-helpers-set-global-values!]]
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-premium-features
   [features thunk]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
-      ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
-      ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
-      ;; See [[with-premium-features-test]] below.
+             ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
+             ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
+             ;; See [[with-premium-features-test]] below.
       (let [thunk (^:once fn* []
-                          (binding [premium-features/*token-features* (constantly features)]
-                            (thunk)))]
+                    (binding [premium-features/*token-features* (constantly features)]
+                      (thunk)))]
         (if tu.thread-local/*thread-local*
           (thunk)
           (with-redefs [premium-features/*token-features* (constantly features)]
@@ -49,5 +51,17 @@
   use [[with-redefs]] instead of [[binding]])."
   {:style/indent 1}
   [features & body]
-  `(do-with-premium-features (set/union (premium-features/*token-features*) ~features)
-                             (^:once fn* [] ~@body)))
+  `(do-with-premium-features
+    (set/union (premium-features/*token-features*) ~features)
+    (^:once fn* [] ~@body)))
+
+(defn assert-has-premium-feature-error
+  [feature-name request]
+  (is
+   (partial=
+    {:cause   (str feature-name " is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"),
+     :data    {:status      "error-premium-feature-not-available",
+               :status-code 402},
+     :message (str feature-name " is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"),
+     :status  "error-premium-feature-not-available"}
+    request)))

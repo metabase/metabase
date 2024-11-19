@@ -1,21 +1,22 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
 import {
-  rem,
   Accordion,
   Box,
   Flex,
+  Icon,
+  List,
   Stack,
   Text,
   Title,
-  Icon,
+  rem,
 } from "metabase/ui";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
@@ -31,6 +32,7 @@ export const DataPermissionsHelp = () => {
       DataPermissionValue.LEGACY_NO_SELF_SERVICE,
     ),
   );
+  const { url: docsUrl } = useDocsUrl("permissions/data");
 
   return (
     <Flex direction="column" py={rem(22)} px="1rem">
@@ -120,7 +122,34 @@ export const DataPermissionsHelp = () => {
                 icon="permissions_limited"
                 iconColor="brand"
                 name={t`Sandboxed (Pro)`}
-                description={t`Let's you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
+                description={t`Lets you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
+              />
+
+              <PermissionHelpDescription
+                hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
+                icon="close"
+                iconColor="danger"
+                name={t`Blocked (Pro)`}
+                description={
+                  <>
+                    <Text>{t`The group can’t view:`}</Text>
+                    <List style={{ marginInlineEnd: "1rem" }}>
+                      <List.Item>
+                        <Text>{t`The schema/table when browsing data.`}</Text>
+                      </List.Item>
+                      <List.Item>
+                        <Text>
+                          {t`Query-builder questions using that schema/table.`}
+                        </Text>
+                      </List.Item>
+                      <List.Item>
+                        <Text>
+                          {t`ANY native questions querying the database, regardless of schema/table.`}
+                        </Text>
+                      </List.Item>
+                    </List>
+                  </>
+                }
               />
             </Stack>
           </Accordion.Panel>
@@ -170,21 +199,21 @@ export const DataPermissionsHelp = () => {
             <Stack spacing="1rem" py="1rem">
               <Text>
                 {jt`${(
-                  <strong>{t`Download results (Pro):`}</strong>
+                  <strong key="permission">{t`Download results (Pro):`}</strong>
                 )} The group can download results, up to a maximum number of rows that you set.`}{" "}
                 {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>
               <Text>
                 {jt`${(
-                  <strong>{t`Manage Data Model (Pro):`}</strong>
+                  <strong key="permission">{t`Manage Data Model (Pro):`}</strong>
                 )} The group can edit metadata via the “Table metadata” tab in the Admin settings.`}{" "}
                 {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>
               <Text>
                 {jt`${(
-                  <strong>{t`Manage Database (Pro):`}</strong>
+                  <strong key="permission">{t`Manage Database (Pro):`}</strong>
                 )} The group can edit database settings for a given database in the “Database” tab of the Admin settings.`}{" "}
                 {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
@@ -196,9 +225,7 @@ export const DataPermissionsHelp = () => {
 
       <Text component="footer" align="center" py="1.5rem" weight={600}>
         {jt`${(
-          <ExternalLink
-            href={MetabaseSettings.docsUrl("permissions/data")}
-          >{t`Learn more`}</ExternalLink>
+          <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
         )} about data permissions`}
       </Text>
     </Flex>

@@ -1,7 +1,7 @@
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -30,9 +30,9 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type {
-  CacheableModel,
   CacheStrategy,
   CacheStrategyType,
+  CacheableModel,
   ScheduleSettings,
   ScheduleStrategy,
 } from "metabase-types/api";
@@ -41,9 +41,11 @@ import { CacheDurationUnit } from "metabase-types/api";
 import { strategyValidationSchema } from "../constants/complex";
 import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
+import { isModelWithClearableCache } from "../types";
 import {
-  getLabelString,
   cronToScheduleSettings,
+  getDefaultValueForField,
+  getLabelString,
   scheduleSettingsToCron,
 } from "../utils";
 
@@ -93,14 +95,19 @@ export const StrategyForm = ({
   buttonLabels?: ButtonLabels;
   isInSidebar?: boolean;
 }) => {
-  const defaultStrategy: CacheStrategy = {
-    type: targetId === rootId ? "nocache" : "inherit",
-  };
+  const defaultStrategy: CacheStrategy = useMemo(
+    () => ({
+      type: targetId === rootId ? "nocache" : "inherit",
+    }),
+    [targetId],
+  );
+
+  const initialValues = savedStrategy ?? defaultStrategy;
 
   return (
     <FormProvider<CacheStrategy>
       key={targetId}
-      initialValues={savedStrategy ?? defaultStrategy}
+      initialValues={initialValues}
       validationSchema={strategyValidationSchema}
       onSubmit={saveStrategy}
       onReset={onReset}
@@ -115,9 +122,36 @@ export const StrategyForm = ({
         shouldShowName={shouldShowName}
         buttonLabels={buttonLabels}
         isInSidebar={isInSidebar}
+        strategyType={initialValues.type}
       />
     </FormProvider>
   );
+};
+
+/** Don't count the addition/deletion of a default value as a reason to consider the form dirty */
+const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
+  const fieldNames = [...Object.keys(values), ...Object.keys(initialValues)];
+  const defaultValues = _.object(
+    _.map(fieldNames, fieldName => [
+      fieldName,
+      getDefaultValueForField(values.type, fieldName),
+    ]),
+  );
+  const initialValuesWithDefaults = { ...defaultValues, ...initialValues };
+  const valuesWithDefaults = { ...defaultValues, ...values };
+  // If the default value is a number and the value is a string, coerce the value to a number
+  const coercedValuesWithDefaults = _.chain(valuesWithDefaults)
+    .pairs()
+    .map(([key, value]) => [
+      key,
+      typeof getDefaultValueForField(values.type, key) === "number" &&
+      typeof value === "string"
+        ? Number(value)
+        : value,
+    ])
+    .object()
+    .value();
+  return !_.isEqual(initialValuesWithDefaults, coercedValuesWithDefaults);
 };
 
 const StrategyFormBody = ({
@@ -133,13 +167,21 @@ const StrategyFormBody = ({
   targetId: number | null;
   targetModel: CacheableModel;
   targetName: string;
+  strategyType: CacheStrategyType;
   setIsDirty: (isDirty: boolean) => void;
   shouldAllowInvalidation: boolean;
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
 }) => {
-  const { dirty, values, setFieldValue } = useFormikContext<CacheStrategy>();
+  const { values, initialValues, setFieldValue } =
+    useFormikContext<CacheStrategy>();
+
+  const dirty = useMemo(
+    () => isFormDirty(values, initialValues),
+    [values, initialValues],
+  );
+
   const { setStatus } = useFormContext();
   const [wasDirty, setWasDirty] = useState(false);
 
@@ -170,8 +212,9 @@ const StrategyFormBody = ({
       <StyledForm
         style={{ overflow: isInSidebar ? undefined : "auto" }}
         aria-labelledby={headingId}
+        data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
-        <FormBox>
+        <FormBox isInSidebar={isInSidebar}>
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
               <Group spacing="sm">
@@ -236,6 +279,7 @@ const StrategyFormBody = ({
           shouldAllowInvalidation={shouldAllowInvalidation}
           buttonLabels={buttonLabels}
           isInSidebar={isInSidebar}
+          dirty={dirty}
         />
       </StyledForm>
     </FormWrapper>
@@ -263,6 +307,7 @@ type FormButtonsProps = {
   targetName?: string;
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
+  dirty: boolean;
 };
 
 const FormButtons = ({
@@ -272,9 +317,8 @@ const FormButtons = ({
   targetName,
   buttonLabels,
   isInSidebar,
+  dirty,
 }: FormButtonsProps) => {
-  const { dirty } = useFormikContext<CacheStrategy>();
-
   if (targetId === rootId) {
     shouldAllowInvalidation = false;
   }
@@ -296,7 +340,12 @@ const FormButtons = ({
     );
   }
 
-  if (shouldAllowInvalidation && targetId && targetName) {
+  if (
+    shouldAllowInvalidation &&
+    isModelWithClearableCache(targetModel) &&
+    targetId &&
+    targetName
+  ) {
     return (
       <FormButtonsGroup isInSidebar={isInSidebar}>
         <PLUGIN_CACHING.InvalidateNowButton
@@ -341,8 +390,9 @@ const ScheduleStrategyFormFields = () => {
       schedule={schedule}
       scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
       onScheduleChange={onScheduleChange}
-      verb={t`Invalidate`}
+      verb={c("A verb in the imperative mood").t`Invalidate`}
       timezone={timezone}
+      aria-label={t`Describe how often the cache should be invalidated`}
     />
   );
 };
@@ -415,13 +465,19 @@ const StrategySelector = ({
       >
         <Stack mt="md" spacing="md">
           {_.map(availableStrategies, (option, name) => {
-            const optionLabelParts = getLabelString(option.label, model).split(
-              ":",
-            );
+            const labelString = getLabelString(option.label, model);
+            /** Special colon sometimes used in Asian languages */
+            const wideColon = "：";
+            const colon = labelString.includes(wideColon) ? wideColon : ":";
+            const optionLabelParts = labelString.split(colon);
             const optionLabelFormatted = (
               <>
                 <strong>{optionLabelParts[0]}</strong>
-                {optionLabelParts[1] ? <>: {optionLabelParts[1]}</> : null}
+                {optionLabelParts[1] ? (
+                  <>
+                    {colon} {optionLabelParts[1]}
+                  </>
+                ) : null}
               </>
             );
             return (
@@ -431,6 +487,12 @@ const StrategySelector = ({
                 label={optionLabelFormatted}
                 autoFocus={values.type === name}
                 role="radio"
+                styles={{
+                  label: {
+                    paddingLeft: undefined,
+                    paddingInlineStart: ".5rem",
+                  },
+                }}
               />
             );
           })}
@@ -485,15 +547,6 @@ const Field = ({
       </Stack>
     </label>
   );
-};
-
-const getDefaultValueForField = (
-  strategyType: CacheStrategyType,
-  fieldName?: string,
-) => {
-  return fieldName
-    ? PLUGIN_CACHING.strategies[strategyType].validateWith.cast({})[fieldName]
-    : "";
 };
 
 const MultiplierFieldSubtitle = () => (

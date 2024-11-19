@@ -9,13 +9,17 @@ import {
   hasExtractions,
 } from "metabase/query_builder/components/expressions/ExtractColumn";
 import { getQuestion } from "metabase/query_builder/selectors";
-import { rem, Box } from "metabase/ui";
+import { Box, rem } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
 
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
-  const { query, stageIndex } = Lib.asReturned(question.query(), -1);
+  const { query, stageIndex } = Lib.asReturned(
+    question.query(),
+    -1,
+    question.id(),
+  );
 
   const { isEditable } = Lib.queryDisplayInfo(query);
 

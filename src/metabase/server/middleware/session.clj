@@ -45,6 +45,8 @@
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
+(set! *warn-on-reflection* true)
+
 (def ^String metabase-session-cookie
   "Where the session cookie goes."                      "metabase.SESSION")
 (def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
@@ -105,7 +107,7 @@
                                  :session-cookie-samesite normalized-value
                                  :http-status 400})))))
   :doc "See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-        Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+        Read more about [interactive Embedding](../embedding/interactive-embedding.md).
         Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).")
 
 (defmulti default-session-cookie-attributes
@@ -116,7 +118,7 @@
 (defmethod default-session-cookie-attributes :default
   [session-type _]
   (throw (ex-info (str (tru "Invalid session-type."))
-           {:session-type session-type})))
+                  {:session-type session-type})))
 
 (defmethod default-session-cookie-attributes :normal
   [_ request]
@@ -258,7 +260,6 @@
                       request)]
       (handler request respond raise))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -295,7 +296,6 @@
            [:permissions_group_membership :pgm] [:and
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
-
 
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
@@ -382,7 +382,6 @@
   (fn [request respond raise]
     (handler (merge-current-user-info request) respond raise)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -404,6 +403,20 @@
   ;;      ...)
   ;;
   ::none)
+
+;;; this is actually used by [[metabase.models.permissions/clear-current-user-cached-permissions!]]
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn clear-current-user-cached-permissions-set!
+  "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
+  Called by [[metabase.models.permissions/delete-related-permissions!]]
+  and [[metabase.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a current user
+  and then grant or revoke permissions for that user without rebinding it."
+  []
+  (when-let [current-user-id api/*current-user-id*]
+    ;; [[api/*current-user-permissions-set*]] is dynamically bound
+    (when (get (get-thread-bindings) #'api/*current-user-permissions-set*)
+      (.set #'api/*current-user-permissions-set* (delay (user/permissions-set current-user-id)))))
+  nil)
 
 (defn do-with-current-user
   "Impl for [[with-current-user]]."
@@ -450,17 +463,18 @@
   [current-user-id]
   (when current-user-id
     (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
-      :id current-user-id)))
+                   :id current-user-id)))
 
 (defmacro as-admin
   "Execude code in body as an admin user."
-  {:style/indent :defn}
+  {:style/indent 0}
   [& body]
   `(do-with-current-user
     (merge
-      (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
-      {:is-superuser? true
-       :permissions-set #{"/"}})
+     (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
+     {:is-superuser? true
+      :permissions-set #{"/"}
+      :user-locale i18n/*user-locale*})
     (fn [] ~@body)))
 
 (defmacro with-current-user
@@ -471,7 +485,6 @@
   `(do-with-current-user
     (with-current-user-fetch-user-for-id ~current-user-id)
     (fn [] ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              reset-cookie-timeout                                             |
@@ -497,24 +510,25 @@
   ;; Should be in the form "{\"amount\":60,\"unit\":\"minutes\"}" where the unit is one of "seconds", "minutes" or "hours".
   ;; The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
-  :type    :json
-  :default nil
-  :getter  (fn []
-             (let [value (setting/get-value-of-type :json :session-timeout)]
-               (if-let [error-key (check-session-timeout value)]
-                 (do (log/warn (case error-key
-                                 :amount-must-be-positive            "Session timeout amount must be positive."
-                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
-                     nil)
-                 value)))
-  :setter  (fn [new-value]
-             (when-let [error-key (check-session-timeout new-value)]
-               (throw (ex-info (case error-key
-                                 :amount-must-be-positive            "Session timeout amount must be positive."
-                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
-                               {:status-code 400})))
-             (setting/set-value-of-type! :json :session-timeout new-value))
-  :doc "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
+  :encryption :no
+  :type       :json
+  :default    nil
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :json :session-timeout)]
+                  (if-let [error-key (check-session-timeout value)]
+                    (do (log/warn (case error-key
+                                    :amount-must-be-positive            "Session timeout amount must be positive."
+                                    :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
+                        nil)
+                    value)))
+  :setter     (fn [new-value]
+                (when-let [error-key (check-session-timeout new-value)]
+                  (throw (ex-info (case error-key
+                                    :amount-must-be-positive            "Session timeout amount must be positive."
+                                    :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
+                                  {:status-code 400})))
+                (setting/set-value-of-type! :json :session-timeout new-value))
+  :doc        "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."

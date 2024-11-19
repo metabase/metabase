@@ -6,8 +6,8 @@ import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import {
-  getQuestion,
   getNextRunParameters,
+  getQuestion,
 } from "metabase/query_builder/selectors";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";

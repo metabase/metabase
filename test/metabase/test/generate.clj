@@ -1,6 +1,7 @@
 (ns metabase.test.generate
   (:require
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.test.check.generators :as gen]
    [java-time.api :as t]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -170,7 +171,8 @@
 (s/def ::pulse-card (s/keys :req-un [::id ::position]))
 
 (s/def ::channel_type ::not-empty-string)
-(s/def ::schedule_type ::not-empty-string)
+(s/def ::schedule_type (s/with-gen (s/and string? #(contains? #{"hourly" "weekly" "monthly"} %))
+                         #(gen/elements ["hourly" "weekly" "monthly"])))
 
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 (s/def ::pulse-channel-recipient (s/keys :req-un [::id]))
@@ -367,6 +369,17 @@
 (defn- remove-ids [_ {:keys [visit-val] :as _visit-opts}]
   (dissoc visit-val :id))
 
+(defn- spec-gen-with-retries [query num-retries]
+  (try
+    (spec-gen query)
+    (catch clojure.lang.ExceptionInfo e
+      (if (and (pos? num-retries)
+               (str/includes? (ex-message e) "Couldn't satisfy such-that predicate"))
+           ;; We can't recur from here, and I don't think it's worth using a more complex trampoline.
+           ;; We are not going to overflow the stack, so this should be fine.
+        (spec-gen-with-retries query (dec num-retries))
+        (throw e)))))
+
 (defn insert!
   "Insert pseudorandom entities to the current database according to `query` specmonstah spec. The process follows
   several steps while building the entities:
@@ -376,16 +389,17 @@
   - Adjust entites, in case some fields need extra tunning like incremental position, or collections.location
   - Insert entity into the db using `toucan.core/insert!` "
   [query]
-  (-> (spec-gen query)
+  (-> (spec-gen-with-retries query 5)
       (rs/visit-ents :spec-gen remove-ids)
       (rs/visit-ents :spec-gen adjust)
       (rs/visit-ents-once
        :insert! (fn [sm-db {:keys [schema-opts attrs] :as visit-opts}]
                   (try
                     (first (t2/insert-returning-instances! (:model schema-opts)
+                                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                                            (rsg/spec-gen-assoc-relations
-                                                             sm-db
-                                                             (assoc visit-opts :visit-val (:spec-gen attrs)))))
+                                                            sm-db
+                                                            (assoc visit-opts :visit-val (:spec-gen attrs)))))
                     (catch Throwable e
                       (log/error e)))))
       (rs/attr-map :insert!)))

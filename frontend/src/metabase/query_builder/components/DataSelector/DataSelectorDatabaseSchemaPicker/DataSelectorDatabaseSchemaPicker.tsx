@@ -113,8 +113,8 @@ const DataSelectorDatabaseSchemaPicker = ({
   let openSection = selectedSchema
     ? databases.findIndex(db => db.id === selectedSchema.database?.id)
     : selectedDatabase
-    ? databases.findIndex(db => db.id === selectedDatabase.id)
-    : -1;
+      ? databases.findIndex(db => db.id === selectedDatabase.id)
+      : -1;
 
   if (openSection >= 0 && databases[openSection]?.getSchemas().length === 1) {
     openSection = -1;

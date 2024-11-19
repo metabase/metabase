@@ -9,54 +9,67 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
-  restore,
-  selectDashboardFilter,
-  editDashboard,
-  showDashboardCardActions,
-  filterWidget,
-  sidebar,
-  modal,
-  visitDashboard,
-  appBar,
-  rightSidebar,
-  getDashboardCardMenu,
+  addIFrameWhileEditing,
   addOrUpdateDashboardCard,
-  openQuestionsSidebar,
-  describeWithSnowplow,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
-  expectGoodSnowplowEvent,
-  closeNavigationSidebar,
-  saveDashboard,
-  queryBuilderHeader,
-  removeDashboardCard,
-  getDashboardCards,
-  getDashboardCard,
-  toggleDashboardInfoSidebar,
-  dashboardHeader,
-  openProductsTable,
-  updateDashboardCards,
-  getTextCardDetails,
-  openDashboardMenu,
-  openEmbedModalFromMenu,
+  appBar,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
-  createDashboardWithTabs,
-  entityPickerModal,
+  closeDashboardInfoSidebar,
+  closeNavigationSidebar,
   collectionOnTheGoModal,
-  setFilter,
-  commandPaletteButton,
   commandPalette,
+  commandPaletteButton,
+  createDashboard,
+  createDashboardWithTabs,
+  createQuestionAndDashboard,
+  dashboardHeader,
   describeEE,
+  describeWithSnowplow,
+  editDashboard,
+  editIFrameWhileEditing,
+  enableTracking,
+  entityPickerModal,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  filterWidget,
+  getDashboardCard,
+  getDashboardCardMenu,
+  getDashboardCards,
+  getTextCardDetails,
+  modal,
+  openDashboardInfoSidebar,
+  openDashboardMenu,
+  openProductsTable,
+  openQuestionsSidebar,
+  openSharingMenu,
+  popover,
+  queryBuilderHeader,
+  removeDashboardCard,
+  resetSnowplow,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
   setTokenFeatures,
+  showDashboardCardActions,
+  sidebar,
+  sidesheet,
+  updateDashboardCards,
+  updateSetting,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
+
+import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
+import {
+  adaptiveRadioButton,
+  durationRadioButton,
+  openSidebarCacheStrategyForm,
+} from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -120,7 +133,10 @@ describe("scenarios > dashboard", () => {
         .click();
 
       entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("Pro");
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "Pro",
+        );
+        cy.findByText("Everywhere").click();
         cy.findByText("Products").click();
       });
 
@@ -207,7 +223,7 @@ describe("scenarios > dashboard", () => {
           cy.button("Create").click();
         });
 
-        saveDashboard();
+        saveDashboard({ awaitRequest: false });
         cy.findByTestId("app-bar").findByText(NEW_COLLECTION);
       },
     );
@@ -394,9 +410,60 @@ describe("scenarios > dashboard", () => {
         popover().findByText("Edit question").should("be.visible").click();
         cy.findByRole("button", { name: "Visualize" }).should("be.visible");
       });
+
+      it("should allow navigating to the model editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "orders",
+            type: "model",
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit model").should("be.visible").click();
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/model/${slug}/query`);
+        });
+      });
+
+      it("should allow navigating to the metric editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "orders",
+            type: "metric",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit metric").should("be.visible").click();
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/metric/${slug}/query`);
+        });
+      });
     });
 
-    context("title and description", () => {
+    describe("title and description", () => {
       beforeEach(() => {
         cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
         cy.intercept(
@@ -415,9 +482,9 @@ describe("scenarios > dashboard", () => {
         cy.wait("@updateDashboard");
         cy.wait("@getDashboard");
 
-        toggleDashboardInfoSidebar();
+        openDashboardInfoSidebar();
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(newDescription)
           .blur();
@@ -432,8 +499,9 @@ describe("scenarios > dashboard", () => {
         cy.wait("@getDashboard");
 
         dashboardHeader().findByDisplayValue(newTitle);
-        toggleDashboardInfoSidebar();
-        sidebar().findByText(newDescription);
+        openDashboardInfoSidebar();
+        sidesheet().findByText(newDescription);
+        closeDashboardInfoSidebar();
 
         cy.log("should not call unnecessary API requests (metabase#31721)");
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
@@ -444,8 +512,11 @@ describe("scenarios > dashboard", () => {
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
 
         cy.log("Should revert the description change if escaped");
-        sidebar().findByText(newDescription).type("Baz{esc}");
-        sidebar().findByText(newDescription);
+        openDashboardInfoSidebar();
+        sidesheet().within(() => {
+          cy.findByText(newDescription).type("Baz{esc}");
+          cy.findByText(newDescription);
+        });
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
       });
 
@@ -471,7 +542,7 @@ describe("scenarios > dashboard", () => {
           .findByText(/^Edited a few seconds ago/)
           .click();
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(newDescription)
           .blur();
@@ -480,6 +551,7 @@ describe("scenarios > dashboard", () => {
         // This might be a bug! We're applying the description while still in the edit mode!
         // OTOH, the title is preserved only on save.
         cy.wait("@updateDashboard");
+        closeDashboardInfoSidebar();
 
         saveDashboard();
         cy.wait("@updateDashboard");
@@ -487,19 +559,19 @@ describe("scenarios > dashboard", () => {
       });
 
       it("should not have markdown content overflow the description area (metabase#31326)", () => {
-        toggleDashboardInfoSidebar();
+        openDashboardInfoSidebar();
 
         const testMarkdownContent =
           "# Heading 1{enter}{enter}**bold** https://www.metabase.com/community_posts/how-to-measure-the-success-of-new-product-features-and-why-it-is-important{enter}{enter}![alt](/app/assets/img/welcome-modal-2.png){enter}{enter}This is my description. ";
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(testMarkdownContent, { delay: 0 })
           .blur();
 
         cy.wait("@updateDashboard");
 
-        rightSidebar().within(() => {
+        sidesheet().within(() => {
           cy.log("Markdown content should not be bigger than its container");
           cy.findByTestId("editable-text").then($markdown => {
             const el = $markdown[0];
@@ -578,10 +650,115 @@ describe("scenarios > dashboard", () => {
           visitDashboard(dashboard_id);
         });
 
-        getDashboardCards().eq(0).contains("top");
-        getDashboardCards().eq(1).contains("bottom");
+        getDashboardCard(0).contains("top");
+        getDashboardCard(1).contains("bottom");
       },
     );
+  });
+
+  describe("iframe cards", () => {
+    it("should handle various iframe and URL inputs", () => {
+      const testCases = [
+        {
+          input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          input: "https://youtu.be/dQw4w9WgXcQ",
+          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          input: "https://www.loom.com/share/1234567890abcdef",
+          expected: "https://www.loom.com/embed/1234567890abcdef",
+        },
+        {
+          input: "https://vimeo.com/123456789",
+          expected: "https://player.vimeo.com/video/123456789",
+        },
+        {
+          input: "example.com",
+          expected: "https://example.com",
+        },
+        {
+          input: "https://example.com",
+          expected: "https://example.com",
+        },
+        {
+          input:
+            '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
+          expected: "https://example.com",
+        },
+      ];
+
+      updateSetting("allowed-iframe-hosts", "*");
+
+      cy.createDashboard().then(({ body: { id } }) => {
+        visitDashboard(id);
+      });
+
+      editDashboard();
+
+      testCases.forEach(({ input, expected }, index) => {
+        addIFrameWhileEditing(input);
+        cy.button("Done").click();
+        validateIFrame(expected, index);
+      });
+    });
+
+    it("should respect allowed-iframe-hosts setting", () => {
+      const errorMessage = /can not be embedded in iframe cards/;
+
+      updateSetting(
+        "allowed-iframe-hosts",
+        ["youtube.com", "player.videos.com"].join("\n"),
+      );
+
+      cy.createDashboard().then(({ body: { id } }) => visitDashboard(id));
+      editDashboard();
+
+      // Test allowed domain with subdomains
+      addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
+      cy.button("Done").click();
+      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
+
+      editIFrameWhileEditing(0, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+      cy.button("Done").click();
+      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
+
+      // Test allowed subdomain, but no other domains
+      editIFrameWhileEditing(0, "player.videos.com/video/123456789");
+      cy.button("Done").click();
+      validateIFrame("https://player.videos.com/video/123456789");
+
+      editIFrameWhileEditing(0, "videos.com/video/123456789");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      editIFrameWhileEditing(0, "www.videos.com/video");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      // Test forbidden domain and subdomains
+      editIFrameWhileEditing(0, "https://example.com");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      editIFrameWhileEditing(0, "www.example.com");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+    });
   });
 
   it("should add a filter", () => {
@@ -644,7 +821,7 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // and connect it to the card
     selectDashboardFilter(cy.findByTestId("dashcard-container"), "Created At");
@@ -884,7 +1061,7 @@ describe("scenarios > dashboard", () => {
 
           cy.intercept(
             "GET",
-            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
           ).as("queryMetadata");
         });
       },
@@ -922,7 +1099,7 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
 
-    openEmbedModalFromMenu();
+    openSharingMenu("Embed");
 
     modal().within(() => {
       cy.icon("close").click();
@@ -1015,9 +1192,7 @@ describe("scenarios > dashboard", () => {
 
 describeWithSnowplow("scenarios > dashboard", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/activity/recents?context=views").as(
-      "recentViews",
-    );
+    cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     resetSnowplow();
     restore();
     cy.signInAsAdmin();
@@ -1026,6 +1201,29 @@ describeWithSnowplow("scenarios > dashboard", () => {
 
   afterEach(() => {
     expectNoBadSnowplowEvents();
+  });
+
+  it("should be possible to add an iframe card", () => {
+    updateSetting("allowed-iframe-hosts", "*");
+    createDashboard({ name: "iframe card" }).then(({ body: { id } }) => {
+      visitDashboard(id);
+
+      editDashboard();
+      addIFrameWhileEditing("https://example.com");
+      cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
+      cy.button("Done").click();
+      getDashboardCard(0).realHover();
+      cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
+      validateIFrame("https://example.com");
+      saveDashboard();
+      validateIFrame("https://example.com");
+
+      expectGoodSnowplowEvent({
+        event: "new_iframe_card_created",
+        target_id: id,
+        event_detail: "example.com",
+      });
+    });
   });
 
   it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {
@@ -1042,7 +1240,8 @@ describeWithSnowplow("scenarios > dashboard", () => {
   it("should allow users to add link cards to dashboards", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    cy.findByTestId("dashboard-header").icon("link").click();
+    cy.findByLabelText("Add a link or iframe").click();
+    popover().findByText("Link").click();
 
     cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");
@@ -1256,40 +1455,55 @@ describeEE("scenarios > dashboard > caching", () => {
    * It's in the Cypress describe block labeled "scenarios > question > caching"
    */
   it("can configure cache for a dashboard, on an enterprise instance", () => {
-    cy.intercept("PUT", "/api/cache").as("putCacheConfig");
+    interceptPerformanceRoutes();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    toggleDashboardInfoSidebar();
+    openSidebarCacheStrategyForm("dashboard");
 
-    rightSidebar().within(() => {
-      cy.findByText(/Caching policy/).within(() => {
-        cy.findByText(/Use default/).click();
-      });
-      cy.findByRole("heading", { name: /Caching settings/ }).click();
-      cy.findByRole("radio", { name: /Duration/ }).click();
+    sidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
+      durationRadioButton().click();
       cy.findByLabelText("Cache results for this many hours").type("48");
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
-      cy.findByText(/Caching policy/).within(() => {
-        cy.log(
-          "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
-        );
-        const durationButton = cy.findByRole("button", { name: /Duration/ });
-        durationButton.should("be.visible");
-        cy.log("Open the cache invalidation policy configuration form again");
-        durationButton.click();
-      });
-      cy.findByRole("radio", { name: /Adaptive/ }).click();
+      cy.log(
+        "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
+      );
+      cy.findByLabelText(/When to get new results/).should(
+        "contain",
+        "Duration",
+      );
+      cy.findByLabelText(/When to get new results/).click();
+      adaptiveRadioButton().click();
       cy.findByLabelText(/Minimum query duration/).type("999");
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
-      cy.findByText(/Caching policy/).within(() => {
-        cy.log(
-          "Check that the newly chosen cache invalidation policy - Adaptive - is now visible in the sidebar",
-        );
-        const policyToken = cy.findByRole("button", { name: /Adaptive/ });
-        policyToken.should("be.visible");
-      });
+      cy.findByLabelText(/When to get new results/).should(
+        "contain",
+        "Adaptive",
+      );
+    });
+  });
+
+  it("can click 'Clear cache' for a dashboard", () => {
+    interceptPerformanceRoutes();
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    openSidebarCacheStrategyForm("dashboard");
+
+    sidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
+      cy.findByRole("button", {
+        name: /Clear cache for this dashboard/,
+      }).click();
+    });
+
+    cy.findByTestId("confirm-modal").within(() => {
+      cy.findByRole("button", { name: /Clear cache/ }).click();
+    });
+    cy.wait("@invalidateCache");
+    sidesheet().within(() => {
+      cy.findByText("Cache cleared").should("be.visible");
     });
   });
 });
@@ -1396,3 +1610,16 @@ describe("scenarios > dashboard > permissions", () => {
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });
+
+function validateIFrame(src, index = 0) {
+  getDashboardCards()
+    .get("iframe")
+    .eq(index)
+    .should("have.attr", "src", src)
+    .and(
+      "have.attr",
+      "sandbox",
+      "allow-scripts allow-same-origin allow-forms allow-popups",
+    )
+    .and("not.have.attr", "onload");
+}

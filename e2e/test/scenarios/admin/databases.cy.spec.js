@@ -1,22 +1,27 @@
 import {
-  WRITABLE_DB_ID,
-  WRITABLE_DB_CONFIG,
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_POSTGRES_PORT,
   SAMPLE_DB_ID,
+  WRITABLE_DB_CONFIG,
+  WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  typeAndBlurUsingLabel,
+  createSegment,
+  describeWithSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvent,
   isEE,
-  setTokenFeatures,
   modal,
+  popover,
+  resetSnowplow,
+  restore,
+  setTokenFeatures,
+  tooltip,
+  typeAndBlurUsingLabel,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
@@ -148,6 +153,21 @@ describe("admin > database > add", () => {
           cy.findByLabelText(
             "Never, I'll do this manually if I need to",
           ).should("have.attr", "aria-selected", "true");
+
+          // make sure tooltips behave as expected
+          cy.findByLabelText("Host").parent().icon("info").realHover();
+        });
+
+        tooltip()
+          .findByText(/your databases ip address/i)
+          .should("be.visible");
+
+        cy.findByTestId("database-form").within(() => {
+          cy.findByLabelText("Port")
+            .parent()
+            .within(() => {
+              cy.icon("info").should("not.exist");
+            });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
           typeAndBlurUsingLabel("Display name", "QA Postgres12");
@@ -407,6 +427,8 @@ describe("admin > database > add", () => {
         /\/admin\/databases\?created=true&createdDbId=\d$/,
       );
 
+      cy.findByRole("status").findByText("Syncing…").should("be.visible");
+
       cy.findByRole("dialog").within(() => {
         cy.findByText(
           "Your database was added! Want to configure permissions?",
@@ -414,14 +436,9 @@ describe("admin > database > add", () => {
         cy.button("Maybe later").click();
       });
 
-      cy.findByRole("table").within(() => {
-        cy.findByText("QA MySQL8");
-      });
-
-      cy.findByRole("status").within(() => {
-        cy.findByText("Syncing…");
-        cy.findByText("Done!");
-      });
+      cy.findByRole("table").findByText("QA MySQL8").should("be.visible");
+      cy.findByRole("status").findByText("Syncing…").should("not.exist");
+      cy.findByRole("status").findByText("Done!").should("be.visible");
     });
   });
 
@@ -471,6 +488,23 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.contains(/Sample Database/i);
     // This seems like a reasonable CTA if the database is beyond repair.
     cy.button("Remove this database").should("not.be.disabled");
+  });
+
+  it("should handle is_attached_dwh databases", () => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
+      req.reply(res => {
+        res.body.details = null;
+        res.body.is_attached_dwh = true;
+      });
+    }).as("loadDatabase");
+
+    cy.visit("/admin/databases/1");
+    cy.wait("@loadDatabase");
+
+    cy.findByTestId("main-logo");
+    cy.findByTestId("breadcrumbs").findByText("Sample Database");
+    cy.findByRole("main").findByText("This database cannot be modified.");
+    cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
   it("should show error upon a bad request", () => {
@@ -829,6 +863,31 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.findByTestId("database-browser").within(() => {
       cy.findByText("Sample Database").should("exist");
+    });
+  });
+});
+
+describeWithSnowplow("add database card", () => {
+  beforeEach(() => {
+    resetSnowplow();
+    restore();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  it("should track the click on the card", () => {
+    cy.visit("/browse/databases");
+
+    cy.findByTestId("database-browser")
+      .findAllByRole("link")
+      .last()
+      .as("addDatabaseCard");
+
+    cy.get("@addDatabaseCard").findByText("Add a database").click();
+    cy.location("pathname").should("eq", "/admin/databases/create");
+    expectGoodSnowplowEvent({
+      event: "database_add_clicked",
+      triggered_from: "db-list",
     });
   });
 });

@@ -1,0 +1,38 @@
+name: Security Issue Slack Notification
+
+on:
+  issues:
+    types:
+      - labeled
+
+jobs:
+  on-issue-opened:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: github.event.label.name == 'SECURITY'
+    steps:
+      - name: Setting title
+        uses: actions/github-script@v7
+        id: vars
+        with:
+          script: |
+            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+      - name: Send the issue ${{ github.event.issue.number }} to Slack
+        id: slack
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_SECURITY_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

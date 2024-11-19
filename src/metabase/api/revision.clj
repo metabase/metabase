@@ -3,8 +3,6 @@
    [compojure.core :refer [GET POST]]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.revision :as revision :refer [Revision]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -15,8 +13,8 @@
 
 (defn- model-and-instance [entity-name id]
   (case entity-name
-    "card"      [Card (t2/select-one Card :id id)]
-    "dashboard" [Dashboard (t2/select-one Dashboard :id id)]))
+    "card"      [:model/Card (t2/select-one :model/Card :id id)]
+    "dashboard" [:model/Dashboard (t2/select-one :model/Dashboard :id id)]))
 
 (api/defendpoint GET "/"
   "Get revisions of an object."
@@ -24,8 +22,8 @@
   {id     ms/PositiveInt
    entity Entity}
   (let [[model instance] (model-and-instance entity id)]
-   (when (api/read-check instance)
-     (revision/revisions+details model id))))
+    (when (api/read-check instance)
+      (revision/revisions+details model id))))
 
 (api/defendpoint POST "/revert"
   "Revert an object to a prior revision."
@@ -37,8 +35,8 @@
         _                (api/write-check instance)
         revision         (api/check-404 (t2/select-one Revision :model (name model), :model_id id, :id revision_id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
-    (when (= model Card)
-      (api.card/check-data-permissions-for-query (get-in revision [:object :dataset_query])))
+    (when (= model :model/Card)
+      (api.card/check-permissions-for-query (get-in revision [:object :dataset_query])))
     ;; ok, we're g2g
     (revision/revert!
      {:entity      model

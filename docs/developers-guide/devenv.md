@@ -19,7 +19,7 @@ To spin up a development environment, run:
 yarn dev
 ```
 
-This runs both the [frontend](#frontend) and [backend](#backend).  Alternatively, you can run them separately in two terminal sessions below.
+This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
 
 ### Frontend
 
@@ -39,7 +39,6 @@ yarn build-hot
 See [Frontend development](#frontend-development).
 
 ### Backend
-
 
 Run your backend development server with
 
@@ -192,7 +191,7 @@ This approach requires creating a `.lein-env` file within your project directory
  :mb-db-pass   ""}
 ```
 
-Despite the name, this file works fine with `deps.edn` projects. An advantage of this approach versus the global `deps.edn` approach is that it is scoped to this project only. 
+Despite the name, this file works fine with `deps.edn` projects. An advantage of this approach versus the global `deps.edn` approach is that it is scoped to this project only.
 
 Only use this for development, it is not supported for production use. There is already entry in `.gitignore` to prevent you accidentally committing this file.
 
@@ -351,6 +350,7 @@ Here's the one for postgres in `metabase.test.data.postgres`:
 ```
 
 You can see that this looks in the environment for:
+
 - host (defaults to "localhost")
 - port (defaults to 5432)
 - user
@@ -358,7 +358,7 @@ You can see that this looks in the environment for:
 
 The function names indicate if they throw or not (although in this instance the ones that would throw are also supplied default values).
 
-The `(tx/db-test-env-var :postgresql :password)` will look in the env/env map for `:mb-postgres-test-password` which will be set by the environmental variable `MB_POSTGRESQL_TEST_PASSWORD`.
+The `(tx/db-test-env-var :postgresql :password)` will look in the env/env map for `:mb-postgresql-test-password` which will be set by the environmental variable `MB_POSTGRESQL_TEST_PASSWORD`.
 
 ```clojure
 some-ns=> (take 10 (keys environ.core/env))
@@ -373,7 +373,6 @@ some-ns=> (take 10 (keys environ.core/env))
  :mb-oracle-test-service-name
  :sun-management-compiler)
 ```
-
 
 ### Running the linters
 

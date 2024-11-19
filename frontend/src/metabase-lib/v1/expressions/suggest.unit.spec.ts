@@ -9,18 +9,18 @@ import {
 } from "metabase-lib/test-helpers";
 import type { DatasetQuery, Join } from "metabase-types/api";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   REVIEWS,
   REVIEWS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
+  DEFAULT_QUERY,
   aggregationOpts,
   expressionOpts,
   metadata,
-  DEFAULT_QUERY,
 } from "./__support__/expressions";
 import { sharedMetadata } from "./__support__/shared";
 import type { Suggestion } from "./suggest";
@@ -103,6 +103,7 @@ describe("metabase/lib/expression/suggest", () => {
               query: DEFAULT_QUERY,
             }),
             stageIndex: -1,
+            expressionIndex: undefined,
             metadata,
             getColumnIcon: () => "icon",
           }),
@@ -128,6 +129,7 @@ describe("metabase/lib/expression/suggest", () => {
               query: DEFAULT_QUERY,
             }),
             stageIndex: -1,
+            expressionIndex: undefined,
             metadata,
             getColumnIcon: () => "icon",
           }),
@@ -144,6 +146,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: createQuery(),
             startRule: "expression",
             stageIndex: -1,
+            expressionIndex: undefined,
             metadata: SAMPLE_METADATA,
             getColumnIcon: () => "icon",
           }),
@@ -194,6 +197,7 @@ describe("metabase/lib/expression/suggest", () => {
             source: "Foo",
             query,
             stageIndex: -1,
+            expressionIndex: undefined,
             metadata: sharedMetadata,
             getColumnIcon: () => "icon",
             startRule: "expression",
@@ -232,6 +236,7 @@ describe("metabase/lib/expression/suggest", () => {
             source: "T",
             query,
             stageIndex: stageIndexAfterNesting,
+            expressionIndex: undefined,
             metadata: sharedMetadata,
             getColumnIcon: () => "icon",
             startRule: "expression",
@@ -255,6 +260,7 @@ describe("metabase/lib/expression/suggest", () => {
             metadata: SAMPLE_METADATA,
             getColumnIcon: () => "icon",
             stageIndex: -1,
+            expressionIndex: undefined,
           }),
         ).toMatchObject({
           structure: "substring",
@@ -271,6 +277,7 @@ describe("metabase/lib/expression/suggest", () => {
             metadata: SAMPLE_METADATA,
             startRule: "expression",
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
           }),
         ).toMatchObject({
@@ -282,11 +289,7 @@ describe("metabase/lib/expression/suggest", () => {
 
       it("should not provide help text for an unsupported function (metabase#39766)", () => {
         const metadata = createMockMetadata({
-          databases: [
-            createSampleDatabase({
-              features: ["foreign-keys"],
-            }),
-          ],
+          databases: [createSampleDatabase()],
         });
 
         expect(
@@ -296,6 +299,7 @@ describe("metabase/lib/expression/suggest", () => {
             metadata,
             startRule: "expression",
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
           }),
         ).toBeUndefined();
@@ -308,6 +312,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: createQuery(),
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             startRule: "expression",
           })?.name,
@@ -321,6 +326,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: createQuery(),
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             startRule: "expression",
           })?.name,
@@ -341,6 +347,7 @@ describe("metabase/lib/expression/suggest", () => {
               query: DEFAULT_QUERY,
             }),
             stageIndex: -1,
+            expressionIndex: undefined,
             metadata,
             getColumnIcon: () => "icon",
             startRule,
@@ -365,6 +372,7 @@ describe("metabase/lib/expression/suggest", () => {
               query: DEFAULT_QUERY,
             }),
             stageIndex: -1,
+            expressionIndex: undefined,
             metadata,
             getColumnIcon: () => "icon",
           }),
@@ -394,6 +402,7 @@ describe("metabase/lib/expression/suggest", () => {
               query: DEFAULT_QUERY,
             }),
             stageIndex: -1,
+            expressionIndex: undefined,
             metadata,
             getColumnIcon: () => "icon",
           }),
@@ -420,6 +429,7 @@ describe("metabase/lib/expression/suggest", () => {
             source: "to",
             query: createQuery({ metadata: sharedMetadata }),
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             metadata: sharedMetadata,
             startRule: "aggregation",
@@ -437,6 +447,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: createQuery(),
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             startRule: "aggregation",
           }),
@@ -452,6 +463,7 @@ describe("metabase/lib/expression/suggest", () => {
             source: "Sum(",
             query: createQuery(),
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             metadata: sharedMetadata,
             startRule: "aggregation",
@@ -468,6 +480,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: createQuery(),
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             startRule: "boolean",
           }),
@@ -492,6 +505,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: createQuery(),
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             startRule: "boolean",
           }),
@@ -507,6 +521,7 @@ describe("metabase/lib/expression/suggest", () => {
             source: "[",
             query: createQuery({ metadata: sharedMetadata }),
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             metadata: sharedMetadata,
             startRule: "boolean",
@@ -521,6 +536,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: createQuery(),
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
+            expressionIndex: undefined,
             getColumnIcon: () => "icon",
             startRule: "boolean",
           }),
@@ -541,6 +557,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: DEFAULT_QUERY,
           }),
           stageIndex: -1,
+          expressionIndex: undefined,
           metadata,
           getColumnIcon: () => "icon",
         }).suggestions,
@@ -573,6 +590,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: DEFAULT_QUERY,
           }),
           stageIndex: -1,
+          expressionIndex: undefined,
           metadata,
           getColumnIcon: () => "icon",
         }).suggestions,
@@ -609,6 +627,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: DEFAULT_QUERY,
           }),
           stageIndex: -1,
+          expressionIndex: undefined,
           metadata,
           getColumnIcon: () => "icon",
         }).suggestions,
@@ -645,6 +664,7 @@ describe("metabase/lib/expression/suggest", () => {
             query: DEFAULT_QUERY,
           }),
           stageIndex: -1,
+          expressionIndex: undefined,
           metadata,
           getColumnIcon: () => "icon",
         }).suggestions,

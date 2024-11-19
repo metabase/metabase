@@ -1,13 +1,15 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  assertQueryBuilderRowCount,
+  appBar,
+  commandPalette,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
+  hovercard,
   modal,
   openQuestionActions,
   popover,
@@ -44,6 +46,7 @@ const ORDERS_SCALAR_MODEL_METRIC = {
 const ORDERS_SCALAR_FILTER_METRIC = {
   name: "Orders metric with filter",
   type: "metric",
+  description: "This is a description _with markdown_",
   query: {
     "source-table": ORDERS_ID,
     filter: [">", ["field", ORDERS.TOTAL, null], 100],
@@ -57,27 +60,6 @@ const PRODUCTS_SCALAR_METRIC = {
   type: "metric",
   query: {
     "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const ORDERS_MULTI_STAGE_METRIC = {
-  name: "Orders metric mutli-stage",
-  type: "metric",
-  query: {
-    "source-query": {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "base-type": "type/DateTime", "temporal-unit": "month" },
-        ],
-      ],
-    },
-    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -119,9 +101,16 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Orders").click();
       });
       addAggregation({ operatorName: "Count of rows" });
-      saveMetric();
-      runQuery();
+      saveMetric({ name: "my new metric" });
       verifyScalarValue("18,760");
+
+      cy.log(
+        "newly created metric should be visible in recents (metabase#44223)",
+      );
+      appBar()
+        .findByText(/search/i)
+        .click();
+      commandPalette().findByText("my new metric").should("be.visible");
     });
 
     it("should be able to rename a metric", () => {
@@ -140,9 +129,12 @@ describe("scenarios > metrics > editing", () => {
       );
       openQuestionActions();
       popover().findByText("Edit metric definition").click();
-      addBreakout({ tableName: "Product", columnName: "Category" });
+      addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Product → Category", yAxis: "Count" });
+      verifyLineAreaBarChart({
+        xAxis: "Product → Created At: Month",
+        yAxis: "Count",
+      });
     });
 
     it("should be able to change the query definition of a metric based on a model", () => {
@@ -151,9 +143,12 @@ describe("scenarios > metrics > editing", () => {
       );
       openQuestionActions();
       popover().findByText("Edit metric definition").click();
-      addBreakout({ tableName: "Product", columnName: "Category" });
+      addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Product → Category", yAxis: "Count" });
+      verifyLineAreaBarChart({
+        xAxis: "Product → Created At: Month",
+        yAxis: "Count",
+      });
     });
 
     it("should pin new metrics automatically", () => {
@@ -164,7 +159,6 @@ describe("scenarios > metrics > editing", () => {
         entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric({ name: "New metric" });
 
       cy.findByTestId("head-crumbs-container")
@@ -175,6 +169,26 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("New metric").should("be.visible");
         verifyScalarValue("18,760");
       });
+    });
+
+    it("should not crash when cancelling creation of a new metric (metabase#48024)", () => {
+      startNewMetric();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      cancelMetricEditing();
+    });
+
+    it("should not crash when cancelling editing of an existing metric (metabase#48024)", () => {
+      createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+        visitMetric(card.id),
+      );
+      openQuestionActions();
+      popover().findByText("Edit metric definition").click();
+      addBreakout({ tableName: "Product", columnName: "Created At" });
+      cancelMetricEditing();
+      verifyScalarValue("18,760");
     });
   });
 
@@ -190,9 +204,7 @@ describe("scenarios > metrics > editing", () => {
         columnName: "Category",
         values: ["Gadget"],
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("4,939");
     });
 
@@ -207,9 +219,7 @@ describe("scenarios > metrics > editing", () => {
         columnName: "Category",
         values: ["Gadget"],
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("4,939");
     });
 
@@ -225,9 +235,7 @@ describe("scenarios > metrics > editing", () => {
         minValue: 5,
         maxValue: 100,
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("5");
     });
 
@@ -242,9 +250,7 @@ describe("scenarios > metrics > editing", () => {
         columnName: "Category",
         values: ["Gadget"],
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("4,939");
     });
 
@@ -260,44 +266,29 @@ describe("scenarios > metrics > editing", () => {
         minValue: 5,
         maxValue: 100,
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("5");
     });
 
-    it("should create a metric based on a single-stage metric", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
+    it("should not allow to create a multi-stage metric", () => {
       startNewMetric();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+        entityPickerModalTab("Models").click();
+        cy.findByText("Orders Model").click();
       });
-      addStringCategoryFilter({
-        tableName: "Product",
-        columnName: "Category",
-        values: ["Gadget"],
-      });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("4,939");
+      getActionButton("Summarize").should("not.exist");
     });
 
-    it("should create a metric based on a multi-stage metric", () => {
-      createQuestion(ORDERS_MULTI_STAGE_METRIC);
+    it("should allow to run the query from the metric empty state", () => {
       startNewMetric();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_MULTI_STAGE_METRIC.name).click();
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
       });
-      addDateBetweenFilter({
-        columnName: "Created At: Month",
-        minValue: "May 7, 2020",
-        maxValue: "October 20, 2022",
-      });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("6");
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByTestId("metric-empty-state").button("Visualize").click();
+      cy.wait("@dataset");
+      verifyScalarValue("18,760");
     });
   });
 
@@ -320,9 +311,7 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("CA").click();
         cy.button("Add filter").click();
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("613");
     });
 
@@ -340,7 +329,7 @@ describe("scenarios > metrics > editing", () => {
       });
     });
 
-    it("should not be possible to join data on the first stage of a metric-based query", () => {
+    it("should be possible to join data on the first stage of a metric-based query", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewQuestion();
       entityPickerModal().within(() => {
@@ -349,29 +338,8 @@ describe("scenarios > metrics > editing", () => {
       });
       getNotebookStep("data").within(() => {
         getActionButton("Custom column").should("be.visible");
-        getActionButton("Join data").should("not.exist");
+        getActionButton("Join data").should("be.visible");
       });
-    });
-
-    it("should join on the second stage of a metric query", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      addBreakout({ columnName: "Product ID" });
-      startNewJoin({ isPostAggregation: true });
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
-      });
-      getNotebookStep("join", { stage: 1 }).within(() => {
-        cy.findByText("ID").should("be.visible");
-        cy.findByText("Product ID").should("be.visible");
-      });
-      visualize();
-      assertQueryBuilderRowCount(200);
     });
   });
 
@@ -388,13 +356,16 @@ describe("scenarios > metrics > editing", () => {
         name: "Total2",
       });
       popover().button("Done").click();
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total2" });
+      getNotebookStep("summarize").findByText("Count").click();
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total2").click();
+      });
       saveMetric();
-      runQuery();
       verifyScalarValue("755,310.84");
     });
 
-    it.skip("should be able to use implicitly joinable columns in custom columns in metric queries (metabase#42360)", () => {
+    it("should be able to use implicitly joinable columns in custom columns in metric queries (metabase#42360)", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
@@ -406,63 +377,13 @@ describe("scenarios > metrics > editing", () => {
         name: "Price2",
       });
       popover().button("Done").click();
-      addAggregation({ operatorName: "Average of ...", columnName: "Price2" });
+      getNotebookStep("summarize").findByText("Count").click();
+      popover().within(() => {
+        cy.findByText("Average of ...").click();
+        cy.findByText("Price2").click();
+      });
       saveMetric();
-      runQuery();
       verifyScalarValue("111.38");
-    });
-
-    it("should be able to use a custom column in a metric-based query", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      startNewCustomColumn();
-      enterCustomColumnDetails({
-        formula: "[Total] / 2",
-        name: "Total2",
-      });
-      popover().button("Done").click();
-      addNumberBetweenFilter({
-        columnName: "Total2",
-        minValue: 60,
-        maxValue: 100,
-      });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("3,326");
-    });
-
-    it("should open the expression editor automatically when the source metric is already used in an aggregation expression", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      startNewAggregation();
-      cy.findByTestId("expression-editor").should("be.visible");
-    });
-  });
-
-  describe("filters", () => {
-    it("should add a filter to a metric based on a metric with a filter", () => {
-      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).click();
-      });
-      addStringCategoryFilter({
-        tableName: "Product",
-        columnName: "Category",
-        values: ["Widget"],
-      });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("1,652");
     });
   });
 
@@ -473,72 +394,30 @@ describe("scenarios > metrics > editing", () => {
         entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
+      getNotebookStep("summarize").findByText("Count").click();
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total").click();
+      });
       addBreakout({ columnName: "Created At" });
       saveMetric();
-      runQuery();
-      verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Sum of Total" });
-    });
-
-    it("should create a geo metric with multiple breakouts", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("People").click();
-      });
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Latitude" });
-      addBreakout({ columnName: "Longitude" });
-      saveMetric();
-      runQuery();
-      verifyPinMap();
-    });
-
-    it("should add a breakout clause in a metric query with 2 stages", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Created At" });
-      addAggregation({
-        operatorName: "Average of ...",
-        columnName: "Count",
-        isPostAggregation: true,
-      });
-      addBreakout({
-        columnName: "Created At: Month",
-        bucketName: "Year",
-        stageIndex: 1,
-      });
-      saveMetric();
-      runQuery();
       verifyLineAreaBarChart({
-        xAxis: "Created At",
-        yAxis: "Average of Count",
+        xAxis: "Created At: Month",
+        yAxis: "Sum of Total",
       });
     });
   });
 
   describe("aggregations", () => {
-    it("should not be possible to save a metric without an aggregation clause", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      cy.button("Save").should("be.disabled");
-      cy.findByTestId("run-button").should("not.be.visible");
-    });
-
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
+      cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
       entityPickerModal().within(() => {
         entityPickerModalTab("Metrics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
+      cy.wait("@queryMetadata");
       getNotebookStep("summarize")
         .findByText(ORDERS_SCALAR_METRIC.name)
         .click();
@@ -548,44 +427,32 @@ describe("scenarios > metrics > editing", () => {
       });
       popover().button("Update").click();
       saveMetric();
-      runQuery();
       verifyScalarValue("9,380");
     });
 
-    it("should add an aggregation clause in a metric query with 2 stages", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Created At", bucketName: "Year" });
-      addAggregation({
-        operatorName: "Count of rows",
-        isPostAggregation: true,
-      });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("5");
-    });
+    it("should have metric-specific summarize step copy", () => {
+      createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+        visitMetric(card.id),
+      );
+      openQuestionActions();
+      popover().findByText("Edit metric definition").click();
 
-    it("should add multiple aggregation columns in the first stage of a metric query", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+      cy.log("regular screen");
+      getNotebookStep("summarize").within(() => {
+        cy.findByText("Formula").should("be.visible");
+        cy.findAllByText("Default time dimension")
+          .filter(":visible")
+          .should("have.length", 1);
       });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
-      addBreakout({ columnName: "Created At" });
-      addAggregation({
-        operatorName: "Average of ...",
-        columnName: "Sum of Subtotal",
-        isPostAggregation: true,
+
+      cy.log("mobile screen");
+      cy.viewport(800, 600);
+      getNotebookStep("summarize").within(() => {
+        cy.findByText("Formula").should("be.visible");
+        cy.findAllByText("Default time dimension")
+          .filter(":visible")
+          .should("have.length", 1);
       });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("29,554.86");
     });
   });
 
@@ -601,7 +468,7 @@ describe("scenarios > metrics > editing", () => {
       });
       startNewAggregation();
       popover().within(() => {
-        cy.findByText("Common Metrics").click();
+        cy.findByText("Metrics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
         cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
@@ -610,6 +477,48 @@ describe("scenarios > metrics > editing", () => {
       });
       visualize();
       verifyScalarValue("18,760");
+    });
+
+    it("should for searching for metrics", () => {
+      createQuestion(ORDERS_SCALAR_METRIC);
+      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
+      createQuestion(PRODUCTS_SCALAR_METRIC);
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      startNewAggregation();
+      popover().within(() => {
+        cy.findByPlaceholderText("Find...").type("with filter");
+        cy.findByText("Metrics").should("be.visible");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
+      });
+    });
+
+    it("should show the description for metrics", () => {
+      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      startNewAggregation();
+      popover().within(() => {
+        cy.findByText("Metrics").click();
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).realHover();
+
+        cy.findByLabelText("More info").should("exist").realHover();
+      });
+
+      hovercard().within(() => {
+        cy.contains("This is a description").should("be.visible");
+        cy.contains("with markdown").should("be.visible");
+      });
     });
   });
 });
@@ -622,52 +531,28 @@ function getPlusButton() {
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
-function startNewJoin({ stageIndex, isPostAggregation } = {}) {
-  if (isPostAggregation) {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      getActionButton("Join data").click(),
-    );
-  } else {
-    getNotebookStep("data", { stage: stageIndex }).within(() =>
-      getActionButton("Join data").click(),
-    );
-  }
+function startNewJoin({ stageIndex } = {}) {
+  getNotebookStep("data", { stage: stageIndex }).within(() =>
+    getActionButton("Join data").click(),
+  );
 }
 
-function startNewCustomColumn({ stageIndex, isPostAggregation } = {}) {
-  if (isPostAggregation) {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      getActionButton("Custom column").click(),
-    );
-  } else {
-    getNotebookStep("data", { stage: stageIndex }).within(() =>
-      getActionButton("Custom column").click(),
-    );
-  }
+function startNewCustomColumn({ stageIndex } = {}) {
+  getNotebookStep("data", { stage: stageIndex }).within(() =>
+    getActionButton("Custom column").click(),
+  );
 }
 
-function startNewFilter({ stageIndex, isPostAggregation } = {}) {
-  if (isPostAggregation) {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      getActionButton("Filter").click(),
-    );
-  } else {
-    getNotebookStep("filter", { stage: stageIndex }).within(() =>
-      getPlusButton().click(),
-    );
-  }
+function startNewFilter({ stageIndex } = {}) {
+  getNotebookStep("filter", { stage: stageIndex }).within(() =>
+    getPlusButton().click(),
+  );
 }
 
-function startNewAggregation({ stageIndex, isPostAggregation } = {}) {
-  if (isPostAggregation) {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      getActionButton("Summarize").click(),
-    );
-  } else {
-    getNotebookStep("summarize", { stage: stageIndex })
-      .findByTestId("aggregate-step")
-      .within(() => getPlusButton().click());
-  }
+function startNewAggregation({ stageIndex } = {}) {
+  getNotebookStep("summarize", { stage: stageIndex })
+    .findByTestId("aggregate-step")
+    .within(() => getPlusButton().click());
 }
 
 function startNewBreakout({ stageIndex } = {}) {
@@ -701,27 +586,8 @@ function addNumberBetweenFilter({ tableName, columnName, minValue, maxValue }) {
   });
 }
 
-function addDateBetweenFilter({ tableName, columnName, minValue, maxValue }) {
-  startNewFilter();
-  popover().within(() => {
-    if (tableName) {
-      cy.findByText(tableName).click();
-    }
-    cy.findByText(columnName).click();
-    cy.findByText("Specific dates…").click();
-    cy.findByLabelText("Start date").clear().type(minValue);
-    cy.findByLabelText("End date").clear().type(maxValue);
-    cy.button("Add filter").click();
-  });
-}
-
-function addAggregation({
-  operatorName,
-  columnName,
-  stageIndex,
-  isPostAggregation,
-}) {
-  startNewAggregation({ stageIndex, isPostAggregation });
+function addAggregation({ operatorName, columnName, stageIndex }) {
+  startNewAggregation({ stageIndex });
 
   popover().within(() => {
     cy.findByText(operatorName).click();
@@ -769,12 +635,6 @@ function renameMetric(newName) {
   cy.wait("@updateCard");
 }
 
-function runQuery() {
-  cy.intercept("POST", "/api/dataset").as("dataset");
-  cy.findAllByTestId("run-button").last().click();
-  cy.wait("@dataset");
-}
-
 function verifyScalarValue(value) {
   cy.findByTestId("scalar-container").findByText(value).should("be.visible");
 }
@@ -786,6 +646,15 @@ function verifyLineAreaBarChart({ xAxis, yAxis }) {
   });
 }
 
-function verifyPinMap() {
-  cy.get("[data-element-id=pin-map]").should("exist");
+function cancelMetricEditing() {
+  cy.log("click cancel but do not confirm");
+  cy.button("Cancel").click();
+  modal().button("Cancel").click();
+  modal().should("not.exist");
+  appBar().should("not.exist");
+
+  cy.log("click cancel and confirm");
+  cy.button("Cancel").click();
+  modal().button("Discard changes").click();
+  appBar().should("be.visible");
 }

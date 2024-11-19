@@ -3,13 +3,12 @@ import _ from "underscore";
 import {
   cardHasBecomeDirty,
   computeMaxDecimalsForValues,
+  computeSplit,
   getCardAfterVisualizationClick,
   getColumnCardinality,
-  getFriendlyName,
   getDefaultDimensionsAndMetrics,
-  preserveExistingColumnsOrder,
-  computeSplit,
   getDefaultPivotColumn,
+  preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -172,30 +171,12 @@ describe("metabase/visualization/lib/utils", () => {
       const rows = [[1], [2], [3], [3]];
       expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
     });
+
     it("should get column cardinality for frozen column", () => {
       const cols = [{}];
       const rows = [[1], [2], [3], [3]];
       Object.freeze(cols[0]);
       expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
-    });
-  });
-
-  describe("getFriendlyName", () => {
-    it("should return friendly name for built-in aggregations", () => {
-      expect(getFriendlyName({ name: "avg", display_name: "avg" })).toBe(
-        "Average",
-      );
-    });
-    it("should return friendly name for duplicate built-in aggregations", () => {
-      expect(getFriendlyName({ name: "avg_2", display_name: "avg" })).toBe(
-        "Average",
-      );
-    });
-    it("should return display_name for non built-in aggregations", () => {
-      expect(getFriendlyName({ name: "foo", display_name: "Foo" })).toBe("Foo");
-    });
-    it("should return display_name for built-in aggregations", () => {
-      expect(getFriendlyName({ name: "avg", display_name: "Foo" })).toBe("Foo");
     });
   });
 
@@ -254,6 +235,7 @@ describe("metabase/visualization/lib/utils", () => {
         ]),
       ).toEqual({ dimensions: ["high", "low"], metrics: ["count"] });
     });
+
     it("should pick a high cardinality dimension for the second dimension", () => {
       expect(
         getDefaultDimensionsAndMetrics([
@@ -282,6 +264,7 @@ describe("metabase/visualization/lib/utils", () => {
         ]),
       ).toEqual({ dimensions: ["high1"], metrics: ["count"] });
     });
+
     it("should pick date for the first dimension", () => {
       expect(
         getDefaultDimensionsAndMetrics([

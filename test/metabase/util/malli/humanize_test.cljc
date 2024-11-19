@@ -1,5 +1,6 @@
 (ns metabase.util.malli.humanize-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest are]]
    [malli.core :as mc]
    [malli.error :as me]
@@ -7,8 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

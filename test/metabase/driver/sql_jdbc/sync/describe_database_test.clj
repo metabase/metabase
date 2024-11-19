@@ -1,11 +1,11 @@
-(ns metabase.driver.sql-jdbc.sync.describe-database-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-database-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.describe-database
-    :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Table]]
@@ -16,6 +16,7 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -27,12 +28,18 @@
 
 (deftest ^:parallel simple-select-probe-query-test
   (is (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
-         (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow")))
+         (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow"))))
+
+(deftest ^:parallel simple-select-probe-query-test-2
+  ;; this is mostly a sanity check against some of our known drivers so ok to hardcode driver names.
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (testing "real drivers produce correct query"
     (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
                      (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
       :h2
-      :postgres))
+      :postgres)))
+
+(deftest ^:parallel simple-select-probe-query-test-3
   (testing "simple-select-probe-query shouldn't actually return any rows"
     (let [{:keys [name schema]} (t2/select-one Table :id (mt/id :venues))]
       (is (= []
@@ -87,7 +94,7 @@
                     {:name "REVIEWS", :schema "PUBLIC", :description nil}}}
          (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
-(defn- describe-database-with-open-resultset-count
+(defn- describe-database-with-open-resultset-count!
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
   objects the sync process left open. Make sure you wrap ResultSets with `with-open`! Otherwise some JDBC drivers like
   Oracle and Redshift will keep open cursors indefinitely."
@@ -114,8 +121,8 @@
 (defn- count-active-tables-in-db
   [db-id]
   (t2/count Table
-    :db_id  db-id
-    :active true))
+            :db_id  db-id
+            :active true))
 
 (deftest sync-only-accessable
   (one-off-dbs/with-blank-db
@@ -136,7 +143,7 @@
     (testing (str "make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets. "
                   "See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)")
       (is (= 0
-             (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
+             (describe-database-with-open-resultset-count! driver/*driver* (mt/db)))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (t2.with-temp/with-temp [Database db-filtered database]
@@ -155,11 +162,20 @@
              :when  (driver.u/find-schema-filters-prop driver)]
          driver)))
 
+(defmethod driver/database-supports? [::driver/driver ::database-schema-filtering-test]
+  [_driver _feature _database]
+  true)
+
+;;; BigQuery is tested separately in [[metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test]], because
+;;; otherwise this test takes too long and flakes intermittently Redshift is also tested separately because it flakes.
+(doseq [driver [:bigquery-cloud-sdk :redshift]]
+  (defmethod driver/database-supports? [driver ::database-schema-filtering-test]
+    [_driver _feature _database]
+    false))
+
 (deftest database-schema-filtering-test
-  ;; BigQuery is tested separately in `metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test`, because
-  ;; otherwise this test takes too long and flakes intermittently
-  ;; Redshift is also tested separately because it flakes.
-  (mt/test-drivers (disj (schema-filtering-drivers) :bigquery-cloud-sdk :redshift)
+  (mt/test-drivers (set/intersection (schema-filtering-drivers)
+                                     (mt/normal-drivers-with-feature ::database-schema-filtering-test))
     (let [driver             (driver.u/database->driver (mt/db))
           schema-filter-prop (find-schema-filters-prop driver)
           filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
@@ -206,14 +222,21 @@
                    (mt/db)
                    nil
                    (fn [^java.sql.Connection conn]
-                     (.setAutoCommit conn auto-commit)
+                     ;; Databricks does not support setting auto commit to false. Catching the setAutoCommit
+                     ;; exception results in testing the true value only.
+                     (try
+                       (.setAutoCommit conn auto-commit)
+                       (catch Exception _
+                         (log/trace "Failed to set auto commit.")))
                      (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                                   driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                                  driver/*driver* conn schema table-name))))))))))))))
 
+;;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest sync-table-with-backslash-test
-  (mt/test-drivers #{:postgres} ;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
+  (mt/test-drivers #{:postgres}
     (testing "table with backslash in name, PKs, FKS are correctly synced"
       (mt/with-temp-test-data [["human\\race"
                                 [{:field-name "humanraceid" :base-type :type/Integer :pk? true}

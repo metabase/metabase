@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
-import { rem, Text, Icon } from "metabase/ui";
+import { Icon, Text, rem } from "metabase/ui";
 
 import {
   SearchDropdownFooter,

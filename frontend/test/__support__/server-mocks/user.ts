@@ -5,6 +5,7 @@ import type { User, UserAttribute, UserListResult } from "metabase-types/api";
 
 export function setupUserEndpoints(user: UserListResult) {
   fetchMock.get(`path:/api/user/${user.id}`, user);
+  fetchMock.put(`path:/api/user/${user.id}`, user);
 }
 
 export function setupUsersEndpoints(users: UserListResult[]) {

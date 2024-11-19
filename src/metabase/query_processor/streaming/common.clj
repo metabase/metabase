@@ -3,11 +3,11 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.util.currency :as currency]
+   [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang ISeq)
@@ -78,8 +78,11 @@
   "Given the format settings for a currency column, returns the symbol, code or name for the
   appropriate currency."
   [format-settings]
-  (let [currency-code (::mb.viz/currency format-settings "USD")]
-    (condp = (::mb.viz/currency-style format-settings "symbol")
+  (let [currency-code (or (::mb.viz/currency format-settings)
+                          (:currency format-settings "USD"))]
+    (condp = (or (::mb.viz/currency-style format-settings)
+                 (:currency_style format-settings)
+                 "symbol")
       "symbol"
       (if (currency/supports-symbol? currency-code)
         (get-in currency/currency [(keyword currency-code) :symbol])
@@ -101,12 +104,15 @@
                               (:name col))
           col-settings'   (update-keys col-settings #(select-keys % [::mb.viz/field-id ::mb.viz/column-name]))
           format-settings (or (get col-settings' {::mb.viz/field-id id-or-name})
-                              (get col-settings' {::mb.viz/column-name id-or-name}))
+                              (get col-settings' {::mb.viz/column-name id-or-name})
+                              (get col-settings' {::mb.viz/column-name (:name col)}))
           is-currency?    (or (isa? (:semantic_type col) :type/Currency)
                               (= (::mb.viz/number-style format-settings) "currency"))
-          merged-settings (if is-currency?
-                            (merge-global-settings format-settings :type/Currency)
-                            format-settings)
+          merged-settings (merge
+                           (:settings col)
+                           (if is-currency?
+                             (merge-global-settings format-settings :type/Currency)
+                             format-settings))
           column-title    (or (when format-rows? (::mb.viz/column-title merged-settings))
                               (:display_name col)
                               (:name col))]
@@ -134,13 +140,13 @@
 
 (defmethod global-type-settings :type/Date [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    (:type/Temporal global-column-settings {})
-    {::mb.viz/time-enabled nil}))
+   (:type/Temporal global-column-settings {})
+   {::mb.viz/time-enabled nil}))
 
 (defmethod global-type-settings :type/Time [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    (:type/Temporal global-column-settings {::mb.viz/time-style "h:mm A"})
-    {::mb.viz/date-style ""}))
+   (:type/Temporal global-column-settings {::mb.viz/time-style "h:mm A"})
+   {::mb.viz/date-style ""}))
 
 (defmethod global-type-settings :type/DateTime [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (:type/Temporal global-column-settings {}))
@@ -150,8 +156,8 @@
 
 (defmethod global-type-settings :type/Currency [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    {::mb.viz/number-style "currency"}
-    (:type/Currency global-column-settings)))
+   {::mb.viz/number-style "currency"}
+   (:type/Currency global-column-settings)))
 
 (defmethod global-type-settings :default [_ _viz-settings]
   {})
@@ -187,18 +193,22 @@
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (or (all-cols-settings {::mb.viz/field-id field-id-or-name})
-                            (all-cols-settings {::mb.viz/column-name (or field-id-or-name column-name)}))]
+        column-settings (or (get all-cols-settings {::mb.viz/field-id field-id-or-name})
+                            (get all-cols-settings {::mb.viz/column-name column-name})
+                            (get all-cols-settings {::mb.viz/column-name field-id-or-name}))]
     (merge
-      ;; The default global settings based on the type of the column
-      (global-type-settings col viz-settings)
-      ;; Generally, we want to look up the default global settings based on semantic or effective type. However, if
-      ;; a user has specified other settings, we should look up the base type of those settings and combine them.
-      (column-setting-defaults global-column-settings column-settings)
-      ;; User defined metadata -- Note that this transformation should probably go in
-      ;; `metabase.query-processor.middleware.results-metadata/merge-final-column-metadata
-      ;; to prevent repetition
-      (mb.viz/db->norm-column-settings-entries metadata-column-settings)
-      ;; Column settings coming from the user settings in the ui
-      ;; (E.g. Click the ⚙️on the column)
-      column-settings)))
+     ;; The default global settings based on the type of the column
+     (try
+       (global-type-settings col viz-settings)
+       (catch Exception _e
+         (global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
+     ;; Generally, we want to look up the default global settings based on semantic or effective type. However, if
+     ;; a user has specified other settings, we should look up the base type of those settings and combine them.
+     (column-setting-defaults global-column-settings column-settings)
+     ;; User defined metadata -- Note that this transformation should probably go in
+     ;; `metabase.query-processor.middleware.results-metadata/merge-final-column-metadata
+     ;; to prevent repetition
+     (mb.viz/db->norm-column-settings-entries metadata-column-settings)
+     ;; Column settings coming from the user settings in the ui
+     ;; (E.g. Click the ⚙️ on the column)
+     column-settings)))

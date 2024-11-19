@@ -11,11 +11,12 @@ import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 import { Funnel } from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import { Heading } from "./visualizations/Heading";
+import { IFrameViz } from "./visualizations/IFrameViz";
 import { LineChart } from "./visualizations/LineChart";
 import { LinkViz } from "./visualizations/LinkViz";
 import { Map } from "./visualizations/Map";
 import ObjectDetail from "./visualizations/ObjectDetail";
-import PieChart from "./visualizations/PieChart";
+import { PieChart } from "./visualizations/PieChart";
 import PivotTable from "./visualizations/PivotTable";
 import Progress from "./visualizations/Progress";
 import RowChart from "./visualizations/RowChart";
@@ -50,6 +51,7 @@ export default function () {
   registerVisualization(Heading);
   registerVisualization(LinkViz);
   registerVisualization(Text);
+  registerVisualization(IFrameViz);
 
   setDefaultVisualization(Table);
 }

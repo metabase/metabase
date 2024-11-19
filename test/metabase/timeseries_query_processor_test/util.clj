@@ -1,4 +1,4 @@
-(ns metabase.timeseries-query-processor-test.util
+(ns ^:mb/driver-tests metabase.timeseries-query-processor-test.util
   "Utility functions and macros for testing timeseries database drivers, such as Druid."
   (:require
    [metabase.test :as mt]
@@ -24,9 +24,9 @@
 
 (defn do-test-timeseries-drivers [thunk]
   (mt/test-drivers
-   (timeseries-drivers)
-   (with-flattened-dbdef
-     (thunk))))
+    (timeseries-drivers)
+    (with-flattened-dbdef
+      (thunk))))
 
 (defmacro test-timeseries-drivers {:style/indent 0} [& body]
   `(do-test-timeseries-drivers (fn [] ~@body)))

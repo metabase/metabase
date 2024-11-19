@@ -13,18 +13,18 @@ import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 
 import {
+  FieldLabel,
+  FieldListHeader,
+  FieldListItem,
+  FieldListRoot,
+  FieldListTitle,
+  FieldRoot,
+  ParameterBody,
+  ParameterName,
+  ParameterRoot,
   SectionHeader,
   SectionMessage,
   SectionMessageLink,
-  ParameterRoot,
-  ParameterBody,
-  ParameterName,
-  FieldRoot,
-  FieldLabel,
-  FieldListRoot,
-  FieldListItem,
-  FieldListHeader,
-  FieldListTitle,
 } from "./ParameterLinkedFilters.styled";
 import useFilterFields from "./use-filter-fields";
 

@@ -283,5 +283,5 @@
           (h2x/identifier :database :public :db))))
 
   (is (=  ["count"]
-         (h2x/identifier->components
-          (h2x/identifier :field-alias :count)))))
+          (h2x/identifier->components
+           (h2x/identifier :field-alias :count)))))

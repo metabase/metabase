@@ -8,23 +8,25 @@ import {
 import {
   addOrUpdateDashboardCard,
   assertQueryBuilderRowCount,
+  assertTooltipRow,
+  chartPathWithFillColor,
+  echartsContainer,
+  echartsTooltip,
+  editDashboard,
+  entityPickerModal,
   filterWidget,
   getDashboardCard,
   main,
   modal,
   popover,
-  restore,
-  showDashboardCardActions,
-  sidebar,
-  visitDashboard,
   queryBuilderHeader,
   queryBuilderMain,
-  chartPathWithFillColor,
-  echartsContainer,
-  entityPickerModal,
-  testPairedTooltipValues,
-  editDashboard,
+  restore,
   saveDashboard,
+  showDashboardCardActions,
+  sidebar,
+  tooltipHeader,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const {
@@ -314,7 +316,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.get("fieldset").should("contain", "Aaron Hand");
 
       cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
-      cy.location("search").should("eq", "?my_param=Aaron%20Hand");
+      cy.location("search").should("eq", "?my_param=Aaron+Hand");
     });
   });
 
@@ -884,19 +886,18 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
           visitDashboard(DASHBOARD_ID);
 
-          chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
+          const assertTooltipValues = () =>
+            echartsTooltip().within(() => {
+              tooltipHeader().should("have.text", 1);
+              assertTooltipRow("15612_1", { color: "#88BF4D", value: "5" });
+              assertTooltipRow("15612_2", { color: "#98D9D9", value: "10" });
+            });
 
-          popover().within(() => {
-            testPairedTooltipValues("AXIS", "1");
-            testPairedTooltipValues("VALUE", "5");
-          });
+          chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
+          assertTooltipValues();
 
           chartPathWithFillColor("#98D9D9").first().trigger("mousemove");
-
-          popover().within(() => {
-            testPairedTooltipValues("AXIS", "1");
-            testPairedTooltipValues("VALUE", "10");
-          });
+          assertTooltipValues();
         });
       });
     });

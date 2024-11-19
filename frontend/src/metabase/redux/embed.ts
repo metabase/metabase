@@ -1,4 +1,4 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { pick } from "underscore";
 
 import { parseSearchOptions } from "metabase/lib/browser";

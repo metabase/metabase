@@ -6,7 +6,7 @@ redirect_from:
 
 # MySQL
 
-> We recommend using MySQL version 8.0.33 or higher, though older versions may work. If you're using MariaDB: version 10.4 or higher.
+> We recommend using MySQL version 8.0.33 or higher.
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
@@ -56,7 +56,7 @@ You can append options to the connection string that Metabase uses to connect to
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
@@ -89,7 +89,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Connecting to MySQL 8+ servers
 
-Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The MariaDB connector does not currently support MySQL 8's default authentication plugin, so in order to connect, you'll need to change the plugin used by the Metabase user to
+Metabase uses the MariaDB connector to connect to MySQL servers. The MariaDB connector lacks support for MySQL 8's default authentication plugin. In order to connect, you'll need to change the plugin used by the Metabase user:
 
 ```
 mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';
@@ -113,13 +113,13 @@ You'll see the same error message when attempting to connect to the MySQL server
 
 **How to fix this:** Recreate the MySQL user with the correct host name:
 
-```
+```sql
 CREATE USER 'metabase'@'172.17.0.1' IDENTIFIED BY 'thepassword';
 ```
 
 Otherwise, if necessary, a wildcard may be used for the host name:
 
-```
+```sql
 CREATE USER 'metabase'@'%' IDENTIFIED BY 'thepassword';
 ```
 
@@ -132,7 +132,7 @@ FLUSH PRIVILEGES;
 
 Remember to drop the old user:
 
-```
+```sql
 DROP USER 'metabase'@'localhost';
 ```
 
@@ -141,8 +141,6 @@ DROP USER 'metabase'@'localhost';
 **Metabase will infer the JSON "schema" based on the keys in the first five hundred rows of a table.** MySQL JSON fields lack schema, so Metabase can't rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first five hundred records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to five hundred records is so that syncing metadata doesn't put unnecessary strain on your database.
 
 The problem is that, if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
-
-**This JSON "schema" inference doesn't work with MariaDB**, due to implementation differences between MySQL and MariaDB.
 
 ## Raising a MySQL Docker container of MySQL 8+
 
@@ -157,25 +155,32 @@ Use the `['--default-authentication-plugin=mysql_native_password']` modifiers wh
 
 - or in docker-compose:
 
-```
+```yml
 mysql:
-    image: mysql:8.xx.xx
-    container_name: mysql
-    hostname: mysql
-    ports:
-      - 3306:3306
-    environment:
-      - "MYSQL_ROOT_PASSWORD=xxxxxx"
-      - "MYSQL_USER=metabase"
-      - "MYSQL_PASSWORD=xxxxxx"
-      - "MYSQL_DATABASE=metabase"
-    volumes:
-      - $PWD/mysql:/var/lib/mysql
-    command: ['--default-authentication-plugin=mysql_native_password']
+  image: mysql:8.xx.xx
+  container_name: mysql
+  hostname: mysql
+  ports:
+    - 3306:3306
+  environment:
+    - "MYSQL_ROOT_PASSWORD=xxxxxx"
+    - "MYSQL_USER=metabase"
+    - "MYSQL_PASSWORD=xxxxxx"
+    - "MYSQL_DATABASE=metabase"
+  volumes:
+    - $PWD/mysql:/var/lib/mysql
+  command: ["--default-authentication-plugin=mysql_native_password"]
 ```
+
+## Limitations with Vitess-based databases
+
+When querying Vitess databases, you should add a `LIMIT` clause inside each subquery.
+
+The reason: typically, Metabase applies limits (e.g., 2000 or 10000 rows) to the final query results. But due to a known bug in Vitess, Vitess might apply these limits to subqueries, which can lead to unexpected results. The workaround is to add limits to each of your subqueries.
 
 ## Further reading
 
+- [MariaDB](./mariadb.md)
 - [Managing databases](../../databases/connecting.md)
 - [Metadata editing](../../data-modeling/metadata-editing.md)
 - [Models](../../data-modeling/models.md)

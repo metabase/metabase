@@ -1,11 +1,11 @@
 import _ from "underscore";
 
-import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
-import { getPivotColumnSplit } from "metabase-lib/v1/queries/utils/pivot";
+import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -38,7 +38,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 
   function wrap(api) {
     return (params, ...rest) => {
-      const { pivot_rows, pivot_cols } = getPivotColumnSplit(question);
+      const { pivot_rows, pivot_cols } = getPivotOptions(question);
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
@@ -206,7 +206,7 @@ export const CollectionsApi = {
   getRoot: GET("/api/collection/root"),
   update: PUT("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
-  updateGraph: PUT("/api/collection/graph"),
+  updateGraph: PUT("/api/collection/graph?skip-graph=true"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
@@ -354,6 +354,12 @@ export const PulseApi = {
   unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
+/// this in unauthenticated, for letting people who are not logged in unsubscribe from Alerts/DashboardSubscriptions
+export const PulseUnsubscribeApi = {
+  unsubscribe: POST("/api/pulse/unsubscribe"),
+  undo_unsubscribe: POST("/api/pulse/unsubscribe/undo"),
+};
+
 export const SegmentApi = {
   list: GET("/api/segment"),
   create: POST("/api/segment"),
@@ -387,8 +393,6 @@ export const SessionApi = {
   properties: GET("/api/session/properties"),
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
-  unsubscribe: POST("/api/session/pulse/unsubscribe"),
-  undo_unsubscribe: POST("/api/session/pulse/unsubscribe/undo"),
 };
 
 export const SettingsApi = {
@@ -461,8 +465,8 @@ export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
 
-export function setPublicDashboardEndpoints() {
-  setDashboardEndpoints("/api/public");
+export function setPublicDashboardEndpoints(uuid) {
+  setDashboardEndpoints("/api/public/dashboard/:uuid", { uuid });
 }
 
 export function setEmbedQuestionEndpoints(token) {
@@ -471,9 +475,9 @@ export function setEmbedQuestionEndpoints(token) {
   }
 }
 
-export function setEmbedDashboardEndpoints() {
+export function setEmbedDashboardEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints(embedBase);
+    setDashboardEndpoints("/api/embed/dashboard/:token", { token });
   } else {
     setDashboardParameterValuesEndpoint(embedBase);
   }
@@ -486,35 +490,51 @@ function GET_with(url, params, omitKeys) {
 
 function setCardEndpoints(prefix, params) {
   CardApi.parameterValues = GET_with(
-    prefix + "/params/:paramId/values",
+    `${prefix}/params/:paramId/values`,
     params,
     ["cardId"],
   );
   CardApi.parameterSearch = GET_with(
-    prefix + "/params/:paramId/search/:query",
+    `${prefix}/params/:paramId/search/:query`,
     params,
     ["cardId"],
   );
   MetabaseApi.field_values = GET_with(
-    prefix + "/field/:fieldId/values",
+    `${prefix}/field/:fieldId/values`,
     params,
   );
   MetabaseApi.field_search = GET_with(
-    prefix + "/field/:fieldId/search/:searchFieldId",
+    `${prefix}/field/:fieldId/search/:searchFieldId`,
     params,
   );
   MetabaseApi.field_remapping = GET_with(
-    prefix + "/field/:fieldId/remapping/:remappedFieldId",
+    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
     params,
   );
 }
 
-function setDashboardEndpoints(prefix) {
-  DashboardApi.parameterValues = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/values`,
+function setDashboardEndpoints(prefix, params) {
+  DashboardApi.parameterValues = GET_with(
+    `${prefix}/params/:paramId/values`,
+    params,
+    ["dashId"],
   );
-  DashboardApi.parameterSearch = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
+  DashboardApi.parameterSearch = GET_with(
+    `${prefix}/params/:paramId/search/:query`,
+    params,
+    ["dashId"],
+  );
+  MetabaseApi.field_values = GET_with(
+    `${prefix}/field/:fieldId/values`,
+    params,
+  );
+  MetabaseApi.field_search = GET_with(
+    `${prefix}/dashboard/:dashId/field/:fieldId/search/:searchFieldId`,
+    params,
+  );
+  MetabaseApi.field_remapping = GET_with(
+    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
+    params,
   );
 }
 

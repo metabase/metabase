@@ -4,24 +4,29 @@ import CS from "metabase/css/core/index.css";
 
 import { PreviewPaneContainer } from "./PreviewPane.styled";
 
+export type PreviewBackgroundType =
+  | "no-background"
+  | "checkerboard-light"
+  | "checkerboard-dark";
+
 type PreviewPaneProps = {
   className?: string;
   previewUrl: string;
-  isTransparent: boolean;
+  backgroundType: PreviewBackgroundType;
   hidden: boolean;
 };
 
 export function PreviewPane({
   className,
   previewUrl,
-  isTransparent,
+  backgroundType,
   hidden,
 }: PreviewPaneProps) {
   return (
     <PreviewPaneContainer
       data-testid="preview-pane-container"
       hidden={hidden}
-      isTransparent={isTransparent}
+      backgroundType={backgroundType}
       className={cx(className, CS.flex, CS.relative)}
     >
       <iframe

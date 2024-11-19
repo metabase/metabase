@@ -1,7 +1,7 @@
 import { assocIn } from "icepick";
 
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type { VisualizationSettings, Card } from "metabase-types/api/card";
+import type { Card, VisualizationSettings } from "metabase-types/api/card";
 
 export const updateSeriesColor = (
   settings: VisualizationSettings,

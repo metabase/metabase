@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -112,6 +114,8 @@ export interface VersionInfoRecord {
 }
 
 export interface VersionInfo {
+  nightly?: VersionInfoRecord;
+  beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
 }
@@ -150,23 +154,29 @@ export const tokenFeatures = [
   "disable_password_login",
   "content_verification",
   "embedding",
+  "embedding_sdk",
   "hosting",
   "llm_autodescription",
   "official_collections",
   "sandboxes",
+  "scim",
   "sso_google",
   "sso_jwt",
   "sso_ldap",
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
+  "serialization",
   "dashboard_subscription_filters",
   "snippet_collections",
   "email_allow_list",
   "email_restrict_recipients",
+  "upload_management",
+  "collection_cleanup",
+  "query_reference_validation",
 ] as const;
 
-export type TokenFeature = typeof tokenFeatures[number];
+export type TokenFeature = (typeof tokenFeatures)[number];
 export type TokenFeatures = Record<TokenFeature, boolean>;
 
 export type PasswordComplexity = {
@@ -176,13 +186,16 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export interface SettingDefinition {
-  key: string;
+export interface SettingDefinition<Key extends SettingKey = SettingKey> {
+  key: Key;
   env_name?: string;
-  is_env_setting: boolean;
-  value?: unknown;
-  default?: unknown;
+  is_env_setting?: boolean;
+  value?: SettingValue<Key>;
+  default?: SettingValue<Key>;
+  description?: string | ReactNode | null;
 }
+
+export type UpdateChannel = "latest" | "beta" | "nightly";
 
 export interface OpenAiModel {
   id: string;
@@ -201,14 +214,18 @@ interface InstanceSettings {
   "admin-email": string;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
-  "email-smtp-security": "None" | "SSL" | "TLS" | "STARTTLS";
+  "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
+  "enable-embedding-static": boolean;
+  "enable-embedding-sdk": boolean;
+  "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "instance-creation": string;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -218,6 +235,7 @@ interface InstanceSettings {
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
+  "query-analysis-enabled": boolean;
 }
 
 export type EmbeddingHomepageDismissReason =
@@ -242,17 +260,17 @@ interface AdminSettings {
   "premium-embedding-token": string | null;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
+  "saml-identity-provider-uri": string | null;
+  "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
-  "setup-embedding-autoenabled": boolean;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
 }
-
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "ee-openai-api-key"?: string;
@@ -270,19 +288,23 @@ interface SettingsManagerSettings {
 type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
+  "allowed-iframe-hosts": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": number | null;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
-  "embedding-app-origin": string;
+  "embedding-app-origin": string | null;
+  "embedding-app-origins-sdk": string | null;
+  "embedding-app-origins-interactive": string | null;
   "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   engines: Record<string, Engine>;
@@ -316,8 +338,10 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
+  "airgap-enabled": boolean;
 }
 
 export type UserSettings = {
@@ -329,6 +353,9 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "browse-filter-only-verified-metrics"?: boolean;
+  "show-updated-permission-modal": boolean;
+  "show-updated-permission-banner": boolean;
 };
 
 export type Settings = InstanceSettings &
@@ -338,4 +365,4 @@ export type Settings = InstanceSettings &
 
 export type SettingKey = keyof Settings;
 
-export type SettingValue = Settings[SettingKey];
+export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];

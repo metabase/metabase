@@ -10,11 +10,11 @@ import { Icon } from "metabase/ui";
 import type { Revision } from "metabase-types/api";
 
 import {
-  TimelineContainer,
-  TimelineEvent,
   Border,
   EventBody,
   EventHeader,
+  TimelineContainer,
+  TimelineEvent,
   Timestamp,
 } from "./Timeline.styled";
 

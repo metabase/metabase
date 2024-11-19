@@ -1,14 +1,16 @@
 (ns metabase.lib.convert-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -200,6 +202,7 @@
                                         :aggregation  [[:aggregation-options
                                                         [:sum [:field 1 nil]]
                                                         {:display-name "Revenue"}]]}}))))
+
 (deftest ^:parallel effective-type-drop-test
   (testing ":effective_type values should be dropped in ->legacy-MBQL"
     (is (=? {:type  :query
@@ -233,7 +236,7 @@
                   (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC"])))
           (is (=? [tag [:field 12 nil] "ABC" {:case-sensitive false}]
                   (lib.convert/->legacy-MBQL
-                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
+                   (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
 
       (testing "with multiple arguments (pMBQL style)"
         (testing "->pMBQL"
@@ -249,7 +252,7 @@
                   (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC" "HJK" "XYZ"])))
           (is (=? [tag {:case-sensitive false} [:field 12 nil] "ABC" "HJK" "XYZ"]
                   (lib.convert/->legacy-MBQL
-                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC" "HJK" "XYZ"])))))))))
+                   (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC" "HJK" "XYZ"])))))))))
 
 (deftest ^:parallel source-card-test
   (let [original {:database 1
@@ -475,6 +478,123 @@
                :source-table 1}
     :type     :query}))
 
+(deftest ^:parallel unclean-stage-round-trip-test
+  (binding [lib.convert/*clean-query* false]
+    (doseq [query
+            [{:database 7
+              :type :query
+              :query {:joins [{:alias "__join"
+                               :strategy :left-join
+                               :condition [:= [:field 388 nil] 1]
+                               :source-table 44}]
+                      :source-table 43
+                      :fields [[:field 390 nil]
+                               [:field 391 nil]
+                               [:field 388 nil]
+                               [:field 392 nil]
+                               [:field 393 nil]
+                               [:field 389 nil]]}}
+             {:database 7
+              :qp/source-card-id 1
+              :info {:card-id 1}
+              :type :query
+              :query {:limit 2
+                      :fields [[:field 350 {:base-type :type/Text :join-alias "Card 2 - Category"}]
+                               [:field "count" {:base-type :type/Integer}]
+                               [:field 350 {:join-alias "Card 2 - Category"}]]
+                      :joins [{:fields [[:field 350 {:join-alias "Card 2 - Category"}]]
+                               :source-metadata [{:semantic_type :type/Category
+                                                  :table_id 45
+                                                  :name "CATEGORY"
+                                                  :field_ref [:field 350 {:base-type :type/Text}]
+                                                  :effective_type :type/Text
+                                                  :id 350
+                                                  :display_name "Category"
+                                                  :fingerprint {:global {:distinct-count 4
+                                                                         :nil% 0}
+                                                                :type {:type/Text {:percent-json 0
+                                                                                   :percent-url 0
+                                                                                   :percent-email 0
+                                                                                   :percent-state 0
+                                                                                   :average-length 6.375}}}
+                                                  :base_type :type/Text}]
+                               :alias "Card 2 - Category"
+                               :strategy :left-join
+                               :source-query/model? false
+                               :qp/stage-had-source-card 2
+                               :condition [:=
+                                           [:field "Products__CATEGORY" {:base-type :type/Text}]
+                                           [:field 350 {:base-type :type/Text, :join-alias "Card 2 - Category"}]]
+                               :source-query {:source-table 45
+                                              :breakout [[:field 350 {:base-type :type/Text}]]
+                                              :qp/stage-is-from-source-card 2
+                                              :order-by [[:asc [:field 350 {:base-type :type/Text}]]]}}]
+                      :source-query {:qp/stage-had-source-card 1
+                                     :source-query/model? false
+                                     :fields [[:field 350 {:base-type :type/Text, :join-alias "Products"}]
+                                              [:field "count" {:base-type :type/Integer}]]
+                                     :source-query {:source-table 42
+                                                    :breakout [[:field 350 {:base-type :type/Text, :join-alias "Products"}]]
+                                                    :aggregation [[:count]]
+                                                    :qp/stage-is-from-source-card 1
+                                                    :order-by [[:asc [:field 350 {:base-type :type/Text, :join-alias "Products"}]]]
+                                                    :joins [{:alias "Products"
+                                                             :strategy :left-join
+                                                             :condition [:=
+                                                                         [:field 382 {:base-type :type/Integer}]
+                                                                         [:field 351 {:base-type :type/BigInteger
+                                                                                      :join-alias "Products"}]]
+                                                             :source-table 45}
+                                                            {:alias "People - User"
+                                                             :strategy :left-join
+                                                             :condition [:=
+                                                                         [:field 381 {:base-type :type/Integer}]
+                                                                         [:field 370 {:base-type :type/BigInteger
+                                                                                      :join-alias "People - User"}]]
+                                                             :source-table 40}]}
+                                     :source-metadata [{:semantic_type :type/Category
+                                                        :table_id 45
+                                                        :name "CATEGORY"
+                                                        :field_ref [:field 350 {:base-type :type/Text, :join-alias "Products"}]
+                                                        :effective_type :type/Text
+                                                        :id 350
+                                                        :display_name "Products → Category"
+                                                        :fingerprint {:global {:distinct-count 4, :nil% 0}
+                                                                      :type {:type/Text {:percent-json 0
+                                                                                         :percent-url 0
+                                                                                         :percent-email 0
+                                                                                         :percent-state 0
+                                                                                         :average-length 6.375}}}
+                                                        :base_type :type/Text
+                                                        :source_alias "Products"}
+                                                       {:name "count"
+                                                        :display_name "Count"
+                                                        :base_type :type/Integer
+                                                        :semantic_type :type/Quantity
+                                                        :field_ref [:aggregation 0]}]}
+                      :source-metadata [{:semantic_type :type/Category
+                                         :table_id 45
+                                         :name "CATEGORY"
+                                         :field_ref [:field 350 {:base-type :type/Text
+                                                                 :join-alias "Card 2 - Category"}]
+                                         :effective_type :type/Text
+                                         :id 350
+                                         :display_name "Products → Category"
+                                         :fingerprint {:global {:distinct-count 4, :nil% 0}
+                                                       :type {:type/Text {:percent-json 0
+                                                                          :percent-url 0
+                                                                          :percent-email 0
+                                                                          :percent-state 0
+                                                                          :average-length 6.375}}}
+                                         :base_type :type/Text
+                                         :source_alias "Products"}
+                                        {:name "count"
+                                         :display_name "Count"
+                                         :base_type :type/Integer
+                                         :semantic_type :type/Quantity
+                                         :field_ref [:field "count" {:base-type :type/Integer}]}]}}]]
+      (test-round-trip query))))
+
 (deftest ^:parallel round-trip-options-test
   (testing "Round-tripping (p)MBQL caluses with options (#30280)"
     (testing "starting with pMBQL"
@@ -597,75 +717,56 @@
             (lib.convert/->pMBQL [:value "TX" nil])))))
 
 (deftest ^:parallel clean-test
-  (testing "irrecoverable queries"
-    ;; Eventually we should get to a place where ->pMBQL throws an exception here
-    ;; but legacy e2e tests make this impossible right now
-    (is (= {:type :query
-            :query {}}
-           (lib.convert/->legacy-MBQL
-            (lib.convert/->pMBQL
-             {:type :query}))))
-    (is (= {:type :query
-            :database 1
-            :query {}}
-           (lib.convert/->legacy-MBQL
-            (lib.convert/->pMBQL
-             {:type :query
-              :database 1}))))
-    (is (= {:type :query
-            :database 1
-            :query {}}
-           (lib.convert/->legacy-MBQL
-            (lib.convert/->pMBQL
-             {:type :query
-              :database 1})))))
-  (testing "recoverable queries"
-    (is (nil? (->
-               {:database 1
-                :type :query
-                :query {:source-table 224
-                        :order-by [[:asc [:xfield 1 nil]]]}}
-               lib.convert/->pMBQL
-               lib/order-bys)))
-    (is (nil? (->
-               {:database 1
-                :type :query
-                :query {:source-table 224
-                        :filter [:and [:= [:xfield 1 nil]]]}}
-               lib.convert/->pMBQL
-               lib/filters)))
-    (is (nil? (->
-               {:database 5
-                :type :query
-                :query {:joins [{:source-table 3
-                                 ;; Invalid condition makes the join invalid
-                                 :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
-                        :source-table 4}}
-               lib.convert/->pMBQL
-               lib/joins)))
-    (is (nil? (->
-               {:database 5
-                :type :query
-                :query {:joins [{:source-table 3
-                                 :condition [:= [:field 2 nil] [:field 2 nil]]
-                                 ;; Invalid field, the join is still valid
-                                 :fields [[:xfield 2 nil]]}]
-                        :source-table 4}}
-               lib.convert/->pMBQL
-               (get-in [:stages 0 :joins 0 :fields]))))
-    (testing "references to missing expressions are removed (#32625)"
-      (let [query {:database 2762
-                   :type     :query
-                   :query    {:aggregation [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
-                              :expressions {"custom" [:+ 1 1]}
-                              :breakout    [[:expression "expr1" nil] [:expression "expr2" nil]]
-                              :order-by    [[:expression "expr2" nil]]
-                              :limit       4
-                              :source-table 33674}}
-            converted (lib.convert/->pMBQL query)]
-        (is (empty? (get-in converted [:stages 0 :breakout])))
-        (is (empty? (get-in converted [:stages 0 :group-by])))))))
+  ;; These nearly-empty queries should be handled correctly - iframe-based embedding yields queries like
+  ;; `{:type :native}` and nothing more.
+  (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
+    {:type :query
+     :database 1}
+    {:type :query
+     :database 1}
+    {:type :query})
 
+  (is (nil? (-> {:database 1
+                 :type :query
+                 :query {:source-table 224
+                         :order-by [[:asc [:xfield 1 nil]]]}}
+                lib.convert/->pMBQL
+                lib/order-bys)))
+  (is (nil? (-> {:database 1
+                 :type :query
+                 :query {:source-table 224
+                         :filter [:and [:= [:xfield 1 nil]]]}}
+                lib.convert/->pMBQL
+                lib/filters)))
+  (is (nil? (-> {:database 5
+                 :type :query
+                 :query {:joins [{:source-table 3
+                                  ;; Invalid condition makes the join invalid
+                                  :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
+                         :source-table 4}}
+                lib.convert/->pMBQL
+                lib/joins)))
+  (is (nil? (-> {:database 5
+                 :type :query
+                 :query {:joins [{:source-table 3
+                                  :condition [:= [:field 2 nil] [:field 2 nil]]
+                                  ;; Invalid field, the join is still valid
+                                  :fields [[:xfield 2 nil]]}]
+                         :source-table 4}}
+                lib.convert/->pMBQL
+                (get-in [:stages 0 :joins 0 :fields]))))
+  (testing "references to missing expressions are removed (#32625)"
+    (let [query {:database 2762
+                 :type     :query
+                 :query    {:aggregation [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+                            :expressions {"custom" [:+ 1 1]}
+                            :breakout    [[:expression "expr1" nil] [:expression "expr2" nil]]
+                            :order-by    [[:expression "expr2" nil]]
+                            :limit       4
+                            :source-table 33674}}
+          converted (lib.convert/->pMBQL query)]
+      (is (empty? (get-in converted [:stages 0 :breakout])))
+      (is (empty? (get-in converted [:stages 0 :group-by]))))))
 
 (deftest ^:parallel remove-namespaced-lib-keys-from-legacy-refs-test
   (testing "namespaced lib keys should be removed when converting to legacy (#33012)"
@@ -867,3 +968,28 @@
                                           :effective-type :type/BigInteger,
                                           :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
                                          48400]]]}]}))))
+
+(deftest ^:parallel blank-queries-test
+  (testing "minimal legacy"
+    (testing "native queries"
+      (let [query {:type :native}]
+        (testing "pass the legacy schema"
+          (is (mbql.s/valid-query? query)))
+        (testing "pass the pMBQL schema after conversion"
+          (is (nil? (->> query
+                         lib.convert/->pMBQL
+                         (mc/explain ::lib.schema/query)))))
+        (testing "round trip to pMBQL and back with small changes"
+          (is (= query
+                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))
+    (testing "MBQL queries"
+      (let [query {:type :query}]
+        (testing "pass the legacy schema"
+          (is (mbql.s/valid-query? query)))
+        (testing "pass the pMBQL schema after conversion"
+          (is (nil? (->> query
+                         lib.convert/->pMBQL
+                         (mc/explain ::lib.schema/query)))))
+        (testing "round trip to pMBQL and back with small changes"
+          (is (= query
+                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))))

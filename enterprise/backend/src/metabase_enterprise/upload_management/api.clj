@@ -14,8 +14,8 @@
   []
   (as-> (t2/select :model/Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
         ;; See https://github.com/metabase/metabase/issues/41023
-        (map #(update % :schema str) tables)
-        (filterv mi/can-read? tables)))
+    (map #(update % :schema str) tables)
+    (filterv mi/can-read? tables)))
 
 (api/defendpoint DELETE "/tables/:id"
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."

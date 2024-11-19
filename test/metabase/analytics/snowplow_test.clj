@@ -45,7 +45,7 @@
         context                            (normalize-map (.getMap context-json))]
     (swap! collector conj {:properties properties, :subject subject, :context context})))
 
-(defn do-with-fake-snowplow-collector
+(defn do-with-fake-snowplow-collector!
   "Impl for `with-fake-snowplow-collector` macro; prefer using that rather than calling this directly."
   [f]
   (mt/with-temporary-setting-values [snowplow-available    true
@@ -55,7 +55,8 @@
         (with-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
           (f))))))
 
-;;; TODO -- rename to `with-fake-snowplow-collector!` because this is not thread-safe.
+;;; TODO -- rename to `with-fake-snowplow-collector!` because this is not thread-safe and remove the Kondo ignore rule below
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-fake-snowplow-collector
   "Creates a new fake snowplow collector in a dynamic scope, and redefines the track-event! function so that analytics
   events are parsed and added to the fake collector.
@@ -63,7 +64,7 @@
   Fetch the contents of the collector by calling [[snowplow-collector-contents]]."
   [& body]
   {:style/indent 0}
-  `(do-with-fake-snowplow-collector (fn [] ~@body)))
+  `(do-with-fake-snowplow-collector! (fn [] ~@body)))
 
 (defn- clear-snowplow-collector!
   []
@@ -86,8 +87,8 @@
   [t]
   (try
     (java.time.LocalDate/parse
-      t
-      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.SSXXX"))
+     t
+     (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.SSXXX"))
     true
     (catch Exception _e
       false)))
@@ -96,7 +97,7 @@
   (testing "Snowplow events include a custom context that includes the schema, instance ID, version, token features
            and creation timestamp"
     (with-fake-snowplow-collector
-      (snowplow/track-event! ::snowplow/new-instance-created)
+      (snowplow/track-event! ::snowplow/account {:event :new-instance-created})
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-2",
               :data {:id                           (snowplow/analytics-uuid)
                      :version                      {:tag (:tag (public-settings/version))},
@@ -108,71 +109,91 @@
 
       (testing "the created_at should have the format be formatted as RFC3339"
         (is (valid-datetime-for-snowplow?
-              (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
+             (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
 
 (deftest ip-address-override-test
   (testing "IP address on Snowplow subject is overridden with a dummy value (127.0.0.1)"
     (with-fake-snowplow-collector
-      (snowplow/track-event! ::snowplow/dashboard-created 1 {:dashboard-id 1})
-      (is (partial= {:uid "1", :ip "127.0.0.1"}
-                    (:subject (first @*snowplow-collector*)))))))
+      (mt/with-test-user :rasta
+        (snowplow/track-event! ::snowplow/dashboard {:dashboard-id 1})
+        (is (partial= {:uid (str (mt/user->id :rasta)) :ip "127.0.0.1"}
+                      (:subject (first @*snowplow-collector*))))))))
 
 (deftest track-event-test
   (with-fake-snowplow-collector
-    (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,
-             with keys converted into snake-case strings, and the subject's user ID being converted to a string."
-      ;; Trigger instance-creation event by calling the `instance-creation` setting function for the first time
-      (t2/delete! Setting :key "instance-creation")
-      (snowplow/instance-creation)
-      (is (= [{:data    {"event" "new_instance_created"}
-               :user-id nil}]
-             (pop-event-data-and-user-id!)))
+    (mt/with-test-user :rasta
+      (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,
+               with keys converted into snake-case strings, and the subject's user ID being converted to a string."
+        ;; Trigger instance-creation event by calling the `instance-creation` setting function for the first time
+        (t2/delete! Setting :key "instance-creation")
+        (snowplow/instance-creation)
+        (is (= [{:data    {"event" "new_instance_created"}
+                 :user-id nil}]
+               (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/new-user-created 1)
-      (is (= [{:data    {"event" "new_user_created"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+        (let [user-id-str (str (mt/user->id :rasta))]
+          (snowplow/track-event! ::snowplow/account {:event :new-user-created} 1)
+          (is (= [{:data    {"event" "new_user_created"}
+                   :user-id "1"}]
+                 (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/invite-sent 1 {:invited-user-id 2, :source "admin"})
-      (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent", "source" "admin"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+          (snowplow/track-event! ::snowplow/invite
+                                 {:event           :invite-sent
+                                  :invited-user-id 2
+                                  :source          "admin"})
+          (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent", "source" "admin"}
+                   :user-id user-id-str}]
+                 (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/dashboard-created 1 {:dashboard-id 1})
-      (is (= [{:data    {"dashboard_id" 1, "event" "dashboard_created"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+          (snowplow/track-event! ::snowplow/dashboard
+                                 {:event        :dashboard-created
+                                  :dashboard-id 1})
+          (is (= [{:data    {"dashboard_id" 1, "event" "dashboard_created"}
+                   :user-id user-id-str}]
+                 (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/question-added-to-dashboard 1 {:dashboard-id 1, :question-id 2})
-      (is (= [{:data    {"dashboard_id" 1, "event" "question_added_to_dashboard", "question_id" 2}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+          (snowplow/track-event! ::snowplow/dashboard
+                                 {:event        :question-added-to-dashboard
+                                  :dashboard-id 1
+                                  :question-id  2})
+          (is (= [{:data    {"dashboard_id" 1, "event" "question_added_to_dashboard", "question_id" 2}
+                   :user-id user-id-str}]
+                 (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/database-connection-successful
-                             1
-                             {:database :postgres, :database-id 1, :source :admin, :dbms_version "14.1"})
-      (is (= [{:data    {"database" "postgres"
-                         "database_id" 1
-                         "event" "database_connection_successful"
-                         "dbms_version" "14.1"
-                         "source" "admin"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+          (snowplow/track-event! ::snowplow/database
+                                 {:event        :database-connection-successful
+                                  :database     :postgres
+                                  :database-id  1
+                                  :source       :admin
+                                  :dbms_version "14.1"})
+          (is (= [{:data    {"database" "postgres"
+                             "database_id" 1
+                             "event" "database_connection_successful"
+                             "dbms_version" "14.1"
+                             "source" "admin"}
+                   :user-id user-id-str}]
+                 (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/database-connection-failed 1 {:database :postgres, :source :admin})
-      (is (= [{:data    {"database" "postgres", "event" "database_connection_failed", "source" "admin"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+          (snowplow/track-event! ::snowplow/database
+                                 {:event    :database-connection-failed
+                                  :database :postgres
+                                  :source   :admin})
+          (is (= [{:data    {"database" "postgres", "event" "database_connection_failed", "source" "admin"}
+                   :user-id user-id-str}]
+                 (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/new-event-created 1 {:source "question", :question_id 1})
-      (is (= [{:data    {"event" "new_event_created", "source" "question", "question_id" 1}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+          (snowplow/track-event! ::snowplow/timeline
+                                 {:event       :new-event-created
+                                  :source      "question"
+                                  :question_id 1})
+          (is (= [{:data    {"event" "new_event_created", "source" "question", "question_id" 1}
+                   :user-id user-id-str}]
+                 (pop-event-data-and-user-id!)))
 
-      (testing "Snowplow events are not sent when tracking is disabled"
-        (mt/with-temporary-setting-values [anon-tracking-enabled false]
-          (snowplow/track-event! ::snowplow/new-instance-created)
-          (is (= [] (pop-event-data-and-user-id!))))))))
+          (testing "Snowplow events are not sent when tracking is disabled"
+            (mt/with-temporary-setting-values [anon-tracking-enabled false]
+              (snowplow/track-event! ::snowplow/account {:event :new_instance_created} nil)
+              (is (= [] (pop-event-data-and-user-id!))))))))))
 
 (deftest instance-creation-test
   (let [original-value (t2/select-one-fn :value Setting :key "instance-creation")]

@@ -5,11 +5,11 @@ import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
 
 import {
-  Root,
   Button,
+  ClickBehaviorDescription,
   ClickIcon,
   HelperText,
-  ClickBehaviorDescription,
+  Root,
 } from "./ClickBehaviorSidebarOverlay.styled";
 
 interface Props {

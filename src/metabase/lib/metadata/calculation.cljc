@@ -15,8 +15,8 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -303,6 +303,8 @@
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
    [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
+   ;; if this is a ColumnGroup, is it the main one?
+   [:is-main-group {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
    [:is-source-table {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
@@ -336,16 +338,16 @@
      ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
      ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
      ;; called with one `stage-number` anyway.
-     (keyword "display-info" (str "stage-" stage-number)) x
-     (fn [x]
-       (try
-         (display-info-method query stage-number x)
-         (catch #?(:clj Throwable :cljs js/Error) e
-           (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                     (lib.dispatch/dispatch-value x)
-                                     (ex-message e))
-                           {:query query, :stage-number stage-number, :x x}
-                           e))))))))
+    (keyword "display-info" (str "stage-" stage-number)) x
+    (fn [x]
+      (try
+        (display-info-method query stage-number x)
+        (catch #?(:clj Throwable :cljs js/Error) e
+          (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                    (lib.dispatch/dispatch-value x)
+                                    (ex-message e))
+                          {:query query, :stage-number stage-number, :x x}
+                          e))))))))
 
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
@@ -387,7 +389,7 @@
        {:is-temporal-extraction
         (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
              (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
-     (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
+     (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]
@@ -397,7 +399,8 @@
   [query stage-number table]
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table-id query) (:id table))
-          :schema (:schema table)}))
+          :schema (:schema table)
+          :visibility-type (:visibility-type table)}))
 
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."
@@ -443,7 +446,7 @@
    ;; has the signature (f str) => str
    [:unique-name-fn {:optional true} ::unique-name-fn]])
 
-(mu/defn ^:private default-returned-columns-options :- ReturnedColumnsOptions
+(mu/defn- default-returned-columns-options :- ReturnedColumnsOptions
   [metadata-providerable]
   {:unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))})
 
@@ -462,6 +465,18 @@
 (defmethod returned-columns-method :dispatch-type/integer
   [query _stage-number stage-number options]
   (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
+
+(def ^:dynamic *propagate-inherited-temoral-unit*
+  "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column.
+
+  Temporal unit should be conveyed into `:inherited-temporal-unit` only when _column is created from ref_ that contains
+  that has temporal unit set and column's metadata is generated _under `returned-columns` call_.
+
+  Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
+  stages.
+
+  The value is used in [[metabase.lib.field/resolve-field-metadata]]."
+  false)
 
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
@@ -483,7 +498,8 @@
     x
     options        :- [:maybe ReturnedColumnsOptions]]
    (let [options (merge (default-returned-columns-options query) options)]
-     (returned-columns-method query stage-number x options))))
+     (binding [*propagate-inherited-temoral-unit* true]
+       (returned-columns-method query stage-number x options)))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
@@ -496,7 +512,7 @@
     [:include-implicitly-joinable?                 {:optional true} :boolean]
     [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
-(mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
+(mu/defn- default-visible-columns-options :- VisibleColumnsOptions
   [metadata-providerable]
   (merge
    (default-returned-columns-options metadata-providerable)
@@ -558,8 +574,8 @@
    (if (and (map? x)
             (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
      (lib.cache/side-channel-cache
-       (keyword (str stage-number "__visible-columns-no-opts")) query
-       (fn [_] (visible-columns query stage-number x nil)))
+      (keyword (str stage-number "__visible-columns-no-opts")) query
+      (fn [_] (visible-columns query stage-number x nil)))
      (visible-columns query stage-number x nil)))
 
   ([query          :- ::lib.schema/query
@@ -572,9 +588,10 @@
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
   [query        :- ::lib.schema/query]
-  (if-let [table-id (lib.util/source-table-id query)]
-    (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
-    []))
+  (into [] (filter lib.types.isa/primary-key?)
+        (if-let [table-id (lib.util/source-table-id query)]
+          (lib.metadata/fields query table-id)
+          (returned-columns query))))
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to

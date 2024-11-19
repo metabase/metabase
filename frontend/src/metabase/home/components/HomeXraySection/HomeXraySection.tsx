@@ -3,39 +3,46 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useListDatabaseXraysQuery } from "metabase/api";
-import { useDatabaseListQuery } from "metabase/common/hooks";
+import {
+  skipToken,
+  useListDatabaseXraysQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Select from "metabase/core/components/Select";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseXray } from "metabase-types/api";
+import type { Database, DatabaseXray } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeXrayCard } from "../HomeXrayCard";
 
 import {
-  DatabaseLinkIcon,
   DatabaseLink,
+  DatabaseLinkIcon,
   DatabaseLinkText,
-  SectionBody,
   SchemaTrigger,
-  SchemaTriggerText,
   SchemaTriggerIcon,
+  SchemaTriggerText,
+  SectionBody,
 } from "./HomeXraySection.styled";
 
 export const HomeXraySection = () => {
-  const databaseListState = useDatabaseListQuery();
-  const database = getXrayDatabase(databaseListState.data);
+  const {
+    data: databasesData,
+    isLoading: databasesLoading,
+    error: databasesError,
+  } = useListDatabasesQuery();
+
+  const database = getXrayDatabase(databasesData?.data);
   const candidateListState = useListDatabaseXraysQuery(
     database?.id ?? skipToken,
   );
-  const isLoading = databaseListState.isLoading || candidateListState.isLoading;
-  const error = databaseListState.error ?? candidateListState.error;
+  const isLoading = databasesLoading || candidateListState.isLoading;
+  const error = databasesError ?? candidateListState.error;
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -149,7 +156,7 @@ const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
   );
 };
 
-const getXrayDatabase = (databases: Database[] = []) => {
+const getXrayDatabase = (databases: Database[] | undefined = []) => {
   const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
   const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
   return userDatabase ?? sampleDatabase;

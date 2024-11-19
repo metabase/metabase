@@ -22,22 +22,22 @@ export const DashCardActionsPanelContainer = styled("div", {
 })<DashCardActionsPanelContainerProps>`
   padding: 0.125em 0.25em;
   position: absolute;
-  background: white;
+  background: var(--mb-color-bg-dashboard-card);
   transform: translateY(-50%);
   top: 0;
   right: 20px;
   border-radius: 8px;
-  box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 13%);
   cursor: default;
   transition: opacity 200ms;
   opacity: ${({ isDashCardTabMenuOpen }) => (isDashCardTabMenuOpen ? 1 : 0)};
   pointer-events: ${({ isDashCardTabMenuOpen }) =>
     isDashCardTabMenuOpen ? "all" : "none"};
 
-  // react-resizable covers panel, we have to override it
+  /* react-resizable covers panel, we have to override it */
   z-index: 2;
 
-  // left align on small cards on the left edge to not make the actions go out of the viewport
+  /* left align on small cards on the left edge to not make the actions go out of the viewport */
   ${({ onLeftEdge }) =>
     onLeftEdge &&
     css`

@@ -1,16 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
-  restore,
   dragAndDrop,
   getPinnedSection,
   openPinnedItemMenu,
   openUnpinnedItemMenu,
+  popover,
+  restore,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -31,9 +31,9 @@ const PIVOT_QUESTION_DETAILS = {
     "table.pivot_column": "CREATED_AT",
     "table.cell_column": "count",
     "pivot_table.column_split": {
-      rows: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      rows: ["CREATED_AT"],
       columns: [],
-      values: [["aggregation", 0]],
+      values: ["count"],
     },
   },
 };

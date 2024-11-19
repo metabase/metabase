@@ -97,17 +97,20 @@ async function setup({
     collectionItems,
   });
 
-  renderWithProviders(<AddCardSidebar onSelect={jest.fn()} />, {
-    storeInitialState: createMockState({
-      currentUser: CURRENT_USER,
-      dashboard: createMockDashboardState({
-        dashboards: {
-          [dashboard.id]: { ...dashboard, dashcards: [] },
-        },
-        dashboardId: dashboard.id,
+  renderWithProviders(
+    <AddCardSidebar onSelect={jest.fn()} onClose={jest.fn()} />,
+    {
+      storeInitialState: createMockState({
+        currentUser: CURRENT_USER,
+        dashboard: createMockDashboardState({
+          dashboards: {
+            [dashboard.id]: { ...dashboard, dashcards: [] },
+          },
+          dashboardId: dashboard.id,
+        }),
       }),
-    }),
-  });
+    },
+  );
 
   await waitFor(() => {
     expect(screen.queryByText("Loading...")).not.toBeInTheDocument();

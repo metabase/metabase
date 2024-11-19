@@ -22,7 +22,7 @@ const DatabaseHostnameSectionField = ({
   return (
     <FormField>
       <SectionButton type="button" onClick={handleClick}>
-        {value ? t`Use hostname` : t`Use  account name`}
+        {value ? t`Use account name` : t`Use hostname`}
       </SectionButton>
     </FormField>
   );

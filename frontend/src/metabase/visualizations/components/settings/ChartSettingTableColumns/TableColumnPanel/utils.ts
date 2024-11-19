@@ -1,7 +1,7 @@
 import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,

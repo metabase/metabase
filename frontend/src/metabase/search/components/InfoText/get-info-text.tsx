@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { collection as collectionUrl } from "metabase/lib/urls";
 import {
-  PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_COLLECTIONS,
+  PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
 import type { WrappedResult } from "metabase/search/types";
 import { Box } from "metabase/ui";

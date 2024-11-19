@@ -48,12 +48,12 @@
         field-id        (:id breakout-column)]
     (when (int? field-id)
       (let [binning-option (lib/binning breakout-clause)]
-       {:field_id                   field-id
-        :used_in                    :breakout
-        :breakout_temporal_unit     (lib/raw-temporal-bucket breakout-clause)
-        :breakout_binning_strategy  (:strategy binning-option)
-        :breakout_binning_bin_width (:bin-width binning-option)
-        :breakout_binning_num_bins  (:num-bins binning-option)}))))
+        {:field_id                   field-id
+         :used_in                    :breakout
+         :breakout_temporal_unit     (lib/raw-temporal-bucket breakout-clause)
+         :breakout_binning_strategy  (:strategy binning-option)
+         :breakout_binning_bin_width (:bin-width binning-option)
+         :breakout_binning_num_bins  (:num-bins binning-option)}))))
 
 (defn- expression->field-usage
   [expression-clause]
@@ -73,11 +73,11 @@
 (defn- stage->field-usages
   [query stage-number]
   (concat
-    (keep #(filter->field-usage query stage-number %) (lib/filters query stage-number))
-    (keep #(aggregation->field-usage query stage-number %) (lib/aggregations query stage-number))
-    (keep #(breakout->field-usage query stage-number %) (lib/breakouts query stage-number))
-    (flatten (keep expression->field-usage (lib/expressions query stage-number)))
-    (flatten (keep #(join->field-usages query %) (lib/joins query stage-number)))))
+   (keep #(filter->field-usage query stage-number %) (lib/filters query stage-number))
+   (keep #(aggregation->field-usage query stage-number %) (lib/aggregations query stage-number))
+   (keep #(breakout->field-usage query stage-number %) (lib/breakouts query stage-number))
+   (flatten (keep expression->field-usage (lib/expressions query stage-number)))
+   (flatten (keep #(join->field-usages query %) (lib/joins query stage-number)))))
 
 (mu/defn pmbql->field-usages
   "Given a pmbql query, returns field usages from filter, breakout, aggregation, expression of a query.

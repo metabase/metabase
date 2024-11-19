@@ -12,22 +12,22 @@ import {
   ViewHeaderIconButtonContainer,
   ViewRunButtonWithTooltip,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
-import {
-  ExploreResultsLink,
-  FilterHeaderButton,
-  QuestionFiltersHeaderToggle,
-  QuestionActions,
-  QuestionNotebookButton,
-  QuestionSummarizeWidget,
-  ToggleNativeQueryPreview,
-} from "metabase/query_builder/components/view/ViewHeader/components";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+
+import { ExploreResultsLink } from "../ExploreResultsLink";
+import { FilterHeaderButton } from "../FilterHeaderButton";
+import { QuestionActions } from "../QuestionActions";
+import { QuestionNotebookButton } from "../QuestionNotebookButton";
+import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
+import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
@@ -59,7 +59,7 @@ interface ViewTitleHeaderRightSideProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
+  turnModelIntoQuestion: () => void;
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
@@ -91,7 +91,7 @@ export function ViewTitleHeaderRightSide({
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
   areFiltersExpanded,
   onExpandFilters,
   onCollapseFilters,
@@ -130,30 +130,24 @@ export function ViewTitleHeaderRightSide({
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
-  const getRunButtonLabel = useCallback(
-    () => (isRunning ? t`Cancel` : t`Refresh`),
-    [isRunning],
-  );
+  const cacheStrategyType = result?.json_query?.["cache-strategy"]?.type;
+  const getRunButtonLabel = useCallback(() => {
+    if (isRunning) {
+      return t`Cancel`;
+    }
+    if ([undefined, "nocache"].includes(cacheStrategyType)) {
+      return `Refresh`;
+    }
+    return t`Clear cache and refresh`;
+  }, [isRunning, cacheStrategyType]);
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
+  const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {QuestionFiltersHeaderToggle.shouldRender({
-        question,
-        queryBuilderMode,
-        isObjectDetail,
-      }) && (
-        <QuestionFiltersHeaderToggle
-          className={cx(CS.ml2, CS.mr1)}
-          query={question.query()}
-          isExpanded={areFiltersExpanded}
-          onExpand={onExpandFilters}
-          onCollapse={onCollapseFilters}
-        />
-      )}
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
@@ -163,6 +157,10 @@ export function ViewTitleHeaderRightSide({
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
+          query={question.query()}
+          isExpanded={areFiltersExpanded}
+          onExpand={onExpandFilters}
+          onCollapse={onCollapseFilters}
         />
       )}
       {QuestionSummarizeWidget.shouldRender({
@@ -181,6 +179,7 @@ export function ViewTitleHeaderRightSide({
       {QuestionNotebookButton.shouldRender({
         question,
         isActionListVisible,
+        isBrandNew,
       }) && (
         <QuestionNotebookButton
           isShowingNotebook={isShowingNotebook}
@@ -208,15 +207,16 @@ export function ViewTitleHeaderRightSide({
           />
         </ViewHeaderIconButtonContainer>
       )}
+      {!isShowingNotebook && <QuestionSharingMenu question={question} />}
       {isSaved && (
         <QuestionActions
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          isBookmarked={isBookmarked}
-          handleBookmark={toggleBookmark}
-          onOpenModal={onOpenModal}
           question={question}
-          setQueryBuilderMode={setQueryBuilderMode}
-          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          isBookmarked={isBookmarked}
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+          onOpenModal={onOpenModal}
+          onToggleBookmark={toggleBookmark}
+          onSetQueryBuilderMode={setQueryBuilderMode}
+          onTurnModelIntoQuestion={turnModelIntoQuestion}
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />
@@ -233,7 +233,7 @@ export function ViewTitleHeaderRightSide({
             onClick={event => {
               event.preventDefault();
               if (!isSaveDisabled) {
-                onOpenModal("save");
+                onOpenModal(MODAL_TYPES.SAVE);
               }
             }}
           >

@@ -1,8 +1,8 @@
 import type { DragEndEvent } from "@dnd-kit/core";
-import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
+import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
 import {
-  restrictToVerticalAxis,
   restrictToParentElement,
+  restrictToVerticalAxis,
 } from "@dnd-kit/modifiers";
 import {
   SortableContext,
@@ -44,7 +44,7 @@ interface CollectionSidebarBookmarksProps {
   }: {
     newIndex: number;
     oldIndex: number;
-  }) => void;
+  }) => Promise<any>;
   onToggle: (isExpanded: boolean) => void;
   initialState: "expanded" | "collapsed";
 }
@@ -135,12 +135,12 @@ const BookmarkList = ({
   }, []);
 
   const handleSortEnd = useCallback(
-    (input: DragEndEvent) => {
+    async (input: DragEndEvent) => {
       document.body.classList.remove(GrabberS.grabbing);
       setIsSorting(false);
       const newIndex = bookmarks.findIndex(b => b.id === input.over?.id);
       const oldIndex = bookmarks.findIndex(b => b.id === input.active.id);
-      reorderBookmarks({ newIndex, oldIndex });
+      await reorderBookmarks({ newIndex, oldIndex });
     },
     [reorderBookmarks, bookmarks],
   );

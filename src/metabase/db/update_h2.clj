@@ -101,7 +101,7 @@
       (when (update-needed? jdbc-url)
         (log/info "H2 v1 database detected, updating...")
         (try
-         (update! jdbc-url)
-         (catch Exception e
-           (log/error e "Failed to update H2 database:")
-           (throw e)))))))
+          (update! jdbc-url)
+          (catch Exception e
+            (log/error e "Failed to update H2 database:")
+            (throw e)))))))

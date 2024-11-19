@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -27,15 +28,22 @@
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)))
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    ResultSetMetaData
+    Types)))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :redshift, :parent #{:postgres})
 
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
                               :describe-fks              true
+                              :identifiers-with-spaces   false
+                              :uuid-type                 false
                               :nested-field-columns      false
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
@@ -44,11 +52,10 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; don't use the Postgres implementation for `describe-table` since it tries to fetch enums which Redshift doesn't
-;; support
-(defmethod driver/describe-table :redshift
-  [& args]
-  (apply (get-method driver/describe-table :sql-jdbc) args))
+;; Skip the postgres implementation of describe fields as it has to handle custom enums which redshift doesn't support.
+(defmethod driver/describe-fields :redshift
+  [driver database & args]
+  (apply (get-method driver/describe-fields :sql-jdbc) driver database args))
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
@@ -104,35 +111,25 @@
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
 (defmethod driver/describe-database :redshift
- [_driver database]
+  [driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
-  {:tables (into #{} (describe-database-tables database))})
-
-(defmethod sql-jdbc.sync/describe-fks-sql :redshift
-  [driver & {:keys [schema-names table-names]}]
-  (sql/format {:select (vec
-                        {:fk_ns.nspname       "fk-table-schema"
-                         :fk_table.relname    "fk-table-name"
-                         :fk_column.attname   "fk-column-name"
-                         :pk_ns.nspname       "pk-table-schema"
-                         :pk_table.relname    "pk-table-name"
-                         :pk_column.attname   "pk-column-name"})
-               :from   [[:pg_constraint :c]]
-               :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
-                        [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
-                        [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
-                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
-                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
-                        [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
-               :where  [:and
-                        [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
-                        [:= :c.contype [:raw "'f'::char"]]
-                        [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
-                        [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
-                        (when table-names [:in :fk_table.relname table-names])
-                        (when schema-names [:in :fk_ns.nspname schema-names])]
-               :order-by [:fk-table-schema :fk-table-name]}
-              :dialect (sql.qp/quote-style driver)))
+  ;;
+  ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
+  ;; fix #45874
+  (try
+    (u/auto-retry (if config/is-prod? 2 5)
+      (try
+        {:tables (into #{} (describe-database-tables database))}
+        (catch Throwable e
+          ;; during test/REPL runs, wait a second before throwing the exception, that way when we do our retry there is
+          ;; a better chance of it succeeding.
+          (when-not config/is-prod?
+            (Thread/sleep 1000))
+          (throw e))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
+                      {}
+                      e)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :redshift
   ;; The implementation is based on `getColumns` in https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java
@@ -229,8 +226,8 @@
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
        (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                                               (lib.metadata/database (qp.store/metadata-provider)))
-                                                               (u/id db-or-id-or-spec)     db-or-id-or-spec))
+                                                                                                (lib.metadata/database (qp.store/metadata-provider)))
+                                                                  (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
@@ -413,11 +410,11 @@
  [:postgres Types/TIMESTAMP])
 
 (defmethod sql-jdbc.execute/read-column-thunk
- [:redshift Types/OTHER]
- [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
- (if (= "interval" (.getColumnTypeName rsmeta i))
-   #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
-   ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
+  [:redshift Types/OTHER]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= "interval" (.getColumnTypeName rsmeta i))
+    #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
+    ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk
@@ -466,7 +463,7 @@
   [_driver upload-type]
   (case upload-type
     ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
+    ::upload/text                     [[:varchar 65535]]
     ::upload/int                      [:bigint]
     ;; identity(1, 1) defines an auto-increment column starting from 1
     ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
@@ -488,38 +485,37 @@
 ;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
 ;; This might be helpful for getting privileges for actions in the future.
 #_(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
-  [_driver conn-spec & {:as _options}]
+    [_driver conn-spec & {:as _options}]
   ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
   ;; result in an operation not supported error
-  (->> (jdbc/query
-        conn-spec
-        (str/join
-         "\n"
-         ["with table_privileges as ("
-          " select"
-          "   NULL as role,"
-          "   t.schemaname as schema,"
-          "   t.objectname as table,"
+    (->> (jdbc/query
+          conn-spec
+          (str/join
+           "\n"
+           ["with table_privileges as ("
+            " select"
+            "   NULL as role,"
+            "   t.schemaname as schema,"
+            "   t.objectname as table,"
           ;; if `has_table_privilege` is true `has_any_column_privilege` is false and vice versa, so we have to check both.
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.objectname || '\"',  'SELECT')"
-          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE')"
-          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
-          " from ("
-          "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
-          "   union"
-          "   select schemaname, viewname as objectname from pg_views"
-          " ) t"
-          " where t.schemaname !~ '^pg_'"
-          "   and t.schemaname <> 'information_schema'"
-          "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-          ")"
-          "select t.*"
-          "from table_privileges t"]))
-       (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
-
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.objectname || '\"',  'SELECT')"
+            "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE')"
+            "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
+            " from ("
+            "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
+            "   union"
+            "   select schemaname, viewname as objectname from pg_views"
+            " ) t"
+            " where t.schemaname !~ '^pg_'"
+            "   and t.schemaname <> 'information_schema'"
+            "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+            ")"
+            "select t.*"
+            "from table_privileges t"]))
+         (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 ;;; ----------------------------------------------- Connection Impersonation ------------------------------------------
 

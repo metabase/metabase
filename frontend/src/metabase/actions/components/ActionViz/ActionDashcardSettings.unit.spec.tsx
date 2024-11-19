@@ -14,16 +14,16 @@ import {
 } from "__support__/ui";
 import type { WritebackParameter } from "metabase-types/api";
 import {
-  createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardCard,
-  createMockQueryAction,
-  createMockCard,
-  createMockParameter,
   createMockActionParameter,
+  createMockCard,
   createMockCollectionItem,
+  createMockDashboard,
+  createMockDashboardCard,
   createMockFieldSettings,
   createMockImplicitCUDActions,
+  createMockParameter,
+  createMockQueryAction,
 } from "metabase-types/api/mocks";
 
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
@@ -454,6 +454,16 @@ describe("ActionViz > ActionDashcardSettings", () => {
     expect(
       await screen.findByText(/the values for 'Action Trois'/i),
     ).toBeInTheDocument();
+  });
+
+  it("should be valid and not crash when the action does not have parameters (metabase#32665)", async () => {
+    const { closeSpy } = setup({
+      dashcard: createMockActionDashboardCard({
+        action: createMockQueryAction(),
+      }),
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(closeSpy).toHaveBeenCalled();
   });
 
   it("shows parameters for an action", async () => {

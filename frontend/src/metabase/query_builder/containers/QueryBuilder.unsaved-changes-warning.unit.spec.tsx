@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCardCreateEndpoint,
   setupCardEndpoints,
+  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
 } from "__support__/server-mocks";
@@ -15,10 +16,14 @@ import {
 } from "__support__/ui";
 import { serializeCardForUrl } from "metabase/lib/card";
 import registerVisualizations from "metabase/visualizations/register";
-import { createMockCardQueryMetadata } from "metabase-types/api/mocks";
+import {
+  createMockCardQueryMetadata,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 
 import {
   TEST_COLLECTION,
+  TEST_DB,
   TEST_MODEL_CARD,
   TEST_MODEL_CARD_SLUG,
   TEST_MODEL_DATASET,
@@ -36,7 +41,6 @@ import {
   waitForSaveChangesToBeDisabled,
   waitForSaveChangesToBeEnabled,
   waitForSaveToBeEnabled,
-  TEST_DB,
 } from "./test-utils";
 
 registerVisualizations();
@@ -96,6 +100,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       });
       setupCardCreateEndpoint();
       setupCardEndpoints(TEST_NATIVE_CARD);
+      setupCardQueryEndpoints(TEST_NATIVE_CARD, createMockDataset());
       setupCardQueryMetadataEndpoint(
         TEST_NATIVE_CARD,
         createMockCardQueryMetadata({
@@ -430,7 +435,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByLabelText("notebook icon"));
+      await userEvent.click(screen.getByTestId("notebook-button"));
 
       await waitFor(() => {
         expect(screen.getByText("Visualize")).toBeInTheDocument();
@@ -777,7 +782,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByLabelText("notebook icon"));
+      await userEvent.click(screen.getByTestId("notebook-button"));
 
       await waitFor(() => {
         expect(screen.getByText("Visualize")).toBeInTheDocument();

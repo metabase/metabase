@@ -41,7 +41,8 @@
   (derive :metabase/model)
   ;;; TODO: this is wrong, but what should it be?
   (derive ::perms/use-parent-collection-perms)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/search-index))
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})
@@ -80,8 +81,8 @@
     [:status              {:optional true} Statuses]
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
-   (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-   (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)
-                                 :moderated_item_type (:moderated_item_type params)}
-               {:most_recent false})
-   (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))
+    (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
+    (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)
+                                  :moderated_item_type (:moderated_item_type params)}
+                {:most_recent false})
+    (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))

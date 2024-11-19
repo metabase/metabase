@@ -1,5 +1,6 @@
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
+import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -20,11 +21,10 @@ import { getCardsSeriesModels, getDimensionModel } from "../../model/series";
 import { getAxisTransforms } from "../../model/transforms";
 import { getTrendLines } from "../../model/trend-line";
 import type {
-  ScatterPlotModel,
   ChartDataset,
   Extent,
+  ScatterPlotModel,
   SeriesModel,
-  ShowWarning,
 } from "../../model/types";
 
 import { getScatterPlotDataset } from "./dataset";
@@ -57,6 +57,7 @@ const getBubbleSizeDomain = (
 export function getScatterPlotModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): ScatterPlotModel {
@@ -68,8 +69,8 @@ export function getScatterPlotModel(
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    hiddenSeries,
     settings,
-    renderingContext,
   );
 
   // We currently ignore sorting and visibility settings on combined cards
@@ -90,7 +91,6 @@ export function getScatterPlotModel(
     rawSeries,
     scaledDataset,
     settings,
-    renderingContext,
     showWarning,
   );
   const yAxisScaleTransforms = getAxisTransforms(
@@ -102,6 +102,7 @@ export function getScatterPlotModel(
     [],
     xAxisModel,
     seriesModels,
+    [],
     yAxisScaleTransforms,
     settings,
     showWarning,
@@ -116,7 +117,6 @@ export function getScatterPlotModel(
     false,
     [],
     false,
-    renderingContext,
   );
 
   const trendLinesModel = getTrendLines(

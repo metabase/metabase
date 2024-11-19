@@ -213,7 +213,6 @@
                Exception
                (apply perms/perms-objects-set-for-parent-collection input))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -310,3 +309,21 @@
         (testing (format "Able to revoke `%s` permission" (name perm-type))
           (perms/revoke-application-permissions! group-id perm-type)
           (is (not (= (perms) #{perm-path}))))))))
+
+(deftest maybe-break-out-permission-data-test
+  (testing "We can break out a collection permission"
+    (are [object m] (= m (select-keys (#'perms/maybe-break-out-permission-data {:object object})
+                                      [:collection_id :perm_type :perm_value]))
+      "/collection/123/" {:collection_id 123
+                          :perm_type :perms/collection-access
+                          :perm_value :read-and-write}
+      "/collection/123/read/" {:collection_id 123
+                               :perm_type :perms/collection-access
+                               :perm_value :read}
+
+      ;; We only do this for collection permissions right now.
+      "/foo/1234/" {}
+
+      ;; Note that WE DON'T break out the root collection bits at this point. Maybe we will down the road, but we need
+      ;; to think about how this works since the collection ID will be `NULL`.
+      "/collection/root/" {})))

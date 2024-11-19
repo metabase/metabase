@@ -1,9 +1,12 @@
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo, useState, memo } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import { useGetCollectionQuery } from "metabase/api";
+import {
+  useGetCollectionQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import { logout } from "metabase/auth/actions";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
@@ -14,13 +17,13 @@ import Modal from "metabase/components/Modal";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
+  ROOT_COLLECTION,
   buildCollectionTree,
   getCollectionIcon,
-  ROOT_COLLECTION,
 } from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";
-import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
+import { getHasDataAccess } from "metabase/selectors/data";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -30,7 +33,7 @@ import { NavbarErrorView } from "../NavbarErrorView";
 import { NavbarLoadingView } from "../NavbarLoadingView";
 import type { MainNavbarProps, SelectedItem } from "../types";
 
-import MainNavbarView from "./MainNavbarView";
+import { MainNavbarView } from "./MainNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
@@ -39,7 +42,6 @@ function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
     currentUser: getUser(state),
     isAdmin: getUserIsAdmin(state),
     hasDataAccess: getHasDataAccess(databases),
-    hasOwnDatabase: getHasOwnDatabase(databases),
     bookmarks: getOrderedBookmarks(state),
   };
 }
@@ -52,16 +54,15 @@ const mapDispatchToProps = {
 interface Props extends MainNavbarProps {
   isAdmin: boolean;
   currentUser: User;
+  databases: Database[];
   selectedItems: SelectedItem[];
   bookmarks: Bookmark[];
-  collections: Collection[];
   rootCollection: Collection;
   hasDataAccess: boolean;
-  hasOwnDatabase: boolean;
   allError: boolean;
   allFetched: boolean;
   logout: () => void;
-  onReorderBookmarks: (bookmarks: Bookmark[]) => void;
+  onReorderBookmarks: (bookmarks: Bookmark[]) => Promise<any>;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
@@ -75,8 +76,6 @@ function MainNavbarContainer({
   selectedItems,
   isOpen,
   currentUser,
-  hasOwnDatabase,
-  collections = [],
   rootCollection,
   hasDataAccess,
   location,
@@ -96,6 +95,11 @@ function MainNavbarContainer({
     error,
   } = useGetCollectionQuery({ id: "trash" });
 
+  const { data: collections = [] } = useListCollectionsTreeQuery({
+    "exclude-other-user-collections": true,
+    "exclude-archived": true,
+  });
+
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -113,6 +117,7 @@ function MainNavbarContainer({
     if (trashCollection) {
       const trash: CollectionTreeItem = {
         ...trashCollection,
+        id: "trash",
         icon: getCollectionIcon(trashCollection),
         children: [],
       };
@@ -132,14 +137,14 @@ function MainNavbarContainer({
   }, [rootCollection, trashCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
-    ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {
+    async ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {
       const newBookmarks = [...bookmarks];
       const movedBookmark = newBookmarks[oldIndex];
 
       newBookmarks.splice(oldIndex, 1);
       newBookmarks.splice(newIndex, 0, movedBookmark);
 
-      onReorderBookmarks(newBookmarks);
+      await onReorderBookmarks(newBookmarks);
     },
     [bookmarks, onReorderBookmarks],
   );
@@ -184,7 +189,6 @@ function MainNavbarContainer({
         isOpen={isOpen}
         currentUser={currentUser}
         collections={collectionTree}
-        hasOwnDatabase={hasOwnDatabase}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
         reorderBookmarks={reorderBookmarks}
@@ -206,14 +210,6 @@ export default _.compose(
   Collections.load({
     id: ROOT_COLLECTION.id,
     entityAlias: "rootCollection",
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.loadList({
-    query: () => ({
-      tree: true,
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-    }),
     loadingAndErrorWrapper: false,
   }),
   Databases.loadList({

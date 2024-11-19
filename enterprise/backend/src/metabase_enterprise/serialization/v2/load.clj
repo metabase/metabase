@@ -16,7 +16,12 @@
   [entity]
   (if (:dashcards entity)
     (dissoc entity :dashcards)
-    (throw (ex-info "No known references found when breaking circular dependency!" {:entity entity}))))
+    (throw (ex-info "No known references found when breaking circular dependency!"
+                    (let [model (t2/model entity)]
+                      {:entity entity
+                       :model  (some-> model name)
+                       :table  (some-> model t2/table-name)
+                       :error  ::no-known-references})))))
 
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
@@ -30,7 +35,7 @@
                 (load-one! ctx dep)
                 (catch Exception e
                   (cond
-                    ;; It was missing but we found it locally, so just return the context.
+                    ;; It was missing, but we found it locally, so just return the context.
                     (and (= (:error (ex-data e)) ::not-found)
                          (serdes/load-find-local dep))
                     ctx
@@ -45,6 +50,14 @@
                     :else
                     (throw e)))))]
       (reduce loader ctx deps))))
+
+(defn- path-error-data [error-type expanding path]
+  (let [last-model (:model (last path))]
+    {:path       (mapv (partial into {}) path)
+     :deps-chain (set (map #(mapv (partial into {}) %) expanding))
+     :model      last-model
+     :table      (some->> last-model (keyword "model") t2/table-name)
+     :error      error-type}))
 
 (defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to
@@ -62,16 +75,14 @@
   [{:keys [expanding ingestion seen] :as ctx} path & [modfn]]
   (log/infof "Loading %s" (serdes/log-path-str path))
   (cond
-    (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path
-                                                                                         :error ::circular}))
-    (seen path) ctx ; Already been done, just skip it.
+    (expanding path) (throw (ex-info (format "Circular dependency on %s" (serdes/log-path-str path))
+                                     (path-error-data ::circular expanding path)))
+    (seen path) ctx ; Already been done, can skip it.
     :else (let [ingested (try
                            (serdes.ingest/ingest-one ingestion path)
                            (catch Exception e
                              (throw (ex-info (format "Failed to read file for %s" (serdes/log-path-str path))
-                                             {:path       path
-                                              :deps-chain expanding
-                                              :error      ::not-found}
+                                             (path-error-data ::not-found expanding path)
                                              e))))
                 ingested (cond-> ingested
                            modfn modfn)
@@ -89,15 +100,16 @@
               (serdes/load-one! ingested local-or-nil)
               ctx
               (catch Exception e
-                (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
-                                {:path       path
-                                 :deps-chain expanding}
+                ;; ugly mapv here to convered #ordered/map into normal map so it's readable in the logs
+                (throw (ex-info (format "Failed to load into database for %s" (serdes/log-path-str path))
+                                (path-error-data ::load-failure expanding path)
                                 e)))))))
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill?]
-                :or   {backfill? true}}]
+  [ingestion & {:keys [backfill? continue-on-error]
+                :or   {backfill?   true
+                       continue-on-error false}}]
   (t2/with-transaction [_tx]
     ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
     ;; guide the import, and make sure all containers are imported before contents, etc.
@@ -107,5 +119,17 @@
           ctx      {:expanding #{}
                     :seen      #{}
                     :ingestion ingestion
-                    :from-ids  (m/index-by :id contents)}]
-      (reduce load-one! ctx contents))))
+                    :from-ids  (m/index-by :id contents)
+                    :errors    []}]
+      (log/infof "Starting deserialization, total %s documents" (count contents))
+      (reduce (fn [ctx item]
+                (try
+                  (load-one! ctx item)
+                  (catch Exception e
+                    (when-not continue-on-error
+                      (throw e))
+                    ;; eschew big and scary stacktrace
+                    (log/warnf "Skipping deserialization error: %s %s" (ex-message e) (ex-data e))
+                    (update ctx :errors conj e))))
+              ctx
+              contents))))

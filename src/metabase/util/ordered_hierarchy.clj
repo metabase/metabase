@@ -106,9 +106,9 @@
         ancestors   (re-sort (:ancestors h) ts)
         descendants (re-sort (:descendants h) (reverse ts))]
     (assoc h
-      :sorted-tags ts
-      :ancestors ancestors
-      :descendants descendants)))
+           :sorted-tags ts
+           :ancestors ancestors
+           :descendants descendants)))
 
 (defn derive
   "Establishes a parent/child relationship between two keyword tags, similar to [[clojure.core/derive]].

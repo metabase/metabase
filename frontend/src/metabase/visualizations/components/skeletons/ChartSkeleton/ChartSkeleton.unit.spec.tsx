@@ -27,13 +27,17 @@ const chartSkeletonDisplayTypes: CardDisplayType[] = [
   "waterfall",
 ];
 
-const displayTestData = [
+const displayTestData: {
+  name: string;
+  display: CardDisplayType | undefined;
+}[] = [
   {
     name: "Empty",
     display: undefined,
   },
   {
     name: "Random display type",
+    // @ts-expect-error - specifically testing displays that don't match the CardDisplayType
     display: "a display type",
   },
   ...chartSkeletonDisplayTypes.map((display: CardDisplayType) => ({
@@ -57,6 +61,7 @@ const setup = ({
     />,
   );
 };
+
 describe("ChartSkeleton", () => {
   beforeAll(() => {
     jest.unmock("metabase/components/Popover");

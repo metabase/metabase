@@ -1,7 +1,7 @@
 import { useTheme } from "@emotion/react";
 import { t } from "ttag";
 
-import { Icon, Stack, Text, HoverCard } from "metabase/ui";
+import { HoverCard, Icon, Stack, Text } from "metabase/ui";
 
 type IllustrationType = "background" | "icon";
 

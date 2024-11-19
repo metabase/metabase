@@ -176,7 +176,6 @@
           }
         }
       ],
-      "can_run_adhoc_query": true,
       "table_id": null,
       "collection_position": null,
       "view_count": 0,

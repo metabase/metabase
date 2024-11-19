@@ -9,9 +9,11 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [postal.core :as postal]
-   [postal.support :refer [make-props]])
+   [postal.support :refer [make-props]]
+   [throttle.core :as throttle])
   (:import
-   (javax.mail Session)))
+   (javax.mail Session)
+   (throttle.core Throttler)))
 
 (set! *warn-on-reflection* true)
 
@@ -23,12 +25,14 @@
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
+  :encryption :no
   :default    "notifications@metabase.com"
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
+  :encryption :no
   :visibility :settings-manager
   :audit      :getter)
 
@@ -46,38 +50,44 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
+  :encryption :no
   :type       :json
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
-               (if (validate-reply-to-addresses new-value)
-                 (setting/set-value-of-type! :json :email-reply-to new-value)
-                 (throw (ex-info "Invalid reply-to address" {:value new-value})))))
+                (if (validate-reply-to-addresses new-value)
+                  (setting/set-value-of-type! :json :email-reply-to new-value)
+                  (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-username
   (deferred-tru "SMTP username.")
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-password
   (deferred-tru "SMTP password.")
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :sensitive? true
   :audit      :getter)
 
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
+  :encryption :when-encryption-key-set
   :type       :integer
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
+  :encryption :when-encryption-key-set
   :type       :keyword
   :default    :none
   :visibility :settings-manager
@@ -87,12 +97,58 @@
                   (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
+(defsetting email-max-recipients-per-second
+  (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.
+                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.")
+  :export?    true
+  :type       :integer
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defn- make-email-throttler
+  [rate-limit]
+  (throttle/make-throttler
+   :email
+   :attempt-ttl-ms     1000
+   :initial-delay-ms   1000
+   :attempts-threshold rate-limit))
+
+(defonce ^:private email-throttler (when-let [rate-limit (email-max-recipients-per-second)]
+                                     (make-email-throttler rate-limit)))
+
+(defn check-email-throttle
+  "Check if the email throttler is enabled and if so, throttle the email sending based on the total number of recipients.
+
+  We will allow multi-recipient emails to broach the limit, as long as the limit has not been reached yet.
+
+  We want two properties:
+    1. All emails eventually get sent.
+    2. Lowering the threshold must never cause more overflow."
+  [email]
+  (when email-throttler
+    (when-let [recipients (not-empty (into #{} (mapcat email) [:to :bcc]))]
+      (let [throttle-threshold (.attempts-threshold ^Throttler email-throttler)
+            check-one!         #(throttle/check email-throttler true)]
+        (check-one!)
+        (try
+          (dotimes [_ (dec (count recipients))]
+            (throttle/check email-throttler true))
+          (catch Exception _e
+            (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
+                      {:email-subject  (:subject email)
+                       :recipients     (count recipients)
+                       :max-recipients throttle-threshold})))))))
+
 ;; ## PUBLIC INTERFACE
 
-(def ^{:arglists '([smtp-credentials email-details])} send-email!
+(defn send-email!
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
-   Provided so you can swap this out with an \"inbox\" for test purposes."
-  postal/send-message)
+  Provided so you can swap this out with an \"inbox\" for test purposes.
+
+  If email-rate-limit-per-second is set, this function will throttle the email sending based on the total number of recipients."
+  [smtp-credentials email-details]
+  (check-email-throttle email-details)
+  (postal/send-message smtp-credentials email-details))
 
 (defsetting email-configured?
   "Check if email is enabled and that the mandatory settings are configured."
@@ -146,7 +202,6 @@
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
   the caller has its own retry logic."
-  {:style/indent 0}
   [{:keys [subject recipients message-type message] :as email}]
   (try
     (when-not (email-smtp-host)
@@ -168,11 +223,11 @@
                     (when-let [reply-to (email-reply-to)]
                       {:reply-to reply-to}))))
     (catch Throwable e
-      (prometheus/inc :metabase-email/message-errors)
+      (prometheus/inc! :metabase-email/message-errors)
       (when (not= :smtp-host-not-set (:cause (ex-data e)))
         (throw e)))
     (finally
-      (prometheus/inc :metabase-email/messages))))
+      (prometheus/inc! :metabase-email/messages))))
 
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
@@ -217,7 +272,7 @@
    [:sender-name {:optional true} [:maybe :string]]
    [:reply-to    {:optional true} [:maybe [:sequential ms/Email]]]])
 
-(mu/defn ^:private test-smtp-settings :- SMTPStatus
+(mu/defn- test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
   in `:security`."
   [{:keys [host port user pass sender security], :as details} :- SMTPSettings]
@@ -245,7 +300,7 @@
   us from getting banned on Outlook.com."
   500)
 
-(mu/defn ^:private guess-smtp-security :- [:maybe [:enum :tls :starttls :ssl]]
+(mu/defn- guess-smtp-security :- [:maybe [:enum :tls :starttls :ssl]]
   "Attempts to use each of the security methods in security order with the same set of credentials. This is used only
   when the initial connection attempt fails, so it won't overwrite a functioning configuration. If this uses something
   other than the provided method, a warning gets printed on the config page.

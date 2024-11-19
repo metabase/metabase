@@ -1,17 +1,17 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
-  NO_DATA_PERSONAL_COLLECTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   NORMAL_USER_ID,
+  NO_DATA_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
+  getCollectionActions,
   modal,
   navigationSidebar,
-  openNewCollectionItemFlowFor,
-  getCollectionActions,
   openCollectionMenu,
+  openNewCollectionItemFlowFor,
+  popover,
+  restore,
 } from "e2e/support/helpers";
 
 describe("personal collections", () => {
@@ -61,7 +61,9 @@ describe("personal collections", () => {
       });
 
       cy.visit("/collection/root");
-      cy.findByRole("tree").findByText("Your personal collection");
+      cy.findAllByRole("tree")
+        .contains("Your personal collection")
+        .should("be.visible");
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });

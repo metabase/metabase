@@ -1,10 +1,10 @@
 (ns ^:mb/once metabase.legacy-mbql.util-test
   (:require
+   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.types]
-   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))))
+   [metabase.types]))
 
 (comment metabase.types/keep-me)
 
@@ -179,7 +179,7 @@
              [:= [:field 4 nil] 300]]))
         "Should be able to combine multiple compound clauses"))
 
-(t/deftest ^:parallel add-filter-clause-test
+(t/deftest ^:parallel add-filter-clause-test-1-single-stage
   (t/is (= {:database 1
             :type     :query
             :query    {:source-table 1
@@ -189,8 +189,47 @@
              :type     :query
              :query    {:source-table 1
                         :filter       [:= [:field 1 nil] 100]}}
+            0
             [:= [:field 2 nil] 200]))
         "Should be able to add a filter clause to a query"))
+
+(t/deftest ^:parallel add-filter-clause-test-2-earlier-stage
+  (doseq [stage-number [0 -2]]
+    (t/is (= {:database 1
+              :type     :query
+              :query    {:source-query {:source-table 1
+                                        :filter       [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
+                                        :aggregation  [[:count]]}
+                         :expressions  {"negated" [:* [:field 1 nil] -1]}}}
+             (mbql.u/add-filter-clause
+              {:database 1
+               :type     :query
+               :query    {:source-query {:source-table 1
+                                         :filter       [:= [:field 1 nil] 100]
+                                         :aggregation  [[:count]]}
+                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
+              stage-number
+              [:= [:field 2 nil] 200]))
+          "Should be able to add a filter clause to an earlier stage of a query")))
+
+(t/deftest ^:parallel add-filter-clause-test-3-later-stage
+  (doseq [stage-number [-1 1]]
+    (t/is (= {:database 1
+              :type     :query
+              :query    {:source-query {:source-table 1
+                                        :filter       [:= [:field 1 nil] 100]
+                                        :aggregation  [[:count]]}
+                         :expressions  {"negated" [:* [:field 1 nil] -1]}
+                         :filter       [:= [:field 2 nil] 200]}}
+             (mbql.u/add-filter-clause
+              {:database 1
+               :type     :query
+               :query    {:source-query {:source-table 1
+                                         :filter       [:= [:field 1 nil] 100]
+                                         :aggregation  [[:count]]}
+                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
+              stage-number
+              [:= [:field 2 nil] 200])))))
 
 (t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between
@@ -275,6 +314,52 @@
             [:relative-datetime 0 :week]]
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] :current :week]))
         "keywords like `:current` should work correctly"))
+
+(t/deftest ^:parallel desugar-relative-time-interval-negative-test
+  (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
+    (let [value           -10
+          bucket          :day
+          offset-value    -8
+          offset-bucket   :week
+          exp-offset [:interval offset-value offset-bucket]]
+      (t/testing "expression reference is transformed correctly"
+        (let [expr-ref [:expression "cc"]]
+          (t/is (= [:and
+                    [:>= expr-ref [:+ [:relative-datetime value bucket] exp-offset]]
+                    [:<  expr-ref [:+ [:relative-datetime 0     bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval expr-ref value bucket offset-value offset-bucket])))))
+      (t/testing "field reference is transformed correctly"
+        (let [field-ref [:field 100 nil]
+              exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
+          (t/is (= [:and
+                    [:>= exp-field-ref [:+ [:relative-datetime value bucket] exp-offset]]
+                    [:<  exp-field-ref [:+ [:relative-datetime 0     bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
+
+(t/deftest ^:parallel desugar-relative-time-interval-positive-test
+  (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
+    (let [value           10
+          bucket          :day
+          offset-value    8
+          offset-bucket   :week
+          exp-offset [:interval offset-value offset-bucket]]
+      (t/testing "expression reference is transformed correctly"
+        (let [expr-ref [:expression "cc"]]
+          (t/is (= [:and
+                    [:>= expr-ref [:+ [:relative-datetime 1           bucket] exp-offset]]
+                    [:<  expr-ref [:+ [:relative-datetime (inc value) bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval expr-ref value bucket offset-value offset-bucket])))))
+      (t/testing "field reference is transformed correctly"
+        (let [field-ref [:field 100 nil]
+              exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
+          (t/is (= [:and
+                    [:>= exp-field-ref [:+ [:relative-datetime 1           bucket] exp-offset]]
+                    [:<  exp-field-ref [:+ [:relative-datetime (inc value) bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
 
 (t/deftest ^:parallel desugar-relative-datetime-with-current-test
   (t/testing "when comparing `:relative-datetime`to `:field`, it should take the temporal unit of the `:field`"
@@ -398,13 +483,13 @@
                   [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
                   [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]]
                  (mbql.u/desugar-filter-clause
-                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ"])))
+                  [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ"])))
         (t/is (= [:and
                   [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
                   [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]
                   [:not [:contains [:field 1 nil] "LMN" {:case-sensitive false}]]]
                  (mbql.u/desugar-filter-clause
-                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ" "LMN"])))))))
+                  [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ" "LMN"])))))))
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
@@ -537,7 +622,6 @@
     (t/is (= 5
              (mbql.u/join->source-table-id (assoc join :source-query {:source-table 5}))))))
 
-
 ;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
 
 (def ^:private query-with-some-nesting
@@ -559,7 +643,6 @@
       (t/is (= expected
                (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
 
-
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (t/deftest ^:parallel uniquify-names
@@ -572,7 +655,7 @@
              (mbql.u/uniquify-names ["count" "count" "count_2"]))))
 
   (t/testing (str "for wacky DBMSes like SQL Server that return blank column names sometimes let's make sure we handle "
-                "those without exploding")
+                  "those without exploding")
     (t/is (= ["" "_2"]
              (mbql.u/uniquify-names ["" ""])))))
 
@@ -607,12 +690,12 @@
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
                 [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:count [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:avg [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:min [:field 1 nil]]]))))
+                                              [[:sum [:field 1 nil]]
+                                               [:count [:field 1 nil]]
+                                               [:sum [:field 1 nil]]
+                                               [:avg [:field 1 nil]]
+                                               [:sum [:field 1 nil]]
+                                               [:min [:field 1 nil]]]))))
 
     (t/testing "we shouldn't change the name of ones that are already named"
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
@@ -622,13 +705,12 @@
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2"}]
                 [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:count [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:avg [:field 1 nil]]
-                  [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
-                  [:min [:field 1 nil]]]))))
-
+                                              [[:sum [:field 1 nil]]
+                                               [:count [:field 1 nil]]
+                                               [:sum [:field 1 nil]]
+                                               [:avg [:field 1 nil]]
+                                               [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
+                                               [:min [:field 1 nil]]]))))
 
     (t/testing "ok, can we do the same thing as the tests above but make those names *unique* at the same time?"
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
@@ -638,12 +720,12 @@
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_3"}]
                 [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:count [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:avg [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:min [:field 1 nil]]])))
+                                                           [[:sum [:field 1 nil]]
+                                                            [:count [:field 1 nil]]
+                                                            [:sum [:field 1 nil]]
+                                                            [:avg [:field 1 nil]]
+                                                            [:sum [:field 1 nil]]
+                                                            [:min [:field 1 nil]]])))
 
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
                 [:aggregation-options [:count [:field 1 nil]] {:name "count"}]
@@ -652,31 +734,31 @@
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2_2"}]
                 [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:count [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:avg [:field 1 nil]]
-                  [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
-                  [:min [:field 1 nil]]]))))
+                                                           [[:sum [:field 1 nil]]
+                                                            [:count [:field 1 nil]]
+                                                            [:sum [:field 1 nil]]
+                                                            [:avg [:field 1 nil]]
+                                                            [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
+                                                            [:min [:field 1 nil]]]))))
 
     (t/testing (str "if `:aggregation-options` only specifies `:display-name` it should still a new `:name`. "
-                  "`pre-alias-and-uniquify-aggregations` shouldn't stomp over display name")
+                    "`pre-alias-and-uniquify-aggregations` shouldn't stomp over display name")
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
                 [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
                 [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1", :name "sum_3"}]]
                (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1"}]])))
+                                                           [[:sum [:field 1 nil]]
+                                                            [:sum [:field 1 nil]]
+                                                            [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1"}]])))
 
       (t/testing "if both are specified, `display-name` should still be propagated"
         (t/is (= [[:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
                   [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
                   [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2_2", :display-name "Sum of Field 1"}]]
                  (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                   [[:sum [:field 1 nil]]
-                    [:sum [:field 1 nil]]
-                    [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2", :display-name "Sum of Field 1"}]])))))))
+                                                             [[:sum [:field 1 nil]]
+                                                              [:sum [:field 1 nil]]
+                                                              [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2", :display-name "Sum of Field 1"}]])))))))
 
 (t/deftest ^:parallel unique-name-generator-test
   (t/testing "Can we get a simple unique name generator"
@@ -716,7 +798,6 @@
       (let [f (mbql.u/unique-name-generator :unique-alias-fn (fn [x y] (str y "~~" x)))]
         (t/is (= ["x" "2~~x"]
                  (map f ["x" "x"])))))))
-
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
@@ -876,101 +957,6 @@
             [:expression "Date" {:temporal-unit :quarter}]
             [:relative-datetime 0 :quarter]]
            (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
-
-(t/deftest ^:parallel host-regex-on-urls-test
-  (t/are [host url] (= host (re-find @#'mbql.u/host-regex url))
-    "cdbaby.com"      "https://cdbaby.com/some.txt"
-    "fema.gov"        "https://fema.gov/some/path/Vatini?search=foo"
-    "geocities.jp"    "https://www.geocities.jp/some/path/Turbitt?search=foo"
-    "jalbum.net"      "https://jalbum.net/some/path/Kirsz?search=foo"
-    "usa.gov"         "https://usa.gov/some/path/Curdell?search=foo"
-    ;; Oops, this one captures a subdomain because it can't tell va.gov is supposed to be that short.
-    "taxes.va.gov"    "http://taxes.va.gov/some/path/Marritt?search=foo"
-    "gmpg.org"        "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
-    "hatena.ne.jp"    "http://hatena.ne.jp/"
-    "telegraph.co.uk" "//telegraph.co.uk?foo=bar#tail"
-    "bbc.co.uk"       "bbc.co.uk/some/path?search=foo"
-    "bbc.co.uk"       "news.bbc.co.uk:port"))
-
-(t/deftest ^:parallel host-regex-on-emails-test
-  (t/are [host email] (= host (re-find @#'mbql.u/host-regex email))
-    "metabase.com"      "braden@metabase.com"
-    "homeoffice.gov.uk" "mholmes@homeoffice.gov.uk"
-    "someisp.com"       "john.smith@mail.someisp.com"
-    "amazon.co.uk"      "trk@amazon.co.uk"
-    "hatena.ne.jp"      "takashi@hatena.ne.jp"
-    "hatena.ne.jp"      "takashi@mail.hatena.ne.jp"
-    "ne.jp"             "takashi@www.ne.jp"))
-
-(t/deftest ^:parallel domain-regex-on-urls-test
-  (t/are [domain url] (= domain (re-find @#'mbql.u/domain-regex url))
-    "cdbaby"    "https://cdbaby.com/some.txt"
-    "fema"      "https://fema.gov/some/path/Vatini?search=foo"
-    "geocities" "https://www.geocities.jp/some/path/Turbitt?search=foo"
-    "jalbum"    "https://jalbum.net/some/path/Kirsz?search=foo"
-    "usa"       "https://usa.gov/some/path/Curdell?search=foo"
-    "taxes"     "http://taxes.va.gov/some/path/Marritt?search=foo"
-    "gmpg"      "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
-    "hatena"    "http://hatena.ne.jp/"
-    "telegraph" "//telegraph.co.uk?foo=bar#tail"
-    "bbc"       "bbc.co.uk/some/path?search=foo"))
-
-(t/deftest ^:parallel domain-regex-on-emails-test
-  (t/are [domain email] (= domain (re-find @#'mbql.u/domain-regex email))
-    "metabase"   "braden@metabase.com"
-    "homeoffice" "mholmes@homeoffice.gov.uk"
-    "someisp"    "john.smith@mail.someisp.com"
-    "amazon"     "trk@amazon.co.uk"
-    "hatena"     "takashi@hatena.ne.jp"
-    "ne"         "takashi@www.ne.jp"))
-
-(t/deftest ^:parallel subdomain-regex-on-urls-test
-  (t/are [subdomain url] (= subdomain (re-find @#'mbql.u/subdomain-regex url))
-       ;; Blanks. "www" doesn't count.
-    nil "cdbaby.com"
-    nil "https://fema.gov"
-    nil "http://www.geocities.jp"
-    nil "usa.gov/some/page.cgi.htm"
-    nil "va.gov"
-
-       ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
-    "sub"        "sub.jalbum.net"
-    "subdomains" "subdomains.go.here.jalbum.net"
-    "log"        "log.stuff.gmpg.org"
-    "log"        "https://log.stuff.gmpg.org"
-    "log"        "log.stuff.gmpg.org/some/path"
-    "log"        "log.stuff.gmpg.org?search=yes"
-
-       ;; Oops, we miss these! This is the reverse of the problem when picking the domain.
-       ;; We can't tell without maintaining a huge list that va and ne are the real domains, and not the trailing
-       ;; fragments like .co.uk - see below.
-    nil "taxes.va.gov" ; True domain is va, subdomain is taxes.
-    nil "hatena.ne.jp" ; True domain is ne, subdomain is hatena.
-
-       ;; Sometimes the second-last part is a short suffix.
-       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
-       ;; we use a best-effort matcher that gets the domain right most of the time.
-    nil         "telegraph.co.uk"
-    nil         "https://telegraph.co.uk"
-    nil         "telegraph.co.uk/some/article.php"
-    "local"     "local.news.telegraph.co.uk"
-    nil         "bbc.co.uk#fragment"
-    "video"     "video.bbc.co.uk"
-       ;; "www" is disregarded as a possible subdomain.
-    nil         "www.usa.gov"
-    nil         "www.dot.va.gov"
-    "licensing" "www.licensing.dot.va.gov"))
-
-(t/deftest ^:parallel desugar-host-and-domain-test
-  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/host-regex)]
-           (mbql.u/desugar-expression [:host [:field 1 nil]]))
-        "`host` should desugar to a `regex-match-first` clause with the host regex")
-  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/domain-regex)]
-           (mbql.u/desugar-expression [:domain [:field 1 nil]]))
-        "`domain` should desugar to a `regex-match-first` clause with the domain regex")
-  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/subdomain-regex)]
-           (mbql.u/desugar-expression [:subdomain [:field 1 nil]]))
-        "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex"))
 
 (t/deftest ^:parallel desugar-month-quarter-day-name-test
   (t/is (= [:case [[[:= [:field 1 nil] 1]  "Jan"]

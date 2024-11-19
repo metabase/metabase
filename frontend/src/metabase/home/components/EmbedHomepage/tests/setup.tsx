@@ -6,12 +6,11 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { screen, renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
-  createMockSettingDefinition,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -35,7 +34,7 @@ export async function setup({
 
   fetchMock.put("path:/api/setting/embedding-homepage", 200);
   fetchMock.post("path:/api/util/product-feedback", 200);
-  setupSettingsEndpoints([createMockSettingDefinition()]);
+  setupSettingsEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
 
   const state = createMockState({

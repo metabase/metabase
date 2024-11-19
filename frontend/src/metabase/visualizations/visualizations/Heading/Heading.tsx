@@ -14,9 +14,9 @@ import type {
 } from "metabase-types/api";
 
 import {
-  InputContainer,
-  HeadingContent,
   HeadingContainer,
+  HeadingContent,
+  InputContainer,
   TextInput,
 } from "./Heading.styled";
 

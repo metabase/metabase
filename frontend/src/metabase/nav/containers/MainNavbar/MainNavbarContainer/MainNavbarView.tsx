@@ -1,28 +1,35 @@
+import dayjs from "dayjs";
 import type { MouseEvent } from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useUserSetting } from "metabase/common/hooks";
-import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
-import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
+import ErrorBoundary from "metabase/ErrorBoundary";
+import {
+  useHasTokenFeature,
+  useSetting,
+  useUserSetting,
+} from "metabase/common/hooks";
+import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
 import {
-  getCollectionIcon,
   PERSONAL_COLLECTIONS,
+  getCollectionIcon,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
+import { getHasOwnDatabase } from "metabase/selectors/data";
+import { getIsEmbedded } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
+import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import type { IconName, IconProps } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import {
-  AddYourOwnDataLink,
   CollectionMenuList,
   CollectionsMoreIcon,
   CollectionsMoreIconContainer,
@@ -31,8 +38,12 @@ import {
   SidebarHeading,
   SidebarHeadingWrapper,
   SidebarSection,
+  TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import { AddDatabase } from "../SidebarItems/AddDatabase";
+import { DwhUploadCSV } from "../SidebarItems/DwhUploadCSV/DwhUploadCSV";
+import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -48,8 +59,8 @@ type Props = {
   currentUser: User;
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
-  hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
+  databases: Database[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -60,17 +71,16 @@ type Props = {
   }: {
     newIndex: number;
     oldIndex: number;
-  }) => void;
+  }) => Promise<any>;
 };
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
-const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
-function MainNavbarView({
+export function MainNavbarView({
   isAdmin,
   currentUser,
   bookmarks,
   collections,
-  hasOwnDatabase,
+  databases,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -81,7 +91,7 @@ function MainNavbarView({
     "expand-bookmarks-in-nav",
   );
 
-  const { canNavigateHome } = useHomepageDashboard();
+  const isAtHomepageDashboard = useIsAtHomepageDashboard();
 
   const {
     card: cardItem,
@@ -100,97 +110,159 @@ function MainNavbarView({
     (event: MouseEvent) => {
       // Prevent navigating to the dashboard homepage when a user is already there
       // https://github.com/metabase/metabase/issues/43800
-      if (!canNavigateHome) {
+      if (isAtHomepageDashboard) {
         event.preventDefault();
       }
       onItemSelect();
     },
-    [canNavigateHome, onItemSelect],
+    [isAtHomepageDashboard, onItemSelect],
   );
 
-  // Can upload CSVs if
-  // - properties.token_features.attached_dwh === true
-  // - properties.uploads-settings.db_id exists
-  // - retrieve collection using properties.uploads-settings.db_id
+  const [[trashCollection], collectionsWithoutTrash] = useMemo(
+    () => _.partition(collections, c => c.type === "trash"),
+    [collections],
+  );
+
+  const ONBOARDING_URL = "/getting-started";
+
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const instanceCreated = useSetting("instance-creation");
+
+  useEffect(() => {
+    const daysSinceCreation = dayjs().diff(dayjs(instanceCreated), "days");
+    const isNewInstance = daysSinceCreation <= 30;
+
+    if (isNewInstance) {
+      setShowOnboarding(true);
+    }
+  }, [instanceCreated]);
+
+  const isEmbedded = useSelector(getIsEmbedded);
+  const isWhiteLabelled = useSelector(getIsWhiteLabeling);
+
+  const showOnboardingChecklist =
+    isAdmin && showOnboarding && !isEmbedded && !isWhiteLabelled;
+
+  // Instances with DWH enabled already have uploads enabled by default.
+  // It is not possible to turn the uploads off, nor to delete the attached database.
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+
   const uploadDbId = useSelector(
     state => getSetting(state, "uploads-settings")?.db_id,
   );
+
   const rootCollection = collections.find(
-    ({ id, can_write }) => (id === null || id === "root") && can_write,
+    c => c.id === "root" || c.id === null,
   );
+  const canCurateRootCollection = rootCollection?.can_write;
+  const canUploadToDatabase = databases
+    ?.find(db => db.id === uploadDbId)
+    ?.canUpload();
+
+  /**
+   * the user must have:
+   *   - "write" permissions for the root collection AND
+   *   - "upload" permissions for the attached DWH
+   */
+  const canUpload = canCurateRootCollection && canUploadToDatabase;
+  const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
+
+  const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
+  const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
 
   return (
-    <SidebarContentRoot>
-      <div>
-        <SidebarSection>
-          <PaddedSidebarLink
-            isSelected={nonEntityItem?.url === "/"}
-            icon="home"
-            onClick={handleHomeClick}
-            url="/"
-          >
-            {t`Home`}
-          </PaddedSidebarLink>
-
-          {hasAttachedDWHFeature && uploadDbId && rootCollection && (
-            <UploadCSV collection={rootCollection} />
-          )}
-        </SidebarSection>
-        <SidebarSection>
-          <BrowseNavSection
-            nonEntityItem={nonEntityItem}
-            onItemSelect={onItemSelect}
-            hasDataAccess={hasDataAccess}
-          />
-          {hasDataAccess && (
-            <>
-              {!hasOwnDatabase && isAdmin && (
-                <AddYourOwnDataLink
-                  icon="add"
-                  url={ADD_YOUR_OWN_DATA_URL}
-                  isSelected={nonEntityItem?.url?.startsWith(
-                    ADD_YOUR_OWN_DATA_URL,
-                  )}
-                  onClick={onItemSelect}
-                >
-                  {t`Add your own data`}
-                </AddYourOwnDataLink>
-              )}
-            </>
-          )}
-        </SidebarSection>
-
-        {bookmarks.length > 0 && (
+    <ErrorBoundary>
+      <SidebarContentRoot>
+        <div>
           <SidebarSection>
-            <BookmarkList
-              bookmarks={bookmarks}
-              selectedItem={cardItem ?? dashboardItem ?? collectionItem}
-              onSelect={onItemSelect}
-              reorderBookmarks={reorderBookmarks}
-              onToggle={setExpandBookmarks}
-              initialState={expandBookmarks ? "expanded" : "collapsed"}
-            />
+            <PaddedSidebarLink
+              isSelected={nonEntityItem?.url === "/"}
+              icon="home"
+              onClick={handleHomeClick}
+              url="/"
+            >
+              {t`Home`}
+            </PaddedSidebarLink>
+            {showOnboardingChecklist && (
+              <PaddedSidebarLink
+                icon="learn"
+                url={ONBOARDING_URL}
+                isSelected={nonEntityItem?.url === ONBOARDING_URL}
+                onClick={() => trackOnboardingChecklistOpened()}
+              >
+                {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+                {t`How to use Metabase`}
+              </PaddedSidebarLink>
+            )}
+            {showUploadCSVButton && <DwhUploadCSV />}
           </SidebarSection>
-        )}
 
-        <SidebarSection>
-          <CollectionSectionHeading
-            currentUser={currentUser}
-            handleCreateNewCollection={handleCreateNewCollection}
-          />
-          <Tree
-            data={collections}
-            selectedId={collectionItem?.id}
-            onSelect={onItemSelect}
-            TreeNode={SidebarCollectionLink}
-            role="tree"
-            aria-label="collection-tree"
-          />
-        </SidebarSection>
-      </div>
-      <WhatsNewNotification />
-    </SidebarContentRoot>
+          {bookmarks.length > 0 && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <BookmarkList
+                  bookmarks={bookmarks}
+                  selectedItem={cardItem ?? dashboardItem ?? collectionItem}
+                  onSelect={onItemSelect}
+                  reorderBookmarks={reorderBookmarks}
+                  onToggle={setExpandBookmarks}
+                  initialState={expandBookmarks ? "expanded" : "collapsed"}
+                />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
+
+          <SidebarSection>
+            <ErrorBoundary>
+              <CollectionSectionHeading
+                currentUser={currentUser}
+                handleCreateNewCollection={handleCreateNewCollection}
+              />
+              <Tree
+                data={collectionsWithoutTrash}
+                selectedId={collectionItem?.id}
+                onSelect={onItemSelect}
+                TreeNode={SidebarCollectionLink}
+                role="tree"
+                aria-label="collection-tree"
+              />
+            </ErrorBoundary>
+          </SidebarSection>
+
+          <SidebarSection>
+            <ErrorBoundary>
+              <BrowseNavSection
+                nonEntityItem={nonEntityItem}
+                onItemSelect={onItemSelect}
+                hasDataAccess={hasDataAccess}
+              />
+            </ErrorBoundary>
+          </SidebarSection>
+
+          {trashCollection && (
+            <TrashSidebarSection>
+              <ErrorBoundary>
+                <Tree
+                  data={[trashCollection]}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                />
+              </ErrorBoundary>
+            </TrashSidebarSection>
+          )}
+          {showAddDatabaseButton && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <AddDatabase />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
+        </div>
+        <WhatsNewNotification />
+      </SidebarContentRoot>
+    </ErrorBoundary>
   );
 }
 interface CollectionSectionHeadingProps {
@@ -245,5 +317,3 @@ function CollectionSectionHeading({
     </SidebarHeadingWrapper>
   );
 }
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MainNavbarView;

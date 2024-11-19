@@ -6,20 +6,20 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
-  DashboardId,
   DashCardId,
+  DashboardId,
   UnsavedCard,
 } from "metabase-types/api";
 import {
   createMockCard,
-  createMockUnsavedCard,
   createMockDataset,
   createMockStructuredDatasetQuery,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -121,6 +121,8 @@ describe("metabase/services > runQuestionQuery", () => {
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
+        pivot_cols: [],
+        pivot_rows: [],
       });
     });
 
@@ -159,6 +161,8 @@ describe("metabase/services > runQuestionQuery", () => {
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
+        pivot_cols: [],
+        pivot_rows: [],
       });
     });
   });
@@ -185,6 +189,8 @@ describe("metabase/services > runQuestionQuery", () => {
       expect(await call?.request?.json()).toEqual({
         ...question.datasetQuery(),
         parameters: [],
+        pivot_cols: [],
+        pivot_rows: [],
       });
     });
 

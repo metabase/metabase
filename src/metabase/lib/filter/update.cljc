@@ -27,15 +27,15 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.time :as u.time]))
 
 (defn- is-ref-for-column? [expr column]
   (and (lib.util/clause-of-type? expr :field)
        (lib.equality/find-matching-column expr [column])))
 
-(mu/defn ^:private remove-existing-filters-against-column :- ::lib.schema/query
+(mu/defn- remove-existing-filters-against-column :- ::lib.schema/query
   "Remove any existing filters clauses that use `column` as the first arg in a stage of a `query`."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -84,21 +84,21 @@
   (let [units [:minute :hour :day :week :month :quarter :year]]
     (zipmap units (cons nil units))))
 
-(mu/defn ^:private temporal-filter-find-best-breakout-unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
+(mu/defn- temporal-filter-find-best-breakout-unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
   "If the current breakout `unit` will not return at least [[temporal-filter-min-num-points]], find the largest unit
   that will."
   [unit  :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
    start :- ::lib.schema.literal/temporal
    end   :- ::lib.schema.literal/temporal]
   (loop [unit unit]
-    (let [num-points      (shared.ut/unit-diff unit start end)
+    (let [num-points      (u.time/unit-diff unit start end)
           too-few-points? (< num-points temporal-filter-min-num-points)]
       (if-let [next-largest-unit (when too-few-points?
                                    (unit->next-unit unit))]
         (recur next-largest-unit)
         unit))))
 
-(mu/defn ^:private temporal-filter-update-breakouts :- ::lib.schema/query
+(mu/defn- temporal-filter-update-breakouts :- ::lib.schema/query
   "Update the first breakout against `column` so it uses `new-unit` rather than the original unit (if any); remove all
   other breakouts against that column."
   [query        :- ::lib.schema/query
@@ -163,7 +163,7 @@
                          :cljs (fn [t]
                                  (cond-> t
                                    (not (string? t))
-                                   (shared.ut/format-for-base-type ((some-fn :effective-type :base-type) temporal-column)))))
+                                   (u.time/format-for-base-type ((some-fn :effective-type :base-type) temporal-column)))))
          start        (maybe-string start)
          end          (maybe-string end)]
      (if-not unit
@@ -174,8 +174,8 @@
        (let [;; clamp range to unit to ensure we select exactly what's represented by the dots/bars. E.g. if I draw my
              ;; filter from `2024-01-02` to `2024-03-05` and the unit is `:month`, we should only show the months
              ;; between those two values, i.e. only `2024-02` and `2024-03`.
-             start         (shared.ut/truncate (shared.ut/add start unit 1) unit)
-             end           (shared.ut/truncate end unit)
+             start         (u.time/truncate (u.time/add start unit 1) unit)
+             end           (u.time/truncate end unit)
              ;; update the breakout unit if appropriate.
              breakout-unit (temporal-filter-find-best-breakout-unit unit start end)
              query         (if (= unit breakout-unit)

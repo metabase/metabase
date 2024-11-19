@@ -6,27 +6,27 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
+import { turnQuestionIntoModel } from "metabase/query_builder/actions";
 
 import {
-  FeatureOverviewContainer,
   DatasetImg,
   DatasetTitle,
   DatasetValueProp,
+  FeatureOverviewContainer,
 } from "./NewDatasetModal.styled";
 
 const propTypes = {
-  turnQuestionIntoDataset: PropTypes.func.isRequired,
+  turnQuestionIntoModel: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 
 const mapDispatchToProps = {
-  turnQuestionIntoDataset,
+  turnQuestionIntoModel,
 };
 
-function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
+function NewDatasetModal({ turnQuestionIntoModel, onClose }) {
   const onConfirm = () => {
-    turnQuestionIntoDataset();
+    turnQuestionIntoModel();
     onClose();
   };
 

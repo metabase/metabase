@@ -2,7 +2,6 @@
   "/api/card endpoints."
   (:require
    [cheshire.core :as json]
-   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -23,6 +22,7 @@
    [metabase.models :refer [Card CardBookmark Collection Database
                             PersistedInfo Table]]
    [metabase.models.card :as card]
+   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -191,10 +191,13 @@
                     :parameter_usage_count
                     :can_restore
                     :can_delete
+                    :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
-        (cond->                                             ; card
-          (card/model? card) (t2/hydrate :persisted)))))
+        (cond->
+         (card/model? card) (t2/hydrate :persisted
+                                        ;; can_manage_db determines whether we should enable model persistence settings
+                                        :can_manage_db)))))
 
 (defn get-card
   "Get `Card` with ID."
@@ -223,7 +226,9 @@
                                 :user-id api/*current-user-id*
                                 :context (or context :question)})))))
 
-(defn- dataset-query->query [metadata-provider dataset-query]
+(defn- dataset-query->query
+  "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
+  [metadata-provider dataset-query]
   (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)]
     (lib/query metadata-provider pMBQL-query)))
 
@@ -280,7 +285,7 @@
 (defmulti series-are-compatible?
   "Check if the `second-card` is compatible to be used as series of `card`."
   (fn [card _second-card _database-id->metadata-provider]
-   (:display card)))
+    (:display card)))
 
 (defmethod series-are-compatible? :area
   [first-card second-card database-id->metadata-provider]
@@ -332,7 +337,7 @@
         database-ids (set (keys database-id->metadata-provider))
         database-id->metadata-provider (->> matching-cards
                                             (filter #(or (nil? (get-in % [:visualization_settings :graph.metrics]))
-                                                       (nil? (get-in % [:visualization_settings :graph.dimensions]))))
+                                                         (nil? (get-in % [:visualization_settings :graph.dimensions]))))
                                             (keep :database_id)
                                             (set)
                                             (remove #(contains? database-ids %))
@@ -344,8 +349,8 @@
                                          ;; columns name on native query are not match with the column name in viz-settings. why??
                                          ;; so we can't use series-are-compatible? to filter out incompatible native cards.
                                          ;; => we assume all native queries are compatible and FE will figure it out later
-                                         (= (:query_type %) :native)
-                                         (series-are-compatible? card % database-id->metadata-provider))))]
+                                        (= (:query_type %) :native)
+                                        (series-are-compatible? card % database-id->metadata-provider))))]
     (if page-size
       [database-id->metadata-provider (take page-size compatible-cards)]
       [database-id->metadata-provider compatible-cards])))
@@ -360,10 +365,10 @@
   - page-size:   is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
   ([card options]
    (fetch-compatible-series
-     card
-     options
-     {(:database_id card) (lib.metadata.jvm/application-database-metadata-provider (:database_id card))}
-     []))
+    card
+    options
+    {(:database_id card) (lib.metadata.jvm/application-database-metadata-provider (:database_id card))}
+    []))
 
   ([card {:keys [page-size] :as options} database-id->metadata-provider current-cards]
    (let [[database-id->metadata-provider cards] (fetch-compatible-series* card database-id->metadata-provider options)
@@ -425,17 +430,16 @@
                                         :events/start     (when start (u.date/parse start))
                                         :events/end       (when end (u.date/parse end))})))
 
-
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
-(defn check-data-permissions-for-query
-  "Make sure the Current User has the appropriate *data* permissions to run `query`. We don't want Users saving Cards
-  with queries they wouldn't be allowed to run!"
+(defn check-permissions-for-query
+  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
+  queries they wouldn't be allowed to run!"
   [query]
   {:pre [(map? query)]}
   (when-not (query-perms/can-run-query? query)
     (let [required-perms (try
-                           (query-perms/required-perms query :throw-exceptions? true)
+                           (query-perms/required-perms-for-query query :throw-exceptions? true)
                            (catch Throwable e
                              e))]
       (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
@@ -451,7 +455,7 @@
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (mr/def ::card-type
-  (into [:enum {:decode/json keyword}] (mapcat (juxt identity u/qualified-name)) card/card-types))
+  (into [:enum {:decode/json keyword}] card/card-types))
 
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
@@ -463,7 +467,7 @@
                        :status-code 400})))))
 
 (api/defendpoint POST "/"
-  "Create a new `Card`."
+  "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
@@ -480,7 +484,7 @@
    cache_ttl              [:maybe ms/PositiveInt]}
   (check-if-card-can-be-saved dataset_query type)
   ;; check that we have permissions to run the query that we're trying to save
-  (check-data-permissions-for-query dataset_query)
+  (check-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   (let [body (cond-> body
@@ -494,7 +498,7 @@
   [id]
   {id [:maybe ms/PositiveInt]}
   (let [orig-card (api/read-check Card id)
-        new-name  (str (trs "Copy of ") (:name orig-card))
+        new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
@@ -507,7 +511,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query compatibility/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (check-data-permissions-for-query (:dataset_query card-updates)))))
+      (check-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -547,46 +551,40 @@
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
-    ;; Can't move a card to the trash
-    (when (and collection_id (= collection_id (collection/trash-collection-id)))
-      (throw (ex-info (tru "Cannot move a card to the trash collection.")
-                      {:status-code 400})))
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
-    ;; make sure we have the correct `result_metadata`
-    (let [result-metadata-chan  (card/result-metadata-async {:original-query    (:dataset_query card-before-update)
-                                                             :query             dataset_query
-                                                             :metadata          result_metadata
-                                                             :original-metadata (:result_metadata card-before-update)
-                                                             :dataset?          is-model-after-update?})
-          card-updates          (merge card-updates
-                                       (when (and (some? type)
-                                                  is-model-after-update?)
-                                         {:display :table}))
-          metadata-timeout      (a/timeout card/metadata-sync-wait-ms)
-          [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
-          timed-out?            (= port metadata-timeout)
-          card-updates          (cond-> card-updates
-                                  (not timed-out?)
-                                  (assoc :result_metadata fresh-metadata
-                                         :verified-result-metadata? true))]
-      (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
-                                       :card-updates       card-updates
-                                       :actor              @api/*current-user*})
-                   hydrate-card-details
-                   (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
-        (when timed-out?
-          (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
-          (card/schedule-metadata-saving result-metadata-chan <>))))))
+    (let [{:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
+                                              {:original-query    (:dataset_query card-before-update)
+                                               :query             dataset_query
+                                               :metadata          result_metadata
+                                               :original-metadata (:result_metadata card-before-update)
+                                               :model?            is-model-after-update?})
+          card-updates                       (merge card-updates
+                                                    (when (and (some? type)
+                                                               is-model-after-update?)
+                                                      {:display :table}))
+          card-updates                       (cond-> card-updates
+                                               metadata
+                                               (assoc :result_metadata           metadata
+                                                      :verified-result-metadata? true))
+          card                               (-> (card/update-card! {:card-before-update card-before-update
+                                                                     :card-updates       card-updates
+                                                                     :actor              @api/*current-user*})
+                                                 hydrate-card-details
+                                                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
+      (when metadata-future
+        (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
+        (card.metadata/save-metadata-async! metadata-future card))
+      card)))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for a card."
   [id]
   {id ms/PositiveInt}
-  (api.query-metadata/card-metadata (get-card id)))
+  (api.query-metadata/batch-fetch-card-metadata [(get-card id)]))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -610,7 +608,7 @@
   ;; Sorting by `:collection_position` to ensure lower position cards are appended first
   (let [sorted-cards        (sort-by :collection_position cards)
         max-position-result (t2/select-one [Card [:%max.collection_position :max_position]]
-                              :collection_id new-collection-id-or-nil)
+                                           :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
 
@@ -640,10 +638,10 @@
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards (t2/select [Card :id :collection_id :collection_position :dataset_query]
-                  {:where [:and [:in :id (set card-ids)]
-                                [:or [:not= :collection_id new-collection-id-or-nil]
-                                  (when new-collection-id-or-nil
-                                    [:= :collection_id nil])]]})] ; poisioned NULLs = ick
+                           {:where [:and [:in :id (set card-ids)]
+                                    [:or [:not= :collection_id new-collection-id-or-nil]
+                                     (when new-collection-id-or-nil
+                                       [:= :collection_id nil])]]})] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
@@ -680,9 +678,7 @@
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
-
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
-
 
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
@@ -709,10 +705,11 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [card-id export-format :as {{:keys [parameters format_rows]} :params}]
+  [card-id export-format :as {{:keys [parameters pivot_results format_rows]} :params}]
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
-   format_rows   [:maybe :boolean]
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
@@ -722,7 +719,8 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           format_rows
+                 :format-rows?           (or format_rows false)
+                 :pivot?                 (or pivot_results false)
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
@@ -777,9 +775,9 @@
   {card-id      ms/PositiveInt
    ignore_cache [:maybe :boolean]}
   (qp.card/process-query-for-card card-id :api
-                                    :parameters   parameters
-                                    :qp           qp.pivot/run-pivot-query
-                                    :ignore-cache ignore_cache))
+                                  :parameters   parameters
+                                  :qp           qp.pivot/run-pivot-query
+                                  :ignore-cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
@@ -895,8 +893,9 @@
                                             :db-id         (or (:db_id uploads-db-settings)
                                                                (throw (ex-info (tru "The uploads database is not configured.")
                                                                                {:status-code 422})))})]
-      {:status 200
-       :body   (:id model)})
+      {:status  200
+       :body    (:id model)
+       :headers {"metabase-table-id" (str (:table-id model))}})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)

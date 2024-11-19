@@ -9,11 +9,10 @@ redirect_from:
 For an introduction to expressions, check out the [overview of custom expressions][expressions].
 
 - [Aggregations](#aggregations)
+
   - [Average](#average)
   - [Count](#count)
   - [CountIf](./expressions/countif.md)
-  - [CumulativeCount](#cumulativecount)
-  - [CumulativeSum](#cumulativesum)
   - [Distinct](#distinct)
   - [Max](#max)
   - [Median](#median)
@@ -24,9 +23,13 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Sum](#sum)
   - [SumIf](./expressions/sumif.md)
   - [Variance](#variance)
+  - [CumulativeSum](./expressions/cumulative.md)
+  - [CumulativeCount](./expressions/cumulative.md)
 
 - Functions
+
   - [Logical functions](#logical-functions)
+
     - [between](#between)
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
@@ -34,6 +37,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [notnull](#notnull)
 
   - [Math functions](#math-functions)
+
     - [abs](#abs)
     - [ceil](#ceil)
     - [exp](#exp)
@@ -44,6 +48,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [sqrt](#sqrt)
 
   - [String functions](#string-functions)
+
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [doesNotContain](#doesnotcontain)
@@ -62,6 +67,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [upper](#upper)
 
   - [Date functions](#date-functions)
+
     - [convertTimezone](./expressions/converttimezone.md)
     - [datetimeAdd](./expressions/datetimeadd.md)
     - [datetimeDiff](./expressions/datetimediff.md)
@@ -80,7 +86,9 @@ For an introduction to expressions, check out the [overview of custom expression
     - [year](#year)
 
   - [Window functions](#window-functions)
-    - [Offset](#offset)
+    - [Offset](./expressions/offset.md)
+    - [CumulativeCount](./expressions/cumulative.md)
+    - [CumulativeSum](./expressions/cumulative.md)
 
 - [Limitations](#limitations)
   - [Database limitations](#database-limitations)
@@ -113,24 +121,6 @@ Syntax: `CountIf(condition)`.
 
 Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
 
-### CumulativeCount
-
-The additive total of rows across a breakout.
-
-Syntax: `CumulativeCount`.
-
-Example: `CumulativeCount`.
-
-### CumulativeSum
-
-The rolling sum of a column across a breakout.
-
-Syntax: `CumulativeSum(column)`.
-
-Example: `CumulativeSum([Subtotal])`.
-
-Related: [Sum](#sum) and [SumIf](#sumif).
-
 ### Distinct
 
 The number of distinct values in this column.
@@ -157,7 +147,7 @@ Syntax: `Median(column)`.
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: SQLite, Vertica, SQL server, MySQL. Presto only provides approximate results.
+Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -179,7 +169,7 @@ Syntax: `Percentile(column, percentile-value)`
 
 Example: `Percentile([Score], 0.9)` would return the value at the 90th percentile for all values in that column.
 
-Databases that don't support `percentile`: H2, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
+Databases that don't support `percentile`: Druid, H2, MariaDB, MySQL, MongoDB, SQL Server, SQLite, Vertica. Presto only provides approximate results.
 
 ### Share
 
@@ -196,6 +186,8 @@ Calculates the standard deviation of the column, which is a measure of the varia
 Syntax: `StandardDeviation(column)`
 
 Example: `StandardDeviation([Population])` would return the SD for the values in the `Population` column.
+
+Databases that don't support `StandardDeviation`: Druid, SQLite.
 
 ### Sum
 
@@ -223,11 +215,14 @@ Example: `Variance([Temperature])` will return a measure of the dispersion from 
 
 Related: [StandardDeviation](#standarddeviation), [Average](#average).
 
+Databases that don't support `Variance`: Druid, SQLite.
+
 ## Functions
 
 Function expressions apply to each individual value. They can be used to alter or filter values in a column, or create new, custom columns.
 
 ## Logical functions
+
 Logical functions determine if a condition is satisfied or determine what value to return based on a condition.
 
 ### between
@@ -277,6 +272,7 @@ Example: `notnull([Tax])` would return true if there is a value present in the c
 Related: [isnull](#isnull), [notempty](#notempty)
 
 ## Math functions
+
 Math functions implement common mathematical operations.
 
 ### abs
@@ -360,6 +356,7 @@ Databases that don't support `sqrt`: SQLite.
 Related: [Power](#power).
 
 ## String functions
+
 String functions manipulate or validate string data.
 
 ### [concat](./expressions/concat.md)
@@ -400,23 +397,22 @@ Syntax: `doesNotContain(string1, string2)` for case-sensitive match.
 
 Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the expression would return `false`.
 
-Related: [contains](#contains),  [regexextract](#regexextract).
+Related: [contains](#contains), [regexextract](#regexextract).
 
 ### endsWith
 
 Returns true if the end of the text matches the comparison text.
 
- Performs case-sensitive match by default.
+Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
 Syntax: `endsWith(text, comparison)` for case-sensitive match.
 
- `endsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+`endsWith(text, comparison, "case-insensitive")` for case-insensitive match.
 
 Example: `endsWith([Appetite], "hungry")`
 
 Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
-
 
 ### [isempty](./expressions/isempty.md)
 
@@ -464,11 +460,11 @@ Syntax: `notempty(column)`
 
 Example: `notempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
 
-
 Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
 
-
 ### [regexextract](./expressions/regexextract.md)
+
+> ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
 
 Extracts matching substrings according to a regular expression.
 
@@ -505,14 +501,13 @@ You can pass an optional parameter `"case-insensitive"` to perform a case-insens
 
 Syntax: `startsWith(text, comparison)` for case-sensitive match.
 
- `startsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+`startsWith(text, comparison, "case-insensitive")` for case-insensitive match.
 
 Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
 
- It would return false for "Computer **s**cience 201: Data structures" because the case of "science" does not match the case in the comparison text.
+It would return false for "Computer **s**cience 201: Data structures" because the case of "science" does not match the case in the comparison text.
 
 `startsWith([Course Name], "Computer Science", "case-insensitive")` would return true for both "Computer Science 101: An introduction" and "Computer science 201: Data structures".
-
 
 Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
@@ -543,6 +538,7 @@ Syntax: `upper(text)`.
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
 
 ## Date functions
+
 Date functions manipulate, extract, or create date and time values.
 
 ### [convertTimezone](./expressions/converttimezone.md)
@@ -563,6 +559,8 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
+`amount` must be an integer, not a fractional number. For example, you cannot add "half a year" (0.5).
+
 Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
 ### [datetimeDiff](./expressions/datetimediff.md)
@@ -573,6 +571,8 @@ Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
+See the [database limitations](./expressions/datetimediff.md#limitations) for `datetimediff`.
+
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
 Subtracts some unit of time from a date or timestamp value.
@@ -580,6 +580,8 @@ Subtracts some unit of time from a date or timestamp value.
 Syntax: `datetimeSubtract(column, amount, unit)`.
 
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
+
+`amount` must be an integer, not a fractional number. For example, you cannot subtract "half a year" (0.5).
 
 Related: [between](#between), [datetimeAdd](#datetimeadd).
 
@@ -606,6 +608,8 @@ Checks a date column's values to see if they're within the relative range.
 Syntax: `interval(column, number, text)`.
 
 Example: `interval([Created At], -1, "month")`.
+
+The `number` must be an integer. You cannot use a fractional value.
 
 Related: [between](#between).
 
@@ -645,7 +649,7 @@ Gets a timestamp relative to the current time.
 
 Syntax: `relativeDateTime(number, text)`
 
-`number`: Period of interval, where negative values are back in time.
+`number`: Period of interval, where negative values are back in time. The `number` must be an integer. You cannot use a fractional value.
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
@@ -669,7 +673,7 @@ Gets a time interval of specified length.
 
 Syntax: `timeSpan(number, text)`.
 
-`number`: Period of interval, where negative values are back in time.
+`number`: Period of interval, where negative values are back in time. The `number` must be an integer. You cannot use a fractional value.
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
@@ -720,7 +724,35 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 
 ## Window functions
 
+Window functions can only be used in the **Summarize** section. They cannot be used to create a custom column or a custom filter.
+
+### CumulativeCount
+
+For more info, check out our page on [cumulative functions](./expressions/cumulative.md).
+
+The additive total of rows across a breakout.
+
+Syntax: `CumulativeCount`.
+
+Example: `CumulativeCount`.
+
+### CumulativeSum
+
+For more info, check out our page on [cumulative functions](./expressions/cumulative.md).
+
+The rolling sum of a column across a breakout.
+
+Syntax: `CumulativeSum(column)`.
+
+Example: `CumulativeSum([Subtotal])`.
+
+Related: [Sum](#sum) and [SumIf](#sumif).
+
 ### Offset
+
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
+
+For more info, check out our page on [Offset](./expressions/offset.md).
 
 Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
@@ -732,36 +764,42 @@ The `rowOffset` is the number relative to the current row. For example, `-1` for
 
 Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the previous row.
 
-See [Offset](./expressions/offset.md).
-
 ## Limitations
 
-- [Aggregation expressions](#aggregations)  can only be used in the **Summarize** section of the query builder.
-- Functions that return a boolean value, like [isempty](#isempty) or [contains](#contains), cannot be used to create a custom column. To create a custom column based on one of these functions, you must combine them with another function, like `case`.
+- [Aggregation expressions](#aggregations) can only be used in the **Summarize** section of the query builder.
 
-For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
-```
-case(contains([Title], 'Wallet'), true, false)
-```
-
-### Database limitations
+## Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`.
 
-**MySQL/MariaDB**: `Median`, `Percentile`.
+**Athena**: `convertTimezone`.
 
-**SQL Server**: `Median`, `Percentile` and `regexextract`
+**Databricks**: `convertTimezone`.
 
-**SQLite**: `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`
+**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`. Function `regexextract` is only available for the Druid-JDBC driver.
 
-**Vertica**: `Median` and `Percentile`
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexextract`
 
-Additionally, **Presto** only provides _approximate_ results for `Median` and `Percentile`.
+**MariaDB**: `Median`, `Percentile`, `Offset`.
+
+**MySQL**: `Median`, `Percentile`, `Offset`.
+
+**Presto**: `convertTimezone`. Only provides _approximate_ results for `Median` and `Percentile`.
+
+**Redshift**: `Average` will return [integer results for integer columns](https://docs.aws.amazon.com/redshift/latest/dg/r_AVG.html#r_AVG-data-types).
+
+**SparkSQL**: `convertTimezone`.
+
+**SQL Server**: `Median`, `Percentile` and `regexextract`.
+
+**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`.
+
+**Vertica**: `Median` and `Percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
+Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
 
 [expressions]: ./expressions.md

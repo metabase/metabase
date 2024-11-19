@@ -1,18 +1,19 @@
 import {
+  describeEE,
   modal,
   popover,
   restore,
-  describeEE,
+  setTokenFeatures,
   setupLdap,
   typeAndBlurUsingLabel,
-  setTokenFeatures,
+  updateSetting,
 } from "e2e/support/helpers";
 
 import {
-  crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
+  crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
-import { getUserProvisioningInput, getSuccessUi } from "./shared/helpers";
+import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
 describe(
   "scenarios > admin > settings > SSO > LDAP",
@@ -188,7 +189,7 @@ describeEE(
 
     it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
       setupLdap();
-      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
+      updateSetting("enable-password-login", false);
       cy.signOut();
       cy.visit("/auth/login");
 

@@ -301,6 +301,16 @@
                                              (u/the-id collection)]
                                             :read))))))))
 
+(set! *warn-on-reflection* true)
+
+(defn- update-graph-and-wait!
+  "`graph/update-graph!` updates the before and after values in the graph asyncronously, so we need to wait for them to be written"
+  ([new-graph] (update-graph-and-wait! nil new-graph))
+  ([namespaze new-graph]
+   (when-let [future (graph/update-graph! namespaze new-graph false)]
+     ;; Block until the entire graph has been `filled-in!`
+     @future)))
+
 (deftest collection-namespace-test
   (testing "The permissions graph should be namespace-aware.\n"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -339,7 +349,7 @@
           (mt/with-test-user :crowberto
             (testing "Should be able to update the graph for the default namespace.\n"
               (let [before (graph/graph)]
-                (graph/update-graph! (assoc (graph/graph) :groups {group-id {default-ab :write, currency-ab :write}}))
+                (update-graph-and-wait! (assoc before :groups {group-id {default-ab :write, currency-ab :write}}))
                 (is (= {"Default A" :read, "Default A -> B" :write, :root :none}
                        (nice-graph (graph/graph))))
 
@@ -358,7 +368,7 @@
 
             (testing "Should be able to update the graph for a non-default namespace.\n"
               (let [before (graph/graph :currency)]
-                (graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}))
+                @(graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
                 (is (= {"Currency A" :write, "Currency A -> B" :read, :root :none}
                        (nice-graph (graph/graph :currency))))
 
@@ -376,7 +386,7 @@
                               (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "should be able to update permissions for the Root Collection in the default namespace via the graph"
-              (graph/update-graph! (assoc (graph/graph) :groups {group-id {:root :read}}))
+              (update-graph-and-wait! (assoc (graph/graph) :groups {group-id {:root :read}}))
               (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
                      (nice-graph (graph/graph))))
 
@@ -391,7 +401,7 @@
                         (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
 
             (testing "should be able to update permissions for Root Collection in non-default namespace"
-              (graph/update-graph! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
+              (update-graph-and-wait! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
               (is (= {:root :write, "Currency A" :write, "Currency A -> B" :read}
                      (nice-graph (graph/graph :currency))))
 
@@ -435,3 +445,18 @@
     (with-n-temp-users-with-personal-collections 2000
       (is (>= (t2/count Collection :personal_owner_id [:not= nil]) 2000))
       (is (map? (graph/graph))))))
+
+(deftest async-perm-graph-revisions
+  (testing "A CollectionPermissionGraphRevision should be saved when the graph is updated, even if it takes a while."
+    (clear-graph-revisions!)
+    (binding [*current-user-id* (mt/user->id :crowberto)]
+      (mt/with-temp [:model/Collection {collection-id :id} {:location "/"}]
+        (let [all-users-group-id (u/the-id (perms-group/all-users))
+              ;; Remove the group's permissions for the `:root` collection:
+              _ (perms/revoke-collection-permissions! all-users-group-id collection-id)
+              before (graph/graph)
+              new-graph (assoc before :groups {(u/the-id (perms-group/all-users)) {collection-id :read}})]
+          @(graph/update-graph! new-graph)
+          (is (malli= [:map [:id :int] [:user_id :int] [:before :some] [:after :some]]
+                      (t2/select-one :model/CollectionPermissionGraphRevision (inc (:revision before))))
+              "Values for before and after should be present in the revision."))))))

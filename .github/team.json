@@ -1,15 +1,24 @@
 {
   "teams": [
     {
-      "name": "Querying Components",
-      "label": ".Team/QueryingComponents",
+      "name": "Querying",
+      "label": ".Team/Querying",
+      "projectUrl": "https://github.com/orgs/metabase/projects/97/views/1",
       "members": [
         "ranquild",
-        "uladzimirdev",
         "kamilmielnik",
-        "nemanjaglumac",
-        "romeovs"
+        "romeovs",
+        "bshepherdson",
+        "metamben",
+        "lbrdnk",
+        "appleby",
+        "uladzimirdev"
       ]
+    },
+    {
+      "name": "Drivers",
+      "label": ".Team/Drivers",
+      "members": ["snoe"]
     },
     {
       "name": "Embedding",
@@ -22,18 +31,10 @@
       "label": ".Team/BackendComponents",
       "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
       "members": [
-        "tsmacdonald",
         "qnkhuat",
-        "calherries",
         "piranha",
         "crisptrutski"
       ]
-    },
-    {
-      "name": "Query Processor",
-      "label": ".Team/QueryProcessor",
-      "projectUrl": "https://github.com/orgs/metabase/projects/83/views/8",
-      "members": ["camsaul", "snoe", "bshepherdson", "metamben", "lbrdnk"]
     },
     {
       "name": "Admin Webapp",
@@ -44,7 +45,8 @@
         "npfitz",
         "johnswanson",
         "rafpaf",
-        "sloansparger"
+        "sloansparger",
+        "iethree"
       ]
     },
     {
@@ -52,8 +54,6 @@
       "label": ".Team/DashViz",
       "members": [
         "alxnddr",
-        "EmmadUsmani",
-        "JesseSDevaney",
         "kulyk",
         "adam-james-v"
       ]
@@ -62,7 +62,7 @@
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "iethree"
+        "camsaul"
       ]
     }
   ]

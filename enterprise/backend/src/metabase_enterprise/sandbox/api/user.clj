@@ -12,10 +12,10 @@
 
 (def ^:private UserAttributes
   (mu/with-api-error-message
-    [:map-of
-     :keyword
-     :any]
-    (deferred-tru "value must be a valid user attributes map (name -> value)")))
+   [:map-of
+    :keyword
+    :any]
+   (deferred-tru "value must be a valid user attributes map (name -> value)")))
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id
 ;; endpoint

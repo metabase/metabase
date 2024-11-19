@@ -2,6 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type {
@@ -49,27 +50,28 @@ export interface SetupOpts {
   hasEnterprisePlugins?: boolean;
 }
 
-export async function setup(
-  {
-    props: {
-      resourceType = "dashboard",
-      resource = getMockResource(resourceType),
-      resourceParameters = [],
-      onUpdateEmbeddingParams = jest.fn(),
-      onUpdateEnableEmbedding = jest.fn(),
-    },
-    activeTab = "Overview",
-    hasEnterprisePlugins = false,
-    tokenFeatures = createMockTokenFeatures(),
-  }: {
-    props: Partial<StaticEmbedSetupPaneProps>;
-    activeTab?: "Overview" | "Parameters" | "Appearance";
-    hasEnterprisePlugins?: boolean;
-    tokenFeatures?: TokenFeatures;
-  } = {
-    props: {},
-  },
-) {
+export async function setup({
+  props: {
+    resourceType = "dashboard",
+    resource = getMockResource(resourceType),
+    resourceParameters = [],
+    onUpdateEmbeddingParams = jest.fn(),
+    onUpdateEnableEmbedding = jest.fn(),
+  } = {},
+  activeTab = "Overview",
+  hasEnterprisePlugins = false,
+  tokenFeatures = createMockTokenFeatures(),
+}: {
+  props: Partial<StaticEmbedSetupPaneProps>;
+  activeTab?: "Overview" | "Parameters" | "Look and Feel";
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: TokenFeatures;
+}) {
+  setupParameterValuesEndpoints({
+    values: [],
+    has_more_values: false,
+  });
+
   const settings = mockSettings({
     "enable-embedding": true,
     "embedding-secret-key": "my_super_secret_key",

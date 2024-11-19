@@ -2,8 +2,8 @@ import styled from "@emotion/styled";
 
 import { GridItem } from "metabase/components/Grid";
 import {
-  breakpointMinSmall,
   breakpointMinMedium,
+  breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
 export const CollectionGridItem = styled(GridItem)`

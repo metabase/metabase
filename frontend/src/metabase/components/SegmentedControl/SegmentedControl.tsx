@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import type * as React from "react";
 import { useMemo } from "react";
 import _ from "underscore";
@@ -6,24 +5,12 @@ import _ from "underscore";
 import type { IconName } from "metabase/ui";
 
 import {
-  SegmentedList,
+  ItemIcon,
+  SegmentedControlRadio,
   SegmentedItem,
   SegmentedItemLabel,
-  SegmentedControlRadio,
-  ItemIcon,
+  SegmentedList,
 } from "./SegmentedControl.styled";
-
-export const optionShape = PropTypes.shape({
-  name: PropTypes.node,
-  value: PropTypes.any,
-  icon: PropTypes.string,
-  iconSize: PropTypes.number,
-
-  // Expects a color alias, not a color code
-  // Example: brand, accent1, success
-  // Won't work: red, #000, rgb(0, 0, 0)
-  selectedColor: PropTypes.string,
-});
 
 type SegmentedControlValue = string | number;
 
@@ -39,7 +26,7 @@ export type SegmentedControlOption<Value extends SegmentedControlValue> = {
   selectedColor?: string;
 };
 
-interface Props<Value extends SegmentedControlValue> {
+export interface SegmentedControlProps<Value extends SegmentedControlValue> {
   name?: string;
   value?: Value;
   options: SegmentedControlOption<Value>[];
@@ -60,7 +47,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
   inactiveColor = "text-dark",
   variant = "fill-background",
   ...props
-}: Props<Value>) {
+}: SegmentedControlProps<Value>) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
   const name = nameProp || id;
   const selectedOptionIndex = options.findIndex(

@@ -2,12 +2,33 @@ name: E2E Cross-version Tests
 
 on:
   schedule:
-    - cron: '0 9 * * 0'
+    - cron: '0 9 * * 1-5'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
-  cross-version-testing:
+  files-changed:
+    name: Check which files changed
+    # don't run this workflow on a cron for forks
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 3
+    outputs:
+      e2e_cross_version: ${{ steps.changes.outputs.e2e_cross_version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  cross-version-testing:
+    needs: files-changed
+    if: ${{ needs.files-changed.outputs.e2e_cross_version == 'true' || github.event_name == 'schedule'}}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
     strategy:
       matrix:
         version: [
@@ -52,11 +73,12 @@ jobs:
     - name: Wait for Metabase to start on port 3000
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
     - name: Prepare Cypress environment
+      id: cypress-prep
       uses: ./.github/actions/prepare-cypress
     - name: Run Cypress on the source
       run: |
         yarn cypress run \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --config-file e2e/test/scenarios/cross-version/source/shared/cross-version-source.config.js \
           --spec e2e/test/scenarios/cross-version/source/**/*.cy.spec.js
     - name: Stop Metabase ${{ matrix.version.source }}
@@ -84,7 +106,7 @@ jobs:
     - name: Run Cypress on the target
       run: |
         yarn cypress run \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --config-file e2e/test/scenarios/cross-version/target/shared/cross-version-target.config.js \
           --spec e2e/test/scenarios/cross-version/target/**/*.cy.spec.js
     - name: Upload Cypress Artifacts upon failure
@@ -97,20 +119,11 @@ jobs:
         if-no-files-found: ignore
   notify-on-failure:
     needs: cross-version-testing
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'failure') && github.event_name == 'schedule' }}
     name: Cross-version test failure
     runs-on: ubuntu-22.04
-    env:
-      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
-      AUTHOR_NAME: ${{ github.event.workflow_run.head_commit.author.name }}
+    timeout-minutes: 5
     steps:
-      - name: Generate job summary
-        run: |
-          echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
-          echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
-
       - uses: actions/setup-node@v4
         with:
           node-version: lts/Hydrogen # 18.x.x
@@ -119,11 +132,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: | # js
-            const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
-            const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
-            const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
-            const AUTHOR = process.env.AUTHOR_NAME;
-            const BRANCH = process.env.BRANCH_NAME;
+            const FAILED_RUN_URL = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}";
+            const REF_NAME = "${{ github.ref_name }}";
 
             // notify slack of failure
             const { WebClient } = require('@slack/web-api');
@@ -137,7 +147,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": `:broken_heart:   Cross-version tests are failing on ${BRANCH}`,
+                    "text": `:broken_heart:   Cross-version tests are failing on ${REF_NAME}`,
                     "emoji": true,
                   }
                 },
@@ -149,7 +159,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on the <https://github.com/metabase/metabase/commits/${BRANCH}|\`${BRANCH}\`> branch.`
+                      "text": `See <${FAILED_RUN_URL}|failing run details>.`
                     }
                   },
                 ]

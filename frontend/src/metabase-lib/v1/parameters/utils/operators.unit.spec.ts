@@ -1,8 +1,8 @@
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 
 import {
-  getOperatorDisplayName,
   deriveFieldOperatorFromParameter,
+  getOperatorDisplayName,
 } from "./operators";
 
 const option = {

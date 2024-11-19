@@ -91,8 +91,8 @@ function setup({
   mockGetBoundingClientRect();
   setupCollectionsEndpoints({ collections: COLLECTIONS });
 
-  setupCollectionByIdEndpoint({ collections: COLLECTIONS }),
-    setupSearchEndpoints(searchResults);
+  setupCollectionByIdEndpoint({ collections: COLLECTIONS });
+  setupSearchEndpoints(searchResults);
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,
     collectionItems,
@@ -330,6 +330,7 @@ describe("LinkedEntityPicker", () => {
             await screen.findByPlaceholderText(/search/i),
             typedText,
           );
+          await userEvent.click(screen.getByText("Everywhere"));
 
           expect(
             await screen.findByText(questionSearchResult.name),
@@ -393,6 +394,7 @@ describe("LinkedEntityPicker", () => {
             await screen.findByPlaceholderText(/search/i),
             typedText,
           );
+          await userEvent.click(screen.getByText("Everywhere"));
 
           expect(
             await screen.findByText(questionSearchResult.name),

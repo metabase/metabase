@@ -1,23 +1,23 @@
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
+  modal,
+  openStaticEmbeddingModal,
   popover,
+  restore,
+  setTokenFeatures,
   visitDashboard,
   visitQuestion,
-  setTokenFeatures,
-  openStaticEmbeddingModal,
-  modal,
 } from "e2e/support/helpers";
 
-import { getEmbeddingJsCode, IFRAME_CODE } from "./shared/embedding-snippets";
+import { IFRAME_CODE, getEmbeddingJsCode } from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
 features.forEach(feature => {
-  describe("scenarios > embedding > code snippets", () => {
+  describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
@@ -25,6 +25,7 @@ features.forEach(feature => {
     });
 
     it("dashboard should have the correct embed snippet", () => {
+      const defaultDownloadsValue = feature === "all" ? true : undefined;
       visitDashboard(ORDERS_DASHBOARD_ID);
       openStaticEmbeddingModal({ acceptTerms: false });
 
@@ -42,7 +43,11 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            getEmbeddingJsCode({ type: "dashboard", id: ORDERS_DASHBOARD_ID }),
+            getEmbeddingJsCode({
+              type: "dashboard",
+              id: ORDERS_DASHBOARD_ID,
+              downloads: defaultDownloadsValue,
+            }),
           );
 
         cy.findAllByTestId("embed-backend-select-button")
@@ -70,15 +75,10 @@ features.forEach(feature => {
         .and("contain", "JSX");
 
       modal().within(() => {
-        cy.findByRole("tab", { name: "Appearance" }).click();
-
-        // No download button for dashboards even for pro/enterprise users metabase#23477
-        cy.findByLabelText(
-          "Enable users to download data from this embed",
-        ).should("not.exist");
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
 
         // set transparent background metabase#23477
-        cy.findByText("Transparent").click();
+        cy.findByText("Dashboard background").click();
         cy.get(".ace_content")
           .first()
           .invoke("text")
@@ -87,13 +87,32 @@ features.forEach(feature => {
             getEmbeddingJsCode({
               type: "dashboard",
               id: ORDERS_DASHBOARD_ID,
-              theme: "transparent",
+              background: false,
+              downloads: defaultDownloadsValue,
             }),
           );
+
+        if (feature === "all") {
+          cy.findByText("Download buttons").click();
+
+          cy.get(".ace_content")
+            .first()
+            .invoke("text")
+            .should(
+              "match",
+              getEmbeddingJsCode({
+                type: "dashboard",
+                id: ORDERS_DASHBOARD_ID,
+                background: false,
+                downloads: false,
+              }),
+            );
+        }
       });
     });
 
     it("question should have the correct embed snippet", () => {
+      const defaultDownloadsValue = feature === "all" ? true : undefined;
       visitQuestion(ORDERS_QUESTION_ID);
       openStaticEmbeddingModal({ acceptTerms: false });
 
@@ -110,30 +129,18 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            getEmbeddingJsCode({ type: "question", id: ORDERS_QUESTION_ID }),
-          );
-
-        cy.findByRole("tab", { name: "Appearance" }).click();
-
-        // set transparent background metabase#23477
-        cy.findByText("Transparent").click();
-        cy.get(".ace_content")
-          .first()
-          .invoke("text")
-          .should(
-            "match",
             getEmbeddingJsCode({
               type: "question",
               id: ORDERS_QUESTION_ID,
-              theme: "transparent",
+              downloads: defaultDownloadsValue,
             }),
           );
 
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
+
         // hide download button for pro/enterprise users metabase#23477
         if (feature === "all") {
-          cy.findByText(
-            "Enable users to download data from this embed",
-          ).click();
+          cy.findByText("Download buttons").click();
 
           cy.get(".ace_content")
             .first()
@@ -143,8 +150,7 @@ features.forEach(feature => {
               getEmbeddingJsCode({
                 type: "question",
                 id: ORDERS_QUESTION_ID,
-                theme: "transparent",
-                hideDownloadButton: true,
+                downloads: false,
               }),
             );
         }

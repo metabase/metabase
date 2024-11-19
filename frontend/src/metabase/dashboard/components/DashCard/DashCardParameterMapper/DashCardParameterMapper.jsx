@@ -29,7 +29,7 @@ export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
         {t`Make sure to make a selection for each series, or the filter won't work on this card.`}
       </div>
     )}
-    <MapperSettingsContainer>
+    <MapperSettingsContainer data-testid="parameter-mapper-container">
       {[dashcard.card].concat(dashcard.series || []).map(card => (
         <DashCardCardParameterMapperConnected
           key={`${dashcard.id},${card.id}`}

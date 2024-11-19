@@ -1,11 +1,11 @@
 import { useMergedRef } from "@mantine/hooks";
 import {
+  type MouseEvent,
+  type ReactNode,
+  forwardRef,
+  useCallback,
   useEffect,
   useRef,
-  useCallback,
-  forwardRef,
-  type ReactNode,
-  type MouseEvent,
 } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -17,16 +17,16 @@ import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
 import {
+  DEFAULT_POPOVER_Z_INDEX,
   DelayGroup,
   Icon,
   type IconName,
   Popover,
-  DEFAULT_POPOVER_Z_INDEX,
 } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type {
-  Suggestion,
   GroupName,
+  Suggestion,
 } from "metabase-lib/v1/expressions/suggest";
 import { GROUPS } from "metabase-lib/v1/expressions/suggest";
 
@@ -37,13 +37,13 @@ import type {
 } from "../ExpressionEditorTextfield";
 
 import {
-  ExpressionListItem,
-  ExpressionListFooter,
   ExpressionList,
-  SuggestionMatch,
-  SuggestionTitle,
+  ExpressionListFooter,
+  ExpressionListItem,
   GroupTitle,
   PopoverHoverTarget,
+  SuggestionMatch,
+  SuggestionTitle,
 } from "./ExpressionEditorSuggestions.styled";
 
 type WithIndex<T> = T & {

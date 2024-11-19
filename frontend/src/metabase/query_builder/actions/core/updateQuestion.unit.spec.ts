@@ -24,27 +24,27 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createAdHocCard,
-  createSavedStructuredCard,
-  createAdHocNativeCard,
-  createSavedNativeCard,
-  createStructuredModelCard,
-  createNativeModelCard,
-  createComposedModelCard,
   ORDERS,
   ORDERS_ID,
-  PRODUCTS,
   PEOPLE,
-  SAMPLE_DB_ID,
+  PRODUCTS,
   REVIEWS,
   REVIEWS_ID,
+  SAMPLE_DB_ID,
+  createAdHocCard,
+  createAdHocNativeCard,
+  createComposedModelCard,
+  createNativeModelCard,
+  createSampleDatabase,
+  createSavedNativeCard,
+  createSavedStructuredCard,
+  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 import type { QueryBuilderMode } from "metabase-types/store";
 import {
-  createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
 import * as native from "../native";
@@ -52,7 +52,7 @@ import * as navigation from "../navigation";
 import * as querying from "../querying";
 import * as ui from "../ui";
 
-import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
+import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 
@@ -218,12 +218,9 @@ const PIVOT_TABLE_QUESTION: UnsavedCard<StructuredDatasetQuery> = {
   },
   visualization_settings: {
     "pivot_table.column_split": {
-      columns: [PIVOT_TABLE_PRODUCT_CATEGORY_FIELD],
-      rows: [
-        PIVOT_TABLE_PEOPLE_SOURCE_FIELD,
-        PIVOT_TABLE_ORDER_CREATED_AT_FIELD,
-      ],
-      values: [["aggregation", 0]],
+      columns: ["CATEGORY"],
+      rows: ["SOURCE", "CREATED_AT"],
+      values: ["count"],
     },
   },
 };
@@ -674,6 +671,7 @@ describe("QB Actions > updateQuestion", () => {
 
     describe("native models", () => {
       const { getCard } = TEST_CASE.NATIVE_MODEL;
+
       it("doesn't open tags editor bar after adding a variable tag", async () => {
         const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
           card: getCard(),
@@ -849,12 +847,9 @@ describe("QB Actions > updateQuestion", () => {
           visualization_settings: {
             ...card.visualization_settings,
             "pivot_table.column_split": {
-              columns: [PIVOT_TABLE_ORDER_CREATED_AT_FIELD],
-              rows: [
-                PIVOT_TABLE_PRODUCT_CATEGORY_FIELD,
-                PIVOT_TABLE_PEOPLE_SOURCE_FIELD,
-              ],
-              values: [["aggregation", 0]],
+              columns: ["CREATED_AT"],
+              rows: ["CATEGORY", "SOURCE"],
+              values: ["count"],
             },
           },
         },

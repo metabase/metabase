@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { tokenize, TOKEN, OPERATOR as OP } from "./tokenizer";
+import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
 
-import { getMBQLName, MBQL_CLAUSES, unescapeString } from "./index";
+import { MBQL_CLAUSES, getMBQLName, unescapeString } from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,

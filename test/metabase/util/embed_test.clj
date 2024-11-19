@@ -42,15 +42,15 @@
             (is (= (embed/show-static-embed-terms) false))))
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
-           (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                               {:valid    true
-                                                                :status   "fake"
-                                                                :features ["test" "fixture"]
-                                                                :trial    false})]
-             (mt/with-temporary-setting-values [premium-embedding-token premium-features-test/random-fake-token]
-              (is (= (embed/show-static-embed-terms) false))
-              (embed/show-static-embed-terms! false)
-              (is (= (embed/show-static-embed-terms) false)))))
+            (with-redefs [premium-features/fetch-token-status (fn [_x]
+                                                                {:valid    true
+                                                                 :status   "fake"
+                                                                 :features ["test" "fixture"]
+                                                                 :trial    false})]
+              (mt/with-temporary-setting-values [premium-embedding-token (premium-features-test/random-token)]
+                (is (= (embed/show-static-embed-terms) false))
+                (embed/show-static-embed-terms! false)
+                (is (= (embed/show-static-embed-terms) false)))))
           (testing "when an EE user doesn't have a valid token"
             (mt/with-temporary-setting-values [premium-embedding-token nil show-static-embed-terms nil]
               (testing "should return true when the user has not accepted licensing terms"

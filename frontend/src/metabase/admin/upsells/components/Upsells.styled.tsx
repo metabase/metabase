@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -21,7 +22,6 @@ export const UpsellPillComponent = styled(ExternalLink)`
   font-weight: bold;
   font-size: 0.75rem;
   text-decoration: none;
-
   padding: 0.25rem 0.75rem;
   border-radius: 2rem;
   border: 1px solid ${upsellColors.secondary};
@@ -42,7 +42,6 @@ export const UpsellCTALink = styled(ExternalLink)`
   flex-grow: 0;
   font-weight: bold;
   font-size: 0.75rem;
-
   padding: 0.25rem 0.5rem;
   border-radius: 2rem;
   margin-inline: 1rem;
@@ -57,9 +56,23 @@ export const UpsellCTALink = styled(ExternalLink)`
   }
 `;
 
-export const UpsellCardComponent = styled.div`
-  max-width: 200px;
-  box-sizing: content-box;
+interface Variants {
+  fullWidth?: boolean;
+  maxWidth?: number;
+}
+export const UpsellCardComponent = styled.div<Variants>`
+  ${({ fullWidth, maxWidth }) =>
+    fullWidth
+      ? css`
+          width: 100%;
+        `
+      : maxWidth
+        ? css`
+            max-width: ${maxWidth}px;
+          `
+        : css`
+            max-width: 200px;
+          `}
   border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid ${upsellColors.secondary};

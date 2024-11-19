@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
-import { StyledTable } from "metabase/common/components/Table";
+import { ClientSortableTable } from "metabase/common/components/Table";
+import { useLocale } from "metabase/common/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -12,10 +13,10 @@ import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, Text, Button, Icon, Checkbox } from "metabase/ui";
+import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
 import {
-  useListUploadTablesQuery,
   useDeleteUploadTableMutation,
+  useListUploadTablesQuery,
 } from "metabase-enterprise/api";
 import type { Table } from "metabase-types/api";
 
@@ -23,11 +24,11 @@ import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { getDateDisplay } from "./utils";
 
 const columns = [
-  { key: "checkbox", name: "" },
+  { key: "checkbox", name: "", sortable: false },
   { key: "name", name: t`Table name` },
   { key: "created_at", name: t`Created at` },
   { key: "schema", name: t`Schema` },
-  { key: "actions", name: "" },
+  { key: "actions", name: "", sortable: false },
 ];
 
 export function UploadManagementTable() {
@@ -35,11 +36,12 @@ export function UploadManagementTable() {
   const [deleteTableRequest] = useDeleteUploadTableMutation();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const dispatch = useDispatch();
+  const locale = useLocale();
 
   // TODO: once we have uploads running through RTK Query, we can remove the force update
   // because we can properly invalidate the tables tag
   const {
-    data: uploadTables,
+    data: uploadTables = [],
     error,
     isLoading,
   } = useListUploadTablesQuery(undefined, {
@@ -149,11 +151,12 @@ export function UploadManagementTable() {
       <Text fw="bold" color="text-medium">
         {t`Uploaded Tables`}
       </Text>
-      <StyledTable
+      <ClientSortableTable
         data-testid="upload-tables-table"
         columns={columns}
         rows={uploadTables}
         rowRenderer={row => renderRow(row)}
+        locale={locale}
       />
     </Box>
   );

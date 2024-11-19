@@ -1,4 +1,4 @@
-import { screen, renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import LoadingView from "./LoadingView";
 

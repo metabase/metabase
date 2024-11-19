@@ -1,4 +1,4 @@
-import { captureConsoleErrors, MAX_ERROR_LOGS } from "./console";
+import { MAX_ERROR_LOGS, captureConsoleErrors } from "./console";
 
 describe("captureConsolErrors", () => {
   beforeEach(() => {

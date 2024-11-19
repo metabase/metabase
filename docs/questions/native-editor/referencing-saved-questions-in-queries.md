@@ -4,7 +4,7 @@ redirect_from:
   - /docs/latest/users-guide/referencing-saved-questions-in-queries
 ---
 
-## Referencing models and saved questions
+# Referencing models and saved questions
 
 With SQL databases, we can use a [model][model] or an existing question as the basis for a new query, or as a common table expression [CTE][cte].
 
@@ -26,9 +26,9 @@ Only the `#` and `ID` is required. Metabase just displays the model or question 
 
 ## Model, table, or saved question as a Common Table Expression (CTE)
 
-The same syntax can be used in [Common Table Expressions (CTEs)](https://www.metabase.com/learn/sql-questions/sql-cte) (with SQL databases that support CTEs):
+The same syntax can be used in [Common Table Expressions (CTEs)](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte) (with SQL databases that support CTEs):
 
-```
+```sql
 WITH gizmo_orders AS {% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}
 SELECT count(*)
 FROM gizmo_orders
@@ -36,7 +36,7 @@ FROM gizmo_orders
 
 When this query is run, the `{% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}` tag will be substituted with the SQL query of the referenced question, surrounded by parentheses. So it'll look like this under the hood:
 
-```
+```sql
 WITH
   gizmo_orders AS (
     SELECT
@@ -58,15 +58,14 @@ FROM
 
 - You can only reference a model or saved question in a query when working with a SQL database like PostgreSQL, MySQL, Snowflake or SQL Server.
 - The model or saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
-- You cannot refer to variables in sub-queries. You only have access to the _results_ of the model or saved question, not the model or saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/building-analytics/sql-templates/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter.
+- You cannot refer to variables in sub-queries. You only have access to the _results_ of the model or saved question, not the model or saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter.
 
 ## Further reading
 
 - [Models](../../data-modeling/models.md)
-- [SQL Snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
-- [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html)
+- [SQL Snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets)
+- [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/organizing-sql)
 - [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
-- [Segments and Metrics](../../data-modeling/segments-and-metrics.md)
 
-[cte]: https://www.metabase.com/learn/sql-questions/sql-cte
+[cte]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte
 [model]: ../../data-modeling/models.md

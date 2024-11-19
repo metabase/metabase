@@ -50,7 +50,9 @@
                                            :pk-ref     pk_ref
                                            :value-ref  value_ref
                                            :creator-id api/*current-user-id*})]
-      (snowplow/track-event! ::snowplow/index-model-entities-enabled api/*current-user-id* {:model-id model_id})
+      (snowplow/track-event! ::snowplow/model
+                             {:event    :index-model-entities-enabled
+                              :model-id model_id})
       (task.index-values/add-indexing-job model-index)
       (model-index/add-values! model-index)
       (t2/select-one ModelIndex :id (:id model-index)))))

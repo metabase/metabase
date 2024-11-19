@@ -4,14 +4,18 @@
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
-   [metabase.test.util :as tu])
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [toucan2.core :as t2])
   (:import
    (java.nio.charset Charset)
    (org.apache.http NameValuePair)
    (org.apache.http.client.utils URLEncodedUtils)))
+
+(use-fixtures :once (fixtures/initialize :notifications))
 
 (set! *warn-on-reflection* true)
 
@@ -43,7 +47,7 @@
              body
              (json/generate-string body))})
 
-(defn- test-no-auth-token
+(defn- test-no-auth-token!
   "Test that a Slack API endpoint function returns `nil` if a Slack API token isn't configured."
   [endpoint thunk]
   (http-fake/with-fake-routes {endpoint (fn [_]
@@ -54,7 +58,7 @@
         (is (= nil
                (not-empty (thunk))))))))
 
-(defn- test-invalid-auth-token
+(defn- test-invalid-auth-token!
   "Test that a Slack API endpoint function throws an Exception if an invalid Slack API token is set."
   [endpoint thunk]
   (testing "should throw Exception if auth token is invalid"
@@ -72,10 +76,10 @@
             (is (= {:slack-token "Invalid token"}
                    (:errors (ex-data e))))))))))
 
-(defn- test-auth
+(defn- test-auth!
   "Test that a Slack API `endpoint` function works as expected when Slack token is missing or invalid."
   [endpoint thunk]
-  (doseq [f [test-no-auth-token test-invalid-auth-token]]
+  (doseq [f [test-no-auth-token! test-invalid-auth-token!]]
     (f endpoint thunk)))
 
 (deftest slack-app-token-truncation-test
@@ -86,7 +90,7 @@
 
 (deftest conversations-list-test
   (testing "conversations-list"
-    (test-auth conversations-endpoint slack/conversations-list)
+    (test-auth! conversations-endpoint slack/conversations-list)
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
@@ -138,7 +142,7 @@
 
 (deftest users-list-test
   (testing "users-list"
-    (test-auth users-endpoint slack/users-list)
+    (test-auth! users-endpoint slack/users-list)
 
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
@@ -279,22 +283,26 @@
                   (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
 
 (deftest slack-token-error-test
-  (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
+  (notification.tu/with-send-notification-sync
     (tu/with-temporary-setting-values [slack-app-token    "test-token"
+                                       admin-email         nil
                                        #_:clj-kondo/ignore slack-token-valid? true]
       (mt/with-fake-inbox
         (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
                                      (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}
           (testing "If a slack token is revoked, an email should be sent to admins, and the `slack-token-valid?` setting
-             should be set to false"
+                   should be set to false"
             (try
               (slack/post-chat-message! "C94712B6X" ":wow:")
               (catch Throwable e
                 (is (= "Invalid token" (ex-message e)))
-                (is (= (mt/email-to :crowberto {:subject "Your Slack connection stopped working"
-                                                :to #{"crowberto@metabase.com"}
-                                                :body [{"Your Slack connection stopped working." true}]})
-                       (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
+                (let [recipient->emails (mt/summarize-multipart-email #"Your Slack connection stopped working.")]
+                  (is (=? {:from "notifications@metabase.com",
+                           :subject "Your Slack connection stopped working",
+                           :body [{"Your Slack connection stopped working." true}]}
+                          (-> recipient->emails (get "crowberto@metabase.com") first)))
+                  (is (= (t2/select-fn-set :email :model/User :is_superuser true)
+                         (set (keys recipient->emails)))))
                 (is (false? (slack/slack-token-valid?))))))
 
           (testing "If `slack-token-valid?` is already false, no email should be sent"

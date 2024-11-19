@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { Fragment, useState, memo } from "react";
+import { Fragment, memo, useState } from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Toggle from "metabase/core/components/Toggle";
@@ -8,15 +8,15 @@ import { lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 import {
-  PermissionsSelectRoot,
+  ActionsList,
+  DisabledPermissionOption,
   OptionsList,
   OptionsListItem,
-  ActionsList,
+  PermissionsSelectRoot,
+  SelectedOption,
   ToggleContainer,
   ToggleLabel,
   WarningIcon,
-  DisabledPermissionOption,
-  SelectedOption,
 } from "./PermissionsSelect.styled";
 import {
   PermissionsSelectOption,

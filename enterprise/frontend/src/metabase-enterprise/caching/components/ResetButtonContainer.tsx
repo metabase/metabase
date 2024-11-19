@@ -49,6 +49,8 @@ const ResetAllToDefaultButtonFormBody = () => {
             }}
             label={
               <Text
+                // Prevents the label from getting cut off vertically
+                h="1rem"
                 lh="1"
                 fw="normal"
                 color="error"

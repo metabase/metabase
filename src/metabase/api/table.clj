@@ -3,12 +3,13 @@
   (:require
    [clojure.java.io :as io]
    [compojure.core :refer [GET POST PUT]]
+   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.db.query :as mdb.query]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -20,12 +21,12 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
-   #_{:clj-kondo/ignore [:consistent-alias]}
+   ^{:clj-kondo/ignore [:consistent-alias]}
    [metabase.sync.field-values :as sync.field-values]
    [metabase.types :as types]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -65,14 +66,14 @@
         (t2/hydrate :db :pk_field)
         fix-schema)))
 
-(defn- update-table!*
+(mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
-  [{:keys [id] :as existing-table} body]
-  {id ms/PositiveInt}
+  [{:keys [id] :as existing-table} :- [:map [:id ::lib.schema.id/table]]
+   body]
   (when-let [changes (not-empty (u/select-keys-when body
-                                  :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                  :present [:description :caveats :points_of_interest :visibility_type]))]
+                                                    :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                                                    :present [:description :caveats :points_of_interest :visibility_type]))]
     (api/check-500 (pos? (t2/update! Table id changes))))
   (let [updated-table        (t2/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -139,98 +140,116 @@
    show_in_getting_started [:maybe :boolean]}
   (update-tables! ids body))
 
-
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
-(def ^:private minute-str (deferred-tru "Minute"))
-(def ^:private hour-str (deferred-tru "Hour"))
-(def ^:private day-str (deferred-tru "Day"))
 
+;;; Apparently `msgcat` is not cool with us using a string as both a singular message ID and a plural message ID, and
+;;; since we're using stuff like `Minute` as a plural string elsewhere (see [[metabase.lib.temporal-bucket]]) we're
+;;; forced to use `*-trun` here as well
+(def ^:private unit->deferred-i18n-description
+  {:minute          (deferred-trun "Minute" "Minutes" 1)
+   :hour            (deferred-trun "Hour" "Hours" 1)
+   :day             (deferred-trun "Day" "Days" 1)
+   :week            (deferred-trun "Week" "Weeks" 1)
+   :month           (deferred-trun "Month" "Months" 1)
+   :quarter         (deferred-trun "Quarter" "Quarters" 1)
+   :year            (deferred-trun "Year" "Years" 1)
+   :minute-of-hour  (deferred-trun "Minute of hour" "Minutes of hour" 1)
+   :hour-of-day     (deferred-trun "Hour of day" "Hours of day" 1)
+   :day-of-week     (deferred-trun "Day of week" "Days of week" 1)
+   :day-of-month    (deferred-trun "Day of month" "Days of month" 1)
+   :day-of-year     (deferred-trun "Day of year" "Days of year" 1)
+   :week-of-year    (deferred-trun "Week of year" "Weeks of year" 1)
+   :month-of-year   (deferred-trun "Month of year" "Months of year" 1)
+   :quarter-of-year (deferred-trun "Quarter of year" "Quarters of year" 1)})
 
 ;; note the order of these options corresponds to the order they will be shown to the user in the UI
 (def ^:private time-options
-  [[minute-str "minute"]
-   [hour-str "hour"]
-   [(deferred-tru "Minute of hour") "minute-of-hour"]])
+  (mapv (fn [unit]
+          [(unit->deferred-i18n-description unit) (name unit)])
+        [:minute :hour :minute-of-hour]))
 
 (def ^:private datetime-options
-  [[minute-str "minute"]
-   [hour-str "hour"]
-   [day-str "day"]
-   [(deferred-tru "Week") "week"]
-   [(deferred-tru "Month") "month"]
-   [(deferred-tru "Quarter") "quarter"]
-   [(deferred-tru "Year") "year"]
-   [(deferred-tru "Minute of hour") "minute-of-hour"]
-   [(deferred-tru "Hour of day") "hour-of-day"]
-   [(deferred-tru "Day of week") "day-of-week"]
-   [(deferred-tru "Day of month") "day-of-month"]
-   [(deferred-tru "Day of year") "day-of-year"]
-   [(deferred-tru "Week of year") "week-of-year"]
-   [(deferred-tru "Month of year") "month-of-year"]
-   [(deferred-tru "Quarter of year") "quarter-of-year"]])
+  (mapv (fn [unit]
+          [(unit->deferred-i18n-description unit) (name unit)])
+        [:minute
+         :hour
+         :day
+         :week
+         :month
+         :quarter
+         :year
+         :minute-of-hour
+         :hour-of-day
+         :day-of-week
+         :day-of-month
+         :day-of-year
+         :week-of-year
+         :month-of-year
+         :quarter-of-year]))
 
 (def ^:private date-options
-  [[day-str "day"]
-   [(deferred-tru "Week") "week"]
-   [(deferred-tru "Month") "month"]
-   [(deferred-tru "Quarter") "quarter"]
-   [(deferred-tru "Year") "year"]
-   [(deferred-tru "Day of week") "day-of-week"]
-   [(deferred-tru "Day of month") "day-of-month"]
-   [(deferred-tru "Day of year") "day-of-year"]
-   [(deferred-tru "Week of year") "week-of-year"]
-   [(deferred-tru "Month of year") "month-of-year"]
-   [(deferred-tru "Quarter of year") "quarter-of-year"]])
+  (mapv (fn [unit]
+          [(unit->deferred-i18n-description unit) (name unit)])
+        [:day
+         :week
+         :month
+         :quarter
+         :year
+         :day-of-week
+         :day-of-month
+         :day-of-year
+         :week-of-year
+         :month-of-year
+         :quarter-of-year]))
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
-    (zipmap (range)
-            (concat
-             (map (fn [[name param]]
-                    {:name name
-                     :mbql [:field nil {:temporal-unit param}]
-                     :type :type/Date})
-                  date-options)
-             (map (fn [[name param]]
-                    {:name name
-                     :mbql [:field nil {:temporal-unit param}]
-                     :type :type/DateTime})
-                  datetime-options)
-             (map (fn [[name param]]
-                    {:name name
-                     :mbql [:field nil {:temporal-unit param}]
-                     :type :type/Time})
-                  time-options)
-             (conj
-              (mapv (fn [[name [strategy param]]]
-                      {:name name
-                       :mbql [:field nil {:binning (merge {:strategy strategy}
-                                                          (when param
-                                                            {strategy param}))}]
-                       :type :type/Number})
-                    [default-entry
-                     [(deferred-tru "10 bins") ["num-bins" 10]]
-                     [(deferred-tru "50 bins") ["num-bins" 50]]
-                     [(deferred-tru "100 bins") ["num-bins" 100]]])
-              {:name dont-bin-str
-               :mbql nil
-               :type :type/Number})
-             (conj
-              (mapv (fn [[name [strategy param]]]
-                      {:name name
-                       :mbql [:field nil {:binning (merge {:strategy strategy}
-                                                          (when param
-                                                            {strategy param}))}]
-                       :type :type/Coordinate})
-                    [default-entry
-                     [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
-                     [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
-                     [(deferred-tru "Bin every 10 degrees") ["bin-width" 10.0]]
-                     [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
-              {:name dont-bin-str
-               :mbql nil
-               :type :type/Coordinate})))))
+    (into (ordered-map/ordered-map)
+          (comp cat
+                (map-indexed vector))
+          [(map (fn [[name param]]
+                  {:name name
+                   :mbql [:field nil {:temporal-unit param}]
+                   :type :type/Date})
+                date-options)
+           (map (fn [[name param]]
+                  {:name name
+                   :mbql [:field nil {:temporal-unit param}]
+                   :type :type/DateTime})
+                datetime-options)
+           (map (fn [[name param]]
+                  {:name name
+                   :mbql [:field nil {:temporal-unit param}]
+                   :type :type/Time})
+                time-options)
+           (map (fn [[name [strategy param]]]
+                  {:name name
+                   :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                      (when param
+                                                        {strategy param}))}]
+                   :type :type/Number})
+                [default-entry
+                 [(deferred-tru "10 bins") ["num-bins" 10]]
+                 [(deferred-tru "50 bins") ["num-bins" 50]]
+                 [(deferred-tru "100 bins") ["num-bins" 100]]])
+           [{:name dont-bin-str
+             :mbql nil
+             :type :type/Number}]
+           (map (fn [[name [strategy param]]]
+                  {:name name
+                   :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                      (when param
+                                                        {strategy param}))}]
+                   :type :type/Coordinate})
+                [default-entry
+                 [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
+                 [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
+                 [(deferred-tru "Bin every 10 degrees") ["bin-width" 10.0]]
+                 [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
+           [{:name dont-bin-str
+             :mbql nil
+             :type :type/Coordinate}]])))
 
 (def ^:private dimension-options-for-response
   (m/map-keys str dimension-options))
@@ -264,13 +283,13 @@
                                 (pred v))) dimension-options-for-response))))
 
 (def ^:private datetime-default-index
-  (dimension-index-for-type :type/DateTime #(= (str day-str) (str (:name %)))))
+  (dimension-index-for-type :type/DateTime #(= (str (unit->deferred-i18n-description :day)) (str (:name %)))))
 
 (def ^:private date-default-index
-  (dimension-index-for-type :type/Date #(= (str day-str) (str (:name %)))))
+  (dimension-index-for-type :type/Date #(= (str (unit->deferred-i18n-description :day)) (str (:name %)))))
 
 (def ^:private time-default-index
-  (dimension-index-for-type :type/Time #(= (str hour-str) (str (:name %)))))
+  (dimension-index-for-type :type/Time #(= (str (unit->deferred-i18n-description :hour)) (str (:name %)))))
 
 (def ^:private numeric-default-index
   (dimension-index-for-type :type/Number #(.contains ^String (str (:name %)) (str auto-bin-str))))
@@ -334,7 +353,7 @@
     (api/read-check table))
   (let [db (t2/select-one Database :id (:db_id table))]
     (-> table
-        (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
+        (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
@@ -352,16 +371,12 @@
     (let [tables (->> (t2/select Table :id [:in ids])
                       (filter mi/can-read?))
           tables (t2/hydrate tables
-                             :db
-                             [:fields [:target :has_field_values] :dimensions :has_field_values]
+                             [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments
-                             :metrics)
-          dbs    (when (seq tables)
-                   (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)]))]
+                             :metrics)]
       (for [table tables]
         (-> table
             (m/dissoc-in [:db :details])
-            (assoc-dimension-options (-> table :db_id dbs))
             format-fields-for-response
             fix-schema
             (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
@@ -409,12 +424,12 @@
         underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (t2/select Field :id [:in ids])
-                                             (t2/hydrate [:target :has_field_values] :has_field_values)))))
+                                             (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
                      (merge (select-keys (underlying col-id)
-                                         [:semantic_type :fk_target_field_id :has_field_values :target]))
+                                         [:semantic_type :fk_target_field_id :has_field_values :target :dimensions :name_field]))
                      (assoc
                       :table_id     (str "card__" card-id)
                       :id           (or col-id
@@ -438,10 +453,7 @@
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields? databases card-id->metadata-fields]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (cond-> card
-               (not (contains? card :collection))
-               (t2/hydrate :collection))
-        card-type (:type card)
+  (let [card-type (:type card)
         dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
@@ -449,6 +461,7 @@
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
              :description      (:description card)
+             :metrics          (:metrics card)
              :type             card-type}
       (and (= card-type :metric)
            dataset-query)
@@ -476,53 +489,26 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-(defn fetch-card-query-metadata
-  "Return metadata for the 'virtual' table for a Card."
-  [id]
-  (let [{:keys [database_id] :as card} (api/check-404
-                                        (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id :type]
-                                                       :id id))
-        moderated-status              (->> (mdb.query/query {:select   [:status]
-                                                             :from     [:moderation_review]
-                                                             :where    [:and
-                                                                        [:= :moderated_item_type "card"]
-                                                                        [:= :moderated_item_id id]
-                                                                        [:= :most_recent true]]
-                                                             :order-by [[:id :desc]]
-                                                             :limit    1}
-                                                            :id id)
-                                           first :status)
-        db (t2/select-one Database :id database_id)
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        trust-semantic-keys? (and (= (:type card) :model)
-                                  (= (-> card :dataset_query :type) :native))]
-    (-> (assoc card :moderated_status moderated-status)
-        api/read-check
-        (card->virtual-table :include-fields? true)
-        (assoc-dimension-options db)
-        (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?}))))
-
 (defn batch-fetch-card-query-metadatas
   "Return metadata for the 'virtual' tables for a Cards.
   Unreadable cards are silently skipped."
   [ids]
   (when (seq ids)
-    (let [cards (-> (t2/select Card
-                               {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                                            :c.description :c.collection_id :c.database_id :c.type
-                                            [:r.status :moderated_status]]
-                                :from      [[:report_card :c]]
-                                :left-join [[{:select   [:moderated_item_id :status]
-                                              :from     [:moderation_review]
-                                              :where    [:and
-                                                         [:= :moderated_item_type "card"]
-                                                         [:= :most_recent true]]
-                                              :order-by [[:id :desc]]
-                                              :limit    1} :r]
-                                            [:= :r.moderated_item_id :c.id]]
-                                :where     [:in :c.id ids]})
-                    (t2/hydrate :collection))
+    (let [cards (t2/select Card
+                           {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
+                                        :c.description :c.collection_id :c.database_id :c.type
+                                        :c.source_card_id
+                                        [:r.status :moderated_status]]
+                            :from      [[:report_card :c]]
+                            :left-join [[{:select   [:moderated_item_id :status]
+                                          :from     [:moderation_review]
+                                          :where    [:and
+                                                     [:= :moderated_item_type "card"]
+                                                     [:= :most_recent true]]
+                                          :order-by [[:id :desc]]
+                                          :limit    1} :r]
+                                        [:= :r.moderated_item_id :c.id]]
+                            :where      [:in :c.id ids]})
           dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])
           metadata-field-ids (into #{}
                                    (comp (mapcat :result_metadata)
@@ -530,7 +516,7 @@
                                    cards)
           metadata-fields (if (seq metadata-field-ids)
                             (-> (t2/select Field :id [:in metadata-field-ids])
-                                (t2/hydrate [:target :has_field_values] :has_field_values)
+                                (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                 (->> (m/index-by :id)))
                             {})
           card-id->metadata-fields (into {}
@@ -538,8 +524,9 @@
                                                 [(:id card) (into []
                                                                   (keep (comp metadata-fields :id))
                                                                   (:result_metadata card))]))
-                                         cards)]
-      (for [card cards :when (mi/can-read? card)]
+                                         cards)
+          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
+      (for [card readable-cards]
         ;; a native model can have columns with keys as semantic types only if a user configured them
         (let [trust-semantic-keys? (and (= (:type card) :model)
                                         (= (-> card :dataset_query :type) :native))]
@@ -554,7 +541,7 @@
   "Return metadata for the 'virtual' table for a Card."
   [id]
   {id ms/PositiveInt}
-  (fetch-card-query-metadata id))
+  (first (batch-fetch-card-query-metadatas [id])))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
@@ -617,10 +604,11 @@
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
-(mu/defn ^:private update-csv!
+(mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
   [options :- [:map
                [:table-id ms/PositiveInt]
+               [:filename :string]
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
@@ -640,6 +628,7 @@
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
   (update-csv! {:table-id id
+                :filename (get-in raw-params ["file" :filename])
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/append}))
 
@@ -648,6 +637,7 @@
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
   (update-csv! {:table-id id
+                :filename (get-in raw-params ["file" :filename])
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/replace}))
 

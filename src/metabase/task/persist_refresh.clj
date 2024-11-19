@@ -13,9 +13,7 @@
    [metabase.email.messages :as messages]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
-   [metabase.models.persisted-info
-    :as persisted-info
-    :refer [PersistedInfo]]
+   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.task-history :as task-history]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.limit :as limit]
@@ -52,16 +50,16 @@
         (let [query (limit/disable-max-results (:dataset_query card))]
           (ddl.i/refresh! (:engine database) database definition query))))
     (unpersist! [_ database persisted-info]
-     (ddl.i/unpersist! (:engine database) database persisted-info))))
+      (ddl.i/unpersist! (:engine database) database persisted-info))))
 
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
-  (when (contains? (persisted-info/refreshable-states) (t2/select-one-fn :state PersistedInfo :id (:id persisted-info)))
+  (when (contains? (persisted-info/refreshable-states) (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info)))
     (log/infof "Attempting to refresh persisted model %s." (:card_id persisted-info))
     (let [card (t2/select-one Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
-          _ (t2/update! PersistedInfo (u/the-id persisted-info)
+          _ (t2/update! :model/PersistedInfo (u/the-id persisted-info)
                         {:definition definition,
                          :query_hash (persisted-info/query-hash (:dataset_query card))
                          :active false,
@@ -75,7 +73,7 @@
                                     (log/infof e "Error refreshing persisting model with card-id %s"
                                                (:card_id persisted-info))
                                     {:state :error :error (ex-message e)}))]
-      (t2/update! PersistedInfo (u/the-id persisted-info)
+      (t2/update! :model/PersistedInfo (u/the-id persisted-info)
                   {:active (= state :success),
                    :refresh_end :%now,
                    :state (if (= state :success) "persisted" "error")
@@ -98,7 +96,7 @@
   (try
     (let [error-details       (error-details task-details)
           error-details-by-id (m/index-by :persisted-info-id error-details)
-          persisted-infos     (->> (t2/hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
+          persisted-infos     (->> (t2/hydrate (t2/select :model/PersistedInfo :id [:in (keys error-details-by-id)])
                                                [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
       (messages/send-persistent-model-error-email!
@@ -114,7 +112,7 @@
   [task-type db-id thunk]
   (task-history/with-task-history {:task            task-type
                                    :db_id           db-id
-                                   :on-success-info (fn [task-details]
+                                   :on-success-info (fn [_update-map task-details]
                                                       (let [error (error-details task-details)]
                                                         (when (and error (= "persist-refresh" task-type))
                                                           (send-persist-refresh-email-if-error! db-id task-details))
@@ -130,7 +128,7 @@
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
-                                   (let [current-state (t2/select-one-fn :state PersistedInfo :id (:id persisted-info))
+                                   (let [current-state (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info))
                                          card-info     (t2/select-one [Card :archived :type]
                                                                       :id (:card_id persisted-info))]
                                      (if (or (contains? (persisted-info/prunable-states) current-state)
@@ -141,7 +139,7 @@
                                          (try
                                            (unpersist! refresher database persisted-info)
                                            (when-not (= "off" current-state)
-                                             (t2/delete! PersistedInfo :id (:id persisted-info)))
+                                             (t2/delete! :model/PersistedInfo :id (:id persisted-info)))
                                            (update stats :success inc)
                                            (catch Exception e
                                              (log/infof e "Error unpersisting model with card-id %s" (:card_id persisted-info))
@@ -154,9 +152,10 @@
 (defn- deletable-models
   "Returns persisted info records that can be unpersisted. Will select records that have moved into a deletable state
   after a sufficient delay to ensure no queries are running against them and to allow changing mind. Also selects
-  persisted info records pointing to cards that are no longer models and archived cards/models."
+  persisted info records pointing to cards that are no longer models, archived cards/models, and all records where the corresponding
+  card or database has been permanently deleted."
   []
-  (t2/select PersistedInfo
+  (t2/select :model/PersistedInfo
              {:select    [:p.*]
               :from      [[:persisted_info :p]]
               :left-join [[:report_card :c] [:= :c.id :p.card_id]]
@@ -170,12 +169,14 @@
                            [:< :state_change_at
                             (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
                           [:= :c.type "question"]
-                          [:= :c.archived true]]}))
+                          [:= :c.archived true]
+                          ;; card_id is set to null when the corresponding card is deleted
+                          [:= :p.card_id nil]]}))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (t2/select PersistedInfo
+  (t2/select :model/PersistedInfo
              {:select    [:p.* :c.type :c.archived :c.name]
               :from      [[:persisted_info :p]]
               :left-join [[:report_card :c] [:= :c.id :p.card_id]]
@@ -211,7 +212,7 @@
 (defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher]
-  (let [persisted-info (t2/select-one PersistedInfo :id persisted-info-id)
+  (let [persisted-info (t2/select-one :model/PersistedInfo :id persisted-info-id)
         database       (when persisted-info
                          (t2/select-one Database :id (:database_id persisted-info)))]
     (if (and persisted-info database)
@@ -290,37 +291,35 @@
   "Return a cron schedule that fires every `hours` hours."
   [cron-spec]
   (cron/schedule
-    (cron/cron-schedule cron-spec)
-    (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
-                                                 (qp.timezone/system-timezone-id)
-                                                 "UTC")))
-    (cron/with-misfire-handling-instruction-do-nothing)))
+   (cron/cron-schedule cron-spec)
+   (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
+                                                (qp.timezone/system-timezone-id)
+                                                "UTC")))
+   (cron/with-misfire-handling-instruction-do-nothing)))
 
 (comment
   (let [[start-hour start-minute] (map parse-long (str/split "00:00" #":"))
         hours 1]
 
-     (if (= 24 hours)
-         (format "0 %d %d * * ? *" start-minute start-hour)
-         (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
-
-
+    (if (= 24 hours)
+      (format "0 %d %d * * ? *" start-minute start-hour)
+      (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
 
 (def ^:private prune-scheduled-trigger
   (triggers/build
-    (triggers/with-description "Prune deletable PersistInfo once per hour")
-    (triggers/with-identity prune-scheduled-trigger-key)
-    (triggers/for-job (jobs/key prune-job-key))
-    (triggers/start-now)
-    (triggers/with-schedule
-      (cron-schedule "0 0 0/1 * * ? *"))))
+   (triggers/with-description "Prune deletable PersistInfo once per hour")
+   (triggers/with-identity prune-scheduled-trigger-key)
+   (triggers/for-job (jobs/key prune-job-key))
+   (triggers/start-now)
+   (triggers/with-schedule
+    (cron-schedule "0 0 0/1 * * ? *"))))
 
 (def ^:private prune-once-trigger
   (triggers/build
-    (triggers/with-description "Prune deletable PersistInfo now")
-    (triggers/with-identity prune-once-trigger-key)
-    (triggers/for-job (jobs/key prune-job-key))
-    (triggers/start-now)))
+   (triggers/with-description "Prune deletable PersistInfo now")
+   (triggers/with-identity prune-once-trigger-key)
+   (triggers/for-job (jobs/key prune-job-key))
+   (triggers/start-now)))
 
 (defn- database-trigger ^org.quartz.CronTrigger [database cron-spec]
   (triggers/build
@@ -331,7 +330,7 @@
    (triggers/for-job (jobs/key refresh-job-key))
    (triggers/start-now)
    (triggers/with-schedule
-     (cron-schedule cron-spec))))
+    (cron-schedule cron-spec))))
 
 (defn- individual-trigger [persisted-info]
   (triggers/build
@@ -375,7 +374,6 @@
                             (:card_id persisted-info)
                             (.. ^Trigger tggr getKey getName)))))))
          ;; other errors?
-
 
 (defn job-info-by-db-id
   "Fetch all database-ids that have a refresh job scheduled."

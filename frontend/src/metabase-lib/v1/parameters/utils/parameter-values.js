@@ -123,7 +123,11 @@ export function isParameterValueEmpty(value) {
 // Should treat undefined and null equally.
 // TODO reconcile with isParameterValueEmpty
 export function parameterHasNoDisplayValue(value) {
-  return !value || value === "" || (Array.isArray(value) && value.length === 0);
+  return (
+    (!value && value !== 0) ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  );
 }
 
 export function normalizeParameterValue(type, value) {
@@ -149,4 +153,8 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
       parameter.value ?? parameterValuesById[parameter.id] ?? null,
     ]),
   );
+}
+
+export function getIsMultiSelect(parameter) {
+  return parameter.isMultiSelect ?? true;
 }

@@ -3,9 +3,9 @@ import { checkNotNull } from "metabase/lib/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import { createMockField } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  PRODUCTS,
   ORDERS,
+  PRODUCTS,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { formatParameterValue } from "./formatting";
@@ -32,14 +32,34 @@ describe("metabase/parameters/utils/formatting", () => {
   describe("formatParameterValue", () => {
     const cases = [
       {
+        type: "date/single",
+        value: "2018-01-01",
+        expected: "January 1, 2018",
+      },
+      {
+        type: "date/single",
+        value: "2018-01-01T12:30:00",
+        expected: "January 1, 2018 12:30 PM",
+      },
+      {
         type: "date/range",
         value: "1995-01-01~1995-01-10",
         expected: "January 1, 1995 - January 10, 1995",
       },
       {
-        type: "date/single",
-        value: "2018-01-01",
-        expected: "January 1, 2018",
+        type: "date/range",
+        value: "2018-01-01T12:30:00~2018-01-10",
+        expected: "January 1, 2018 12:30 PM - January 10, 2018",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01~2018-01-10T08:15:00",
+        expected: "January 1, 2018 - January 10, 2018 08:15 AM",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01T12:30:00~2018-01-10T08:15:00",
+        expected: "January 1, 2018 12:30 PM - January 10, 2018 08:15 AM",
       },
       {
         type: "date/all-options",

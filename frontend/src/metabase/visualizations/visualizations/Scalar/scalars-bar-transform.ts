@@ -25,6 +25,7 @@ export const scalarToBarTransform: TransformSeries = rawSeries => {
         {
           ...data.cols[metricColumnIndex],
           name: card.name,
+          semantic_type: "type/Number",
         },
       ],
       rows: [[card.name, data.rows[0][metricColumnIndex]]],

@@ -3,4 +3,4 @@
 
  :deps
  {com.google.guava/guava {:mvn/version "33.1.0-jre"}
-  org.mongodb/mongodb-driver-sync {:mvn/version "5.0.1"}}}
+  org.mongodb/mongodb-driver-sync {:mvn/version "5.2.0"}}}

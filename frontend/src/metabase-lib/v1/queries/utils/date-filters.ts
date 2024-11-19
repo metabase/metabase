@@ -5,12 +5,12 @@ import Dimension, { FieldDimension } from "metabase-lib/v1/Dimension";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
-  updateRelativeDatetimeFilter,
-  isRelativeDatetime,
-  getRelativeDatetimeInterval,
   getRelativeDatetimeField,
+  getRelativeDatetimeInterval,
   getTimeComponent,
+  isRelativeDatetime,
   setTimeComponent,
+  updateRelativeDatetimeFilter,
 } from "metabase-lib/v1/queries/utils/query-time";
 
 const testTemporalUnit = (unit: string) => (filter: Filter) => {

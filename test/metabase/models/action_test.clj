@@ -1,4 +1,4 @@
-(ns metabase.models.action-test
+(ns ^:mb/driver-tests metabase.models.action-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -67,7 +67,9 @@
               (testing "a entry with defaults should be created if there is a new matching parameter"
                 (is (= {:id "name"
                         :hidden false}
-                       (get field-settings "name"))))))))))
+                       (get field-settings "name")))))))))))
+
+(deftest hydrate-implicit-action-test-2
   (testing "Implicit actions do not map parameters to json fields (parents or nested)"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom :nested-field-columns)
       (mt/dataset json

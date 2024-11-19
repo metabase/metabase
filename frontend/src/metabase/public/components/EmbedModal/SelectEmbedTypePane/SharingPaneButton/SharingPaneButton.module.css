@@ -1,0 +1,13 @@
+.Container:not([data-css-specificity-hack="🤷"]) {
+  cursor: pointer;
+  border-color: var(--mb-color-brand-light);
+
+  --external-link-icon-color: var(--mb-color-text-light);
+
+  &:hover {
+    border-color: var(--mb-base-color-blue-40);
+    background-color: var(--mb-color-bg-light);
+
+    --external-link-icon-color: var(--mb-base-color-blue-40);
+  }
+}

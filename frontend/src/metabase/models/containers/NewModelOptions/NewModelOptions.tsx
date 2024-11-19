@@ -4,16 +4,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { getSetting } from "metabase/selectors/settings";
+import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import {
@@ -22,14 +22,14 @@ import {
   OptionsRoot,
 } from "./NewModelOptions.styled";
 
-const EDUCATIONAL_LINK = MetabaseSettings.learnUrl("data-modeling/models");
+const EDUCATIONAL_LINK = getLearnUrl("data-modeling/models");
 
 interface NewModelOptionsProps {
   location: Location;
 }
 
 const NewModelOptions = ({ location }: NewModelOptionsProps) => {
-  const { data } = useListDatabasesQuery();
+  const { data, isFetching } = useListDatabasesQuery();
   const databases = data?.data ?? [];
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
@@ -43,6 +43,10 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  if (isFetching) {
+    return <DelayedLoadingSpinner />;
+  }
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (

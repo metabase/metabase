@@ -1,7 +1,10 @@
 import { merge } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
-import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import {
+  EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+} from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
 
@@ -64,7 +67,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,
-      textColor: "var(--mb-color-text-dark)",
+      textColor: "var(--mb-color-text-primary)",
     },
     idColumn: {
       textColor: "var(--mb-color-brand)",
@@ -124,14 +127,44 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   },
 });
 
-export const EMBEDDING_SDK_COMPONENTS_OVERRIDES: MantineThemeOverride["components"] =
-  {
+// What's up with the commented `satisfies`?
+// Mantine docs says they don't typecheck default props because of performance reasons.
+// To be sure to not slow down typescript I left the check commented.
+// If you change any of the default props please verify that the types are correct
+
+export function getEmbeddingComponentOverrides(
+  theme?: DeepPartial<MetabaseComponentTheme>,
+): MantineThemeOverride["components"] {
+  return {
     HoverCard: {
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
         },
+
+        ...(theme?.popover?.zIndex && { zIndex: theme.popover.zIndex }),
       },
     },
+    ModalRoot: {
+      defaultProps: {
+        withinPortal: true,
+        target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+      }, //  satisfies Partial<ModalRootProps>,
+    },
+    Modal: {
+      defaultProps: {
+        withinPortal: true,
+        target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+      }, // satisfies Partial<ModalProps>,
+    },
+    Popover: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: {
+          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+        },
+      }, // satisfies Partial<PopoverProps>,
+    },
   };
+}

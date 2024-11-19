@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { UtilApi, MetabaseApi } from "metabase/services";
+import { MetabaseApi, UtilApi } from "metabase/services";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
 import { getEntityDetails, hasQueryData } from "./utils";

@@ -1,6 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { connect } from "react-redux";
 import type { ResizableBox, ResizableBoxProps } from "react-resizable";
 import slugg from "slugg";
@@ -50,8 +50,8 @@ import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
 import DataSourceSelectors from "./DataSourceSelectors";
 import {
-  DragHandleContainer,
   DragHandle,
+  DragHandleContainer,
   EditorRoot,
   NativeQueryEditorRoot,
   StyledResizableBox,
@@ -61,7 +61,7 @@ import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { RightClickPopover } from "./RightClickPopover";
 import { VisibilityToggler } from "./VisibilityToggler";
-import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
+import { ACE_ELEMENT_ID, MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
 import {
   calcInitialEditorHeight,
   formatQuery,
@@ -107,7 +107,6 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   readOnly?: boolean;
   enableRun?: boolean;
   canChangeDatabase?: boolean;
-  cancelQueryOnLeave?: boolean;
   hasTopBar?: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar?: boolean;
@@ -186,6 +185,7 @@ export class NativeQueryEditor extends Component<
 
   _editor: Ace.Editor | null = null;
   _localUpdate = false;
+  _focusFrame: number;
 
   constructor(props: Props) {
     super(props);
@@ -201,12 +201,12 @@ export class NativeQueryEditor extends Component<
     // Ace sometimes fires multiple "change" events in rapid succession
     // e.x. https://github.com/metabase/metabase/issues/2801
     this.onChange = _.debounce(this.onChange.bind(this), 1);
+    this._focusFrame = -1;
   }
 
   static defaultProps = {
     isOpen: false,
     enableRun: true,
-    cancelQueryOnLeave: true,
     canChangeDatabase: true,
     resizable: true,
     sidebarFeatures: {
@@ -232,6 +232,9 @@ export class NativeQueryEditor extends Component<
     this.loadAceEditor();
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("contextmenu", this.handleRightClick);
+
+    // hmmm, this could be dangerous
+    this.focus();
   }
 
   handleRightClick = (event: MouseEvent) => {
@@ -313,9 +316,7 @@ export class NativeQueryEditor extends Component<
   }
 
   componentWillUnmount() {
-    if (this.props.cancelQueryOnLeave) {
-      this.props.cancelQuery?.();
-    }
+    window.cancelAnimationFrame(this._focusFrame);
     this._editor?.destroy?.();
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);
@@ -359,6 +360,12 @@ export class NativeQueryEditor extends Component<
     100,
   );
 
+  handleSelectionChange = () => {
+    if (this._editor && this.props.setNativeEditorSelectedRange) {
+      this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
+    }
+  };
+
   handleKeyDown = (e: KeyboardEvent) => {
     const { isRunning, cancelQuery, enableRun } = this.props;
 
@@ -390,6 +397,20 @@ export class NativeQueryEditor extends Component<
     }
   };
 
+  focus() {
+    if (this.props.readOnly) {
+      return;
+    }
+
+    clearTimeout(this._focusFrame);
+
+    // HACK: the cursor doesn't blink without this intended small delay
+    // HACK: the editor injects newlines into the query without this small delay
+    this._focusFrame = window.requestAnimationFrame(() =>
+      this._editor?.focus(),
+    );
+  }
+
   loadAceEditor() {
     const { query } = this.props;
 
@@ -406,6 +427,7 @@ export class NativeQueryEditor extends Component<
     // listen to onChange events
     editor.getSession().on("change", this.onChange);
     editor.getSelection().on("changeCursor", this.handleCursorChange);
+    editor.getSelection().on("changeSelection", this.handleSelectionChange);
 
     const minLineNumberWidth = 20;
     editor.getSession().gutterRenderer = {
@@ -423,11 +445,6 @@ export class NativeQueryEditor extends Component<
 
     // reset undo manager to prevent undoing to empty editor
     editor.getSession().getUndoManager().reset();
-
-    // hmmm, this could be dangerous
-    if (!this.props.readOnly) {
-      editor.focus();
-    }
 
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     editor.setOptions({
@@ -692,10 +709,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
 
       onSetDatabaseId?.(databaseId);
-      if (!this.props.readOnly) {
-        // HACK: the cursor doesn't blink without this intended small delay
-        setTimeout(() => this._editor?.focus(), 50);
-      }
+      this.focus();
     }
   };
 
@@ -731,7 +745,7 @@ export class NativeQueryEditor extends Component<
 
   handleQueryGenerated = (queryText: string) => {
     this.handleQueryUpdate(queryText);
-    this._editor?.focus();
+    this.focus();
   };
 
   isPromptInputVisible = () => {
@@ -755,7 +769,7 @@ export class NativeQueryEditor extends Component<
     const queryText = Lib.rawNativeQuery(query);
 
     this.handleQueryUpdate(await formatQuery(queryText, engine));
-    this._editor?.focus();
+    this.focus();
   };
 
   render() {

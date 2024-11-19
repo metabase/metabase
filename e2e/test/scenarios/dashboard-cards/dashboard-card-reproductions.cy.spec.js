@@ -1,25 +1,34 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  addOrUpdateDashboardCard,
+  assertDescendantNotOverflowsContainer,
+  assertIsEllipsified,
+  assertIsNotEllipsified,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  cypressWaitAll,
+  echartsContainer,
   editDashboard,
+  focusNativeEditor,
+  getDashboardCard,
+  modal,
+  openNavigationSidebar,
+  pieSlices,
+  popover,
+  queryBuilderHeader,
   resetTestTable,
   restore,
   resyncDatabase,
+  saveDashboard,
+  setActionsEnabledForDB,
   showDashboardCardActions,
   sidebar,
+  updateSetting,
   visitDashboard,
-  addOrUpdateDashboardCard,
-  saveDashboard,
-  openNavigationSidebar,
-  assertDescendantNotOverflowsContainer,
-  cypressWaitAll,
-  assertIsEllipsified,
-  assertIsNotEllipsified,
-  popover,
-  echartsContainer,
-  queryBuilderHeader,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -194,7 +203,7 @@ describe("issue 16334", () => {
     cy.contains("Started from 16334");
 
     // Make sure the original visualization didn't change
-    cy.findAllByTestId("slice");
+    pieSlices().should("have.length", 2);
 
     const getVisualizationSettings = targetId => ({
       column_settings: {
@@ -232,12 +241,8 @@ describe("issue 17160", () => {
   function assertMultipleValuesFilterState() {
     cy.findByText("2 selections").click();
 
-    cy.findByTestId("Doohickey-filter-value").within(() =>
-      cy.get("input").should("be.checked"),
-    );
-    cy.findByTestId("Gadget-filter-value").within(() =>
-      cy.get("input").should("be.checked"),
-    );
+    cy.findByLabelText("Doohickey").should("be.checked");
+    cy.findByLabelText("Gadget").should("be.checked");
   }
 
   function setup() {
@@ -869,11 +874,9 @@ describe("issues 27020 and 27105: static-viz fails to render for certain date fo
     // This is currently the default setting, anyway.
     // But we want to explicitly set it in case something changes in the future,
     // because it is a crucial step for this reproduction.
-    cy.request("PUT", "/api/setting/custom-formatting", {
-      value: {
-        "type/Temporal": {
-          date_style: "MMMM D, YYYY",
-        },
+    updateSetting("custom-formatting", {
+      "type/Temporal": {
+        date_style: "MMMM D, YYYY",
       },
     });
 
@@ -1096,15 +1099,17 @@ describe("issue 31628", () => {
   };
 
   const assertDescendantsNotOverflowDashcards = descendantsSelector => {
-    cy.findAllByTestId("dashcard").each((dashcard, dashcardIndex) => {
-      const descendants = dashcard.find(descendantsSelector);
+    cy.findAllByTestId("dashcard").should(dashcards => {
+      dashcards.each((dashcardIndex, dashcard) => {
+        const descendants = dashcard.querySelectorAll(descendantsSelector);
 
-      descendants.each((_descendantIndex, descendant) => {
-        assertDescendantNotOverflowsContainer(
-          descendant,
-          dashcard[0],
-          `dashcard[${dashcardIndex}] [data-testid="${descendant.dataset.testid}"]`,
-        );
+        descendants.forEach(descendant => {
+          assertDescendantNotOverflowsContainer(
+            descendant,
+            dashcard,
+            `dashcard[${dashcardIndex}] [data-testid="${descendant.dataset.testid}"]`,
+          );
+        });
       });
     });
   };
@@ -1158,7 +1163,7 @@ describe("issue 31628", () => {
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
-        popover().findByText("18,760").should("exist");
+        cy.findByRole("tooltip").findByText("18,760").should("exist");
 
         /**
          * should show ellipsis icon with question name in tooltip
@@ -1209,14 +1214,18 @@ describe("issue 31628", () => {
         scalarTitle.then($element => assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
-        popover().findByText(SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * should show description tooltip on hover
          */
         cy.findByTestId("scalar-description").realHover();
 
-        popover().findByText(SCALAR_QUESTION.description).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SCALAR_QUESTION.description)
+          .should("exist");
       });
     });
 
@@ -1328,14 +1337,16 @@ describe("issue 31628", () => {
         scalarTitle.then($element => assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * it should show previous value tooltip on hover
          */
         cy.findByTestId("scalar-previous-value").realHover();
 
-        popover().within(() => {
+        cy.findByRole("tooltip").within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• vs. previous month: 527").should("exist");
         });
@@ -1422,14 +1433,18 @@ describe("issue 31628", () => {
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * should show description tooltip on hover
          */
         cy.findByTestId("legend-caption").icon("info").realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.description)
+          .should("exist");
 
         /**
          * should show previous value in full
@@ -1484,14 +1499,18 @@ describe("issue 31628", () => {
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * should show description tooltip on hover
          */
         cy.findByTestId("legend-caption").icon("info").realHover();
 
-        popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.description)
+          .should("exist");
 
         /**
          * should show previous value in full
@@ -1633,5 +1652,302 @@ describe("issue 32231", () => {
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("exist");
     });
+  });
+});
+
+describe("issue 43219", () => {
+  const questionDetails = {
+    display: "line",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      ],
+    },
+  };
+
+  const textFilter = createMockParameter({
+    name: "Text",
+    slug: "string",
+    id: "5aefc726",
+    type: "string/=",
+    sectionId: "string",
+  });
+
+  const cardsCount = 10;
+
+  const getQuestionAlias = index => `question-${index}`;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cypressWaitAll(
+      Array.from({ length: cardsCount }, (_value, index) => {
+        const name = `Series ${index + 1}`;
+        return createQuestion({ ...questionDetails, name }).then(
+          ({ body: question }) => {
+            cy.wrap(question).as(getQuestionAlias(index));
+          },
+        );
+      }),
+    );
+
+    cy.then(function () {
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [textFilter],
+        },
+        questions: [
+          {
+            ...questionDetails,
+            name: "Base series",
+          },
+        ],
+        cards: [
+          {
+            size_x: 4,
+            size_y: 3,
+            series: Array.from(
+              { length: cardsCount },
+              (_value, index) => this[getQuestionAlias(index)],
+            ),
+          },
+        ],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+    });
+  });
+
+  it("is possible to map parameters to dashcards with lots of series (metabase#43219)", () => {
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Text")
+      .click();
+
+    getDashboardCard(0).within(() => {
+      cy.findByText("Series 10").should("exist").and("not.be.visible");
+
+      cy.findByTestId("visualization-root").scrollTo("bottom");
+      cy.findByTestId("parameter-mapper-container").scrollTo("right");
+
+      cy.findByText("Series 10").should("be.visible");
+    });
+  });
+});
+
+describe("issue 48878", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card").as("saveQuestion");
+    cy.intercept("POST", "/api/action").as("createAction");
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+    let fetchCardRequestsCount = 0;
+
+    cy.intercept("GET", "/api/card/*", request => {
+      // we only want to simulate the race condition 4th time this request is triggered
+      if (fetchCardRequestsCount === 2) {
+        request.continue(
+          () => new Promise(resolve => setTimeout(resolve, 2000)),
+        );
+      } else {
+        request.continue();
+      }
+
+      ++fetchCardRequestsCount;
+    }).as("fetchCard");
+    setup();
+  });
+
+  // I could only reproduce this issue in Cypress when I didn't use any helpers like createQuestion, etc.
+  it("does not crash the action button viz (metabase#48878)", () => {
+    cy.reload();
+    cy.wait("@fetchCard");
+    getDashboardCard(0).findByText("Click Me").should("be.visible");
+  });
+
+  function setup() {
+    cy.log("create dummy model");
+
+    // Create a dummy model so that GET /api/search does not return the model want to test.
+    // If we don't do this, GET /api/search will return and put card object with dataset_query
+    // attribute in the redux store (entity framework) which would prevent the issue from happening.
+    cy.visit("/model/new");
+    createModel({
+      name: "Dummy model",
+      query: "select 1",
+    });
+
+    cy.log("create model");
+
+    cy.button("New").click();
+    popover().findByText("Model").click();
+    createModel({
+      name: "SQL Model",
+      query: "select * from orders limit 5",
+    });
+
+    cy.log("create model action");
+
+    cy.findByTestId("qb-header-info-button").click();
+    modal().findByText("See more about this model").click();
+
+    cy.findByRole("tab", { name: "Actions" }).click();
+    cy.findByTestId("model-actions-header").findByText("New action").click();
+
+    modal().within(() => {
+      focusNativeEditor().type("UPDATE orders SET plan = {{ plan ", {
+        parseSpecialCharSequences: false,
+      });
+      cy.button("Save").click();
+    });
+
+    modal()
+      .last()
+      .within(() => {
+        cy.findByPlaceholderText("My new fantastic action").type("Test action");
+        cy.button("Create").click();
+        cy.wait("@createAction");
+      });
+
+    cy.visit("/");
+
+    cy.log("create dashoard");
+
+    cy.button("New").click();
+    popover().findByText("Dashboard").click();
+
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your dashboard?").type(
+        "Dash",
+      );
+      cy.button("Create").click();
+      cy.wait("@getDashboard");
+    });
+
+    cy.button("Add action").click();
+    cy.button("Pick an action").click();
+    modal().within(() => {
+      cy.findByText("SQL Model").click();
+      cy.findByText("Test action").click();
+      cy.button("Done").click();
+    });
+    cy.button("Save").click();
+    cy.wait("@updateDashboard");
+    cy.wait("@fetchCard");
+  }
+
+  function createModel({ name, query }) {
+    cy.findByTestId("new-model-options")
+      .findByText("Use a native query")
+      .click();
+
+    focusNativeEditor().type(query);
+    cy.findByTestId("native-query-editor-sidebar")
+      .findByTestId("run-button")
+      .click();
+    cy.wait("@dataset");
+    cy.button("Save").click();
+
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your model?").type(name);
+      cy.button("Save").click();
+      cy.wait("@saveQuestion");
+    });
+    cy.wait("@fetchCard");
+  }
+});
+
+describe("issue 46318", () => {
+  const query = `SELECT 'group_1' AS main_group, 'sub_group_1' AS sub_group, 111 AS value_sum, 'group_1__sub_group_1' AS group_name
+UNION ALL
+SELECT 'group_1', 'sub_group_2', 68, 'group_1__sub_group_2'
+UNION ALL
+SELECT 'group_2', 'sub_group_1', 79, 'group_2__sub_group_1'
+UNION ALL
+SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
+`;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestionAndDashboard({
+      questionDetails: {
+        name: "46318",
+        native: { query },
+        display: "row",
+        visualization_settings: {
+          "graph.dimensions": ["MAIN_GROUP", "SUB_GROUP"],
+          "graph.series_order_dimension": null,
+          "graph.series_order": null,
+          "graph.metrics": ["VALUE_SUM"],
+        },
+      },
+    }).then(response => {
+      visitDashboard(response.body.dashboard_id);
+    });
+
+    editDashboard();
+    getDashboardCard().realHover().icon("click").click();
+    cy.get("aside").within(() => {
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("URL").click();
+    });
+    modal().within(() => {
+      cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
+        "http://localhost:4000/?q={{group_name}}",
+        { parseSpecialCharSequences: false },
+      );
+      cy.button("Done").click();
+    });
+    saveDashboard();
+  });
+
+  it("passes values from unused columns of row visualization to click behavior (metabase#46318)", () => {
+    cy.findAllByRole("graphics-symbol").eq(0).click();
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_1__sub_group_1",
+    );
+
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(2).click(); // intentionally eq(2), not eq(1) - that's how row viz works
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_1__sub_group_2",
+    );
+
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(1).click(); // intentionally eq(1), not eq(2) - that's how row viz works
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_2__sub_group_1",
+    );
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(3).click();
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_2__sub_group_2",
+    );
   });
 });

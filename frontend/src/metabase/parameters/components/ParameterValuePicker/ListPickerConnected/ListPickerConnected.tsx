@@ -3,15 +3,15 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 import { useDebouncedCallback } from "use-debounce";
 
-import type { Parameter, ParameterValues } from "metabase-types/api";
+import type { SelectOption } from "metabase/ui";
+import type {
+  Parameter,
+  ParameterValue,
+  ParameterValues,
+} from "metabase-types/api";
 
 import { ListPicker } from "../ListPicker";
-import {
-  getFlattenedStrings,
-  getListParameterStaticValues,
-  isStaticListParam,
-  shouldEnableSearch,
-} from "../core";
+import { isStaticListParam, shouldEnableSearch } from "../core";
 
 interface ListPickerConnectedProps {
   value: string | null;
@@ -85,7 +85,8 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     onChange(value);
   };
 
-  const staticValues = getListParameterStaticValues(parameter);
+  const staticOptions = getListParameterStaticOptions(parameter);
+  const fetchedOptions = getOptions(fetchedValues);
   const enableSearch = shouldEnableSearch(parameter, forceSearchItemCount);
   const isLoading = loading && !isStaticListParam(parameter);
   const isError = "error" in fetchResult;
@@ -93,10 +94,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   return (
     <ListPicker
       value={value ?? ""} // Can't be null for the underlying Select
-      options={getCombinedValues(
-        value,
-        staticValues ?? getFlattenedStrings(fetchedValues ?? []),
-      )}
+      options={staticOptions ?? fetchedOptions ?? []}
       onClear={() => handleChange(null)}
       onChange={handleChange}
       onSearchChange={handleSearch}
@@ -117,11 +115,29 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   );
 }
 
-function getCombinedValues(selected: string | null, other: string[]) {
-  return [
-    ...(selected ? [selected] : []),
-    ...other.filter(v => v !== selected),
-  ];
+function getOption(value: ParameterValue | string): SelectOption {
+  if (Array.isArray(value)) {
+    return {
+      value: String(value[0] ?? ""),
+      label: value[1] ?? String(value[0]),
+    };
+  }
+  return { value, label: value };
+}
+
+function getOptions(
+  values: ParameterValue[] | string[] | undefined,
+): SelectOption[] | null {
+  if (!values) {
+    return null;
+  }
+  return values.map(getOption);
+}
+
+function getListParameterStaticOptions(
+  parameter: Parameter,
+): SelectOption[] | null {
+  return getOptions(parameter?.values_source_config?.values);
 }
 
 function getResetKey(parameter: Parameter): string {

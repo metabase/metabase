@@ -1,20 +1,25 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
+  createPulse,
   describeEE,
+  modal,
   modifyPermission,
-  visitQuestion,
-  visitDashboard,
+  openSharingMenu,
+  popover,
+  restore,
   setTokenFeatures,
   setupSMTP,
+  sharingMenu,
+  sharingMenuButton,
   sidebar,
-  popover,
+  tableInteractive,
   undoToast,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -71,10 +76,15 @@ describeEE("scenarios > admin > permissions > application", () => {
 
       it("revokes ability to create subscriptions and alerts and manage them", () => {
         visitDashboard(ORDERS_DASHBOARD_ID);
-        cy.icon("subscription").should("not.exist");
+
+        openSharingMenu();
+        sharingMenu()
+          .findByText(/subscri/i)
+          .should("not.exist");
 
         visitQuestion(ORDERS_QUESTION_ID);
-        cy.icon("bell").should("not.exist");
+        tableInteractive().should("be.visible");
+        sharingMenuButton().should("be.disabled");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
@@ -84,23 +94,19 @@ describeEE("scenarios > admin > permissions > application", () => {
     });
 
     describe("granted", () => {
-      it("gives ability to create dashboard subscriptions", () => {
+      it("gives ability to create dashboard subscriptions and question alerts", () => {
         setupSMTP();
         cy.signInAsNormalUser();
+
+        cy.log("Create a dashboard subscription");
         visitDashboard(ORDERS_DASHBOARD_ID);
-        cy.findByLabelText("subscriptions").click();
-
+        openSharingMenu(/subscriptions/i);
         sidebar().findByText("Email this dashboard").should("exist");
-      });
 
-      it("gives ability to create question alerts", () => {
-        cy.signInAsNormalUser();
+        cy.log("Create a question alert");
         visitQuestion(ORDERS_QUESTION_ID);
-        cy.icon("bell").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(
-          "To send alerts, an admin needs to set up email integration.",
-        );
+        openSharingMenu(/alert/i);
+        modal().findByText("The wide world of alerts").should("be.visible");
       });
     });
   });
@@ -227,7 +233,7 @@ function createSubscription(user_id) {
       },
     },
   }).then(({ body: { card_id, dashboard_id } }) => {
-    cy.createPulse({
+    createPulse({
       name: "Subscription",
       dashboard_id,
       cards: [

@@ -53,7 +53,7 @@
    (u/varargs Schema [(Schema/getDefaultStandardSchema)
                       (Schema/getSchema (u/varargs File [(io/file "test_resources/posixGroup.schema.ldif")]))])))
 
-(defn do-with-ldap-server
+(defn do-with-ldap-server!
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `f`."
   [f options]
   (binding [*ldap-server* (start-ldap-server! options)]
@@ -65,21 +65,21 @@
                                          ldap-user-base  "dc=metabase,dc=com"
                                          ldap-group-sync true
                                          ldap-group-base "dc=metabase,dc=com"]
-         (tu/with-temporary-raw-setting-values [ldap-enabled "true"]
+        (tu/with-temporary-raw-setting-values [ldap-enabled "true"]
           (f)))
       (finally (.shutDown *ldap-server* true)))))
 
-(defmacro with-ldap-server
+(defmacro with-ldap-server!
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `body`."
   [& body]
-  `(do-with-ldap-server (fn [] ~@body)
-                        {:ldif-resource "ldap.ldif"
-                         :schema        (get-default-schema)}))
+  `(do-with-ldap-server! (fn [] ~@body)
+                         {:ldif-resource "ldap.ldif"
+                          :schema        (get-default-schema)}))
 
-(defmacro with-active-directory-ldap-server
+(defmacro with-active-directory-ldap-server!
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `body`.
   This version of the macro uses options that simulate an Active Directory server with memberOf attributes."
   [& body]
-  `(do-with-ldap-server (fn [] ~@body)
-                        {:ldif-resource "active_directory.ldif"
-                         :schema        nil}))
+  `(do-with-ldap-server! (fn [] ~@body)
+                         {:ldif-resource "active_directory.ldif"
+                          :schema        nil}))

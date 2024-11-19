@@ -1,5 +1,5 @@
 ---
-title:
+title: Oracle
 redirect_from:
   - /docs/latest/administration-guide/databases/oracle
 ---
@@ -44,6 +44,19 @@ The password for the username that you use to connect to the database.
 
 You can use both client and server authentication (known as mutual authentication).
 
+### Connecting to Oracle Cloud Autonomous Database
+
+If you've configured your database to require mutual TLS (mTLS), you'll need a [wallet](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/connect-download-wallet.html#GUID-DED75E69-C303-409D-9128-5E10ADD47A35). To download your wallet:
+
+1. Go to your Oracle Autonomous Database.
+2. Go to the database's details.
+3. Click on **DB connection**.
+4. Download the wallet.
+5. Create a password for the keyfile.
+6. Copy the `keystore.jks` file to wherever you store your Metabase configuration data.
+7. Use `JAVA_OPTS` to let Metabase know about the keystore's location and password (for more info on keystores, see the next section).
+8. In Metabase, on the data connection page, enter your `host`, `port`, and `service_name`. You can find these values in the `tsnnames.ora` file.
+
 #### Client authentication with a keystore
 
 To configure the server (the Oracle server) to authenticate the identity of the client (Metabase), you need to
@@ -55,6 +68,12 @@ You'll import the client's private key into the keystore (rather than a root CA 
 -Djavax.net.ssl.keyStore=/path/to/keystore.jks
 -Djavax.net.ssl.keyStoreType=JKS \
 -Djavax.net.ssl.keyStorePassword=<keyStorePassword>
+```
+
+You can define these with the `JAVA_OPTS` environment variable, like so:
+
+```sh
+JAVA_OPTS: "-Djavax.net.ssl.keyStore=/scripts/keystore.jks -Djavax.net.ssl.keyStoreType=JKS -Djavax.net.ssl.keyStorePassword=<keyStorePassword>"
 ```
 
 With this done, the Oracle server will authenticate Metabase using the private key when Metabase tries to connect over SSL.
@@ -71,11 +90,14 @@ For more information on setting up a truststore for AWS RDS Oracle instances, se
 
 If you need to connect to other databases using SSL, instead of creating a new truststore, you'll probably want to add the RDS CA to your existing truststore file (likely called `cacerts`).
 
+## Supported Oracle database and Oracle driver versions
+
+- **Driver version**: the minimum Oracle driver version should be 19c, regardless of which Java version or Oracle database version you have.
+- **Database version**: the minimum database version should be version 19c, as Oracle [no longer supports database versions prior to 19](https://endoflife.date/oracle-database).
+
 ## Downloading the Oracle JDBC Driver JAR
 
 You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
-
-The minimum Oracle Database version should be 19c, regardless of which Java version or Oracle JDBC driver version you have.
 
 We recommend using the `ojdbc8.jar` JAR.
 
@@ -91,7 +113,7 @@ By default, the plugins directory is called `plugins`, and lives in the same dir
 
 For example, if you're running Metabase from a directory called `/app/`, you should move the Oracle JDBC driver JAR to `/app/plugins/`:
 
-```bash
+```txt
 # example directory structure for running Metabase with Oracle support
 /app/metabase.jar
 /app/plugins/ojdbc8.jar

@@ -1,5 +1,6 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
@@ -8,15 +9,15 @@ import {
 } from "metabase/admin/permissions/utils/urls";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
-  PLUGIN_REDUCERS,
-  PLUGIN_DATA_PERMISSIONS,
-  PLUGIN_ADMIN_USER_FORM_FIELDS,
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
+  PLUGIN_ADMIN_USER_FORM_FIELDS,
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_REDUCERS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -88,9 +89,8 @@ if (hasPremiumFeature("sandboxes")) {
 
   PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
     const sandboxes = getDraftPolicies(state);
-    return {
-      sandboxes,
-    };
+    const modifiedGroupIds = _.uniq(sandboxes.map(sb => sb.group_id));
+    return [{ sandboxes }, modifiedGroupIds];
   });
 
   PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);

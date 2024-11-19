@@ -29,8 +29,8 @@
   ;; this is the way the `Content-Type` header is formatted in requests made by the Druid web interface
   (let [{:keys [auth-enabled auth-username auth-token-value]} options
         options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
-                        (:body options) (update :body json/generate-string)
-                        auth-enabled (assoc :basic-auth (str auth-username ":" auth-token-value)))]
+                  (:body options) (update :body json/generate-string)
+                  auth-enabled (assoc :basic-auth (str auth-username ":" auth-token-value)))]
 
     (try
       (let [{:keys [status body]} (request-fn url options)]
@@ -57,9 +57,9 @@
                              {:response response}))
                           e)))))))
 
-(def ^{:arglists '([url & {:as options}])} GET    "Execute a GET request."    (partial do-request http/get))
-(def ^{:arglists '([url & {:as options}])} POST   "Execute a POST request."   (partial do-request http/post))
-(def ^{:arglists '([url & {:as options}])} DELETE "Execute a DELETE request." (partial do-request http/delete))
+(def ^{:arglists '([url & {:as options}]), :style/indent [:form]} GET    "Execute a GET request."    (partial do-request http/get))
+(def ^{:arglists '([url & {:as options}]), :style/indent [:form]} POST   "Execute a POST request."   (partial do-request http/post))
+(def ^{:arglists '([url & {:as options}]), :style/indent [:form]} DELETE "Execute a DELETE request." (partial do-request http/delete))
 
 (defn do-query
   "Run a Druid `query` against database connection `details`."
@@ -68,12 +68,12 @@
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (try
       (POST (details->url details-with-tunnel "/druid/v2"),
-        :body             query
-        :auth-enabled     (:auth-enabled details)
-        :auth-username    (:auth-username details)
-        :auth-token-value (-> details
-                              (secret/db-details-prop->secret-map "auth-token")
-                              secret/value->string))
+            :body             query
+            :auth-enabled     (:auth-enabled details)
+            :auth-username    (:auth-username details)
+            :auth-token-value (-> details
+                                  (secret/db-details-prop->secret-map "auth-token")
+                                  secret/value->string))
       ;; don't need to do anything fancy if the query was killed
       (catch InterruptedException e
         (throw e))
@@ -94,11 +94,11 @@
       (try
         (log/debugf "Canceling Druid query with ID %s" query-id)
         (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id))
-          :auth-enabled     (:auth-enabled details)
-          :auth-username    (:auth-username details)
-          :auth-token-value (-> details
-                                (secret/db-details-prop->secret-map "auth-token")
-                                secret/value->string))
+                :auth-enabled     (:auth-enabled details)
+                :auth-username    (:auth-username details)
+                :auth-token-value (-> details
+                                      (secret/db-details-prop->secret-map "auth-token")
+                                      secret/value->string))
         (catch Exception cancel-e
           (log/warnf cancel-e "Failed to cancel Druid query with queryId %s" query-id))))))
 

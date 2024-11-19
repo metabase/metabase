@@ -175,10 +175,10 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/with-fields [(meta/field-metadata :orders :id)])
                     (lib/filter (lib/between
-                                  (-> (meta/field-metadata :orders :created-at)
-                                      (lib/with-temporal-bucket :default))
-                                  (lib/relative-datetime -17 :week)
-                                  (lib/relative-datetime -16 :week))))]
+                                 (-> (meta/field-metadata :orders :created-at)
+                                     (lib/with-temporal-bucket :default))
+                                 (lib/relative-datetime -17 :week)
+                                 (lib/relative-datetime -16 :week))))]
       (is (=? {:query {:filter [:between
                                 [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
                                 [:relative-datetime -17 :week]
@@ -188,10 +188,10 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/with-fields [(meta/field-metadata :orders :id)])
                     (lib/filter (lib/between
-                                  (-> (meta/field-metadata :orders :created-at)
-                                        (lib/with-temporal-bucket :day))
-                                  (lib/relative-datetime -1 :week)
-                                  (lib/relative-datetime 0 :week))))]
+                                 (-> (meta/field-metadata :orders :created-at)
+                                     (lib/with-temporal-bucket :day))
+                                 (lib/relative-datetime -1 :week)
+                                 (lib/relative-datetime 0 :week))))]
       (is (=? {:query {:filter [:between
                                 [:field (meta/id :orders :created-at) {}]
                                 [:relative-datetime -1 :week]
@@ -242,9 +242,9 @@
 (defn- filter->sql [filter-clause]
   (letfn [(thunk []
             (let [result (qp.compile/compile
-                           (lib.tu.macros/mbql-query checkins
-                             {:aggregation [[:count]]
-                              :filter      filter-clause}))]
+                          (lib.tu.macros/mbql-query checkins
+                            {:aggregation [[:count]]
+                             :filter      filter-clause}))]
               (update result :query #(-> (last (re-matches #"^.*(WHERE .*$)" %))
                                          (str/replace #"\"" "")
                                          (str/replace #"PUBLIC\." "")))))]
@@ -450,23 +450,23 @@
                                :aggregation [[:count]]
                                :breakout [[:field %last-login {:temporal-unit :month}]]}})
              (optimize-temporal-filters/optimize-temporal-filters
-               (lib.tu.macros/mbql-query users
-                 {:filter [:between
-                           [:+ [:field %last-login {:temporal-unit :month}] [:interval 3 :month]]
-                           [:relative-datetime -12 :month]
-                           [:relative-datetime 0 :month]]
-                  :source-query {:source-table $$users
-                                 :aggregation [[:count]]
-                                 :breakout [[:field %last-login {:temporal-unit :month}]]}}))))))
+              (lib.tu.macros/mbql-query users
+                {:filter [:between
+                          [:+ [:field %last-login {:temporal-unit :month}] [:interval 3 :month]]
+                          [:relative-datetime -12 :month]
+                          [:relative-datetime 0 :month]]
+                 :source-query {:source-table $$users
+                                :aggregation [[:count]]
+                                :breakout [[:field %last-login {:temporal-unit :month}]]}}))))))
   (testing "Optimize when temporal unit on field is not specified. (#42291)"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/with-fields [(meta/field-metadata :orders :id)])
                     (lib/filter (lib/between
-                                  (lib/+
-                                    (meta/field-metadata :orders :created-at)
-                                    (lib/interval 10 :minute))
-                                  (lib/relative-datetime -10 :minute)
-                                  (lib/relative-datetime 0 :minute))))]
+                                 (lib/+
+                                  (meta/field-metadata :orders :created-at)
+                                  (lib/interval 10 :minute))
+                                 (lib/relative-datetime -10 :minute)
+                                 (lib/relative-datetime 0 :minute))))]
       (is (=? {:query {:filter [:and
                                 [:>=
                                  [:+ [:field (meta/id :orders :created-at) {}]
@@ -481,12 +481,12 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/with-fields [(meta/field-metadata :orders :id)])
                     (lib/filter (lib/between
-                                  (lib/+
-                                    (-> (meta/field-metadata :orders :created-at)
-                                        (lib/with-temporal-bucket :day))
-                                    (lib/interval 2 :day))
-                                  (lib/relative-datetime -1 :week)
-                                  (lib/relative-datetime 0 :week))))]
+                                 (lib/+
+                                  (-> (meta/field-metadata :orders :created-at)
+                                      (lib/with-temporal-bucket :day))
+                                  (lib/interval 2 :day))
+                                 (lib/relative-datetime -1 :week)
+                                 (lib/relative-datetime 0 :week))))]
       (is (=? {:query {:filter [:between
                                 [:+ [:field (meta/id :orders :created-at) {}]
                                  [:interval 2 :day]]

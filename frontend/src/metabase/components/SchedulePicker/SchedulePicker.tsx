@@ -8,10 +8,10 @@ import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   AM_PM_OPTIONS,
-  getDayOfWeekOptions,
   HOUR_OPTIONS,
   MINUTE_OPTIONS,
   MONTH_DAY_OPTIONS,
+  getDayOfWeekOptions,
 } from "metabase/lib/date-time";
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
@@ -38,8 +38,8 @@ const optionNameTranslations = {
   monthly: t`Monthly`,
 };
 
-type ScheduleProperty = keyof ScheduleSettings;
-type ScheduleChangeProp = { name: ScheduleProperty; value: unknown };
+export type ScheduleProperty = keyof ScheduleSettings;
+export type ScheduleChangeProp = { name: ScheduleProperty; value: unknown };
 
 export interface SchedulePickerProps {
   schedule: ScheduleSettings;

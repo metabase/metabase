@@ -2,16 +2,13 @@ import { t } from "ttag";
 
 import Schemas from "metabase/entities/schemas";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
+import { Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, TemplateTag } from "metabase-types/api";
 
-import {
-  ContainerLabel,
-  ErrorSpan,
-  InputContainer,
-} from "./TagEditorParam.styled";
+import { ContainerLabel, InputContainer } from "./TagEditorParam.styled";
 
 export function FieldMappingSelect({
   tag,
@@ -36,7 +33,11 @@ export function FieldMappingSelect({
     <InputContainer>
       <ContainerLabel>
         {t`Field to map to`}
-        {tag.dimension == null && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+        {tag.dimension == null && (
+          <Text c="error" span={true} ml="sm">
+            {t`(required)`}
+          </Text>
+        )}
       </ContainerLabel>
 
       {(!hasSelectedDimensionField ||

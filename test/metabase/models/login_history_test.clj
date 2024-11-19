@@ -49,10 +49,10 @@
               ;; mock out the IP address geocoding function so we can make sure it handles timezones like PST correctly
               ;; (#15603)
               (with-redefs [req.util/geocode-ip-addresses (fn [ip-addresses]
-                                                             (into {} (for [ip-address ip-addresses]
-                                                                        [ip-address
-                                                                         {:description "San Francisco, California, United States"
-                                                                          :timezone    (t/zone-id "America/Los_Angeles")}])))
+                                                            (into {} (for [ip-address ip-addresses]
+                                                                       [ip-address
+                                                                        {:description "San Francisco, California, United States"
+                                                                         :timezone    (t/zone-id "America/Los_Angeles")}])))
                             login-history/maybe-send-login-from-new-device-email
                             (fn [login-history]
                               (when-let [futur (original-maybe-send login-history)]

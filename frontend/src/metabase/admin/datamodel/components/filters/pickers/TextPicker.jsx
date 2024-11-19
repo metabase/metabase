@@ -93,7 +93,7 @@ export default class TextPicker extends Component {
           )}
           {!isSingleLine && (
             <TextPickerArea
-              className={cx(CS.block, CS.full, CS.input)}
+              className={cx(CS.block, CS.full)}
               type="text"
               value={this.state.fieldString}
               onChange={e => this.setValue(e.target.value)}

@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -18,17 +18,17 @@ import { closeSidebar } from "metabase/dashboard/actions";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { Form, FormProvider } from "metabase/forms";
 import type {
-  Dashboard,
   ActionDashboardCard,
+  Dashboard,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import {
+  ChangeActionContainer,
   Heading,
   SidebarBody,
-  SidebarHeader,
   SidebarFooter,
-  ChangeActionContainer,
+  SidebarHeader,
 } from "./ActionSidebar.styled";
 
 const buttonVariantOptions = ActionViz.settings["button.variant"].props.options;

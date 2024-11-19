@@ -3,22 +3,22 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { Expr, Node } from "metabase-lib/v1/expressions/pratt";
 import {
-  parse,
-  lexify,
-  compile,
   ResolverError,
+  compile,
+  lexify,
+  parse,
 } from "metabase-lib/v1/expressions/pratt";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
-  useShorthands,
   adjustCase,
-  adjustOptions,
   adjustOffset,
+  adjustOptions,
+  useShorthands,
 } from "./recursive-parser";
-import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
-import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
+import { resolve } from "./resolver";
+import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage } from "./types";
 
 import {
@@ -52,7 +52,7 @@ export function diagnose({
   stageIndex,
   metadata,
   name = null,
-  expressionPosition,
+  expressionIndex,
 }: {
   source: string;
   startRule: "expression" | "aggregation" | "boolean";
@@ -60,7 +60,7 @@ export function diagnose({
   stageIndex: number;
   name?: string | null;
   metadata?: Metadata;
-  expressionPosition?: number;
+  expressionIndex: number | undefined;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -93,12 +93,12 @@ export function diagnose({
     mismatchedParentheses === 1
       ? t`Expecting a closing parenthesis`
       : mismatchedParentheses > 1
-      ? t`Expecting ${mismatchedParentheses} closing parentheses`
-      : mismatchedParentheses === -1
-      ? t`Expecting an opening parenthesis`
-      : mismatchedParentheses < -1
-      ? t`Expecting ${-mismatchedParentheses} opening parentheses`
-      : null;
+        ? t`Expecting ${mismatchedParentheses} closing parentheses`
+        : mismatchedParentheses === -1
+          ? t`Expecting an opening parenthesis`
+          : mismatchedParentheses < -1
+            ? t`Expecting ${-mismatchedParentheses} opening parentheses`
+            : null;
 
   if (message) {
     return { message };
@@ -115,18 +115,12 @@ export function diagnose({
       name,
       query,
       stageIndex,
+      expressionIndex,
       database,
     });
 
     if (isErrorWithMessage(mbqlOrError)) {
       return mbqlOrError;
-    }
-
-    if (startRule === "expression" && isBooleanExpression(mbqlOrError)) {
-      throw new ResolverError(
-        t`Custom columns do not support boolean expressions`,
-        mbqlOrError.node,
-      );
     }
   } catch (err) {
     if (isErrorWithMessage(err)) {
@@ -150,7 +144,7 @@ export function diagnose({
       stageIndex,
       expressionMode,
       mbqlOrError,
-      expressionPosition,
+      expressionIndex,
     );
 
     if (possibleError) {
@@ -176,6 +170,7 @@ function prattCompiler({
   name,
   query,
   stageIndex,
+  expressionIndex,
   database,
 }: {
   source: string;
@@ -183,10 +178,18 @@ function prattCompiler({
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
+  expressionIndex: number | undefined;
   database?: Database | null;
 }): ErrorWithMessage | Expr {
   const tokens = lexify(source);
-  const options = { source, startRule, name, query, stageIndex };
+  const options = {
+    source,
+    startRule,
+    name,
+    query,
+    stageIndex,
+    expressionIndex,
+  };
 
   // PARSE
   const { root, errors } = parse(tokens, {
@@ -218,10 +221,8 @@ function prattCompiler({
 
       return Lib.legacyRef(query, stageIndex, segment);
     } else {
-      const reference = options.name ?? ""; // avoid circular reference
-
       // fallback
-      const dimension = parseDimension(name, { reference, ...options });
+      const dimension = parseDimension(name, options);
       if (!dimension) {
         throw new ResolverError(t`Unknown Field: ${name}`, node);
       }
@@ -249,15 +250,6 @@ function prattCompiler({
   });
 
   return mbql;
-}
-
-function isBooleanExpression(
-  expr: unknown,
-): expr is [string, ...Expr[]] & { node?: Node } {
-  return (
-    Array.isArray(expr) &&
-    (LOGICAL_OPS.includes(expr[0]) || COMPARISON_OPS.includes(expr[0]))
-  );
 }
 
 function isErrorWithMessage(err: unknown): err is ErrorWithMessage {

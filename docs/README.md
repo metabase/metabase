@@ -28,11 +28,11 @@ Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/ch
 
 Once installed, set up your Metabase and connect to your data.
 
-### [Getting started](https://www.metabase.com/learn/getting-started/getting-started)
+### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started/index)
 
 With your data connected, get started asking questions, creating dashboards, and sharing your work.
 
-### [A tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase)
+### [A tour of Metabase](https://www.metabase.com/learn/metabase-basics/overview/tour-of-metabase)
 
 Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and data sandboxing, and more.
 
@@ -108,11 +108,12 @@ Metabase's reference documentation.
 - [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
 - [Model persistence](./data-modeling/model-persistence.md)
+- [Metrics](./data-modeling/metrics.md)
 - [Table metadata admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Working with JSON](./data-modeling/json-unfolding.md)
-- [Segments and metrics](./data-modeling/segments-and-metrics.md)
+- [Segments](./data-modeling/segments.md)
 
 ### Actions
 
@@ -127,6 +128,7 @@ Metabase's reference documentation.
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [History](./exploration-and-organization/history.md)
+- [Trash](./exploration-and-organization/delete-and-restore.md)
 - [Data reference](./exploration-and-organization/data-model-reference.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 - [X-rays](./exploration-and-organization/x-rays.md)
@@ -146,10 +148,11 @@ Metabase's reference documentation.
 - [JWT-based authentication](./people-and-groups/authenticating-with-jwt.md)
 - [SAML-based authentication](./people-and-groups/authenticating-with-saml.md)
   - [SAML with Auth0](./people-and-groups/saml-auth0.md)
-  - [SAML with Azure AD](./people-and-groups/saml-azure.md)
+  - [SAML with Microsoft Entra ID](./people-and-groups/saml-azure.md)
   - [SAML with Google](./people-and-groups/saml-google.md)
   - [SAML with Keycloak](./people-and-groups/saml-keycloak.md)
   - [SAML with Okta](./people-and-groups/saml-okta.md)
+- [User provisioning with SCIM](./people-and-groups/user-provisioning.md)
 
 ### Permissions
 
@@ -179,6 +182,7 @@ Metabase's reference documentation.
 - [General settings](./configuring-metabase/settings.md)
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
+- [Webhooks](./configuring-metabase/webhooks.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
 - [Configuration file](./configuring-metabase/config-file.md)
 - [Metabase log configuration](./configuring-metabase/log-configuration.md)
@@ -202,7 +206,7 @@ Metabase's reference documentation.
 ### Metabase API
 
 - [Metabase API documentation](./api-documentation.md)
-- [API tutorial](https://www.metabase.com/learn/administration/metabase-api)
+- [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//metabase-api)
 
 ### Troubleshooting
 

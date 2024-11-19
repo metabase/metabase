@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import { getFriendlyName } from "./utils";
-
-export const NULL_DIMENSION_WARNING = "NULL_DIMENSION_WARNING";
+const NULL_DIMENSION_WARNING = "NULL_DIMENSION_WARNING";
 export function nullDimensionWarning() {
   return {
     key: NULL_DIMENSION_WARNING,
@@ -10,7 +8,7 @@ export function nullDimensionWarning() {
   };
 }
 
-export const INVALID_DATE_WARNING = "INVALID_DATE_WARNING";
+const INVALID_DATE_WARNING = "INVALID_DATE_WARNING";
 export function invalidDateWarning(value) {
   return {
     key: INVALID_DATE_WARNING,
@@ -18,17 +16,27 @@ export function invalidDateWarning(value) {
   };
 }
 
-export const UNAGGREGATED_DATA_WARNING = "UNAGGREGATED_DATA_WARNING";
+const UNAGGREGATED_DATA_WARNING = "UNAGGREGATED_DATA_WARNING";
 export function unaggregatedDataWarning(col, axis = "x") {
   return {
     key: UNAGGREGATED_DATA_WARNING,
-    text: t`"${getFriendlyName(
-      col,
-    )}" is an unaggregated field: if it has more than one value at a point on the ${axis}-axis, the values will be summed.`,
+    text: t`"${
+      col.display_name
+    }" is an unaggregated field: if it has more than one value at a point on the ${axis}-axis, the values will be summed.`,
   };
 }
 
-export const UNEXPECTED_QUERY_TIMEZONE = "UNEXPECTED_QUERY_TIMEZONE";
+const UNAGGREGATED_DATA_WARNING_PIE = "UNAGGREGATED_DATA_WARNING_PIE";
+export function unaggregatedDataWarningPie(col) {
+  return {
+    key: UNAGGREGATED_DATA_WARNING_PIE,
+    text: t`"${
+      col.display_name
+    }" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed.`,
+  };
+}
+
+const UNEXPECTED_QUERY_TIMEZONE = "UNEXPECTED_QUERY_TIMEZONE";
 export function unexpectedTimezoneWarning({
   results_timezone,
   requested_timezone,
@@ -39,11 +47,19 @@ export function unexpectedTimezoneWarning({
   };
 }
 
-export const MULTIPLE_TIMEZONES = "MULTIPLE_TIMEZONES";
+const MULTIPLE_TIMEZONES = "MULTIPLE_TIMEZONES";
 export function multipleTimezoneWarning(timezones) {
   const tzList = timezones.join(", ");
   return {
     key: MULTIPLE_TIMEZONES,
     text: t`This chart contains queries run in multiple timezones: ${tzList}`,
+  };
+}
+
+const PIE_NEGATIVES = "PIE_NEGATIVES";
+export function pieNegativesWarning() {
+  return {
+    key: PIE_NEGATIVES,
+    text: t`Negative values in measure column have been omitted from pie chart.`,
   };
 }

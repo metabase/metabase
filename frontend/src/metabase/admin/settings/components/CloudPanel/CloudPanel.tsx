@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  useGetCloudMigrationQuery,
   useCreateCloudMigrationMutation,
+  useGetCloudMigrationQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -19,9 +19,9 @@ import { MigrationStart } from "./MigrationStart";
 import { MigrationSuccess } from "./MigrationSuccess";
 import {
   type InternalCloudMigrationState,
-  isInProgressMigration,
-  getStartedVisibleStates,
   defaultGetPollingInterval,
+  getStartedVisibleStates,
+  isInProgressMigration,
   openCheckoutInNewTab,
 } from "./utils";
 

@@ -27,7 +27,7 @@
 ;;; ---------------------------------------------------- Metadata ----------------------------------------------------
 
 ;; projections will be something like `[:_id :date~~~default :user_id :venue_id]`
-(mu/defn ^:private result-columns-unescape-map :- [:map-of :string :string]
+(mu/defn- result-columns-unescape-map :- [:map-of :string :string]
   "Returns a map of column name in result row -> unescaped column name to return in metadata e.g.
 
     {\"date_field~~~month\" \"date_field\"}"
@@ -74,9 +74,9 @@
                              (cons "_id")))]
     (into projected-vec (remove (conj projected-set "_id")) first-row-col-names)))
 
-(mu/defn ^:private result-col-names :- [:map
-                                        [:row [:maybe [:sequential :string]]]
-                                        [:unescaped [:maybe [:sequential :string]]]]
+(mu/defn- result-col-names :- [:map
+                               [:row [:maybe [:sequential :string]]]
+                               [:unescaped [:maybe [:sequential :string]]]]
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
   [{:keys [mbql? projections]} :- :map
@@ -104,7 +104,6 @@
                  {:name col-name})
                unescaped-col-names)})
 
-
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------
 
 (defn- row->vec [row-col-names]
@@ -123,7 +122,6 @@
 (defn- post-process-row [row-col-names]
   ;; if we formed the query using MBQL then we apply a couple post processing functions
   (row->vec row-col-names))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Run                                                       |

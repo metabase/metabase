@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import {
-  getEditingParameter,
   getDashcardParameterMappingOptions,
+  getEditingParameter,
   getParameterTarget,
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
@@ -14,8 +14,8 @@ import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-o
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Flex, Icon, Text, Transition } from "metabase/ui";
 import {
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
 } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -31,8 +31,8 @@ import type { State } from "metabase-types/store";
 import { getMappingOptionByTarget } from "../utils";
 
 import {
-  Container,
   CardLabel,
+  Container,
   Warning,
 } from "./DashCardCardParameterMapper.styled";
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";

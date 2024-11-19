@@ -2,14 +2,18 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { colors } from "metabase/lib/colors";
-import { Icon, Alert, Anchor, Text, Box } from "metabase/ui";
+import { Alert, Anchor, Box, Icon, Text, useMantineTheme } from "metabase/ui";
 
 export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
   const [isExpanded, { toggle }] = useToggle(false);
+  const theme = useMantineTheme();
 
   return (
     <Box mt="md" mb="sm" style={{ marginInlineEnd: "2.5rem" }}>
-      <Alert icon={<Icon name="warning" size={16} />} color="accent5">
+      <Alert
+        icon={<Icon name="warning" size={16} />}
+        color={theme.fn.themeColor("accent5")}
+      >
         <Text fw="bold">
           {t`The “No self-service” access level for View data is going away.`}
           {!isExpanded && (
@@ -28,7 +32,7 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
             <Anchor
               fw="bold"
               target="_blank"
-              href="https://www.metabase.com/docs/v0.50/permissions/no-self-service-deprecated"
+              href="https://www.metabase.com/docs/v0.50/permissions/no-self-service-deprecation"
               style={{ color: colors.accent7 }}
             >{t`Need help? See our docs.`}</Anchor>
           </Text>

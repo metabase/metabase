@@ -3,15 +3,28 @@ registerCypressGrep();
 
 import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
+import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
 
-const runWithReplay = Cypress.env("REPLAYIO_ENABLED");
+const isCI = Cypress.env("CI");
 
-if (runWithReplay) {
-  require("@replayio/cypress/support");
-}
+// remove default html output on test failure
+configure({
+  getElementError: (message, container) => {
+    // to re-enable the default stack trace, uncomment
+    // import { prettyDOM } from "@testing-library/dom";
+    // const error = new Error(
+    //  [message, prettyDOM(container)].filter(Boolean).join('\n\n'),
+    // )
+    const error = new Error(message);
+    error.name = "TestingLibraryElementError";
+    error.stack = null;
+
+    return error;
+  },
+});
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
@@ -38,6 +51,14 @@ Cypress.on("test:after:run", (test, runnable) => {
       parent = parent.parent;
     }
     filename += `${titleToFileName(test.title)} (failed).png`;
+
+    if (isCI) {
+      // cypress-terminal-report
+      Cypress.Mochawesome.context.forEach(ctx => {
+        addContext({ test }, ctx);
+      });
+    }
+
     addContext(
       { test },
       {
@@ -50,7 +71,27 @@ Cypress.on("test:after:run", (test, runnable) => {
       { title: "Video", value: `../../videos/${Cypress.spec.name}.mp4` },
     );
   }
+
+  Cypress.Mochawesome = undefined;
 });
+
+// required for cypress-terminal-report to be able to find logs after the test
+// is finished
+Cypress.Commands.add("addTestContext", context => {
+  if (!Cypress.Mochawesome) {
+    Cypress.Mochawesome = createMochawesomeObject();
+  }
+
+  Cypress.Mochawesome.context.push(context);
+});
+
+function createMochawesomeObject() {
+  return {
+    currentAttemptScreenshots: [],
+    attempts: [],
+    context: [],
+  };
+}
 
 /**
  * Our app registers beforeunload event listener e.g. when editing a native SQL question.
@@ -72,3 +113,32 @@ Cypress.on("window:load", window => {
     return addEventListener.apply(this, arguments);
   };
 });
+
+// cypress-terminal-report
+if (isCI) {
+  afterEach(() => {
+    cy.wait(50, { log: false }).then(() =>
+      cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
+    );
+  });
+
+  const options = {
+    collectTypes: [
+      "cons:log",
+      "cons:info",
+      // 'cons:warn', - intentionally disabled because of noise from mbql
+      "cons:error",
+      "cy:log",
+      "cy:xhr",
+      "cy:request",
+      "cy:intercept",
+      "cy:command",
+    ],
+    xhr: {
+      printBody: false,
+    },
+  };
+
+  // Ensure that after plugin installation is after the afterEach handling the integration.
+  require("cypress-terminal-report/src/installLogsCollector")(options);
+}

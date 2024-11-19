@@ -141,13 +141,23 @@ export const unsubscribeFromAlert = alert => {
   return async (dispatch, getState) => {
     await dispatch(unsubscribeFromAlertRequest.trigger(alert.id));
     dispatch({ type: UNSUBSCRIBE_FROM_ALERT });
-
-    // This delay lets us to show "You're unsubscribed" text in place of an
-    // alert list item for a while before removing the list item completely
-    setTimeout(
-      () =>
-        dispatch({ type: UNSUBSCRIBE_FROM_ALERT_CLEANUP, payload: alert.id }),
-      5000,
+    dispatch({
+      type: UNSUBSCRIBE_FROM_ALERT_CLEANUP,
+      payload: alert.id,
+    });
+    dispatch(
+      addUndo({
+        message: () => (
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
+            {t`Okay, you're unsubscribed.`}
+          </div>
+        ),
+      }),
     );
   };
 };

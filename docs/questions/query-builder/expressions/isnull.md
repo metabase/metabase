@@ -20,12 +20,12 @@ In Metabase tables, `null`s are displayed as blank cells. Additionally, for stri
 
 The table below shows you examples of the output of `isnull`.
 
-| Metabase shows| Database value      | `isnull(value)`   |
-|---------------| --------------------| ------------------|
-|               | `null`              | `true`            |
-|               | `""` (empty string) | `false`\*         |
-|               | `"   "` (whitespace)| `false`           |
-|     kitten    |`"kitten"`           | `false`           |
+| Metabase shows | Database value      | `isnull(value)` |
+| -------------- | ------------------- | --------------- |
+|                | `null`              | `true`          |
+|                | `""` (empty string) | `false`\*       |
+|                | `" "` (whitespace)  | `false`         |
+| kitten         | `"kitten"`          | `false`         |
 
 \*In Oracle and Vertica databases, empty strings are treated as nulls instead.
 
@@ -43,17 +43,16 @@ case(isnull([Discount]), true, false)
 Combine `isnull` with the [`case` expression](./case.md) to replace missing information with something more descriptive:
 
 For example, you can create a new custom column that will contain `"Unknown feedback"` when the original `[Feedback]` column is null, and the actual feedback value when `[Feedback]` is has a value. The custom expression to do it is:
+
 ```
 case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 ```
 
-
 | Feedback               | `case(isnull([Feedback]), "Unknown feedback.", [Feedback])` |
-| -----------------------| ----------------------------------------------------------- |
+| ---------------------- | ----------------------------------------------------------- |
 | `null`                 | `"Unknown feedback."`                                       |
 | `""`                   | `""`                                                        |
 | `"I like your style."` | `"I like your style."`                                      |
-
 
 ## Accepted data types
 
@@ -82,7 +81,7 @@ This section covers functions and formulas that can be used interchangeably with
 All examples below use the table from the [Replacing null values](#replacing-null-values-with-another-value) example:
 
 | Feedback               | `case(isnull([Feedback]), "Unknown feedback.", [Feedback])` |
-| -----------------------| ----------------------------------------------------------- |
+| ---------------------- | ----------------------------------------------------------- |
 | `null`                 | `"Unknown feedback."`                                       |
 | `""`                   | `""`                                                        |
 | `"I like your style."` | `"I like your style."`                                      |
@@ -140,8 +139,8 @@ case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 - [Custom expressions tutorial][custom-expressions-learn]
 
 [custom-expressions-doc]: ../expressions.md
-[custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
-[data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
+[custom-expressions-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
+[data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
 [notebook-editor-def]: https://www.metabase.com/glossary/query_builder
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/

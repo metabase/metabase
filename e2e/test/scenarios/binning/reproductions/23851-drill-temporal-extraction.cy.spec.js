@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   chartPathWithFillColor,
   getNotebookStep,
+  openNotebook,
   popover,
   restore,
 } from "e2e/support/helpers";
@@ -51,7 +52,7 @@ describe("issue 23851", () => {
       "Created At: Day of week is equal to 6",
     );
     cy.get("[data-testid=cell-data]").should("contain", "109.22");
-    cy.icon("notebook").click();
+    openNotebook();
     getNotebookStep("filter")
       .findByText("Created At: Day of week is equal to 6")
       .should("exist");

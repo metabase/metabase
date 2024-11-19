@@ -1,0 +1,1 @@
+export { EllipsifiedPath } from "./EllipsifiedPath";

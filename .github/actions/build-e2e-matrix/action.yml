@@ -13,7 +13,7 @@ runs:
       id: matrix
       with:
         script: | # js
-          const java = 11;
+          const java = 21;
 
           const defaultRunner = "ubuntu-22.04";
 
@@ -35,6 +35,7 @@ runs:
             ["dashboard-cards", {} ],
             ["dashboard-filters", {} ],
             ["embedding", {} ],
+            ["embedding-sdk", { context: "embedding-sdk" } ],
             ["filters", {} ],
             ["filters-reproductions", {}],
             ["joins", {} ],

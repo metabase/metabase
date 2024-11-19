@@ -11,13 +11,10 @@ export const Dropdown = styled(HoverCard.Dropdown)`
   overflow: visible;
 `;
 
-export const Target = styled.div`
+export const HackyInvisibleTargetFiller = styled.div`
   position: absolute;
-  width: calc(100% + 20px);
-  left: -10px;
-  right: -10px;
+  width: 100%;
   top: -10px;
-  bottom: -10px;
-  min-height: 5px;
+  min-height: 10px;
   z-index: -1;
 `;

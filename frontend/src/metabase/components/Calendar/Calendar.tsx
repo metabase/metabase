@@ -28,7 +28,6 @@ export type CalendarProps = {
   ) => void;
   onChangeDate?: (date: string, dateMoment: Moment) => void;
   isRangePicker?: boolean;
-  primaryColor?: string;
   noContext?: boolean;
 };
 
@@ -191,7 +190,6 @@ export default class Calendar extends Component<CalendarProps, State> {
           onClickDay={this.onClickDay}
           isRangePicker={this.props.isRangePicker}
           selected={this.props.selected}
-          primaryColor={this.props.primaryColor}
           selectedEnd={this.props.selectedEnd}
           selectAll={this.props.selectAll}
           noContext={this.props.noContext}
@@ -244,7 +242,6 @@ type WeekProps = {
   selectedEnd?: Moment;
   selectAll?: SelectAll | null;
   isRangePicker?: boolean;
-  primaryColor?: string;
   onClickDay: (date: Moment) => void;
   noContext?: boolean;
 };
@@ -316,7 +313,6 @@ class Week extends Component<WeekProps> {
           isSelected={isSelected}
           isSelectedStart={isSelectedStart}
           isSelectedEnd={isSelectedEnd}
-          primaryColor={this.props.primaryColor}
         >
           {date.date()}
         </CalendarDay>,

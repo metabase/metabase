@@ -12,7 +12,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -36,7 +36,8 @@
                card-id
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query)))
-      (t2/update! :model/Card card-id {:result_metadata metadata}))
+      (t2/update! :model/Card card-id {:result_metadata metadata
+                                       :updated_at      :updated_at}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
@@ -55,15 +56,16 @@
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
-                              :settings :field_ref :name :base_type :effective_type
-                              :coercion_strategy :visibility_type])
+                              :settings :field_ref :base_type :effective_type
+                              :remapped_from :remapped_to :coercion_strategy :visibility_type])
       insights-col
+      {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))
    final-col-metadata
    insights-col-metadata))
 
-(mu/defn ^:private insights-xform :- fn?
+(mu/defn- insights-xform :- fn?
   [orig-metadata :- [:maybe :map]
    record!       :- ifn?
    rf            :- ifn?]
@@ -77,6 +79,8 @@
              (map? result)
              (update :data
                      assoc
+                     ;; TODO: We agreed on the name `:result_metadata` everywhere, and this needs updating.
+                     ;; It'll definitely break things on the FE, so a coordinated change is needed.
                      :results_metadata {:columns metadata}
                      :insights         insights)))))))
 

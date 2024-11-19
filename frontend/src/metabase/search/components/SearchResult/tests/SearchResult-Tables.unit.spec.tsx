@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import {
   setupDatabaseEndpoints,
   setupTableEndpoints,
-  setupUsersEndpoints,
   setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { SearchResult } from "metabase/search/components/SearchResult";

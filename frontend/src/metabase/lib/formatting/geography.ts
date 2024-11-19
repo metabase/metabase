@@ -1,4 +1,4 @@
-import d3 from "d3";
+import * as d3 from "d3";
 
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 import { isLatitude, isLongitude } from "metabase-lib/v1/types/utils/isa";
@@ -27,7 +27,7 @@ export function formatCoordinate(value: number, options: OptionsType = {}) {
   const formattedValue = binWidth
     ? BINNING_DEGREES_FORMATTER(value, binWidth)
     : options.compact
-    ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
-    : DECIMAL_DEGREES_FORMATTER(value);
+      ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
+      : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
 }

@@ -1,5 +1,5 @@
 import type React from "react";
-import { useRef, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import { HorizontalScrollBox } from "./AutoScrollBox.styled";

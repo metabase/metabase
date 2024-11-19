@@ -92,7 +92,7 @@
                                :schema (when *supports-schemas?* "public")}
             :dest-column-name "studio"}})))
 
-(defmethod driver/database-supports? [::sync-test :foreign-keys]
+(defmethod driver/database-supports? [::sync-test :metadata/key-constraints]
   [_driver _feature _db]
   true)
 
@@ -139,9 +139,9 @@
 
 (defn- field-defaults-with-fingerprint []
   (assoc (field-defaults)
-    :last_analyzed       true
-    :fingerprint_version true
-    :fingerprint         true))
+         :last_analyzed       true
+         :fingerprint_version true
+         :fingerprint         true))
 
 (defn- field:movie-id []
   (merge
@@ -259,8 +259,23 @@
           (sync/sync-table! movie)
           (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
             (testing "Tables and Fields are synced"
-                (is (= (expected-movie-table) movie))
-                (is (= (expected-studio-table) studio)))))))))
+              (is (= (expected-movie-table) movie))
+              (is (= (expected-studio-table) studio)))))))))
+
+(driver/register! ::sync-database-error-test)
+
+(defmethod driver/describe-database ::sync-database-error-test
+  [_driver _database]
+  (throw (Exception. "OOPS!")))
+
+(deftest sync-database!-error-test
+  (testing "Errors in sync-database! should be caught and handled correctly (#45848)"
+    (mt/with-temp [Database db {:engine ::sync-database-error-test}]
+      (binding [sync-util/*log-exceptions-and-continue?* true]
+        (let [results (sync/sync-database! db)]
+          (testing "Skips the metadata step"
+            (is (= ["analyze" "field-values"]
+                   (map :name results)))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

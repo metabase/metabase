@@ -3,22 +3,25 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ModelIndexes } from "metabase/entities/model-indexes";
+import {
+  canIndexField,
+  fieldHasIndex,
+} from "metabase/entities/model-indexes/utils";
 import {
   Form,
   FormProvider,
   FormRadioGroup,
+  FormSwitch,
   FormTextInput,
   FormTextarea,
-  FormSwitch,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import {
-  field_visibility_types,
   field_semantic_types,
+  field_visibility_types,
 } from "metabase/lib/core";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { Radio, Tabs, Box } from "metabase/ui";
+import { Box, Radio, Tabs } from "metabase/ui";
 import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
@@ -29,9 +32,9 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 import { EDITOR_TAB_INDEXES } from "../constants";
 
 import {
+  Divider,
   MainFormContainer,
   ViewAsFieldContainer,
-  Divider,
 } from "./DatasetFieldMetadataSidebar.styled";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
@@ -104,8 +107,7 @@ function DatasetFieldMetadataSidebar({
 }) {
   const displayNameInputRef = useRef();
 
-  const canIndex =
-    dataset.isSaved() && ModelIndexes.utils.canIndexField(field, dataset);
+  const canIndex = dataset.isSaved() && canIndexField(field, dataset);
 
   const initialValues = useMemo(() => {
     const values = {
@@ -114,9 +116,7 @@ function DatasetFieldMetadataSidebar({
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
-      should_index:
-        field.should_index ??
-        ModelIndexes.utils.fieldHasIndex(modelIndexes, field),
+      should_index: field.should_index ?? fieldHasIndex(modelIndexes, field),
     };
     const { isNative } = Lib.queryDisplayInfo(dataset.query());
 

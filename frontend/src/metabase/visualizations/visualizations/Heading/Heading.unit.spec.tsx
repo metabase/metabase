@@ -4,13 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
 import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
-  QuestionDashboardCard,
   Dashboard,
-  ParameterId,
-  Parameter,
-  ParameterValueOrArray,
-  VisualizationSettings,
   DashboardParameterMapping,
+  Parameter,
+  ParameterId,
+  ParameterValueOrArray,
+  QuestionDashboardCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockDashboard,

@@ -6,7 +6,7 @@
    [amalloy.ring-buffer :refer [ring-buffer]]
    [clj-time.coerce :as time.coerce]
    [clj-time.format :as time.format]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [metabase.config :as config]
@@ -45,7 +45,7 @@
         ^org.apache.logging.log4j.core.Layout layout                   nil
         ^"[Lorg.apache.logging.log4j.core.config.Property;" properties nil]
     (proxy [org.apache.logging.log4j.core.appender.AbstractAppender]
-        ["metabase-appender" filter layout false properties]
+           ["metabase-appender" filter layout false properties]
       (append [event]
         (swap! messages* conj (event->log-data event))
         nil))))
@@ -82,6 +82,14 @@
     (name (ns-name a-namespace))
     (name a-namespace)))
 
+(defn level-enabled?
+  "Is logging at `level` enabled for `a-namespace`?"
+  (^Boolean [level]
+   (level-enabled? *ns* level))
+  (^Boolean [a-namespace level]
+   (let [^Logger logger (log.impl/get-logger log/*logger-factory* a-namespace)]
+     (.isEnabled logger level))))
+
 (defn effective-ns-logger
   "Get the logger that will be used for the namespace named by `a-namespace`."
   ^LoggerConfig [a-namespace]
@@ -96,44 +104,55 @@
         (recur (.getParent logger)))))
 
 (defprotocol MakeAppender
-  (make-appender ^AbstractAppender [out ns-name layout]))
+  (make-appender ^AbstractAppender [out layout]))
 
 (extend-protocol MakeAppender
   java.io.File
-  (make-appender [^java.io.File out ns-name layout]
+  (make-appender [^java.io.File out layout]
     (.build
      (doto (FileAppender/newBuilder)
-       (.setName (str ns-name "-file"))
+       (.setName "shared-appender-file")
        (.setLayout layout)
        (.withFileName (.getPath out)))))
 
   java.io.OutputStream
-  (make-appender [^java.io.OutputStream out ns-name layout]
+  (make-appender [^java.io.OutputStream out layout]
     (.build
      (doto (OutputStreamAppender/newBuilder)
-       (.setName (str ns-name "-os"))
+       (.setName "shared-appender-os")
        (.setLayout layout)
        (.setTarget out)))))
 
+(defn add-ns-logger
+  "Add a logger for a given namespace to the configuration."
+  [ns appender level additive]
+  (let [logger-name (str ns)
+        ns-logger   (LoggerConfig. logger-name level additive)]
+    (.addAppender ns-logger appender level nil)
+    (.addLogger (configuration) logger-name ns-logger)
+    ns-logger))
+
 (defn for-ns
-  "Create separate logger for a given namespace to fork out some logs."
-  ^AutoCloseable [ns out & [{:keys [additive level]
-                             :or   {additive true
-                                    level    Level/INFO}}]]
-  (let [config        (configuration)
-        parent-logger (effective-ns-logger ns)
-        appender      (make-appender out (logger-name ns) (find-logger-layout parent-logger))
-        logger        (LoggerConfig. (logger-name ns) level additive)]
+  "Create separate logger for a given namespace(s) to fork out some logs."
+  ^AutoCloseable [out nses & [{:keys [additive level]
+                               :or   {additive true
+                                      level    Level/INFO}}]]
+  (let [nses     (if (vector? nses) nses [nses])
+        config   (configuration)
+        parents  (mapv effective-ns-logger nses)
+        appender (make-appender out (find-logger-layout (first parents)))
+        loggers  (vec (for [ns nses]
+                        (add-ns-logger ns appender level additive)))]
     (.start appender)
     (.addAppender config appender)
-    (.addAppender logger appender (.getLevel logger) nil)
-    (.addLogger config (.getName logger) logger)
+
     (.updateLoggers (context))
 
     (reify AutoCloseable
       (close [_]
         (let [^AbstractConfiguration config (configuration)]
-          (.removeLogger config (.getName logger))
+          (doseq [logger loggers]
+            (.removeLogger config (.getName ^LoggerConfig logger)))
           (.stop appender)
           ;; this method is only present in AbstractConfiguration
           (.removeAppender config (.getName appender))

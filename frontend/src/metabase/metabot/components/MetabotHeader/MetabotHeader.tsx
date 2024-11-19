@@ -11,7 +11,7 @@ import type { DatabaseId, MetabotFeedbackType, User } from "metabase-types/api";
 import type { Dispatch, MetabotQueryStatus, State } from "metabase-types/store";
 
 import { cancelQuery, runPromptQuery, updatePrompt } from "../../actions";
-import { getFeedbackType, getQueryStatus, getPrompt } from "../../selectors";
+import { getFeedbackType, getPrompt, getQueryStatus } from "../../selectors";
 import DatabasePicker from "../DatabasePicker";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
@@ -132,7 +132,7 @@ const getTitle = (
 };
 
 const getModelTitle = (model: Question, user: User | null) => {
-  const link = <ModelLink model={model} />;
+  const link = <ModelLink key="link" model={model} />;
   const name = user?.first_name;
 
   return name
@@ -149,6 +149,7 @@ const getDatabaseTitle = (
   const name = user?.first_name;
   const databasePicker = (
     <DatabasePicker
+      key="database-picker"
       databases={databases}
       selectedDatabaseId={database.id}
       onChange={onDatabaseChange}

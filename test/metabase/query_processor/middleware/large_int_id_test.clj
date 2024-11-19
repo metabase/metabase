@@ -10,8 +10,8 @@
 
 (deftest ^:parallel convert-ids
   (let [query (mt/mbql-query users
-                             {:order-by [[:asc $id]]
-                              :limit    5})]
+                {:order-by [[:asc $id]]
+                 :limit    5})]
     (testing "PKs become strings when middleware enabled"
       (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00Z"]
               ["2" "Felipinho Asklepios" "2014-12-05T15:15:00Z"]
@@ -92,15 +92,17 @@
               [2 48]
               [3 47]
               [4 61]]
-             (mt/formatted-rows [int int]
-               (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
+             (mt/formatted-rows
+              [int int]
+              (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
     (testing "aggregation does not convert to strings with middleware disabled (default)"
       (is (= [[1 55]
               [2 48]
               [3 47]
               [4 61]]
-             (mt/formatted-rows [int int]
-               (qp/process-query (assoc query :middleware {}))))))))
+             (mt/formatted-rows
+              [int int]
+              (qp/process-query (assoc query :middleware {}))))))))
 
 (defn- convert-id-to-string [rows]
   (qp.store/with-metadata-provider (mt/id)

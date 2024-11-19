@@ -11,9 +11,7 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
-   [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
-   [metabase.models.pulse :as pulse]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
@@ -33,7 +31,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^:private record-login-history!
+(mu/defn- record-login-history!
   [session-id  :- uuid?
    user-id     :- ms/PositiveInt
    device-info :- req.util/DeviceInfo]
@@ -73,7 +71,7 @@
         (events/publish-event! :event/user-joined event)))
     (record-login-history! session-uuid (u/the-id user) device-info)
     (when-not (:last_login user)
-      (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
+      (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))
     (assoc session :id session-uuid)))
 
 (mu/defmethod create-session! :password :- SessionSchema
@@ -84,7 +82,6 @@
   (when-not (public-settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user device-info))
-
 
 ;;; ## API Endpoints
 
@@ -103,7 +100,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn ^:private ldap-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- ldap-login :- [:maybe [:map [:id uuid?]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- req.util/DeviceInfo]
@@ -126,7 +123,7 @@
       (catch LDAPSDKException e
         (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
-(mu/defn ^:private email-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- email-login :- [:maybe [:map [:id uuid?]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
@@ -151,7 +148,7 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn ^:private login :- SessionSchema
+(mu/defn- login :- SessionSchema
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
@@ -176,6 +173,7 @@
 
 (defmacro http-401-on-error
   "Add `{:status-code 401}` to exception data thrown by `body`."
+  {:style/indent 0}
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
@@ -193,12 +191,13 @@
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
-       (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                  (login-throttlers :username)   username]
-           (do-login))))))
+        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
+                                   (login-throttlers :username)   username]
+          (do-login))))))
 
 (api/defendpoint DELETE "/"
   "Logout."
+  ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
   (t2/delete! Session :id metabase-session-id)
@@ -264,7 +263,7 @@
     (let [user-id (Integer/parseInt user-id)]
       (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [User :id :last_login :reset_triggered
                                                                                  :reset_token]
-                                                                   :id user-id, :is_active true)]
+                                                                                :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
                 (u.password/bcrypt-verify token reset_token))
@@ -322,73 +321,28 @@
   (if throttling-disabled?
     (google/do-google-auth request)
     (http-401-on-error
-     (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
-       (let [user (google/do-google-auth request)
-             {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
-             response {:id (str session-uuid)}
-             user (t2/select-one [User :id :is_active], :email (:email user))]
-         (if (and user (:is_active user))
-           (mw.session/set-session-cookies request
-                                           response
-                                           session
-                                           (t/zoned-date-time (t/zone-id "GMT")))
-           (throw (ex-info (str disabled-account-message)
-                           {:status-code 401
-                            :errors      {:account disabled-account-snippet}}))))))))
+      (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
+        (let [user (google/do-google-auth request)
+              {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
+              response {:id (str session-uuid)}
+              user (t2/select-one [User :id :is_active], :email (:email user))]
+          (if (and user (:is_active user))
+            (mw.session/set-session-cookies request
+                                            response
+                                            session
+                                            (t/zoned-date-time (t/zone-id "GMT")))
+            (throw (ex-info (str disabled-account-message)
+                            {:status-code 401
+                             :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
-  (fn [request respond raise]
-    (try
-      (handler request respond raise)
-      (catch Throwable e
-        (log/error e "Authentication endpoint error")
-        (throw e)))))
-
-;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------
-
-(def ^:private unsubscribe-throttler (throttle/make-throttler :unsubscribe, :attempts-threshold 50))
-
-(defn- check-hash [pulse-id email hash ip-address]
-  (throttle-check unsubscribe-throttler ip-address)
-  (when (not= hash (messages/generate-pulse-unsubscribe-hash pulse-id email))
-    (throw (ex-info (tru "Invalid hash.")
-                    {:type        type
-                     :status-code 400}))))
-
-(api/defendpoint POST "/pulse/unsubscribe"
-  "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
-  [:as {{:keys [email hash pulse-id]} :body, :as request}]
-  {pulse-id ms/PositiveInt
-   email    :string
-   hash     :string}
-  (check-hash pulse-id email hash (req.util/ip-address request))
-  (t2/with-transaction [_conn]
-    (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-      (let [emails (get-in pulse-channel [:details :emails])]
-        (if (some #{email} emails)
-          (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
-          (throw (ex-info (tru "Email for pulse-id doesn't exist.")
-                          {:type        type
-                           :status-code 400}))))
-      (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
-      {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))})))
-
-(api/defendpoint POST "/pulse/unsubscribe/undo"
-  "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
-  [:as {{:keys [email hash pulse-id]} :body, :as request}]
-  {pulse-id ms/PositiveInt
-   email    :string
-   hash     :string}
-  (check-hash pulse-id email hash (req.util/ip-address request))
-  (t2/with-transaction [_conn]
-    (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-      (let [emails (get-in pulse-channel [:details :emails])]
-        (if (some #{email} emails)
-          (throw (ex-info (tru "Email for pulse-id already exists.")
-                          {:type        type
-                           :status-code 400}))
-          (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
-      (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
-      {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))})))
+  (with-meta
+   (fn [request respond raise]
+     (try
+       (handler request respond raise)
+       (catch Throwable e
+         (log/error e "Authentication endpoint error")
+         (throw e))))
+   (meta handler)))
 
 (api/define-routes +log-all-request-failures)

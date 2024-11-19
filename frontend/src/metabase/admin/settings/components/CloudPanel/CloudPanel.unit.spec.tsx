@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock, { type MockResponse } from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { waitFor, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import { createMockSettings } from "metabase-types/api/mocks";
 

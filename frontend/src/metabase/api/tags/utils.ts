@@ -6,10 +6,13 @@ import type {
   ApiKey,
   Bookmark,
   Card,
+  CardId,
+  CardQueryMetadata,
   Collection,
   CollectionItem,
   CollectionItemModel,
   Dashboard,
+  DashboardQueryMetadata,
   DashboardSubscription,
   Database,
   DatabaseXray,
@@ -18,9 +21,10 @@ import type {
   FieldId,
   ForeignKey,
   GroupListQuery,
-  ListDashboardsResponse,
-  NativeQuerySnippet,
   ModelCacheRefreshStatus,
+  ModelIndex,
+  NativeQuerySnippet,
+  NotificationChannel,
   PopularItem,
   RecentItem,
   Revision,
@@ -32,9 +36,6 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
-  DashboardQueryMetadata,
-  CardQueryMetadata,
-  CardId,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -153,6 +154,12 @@ export function provideCardQueryMetadataTags(
   return [idTag("card", id), ...provideAdhocQueryMetadataTags(metadata)];
 }
 
+export function provideCardQueryTags(
+  cardId: CardId,
+): TagDescription<TagType>[] {
+  return [idTag("card", cardId)];
+}
+
 export function provideCloudMigrationTags(
   migration: CloudMigration,
 ): TagDescription<TagType>[] {
@@ -190,6 +197,43 @@ export function provideCollectionTags(
   return [idTag("collection", collection.id)];
 }
 
+export function provideModelIndexTags(
+  modelIndex: ModelIndex,
+): TagDescription<TagType>[] {
+  return [idTag("model-index", modelIndex.id)];
+}
+
+export function provideModelIndexListTags(
+  modelIndexes: ModelIndex[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("model-index"),
+    ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+  ];
+}
+
+export function provideModeratedItemTags(
+  itemType: TagType,
+  itemId: number,
+): TagDescription<TagType>[] {
+  return [listTag(itemType), idTag(itemType, itemId)];
+}
+
+export function provideChannelTags(
+  channel: NotificationChannel,
+): TagDescription<TagType>[] {
+  return [idTag("channel", channel.id)];
+}
+
+export function provideChannelListTags(
+  channels: NotificationChannel[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("channel"),
+    ...channels.flatMap(channel => provideChannelTags(channel)),
+  ];
+}
+
 export function provideDatabaseCandidateListTags(
   candidates: DatabaseXray[],
 ): TagDescription<TagType>[] {
@@ -221,7 +265,7 @@ export function provideDatabaseTags(
 }
 
 export function provideDashboardListTags(
-  dashboards: ListDashboardsResponse,
+  dashboards: Pick<Dashboard, "id">[],
 ): TagDescription<TagType>[] {
   return [
     listTag("dashboard"),
@@ -417,6 +461,10 @@ export function provideSubscriptionListTags(
     listTag("subscription"),
     ...subscriptions.flatMap(provideSubscriptionTags),
   ];
+}
+
+export function provideSubscriptionChannelListTags(): TagDescription<TagType>[] {
+  return [listTag("subscription-channel")];
 }
 
 export function provideSubscriptionTags(

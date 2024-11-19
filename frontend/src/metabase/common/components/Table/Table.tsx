@@ -1,90 +1,116 @@
+import cx from "classnames";
 import React from "react";
 
-import { color } from "metabase/lib/colors";
-import { Box, Flex, Icon } from "metabase/ui";
+import {
+  PaginationControls,
+  type PaginationControlsProps,
+} from "metabase/components/PaginationControls";
+import { Box, Flex, type FlexProps, Icon } from "metabase/ui";
+import { SortDirection } from "metabase-types/api/sorting";
 
-type BaseRow = Record<string, unknown> & { id: number | string };
+import CS from "./Table.module.css";
+import type { ColumnItem } from "./types";
 
-type ColumnItem = {
-  name: string;
-  key: string;
-};
+export type BaseRow = Record<string, unknown> & { id: number | string };
 
 export type TableProps<Row extends BaseRow> = {
   columns: ColumnItem[];
   rows: Row[];
   rowRenderer: (row: Row) => React.ReactNode;
-  tableProps?: React.HTMLAttributes<HTMLTableElement>;
-};
+  sortColumnName?: string | null;
+  sortDirection?: SortDirection;
+  onSort?: (columnName: string, direction: SortDirection) => void;
+  paginationProps?: Pick<
+    PaginationControlsProps,
+    "page" | "pageSize" | "total"
+  > & { onPageChange: (page: number) => void };
+  emptyBody?: React.ReactNode;
+  cols?: React.ReactNode;
+} & Omit<React.HTMLProps<HTMLTableElement>, "rows" | "cols">;
 
 /**
- * A basic reusable table component that supports client-side sorting by a column
+ * A basic reusable table component
  *
- * @param columns     - an array of objects with name and key properties
- * @param rows        - an array of objects with keys that match the column keys
- * @param rowRenderer - a function that takes a row object and returns a <tr> element
- * @param tableProps  - additional props to pass to the <table> element
+ * @param props.columns         - an array of objects with name and key properties
+ * @param props.rows            - an array of objects with keys that match the column keys
+ * @param props.rowRenderer     - a function that takes a row object and returns a <tr> element
+ * @param props.sortColumnName  - ID of the column currently used in row sorting
+ * @param props.sortDirection   - The direction of the sort. Can be "asc" or "desc"
+ * @param props.onSort          - a callback containing updated sort info for when a header is clicked
+ * @param props.paginationProps - a map of information used to render pagination controls.
+ * @param props.emptyBody       - content to be displayed when the row count is 0
+ * @param props.cols            - a ReactNode that is inserted in the table element before <thead>. Useful for defining <colgroups> and <cols>
+ * @param props.className       - this will be added to the <table> element along with the default classname
+ * @note All other props are passed to the <table> element
  */
 export function Table<Row extends BaseRow>({
   columns,
   rows,
   rowRenderer,
-  ...tableProps
+  sortColumnName,
+  sortDirection,
+  onSort,
+  paginationProps,
+  emptyBody,
+  cols,
+  className,
+  ...rest
 }: TableProps<Row>) {
-  const [sortColumn, setSortColumn] = React.useState<string | null>(null);
-  const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">(
-    "asc",
-  );
-
-  const sortedRows = React.useMemo(() => {
-    if (sortColumn) {
-      return [...rows].sort((a, b) => {
-        const aValue = a[sortColumn];
-        const bValue = b[sortColumn];
-        if (
-          aValue === bValue ||
-          !isSortableValue(aValue) ||
-          !isSortableValue(bValue)
-        ) {
-          return 0;
-        }
-        if (sortDirection === "asc") {
-          return aValue < bValue ? -1 : 1;
-        } else {
-          return aValue > bValue ? -1 : 1;
-        }
-      });
-    }
-    return rows;
-  }, [rows, sortColumn, sortDirection]);
-
   return (
-    <table {...tableProps}>
-      <thead>
-        <tr>
-          {columns.map(column => (
-            <th key={String(column.key)}>
-              <ColumnHeader
-                column={column}
-                sortColumn={sortColumn}
-                sortDirection={sortDirection}
-                onSort={(columnKey: string, direction: "asc" | "desc") => {
-                  setSortColumn(columnKey);
-                  setSortDirection(direction);
-                }}
-              />
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {sortedRows.map((row, index) => (
-          <React.Fragment key={String(row.id) || index}>
-            {rowRenderer(row)}
-          </React.Fragment>
-        ))}
-      </tbody>
-    </table>
+    <>
+      <table className={cx(CS.Table, className)} {...rest}>
+        {cols && <colgroup>{cols}</colgroup>}
+        <thead>
+          <tr>
+            {columns.map(column => {
+              const { sortable = true } = column;
+              return (
+                <th key={String(column.key)}>
+                  {onSort && sortable ? (
+                    <ColumnHeader
+                      column={column}
+                      sortColumn={sortColumnName}
+                      sortDirection={sortDirection}
+                      onSort={(columnKey: string, direction: SortDirection) => {
+                        onSort(columnKey, direction);
+                      }}
+                    />
+                  ) : (
+                    column.name
+                  )}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length > 0
+            ? rows.map((row, index) => (
+                <React.Fragment key={String(row.id) || index}>
+                  {rowRenderer(row)}
+                </React.Fragment>
+              ))
+            : emptyBody}
+        </tbody>
+      </table>
+
+      {paginationProps && (
+        <Flex justify="end">
+          <PaginationControls
+            page={paginationProps.page}
+            pageSize={paginationProps.pageSize}
+            total={paginationProps.total}
+            itemsLength={rows.length}
+            onNextPage={() =>
+              paginationProps.onPageChange(paginationProps.page + 1)
+            }
+            onPreviousPage={() =>
+              paginationProps.onPageChange(paginationProps.page - 1)
+            }
+          />
+        </Flex>
+      )}
+    </>
   );
 }
 
@@ -93,12 +119,13 @@ function ColumnHeader({
   sortColumn,
   sortDirection,
   onSort,
+  ...rest
 }: {
   column: ColumnItem;
-  sortColumn: string | null;
-  sortDirection: "asc" | "desc";
-  onSort: (column: string, direction: "asc" | "desc") => void;
-}) {
+  sortColumn?: string | null;
+  sortDirection?: SortDirection;
+  onSort: (column: string, direction: SortDirection) => void;
+} & FlexProps) {
   return (
     <Flex
       gap="sm"
@@ -107,16 +134,21 @@ function ColumnHeader({
       onClick={() =>
         onSort(
           String(column.key),
-          sortColumn === column.key && sortDirection === "asc" ? "desc" : "asc",
+          sortColumn === column.key && sortDirection === SortDirection.Asc
+            ? SortDirection.Desc
+            : SortDirection.Asc,
         )
       }
+      {...rest}
     >
       {column.name}
       {
         column.name && column.key === sortColumn ? (
           <Icon
-            name={sortDirection === "desc" ? "chevronup" : "chevrondown"}
-            color={color("text-medium")}
+            name={
+              sortDirection === SortDirection.Asc ? "chevronup" : "chevrondown"
+            }
+            color="var(--mb-color-text-medium)"
             style={{ flexShrink: 0 }}
             size={8}
           />
@@ -126,8 +158,4 @@ function ColumnHeader({
       }
     </Flex>
   );
-}
-
-function isSortableValue(value: unknown): value is string | number {
-  return typeof value === "string" || typeof value === "number";
 }

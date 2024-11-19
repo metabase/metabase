@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.events.notification :as events.notification]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -16,7 +17,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.net URI)))
+   (java.net URI URISyntaxException)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,10 +60,12 @@
   reuse it."
   [user :- UserAttributes]
   (try
-    (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
+    (u/prog1 (t2/insert-returning-instance! User (merge user {:password (str (random-uuid))}))
       (log/infof "New SSO user created: %s (%s)" (:common_name <>) (:email <>))
       ;; publish user-invited event for audit logging
-      (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))})
+      ;; skip sending user invited emails for sso users
+      (binding [events.notification/*skip-sending-notification?* true]
+        (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))}))
       ;; send an email to everyone including the site admin if that's set
       (when (integrations.common/send-new-sso-user-admin-email?)
         (messages/send-user-joined-admin-notification-email! <>, :google-auth? true)))
@@ -85,15 +88,30 @@
           (t2/update! User id user-data)
           (t2/select-one User :id id))))))
 
+(defn relative-uri?
+  "Checks that given `uri` is not an absolute (so no scheme and no host)."
+  [uri]
+  (let [^URI uri (if (string? uri)
+                   (try
+                     (URI. uri)
+                     (catch URISyntaxException _
+                       nil))
+                   uri)]
+    (or (nil? uri)
+        (and (nil? (.getHost uri))
+             (nil? (.getScheme uri))))))
+
 (defn check-sso-redirect
   "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
   [redirect-url]
   (try
-    (let [host        (some-> redirect-url (URI.) (.getHost))
-          our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
-      (api/check-400 (or (nil? redirect-url) (nil? host) (= host our-host))))
+    (let [redirect (some-> redirect-url (URI.))
+          our-host (some-> (public-settings/site-url) (URI.) (.getHost))]
+      (api/check-400 (or (nil? redirect-url)
+                         (relative-uri? redirect)
+                         (= (.getHost redirect) our-host))))
     (catch Exception e
       (log/error e "Invalid redirect URL")
       (throw (ex-info (tru "Invalid redirect URL")
-                      {:status-code 400
+                      {:status-code  400
                        :redirect-url redirect-url})))))

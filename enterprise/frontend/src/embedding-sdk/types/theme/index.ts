@@ -17,10 +17,10 @@ export interface MetabaseTheme {
   fontSize?: string;
 
   /**
-   * Base font family supported by Metabase, defaults to `Lato`.
-   * Custom fonts are not yet supported in this version.
+   * Font family that will be used for all text, it defaults to the instance's default font.
    **/
-  fontFamily?: MetabaseFontFamily;
+  // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any string but keep autocomplete for the built-in ones
+  fontFamily?: MetabaseFontFamily | (string & {});
 
   /** Base line height */
   lineHeight?: string | number;
@@ -50,6 +50,9 @@ export interface MetabaseColors {
 
   /** Slightly darker background color used for hover and accented elements. */
   "background-hover"?: string;
+
+  /** Muted background color used for disabled elements, such as disabled buttons and inputs. */
+  "background-disabled"?: string;
 
   /** Color used for borders */
   border?: string;
@@ -138,9 +141,12 @@ export type MetabaseComponentTheme = {
     };
   };
 
-  /** Numerical value display */
-  scalar?: {
-    /** The primary numerical value */
+  /** Number chart */
+  number?: {
+    /**
+     * Value displayed on number charts.
+     * This also applies to the primary value in trend charts.
+     **/
     value?: {
       fontSize?: CSSProperties["fontSize"];
       lineHeight?: string;
@@ -163,6 +169,12 @@ export type MetabaseComponentTheme = {
         fontSize: string;
       };
     };
+  };
+
+  /** Popover */
+  popover?: {
+    /** z-index of the popover. Useful for embedding components in a modal. Defaults to 4. */
+    zIndex?: number;
   };
 
   collectionBrowser: {

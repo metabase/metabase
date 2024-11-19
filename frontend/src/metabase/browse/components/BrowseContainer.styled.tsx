@@ -1,10 +1,6 @@
 import styled from "@emotion/styled";
 
 import EmptyState from "metabase/components/EmptyState";
-import {
-  breakpointMinMedium,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
 import { Flex, Grid, Icon } from "metabase/ui";
 
 export const BrowseContainer = styled.div`
@@ -12,9 +8,16 @@ export const BrowseContainer = styled.div`
   flex: 1;
   flex-flow: column nowrap;
   margin-top: 1rem;
-
   container-name: ItemsTableContainer;
   container-type: inline-size;
+`;
+
+export const BrowseGrid = styled(Grid)`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  width: 100%;
 `;
 
 export const BrowseSection = styled(Flex)`
@@ -23,34 +26,19 @@ export const BrowseSection = styled(Flex)`
   width: 100%;
 `;
 
-export const BrowseHeader = styled.header`
+export const BrowseHeader = styled.div`
   display: flex;
   flex-direction: column;
   padding: 1rem 2.5rem 3rem 2.5rem;
   color: ${({ theme }) => theme.fn.themeColor("dark")};
 `;
 
-export const BrowseMain = styled.main`
+export const BrowseMain = styled.div`
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
   padding: 0 2.5rem;
   padding-bottom: 2rem;
-`;
-
-export const BrowseGrid = styled(Grid)`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 0rem 1rem;
-  margin: 0;
-  width: 100%;
-
-  ${breakpointMinSmall} {
-    padding-bottom: 2.5rem;
-  }
-  ${breakpointMinMedium} {
-    padding-bottom: 3rem;
-  }
 `;
 
 export const CenteredEmptyState = styled(EmptyState)`

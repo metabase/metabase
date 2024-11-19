@@ -1,22 +1,22 @@
 import type {
-  FieldId,
-  SearchFieldValuesRequest,
-  FieldValue,
-  GetFieldValuesResponse,
-  Field,
-  GetFieldRequest,
-  UpdateFieldRequest,
   CreateFieldDimensionRequest,
+  Field,
+  FieldId,
+  FieldValue,
+  GetFieldRequest,
+  GetFieldValuesResponse,
+  SearchFieldValuesRequest,
+  UpdateFieldRequest,
   UpdateFieldValuesRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
-  provideFieldTags,
-  provideFieldValuesTags,
   idTag,
   invalidateTags,
   listTag,
+  provideFieldTags,
+  provideFieldValuesTags,
   tag,
 } from "./tags";
 

@@ -6,8 +6,8 @@ import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navi
 import { getName } from "metabase/lib/name";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import {
-  SearchLoadingSpinner,
   EmptyStateContainer,
+  SearchLoadingSpinner,
 } from "metabase/nav/components/search/SearchResults";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {

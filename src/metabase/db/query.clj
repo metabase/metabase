@@ -45,7 +45,7 @@
 (def ^:private NamespacedKeyword
   [:and :keyword [:fn (comp seq namespace)]])
 
-(mu/defn ^:private type-keyword->descendants :- [:set {:min 1} ms/NonBlankString]
+(mu/defn type-keyword->descendants :- [:set {:min 1} ms/NonBlankString]
   "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
   have at least one element.
 

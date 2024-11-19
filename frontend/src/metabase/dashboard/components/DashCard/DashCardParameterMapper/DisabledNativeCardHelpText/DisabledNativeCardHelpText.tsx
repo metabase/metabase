@@ -14,8 +14,8 @@ import type { Parameter } from "metabase-types/api";
 import {
   NativeCardDefault,
   NativeCardIcon,
-  NativeCardText,
   NativeCardLink,
+  NativeCardText,
 } from "./DisabledNativeCardHelpText.styled";
 
 interface DisabledNativeCardHelpTextProps {

@@ -5,7 +5,7 @@ import { screen } from "__support__/ui";
 import type { CollectionPermissionsGraph } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { setup, defaultPermissionsGraph, defaultCollections } from "./setup";
+import { defaultCollections, defaultPermissionsGraph, setup } from "./setup";
 
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {
   describe("Instance Analytics", () => {
@@ -110,7 +110,6 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       expect(lastRequest).toEqual({
         ...iaPermissionsGraph,
         groups: {
-          ...iaPermissionsGraph.groups,
           1: {
             ...iaPermissionsGraph.groups[1],
             13371337: "none",

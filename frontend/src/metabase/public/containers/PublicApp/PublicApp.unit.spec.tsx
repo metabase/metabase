@@ -77,8 +77,7 @@ describe("PublicApp", () => {
 
   it("renders branding", () => {
     setup();
-    expect(screen.getByText(/Powered by/i)).toBeInTheDocument();
-    expect(screen.getByText(/Metabase/)).toBeInTheDocument();
+    expect(screen.getByText("Powered by")).toBeInTheDocument();
   });
 
   it("renders not found page on error", () => {
@@ -106,14 +105,12 @@ describe("PublicApp", () => {
 
   it("renders branding in error states", () => {
     setup({ error: { status: 404 } });
-    expect(screen.getByText(/Powered by/i)).toBeInTheDocument();
-    expect(screen.getByText(/Metabase/)).toBeInTheDocument();
+    expect(screen.getByText("Powered by")).toBeInTheDocument();
   });
 
   it("hides branding in error states if it's turned off", () => {
     setup({ error: { status: 404 }, hasEmbedBranding: false });
-    expect(screen.queryByText(/Powered by/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Metabase/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Powered by")).not.toBeInTheDocument();
   });
 
   describe("theming", () => {

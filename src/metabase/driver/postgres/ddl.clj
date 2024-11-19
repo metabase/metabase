@@ -20,10 +20,10 @@
    This helps to address unexpectedly large/long running queries."
   [tx]
   (let [existing-timeout (->> #_{:clj-kondo/ignore [:discouraged-var]}
-                              (sql/format {:select [:setting]
-                                           :from   [:pg_settings]
-                                           :where  [:= :name "statement_timeout"]}
-                                          {:quoted false})
+                          (sql/format {:select [:setting]
+                                       :from   [:pg_settings]
+                                       :where  [:= :name "statement_timeout"]}
+                                      {:quoted false})
                               (sql.ddl/jdbc-query tx)
                               first
                               :setting

@@ -48,8 +48,6 @@ describe("SearchFilterDatePicker", () => {
   it("should populate the `Relative dates…` date picker with the value passed in", () => {
     setup({ value: "past30days" });
     expect(screen.getByTestId("relative-datetime-value")).toHaveValue("30");
-    expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-      "days",
-    );
+    expect(screen.getByTestId("relative-datetime-unit")).toHaveValue("days");
   });
 });

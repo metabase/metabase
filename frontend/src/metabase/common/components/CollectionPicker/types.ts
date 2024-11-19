@@ -1,15 +1,16 @@
 import type {
+  CardId,
   CollectionId,
-  ListCollectionItemsRequest,
-  SearchResult,
   CollectionItemModel,
   DashboardId,
-  CardId,
+  ListCollectionItemsRequest,
+  SearchResult,
 } from "metabase-types/api";
 
 import type {
   EntityPickerModalOptions,
   ListProps,
+  PickerState,
   TypeWithModel,
 } from "../EntityPicker";
 
@@ -59,4 +60,9 @@ export type CollectionItemListProps = ListProps<
   CollectionPickerItem,
   ListCollectionItemsRequest,
   CollectionPickerOptions
+>;
+
+export type CollectionPickerStatePath = PickerState<
+  CollectionPickerItem,
+  ListCollectionItemsRequest
 >;

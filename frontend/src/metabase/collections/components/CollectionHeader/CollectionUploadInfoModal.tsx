@@ -8,10 +8,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 
 import {
-  InfoModalTitle,
   InfoModalBody,
-  NewBadge,
   InfoModalContainer,
+  InfoModalTitle,
+  NewBadge,
 } from "./CollectionUpload.styled";
 
 export const UploadInfoModal = ({
@@ -27,12 +27,12 @@ export const UploadInfoModal = ({
       <ModalContent title=" " onClose={onClose}>
         <InfoModalContainer>
           <NewBadge>{t`New`}</NewBadge>
-          <InfoModalTitle>{t`Uploads CSVs to ${applicationName}`}</InfoModalTitle>
+          <InfoModalTitle>{t`Upload CSVs to ${applicationName}`}</InfoModalTitle>
           {isAdmin ? (
             <>
               <InfoModalBody>
                 <p>
-                  {t`Team members will be able to upload CSV files and work with them just like any other data source`}
+                  {t`Team members will be able to upload CSV files and work with them just like any other data source.`}
                 </p>
                 <p>
                   {t`You'll be able to pick the default database where the data should be stored when enabling the feature.`}
@@ -44,7 +44,7 @@ export const UploadInfoModal = ({
                 primary
                 role="link"
               >
-                {t`Enable in settings`}
+                {t`Go to setup`}
               </Button>
             </>
           ) : (

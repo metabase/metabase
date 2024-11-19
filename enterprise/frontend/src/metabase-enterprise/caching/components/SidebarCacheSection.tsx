@@ -33,12 +33,17 @@ export const SidebarCacheSection = ({
 
   const shortStrategyLabel =
     getShortStrategyLabel(savedStrategy, model) || t`Use default`;
+  const labelId = "question-caching-policy-label";
 
   return (
     <DelayedLoadingAndErrorWrapper delay={0} loading={loading} error={error}>
       <Flex align="center" justify="space-between">
-        {t`Caching policy`}
-        <FormLauncher role="button" onClick={() => setPage("caching")}>
+        <span id={labelId}>{t`When to get new results`}</span>
+        <FormLauncher
+          role="button"
+          onClick={() => setPage("caching")}
+          aria-labelledby={labelId}
+        >
           {shortStrategyLabel}
         </FormLauncher>
       </Flex>

@@ -14,7 +14,7 @@ Delete a GTAP entry.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/mt/gtap/`
 
@@ -22,9 +22,9 @@ Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` 
 
 ### PARAMS:
 
-*  **`group_id`** nullable value must be an integer greater than zero.
+-  **`group_id`** nullable value must be an integer greater than zero.
 
-*  **`table_id`** nullable value must be an integer greater than zero.
+-  **`table_id`** nullable value must be an integer greater than zero.
 
 ## `GET /api/mt/gtap/:id`
 
@@ -32,7 +32,7 @@ Fetch GTAP by `id`.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/mt/gtap/`
 
@@ -40,13 +40,13 @@ Create a new GTAP.
 
 ### PARAMS:
 
-*  **`table_id`** value must be an integer greater than zero.
+-  **`table_id`** value must be an integer greater than zero.
 
-*  **`card_id`** nullable value must be an integer greater than zero.
+-  **`card_id`** nullable value must be an integer greater than zero.
 
-*  **`group_id`** value must be an integer greater than zero.
+-  **`group_id`** value must be an integer greater than zero.
 
-*  **`attribute_remappings`**
+-  **`attribute_remappings`**
 
 ## `POST /api/mt/gtap/validate`
 
@@ -55,9 +55,9 @@ Validate a sandbox which may not have yet been saved. This runs the same validat
 
 ### PARAMS:
 
-*  **`table_id`** value must be an integer greater than zero.
+-  **`table_id`** value must be an integer greater than zero.
 
-*  **`card_id`** nullable value must be an integer greater than zero.
+-  **`card_id`** nullable value must be an integer greater than zero.
 
 ## `PUT /api/mt/gtap/:id`
 
@@ -67,9 +67,9 @@ Update a GTAP entry. The only things you're allowed to update for a GTAP are the
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`card_id`** nullable value must be an integer greater than zero.
+-  **`card_id`** nullable value must be an integer greater than zero.
 
 ---
 

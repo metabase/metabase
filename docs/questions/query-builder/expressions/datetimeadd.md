@@ -32,7 +32,7 @@ title: DatetimeAdd
 
 `amount`:
 
-- A whole number or a decimal number.
+- An integer. You cannot use fractional values. For example, you cannot add "half a year" (0.5).
 - May be a negative number: `datetimeAdd("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating an end date
@@ -75,13 +75,13 @@ case(between(now, [Opened On], [Finish By]), "Yes", "No")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
-| ------------------------------------------------------------------------------------------------ | ------------------------ |
-| String                                                                                           | ❌                       |
-| Number                                                                                           | ❌                       |
-| Timestamp                                                                                        | ✅                       |
-| Boolean                                                                                          | ❌                       |
-| JSON                                                                                             | ❌                       |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| String                                                                                                                         | ❌                       |
+| Number                                                                                                                         | ❌                       |
+| Timestamp                                                                                                                      | ✅                       |
+| Boolean                                                                                                                        | ❌                       |
+| JSON                                                                                                                           | ❌                       |
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 
@@ -169,5 +169,5 @@ datetimeAdd([Opened On], 14, "day")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
-- [Time series analysis](https://www.metabase.com/learn/time-series/start)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
+- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)

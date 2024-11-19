@@ -11,7 +11,7 @@ import type { CommonModalProps } from "./types";
 export interface ModalContentProps extends CommonModalProps {
   "data-testid"?: string;
   id?: string;
-  title: string;
+  title?: string;
   footer?: ReactNode;
   children: ReactNode;
 
@@ -20,21 +20,6 @@ export interface ModalContentProps extends CommonModalProps {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ModalContent extends Component<ModalContentProps> {
-  static propTypes = {
-    "data-testid": PropTypes.string,
-    id: PropTypes.string,
-    title: PropTypes.oneOfType([PropTypes.string, PropTypes.element]),
-    centeredTitle: PropTypes.bool,
-    onClose: PropTypes.func,
-    onBack: PropTypes.func,
-    // takes over the entire screen
-    fullPageModal: PropTypes.bool,
-    // standard modal
-    formModal: PropTypes.bool,
-
-    headerActions: PropTypes.any,
-  };
-
   static defaultProps = {
     formModal: true,
   };

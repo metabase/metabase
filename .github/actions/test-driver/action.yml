@@ -2,7 +2,7 @@ name: Test database driver
 inputs:
   junit-name:
     required: true
-    default: 'driver'
+    default: "driver"
   test-args:
     required: false
 
@@ -14,7 +14,7 @@ runs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
-        m2-cache-key: driver-${{ inputs.junit-name }}
+        m2-cache-key: driver
     - name: Build static viz frontend
       run: yarn build-static-viz
       shell: bash
@@ -25,7 +25,7 @@ runs:
       uses: dorny/test-reporter@v1
       if: failure()
       with:
-        path: 'target/junit/**/*_test.xml'
+        path: "target/junit/**/*_test.xml"
         name: JUnit Test Report ${{ inputs.junit-name }}
         reporter: java-junit
         list-suites: failed

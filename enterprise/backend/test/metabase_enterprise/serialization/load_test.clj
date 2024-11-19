@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.load-test
+(ns ^:mb/driver-tests metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
   (:require
    [clojure.data :as data]
@@ -25,10 +25,10 @@
             Table
             User]]
    [metabase.models.interface :as mi]
+   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings-test :as mb.viz-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.models.visualization-settings-test :as mb.viz-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -160,8 +160,8 @@
             pivot   (:pivot_table.column_split vs)
             vecs    (concat (:columns pivot) (:rows pivot))]
         (is (some? vecs))
-        (doseq [[_ field-id _] vecs]
-          (is (integer? field-id) "fieldRef within pivot table was properly serialized and loaded"))))))
+        (doseq [column-name vecs]
+          (is (string? column-name) "column names within pivot table was properly serialized and loaded"))))))
 
 (defmethod assert-loaded-entity Card
   [{card-name :name :as card} {:keys [query-results collections]}]
@@ -295,12 +295,15 @@
   [entity _]
   entity)
 
+;; If this test fails after adding a new column, add the column to the list of columns in `metabase-enterprise.serialization.serialize/strip-crud`
 (deftest dump-load-entities-test
   (try
     ;; in case it already exists
     (u/ignore-exceptions
       (delete-directory! dump-dir))
-    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions :foreign-keys)
+    ;; TODO: Examine whether the test could work without :metadata/key-constraints.
+    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions
+                                                         :metadata/key-constraints)
                          ;; We will run this roundtrip test against any database supporting these features ^ except
                          ;; certain ones for specific reasons, outlined below.
                          ;;
@@ -315,14 +318,12 @@
                          ;; same native form on one database, then it's likely they would on any, since that is
                          ;; orthogonal to the issues that serialization has when performing this roundtrip).
                          (disj :oracle    ; no bare table names allowed
+                               :databricks ; table name requires schema prefix with current implementation
                                :redshift  ; bare table name doesn't work; it's test_data_venues instead of venues
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
                                :vertica   ; bare table name doesn't work; it's test_data_venues instead of venues
-                               :sqlite    ; foreign-keys is not supported by this driver
-                               :sparksql  ; foreign-keys is not supported by this driver
-                               ;; foreign-keys is not supported by the below driver even though it has joins
-                               :bigquery-cloud-sdk))
+                               ))
       (mt/with-premium-features #{:serialization}
         (let [fingerprint (ts/with-world
                             (v1-dump! dump-dir {:user        (:email (test.users/fetch-user :crowberto))
@@ -413,7 +414,7 @@
                             (assert-loaded-entity loaded fingerprint))
                           (and (-> entity :archived) ; archived card hasn't been dump-loaded
                                (= (:name entity) "My Arch Card"))
-                          ;; Rasta's Personal Collection was not loaded
+                                         ;; Rasta's Personal Collection was not loaded
                           (= "Felicia's Personal Collection" (:name entity)))
                       (str " failed " (pr-str entity)))))
               fingerprint)))))

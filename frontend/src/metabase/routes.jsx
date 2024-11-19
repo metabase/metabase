@@ -9,6 +9,13 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
+import {
+  BrowseDatabases,
+  BrowseMetrics,
+  BrowseModels,
+  BrowseSchemas,
+  BrowseTables,
+} from "metabase/browse";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
@@ -25,16 +32,14 @@ import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardAp
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
+import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicOrEmbeddedDashboard";
-import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
+import { PLUGIN_COLLECTIONS, PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
@@ -53,10 +58,6 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
-import { BrowseDatabases } from "./browse/components/BrowseDatabases";
-import { BrowseModels } from "./browse/components/BrowseModels";
-import BrowseSchemas from "./browse/components/BrowseSchemas";
-import { BrowseTables } from "./browse/components/BrowseTables";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -64,10 +65,13 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
+  const hasUserSetup = getSetting(store.getState(), "has-user-setup");
+
   return (
     <Route title={applicationName} component={App}>
       {/* SETUP */}
@@ -75,7 +79,7 @@ export const getRoutes = store => {
         path="/setup"
         component={Setup}
         onEnter={(nextState, replace) => {
-          if (MetabaseSettings.hasUserSetup()) {
+          if (hasUserSetup) {
             replace("/");
           }
           trackPageView(location.pathname);
@@ -84,15 +88,6 @@ export const getRoutes = store => {
           trackPageView(nextState.location.pathname);
         }}
       />
-
-      {/* PUBLICLY SHARED LINKS */}
-      <Route path="public">
-        <Route path="question/:uuid" component={PublicOrEmbeddedQuestion} />
-        <Route
-          path="dashboard/:uuid(/:tabSlug)"
-          component={PublicOrEmbeddedDashboardControlled}
-        />
-      </Route>
 
       {/* APP */}
       <Route
@@ -136,6 +131,14 @@ export const getRoutes = store => {
             }}
           />
 
+          <Route
+            path="getting-started"
+            title={t`Getting Started`}
+            component={IsAdmin}
+          >
+            <IndexRoute component={Onboarding} />
+          </Route>
+
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
           <Redirect path="archive" to="trash" replace />
@@ -153,6 +156,7 @@ export const getRoutes = store => {
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+            {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
           </Route>
 
@@ -216,6 +220,7 @@ export const getRoutes = store => {
 
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
+            <Route path="metrics" component={BrowseMetrics} />
             <Route path="models" component={BrowseModels} />
             <Route path="databases" component={BrowseDatabases} />
             <Route path="databases/:slug" component={BrowseSchemas} />

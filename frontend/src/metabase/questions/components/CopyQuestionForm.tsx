@@ -6,11 +6,11 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import FormFooter from "metabase/core/components/FormFooter";
 import {
   Form,
-  FormTextInput,
-  FormTextarea,
+  FormErrorMessage,
   FormProvider,
   FormSubmitButton,
-  FormErrorMessage,
+  FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Button } from "metabase/ui";
@@ -21,7 +21,7 @@ const QUESTION_SCHEMA = Yup.object({
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
+  description: Yup.string().nullable().default(null),
   collection_id: Yup.number().nullable().default(null),
 });
 
@@ -62,6 +62,7 @@ export const CopyQuestionForm = ({
       initialValues={computedInitialValues}
       validationSchema={QUESTION_SCHEMA}
       onSubmit={handleDuplicate}
+      enableReinitialize
     >
       <Form>
         <FormTextInput
@@ -88,7 +89,7 @@ export const CopyQuestionForm = ({
           {!!onCancel && (
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton label={t`Duplicate`} />
+          <FormSubmitButton label={t`Duplicate`} variant="filled" />
         </FormFooter>
       </Form>
     </FormProvider>

@@ -6,8 +6,10 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.logger :as logger]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -17,11 +19,12 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
-   (javax.sql DataSource)))
+   (javax.sql DataSource)
+   (org.apache.logging.log4j Level)))
 
 (set! *warn-on-reflection* true)
 
@@ -40,7 +43,6 @@
   {:added "0.32.0" :arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Creating Connection Pools                                            |
@@ -103,9 +105,22 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                     (long (/ qp.pipeline/*query-timeout-ms* 1000))))
   :setter     :none)
 
+(setting/defsetting jdbc-data-warehouse-debug-unreturned-connection-stack-traces
+  "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
+  [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
+
+  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
+  stack traces in the logs."
+  :visibility :internal
+  :type       :boolean
+  :default    false
+  :export?    false
+  :setter     :none
+  :doc        false) ; This setting is documented in other-env-vars.md.
+
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
-  { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
+  {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
@@ -137,10 +152,36 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;;
    ;; Kill idle connections above the minPoolSize after 5 minutes.
    "maxIdleTimeExcessConnections" (* 5 60)
-   ;; kill connections after this amount of time if they haven't been returned -- this should be the same as the query
-   ;; timeout. This theoretically shouldn't happen since the QP should kill things after a certain timeout but it's
-   ;; better to be safe than sorry -- it seems like in practice some connections disappear into the ether
+   ;; [From dox] Seconds. If set, if an application checks out but then fails to check-in [i.e. close()] a Connection
+   ;; within the specified period of time, the pool will unceremoniously destroy() the Connection. This permits
+   ;; applications with occasional Connection leaks to survive, rather than eventually exhausting the Connection
+   ;; pool. And that's a shame. Zero means no timeout, applications are expected to close() their own
+   ;; Connections. Obviously, if a non-zero value is set, it should be to a value longer than any Connection should
+   ;; reasonably be checked-out. Otherwise, the pool will occasionally kill Connections in active use, which is bad.
+   ;;
+   ;; This should be the same as the query timeout. This theoretically shouldn't happen since the QP should kill
+   ;; things after a certain timeout but it's better to be safe than sorry -- it seems like in practice some
+   ;; connections disappear into the ether
    "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+   ;; [From dox] If true, and if unreturnedConnectionTimeout is set to a positive value, then the pool will capture
+   ;; the stack trace (via an Exception) of all Connection checkouts, and the stack traces will be printed when
+   ;; unreturned checked-out Connections timeout. This is intended to debug applications with Connection leaks, that
+   ;; is applications that occasionally fail to return Connections, leading to pool growth, and eventually
+   ;; exhaustion (when the pool hits maxPoolSize with all Connections checked-out and lost). This parameter should
+   ;; only be set while debugging, as capturing the stack trace will slow down every Connection check-out.
+   ;;
+   ;; As noted in the C3P0 docs, this does add some overhead to create the Exception at Connection checkout.
+   ;; criterium/quick-bench indicates this is ~600ns of overhead per Exception created on my laptop, which is small
+   ;; compared to the overhead added by testConnectionCheckout, above. The memory usage will depend on the size of the
+   ;; stack trace, but clj-memory-meter reports ~800 bytes for a fresh Exception created at the REPL (which presumably
+   ;; has a smaller-than-average stack).
+   "debugUnreturnedConnectionStackTraces" (u/prog1 (jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
+                                            (when (and <> (not (logger/level-enabled? 'com.mchange Level/INFO)))
+                                              (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
+                                                        "is enabled, but INFO logging is not enabled for the"
+                                                        "com.mchange namespace. You must raise the log level for"
+                                                        "com.mchange to INFO via a custom log4j config in order to"
+                                                        "see stacktraces in the logs.")))
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
@@ -170,12 +211,18 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details  ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
-        spec                (connection-details->spec driver details-with-tunnel)
+        details-with-auth   (driver.u/fetch-and-incorporate-auth-provider-details
+                             driver
+                             id
+                             details-with-tunnel)
+        spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
-      (connection-pool-spec spec properties)
-      ;; also capture entries related to ssh tunneling for later use
-      (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
+     (connection-pool-spec spec properties)
+     ;; also capture entries related to ssh tunneling for later use
+     (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host])
+     ;; remember when the password expires
+     (select-keys details-with-auth [:password-expiry-timestamp]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color :red "Closing old connection pool for database %s ..." database-id))
@@ -190,7 +237,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   database-id->jdbc-spec-hash
   (atom {}))
 
-(mu/defn ^:private jdbc-spec-hash
+(mu/defn- jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
   [{driver :engine, :keys [details], :as database} :- [:maybe :map]]
@@ -226,6 +273,10 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
 
 (defn- log-jdbc-spec-hash-change-msg! [db-id]
   (log/warn (u/format-color :yellow "Hash of database %s details changed; marking pool invalid to reopen it" db-id))
+  nil)
+
+(defn- log-password-expiry! [db-id]
+  (log/warn (u/format-color :yellow "Password of database %s expired; marking pool invalid to reopen it" db-id))
   nil)
 
 (defn db->pooled-connection-spec
@@ -266,6 +317,12 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                                                     jdbc-spec-hash))))
                             (when log-invalidation?
                               (log-jdbc-spec-hash-change-msg! db-id))
+
+                            (let [{:keys [password-expiry-timestamp]} details]
+                              (and (int? password-expiry-timestamp)
+                                   (<= password-expiry-timestamp (System/currentTimeMillis))))
+                            (when log-invalidation?
+                              (log-password-expiry! db-id))
 
                             (nil? (:tunnel-session details)) ; no tunnel in use; valid
                             details
@@ -310,7 +367,10 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   [driver details f]
   (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
-      (let [spec (connection-details->spec driver details-with-tunnel)]
+      (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
+                               driver
+                               details-with-tunnel)
+            spec (connection-details->spec driver details-with-auth)]
         (f spec)))))
 
 (defmacro with-connection-spec-for-testing-connection

@@ -4,18 +4,18 @@ import { createMockRoutingState } from "metabase-types/store/mocks/index";
 import { SIDEBAR_NAME } from "../constants";
 
 import {
-  setSidebar,
+  CLOSE_SIDEBAR,
+  SET_DASHBOARD_ATTRIBUTES,
   SET_SIDEBAR,
   closeSidebar,
-  CLOSE_SIDEBAR,
-  setSharing,
-  showClickBehaviorSidebar,
-  setEditingParameter,
   openAddQuestionSidebar,
   removeParameter,
-  SET_DASHBOARD_ATTRIBUTES,
-  updateDashboardAndCards,
   setEditingDashboard,
+  setEditingParameter,
+  setSharing,
+  setSidebar,
+  showClickBehaviorSidebar,
+  updateDashboardAndCards,
 } from "./index";
 
 DashboardApi.parameterSearch = jest.fn();
@@ -24,6 +24,7 @@ DashboardApi.parameterValues = jest.fn();
 describe("dashboard actions", () => {
   let dispatch;
   let getState;
+
   beforeEach(() => {
     dispatch = jest.fn();
     getState = () => ({

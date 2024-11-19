@@ -15,14 +15,14 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defn- resolve-metric [query metric-id]
   (when (integer? metric-id)
     (lib.metadata/metric query metric-id)))
 
-(mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
+(mu/defn- metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
   (when dataset-query
     (let [normalized-definition (cond-> dataset-query
@@ -78,36 +78,24 @@
    (select-keys metric-metadata [:description :aggregation-position])))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
-  [query stage-number [_tag _opts metric-id-or-name]]
-  (if-let [metric-metadata (resolve-metric query metric-id-or-name)]
-    (lib.metadata.calculation/display-info query stage-number metric-metadata)
-    {:effective-type    :type/*
-     :display-name      (fallback-display-name)
-     :long-display-name (fallback-display-name)}))
+  [query stage-number [_tag opts metric-id-or-name]]
+  (let [display-name (:display-name opts)
+        opts (cond-> opts
+               (and display-name (not (:long-display-name opts)))
+               (assoc :long-display-name display-name))]
+    (merge
+     (if-let [metric-metadata (resolve-metric query metric-id-or-name)]
+       (lib.metadata.calculation/display-info query stage-number metric-metadata)
+       {:effective-type    :type/*
+        :display-name      (fallback-display-name)
+        :long-display-name (fallback-display-name)})
+     (select-keys opts [:name :display-name :long-display-name]))))
 
 (defmethod lib.metadata.calculation/column-name-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
   (or (when-let [metric-metadata (resolve-metric query metric-id-or-name)]
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
-
-(defn- source-metric
-  "Returns the `:metadata/metric` for the given stage, or nil if this stage is not based on a metric."
-  [metadata-providerable stage]
-  (some->> stage :source-card (lib.metadata/metric metadata-providerable)))
-
-(mu/defn metric-based? :- :boolean
-  "Returns true if this MBQL `query` is based on metrics.
-
-  This is always false for stages other than 0, but accepting the parameter means consumers of the API don't need to
-  know about that.
-
-  Being \"based on metrics\" means the source is a metric."
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (and (zero? (lib.util/canonical-stage-index query stage-number))
-       (not (lib.query/native? query))
-       (source-metric query (lib.util/query-stage query stage-number))))
 
 (mu/defn available-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/metric]]
   "Get a list of Metrics that you may consider using as aggregations for a query."
@@ -123,23 +111,39 @@
                                                        (:join-alias (lib.options/options aggregation-clause))]
                                                       index])))
                                    (lib.aggregation/aggregations query stage-number))
-         s-metric (source-metric query (lib.util/query-stage query stage-number))
-         source-table (lib.util/source-table-id query)
          maybe-add-aggregation-pos (fn [metric-metadata]
                                      (let [aggregation-pos (-> metric-metadata
                                                                ((juxt :id ::lib.join/join-alias))
                                                                metric-aggregations)]
                                        (cond-> metric-metadata
                                          aggregation-pos (assoc :aggregation-position aggregation-pos))))]
-     (cond
-       (and first-stage? s-metric)
-       [(maybe-add-aggregation-pos s-metric)]
-
-       (and first-stage? source-table)
-       (let [metrics (lib.metadata/metadatas-for-table query :metadata/metric source-table)]
+     (when first-stage?
+       (let [source-table (lib.util/source-table-id query)
+             metrics (if source-table
+                       (lib.metadata/metadatas-for-table query :metadata/metric source-table)
+                       (lib.metadata/metadatas-for-card query :metadata/metric (lib.util/source-card-id query)))]
          (not-empty
           (into []
                 (comp (filter (fn [metric-card]
                                 (= 1 (lib.query/stage-count (lib.query/query query (:dataset-query metric-card))))))
                       (map maybe-add-aggregation-pos))
-                metrics)))))))
+                (sort-by (some-fn :display-name :name) metrics))))))))
+
+(defn- normalize-legacy-query
+  [query]
+  (cond-> query
+    (#{:query :native} (lib.util/normalized-query-type query))
+    mbql.normalize/normalize))
+
+(defmethod lib.metadata.calculation/metadata-method :metric
+  [query stage-number [_ _ metric-id]]
+  (let [metric-meta (lib.metadata/metric query metric-id)
+        metric-aggregation (some-> metric-meta
+                                   :dataset-query
+                                   normalize-legacy-query
+                                   lib.convert/->pMBQL
+                                   lib.aggregation/aggregations
+                                   first)
+        metric-name (:name metric-meta)]
+    (assoc (lib.metadata.calculation/metadata query stage-number metric-aggregation)
+           :display-name metric-name)))

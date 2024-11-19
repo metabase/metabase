@@ -7,7 +7,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
-import { ModelInfoTitle, ModelInfoSection } from "./ModelInfoSidePanel.styled";
+import { ModelInfoSection, ModelInfoTitle } from "./ModelInfoSidePanel.styled";
 import { List, ListItemLink, ListItemName } from "./ModelRelationships.styled";
 
 interface Props {

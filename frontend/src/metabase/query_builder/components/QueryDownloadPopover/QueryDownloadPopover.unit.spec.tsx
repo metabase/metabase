@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
@@ -15,7 +15,7 @@ import {
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import QueryDownloadPopover from "./QueryDownloadPopover";
+import { QueryDownloadPopover } from "./QueryDownloadPopover";
 
 registerVisualizations();
 
@@ -82,57 +82,102 @@ describe("QueryDownloadPopover", () => {
   it("should trigger download on click", async () => {
     const { onDownload } = setup();
     await act(async () => await userEvent.click(screen.getByText(/csv/)));
+    await userEvent.click(await screen.findByTestId("download-results-button"));
     expect(onDownload).toHaveBeenCalledWith({
       type: "csv",
       enableFormatting: true,
+      enablePivot: false,
     });
   });
 
-  it.each(["csv", "json"])(
+  it.each(["csv", "json", "xlsx"])(
     "should trigger unformatted download for %s format",
     async format => {
       const { onDownload } = setup();
-      const _userEvent = userEvent.setup();
 
-      expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
-      await fireEvent.keyDown(screen.getByText(new RegExp(format)), {
-        key: "Alt",
-      });
-      await act(
-        async () =>
-          await _userEvent.hover(screen.getByText(new RegExp(format))),
+      await userEvent.click(screen.getByLabelText(`.${format}`));
+      await userEvent.click(screen.getByLabelText("Unformatted"));
+      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
+        `E.g. 2024-09-06 or 187.50, like in the database`,
       );
-      expect(await screen.findByText(/Unformatted/i)).toBeInTheDocument();
-
-      await act(async () => {
-        await _userEvent.click(screen.getByText(new RegExp(format)));
-      });
+      expect(
+        screen.queryByLabelText("Keep data pivoted"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
 
       expect(onDownload).toHaveBeenCalledWith({
         type: format,
         enableFormatting: false,
+        enablePivot: false,
       });
     },
   );
 
-  it.each(["xlsx", "png"])(
-    "should not trigger unformatted download for %s format",
+  it.each(["csv", "json", "xlsx"])(
+    "should trigger formatted download for %s format",
     async format => {
-      const { onDownload } = setup({ card: { ...TEST_CARD, display: "line" } });
+      const { onDownload } = setup();
 
-      expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
-      await fireEvent.keyDown(screen.getByText(new RegExp(format)), {
-        key: "Alt",
-      });
-      expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
-
-      await act(
-        async () => await userEvent.click(screen.getByText(new RegExp(format))),
+      await userEvent.click(screen.getByLabelText(`.${format}`));
+      await userEvent.click(screen.getByLabelText("Formatted"));
+      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
+        `E.g. September 6, 2024 or $187.50, like in Metabase`,
+      );
+      expect(
+        screen.queryByLabelText("Keep data pivoted"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
       );
 
       expect(onDownload).toHaveBeenCalledWith({
         type: format,
         enableFormatting: true,
+        enablePivot: false,
+      });
+    },
+  );
+
+  it("should not trigger unformatted download for png format", async () => {
+    const format = "png";
+    const { onDownload } = setup({ card: { ...TEST_CARD, display: "line" } });
+
+    await userEvent.click(screen.getByLabelText(`.${format}`));
+    expect(screen.queryByLabelText(`Formatted`)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Keep data pivoted"),
+    ).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByTestId("download-results-button"));
+
+    expect(onDownload).toHaveBeenCalledWith({
+      type: format,
+      enableFormatting: true,
+      enablePivot: false,
+    });
+  });
+
+  it.each(["csv", "xlsx"])(
+    "allows configure pivoting for %s format",
+    async format => {
+      const { onDownload } = setup({
+        card: {
+          ...TEST_CARD,
+          display: "pivot",
+        },
+      });
+
+      await userEvent.click(screen.getByLabelText(`.${format}`));
+      await userEvent.click(screen.getByLabelText(`Unformatted`));
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
+
+      expect(onDownload).toHaveBeenCalledWith({
+        type: format,
+        enableFormatting: false,
+        enablePivot: true,
       });
     },
   );

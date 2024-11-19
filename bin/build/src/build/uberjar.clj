@@ -103,7 +103,7 @@
     (doseq [path (all-paths basis)]
       (when (not (#{"src" "enterprise/backend/src"} path))
         (u/step (format "Copy %s" path)
-                (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
+          (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
 
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
@@ -142,7 +142,6 @@
         (with-open [os (Files/newOutputStream manifest-path (into-array OpenOption [StandardOpenOption/WRITE
                                                                                     StandardOpenOption/TRUNCATE_EXISTING]))]
           (write-manifest! os))))))
-
 
 (defn uberjar
   "Build just the uberjar (no i18n, FE, or anything else). You can run this from the CLI like:

@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase.api.setting-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common.validation :as validation]
    [metabase.driver.h2 :as h2]
@@ -7,7 +8,8 @@
    [metabase.models.setting-test :as models.setting-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log.capture :as log.capture]))
 
 (comment h2/keep-me)
 
@@ -32,7 +34,8 @@
 
 (defsetting test-settings-manager-visibility
   (deferred-tru "Setting to test the `:settings-manager` visibility level. This only shows up in dev.")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :encryption :when-encryption-key-set)
 
 ;; ## Helper Fns
 (defn- fetch-test-settings
@@ -54,16 +57,16 @@
   ([user setting-name status]
    (mt/user-http-request user :get status (format "setting/%s" (name setting-name)))))
 
-(defn- do-with-mocked-settings-manager-access
+(defn- do-with-mocked-settings-manager-access!
   [f]
   (with-redefs [setting/has-advanced-setting-access?        (constantly true)
                 validation/check-has-application-permission (constantly true)]
     (f)))
 
-(defmacro ^:private with-mocked-settings-manager-access
+(defmacro ^:private with-mocked-settings-manager-access!
   "Runs `body` with the approrpiate functions redefined to give the current user settings manager permissions."
   [& body]
-  `(do-with-mocked-settings-manager-access (fn [] ~@body)))
+  `(do-with-mocked-settings-manager-access! (fn [] ~@body)))
 
 (deftest fetch-setting-test
   (testing "GET /api/setting"
@@ -87,7 +90,7 @@
 
     (testing "Check that non-admin setting managers can fetch Settings with `:visibility :settings-manager`"
       (test-settings-manager-visibility! nil)
-      (with-mocked-settings-manager-access
+      (with-mocked-settings-manager-access!
         (is (= [{:key "test-settings-manager-visibility",
                  :value nil,
                  :is_env_setting false,
@@ -108,7 +111,7 @@
 
     (testing "Test that non-admin setting managers can fetch a single Setting if it has `:visibility :settings-manager`."
       (test-settings-manager-visibility! "OK!")
-      (with-mocked-settings-manager-access
+      (with-mocked-settings-manager-access!
         (is (= "OK!" (fetch-setting :test-settings-manager-visibility 200)))))
 
     (testing "Check that non-superusers cannot fetch a single Setting if it is not user-local"
@@ -165,7 +168,7 @@
         "Updated setting should be visible from API endpoint")
 
     (testing "Check that non-admin setting managers can only update Settings with `:visibility :settings-manager`."
-      (with-mocked-settings-manager-access
+      (with-mocked-settings-manager-access!
         (mt/user-http-request :rasta :put 204 "setting/test-settings-manager-visibility" {:value "NICE!"})
         (is (= "NICE!" (fetch-setting :test-settings-manager-visibility 200)))
 
@@ -234,17 +237,17 @@
              (models.setting-test/test-setting-2))))
 
     (testing "non-admin setting managers should only be able to update multiple settings at once if they have `:visibility :settings-manager`"
-      (with-mocked-settings-manager-access
-       (is (= nil
-              (mt/user-http-request :rasta :put 204 "setting" {:test-settings-manager-visibility "ABC"})))
-       (is (= "ABC"
-              (test-settings-manager-visibility)))
-       (is (= "You don't have permissions to do that."
-              (mt/user-http-request :rasta :put 403 "setting" {:test-settings-manager-visibility "GHI", :test-setting-1 "JKL"})))
-       (is (= "ABC"
-              (test-settings-manager-visibility)))
-       (is (= "ABC"
-              (models.setting-test/test-setting-1)))))
+      (with-mocked-settings-manager-access!
+        (is (= nil
+               (mt/user-http-request :rasta :put 204 "setting" {:test-settings-manager-visibility "ABC"})))
+        (is (= "ABC"
+               (test-settings-manager-visibility)))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "setting" {:test-settings-manager-visibility "GHI", :test-setting-1 "JKL"})))
+        (is (= "ABC"
+               (test-settings-manager-visibility)))
+        (is (= "ABC"
+               (models.setting-test/test-setting-1)))))
 
     (testing "non-admin should not be able to update multiple settings at once if any of them are not user-local"
       (is (= "You don't have permissions to do that."
@@ -374,3 +377,14 @@
             (mt/user-http-request :crowberto :put 204 "setting" {:test_setting_1 "GHI", :test_setting_2 "JKL"})
             (is (= "GHI" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
             (is (= "JKL" (mt/user-http-request :crowberto :get 200 "setting/test_setting_2")))))))))
+
+(defsetting test-deprecated-setting
+  (deferred-tru "Setting to test deprecation warning.")
+  :deprecated "0.51.0"
+  :encryption :no)
+
+(deftest deprecation-warning-for-deprecated-setting-test
+  (log.capture/with-log-messages-for-level [warnings :warn]
+    (test-deprecated-setting! "hello")
+    (is (re-find #"Setting test-deprecated-setting is deprecated as of Metabase 0.51.0"
+                 (str/join " " (map :message (warnings)))))))

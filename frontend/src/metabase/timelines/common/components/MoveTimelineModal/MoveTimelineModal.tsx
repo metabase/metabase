@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import {
+  CollectionPickerModal,
+  type CollectionPickerValueItem,
+} from "metabase/common/components/CollectionPicker";
 import { getTimelineName } from "metabase/lib/timelines";
 import type { CollectionId, Timeline } from "metabase-types/api";
 
@@ -20,7 +23,7 @@ const MoveTimelineModal = ({
   onClose,
 }: MoveTimelineModalProps): JSX.Element => {
   const handleSubmit = useCallback(
-    async (collectionId: CollectionId) => {
+    async ({ id: collectionId }: CollectionPickerValueItem) => {
       await onSubmit(timeline, collectionId);
       onSubmitSuccess?.();
       onClose?.();
@@ -33,9 +36,7 @@ const MoveTimelineModal = ({
       value={{ id: timeline.collection_id ?? "root", model: "collection" }}
       title={t`Move ${getTimelineName(timeline)}`}
       onClose={onClose}
-      onChange={async newCollection => {
-        await handleSubmit(newCollection.id);
-      }}
+      onChange={handleSubmit}
       options={{
         confirmButtonText: t`Move`,
         showPersonalCollections: true,

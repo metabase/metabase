@@ -6,6 +6,8 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -26,7 +28,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -44,18 +46,32 @@
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
+(defn- filter-stage-used?
+  [parameters]
+  (boolean
+   (some (fn [{:keys [target]}]
+           (and (mbql.u/is-clause? :dimension target)
+                (contains? (get target 2) :stage-number)))
+         parameters)))
+
 (defn query-for-card
   "Generate a query for a saved Card"
   [{query :dataset_query
     :as   card} parameters constraints middleware & [ids]]
-  (let [query     (-> query
-                      ;; don't want default constraints overridding anything that's already there
-                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                      (assoc :constraints constraints
-                             :parameters  parameters
-                             :middleware  middleware))
-        cs        (-> (cache-strategy card (:dashboard-id ids))
-                      (enrich-strategy query))]
+  (let [query (-> query
+                  ;; don't want default constraints overridding anything that's already there
+                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                  (assoc :constraints constraints
+                         :parameters  parameters
+                         :middleware  middleware))
+        query (cond-> query
+                ;; If query has aggregation and breakout at the top level,
+                ;; parameters refer to stages as if a new stage was appended.
+                ;; This is so that we can distinguish if a filter should be applied
+                ;; before of after summarizing.
+                (filter-stage-used? parameters) lib/ensure-filter-stage)
+        cs    (-> (cache-strategy card (:dashboard-id ids))
+                  (enrich-strategy query))]
     (assoc query :cache-strategy cs)))
 
 (def ^:dynamic *allow-arbitrary-mbql-parameters*
@@ -144,7 +160,7 @@
      [:template-tag tag-name]
      (name tag-name))))
 
-(mu/defn ^:private validate-card-parameters
+(mu/defn- validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
   [card-id    :- ::lib.schema.id/card
@@ -173,8 +189,8 @@
   "Create the default `:make-run` function for [[process-query-for-card]]."
   [qp export-format]
   (^:once fn* [query info]
-   (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
-     (qp (update query :info merge info) rff))))
+    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+      (qp (update query :info merge info) rff))))
 
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
@@ -203,32 +219,34 @@
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
-  (let [dash-viz (when (and (not= context :question)
-                            dashcard-id)
-                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
-                                                 :type :result_metadata :visualization_settings :display
-                                                 :cache_invalidated_at]
-                                                :id card-id))
+  (let [card       (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
+                                                   :type :result_metadata :visualization_settings :display
+                                                   :cache_invalidated_at]
+                                                  :id card-id))
+        dash-viz   (when (and (not= context :question)
+                              dashcard-id)
+                     (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
+        card-viz   (:visualization_settings card)
+        merged-viz (m/deep-merge card-viz dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
-        qp       (if (= :pivot (:display card))
-                   qp.pivot/run-pivot-query
-                   (or qp process-query-for-card-default-qp))
-        runner   (make-run qp export-format)
-        query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                     (update :viz-settings (fn [viz] (merge viz dash-viz)))
-                     (update :middleware (fn [middleware]
-                                           (merge
-                                             {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
-                                             middleware))))
-        info     (cond-> {:executed-by            api/*current-user-id*
-                          :context                context
-                          :card-id                card-id
-                          :card-name              (:name card)
-                          :dashboard-id           dashboard-id
-                          :visualization-settings (:visualization_settings card)}
-                   (and (= (:type card) :model) (seq (:result_metadata card)))
-                   (assoc :metadata/model-metadata (:result_metadata card)))]
+        qp         (if (= :pivot (:display card))
+                     qp.pivot/run-pivot-query
+                     (or qp process-query-for-card-default-qp))
+        runner     (make-run qp export-format)
+        query      (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                       (assoc :viz-settings merged-viz)
+                       (update :middleware (fn [middleware]
+                                             (merge
+                                              {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                              middleware))))
+        info       (cond-> {:executed-by            api/*current-user-id*
+                            :context                context
+                            :card-id                card-id
+                            :card-name              (:name card)
+                            :dashboard-id           dashboard-id
+                            :visualization-settings merged-viz}
+                     (and (= (:type card) :model) (seq (:result_metadata card)))
+                     (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id

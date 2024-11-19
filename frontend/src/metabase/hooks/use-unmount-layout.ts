@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 // identical to useUnmount from react-use but leverages useLayoutEffect
 // instead of useEffect in the case you need access to the DOM elements

@@ -1,0 +1,63 @@
+name: '[to be replaced]'
+description: null
+entity_id: Fnu5Kh0gYPN6P8A_fvICu
+created_at: '2023-09-21T13:30:15.777835Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_dashboardcard
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    source-table: pKdvc0pwu1zDi8NqnyJkt
+  type: query
+result_metadata:
+- base_type: type/BigInteger
+  display_name: Count
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+visualization_settings:
+  column_settings:
+    '["ref",["field",["Internal Metabase Database","public","v_content","created_at"],{"join-alias":"Question 35_2"}]]':
+      column_title: Added At
+    '["ref",["field",["Internal Metabase Database","public","v_content","id"],{"join-alias":"Question 35_2"}]]':
+      column_title: Dashboard ID
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
+      column_title: Question Name
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35_2"}]]':
+      column_title: Dashboard Name
+    ? '["ref",["field",["Internal Metabase Database","public","v_dashboardcard","created_at"],{"base-type":"type/DateTimeWithLocalTZ"}]]'
+    : column_title: Added At
+  table.cell_column: name
+  table.columns:
+  - enabled: true
+    name: count
+  table.pivot_column: name_2
+serdes/meta:
+- id: Fnu5Kh0gYPN6P8A_fvICu
+  label: _to_be_replaced_
+  model: Card
+archived_directly: false
+metabase_version: null
+source_card_id: pKdvc0pwu1zDi8NqnyJkt
+type: question

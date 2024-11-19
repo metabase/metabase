@@ -5,11 +5,11 @@ import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDataset,
   createMockDatasetData,
-  createMockTextDashboardCard,
   createMockHeadingDashboardCard,
   createMockLinkDashboardCard,
-  createMockDataset,
+  createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
@@ -84,10 +84,11 @@ function setup({
       onRemove={jest.fn()}
       markNewCardSeen={jest.fn()}
       navigateToNewCardFromDashboard={jest.fn()}
-      onReplaceAllVisualizationSettings={jest.fn()}
+      onReplaceAllDashCardVisualizationSettings={jest.fn()}
       onUpdateVisualizationSettings={jest.fn()}
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
+      downloadsEnabled
     />,
     {
       storeInitialState: {
@@ -147,8 +148,20 @@ describe("DashCard", () => {
     expect(screen.getByText("What a cool section")).toBeVisible();
   });
 
-  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", async () => {
+  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", () => {
     setup({ isXray: true });
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
+  it("should not display the 'Download results' action when dashcard query is running", () => {
+    setup({ dashcardData: {} });
+    // in this case the dashcard menu would be empty so it's not rendered at all
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
+  it("should not display the 'Download results' action when dashcard query is running in public/embedded dashboards", () => {
+    setup({ isPublicOrEmbedded: true, dashcardData: {} });
+    // in this case the dashcard menu would be empty so it's not rendered at all
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 

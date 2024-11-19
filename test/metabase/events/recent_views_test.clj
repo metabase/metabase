@@ -45,8 +45,8 @@
 (deftest dashboard-read-test
   (mt/with-temp [Dashboard dashboard {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
-     (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (mt/user->id :rasta)})
-     (is (partial
+      (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (mt/user->id :rasta)})
+      (is (partial
            {:user_id  (mt/user->id :rasta)
             :model    "dashboard"
             :model_id (:id dashboard)}

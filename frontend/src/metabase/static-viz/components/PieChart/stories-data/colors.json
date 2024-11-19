@@ -1,0 +1,326 @@
+[
+  {
+    "card": {
+      "original_card_id": 357,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-05T23:46:00.209487Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (a727fad)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {
+        "pie.colors": {
+          "2013-01-01T00:00:00-08:00": "#999AC4",
+          "2014-01-01T00:00:00-08:00": "#C7EAEA",
+          "2015-01-01T00:00:00-08:00": "#F7CBA9",
+          "2016-01-01T00:00:00-08:00": "#FBE499",
+          "2017-01-01T00:00:00-08:00": "#F7C4C4",
+          "2018-01-01T00:00:00-08:00": "#C8B4DA"
+        }
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-06-05T23:46:00.514789Z"
+      },
+      "collection_preview": true,
+      "entity_id": "u7PATfZ-UMJLZgFzis03N",
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 357,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            [
+              "median",
+              [
+                "field",
+                1597,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              1592,
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "year"
+              }
+            ]
+          ],
+          "source-table": "card__240"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-06T00:04:12.651181Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 361.4,
+      "type": "question",
+      "last_used_at": "2024-06-06T00:04:12.651181Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-06-06T00:04:12.252093Z",
+      "name": "Pie - Colors - MSFT median of close by year",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-06-05T21:21:49.288174Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "date",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1592,
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTimeWithLocalTZ",
+          "id": 1592,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1259,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2013-02-08",
+                "latest": "2018-02-07"
+              }
+            }
+          },
+          "base_type": "type/DateTimeWithLocalTZ"
+        },
+        {
+          "display_name": "Median of Close",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "median",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 6,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 33.36,
+                "q1": 41.885,
+                "q3": 71.15,
+                "max": 90.05,
+                "sd": 20.959263743430174,
+                "avg": 56.29666666666666
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 176,
+      "collection_position": null,
+      "view_count": 8,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2013-01-01T00:00:00-08:00", 33.36],
+        ["2014-01-01T00:00:00-08:00", 41.885],
+        ["2015-01-01T00:00:00-08:00", 46.23],
+        ["2016-01-01T00:00:00-08:00", 55.105000000000004],
+        ["2017-01-01T00:00:00-08:00", 71.15],
+        ["2018-01-01T00:00:00-08:00", 90.05]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 176,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "date",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1592,
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTimeWithLocalTZ",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1592,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1259,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2013-02-08",
+                "latest": "2018-02-07"
+              }
+            }
+          },
+          "base_type": "type/DateTimeWithLocalTZ"
+        },
+        {
+          "semantic_type": null,
+          "name": "median",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/Float",
+          "aggregation_index": 0,
+          "display_name": "Median of Close",
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"source\".\"date\") AS \"date\", PERCENTILE_CONT(0.5) within group (order by \"source\".\"close\") AS \"median\" FROM (SELECT \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\".\"open\" AS \"open\", \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\".\"high\" AS \"high\", \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\".\"low\" AS \"low\", \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\".\"close\" AS \"close\", \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\".\"volume\" AS \"volume\", \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\".\"name\" AS \"name\" FROM \"csv_upload_data\".\"csv_upload_msft_data_20240208130840\") AS \"source\" GROUP BY DATE_TRUNC('year', \"source\".\"date\") ORDER BY DATE_TRUNC('year', \"source\".\"date\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "date",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              1592,
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTimeWithLocalTZ",
+            "id": 1592,
+            "visibility_type": "normal",
+            "display_name": "Date",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1259,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2013-02-08",
+                  "latest": "2018-02-07"
+                }
+              }
+            },
+            "base_type": "type/DateTimeWithLocalTZ"
+          },
+          {
+            "display_name": "Median of Close",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "median",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 33.36,
+                  "q1": 41.885,
+                  "q3": 71.15,
+                  "max": 90.05,
+                  "sd": 20.959263743430174,
+                  "avg": 56.29666666666666
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 71.15,
+          "unit": "year",
+          "offset": -437.933677830261,
+          "last-change": 0.2656359803232606,
+          "col": "median",
+          "slope": 0.029738575610305035,
+          "last-value": 90.05,
+          "best-fit": [
+            "*",
+            0.008435992140561954,
+            ["exp", ["*", 0.0005265185561201579, "x"]]
+          ]
+        }
+      ]
+    }
+  }
+]

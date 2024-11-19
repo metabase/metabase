@@ -24,8 +24,14 @@ export const useDashboardUrlParams = ({
 }) => {
   const { font, setFont } = useEmbedFont();
 
-  const { bordered, titled, hide_parameters, hide_download_button } =
-    useEmbedFrameOptions({ location });
+  const {
+    background,
+    bordered,
+    titled,
+    hide_parameters,
+    downloadsEnabled,
+    locale,
+  } = useEmbedFrameOptions({ location });
 
   const {
     hasNightModeToggle,
@@ -62,6 +68,7 @@ export const useDashboardUrlParams = ({
 
   useEffect(() => {
     const { font } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
+
     if (font) {
       setFont(font);
     }
@@ -70,19 +77,21 @@ export const useDashboardUrlParams = ({
   return {
     isFullscreen,
     onFullscreenChange,
-    hideParameters: hide_parameters,
     hasNightModeToggle,
     onNightModeChange,
-    setTheme,
-    theme,
     isNightMode,
     refreshPeriod,
     setRefreshElapsedHook,
     onRefreshPeriodChange,
+    background,
     bordered,
     titled,
-    hideDownloadButton: hide_download_button,
     font,
     setFont,
+    theme,
+    setTheme,
+    hideParameters: hide_parameters,
+    downloadsEnabled,
+    locale,
   };
 };

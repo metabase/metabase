@@ -1,6 +1,6 @@
 import type {
-  DateTimeRelativeUnit,
   DateTimeAbsoluteUnit,
+  DateTimeRelativeUnit,
 } from "metabase-types/api";
 import {
   dateTimeAbsoluteUnits,

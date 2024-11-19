@@ -19,7 +19,7 @@
             [:stages 0]
             (lib.normalize/normalize :mbql.clause/field [:field {:temporal-unit :month} (meta/id :checkins :date)]))))))
 
-(mu/defn ^:private auto-bucket [query :- :map]
+(mu/defn- auto-bucket [query :- :map]
   (if (= (:lib/type query) :mbql/query)
     (qp.auto-bucket-datetimes/auto-bucket-datetimes query)
     (let [metadata-provider (if (qp.store/initialized?)
@@ -61,6 +61,40 @@
              (auto-bucket-mbql
               {:source-table 1
                :filter       [:= [:field (meta/id :checkins :date) nil] "2018-11-19"]}))))))
+
+(deftest ^:parallel auto-bucket-expressions-test
+  (qp.store/with-metadata-provider meta/metadata-provider
+    (testing "Expression in filter gets temporal unit added"
+      (is (= [:= [:expression "cc" {:base-type :type/DateTime, :temporal-unit :day}] "2019-02-11"]
+             (:filter (auto-bucket-mbql
+                       {:source-table 1
+                        :expressions {"cc" [:convert-timezone
+                                            [:field (meta/id :orders :created-at) {:base-type :type/DateTime}]
+                                            "America/Argentina/Buenos_Aires"
+                                            "UTC"]}
+                        :filter      [:= [:expression "cc" {:base-type :type/DateTime}] "2019-02-11"]})))))
+    (testing "Expressions not appropriate for bucketing are left untouched"
+      (is (= [:= [:expression "cc" {:base-type :type/DateTime}] "2024-07-16T13:24:00"]
+             (:filter (auto-bucket-mbql
+                       {:source-table 1
+                        :expressions {"cc" [:convert-timezone
+                                            [:field (meta/id :orders :created-at) {:base-type :type/DateTime}]
+                                            "America/Argentina/Buenos_Aires"
+                                            "UTC"]}
+                        :filter      [:= [:expression "cc" {:base-type :type/DateTime}] "2024-07-16T13:24:00"]}))))
+      (is (= [:= [:expression "cc" {:base-type :type/DateTime}] 1]
+             (:filter (auto-bucket-mbql
+                       {:source-table 1
+                        :expressions {"cc" [:+ (meta/id :orders :id) 1]}
+                        :filter      [:= [:expression "cc" {:base-type :type/DateTime}] 1]}))))
+      (is (= [:= [:expression "cc" {:base-type :type/Time}] "10:00:00"]
+             (:filter (auto-bucket-mbql
+                       {:source-table 1
+                        :expressions {"cc" [:convert-timezone
+                                            [:field (meta/id :orders :created-at) {:base-type :type/Time}]
+                                            "America/Argentina/Buenos_Aires"
+                                            "UTC"]}
+                        :filter      [:= [:expression "cc" {:base-type :type/Time}] "10:00:00"]})))))))
 
 (deftest ^:parallel auto-bucket-in-compound-filter-clause-test
   (testing "Fields should still get auto-bucketed when present in compound filter clauses (#9127)"
@@ -233,13 +267,13 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:source-table (meta/id :orders)
               :filter       [:between [:+ [:field (meta/id :orders :created-at) nil] [:interval 1 :minute]]
-                               [:relative-datetime -10 :minute]
-                               [:relative-datetime 0 :minute]]}
+                             [:relative-datetime -10 :minute]
+                             [:relative-datetime 0 :minute]]}
              (auto-bucket-mbql
-               {:source-table (meta/id :orders)
-                :filter       [:between [:+ [:field (meta/id :orders :created-at) nil] [:interval 1 :minute]]
-                               [:relative-datetime -10 :minute]
-                               [:relative-datetime 0 :minute]]}))))))
+              {:source-table (meta/id :orders)
+               :filter       [:between [:+ [:field (meta/id :orders :created-at) nil] [:interval 1 :minute]]
+                              [:relative-datetime -10 :minute]
+                              [:relative-datetime 0 :minute]]}))))))
 
 (deftest ^:parallel auto-bucket-unix-timestamp-fields-test
   (testing "do UNIX TIMESTAMP fields get auto-bucketed?"

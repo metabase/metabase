@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import type { ReactElement } from "react";
 import { t } from "ttag";
 
@@ -12,7 +11,7 @@ import {
   isFuzzyOperator,
 } from "metabase-lib/v1/operators/utils";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
 
@@ -22,26 +21,10 @@ import TextPicker from "../TextPicker";
 
 import {
   BetweenLayoutContainer,
-  BetweenLayoutFieldSeparator,
   BetweenLayoutFieldContainer,
+  BetweenLayoutFieldSeparator,
   DefaultPickerContainer,
 } from "./DefaultPicker.styled";
-
-const defaultPickerPropTypes = {
-  filter: PropTypes.array,
-  setValue: PropTypes.func,
-  setValues: PropTypes.func,
-  onCommit: PropTypes.func,
-  className: PropTypes.string,
-  minWidth: PropTypes.number,
-  maxWidth: PropTypes.number,
-  checkedColor: PropTypes.string,
-};
-
-const defaultLayoutPropTypes = {
-  className: PropTypes.string,
-  fieldWidgets: PropTypes.array,
-};
 
 export interface DefaultPickerProps {
   filter: Filter;
@@ -81,11 +64,9 @@ export function DefaultPicker({
     ?.question()
     ?.settings();
 
-  const key = dimension?.column?.()
-    ? getColumnKey(dimension.column() as DatasetColumn)
-    : "";
-
-  const columnSettings = visualizationSettings?.column_settings?.[key];
+  const column = dimension?.column?.();
+  const columnSettings =
+    column && getColumnSettings(visualizationSettings, column as DatasetColumn);
 
   const fieldMetadata = field?.metadata?.fields[field?.id as FieldId];
   const fieldSettings = {
@@ -201,8 +182,6 @@ export function DefaultPicker({
   );
 }
 
-DefaultPicker.propTypes = defaultPickerPropTypes;
-
 const DefaultLayout = ({
   fieldWidgets,
 }: {
@@ -219,8 +198,6 @@ const DefaultLayout = ({
     ))}
   </div>
 );
-
-DefaultLayout.propTypes = defaultLayoutPropTypes;
 
 const BetweenLayout = ({
   fieldWidgets,

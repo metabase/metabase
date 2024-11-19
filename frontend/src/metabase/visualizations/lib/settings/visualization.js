@@ -8,8 +8,8 @@ import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 
 import {
   getComputedSettings,
-  getSettingsWidgets,
   getPersistableDefaultSettings,
+  getSettingsWidgets,
 } from "../settings";
 
 const COMMON_SETTINGS = {

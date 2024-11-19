@@ -31,7 +31,6 @@ export const ActionsContainer = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-
   visibility: hidden;
 `;
 

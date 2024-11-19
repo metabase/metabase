@@ -1,31 +1,31 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupSearchEndpoints,
-  setupRecentViewsEndpoints,
   setupCollectionByIdEndpoint,
+  setupRecentViewsEndpoints,
+  setupSearchEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
-  renderWithProviders,
-  screen,
   fireEvent,
   getIcon,
+  renderWithProviders,
+  screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
-  VirtualDashboardCard,
   LinkCardSettings,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import {
-  createMockCollectionItem,
   createMockCollection,
-  createMockRecentTableItem,
-  createMockRecentCollectionItem,
-  createMockUser,
+  createMockCollectionItem,
   createMockLinkDashboardCard,
+  createMockRecentCollectionItem,
+  createMockRecentTableItem,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { LinkVizProps } from "./LinkViz";

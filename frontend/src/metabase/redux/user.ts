@@ -1,5 +1,6 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
+import Dashboards from "metabase/entities/dashboards";
 import Users from "metabase/entities/users";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
@@ -42,7 +43,8 @@ export const currentUser = createReducer<User | null>(null, builder => {
       return state;
     })
     .addCase(Users.actionTypes.UPDATE, (state, { payload }) => {
-      const isCurrentUserUpdated = state?.id === payload.user.id;
+      const isCurrentUserUpdated =
+        payload.user && state?.id === payload.user.id;
       if (isCurrentUserUpdated) {
         return {
           ...state,
@@ -50,5 +52,15 @@ export const currentUser = createReducer<User | null>(null, builder => {
         };
       }
       return state;
+    })
+    .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
+      const { dashboard } = payload;
+      if (
+        state != null &&
+        state.custom_homepage?.dashboard_id === dashboard.id &&
+        dashboard.archived
+      ) {
+        state.custom_homepage = null;
+      }
     });
 });

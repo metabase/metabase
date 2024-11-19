@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.fields-test
+(ns ^:mb/driver-tests metabase.query-processor-test.fields-test
   "Tests for the `:fields` clause."
   (:require
    [clojure.test :refer :all]
@@ -21,9 +21,10 @@
                       ["Fred 62"                      10]]
                :cols [(mt/col :venues :name)
                       (mt/col :venues :id)]}
-              (mt/format-rows-by [str int]
-                (qp.test-util/rows-and-cols
-                 (mt/run-mbql-query venues
-                   {:fields   [$name $id]
-                    :limit    10
-                    :order-by [[:asc $id]]}))))))))
+              (mt/format-rows-by
+               [str int]
+               (qp.test-util/rows-and-cols
+                (mt/run-mbql-query venues
+                  {:fields   [$name $id]
+                   :limit    10
+                   :order-by [[:asc $id]]}))))))))

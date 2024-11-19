@@ -1,8 +1,8 @@
 import {
-  precision,
+  computeChange,
   computeNumericDataInverval,
   isMultipleOf,
-  computeChange,
+  precision,
 } from "metabase/visualizations/lib/numeric";
 
 describe("visualization.lib.numeric", () => {
@@ -45,6 +45,7 @@ describe("visualization.lib.numeric", () => {
       });
     }
   });
+
   describe("computeNumericDataInverval", () => {
     const CASES = [
       [[0], 1],
@@ -61,6 +62,7 @@ describe("visualization.lib.numeric", () => {
       });
     }
   });
+
   describe("isMultipleOf", () => {
     [
       [1, 0.1, true],

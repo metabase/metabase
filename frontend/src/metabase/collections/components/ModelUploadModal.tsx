@@ -1,18 +1,18 @@
-import { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSearchListQuery } from "metabase/common/hooks";
 import {
-  Modal,
   Button,
   Flex,
-  Stack,
-  Select,
-  Radio,
-  Text,
   Icon,
+  Modal,
+  Radio,
+  Select,
+  Stack,
+  Text,
 } from "metabase/ui";
-import type { CollectionId, TableId, CardId } from "metabase-types/api";
+import type { CardId, CollectionId, TableId } from "metabase-types/api";
 import { UploadMode } from "metabase-types/store/upload";
 
 import type { OnFileUpload } from "../types";

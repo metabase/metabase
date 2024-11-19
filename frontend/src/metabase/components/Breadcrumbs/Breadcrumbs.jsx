@@ -51,7 +51,7 @@ export default class Breadcrumbs extends Component {
               <Ellipsified
                 key={index}
                 tooltip={breadcrumb[0]}
-                tooltipMaxWidth="100%"
+                tooltipMaxWidth="auto"
                 className={cx(
                   breadcrumbClass,
                   breadcrumb.length > 1 ? S.breadcrumbPath : S.breadcrumbPage,

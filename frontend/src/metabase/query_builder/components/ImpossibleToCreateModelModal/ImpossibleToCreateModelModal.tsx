@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";

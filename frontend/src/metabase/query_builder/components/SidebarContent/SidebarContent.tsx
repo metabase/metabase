@@ -8,9 +8,9 @@ import type { IconName } from "metabase/ui";
 import SidebarHeader from "../SidebarHeader";
 
 import {
-  SidebarContentRoot,
-  SidebarContentMain,
   FooterButton,
+  SidebarContentMain,
+  SidebarContentRoot,
 } from "./SidebarContent.styled";
 
 type Props = {

@@ -22,7 +22,6 @@
    [cheshire.core :as json]
    [metabase-enterprise.llm.settings :as llm-settings]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
 
@@ -37,7 +36,10 @@
            usage-summary (-> (dissoc response :usage :choices)
                              (merge usage)
                              (select-keys [:id :object :created :model :prompt_tokens :completion_tokens :total_tokens :system_fingerprint]))]
-       (snowplow/track-event! ::snowplow/llm-usage api/*current-user-id* usage-summary)
+       (snowplow/track-event! ::snowplow/llm_usage
+                              (assoc
+                               usage-summary
+                               :event :llm-usage))
        ;; TODO -- Remove before final PR/merge
        ;(tap> usage-summary)
        response))
@@ -54,41 +56,41 @@
          (log/warnf "Exception when calling function: %s" (.getMessage e))
          (throw
            ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
-           (if-some [status (:status (ex-data e))]
-             (let [{:keys [body]} (ex-data e)
-                   {:keys [error]} (json/parse-string body keyword)
-                   {error-type :type :keys [message code]} error]
-               (case (int status)
-                 400 (do
-                       (log/warnf "%s: %s" code message)
-                       (ex-info
-                         message
-                         {:message     message
-                          :status-code 400}))
-                 401 (ex-info
-                       "Credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
-                       {:message     "Credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
+          (if-some [status (:status (ex-data e))]
+            (let [{:keys [body]} (ex-data e)
+                  {:keys [error]} (json/parse-string body keyword)
+                  {error-type :type :keys [message code]} error]
+              (case (int status)
+                400 (do
+                      (log/warnf "%s: %s" code message)
+                      (ex-info
+                       message
+                       {:message     message
+                        :status-code 400}))
+                401 (ex-info
+                     "Credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
+                     {:message     "Credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
                         ;; Don't actually produce a 401 because you'll get redirect do the home page.
-                        :status-code 400})
-                 429 (if (= error-type "insufficient_quota")
-                       (ex-info
-                         "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
-                         {:message     "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
-                          :status-code status})
-                       (ex-info
-                         "Server is under heavy load and cannot process your request at this time.\nPlease try again."
-                         {:message     "The server is under heavy load and cannot process your request at this time.\nPlease try again."
-                          :status-code status}))
+                      :status-code 400})
+                429 (if (= error-type "insufficient_quota")
+                      (ex-info
+                       "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
+                       {:message     "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
+                        :status-code status})
+                      (ex-info
+                       "Server is under heavy load and cannot process your request at this time.\nPlease try again."
+                       {:message     "The server is under heavy load and cannot process your request at this time.\nPlease try again."
+                        :status-code status}))
                  ;; Just re-throw it until we get a better handle on
-                 (ex-info
-                   "Error calling remote server.\nPlease try again."
-                   {:message     "The server is under heavy load and cannot process your request at this time.\nPlease try again."
-                    :status-code 500})))
+                (ex-info
+                 "Error calling remote server.\nPlease try again."
+                 {:message     "The server is under heavy load and cannot process your request at this time.\nPlease try again."
+                  :status-code 500})))
              ;; If there's no ex-data, we'll assume it's some other issue and generate a 400
-             (ex-info
-               (ex-message e)
-               {:exception-data (ex-data e)
-                :status-code    400}))))))
+            (ex-info
+             (ex-message e)
+             {:exception-data (ex-data e)
+              :status-code    400}))))))
     ([params] (wrap-openai-exceptions* params nil))))
 
 (defn wrap-model-defaults
@@ -97,10 +99,10 @@
   (fn wrap-model-defaults*
     ([params options]
      (openai-fn
-       (merge
-         {:model (llm-settings/ee-openai-model)}
-         params)
-       options))
+      (merge
+       {:model (llm-settings/ee-openai-model)}
+       params)
+      options))
     ([params] (wrap-model-defaults* params nil))))
 
 (defn wrap-ee-auth
@@ -109,10 +111,10 @@
   (fn wrap-ee-auth*
     ([params options]
      (openai-fn
-       params
-       (merge
-         {:api-key (llm-settings/ee-openai-api-key)}
-         options)))
+      params
+      (merge
+       {:api-key (llm-settings/ee-openai-api-key)}
+       options)))
     ([params]
      (wrap-ee-auth* params nil))))
 
@@ -123,8 +125,8 @@
     ([params options]
      (let [{:keys [choices]} (openai-fn params options)]
        (some
-         (fn [{:keys [message]}] (:content message))
-         choices)))
+        (fn [{:keys [message]}] (:content message))
+        choices)))
     ([params]
      (wrap-find-result* params nil))))
 
@@ -140,26 +142,26 @@
             ;; Usually you just get json back, but sometimes you get a markdown block.
             (let [md-regex #"(?s)\s*```(?:json)?(.*)```\s*"
                   response (or
-                             (second (re-matches md-regex response))
-                             response)]
+                            (second (re-matches md-regex response))
+                            response)]
               (postprocess-fn (json/parse-string response true)))
             (catch Exception e
               (throw
-                (do
-                  (log/warnf "Unparseable JSON string: %s" response)
-                  (ex-info
-                    (.getMessage e)
-                    {:message     (.getMessage e)
-                     :response    response
-                     :status-code 500})))))
+               (do
+                 (log/warnf "Unparseable JSON string: %s" response)
+                 (ex-info
+                  (.getMessage e)
+                  {:message     (.getMessage e)
+                   :response    response
+                   :status-code 500})))))
           (throw
-            (do
-              (log/warnf "Not a string: %s" response)
-              (ex-info
-                "Response was not a string"
-                {:message     "Response was not a string"
-                 :response    response
-                 :status-code 500}))))))
+           (do
+             (log/warnf "Not a string: %s" response)
+             (ex-info
+              "Response was not a string"
+              {:message     "Response was not a string"
+               :response    response
+               :status-code 500}))))))
      ([params] (wrap-parse-json* params nil))))
   ([openai-fn] (wrap-parse-json openai-fn identity)))
 
@@ -167,8 +169,8 @@
   "OpenAI is the default completion endpoint"
   ([params options]
    (openai.api/create-chat-completion
-     (select-keys params [:model :n :messages])
-     options))
+    (select-keys params [:model :n :messages])
+    options))
   ([params] (default-chat-completion-endpoint params nil)))
 
 (def ^:dynamic ^{:arglists '([params options])}

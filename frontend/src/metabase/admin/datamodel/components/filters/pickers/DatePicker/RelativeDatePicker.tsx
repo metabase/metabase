@@ -3,9 +3,9 @@ import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line
 import { useState } from "react";
 import { t } from "ttag";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
 import { isValidTimeInterval } from "metabase/lib/time";
+import { Popover } from "metabase/ui";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   formatStartingFrom,
@@ -18,13 +18,13 @@ import {
 } from "metabase-lib/v1/queries/utils/query-time";
 
 import {
+  DateUnitSelector,
   GridContainer,
   GridText,
   MoreButton,
+  NumericInput,
   OptionButton,
   OptionsContainer,
-  DateUnitSelector,
-  NumericInput,
 } from "./RelativeDatePicker.styled";
 
 type RelativeDatePickerProps = {
@@ -127,7 +127,7 @@ const OptionsContent = ({
   };
 
   return (
-    <OptionsContainer>
+    <OptionsContainer data-testid="relative-date-picker-options">
       {supportsExpressions && (
         <OptionButton
           icon="arrow_left_to_line"
@@ -220,19 +220,22 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
         periods={ALL_PERIODS}
       />
       {showOptions ? (
-        <TippyPopover
-          visible={optionsVisible}
-          placement="bottom-start"
-          content={optionsContent}
+        <Popover
+          opened={optionsVisible}
           onClose={() => setOptionsVisible(false)}
+          position="bottom-start"
         >
-          <MoreButton
-            icon="ellipsis"
-            aria-label={t`Options`}
-            primaryColor={primaryColor}
-            onClick={() => setOptionsVisible(!optionsVisible)}
-          />
-        </TippyPopover>
+          <Popover.Target>
+            <MoreButton
+              icon="ellipsis"
+              aria-label={t`Options`}
+              primaryColor={primaryColor}
+              onClick={() => setOptionsVisible(!optionsVisible)}
+            />
+          </Popover.Target>
+
+          <Popover.Dropdown>{optionsContent}</Popover.Dropdown>
+        </Popover>
       ) : (
         <div />
       )}

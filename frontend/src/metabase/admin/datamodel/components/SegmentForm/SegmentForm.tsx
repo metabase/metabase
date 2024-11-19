@@ -16,12 +16,12 @@ import FormTextArea from "../FormTextArea";
 import PartialQueryBuilder from "../PartialQueryBuilder";
 
 import {
-  FormRoot,
-  FormSection,
   FormBody,
   FormBodyContent,
   FormFooter,
   FormFooterContent,
+  FormRoot,
+  FormSection,
   FormSubmitButton,
 } from "./SegmentForm.styled";
 

@@ -1,40 +1,44 @@
-import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visualize,
-  openTable,
-  openOrdersTable,
-  popover,
-  modal,
-  summarize,
-  openNativeEditor,
-  startNewQuestion,
-  openNavigationSidebar,
-  navigationSidebar,
+  POPOVER_ELEMENT,
+  adhocQuestionHash,
+  appBar,
+  commandPalette,
+  commandPaletteSearch,
+  createQuestion,
+  editDashboard,
+  enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
-  withDatabase,
-  adhocQuestionHash,
   expressionEditorWidget,
-  enterCustomColumnDetails,
-  showDashboardCardActions,
   filterWidget,
-  saveDashboard,
-  editDashboard,
-  visitDashboard,
-  questionInfoButton,
-  rightSidebar,
   getNotebookStep,
   leftSidebar,
-  POPOVER_ELEMENT,
-  appBar,
-  visitQuestion,
-  openProductsTable,
   mockSessionProperty,
-  visitQuestionAdhoc,
+  modal,
+  navigationSidebar,
+  openNativeEditor,
+  openNavigationSidebar,
+  openNotebook,
+  openOrdersTable,
+  openProductsTable,
+  openTable,
+  popover,
+  questionInfoButton,
+  restore,
+  saveDashboard,
+  showDashboardCardActions,
+  sidesheet,
+  startNewQuestion,
+  summarize,
   tableHeaderClick,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -91,7 +95,7 @@ describe("issue 4482", () => {
 });
 
 function pickMetric(metric) {
-  cy.contains("Pick the metric").click();
+  cy.contains("Pick a function or metric").click();
 
   cy.contains(metric).click();
   cy.findByText("Price");
@@ -139,7 +143,7 @@ describe("issue 6239", () => {
     cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "1");
 
     // Go back to the notebook editor
-    cy.icon("notebook").click();
+    openNotebook();
 
     // Sort descending this time
     cy.icon("arrow_up").click();
@@ -312,9 +316,9 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   });
 });
 
-const PG_DB_NAME = "QA Postgres12";
+describe("issue 14957", { tags: "@external" }, () => {
+  const PG_DB_NAME = "QA Postgres12";
 
-describe.skip("issue 14957", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
@@ -323,12 +327,7 @@ describe.skip("issue 14957", { tags: "@external" }, () => {
   it("should save a question before query has been executed (metabase#14957)", () => {
     openNativeEditor({ databaseName: PG_DB_NAME }).type("select pg_sleep(60)");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    cy.findByLabelText("Name").type("14957");
-    cy.button("Save").click();
-
+    saveQuestion("14957");
     modal().should("not.exist");
   });
 });
@@ -354,7 +353,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
 
   it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Pick a function or metric").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
@@ -513,7 +512,7 @@ describe("issue 17514", () => {
   };
 
   const filter = {
-    name: "Date Filter",
+    name: "All Options",
     slug: "date_filter",
     id: "23ccbbf",
     type: "date/all-options",
@@ -664,7 +663,7 @@ function closeModal() {
 }
 
 function openNotebookMode() {
-  cy.icon("notebook").click();
+  openNotebook();
 }
 
 function removeJoinedTable() {
@@ -709,11 +708,11 @@ describe("issue 17910", () => {
 
     questionInfoButton().click();
 
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findAllByPlaceholderText("Add description")
         .type("A description")
         .blur();
-      cy.findByText("History");
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByTestId("saved-question-history-list")
         .children()
         .should("have.length", 2);
@@ -862,22 +861,36 @@ describe("issue 18207", () => {
   });
 });
 
-describe("11914, 18978, 18977", () => {
+describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createQuestion({
+    createQuestion({
+      name: "Repro",
       query: {
         "source-table": `card__${ORDERS_QUESTION_ID}`,
         limit: 2,
       },
-    }).then(({ body: { id: questionId } }) => {
-      cy.signIn("nodata");
-      visitQuestion(questionId);
     });
+    cy.signIn("nodata");
   });
 
   it("should not display query editing controls and 'Browse databases' link", () => {
+    cy.log(
+      "Make sure we don't offer to duplicate question with a query for which the user has no permission to run (metabase#23857)",
+    );
+    visitQuestion(ORDERS_QUESTION_ID);
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Duplicate").should("not.exist");
+
+    cy.log(
+      "Make sure we don't offer to duplicate question based on a question with a query for which the user has no permission to run (metabase#23857)",
+    );
+    commandPaletteSearch("Repro", false);
+    commandPalette().findByText("Repro").click();
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Duplicate").should("not.exist");
+
     cy.log(
       "Make sure we don't prompt user to browse databases from the sidebar",
     );
@@ -903,7 +916,7 @@ describe("11914, 18978, 18977", () => {
       cy.icon("refresh").should("be.visible");
       cy.icon("bookmark").should("be.visible");
       // querying
-      cy.icon("notebook").should("not.exist");
+      cy.findByTestId("notebook-button").should("not.exist");
       cy.findByText("Filter").should("not.exist");
       cy.findByText("Summarize").should("not.exist");
       cy.button("Save").should("not.exist");
@@ -984,7 +997,9 @@ describe("issue 19341", () => {
       cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
-      cy.findByPlaceholderText("Search…").type("Ord");
+      cy.findByPlaceholderText("Search this database or everywhere…").type(
+        "Ord",
+      );
       cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findAllByTestId("result-item").then($result => {

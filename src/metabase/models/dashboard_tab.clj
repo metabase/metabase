@@ -5,7 +5,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -48,28 +47,25 @@
                       (t2/select-one :model/Dashboard :id (:dashboard_id dashtab)))]
     (mi/perms-objects-set dashboard read-or-write)))
 
-
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 (defmethod serdes/hash-fields :model/DashboardTab
   [_dashboard-tab]
   [:name
    (comp serdes/identity-hash
-        #(t2/select-one :model/Dashboard :id %)
-        :dashboard_id)
+         #(t2/select-one :model/Dashboard :id %)
+         :dashboard_id)
    :position
    :created_at])
 
-;; DashboardTabs are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
 (defmethod serdes/generate-path "DashboardTab" [_ dashcard]
   [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
    (serdes/infer-self-path "DashboardTab" dashcard)])
 
-(defmethod serdes/load-xform "DashboardTab"
-  [dashtab]
-  (-> dashtab
-      (dissoc :serdes/meta)
-      (update :dashboard_id serdes/*import-fk* :model/Dashboard)
-      (update :created_at   #(if (string? %) (u.date/parse %) %))))
+(defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
+  {:copy      [:entity_id :name :position]
+   :skip      []
+   :transform {:created_at   (serdes/date)
+               :dashboard_id (serdes/parent-ref)}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 
@@ -90,12 +86,12 @@
         id->current-tab (m/index-by :id current-tabs)
         to-update-tabs  (filter
                           ;; filter out tabs that haven't changed
-                          (fn [new-tab]
-                            (let [current-tab (get id->current-tab (:id new-tab))]
-                              (not= (select-keys current-tab update-ks)
-                                    (select-keys new-tab update-ks))))
+                         (fn [new-tab]
+                           (let [current-tab (get id->current-tab (:id new-tab))]
+                             (not= (select-keys current-tab update-ks)
+                                   (select-keys new-tab update-ks))))
 
-                          new-tabs)]
+                         new-tabs)]
     (doseq [tab to-update-tabs]
       (t2/update! :model/DashboardTab (:id tab) (select-keys tab update-ks)))
     nil))

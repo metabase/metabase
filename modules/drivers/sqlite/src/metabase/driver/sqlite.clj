@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -38,15 +37,12 @@
                               :schemas                                false
                               :datetime-diff                          true
                               :now                                    true
+                              :identifiers-with-spaces                true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
                               :case-sensitivity-string-filter-options false
                               :index-info                             true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
-
-;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
-;; for now we'll just skip the foreign key stuff in the tests.
-(defmethod driver/database-supports? [:sqlite :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
 ;; or "** This file contains an SQLite
@@ -84,7 +80,7 @@
   (let [pk (first (sql-jdbc.execute/do-with-connection-with-options
                    driver database nil
                    (fn [conn]
-                     (sql-jdbc.describe-table/get-table-pks :sqlite conn (:name database) table))))]
+                     (sql-jdbc.describe-table/get-table-pks :sqlite conn nil table))))]
     ;; In sqlite a PK will implicitly have a UNIQUE INDEX, but if the PK is integer the getIndexInfo method from
     ;; jdbc doesn't return it as indexed. so we need to manually get mark the pk as indexed here
     (cond-> ((get-method driver/describe-table-indexes :sql-jdbc) driver database table)
@@ -226,12 +222,12 @@
 (defmethod sql.qp/date [:sqlite :quarter]
   [_driver _ expr]
   (->date
-    (->date expr (h2x/literal "start of month"))
-    [:||
-     (h2x/literal "-")
-     (h2x/mod (h2x/dec (strftime "%m" expr))
-              3)
-     (h2x/literal " months")]))
+   (->date expr (h2x/literal "start of month"))
+   [:||
+    (h2x/literal "-")
+    (h2x/mod (h2x/dec (strftime "%m" expr))
+             3)
+    (h2x/literal " months")]))
 
 ;; q = (m + 2) / 3
 (defmethod sql.qp/date [:sqlite :quarter-of-year]
@@ -393,12 +389,12 @@
           ;; total-month-diff counts month boundaries not whole months, so we need to adjust
           ;; if x<y but x>y in the month calendar then subtract one month
           ;; if x>y but x<y in the month calendar then add one month
-          [:case
-           [:and [:< x y] [:> (extract :day-of-month x) (extract :day-of-month y)]]
-           -1
-           [:and [:> x y] [:< (extract :day-of-month x) (extract :day-of-month y)]]
-           1
-           :else 0])))
+           [:case
+            [:and [:< x y] [:> (extract :day-of-month x) (extract :day-of-month y)]]
+            -1
+            [:and [:> x y] [:< (extract :day-of-month x) (extract :day-of-month y)]]
+            1
+            :else 0])))
 
 (defmethod sql.qp/datetime-diff [:sqlite :week]
   [driver _unit x y]
@@ -407,8 +403,8 @@
 (defmethod sql.qp/datetime-diff [:sqlite :day]
   [_driver _unit x y]
   (h2x/->integer
-    (h2x/- [:julianday y (h2x/literal "start of day")]
-           [:julianday x (h2x/literal "start of day")])))
+   (h2x/- [:julianday y (h2x/literal "start of day")]
+          [:julianday x (h2x/literal "start of day")])))
 
 (defmethod sql.qp/datetime-diff [:sqlite :hour]
   [driver _unit x y]

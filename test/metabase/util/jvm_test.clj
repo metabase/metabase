@@ -49,21 +49,21 @@
 (defspec sorted-take-test-size
   (prop/for-all [coll (gen/list (gen/tuple gen/small-integer gen/string))
                  size (gen/fmap inc gen/nat)]
-                (= (vec (take-last size (sort coll)))
-                   (transduce (map identity)
-                              (u/sorted-take size compare)
-                              coll))))
+    (= (vec (take-last size (sort coll)))
+       (transduce (map identity)
+                  (u/sorted-take size compare)
+                  coll))))
 
 (defspec sorted-take-test-comparator
   (prop/for-all [coll (gen/list (gen/fmap (fn [x] {:score x}) gen/small-integer))
                  size (gen/fmap inc gen/nat)]
-                (let [coll    (shuffle coll)
-                      kompare (fn [{score-1 :score} {score-2 :score}]
-                                (compare score-1 score-2))]
-                  (= (vec (take-last size (sort-by identity kompare coll)))
-                     (transduce (map identity)
-                                (u/sorted-take size kompare)
-                                coll)))))
+    (let [coll    (shuffle coll)
+          kompare (fn [{score-1 :score} {score-2 :score}]
+                    (compare score-1 score-2))]
+      (= (vec (take-last size (sort-by identity kompare coll)))
+         (transduce (map identity)
+                    (u/sorted-take size kompare)
+                    coll)))))
 
 (deftest ^:parallel full-exception-chain-test
   (testing "Not an Exception"
@@ -83,3 +83,24 @@
              (map ex-message (u/full-exception-chain e))))
       (is (= [{:a 1} {:b 2} {:c 3}]
              (map ex-data (u/full-exception-chain e)))))))
+
+(deftest ^:parallel parse-currency-test
+  (are [s expected] (= expected
+                       (u/parse-currency s))
+    nil             nil
+    ""              nil
+    "   "           nil
+    "$1,000"        1000.0M
+    "$1,000,000"    1000000.0M
+    "$1,000.00"     1000.0M
+    "€1.000"        1000.0M
+    "€1.000,00"     1000.0M
+    "€1.000.000,00" 1000000.0M
+    "-£127.54"      -127.54M
+    "-127,54 €"     -127.54M
+    "kr-127,54"     -127.54M
+    "€ 127,54-"     -127.54M
+    "¥200"          200.0M
+    "¥200."         200.0M
+    "$.05"          0.05M
+    "0.05"          0.05M))

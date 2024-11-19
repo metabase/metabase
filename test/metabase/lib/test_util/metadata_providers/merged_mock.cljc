@@ -29,7 +29,7 @@
    [:metrics  {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/metric]]]]]
    [:segments {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/segment]]]]]])
 
-(mu/defn ^:private merged-metadata-map :- lib.tu.metadata-providers.mock/MockMetadata
+(mu/defn- merged-metadata-map :- lib.tu.metadata-providers.mock/MockMetadata
   [parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
    properties               :- MergeableProperties]
   (into {}

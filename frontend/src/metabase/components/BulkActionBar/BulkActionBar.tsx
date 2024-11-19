@@ -1,6 +1,6 @@
 import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Transition, Flex, Text } from "metabase/ui";
+import { Flex, Text, Transition } from "metabase/ui";
 
 import { BulkActionsToast, ToastCard } from "./BulkActionBar.styled";
 
@@ -15,6 +15,7 @@ type BulkActionsProps = {
   opened: boolean;
   message: string;
   children: React.ReactNode | React.ReactNode[];
+  className?: string;
 };
 
 /**
@@ -31,6 +32,7 @@ export const BulkActionBar = ({
   opened,
   message,
   children,
+  className,
 }: BulkActionsProps) => {
   const isNavbarOpen = useSelector(getIsNavbarOpen);
 
@@ -42,7 +44,11 @@ export const BulkActionBar = ({
       timingFunction="ease"
     >
       {styles => (
-        <BulkActionsToast style={styles} isNavbarOpen={isNavbarOpen}>
+        <BulkActionsToast
+          style={styles}
+          isNavbarOpen={isNavbarOpen}
+          className={className}
+        >
           <ToastCard dark data-testid="toast-card">
             {message && <Text color="text-white">{message}</Text>}
             <Flex gap="sm" align="center">

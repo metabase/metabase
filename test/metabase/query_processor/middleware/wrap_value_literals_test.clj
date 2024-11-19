@@ -10,9 +10,11 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as toucan2.with-temp]))
 
 (driver/register! ::tz-driver, :abstract? true)
 
@@ -220,9 +222,9 @@
                             [:expression "foo" {:base-type :type/DateTime}]
                             [:absolute-datetime #t "2014-01-01T00:00" :default]]})
            (wrap-value-literals
-             (lib.tu.macros/mbql-query checkins
-               {:expressions {"foo" $date}
-                :filter      [:> [:expression "foo" {:base-type :type/DateTime}] "2014-01-01"]}))))))
+            (lib.tu.macros/mbql-query checkins
+              {:expressions {"foo" $date}
+               :filter      [:> [:expression "foo" {:base-type :type/DateTime}] "2014-01-01"]}))))))
 
 (deftest ^:parallel other-clauses-test
   (testing "Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`"
@@ -301,3 +303,35 @@
                      lib.convert/->legacy-MBQL
                      wrap-value-literals
                      (lib/query query))))))))
+
+(deftest ^:parallel model-source-type-info-test
+  (testing "type info is added to fields coming from model source query (#46059)"
+    ;; Basically, this checks whether the [[metabase.query-processor.middleware.wrap-value-literals/type-info]] :field
+    ;; adds options to values in expressions, where other arg is field clause with name instead of int id.
+    (toucan2.with-temp/with-temp [:model/Card {id :id} {:dataset_query (mt/mbql-query venues)
+                                                        :type          :model}]
+      (let [query (mt/mbql-query
+                    venues
+                    {:source-table (str "card__" id)
+                     :filter [:= [:field "ID" {:base-type :type/Integer}] 1]})
+            preprocessed (qp.preprocess/preprocess query)]
+        ;; [:query :filter 2 2 :database_type] points to wrapped value's options
+        (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
+
+(deftest ^:parallel model-join-type-info-test
+  (testing "type info is added to fields coming from join"
+    ;; Basically, this checks whether the [[metabase.query-processor.middleware.wrap-value-literals/type-info]] :field
+    ;; adds options to values in expressions, where other arg is field clause with name instead of int id.
+    (toucan2.with-temp/with-temp [:model/Card {id :id} {:dataset_query (mt/mbql-query venues)
+                                                        :type          :model}]
+      (let [query (mt/mbql-query
+                    venues
+                    {:filter [:= [:field "ID" {:base-type :type/Integer :join-alias "x"}] 1]
+                     :joins [{:alias "x"
+                              :condition [:=
+                                          $id
+                                          [:field "ID" {:base-type :type/Integer :join-alias "x"}]]
+                              :source-table (str "card__" id)}]})
+            preprocessed (qp.preprocess/preprocess query)]
+        ;; [:query :filter 2 2 :database_type] points to wrapped value's options
+        (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
