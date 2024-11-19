@@ -12,6 +12,7 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import {
+  getIsActionListVisible,
   getIsShowingRawTable,
   getIsVisualized,
   getUiControls,
@@ -24,16 +25,21 @@ import type { QueryBuilderUIControls } from "metabase-types/store";
 
 interface LeftViewFooterButtonGroupProps {
   question: Question;
+  hideChartSettings?: boolean;
 }
 
 export const LeftViewFooterButtonGroup = ({
   question,
+  hideChartSettings = false,
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
+  const isActionListVisible = useSelector(getIsActionListVisible);
   const isShowingRawTable = useSelector(getIsShowingRawTable);
   const vizIcon = getIconForVisualizationType(question.display());
-  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
+  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
+  const shouldShowEditorButton =
+    !isNative && isEditable && !question.isArchived() && isActionListVisible;
 
   useUnmount(() => {
     // reset showing raw table, so new mount will default to viz
@@ -42,17 +48,19 @@ export const LeftViewFooterButtonGroup = ({
 
   const dispatch = useDispatch();
   const isVisualized = useSelector(getIsVisualized);
+  const shouldShowChartSettingsButton =
+    !hideChartSettings && (!isShowingRawTable || isVisualized);
 
   const data = useMemo(
     () =>
       [
-        isNative
-          ? null
-          : {
+        shouldShowEditorButton
+          ? {
               value: "editor",
               label: (
                 <Tooltip label={t`Editor`}>
                   <Icon
+                    aria-label={t`Switch to editor`}
                     name="notebook"
                     onClick={() => {
                       dispatch(setQueryBuilderMode("notebook"));
@@ -60,7 +68,8 @@ export const LeftViewFooterButtonGroup = ({
                   />
                 </Tooltip>
               ),
-            },
+            }
+          : null,
         {
           value: "table",
           label: (
@@ -91,18 +100,23 @@ export const LeftViewFooterButtonGroup = ({
           ),
         },
       ].filter(isNotNull),
-    [dispatch, isNative, vizIcon],
+    [dispatch, shouldShowEditorButton, vizIcon],
   );
+
+  function getSelectedControlValue() {
+    if (data.length === 1) {
+      return "editor";
+    }
+
+    return isShowingRawTable ? "table" : "visualization";
+  }
 
   return (
     <Flex gap="0.75rem">
-      {isVisualized && (
-        <EditorViewControl
-          value={isShowingRawTable ? "table" : "visualization"}
-          data={data}
-        />
+      {(isVisualized || shouldShowEditorButton) && (
+        <EditorViewControl value={getSelectedControlValue()} data={data} />
       )}
-      {(!isShowingRawTable || isVisualized) && (
+      {shouldShowChartSettingsButton && (
         <Button
           variant={isShowingChartSettingsSidebar ? "filled" : "default"}
           radius="xl"

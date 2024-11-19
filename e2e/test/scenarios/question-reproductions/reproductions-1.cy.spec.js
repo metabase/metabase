@@ -19,6 +19,7 @@ import {
   mockSessionProperty,
   modal,
   navigationSidebar,
+  notebookButton,
   openNativeEditor,
   openNavigationSidebar,
   openNotebook,
@@ -853,11 +854,10 @@ describe("issue 18207", () => {
     openVizType();
     leftSidebar().within(() => {
       cy.icon("table2").click();
-      cy.findByTestId("Table-button").realHover();
-      cy.icon("gear").click();
+      cy.findByText("Columns").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Done").click();
+
+    cy.button("Done").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zemlak-Wiegand");
@@ -919,7 +919,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
       cy.icon("refresh").should("be.visible");
       cy.icon("bookmark").should("be.visible");
       // querying
-      cy.findByTestId("notebook-button").should("not.exist");
+      notebookButton().should("not.exist");
       cy.findByText("Filter").should("not.exist");
       cy.findByText("Summarize").should("not.exist");
       cy.button("Save").should("not.exist");

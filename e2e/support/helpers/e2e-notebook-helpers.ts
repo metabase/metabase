@@ -9,9 +9,7 @@ import type { NotebookStepType } from "metabase/query_builder/components/noteboo
 import type { IconName } from "metabase/ui";
 
 export function notebookButton() {
-  return cy
-    .findByTestId("qb-header-action-panel")
-    .findByTestId("notebook-button");
+  return cy.findByLabelText("Switch to editor");
 }
 
 export function startSort() {

@@ -11,6 +11,7 @@ import {
   main,
   moveDnDKitElement,
   openNotebook,
+  openVizType,
   pieSlices,
   popover,
   restore,
@@ -236,7 +237,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     // Open color picker
     cy.findByLabelText("#F2A86F").click();
@@ -265,7 +266,7 @@ describe("scenarios > visualizations > pie chart", () => {
     ensurePieChartRendered(["Gadget", "Doohickey"]);
 
     // Ensure row settings should show only two rows
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     getDraggableElements().should("have.length", 2);
     getDraggableElements().contains("Woooget").should("not.exist");
     getDraggableElements().contains("Gizmo").should("not.exist");
@@ -323,7 +324,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     cy.findAllByTestId("chartsettings-field-picker")
       .last()

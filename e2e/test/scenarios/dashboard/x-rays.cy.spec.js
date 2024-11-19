@@ -9,6 +9,7 @@ import {
   dashboardGrid,
   getDashboardCards,
   main,
+  openVizType,
   popover,
   restore,
   saveDashboard,
@@ -295,7 +296,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.url().should("contain", "/question");
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     cy.findAllByTestId("chartsettings-field-picker")
       .contains("User → Source")
       .should("be.visible");

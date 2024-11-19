@@ -152,7 +152,7 @@ describe("issue 32964", () => {
 
   it("should not overflow chart settings sidebar with long column name (metabase#32964)", () => {
     visitQuestionAdhoc(QUESTION);
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     cy.findByTestId("sidebar-left").within(([sidebar]) => {
       const maxX = sidebar.getBoundingClientRect().right;
       cy.findByText(`Sum of ${LONG_NAME}`).then(([el]) => {
@@ -1569,7 +1569,7 @@ describe("issue 44668", () => {
     // Ensure custom columns weren't added as series automatically
     queryBuilderMain().findByLabelText("Legend").should("not.exist");
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     // Ensure can use Custom Number as series
     leftSidebar().findByText("Add another series").click();
@@ -2290,7 +2290,8 @@ describe("issue 48829", () => {
       cy.findByText("Add filter").click();
     });
 
-    queryBuilderHeader().button("Show Editor").click();
+    openNotebook();
+
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")
@@ -2311,7 +2312,7 @@ describe("issue 48829", () => {
       cy.button("Apply filters").click();
     });
 
-    queryBuilderHeader().button("Show Editor").click();
+    openNotebook();
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")
@@ -2349,7 +2350,7 @@ describe("issue 48829", () => {
     // Navigate to question using click action in dashboard
     main().findByText("Rustic Paper Wallet").click();
 
-    queryBuilderHeader().button("Show Editor").click();
+    openNotebook();
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")

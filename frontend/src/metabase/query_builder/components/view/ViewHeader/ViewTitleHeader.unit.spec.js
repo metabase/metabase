@@ -320,25 +320,6 @@ describe("ViewTitleHeader", () => {
           expect(onEditSummary).toHaveBeenCalled();
         });
 
-        it("allows to open notebook editor", () => {
-          const { setQueryBuilderMode } = setup({
-            card,
-            queryBuilderMode: "view",
-          });
-          fireEvent.click(screen.getByTestId("notebook-button"));
-          expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
-        });
-
-        it("allows to close notebook editor", () => {
-          const { setQueryBuilderMode } = setup({
-            card,
-            queryBuilderMode: "notebook",
-            result: { data: [] },
-          });
-          fireEvent.click(screen.getByTestId("notebook-button"));
-          expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
-        });
-
         it("does not offer to filter query results in notebook mode", () => {
           setup({ card, queryBuilderMode: "notebook" });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();

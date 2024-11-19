@@ -1122,7 +1122,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
   });
 
-  it("should not have to wait for data to show fields in summarisation (metabase#26467)", () => {
+  it("should not have to wait for data to show fields in summarization (metabase#26467)", () => {
     cy.intercept("POST", "api/card/pivot/*/query", req => {
       req.on("response", res => {
         res.setDelay(20_000);
@@ -1375,7 +1375,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       .and("contain", "Sum of Total");
 
     // Close the notebook editor
-    openNotebook();
+    cy.button("Visualize").click();
+
     cy.findByTestId("pivot-table")
       .should("contain", "User → Source")
       .and("contain", "Sum of Subtotal")

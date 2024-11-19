@@ -35,7 +35,10 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
     >
       <Group position="apart" pos="relative" noWrap w="100%">
         {!hideChartSettings && (
-          <LeftViewFooterButtonGroup question={question} />
+          <LeftViewFooterButtonGroup
+            question={question}
+            hideChartSettings={hideChartSettings}
+          />
         )}
         <RightViewFooterButtonGroup />
       </Group>
