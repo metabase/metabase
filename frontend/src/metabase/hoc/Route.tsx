@@ -6,6 +6,7 @@ import { useRegisterMetabotContextProvider } from "metabase/metabot";
 
 import title from "./Title";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function metabot(ComposedComponent: React.ComponentType<any>) {
   return function MetabotRouteContext(props: any) {
     const { name, description } = props.route;
@@ -29,9 +30,8 @@ function metabot(ComposedComponent: React.ComponentType<any>) {
 // react-router Route wrapper that adds a `title` property
 export class Route extends _Route {
   static createRouteFromReactElement(element: any) {
-    const baseComponent = metabot(
-      element.props.component || (({ children }) => children),
-    );
+    const baseComponent =
+      element.props.component || (({ children }: any) => children);
 
     const component = element.props.title
       ? title(element.props.title)(baseComponent)
