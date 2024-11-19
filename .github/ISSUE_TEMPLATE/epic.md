@@ -5,20 +5,18 @@ about: This issue is used to track a feature/project that may span several days
   and manage work.
 title: "[Epic] Title"
 labels: ".Epic"
-
 ---
 
-**Links**
-- product doc: _link to product doc_
-- eng doc: _link to technical design doc, if any_
-- feature branch: `branch-name` _this should be the feature branch where this work will be done in. PRs will be delivered against this branch_
-- issue links: _related issues if any_
+### Links
 
-**Implementation Plan**
+- [product doc](LINK_TO_PRODUCT_DOC)
+- [engineering doc](LINK_TO_ENGINEERING_DOC)
+- feature branch: `BRANCH_NAME` _this should be the feature branch where this work will be done in. PRs will be delivered against this branch, if any_
+- issue links: _related issues, if any_
 
+### Implementation Plan
 
-***Milestone 1***
-_insert tasklist here_
-
-***Milestone 2***
-
+```[tasklist]
+#### Milestone 1
+- [ ] _Add tasks here_
+```
