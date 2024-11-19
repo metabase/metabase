@@ -77,6 +77,14 @@
   (-> (merge
        (json/parse-string (:legacy_input index-row) keyword)
        (select-keys index-row [:total_score :pinned]))
+      (assoc :scores (mapv (fn [k]
+                             (let [score  (get index-row k)
+                                   weight (search.config/weight k)]
+                               {:score        score
+                                :name         k
+                                :weight       weight
+                                :contribution (* weight score)}))
+                           (keys (search.scoring/scorers))))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
@@ -136,7 +144,7 @@
   "Do no scoring, whatsoever"
   [result _scoring-ctx]
   {:score  (:total_score result 1)
-   :result (assoc result :all-scores [] :relevant-scores [])})
+   :result (assoc result :all-scores (:scores result))})
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."
