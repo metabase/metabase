@@ -1627,16 +1627,20 @@ describe("issue 44665", () => {
 
     modal().within(() => {
       cy.findByText("Custom list").click();
-      cy.findByRole("textbox").type("foo\nbar\nbaz");
+      cy.findByRole("textbox").type("foo\nbar\nbaz\nfoobar");
       cy.button("Done").click();
     });
 
     sidebar().last().findByText("Enter a default value…").click();
     popover().within(() => {
-      cy.findByPlaceholderText("Enter a default value…").should("be.visible");
+      cy.findByPlaceholderText("Enter a default value…")
+        .should("be.visible")
+        .type("foo");
       cy.findByText("foo").should("be.visible");
-      cy.findByText("bar").should("be.visible");
-      cy.findByText("baz").should("be.visible");
+      cy.findByText("foobar").should("be.visible");
+
+      cy.findByText("bar").should("not.exist");
+      cy.findByText("baz").should("not.exist");
     });
 
     sidebar()
@@ -1649,9 +1653,11 @@ describe("issue 44665", () => {
 
     popover().within(() => {
       cy.findByPlaceholderText("Enter a default value…").should("be.visible");
+
       cy.findByText("foo").should("be.visible");
       cy.findByText("bar").should("be.visible");
       cy.findByText("baz").should("be.visible");
+      cy.findByText("foobar").should("be.visible");
     });
   });
 });
