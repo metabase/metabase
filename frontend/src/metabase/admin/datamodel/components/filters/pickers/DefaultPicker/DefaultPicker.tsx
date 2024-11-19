@@ -60,6 +60,7 @@ export function DefaultPicker({
     operator.name === "between" && operatorFields.length === 2;
 
   const visualizationSettings = filter
+    // eslint-disable-next-line no-restricted-syntax
     ?.legacyQuery({ useStructuredQuery: true })
     ?.question()
     ?.settings();

@@ -707,6 +707,7 @@ describe("QB Actions > initializeQB", () => {
 
       const question = new Question(result.card, metadata);
       const query = question.legacyQuery({
+        // eslint-disable-next-line no-restricted-syntax
         useStructuredQuery: true,
       }) as StructuredQuery;
 
