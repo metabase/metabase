@@ -7,6 +7,7 @@
   "
   (:require
    [clojure.string :as str]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -54,13 +55,6 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-(defn- last-stage-number
-  [query]
-  (loop [query query, i 0]
-    (if-let [source-query (:source-query query)]
-      (recur source-query (inc i))
-      i)))
-
 (defn- values-from-card-query
   [card value-field-ref opts]
   (let [query-string (:query-string opts)
@@ -80,7 +74,7 @@
                                         (-> card :dataset_query :query))]
                  ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
                  (let [target-stage (:stage-number opts)
-                       last-stage   (last-stage-number inner-mbql)
+                       last-stage   (mbql.u/legacy-last-stage-number inner-mbql)
                        inner-mbql   (if (and target-stage last-stage
                                              (= (inc last-stage) target-stage))
                                       {:source-query inner-mbql}
