@@ -1151,7 +1151,7 @@ class TableInteractive extends Component {
         0,
       ) + (gutterColumn ? SIDEBAR_WIDTH : 0);
 
-    const isEmpty = rows === null || rows.length === 0;
+    const isEmpty = rows == null || rows.length === 0;
 
     return (
       <DelayGroup>
