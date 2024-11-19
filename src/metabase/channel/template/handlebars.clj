@@ -1,5 +1,4 @@
 (ns metabase.channel.template.handlebars
-  (:refer-clojure :exclude [hash])
   (:require
    [clojure.walk :as walk]
    [metabase.channel.template.handlebars-helper :as handlebars-helper]

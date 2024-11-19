@@ -162,19 +162,6 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- find-goal-value
-  "The goal value can come from a progress goal or a graph goal_value depending on it's type"
-  [card]
-  (case (:display card)
-
-    (:area :bar :line)
-    (get-in card [:visualization_settings :graph.goal_value])
-
-    :progress
-    (get-in card [:visualization_settings :progress.goal])
-
-    nil))
-
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [card_part
