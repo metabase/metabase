@@ -8,10 +8,6 @@ Write SQL to update records in your databases.
 
 ![Custom action](./images/custom-action.png)
 
-## Test section
-
-With a [broken link](./broken.md).
-
 ## Creating a custom action
 
 > You must be in a group with Native query editing access to create an action
