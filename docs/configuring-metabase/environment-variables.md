@@ -43,6 +43,10 @@ Docker:
 docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase metabase/metabase
 ```
 
+## Environment variables on Metabase Cloud
+
+If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium) to adjust environment variables for your Metabase.
+
 ---
 
 ## List of environment variables
@@ -392,6 +396,16 @@ The email address you want to use for the sender of emails.
 - [Configuration file name](./config-file.md): `email-from-name`
 
 The name you want to use for the sender of emails.
+
+### `MB_EMAIL_MAX_RECIPIENTS_PER_SECOND`
+
+- Type: integer
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-second`.
+- [Configuration file name](./config-file.md): `email-max-recipients-per-second`
+
+The maximum number of recipients, summed across emails, that can be sent per second.
+                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.
 
 ### `MB_EMAIL_REPLY_TO`
 
@@ -1891,11 +1905,9 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
 
-Note: In addtion to enabling this variable, you need to update the com.mchange log level to INFO or higher via a custom log4j configuration in order to see the stack traces in the logs.
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
 
-See the [Metabase log configuration](./log-configuration.md) documentation for how to configure log levels.
-
-See [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds) for setting the timeout after which connections will be killed.
+To set a timeout for how long Metabase should wait before it kills unreturned connections, see [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
