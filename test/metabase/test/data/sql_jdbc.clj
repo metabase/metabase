@@ -1,13 +1,18 @@
 (ns metabase.test.data.sql-jdbc
   "Common test extension functionality for SQL-JDBC drivers."
   (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.initialize :as initialize]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -42,3 +47,14 @@
 (defmethod tx/destroy-db! :sql-jdbc/test-extensions
   [driver dbdef]
   (load-data/destroy-db! driver dbdef))
+
+(defmethod tx/create-view-of-table! :sql-jdbc/test-extensions
+  [driver database view-name table-name materialized?]
+  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                 (sql/format
+                  (cond->
+                   {:create-view [[(sql.qp/->honeysql driver [::h2x/identifier :table [view-name]])]]
+                    :select [:*]
+                    :from [[(sql.qp/->honeysql driver [::h2x/identifier :table [table-name]]) :t]]}
+                    materialized? (set/rename-keys {:create-view :create-materialized-view}))
+                  :dialect (sql.qp/quote-style driver))))

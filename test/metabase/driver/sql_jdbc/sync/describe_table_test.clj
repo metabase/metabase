@@ -761,46 +761,64 @@
 
 ;; TODO Make all drivers that support materialized-views pass this test
 (doseq [driver [:postgres
-                #_:redshift
-                #_:vertica
-                #_:athena
-                #_:bigquery-cloud-sdk]]
+                :redshift
+                :oracle
+                :databricks
+                :snowflake
+                :bigquery-cloud-sdk]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
     true))
 
-(defmethod driver/database-supports? [:redshift ::describe-materialized-view-fields]
+(defmethod driver/database-supports? [::driver/driver ::describe-view-fields]
   [_driver _feature _database]
   false)
 
+(doseq [driver [:postgres
+                :mysql
+                :redshift
+                :bigquery-cloud-sdk
+                :snowflake
+                :sql-server
+                :mongo
+                :athena
+                :databricks
+                :spark-sql
+                :sqlite
+                :oracle
+                :vertica]]
+  (defmethod driver/database-supports? [driver ::describe-view-fields]
+    [_driver _feature _database]
+    true))
+
 (deftest describe-materialized-view-fields
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
-                                     (mt/sql-jdbc-drivers))
-    (do-with-temporary-dataset
-     (mt/dataset-definition "describe-materialized-views-test"
-                            ["orders"
-                             [{:field-name "amount" :base-type :type/Integer}]
-                             [[1 2]]])
-     (fn []
-       (try
-         ;; Move creating and dropping view to a sql-jdbc defmethod of a metabase.test.data defmulti
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        [(sql.tx/create-materialized-view-of-table-sql driver/*driver* (mt/db) "orders_m" "orders")])
-         (sync/sync-database! (mt/db))
-         (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders")
-               orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m")]
-           (is (= [["id" :type/Integer 0]
-                   ["amount" :type/Integer 1]]
-                  (t2/select-fn-vec
-                   (juxt (comp u/lower-case-en :name) :base_type :database_position)
-                   :model/Field
-                   :table_id orders-id
-                   {:order-by [:database_position]})
-                  (t2/select-fn-vec
-                   (juxt (comp u/lower-case-en :name) :base_type :database_position)
-                   :model/Field
-                   :table_id orders-m-id
-                   {:order-by [:database_position]}))))
-         (finally
-           (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                          [(sql.tx/drop-materialized-view-sql driver/*driver* (mt/db) "orders_m")])))))))
+  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
+                              (mt/normal-drivers-with-feature ::describe-view-fields))
+    (doseq [materialized? (cond-> []
+                            (driver/database-supports? driver/*driver* ::describe-materialized-view-fields nil)
+                            (conj true)
+                            (driver/database-supports? driver/*driver* ::describe-view-fields nil)
+                            (conj false))]
+      (do-with-temporary-dataset
+       (mt/dataset-definition "describe-materialized-views-test"
+                              ["orders"
+                               [{:field-name "amount" :base-type :type/Integer}]
+                               [[1 2]]])
+       (fn []
+         (testing (if materialized? "Materialized View" "View")
+           (tx/create-view-of-table! driver/*driver* (mt/db) :orders_m :orders materialized?)
+           (sync/sync-database! (mt/db))
+           (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders")
+                 orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m")
+                 non-view-fields (t2/select-fn-vec
+                                  (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                                  :model/Field
+                                  :table_id orders-id
+                                  {:order-by [:database_position]})]
+             (is (= 2 (count non-view-fields)))
+             (is (= non-view-fields
+                    (t2/select-fn-vec
+                     (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                     :model/Field
+                     :table_id orders-m-id
+                     {:order-by [:database_position]}))))))))))

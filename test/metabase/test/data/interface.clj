@@ -815,3 +815,13 @@
   {:arglists '([driver card-template-tag-name])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
+
+(defmulti create-view-of-table!
+  "Create a new view in database.
+   The view should be a simple view of the table, like `select * from table`
+   `view-name` is the name of the new view
+   `table-name` is the name of the table.
+   `materialized?` will be true if it should create a materialized view."
+  {:arglists '([driver database view-name table-name materialized?])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
