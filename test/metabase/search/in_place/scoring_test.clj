@@ -214,7 +214,7 @@
       (is (= [1 2 3 4]
              (->> [(item 1 (days-ago 0))
                    (item 2 (days-ago 1))
-                   (item 3 (days-ago 50))
+                   (item 3 (days-ago 20))
                    (item 4 nil)]
                   shuffle
                   (sort-by score)
