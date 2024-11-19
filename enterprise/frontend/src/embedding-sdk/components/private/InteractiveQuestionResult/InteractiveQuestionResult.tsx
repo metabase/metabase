@@ -9,7 +9,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Button, Group, Icon } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
@@ -66,9 +66,6 @@ export const InteractiveQuestionResult = ({
     saveToCollectionId,
   } = useInteractiveQuestionContext();
 
-  const [isChartSelectorOpen, { toggle: toggleChartTypeSelector }] =
-    useDisclosure(false);
-
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
@@ -111,36 +108,7 @@ export const InteractiveQuestionResult = ({
         </Group>
       </Group>
 
-      <Group className={InteractiveQuestionS.MidBar} py={0} px="md">
-        {questionView === "visualization" && (
-          <Button
-            compact
-            radius="xl"
-            py="sm"
-            px="md"
-            variant="filled"
-            color="brand"
-            onClick={toggleChartTypeSelector}
-          >
-            <Group>
-              <Icon
-                name={
-                  questionView === "visualization"
-                    ? "arrow_left"
-                    : "arrow_right"
-                }
-              />
-              <Icon name="eye" />
-            </Group>
-          </Button>
-        )}
-      </Group>
       <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
-        <Box className={InteractiveQuestionS.ChartTypeSelector}>
-          {isChartSelectorOpen && questionView === "visualization" ? (
-            <InteractiveQuestion.ChartTypeSelector />
-          ) : null}
-        </Box>
         <Box className={InteractiveQuestionS.Content}>
           <ContentView
             questionView={questionView}
