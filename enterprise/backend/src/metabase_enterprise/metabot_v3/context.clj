@@ -34,7 +34,6 @@
         (.newLine w)
         (.newLine w)))))
 
-;;; TODO
 (mr/def ::context
   [:map-of
    ;; TODO -- should this be recursive?
@@ -42,18 +41,19 @@
    :keyword
    :any])
 
-(mu/defn hydrate-context
-  "Hydrate context (about what the current user is currently looking at in the FE app), for example
-
-    {:current_dashboard_id 1}
-
-  With enough information that the LLM will be able to make meaningful decisions with it, e.g.
-
-    {:current_dashboard {:name \"Car Dashboard\", :id 1, :cards [{:name \"Credit Card\", :id 2}}
-
-  This should be a 'sparse' hydration rather than `SELECT * FROM dashboard WHERE id = 1` -- we should only include
-  information needed for the LLM to do its thing rather than everything in the world."
-  [{:keys [dataset_query]}]
+(mu/defn create-context
+  "Create a tool context."
+  [context]
   (merge {}
-         (when dataset_query
-           (metabot-v3.tools.query/query-context dataset_query))))
+         (metabot-v3.tools.query/create-context context)))
+
+(mu/defn describe-context
+  "Transforms the tool context into LLM context."
+  [context]
+  (merge {}
+         (metabot-v3.tools.query/describe-context context)))
+
+(mu/defn create-reactions
+  "Extracts reactions based on the current context."
+  [context]
+  (into [] (concat (metabot-v3.tools.query/create-reactions context))))

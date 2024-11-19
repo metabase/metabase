@@ -42,17 +42,31 @@
                     (lib.types.isa/string-or-string-like? column) :string
                     :else                                         :unknown)})
 
-(defn query-context
-  "Query tools context."
-  [dataset-query]
-  (let [query   (-> dataset-query legacy-MBQL->query source-query)
-        table   (source-table query)
-        columns (lib/visible-columns query)]
-    {:current_table
-     {:id (:id table)
-      :name (lib/display-name query table)
-      :description (:description table)
-      :columns (mapv #(column-info query %) columns)}}))
+(defn create-context
+  "Create a tool context."
+  [{:keys [dataset_query]}]
+  (when dataset_query
+    {:query      (-> dataset_query legacy-MBQL->query source-query)
+     :run-query? false}))
+
+(defn describe-context
+  "Transforms the tool context into LLM context."
+  [{:keys [query]}]
+  (when query
+    (let [table   (source-table query)
+          columns (lib/visible-columns query)]
+      {:current_table
+       {:id (:id table)
+        :name (lib/display-name query table)
+        :description (:description table)
+        :columns (mapv #(column-info query %) columns)}})))
+
+(defn create-reactions
+  "Extracts reactions based on the current context."
+  [{:keys [query run-query?]}]
+  (when (and query run-query?)
+    [{:type          :metabot.reaction/run-query
+      :dataset_query (lib.query/->legacy-MBQL query)}]))
 
 ;; validation
 
@@ -178,22 +192,20 @@
   (reduce apply-filter query filters))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-data
-  [_tool-name {:keys [filters]} {:keys [dataset_query]}]
+  [_tool-name {:keys [filters]} {:keys [query] :as context}]
   (try
-    {:output "success"
-     :reactions [{:type  :metabot.reaction/filter-data
-                  :dataset_query (-> dataset_query
-                                     legacy-MBQL->query
-                                     source-query
-                                     (apply-filters filters)
-                                     lib.query/->legacy-MBQL)}]}
+    {:output  "success"
+     :context (merge context {:query      (apply-filters query filters)
+                              :run-query? true})}
     (catch ExceptionInfo e
       (log/debug e "Error in filter-data tool")
-      {:output (ex-message e)})))
+      {:output  (ex-message e)
+       :context (merge context {:query query
+                                :run-query? false})})))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/filter-data
-  [_tool-name {:keys [dataset_query]}]
-  (some? dataset_query))
+  [_tool-name {:keys [query]}]
+  (some? query))
 
 ;; aggregate-data tool
 
@@ -233,20 +245,17 @@
     query))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/aggregate-data
-  [_tool-name {:keys [summarize group-by]} {:keys [dataset_query]}]
+  [_tool-name {:keys [summarize group-by]} {:keys [query] :as context}]
   (try
     {:output "success"
-     :reactions [{:type  :metabot.reaction/aggregate-data
-                  :dataset_query (-> dataset_query
-                                     legacy-MBQL->query
-                                     source-query
-                                     (apply-summarize summarize)
-                                     (apply-group-by group-by)
-                                     lib.query/->legacy-MBQL)}]}
+     :context (merge context {:query      (-> query (apply-summarize summarize) (apply-group-by group-by))
+                              :run-query? true})}
     (catch ExceptionInfo e
       (log/debug e "Error in aggregate-data tool")
-      {:output (ex-message e)})))
+      {:output (ex-message e)
+       :context (merge context {:query      query
+                                :run-query? false})})))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/aggregate-data
-  [_tool-name {:keys [dataset_query]}]
-  (some? dataset_query))
+  [_tool-name {:keys [query]}]
+  (some? query))

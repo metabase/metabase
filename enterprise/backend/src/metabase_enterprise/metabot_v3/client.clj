@@ -49,12 +49,12 @@
                                                                                         (u/->snake_case_en k)))}))))
 
 (mu/defn- build-request-body
-  [context :- [:maybe ::metabot-v3.context/context]
+  [context :- [:maybe :map]
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string]
   (encode-request-body
    {:messages      messages
-    :context       (metabot-v3.context/hydrate-context (or context {}))
+    :context       (metabot-v3.context/describe-context context)
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :session-id    session-id
     :user-id       api/*current-user-id*
@@ -109,7 +109,7 @@
 
 (mu/defn ^:dynamic *request* :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a request to the AI Proxy."
-  [context :- [:maybe ::metabot-v3.context/context]
+  [context :- [:maybe :map]
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string]
 
