@@ -102,7 +102,9 @@ export type SearchContext =
   | "search-bar"
   | "search-app"
   | "command-palette"
-  | "entity-picker";
+  | "entity-picker"
+  | "strategy-editor"
+  | "use-available-data";
 
 export type SearchRequest = {
   q?: string;

@@ -40,6 +40,7 @@ const TestComponent = () => {
     error,
   } = useSearchListQuery({
     query: {
+      context: "entity-picker",
       models: [TEST_ITEM_MODEL],
       limit: TEST_SEARCH_METADATA.limit,
       offset: TEST_SEARCH_METADATA.offset,

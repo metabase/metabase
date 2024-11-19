@@ -47,6 +47,7 @@ export function ModelUploadModal({
   const [tableId, setTableId] = useState<TableId | null>(null);
   const models = useSearchListQuery({
     query: {
+      context: "model-upload",
       collection: collectionId,
       models: ["dataset"],
     },

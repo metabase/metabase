@@ -92,6 +92,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
   const dashboardsResult = useSearchQuery(
     dashboardIds.length
       ? {
+          context: "strategy-editor",
           models: ["dashboard"],
           ids: dashboardIds,
           //FIXME: Add `ancestors: true` once jds/ancestors-for-all-the-things is merged
@@ -101,6 +102,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
   const questionsResult = useSearchQuery(
     questionIds.length
       ? {
+          context: "strategy-editor",
           models: ["card"],
           ids: questionIds,
           //FIXME: Add `ancestors: true` once jds/ancestors-for-all-the-things is merged
