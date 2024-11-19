@@ -45,6 +45,20 @@
                 raise)))
    (meta handler)))
 
+(api/defendpoint POST "/re-init"
+  "If fulltext search is enabled, this will blow away the index table, re-create it, and re-populate it."
+  []
+  (api/check-superuser)
+  (cond
+    (not (public-settings/experimental-fulltext-search-enabled))
+    (throw (ex-info "Search index is not enabled." {:status-code 501}))
+
+    (search/supports-index?)
+    (do (search/init-index! {:force-reset? true}) {:message "done"})
+
+    :else
+    (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
+
 (api/defendpoint POST "/force-reindex"
   "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
   []
