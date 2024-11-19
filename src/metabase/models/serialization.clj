@@ -1392,7 +1392,11 @@
 (defn- export-viz-click-behavior [settings]
   (some-> settings
           (m/update-existing    :click_behavior export-viz-click-behavior-link)
-          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)))
+          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)
+          (as-> updated-settings
+                (if (nil? (:click_behavior updated-settings))
+                  (dissoc updated-settings :click_behavior)
+                  updated-settings))))
 
 (defn- import-viz-click-behavior [settings]
   (some-> settings
