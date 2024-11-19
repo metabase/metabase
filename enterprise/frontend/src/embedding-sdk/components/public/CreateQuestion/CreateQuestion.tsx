@@ -4,7 +4,6 @@ import { FlexibleSizeComponent } from "embedding-sdk";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Button, Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import {
   InteractiveQuestion,
@@ -64,12 +63,6 @@ export const CreateQuestionDefaultView = ({
   // Don't allow switching to visualization view when it is not yet ready.
   const isVisualizationReady = question && queryResults;
 
-  const canSave = question && Lib.canSave(question.query(), question.type());
-
-  const isQuestionDirty = originalQuestion
-    ? question && question.isQueryDirtyComparedTo(originalQuestion)
-    : true;
-
   return (
     <FlexibleSizeComponent>
       <Flex w="100%" justify="space-between" pb="lg">
@@ -86,9 +79,9 @@ export const CreateQuestionDefaultView = ({
             </Button>
           )}
 
-          {canSave && isQuestionDirty && (
-            <Button onClick={() => setSaveModalOpen(true)}>Save</Button>
-          )}
+          <InteractiveQuestion.SaveButton
+            onClick={() => setSaveModalOpen(true)}
+          />
         </Flex>
       </Flex>
 
