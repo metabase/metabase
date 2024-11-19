@@ -2,17 +2,14 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
-  assertEChartsTooltip,
   assertEmbeddingParameter,
   assertSheetRowsCount,
-  chartPathWithFillColor,
   closeStaticEmbeddingModal,
   createDashboardWithTabs,
   createQuestion,
   dashboardParametersContainer,
   describeEE,
   downloadAndAssert,
-  echartsTooltip,
   editDashboard,
   filterWidget,
   getDashboardCard,
@@ -990,19 +987,20 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.findByText(questionDetails.name).should("exist");
       cy.findByText("April 2022").should("exist");
 
+      // TODO: Enable this once we fix the flakiness https://app.trunk.io/metabase/flaky-tests/test/facb35f0-6d76-5e7d-b21c-40401bbc3ff6?repo=metabase%2Fmetabase
       // (metabase#49537)
-      chartPathWithFillColor("#509EE3").last().realHover();
-      echartsTooltip().should("be.visible");
-      assertEChartsTooltip({
-        header: "August 2022",
-        rows: [
-          {
-            name: "Count",
-            value: "79",
-            secondaryValue: "+23.44%",
-          },
-        ],
-      });
+      // chartPathWithFillColor("#509EE3").last().realHover();
+      // echartsTooltip().should("be.visible");
+      // assertEChartsTooltip({
+      //   header: "August 2022",
+      //   rows: [
+      //     {
+      //       name: "Count",
+      //       value: "79",
+      //       secondaryValue: "+23.44%",
+      //     },
+      //   ],
+      // });
     });
 
     cy.get("#iframe").should($iframe => {
