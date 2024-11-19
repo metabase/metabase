@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 
+import { displayNameForColumn } from "metabase/lib/formatting";
 import { Flex, type FlexProps, Icon, type IconName, Text } from "metabase/ui";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type { DatasetColumn } from "metabase-types/api";
 
@@ -24,7 +24,7 @@ export const ColumnListItem = forwardRef<HTMLDivElement, ColumnListItemProps>(
       >
         <Icon className={S.grabber} name="grabber" mr={4} size={16} />
         <Icon name={getIconForField(column) as IconName} mr={4} size={16} />
-        <Text truncate>{getFriendlyName(column)}</Text>
+        <Text truncate>{displayNameForColumn(column)}</Text>
       </Flex>
     );
   },
