@@ -517,78 +517,140 @@ describeEE("formatting > sandboxes", () => {
           });
         });
 
-        /**
-         * There isn't an exact issue that this test reproduces, but it is basically a version of (metabase-enterprise#520)
-         * that uses a query builder instead of SQL based questions.
-         */
-        it(
-          "should be able to sandbox using query builder saved questions",
-          { tags: "@flaky" },
-          () => {
-            cy.log("Create 'Orders'-based question using QB");
-            cy.createQuestion({
-              name: "520_Orders",
-              query: {
-                "source-table": ORDERS_ID,
-                filter: [">", ["field", ORDERS.TOTAL, null], 10],
-              },
-            }).then(({ body: { id: CARD_ID } }) => {
-              cy.sandboxTable({
-                table_id: ORDERS_ID,
-                card_id: CARD_ID,
-                attribute_remappings: {
-                  attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
-                },
-              });
-            });
-
-            cy.log("Create 'Products'-based question using QB");
-            cy.createQuestion({
-              name: "520_Products",
-              query: {
-                "source-table": PRODUCTS_ID,
-                filter: [">", ["field", PRODUCTS.PRICE, null], 10],
-              },
-            }).then(({ body: { id: CARD_ID } }) => {
-              cy.sandboxTable({
-                table_id: PRODUCTS_ID,
-                card_id: CARD_ID,
-                attribute_remappings: {
-                  attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-                },
-              });
-            });
-
-            cy.signOut();
-            cy.signInAsSandboxedUser();
-
-            openOrdersTable({
-              callback: xhr => expect(xhr.response.body.error).not.to.exist,
-            });
-
-            cy.wait("@datasetQuery");
-
-            assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-            assertDatasetReqIsSandboxed({
-              requestAlias: "@datasetQuery",
-              columnId: ORDERS.USER_ID,
-              columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
-            });
-
-            cy.findByTestId("TableInteractive-root")
-              .findByText("Awesome Concrete Shoes")
-              .click();
-            popover()
-              .findByText(/View details/i)
-              .click();
-
-            cy.log(
-              "It should show object details instead of filtering by this Product ID",
-            );
-            cy.findByTestId("object-detail");
-            cy.findAllByText("McClure-Lockman");
+        cy.log("Create 'Products'-based question using QB");
+        cy.createQuestion({
+          name: "520_Products",
+          query: {
+            "source-table": PRODUCTS_ID,
+            filter: [">", ["field", PRODUCTS.PRICE, null], 10],
           },
+        }).then(({ body: { id: CARD_ID } }) => {
+          cy.sandboxTable({
+            table_id: PRODUCTS_ID,
+            card_id: CARD_ID,
+            attribute_remappings: {
+              attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+            },
+          });
+        });
+
+        cy.signOut();
+        cy.signInAsSandboxedUser();
+
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+        });
+
+        cy.wait("@datasetQuery");
+
+        assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
+        assertDatasetReqIsSandboxed({
+          requestAlias: "@datasetQuery",
+          columnId: ORDERS.USER_ID,
+          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        });
+
+        cy.findByTestId("TableInteractive-root")
+          .findByText("Awesome Concrete Shoes")
+          .click();
+        popover()
+          .findByText(/View details/i)
+          .click();
+
+        cy.log(
+          "It should show object details instead of filtering by this Product ID",
         );
+        cy.findByTestId("object-detail");
+        cy.findAllByText("McClure-Lockman");
+      });
+
+      it("Advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
+        cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+        cy.intercept("PUT", "/api/card/*").as("questionUpdate");
+
+        cy.createNativeQuestion({
+          name: "EE_520_Q1",
+          native: {
+            query:
+              "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL > 10",
+            "template-tags": {
+              sandbox: {
+                "display-name": "Sandbox",
+                id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
+                name: "sandbox",
+                type: "number",
+              },
+            },
+          },
+        }).then(({ body: { id: CARD_ID } }) => {
+          runQuestion({ question: CARD_ID, sandboxValue: "1" });
+
+          cy.sandboxTable({
+            table_id: ORDERS_ID,
+            card_id: CARD_ID,
+            attribute_remappings: {
+              attr_uid: ["variable", ["template-tag", "sandbox"]],
+            },
+          });
+        });
+
+        cy.createNativeQuestion({
+          name: "EE_520_Q2",
+          native: {
+            query:
+              "SELECT * FROM PRODUCTS WHERE CATEGORY={{sandbox}} AND PRICE > 10",
+            "template-tags": {
+              sandbox: {
+                "display-name": "Sandbox",
+                id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
+                name: "sandbox",
+                type: "text",
+              },
+            },
+          },
+        }).then(({ body: { id: CARD_ID } }) => {
+          runQuestion({ question: CARD_ID, sandboxValue: "Widget" });
+
+          cy.sandboxTable({
+            table_id: PRODUCTS_ID,
+            card_id: CARD_ID,
+            attribute_remappings: {
+              attr_cat: ["variable", ["template-tag", "sandbox"]],
+            },
+          });
+        });
+
+        cy.signOut();
+        cy.signInAsSandboxedUser();
+
+        openOrdersTable();
+
+        cy.log("Reported failing on v1.36.x");
+
+        cy.log("It should show remapped Display Values instead of Product ID");
+        cy.get("[data-testid=cell-data]")
+          .contains("Awesome Concrete Shoes")
+          .click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText(/View details/i).click();
+
+        cy.log(
+          "It should show object details instead of filtering by this Product ID",
+        );
+        // The name of this Vendor is visible in "details" only
+        cy.findByTestId("object-detail");
+        cy.findAllByText("McClure-Lockman");
+
+        /**
+         * Helper function related to this test only!
+         */
+        function runQuestion({ question, sandboxValue } = {}) {
+          // Run the question
+          cy.visit(`/question/${question}?sandbox=${sandboxValue}`);
+          // Wait for results
+          cy.wait("@cardQuery");
+        }
+      });
 
         /**
          * This issue (metabase-enterprise#520) has a peculiar quirk:
@@ -1049,7 +1111,7 @@ describeEE("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
+    it("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
