@@ -31,11 +31,11 @@ export const CreateQuestion = ({
       {...props}
       questionId={questionId}
       isSaveEnabled={isSaveEnabled}
-      onSave={question => {
+      onSave={(question, context) => {
         if (question) {
           setQuestionId(question.id());
           setSaveModalOpen(false);
-          onSave?.(question);
+          onSave?.(question, context);
         }
       }}
     >
@@ -85,7 +85,9 @@ export const CreateQuestionDefaultView = ({
             </Button>
           )}
 
-          <Button onClick={() => setSaveModalOpen(true)}>Save</Button>
+          <InteractiveQuestion.SaveButton
+            onClick={() => setSaveModalOpen(true)}
+          />
         </Flex>
       </Flex>
 
