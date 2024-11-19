@@ -1,7 +1,7 @@
 name: Lint doc Markdown links
 
 on:
-    push:
+  push:
     paths:
       - docs/**
   pull_request:
