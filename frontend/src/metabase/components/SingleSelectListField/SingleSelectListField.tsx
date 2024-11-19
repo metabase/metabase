@@ -70,10 +70,17 @@ const SingleSelectListField = ({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
+  const isFilterInValues = value[0] === filter;
+
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
     if (formattedFilter.length === 0) {
       return sortedOptions;
+    }
+
+    // Allow picking of different values in the list
+    if (isFilterInValues) {
+      return augmentedOptions;
     }
 
     return augmentedOptions.filter(option => {
@@ -93,7 +100,7 @@ const SingleSelectListField = ({
       // option as: [id]
       return isValidOptionItem(option[0], formattedFilter);
     });
-  }, [augmentedOptions, debouncedFilter, sortedOptions]);
+  }, [augmentedOptions, debouncedFilter, sortedOptions, isFilterInValues]);
 
   const shouldShowEmptyState =
     filter.length > 0 && !isLoading && filteredOptions.length === 0;

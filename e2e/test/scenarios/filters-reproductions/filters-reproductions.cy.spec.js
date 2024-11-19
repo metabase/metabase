@@ -1587,6 +1587,15 @@ describe("issue 49642", () => {
       cy.findByText("Zackery Bailey").should("not.exist");
       cy.findByPlaceholderText("Search by Name").type("Zackery");
       cy.findByText("Zackery Bailey").should("be.visible");
+      cy.findByText("Zackery Kuhn").should("be.visible").click();
+
+      cy.findByPlaceholderText("Search by Name").should(
+        "have.value",
+        "Zackery Kuhn",
+      );
+
+      cy.findByText("Zackery Bailey").should("be.visible");
+      cy.findByText("Zackery Kuhn").should("be.visible");
     });
   });
 
