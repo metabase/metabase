@@ -14,6 +14,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn maybe-read
+  [file]
+  (u/ignore-exceptions
+    (slurp (format "test_resources/%s" file))))
+
 ;; This is a similar implementation of com.github.jknack.handlebars.cache.ConcurrentMapTemplateCache but with Atom.
 ;; It fixes a bug where the cache is not reloaded if you use the source only once.
 (deftype AtomTemplateCache
@@ -27,7 +32,11 @@
     nil)
   (^Template get [^TemplateCache this ^TemplateSource source ^Parser parser]
     (let [[cached-source cached-template :as entry] (get @cache source)]
-      (log/fatalf "Template %s with last modified %s and cached modified %s" source (when source (.lastModified source)) (when cached-source (.lastModified ^TemplateSource cached-source)))
+      (def source source)
+      (log/fatalf "Template %s with last modified %s, %s and cached modified %s, %s"
+                  source
+                  (when source (.lastModified source))  (when source (maybe-read source))
+                  (when cached-source (.lastModified ^TemplateSource cached-source)) (when source (maybe-read cached-source)))
       (cond
         (nil? entry)
         (let [template (.parse parser source)]
