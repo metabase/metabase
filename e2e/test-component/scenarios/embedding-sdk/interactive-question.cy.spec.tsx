@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import type { ComponentProps } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -21,9 +22,12 @@ import {
 import { mountInteractiveQuestion } from "e2e/support/helpers/component-embedding-sdk-interactive-question-helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
-import { Box, Button, Flex, Popover } from "metabase/ui";
+import { Box, Button, Flex, Modal, Popover } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
+type InteractiveQuestionProps = ComponentProps<typeof InteractiveQuestion>;
 
 describeEE("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
@@ -207,8 +211,57 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can create questions via the SaveQuestionForm component", () => {
+    const TestComponent = ({
+      questionId,
+      onBeforeSave,
+      onSave,
+    }: InteractiveQuestionProps) => {
+      const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
+
+      const handleSave = (
+        question: Question | undefined,
+        context: { isNewQuestion: boolean },
+      ) => {
+        if (context.isNewQuestion) {
+          onSave(question?.displayName() ?? "");
+        }
+
+        close();
+      };
+
+      return (
+        <InteractiveQuestion
+          questionId={questionId}
+          isSaveEnabled
+          onBeforeSave={onBeforeSave}
+          onSave={handleSave}
+        >
+          <Box p="lg">
+            <Button onClick={toggle}>Save</Button>
+          </Box>
+
+          {isSaveModalOpen && (
+            <Modal opened={isSaveModalOpen} onClose={close}>
+              <InteractiveQuestion.SaveQuestionForm onClose={close} />
+            </Modal>
+          )}
+
+          {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
+        </InteractiveQuestion>
+      );
+    };
+
+    const onBeforeSaveSpy = cy.spy().as("onBeforeSaveSpy");
+    const onSaveSpy = cy.spy().as("onSaveSpy");
+
     cy.get("@questionId").then(questionId => {
-      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+      mountSdkContent(
+        <TestComponent
+          questionId={questionId}
+          onBeforeSave={onBeforeSaveSpy}
+          onSave={onSaveSpy}
+        />,
+      );
     });
 
     saveInteractiveQuestionAsNewQuestion({
@@ -221,7 +274,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.body.name).to.equal("Sample Orders 4");
     });
 
-    getSdkRoot().contains("onBeforeSave is called");
-    getSdkRoot().contains("question saved as Sample Orders 4");
+    cy.get("@onBeforeSaveSpy").should("have.been.calledWith", 1);
+    cy.get("@onSaveSpy").should("have.been.calledWith", "Sample Orders 4");
   });
 });
