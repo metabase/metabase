@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useGetBugReportEnabledQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
@@ -36,14 +36,12 @@ const SlackForm = ({
   isReadOnly,
   onSubmit = () => undefined,
 }: SlackFormProps): JSX.Element => {
-  const { data: bugReportConfig } = useGetBugReportEnabledQuery();
+  const isBugReportingEnabled = useSetting("bug-report-enabled");
   const handleSubmit = useCallback(
     (values: SlackSettings) =>
       onSubmit(SLACK_SCHEMA.cast(values) as SlackSettings),
     [onSubmit],
   );
-
-  const isBugReportingEnabled = bugReportConfig?.enabled ?? false;
 
   return (
     <FormProvider

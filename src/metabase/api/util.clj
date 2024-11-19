@@ -99,12 +99,4 @@
   {entity_ids :map}
   {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
 
-(def ^:private bug-reporting-enabled?
-  (env :mb-bug-reporting-enabled))
-
-(api/defendpoint GET "/bug_report_enabled"
-  "Returns whether bug reporting is enabled."
-  []
-  {:enabled bug-reporting-enabled?})
-
 (api/define-routes)

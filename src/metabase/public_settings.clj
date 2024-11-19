@@ -1057,6 +1057,17 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    nil
   :type       :json)
 
+(defsetting bug-report-enabled
+  (deferred-tru "Enable bug report submissions.")
+  :visibility :internal
+  :export?    false
+  :type       :boolean
+  :default    false
+  :setter     :none
+  :getter     (fn []
+                (boolean (env/env :mb-bug-reporting-enabled)))
+  :audit      :getter)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
