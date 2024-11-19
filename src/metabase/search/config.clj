@@ -185,6 +185,7 @@
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
+   [:context               {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms.u/PathSchema]]
@@ -199,7 +200,7 @@
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+   [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
