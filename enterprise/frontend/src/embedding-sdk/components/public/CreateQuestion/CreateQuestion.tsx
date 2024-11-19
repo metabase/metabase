@@ -10,9 +10,8 @@ import {
   type InteractiveQuestionProps,
 } from "../InteractiveQuestion";
 
-type CreateQuestionProps = Omit<
-  InteractiveQuestionProps,
-  "questionId" | "children"
+type CreateQuestionProps = Partial<
+  Omit<InteractiveQuestionProps, "questionId" | "children">
 >;
 
 export const CreateQuestion = ({
