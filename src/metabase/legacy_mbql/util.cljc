@@ -102,7 +102,7 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
-(defn- legacy-last-stage-number
+(defn legacy-last-stage-number
   "Returns the canonical stage number of the last stage of the legacy `inner-query`."
   [inner-query]
   (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
