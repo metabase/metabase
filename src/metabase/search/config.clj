@@ -182,6 +182,7 @@
    ;; required
    ;;
    [:archived?          [:maybe :boolean]]
+   [:context            :keyword]
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    ;; TODO only optional and maybe for tests, clean that up!

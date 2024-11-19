@@ -251,6 +251,7 @@
 (mr/def ::search-context.input
   [:map {:closed true}
    [:search-string                                        [:maybe ms/NonBlankString]]
+   [:context                             {:optional true} [:maybe :keyword]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
    [:is-impersonated-user?               {:optional true} :boolean]
@@ -276,6 +277,7 @@
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           context
            calculate-available-models?
            created-at
            created-by
@@ -306,13 +308,15 @@
   (let [models (if (string? models) [models] models)
         engine (parse-engine search-engine)
         ctx    (cond-> {:archived?                           (boolean archived)
+                        :context                             (or context :unknown)
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
-                        :filter-items-in-personal-collection (or filter-items-in-personal-collection
-                                                                 (if (= engine :search.engine/in-place)
-                                                                   "all"
-                                                                   "exclude-others"))
+                        :filter-items-in-personal-collection #p (or filter-items-in-personal-collection
+                                                                 (if (and (not= engine :search.engine/in-place)
+                                                                      (#{:search-app :command-palette} context))
+                                                                   "exclude-others"
+                                                                   "all"))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?
