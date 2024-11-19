@@ -399,7 +399,7 @@ export function excludeDateFilterClause({
     case "month-of-year":
       return expressionClause("!=", [
         expressionClause("get-month", [columnWithoutBucket]),
-        ...values.map(value => value + 1),
+        ...values,
       ]);
     case "quarter-of-year":
       return expressionClause("!=", [
@@ -416,7 +416,7 @@ export function excludeDateFilterParts(
 ): ExcludeDateFilterParts | null {
   return (
     expressionExcludeDateFilterParts(query, stageIndex, filterClause) ??
-    temporalBucketExcludeDateFilterParts(query, stageIndex, filterClause)
+    legacyTemporalBucketExcludeDateFilterParts(query, stageIndex, filterClause)
   );
 }
 
@@ -459,12 +459,7 @@ function expressionExcludeDateFilterParts(
       case "get-day-of-week":
         return { operator, column, values, bucket: "day-of-week" };
       case "get-month":
-        return {
-          operator,
-          column,
-          values: values.map(value => value - 1),
-          bucket: "month-of-year",
-        };
+        return { operator, column, values, bucket: "month-of-year" };
       case "get-quarter":
         return { operator, column, values, bucket: "quarter-of-year" };
       default:
@@ -473,7 +468,7 @@ function expressionExcludeDateFilterParts(
   }
 }
 
-function temporalBucketExcludeDateFilterParts(
+function legacyTemporalBucketExcludeDateFilterParts(
   query: Query,
   stageIndex: number,
   filterClause: FilterClause,
@@ -967,7 +962,7 @@ function deserializeExcludeDatePart(
     case "day-of-week":
       return date.isoWeekday();
     case "month-of-year":
-      return date.month();
+      return date.month() + 1;
     case "quarter-of-year":
       return date.quarter();
     default:
