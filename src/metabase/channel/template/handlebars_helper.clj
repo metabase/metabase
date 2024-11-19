@@ -124,4 +124,6 @@
   "A list of default helpers."
   [["equals"      equals]
    ["format-date" format-date]
-   ["now"         now]])
+   ["now"         now]
+   ["card-url"    card-url]
+   ["dashboard-url" dashboard-url]])

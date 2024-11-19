@@ -253,7 +253,6 @@
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content  (html (vec (cons :div (map :content rendered-cards))))
                                                     :icon_cid           (:content-id icon-attachment)
-                                                    :dashboard_url      (urls/dashboard-url (:id dashboard) parameters)
                                                     :dashboard_has_tabs (some-> dashboard :tabs seq)
                                                     :management_text    (if (nil? non-user-email)
                                                                           "Manage your subscriptions"
