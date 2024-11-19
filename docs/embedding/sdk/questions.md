@@ -243,7 +243,7 @@ With the `CreateQuestion` component, you can embed the query builder without a p
 
 This component is built on top of the `InteractiveQuestion` component with [namespaced components](#interactive-question-components). It [shares the same props as InteractiveQuestion](#question-props), except it lacks the `questionId` prop and the ability to pass custom children.
 
-If you want to customize the question editor's layout, you can use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
+To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
 
 ```tsx
 import React from "react";

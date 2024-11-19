@@ -1,43 +1,37 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  createQuestion,
   entityPickerModal,
+  modal,
   restore,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
-import { describeSDK } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import {
+  EMBEDDING_SDK_STORY_HOST,
+  describeSDK,
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
 import {
   getSdkRoot,
   signInAsAdminAndEnableEmbeddingSdk,
-  visitInteractiveQuestionStory,
 } from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
-import { saveInteractiveQuestionAsNewQuestion } from "e2e/test/scenarios/embedding-sdk/helpers/save-interactive-question-e2e-helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-
-describeSDK("scenarios > embedding-sdk > interactive-question", () => {
+describeSDK("scenarios > embedding-sdk > create-question", () => {
   beforeEach(() => {
     restore();
     signInAsAdminAndEnableEmbeddingSdk();
-
-    createQuestion(
-      {
-        name: "47563",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-          breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          limit: 2,
-        },
-      },
-      { wrapId: true },
-    );
 
     cy.signOut();
   });
 
   it("can create questions via the CreateQuestion component", () => {
-    visitInteractiveQuestionStory({
-      storyId: "embeddingsdk-createquestion--default",
+    cy.intercept("POST", "/api/card").as("createCard");
+
+    visitFullAppEmbeddingUrl({
+      url: EMBEDDING_SDK_STORY_HOST,
+      qs: { id: "embeddingsdk-createquestion--default", viewMode: "story" },
+      onBeforeLoad: (window: any) => {
+        window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
+        window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
+      },
     });
 
     // Wait until the entity picker modal is visible
@@ -56,16 +50,22 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
 
       // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
+
+      // Should be able to save to a new question right away
+      cy.findByRole("button", { name: "Save" }).click();
     });
 
-    saveInteractiveQuestionAsNewQuestion({
-      entityName: "Orders",
-      questionName: "CreateQuestion Sample Orders",
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your question?")
+        .clear()
+        .type("My Orders");
+
+      cy.findByRole("button", { name: "Save" }).click();
     });
 
     cy.wait("@createCard").then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
-      expect(response?.body.name).to.equal("CreateQuestion Sample Orders");
+      expect(response?.body.name).to.equal("My Orders");
     });
   });
 });

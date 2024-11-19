@@ -33,7 +33,10 @@ export function getStorybookArgs(props: Record<string, string>): string {
 export function visitInteractiveQuestionStory({
   storyId = DEFAULT_INTERACTIVE_QUESTION_STORY_ID,
   saveToCollectionId,
-}: { storyId?: string; saveToCollectionId?: number } = {}) {
+}: {
+  storyId?: string;
+  saveToCollectionId?: number;
+} = {}) {
   const params: Record<string, string> = {
     ...(saveToCollectionId && {
       saveToCollectionId: saveToCollectionId.toString(),
