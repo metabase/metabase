@@ -1,8 +1,10 @@
 // Functions that get key elements in the app
 
-// TODO: Remove the [data-element-id] selector if possible
+// TODO: Remove the [data-element-id] selector if possible. or add
+// [data-element-id='mantine-menu'] here and in menudropdown and remove the
+// role selectors
 export const POPOVER_ELEMENT =
-  "[role='status'],[role='menu'],[role='dialog'],[role='tooltip'],[role='alert'],.popover[data-state~='visible'],[data-element-id='mantine-popover']";
+  "[role='menu'],[role='dialog'],.popover[data-state~='visible'],[data-element-id='mantine-popover']";
 
 /** The currently visible popover (a.k.a. overlay or floating element).
  *
