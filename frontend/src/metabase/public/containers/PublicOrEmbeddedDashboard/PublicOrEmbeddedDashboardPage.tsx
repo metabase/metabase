@@ -8,6 +8,7 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { SetTitle } from "metabase/hoc/Title";
 import { useSelector } from "metabase/lib/redux";
+import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 
 import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
@@ -44,6 +45,8 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     locale,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
+  const canWhitelabel = useSelector(getCanWhitelabel);
+
   const dashboard = useSelector(getDashboardComplete);
 
   return (
@@ -68,7 +71,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         font={font}
         parameterQueryParams={parameterQueryParams}
         cardTitled={true}
-        locale={locale}
+        locale={canWhitelabel ? locale : undefined}
       />
     </>
   );
