@@ -1052,7 +1052,6 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting experimental-search-weight-overrides
   (deferred-tru "Used to override weights used for search ranking")
   :visibility :internal
-  :cache?     false
   :encryption :no
   :export?    false
   :default    nil
