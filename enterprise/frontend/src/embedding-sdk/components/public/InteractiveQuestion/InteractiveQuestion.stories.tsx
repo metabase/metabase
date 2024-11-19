@@ -31,5 +31,6 @@ export const Default = {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
     saveToCollectionId: undefined,
+    withTitle: true,
   },
 };
