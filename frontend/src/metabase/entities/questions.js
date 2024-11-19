@@ -235,6 +235,19 @@ const Questions = createEntity({
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
+
+  // actionShouldInvalidateLists: action => {
+  //   return (
+  //     action.type === Questions.actionTypes.CREATE_ACTION ||
+  //     action.type === Questions.actionTypes.DELETE_ACTION ||
+  //     action.type === Questions.actionTypes.UPDATE_ACTION ||
+  //     action.type === Questions.actionTypes.INVALIDATE_LISTS_ACTION ||
+  //     cardApi.endpoints.updateCard.matchFulfilled(action) ||
+  //     contentVerificationApi.endpoints.editItemVerification.matchFulfilled(
+  //       action,
+  //     )
+  //   );
+  // },
 });
 
 function getLabel(card) {

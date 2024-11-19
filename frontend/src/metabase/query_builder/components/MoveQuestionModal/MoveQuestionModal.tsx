@@ -67,9 +67,7 @@ export const MoveQuestionModal = ({
       .then(({ data: updatedCard }) => {
         // HACK: entity framework would previously keep the qb in sync
         // with changing where the question lived
-        if (updatedCard && updatedCard.type === "question") {
-          dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
-        }
+        dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
 
         dispatch(
           addUndo({
