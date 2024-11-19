@@ -90,17 +90,18 @@
                             [(keyword model) vcp])))
                :ttl/threshold (u/hours->ms 1)))
 
-(defn- view-count-expr [const-scaling percentile]
+(defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
                 [[:= :model (name sm)] v])]
-    (atan-size :view_count [:* const-scaling [:greatest 1 (into [:case] cat cases)]])))
+    (size :view_count (into [:case] cat cases))
+    #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
   []
   {:text       [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
-   :view-count (view-count-expr search.config/view-count-scaling search.config/view-count-scaling-percentile)
+   :view-count (view-count-expr search.config/view-count-scaling-percentile)
    :pinned     (truthy :pinned)
    :bookmarked bookmark-score-expr
    :recency    (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
