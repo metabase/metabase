@@ -9,7 +9,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { ActionIcon, Box, Group, Icon } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
@@ -99,18 +99,14 @@ export const InteractiveQuestionResult = ({
           )}
         </Group>
 
-        <ActionIcon
-          size="lg"
-          color="var(--mb-color-brand)"
-          variant={questionView === "editor" ? "filled" : "default"}
+        <InteractiveQuestion.EditorButton
+          isOpen={questionView === "editor"}
           onClick={() =>
             setQuestionView(
               questionView === "editor" ? "visualization" : "editor",
             )
           }
-        >
-          <Icon name="notebook" />
-        </ActionIcon>
+        />
       </Group>
 
       <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
