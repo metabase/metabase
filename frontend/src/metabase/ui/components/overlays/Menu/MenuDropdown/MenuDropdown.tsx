@@ -11,7 +11,7 @@ import { Guard } from "metabase/ui";
 export function MenuDropdown({ children, ...props }: MenuDropdownProps) {
   return (
     <Guard {...props}>
-      <Menu.Dropdown {...props}>
+      <Menu.Dropdown {...props} data-element-id="mantine-menu">
         <MenuDropdownContent>{children}</MenuDropdownContent>
       </Menu.Dropdown>
     </Guard>
