@@ -3,6 +3,7 @@ import { t } from "ttag";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
+import { ViewFooterControl } from "metabase/query_builder/components/view/ViewFooter/ViewFooterViewControl";
 import { Button, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -20,7 +21,7 @@ export type NotebookProps = {
   hasVisualizeButton?: boolean;
   updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => Promise<void>;
-  setQueryBuilderMode?: (mode: string) => void;
+  setQueryBuilderMode?: (mode: string) => Promise<void>;
   readOnly?: boolean;
   modelsFilterList?: DataPickerValue["model"][];
   minNotebookWidth?: number;
@@ -97,22 +98,26 @@ export const Notebook = ({
         {hasVisualizeButton && isRunnable && (
           <Flex
             py="sm"
-            pl="md"
+            pl="xl"
             style={{
               borderTop:
                 "var(--border-size) var(--border-style) var(--mb-color-border)",
             }}
           >
-            <Button
-              variant="filled"
-              radius="xl"
-              /* mah is a hack for 32px height button, we don't have it atm */
-              mah="xl"
-              miw={190}
-              onClick={visualize}
-            >
-              {t`Visualize`}
-            </Button>
+            {isResultDirty ? (
+              <Button
+                variant="filled"
+                radius="xl"
+                /* mah is a hack for 32px height button, we don't have it atm */
+                mah="xl"
+                miw={190}
+                onClick={visualize}
+              >
+                {t`Visualize`}
+              </Button>
+            ) : (
+              <ViewFooterControl question={question} isNotebook />
+            )}
           </Flex>
         )}
       </Flex>

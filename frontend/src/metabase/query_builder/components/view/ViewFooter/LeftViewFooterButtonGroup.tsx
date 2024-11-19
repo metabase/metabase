@@ -1,27 +1,22 @@
-import { useMemo } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
-import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import {
   onCloseChartSettings,
   onOpenChartSettings,
-  setQueryBuilderMode,
   setUIControls,
 } from "metabase/query_builder/actions";
 import {
-  getIsActionListVisible,
   getIsShowingRawTable,
   getIsVisualized,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Button, Flex, Icon, Tooltip } from "metabase/ui";
-import { getIconForVisualizationType } from "metabase/visualizations";
-import * as Lib from "metabase-lib";
+import { Button, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderUIControls } from "metabase-types/store";
+
+import { ViewFooterControl } from "./ViewFooterViewControl";
 
 interface LeftViewFooterButtonGroupProps {
   question: Question;
@@ -34,88 +29,22 @@ export const LeftViewFooterButtonGroup = ({
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
-  const isActionListVisible = useSelector(getIsActionListVisible);
   const isShowingRawTable = useSelector(getIsShowingRawTable);
-  const vizIcon = getIconForVisualizationType(question.display());
-  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
-  const shouldShowEditorButton =
-    !isNative && isEditable && !question.isArchived() && isActionListVisible;
+
+  const dispatch = useDispatch();
 
   useUnmount(() => {
     // reset showing raw table, so new mount will default to viz
     dispatch(setUIControls({ isShowingRawTable: false }));
   });
 
-  const dispatch = useDispatch();
   const isVisualized = useSelector(getIsVisualized);
   const shouldShowChartSettingsButton =
     !hideChartSettings && (!isShowingRawTable || isVisualized);
 
-  const data = useMemo(
-    () =>
-      [
-        shouldShowEditorButton
-          ? {
-              value: "editor",
-              label: (
-                <Tooltip label={t`Editor`}>
-                  <Icon
-                    aria-label={t`Switch to editor`}
-                    name="notebook"
-                    onClick={() => {
-                      dispatch(setQueryBuilderMode("notebook"));
-                    }}
-                  />
-                </Tooltip>
-              ),
-            }
-          : null,
-        {
-          value: "table",
-          label: (
-            <Tooltip label={t`Results`}>
-              <Icon
-                aria-label={t`Switch to data`}
-                name="table2"
-                onClick={() => {
-                  dispatch(setUIControls({ isShowingRawTable: true }));
-                }}
-              />
-            </Tooltip>
-          ),
-        },
-        {
-          value: "visualization",
-          // TODO: also we need to add a spinner :boom:
-          label: (
-            <Tooltip label={t`Visualization`}>
-              <Icon
-                aria-label={t`Switch to visualization`}
-                name={vizIcon}
-                onClick={() => {
-                  dispatch(setUIControls({ isShowingRawTable: false }));
-                }}
-              />
-            </Tooltip>
-          ),
-        },
-      ].filter(isNotNull),
-    [dispatch, shouldShowEditorButton, vizIcon],
-  );
-
-  function getSelectedControlValue() {
-    if (data.length === 1) {
-      return "editor";
-    }
-
-    return isShowingRawTable ? "table" : "visualization";
-  }
-
   return (
     <Flex gap="0.75rem">
-      {(isVisualized || shouldShowEditorButton) && (
-        <EditorViewControl value={getSelectedControlValue()} data={data} />
-      )}
+      <ViewFooterControl question={question} />
       {shouldShowChartSettingsButton && (
         <Button
           variant={isShowingChartSettingsSidebar ? "filled" : "default"}
