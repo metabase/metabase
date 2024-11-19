@@ -49,7 +49,7 @@ const MultiStepPopoverContent = ({
   )?.props.children;
 
   return (
-    <Popover {...popoverProps}>
+    <Popover position="bottom-start" {...popoverProps}>
       <Popover.Target>{targetElement}</Popover.Target>
       <Popover.Dropdown>{currentStepContent}</Popover.Dropdown>
     </Popover>
