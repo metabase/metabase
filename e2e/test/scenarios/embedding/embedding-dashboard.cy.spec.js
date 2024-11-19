@@ -16,8 +16,8 @@ import {
   editDashboard,
   filterWidget,
   getDashboardCard,
+  getEmbeddedPageUrl,
   getIframeBody,
-  getIframeUrl,
   getRequiredToggle,
   goToTab,
   main,
@@ -973,22 +973,18 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         });
       })
       .then(dashboard => {
-        visitDashboard(dashboard.id);
+        return getEmbeddedPageUrl({
+          resource: { dashboard: dashboard.id },
+          params: {},
+        });
+      })
+      .then(urlOptions => {
+        const baseUrl = Cypress.config("baseUrl");
+        Cypress.config("baseUrl", null);
+        cy.visit(
+          `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${baseUrl + urlOptions.url}`,
+        );
       });
-
-    openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
-      // EE users don't have to accept terms
-      acceptTerms: false,
-    });
-
-    getIframeUrl().then(iframeUrl => {
-      Cypress.config("baseUrl", null);
-      cy.visit(
-        `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${iframeUrl}`,
-      );
-    });
 
     getIframeBody().within(() => {
       cy.findByText(questionDetails.name).should("exist");
