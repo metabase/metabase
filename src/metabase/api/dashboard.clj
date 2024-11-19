@@ -672,7 +672,11 @@
     dashboard-cards))
 
 (defn- assert-new-dashcards-are-not-internal-to-other-dashboards [dashboard to-create]
-  (when-let [card-ids (seq (keep :card_id to-create))]
+  (when-let [card-ids (into #{} (concat
+                                 (seq (keep :card_id to-create))
+                                 (->> to-create
+                                      (mapcat :series)
+                                      (keep :id))))]
     (api/check-400 (not (t2/exists? :model/Card
                                     {:where [:and
                                              [:not= :dashboard_id (u/the-id dashboard)]

@@ -225,12 +225,21 @@
                                 :user-id api/*current-user-id*
                                 :context (or context :question)})))))
 
+(defn- check-perms-to-remove-from-existing-dashboards [card]
+  (let [dashboards (or (:in_dashboards card)
+                       (:in_dashboards (t2/hydrate card :in_dashboards)))]
+    (doseq [dashboard dashboards]
+      (api/write-check dashboard))))
+
 (api/defendpoint GET "/:id/dashboards"
   "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
   [id]
   {id ms/PositiveInt}
-  (let [card (get-card id)]
-    (:in_dashboards (t2/hydrate card :in_dashboards))))
+  (let [card (get-card id)
+        dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
+    (doseq [dashboard dashboards]
+      (api/write-check dashboard))
+    (map #(dissoc % :collection_id) dashboards)))
 
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
@@ -529,6 +538,11 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
+(defn- check-allowed-to-move [card-before-update card-updates]
+  (when (api/column-will-change? :dashboard_id card-before-update card-updates)
+    (check-perms-to-remove-from-existing-dashboards card-before-update))
+  (collection/check-allowed-to-change-collection card-before-update card-updates))
+
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id delete_old_dashcards
@@ -563,7 +577,7 @@
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
     ;; Do various permissions checks
-    (doseq [f [collection/check-allowed-to-change-collection
+    (doseq [f [check-allowed-to-move
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
