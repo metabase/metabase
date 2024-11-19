@@ -35,11 +35,11 @@
         (.newLine w)))))
 
 (mr/def ::context
-        [:map-of
-         ;; TODO -- should this be recursive?
-          {:encode/api-request #(update-keys % u/->snake_case_en)}
-         :keyword
-          :any])
+  [:map-of
+   ;; TODO -- should this be recursive?
+   {:encode/api-request #(update-keys % u/->snake_case_en)}
+   :keyword
+   :any])
 
 (mu/defn create-context
   "Create a tool context."
