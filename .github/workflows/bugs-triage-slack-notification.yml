@@ -3,14 +3,14 @@ name: Bugs Slack Notification
 on:
   issues:
     types:
-      - labeled
+      - opened
 jobs:
-  on-issue-labeled:
+  on-issue-opened:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
-    if: 
-      ( github.event.label.name == 'Type:Bug' && contains(github.event.issue.labels.*.name, '.Needs Triage') ) ||
-      ( github.event.label.name == '.Needs Triage' && contains(github.event.issue.labels.*.name, 'Type:Bug') )
+    if: |
+        contains(github.event.issue.labels.*.name, '.Needs Triage') &&
+        contains(github.event.issue.labels.*.name, 'Type:Bug')
     steps:
       - name: Setting title
         uses: actions/github-script@v7
