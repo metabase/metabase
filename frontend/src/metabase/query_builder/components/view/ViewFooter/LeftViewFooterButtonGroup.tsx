@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import {
   onCloseChartSettings,
   onOpenChartSettings,
@@ -53,21 +54,23 @@ export const LeftViewFooterButtonGroup = ({
   const data = useMemo(
     () =>
       [
-        shouldShowEditorButton && {
-          value: "editor",
-          label: (
-            <Tooltip label={t`Editor`}>
-              <Icon
-                aria-label={t`Switch to editor`}
-                name="notebook"
-                onClick={() => {
-                  dispatch(setQueryBuilderMode("notebook"));
-                }}
-              />
-            </Tooltip>
-          ),
-        },
-        isVisualized && {
+        shouldShowEditorButton
+          ? {
+              value: "editor",
+              label: (
+                <Tooltip label={t`Editor`}>
+                  <Icon
+                    aria-label={t`Switch to editor`}
+                    name="notebook"
+                    onClick={() => {
+                      dispatch(setQueryBuilderMode("notebook"));
+                    }}
+                  />
+                </Tooltip>
+              ),
+            }
+          : null,
+        {
           value: "table",
           label: (
             <Tooltip label={t`Results`}>
@@ -81,7 +84,7 @@ export const LeftViewFooterButtonGroup = ({
             </Tooltip>
           ),
         },
-        isVisualized && {
+        {
           value: "visualization",
           // TODO: also we need to add a spinner :boom:
           label: (
@@ -96,8 +99,8 @@ export const LeftViewFooterButtonGroup = ({
             </Tooltip>
           ),
         },
-      ].filter(Boolean),
-    [dispatch, isVisualized, shouldShowEditorButton, vizIcon],
+      ].filter(isNotNull),
+    [dispatch, shouldShowEditorButton, vizIcon],
   );
 
   function getSelectedControlValue() {
