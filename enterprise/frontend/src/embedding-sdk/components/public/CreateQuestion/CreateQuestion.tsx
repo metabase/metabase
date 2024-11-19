@@ -56,8 +56,18 @@ export const CreateQuestionDefaultView = ({
 }) => {
   const [isVisualizationView, setIsVisualizationView] = useState(false);
 
-  const { isSaveEnabled, question, originalQuestion, onSave, onCreate } =
-    useInteractiveQuestionContext();
+  const {
+    isSaveEnabled,
+    question,
+    originalQuestion,
+    onSave,
+    onCreate,
+    queryResults,
+  } = useInteractiveQuestionContext();
+
+  // We show "question not found" when the query results is not available in QueryVisualization.
+  // Don't allow switching to visualization view when it is not yet ready.
+  const isVisualizationReady = question && queryResults;
 
   return (
     <FlexibleSizeComponent>
@@ -67,9 +77,13 @@ export const CreateQuestionDefaultView = ({
         </Flex>
 
         <Flex gap="sm">
-          <Button onClick={() => setIsVisualizationView(!isVisualizationView)}>
-            Show {isVisualizationView ? "editor" : "visualization"}
-          </Button>
+          {isVisualizationReady && (
+            <Button
+              onClick={() => setIsVisualizationView(!isVisualizationView)}
+            >
+              Show {isVisualizationView ? "editor" : "visualization"}
+            </Button>
+          )}
 
           <Button onClick={() => setSaveModalOpen(true)}>Save</Button>
         </Flex>
