@@ -604,8 +604,6 @@ describeEE("formatting > sandboxes", () => {
             },
           },
         }).then(({ body: { id: CARD_ID } }) => {
-          runQuestion({ question: CARD_ID, sandboxValue: "1" });
-
           cy.sandboxTable({
             table_id: ORDERS_ID,
             card_id: CARD_ID,
@@ -630,8 +628,6 @@ describeEE("formatting > sandboxes", () => {
             },
           },
         }).then(({ body: { id: CARD_ID } }) => {
-          runQuestion({ question: CARD_ID, sandboxValue: "Widget" });
-
           cy.sandboxTable({
             table_id: PRODUCTS_ID,
             card_id: CARD_ID,
@@ -665,12 +661,12 @@ describeEE("formatting > sandboxes", () => {
         /**
          * Helper function related to this test only!
          */
-        function runQuestion({ question, sandboxValue } = {}) {
-          // Run the question
-          cy.visit(`/question/${question}?sandbox=${sandboxValue}`);
-          // Wait for results
-          cy.wait("@cardQuery");
-        }
+        // function runQuestion({ question, sandboxValue } = {}) {
+        //   // Run the question
+        //   cy.visit(`/question/${question}?sandbox=${sandboxValue}`);
+        //   // Wait for results
+        //   cy.wait("@cardQuery");
+        // }
       });
 
       it("simple sandboxing should work (metabase#14629)", () => {
