@@ -101,10 +101,10 @@ const parseAllowedAttribuesFromIframe = (
   const allow = iframeEl.getAttribute("allow");
   const allowFullscreen = iframeEl.getAttribute("allowfullscreen");
 
-  if (allow) {
+  if (allow != null) {
     result.allow = allow;
   }
-  if (allowFullscreen) {
+  if (allowFullscreen != null) {
     result.allowFullscreen = allowFullscreen;
   }
 

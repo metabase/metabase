@@ -58,7 +58,11 @@ describe("IFrameViz", () => {
     const iframe = screen.getByTestId("iframe-visualization");
     expect(iframe).toHaveAttribute(
       "sandbox",
-      "allow-scripts allow-same-origin allow-forms allow-popups",
+      "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts",
+    );
+    expect(iframe).toHaveAttribute(
+      "referrerPolicy",
+      "strict-origin-when-cross-origin",
     );
   });
 
@@ -193,7 +197,11 @@ describe("IFrameViz", () => {
     expect(iframe).not.toHaveAttribute("onload");
     expect(iframe).toHaveAttribute(
       "sandbox",
-      "allow-scripts allow-same-origin allow-forms allow-popups",
+      "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts",
+    );
+    expect(iframe).toHaveAttribute(
+      "referrerPolicy",
+      "strict-origin-when-cross-origin",
     );
   });
 

@@ -128,7 +128,8 @@ export function IFrameViz({
           width={width}
           height={height}
           frameBorder={0}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts"
+          referrerPolicy="strict-origin-when-cross-origin"
           {...allowedIframeAttributes}
         />
       ) : (
