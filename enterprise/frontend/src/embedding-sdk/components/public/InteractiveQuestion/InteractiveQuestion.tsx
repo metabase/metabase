@@ -3,6 +3,7 @@ import type { PropsWithChildren } from "react";
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import {
   BackButton,
+  Breakout,
   ChartTypeSelector,
   ChartTypeSelectorList,
   Editor,
@@ -20,7 +21,6 @@ import {
   SummarizeButton,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
-import { Breakout } from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout/Breakout";
 import {
   InteractiveQuestionProvider,
   type InteractiveQuestionProviderProps,
