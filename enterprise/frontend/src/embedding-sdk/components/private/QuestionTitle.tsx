@@ -13,7 +13,7 @@ type QuestionTitleProps = {
   question: Question;
 };
 
-const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
+export const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
   const isSaved = question.isSaved();
   const displayName = question.displayName();
 

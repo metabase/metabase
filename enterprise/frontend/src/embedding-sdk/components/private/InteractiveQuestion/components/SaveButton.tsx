@@ -1,7 +1,8 @@
-import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../context";
+
+import { ToolbarButton } from "./util/ToolbarButton";
 
 export const SaveButton = ({
   onClick,
@@ -16,8 +17,10 @@ export const SaveButton = ({
     : true;
 
   return (
-    <Button disabled={!isQuestionChanged || !canSave} onClick={onClick}>
-      Save
-    </Button>
+    <ToolbarButton
+      label="Save"
+      disabled={!isQuestionChanged || !canSave}
+      onClick={onClick}
+    />
   );
 };

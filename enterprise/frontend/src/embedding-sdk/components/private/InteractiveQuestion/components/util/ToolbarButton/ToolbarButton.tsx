@@ -13,7 +13,7 @@ function _ToolbarButton(
   }: {
     label: string;
     icon: IconName;
-    isHighlighted: boolean;
+    isHighlighted?: boolean;
   } & ButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -21,7 +21,7 @@ function _ToolbarButton(
     <Button
       ref={ref}
       variant={isHighlighted ? "filled" : "subtle"}
-      leftIcon={<Icon name={icon} />}
+      leftIcon={icon ? <Icon name={icon} /> : undefined}
       py="sm"
       px="md"
       {...buttonProps}

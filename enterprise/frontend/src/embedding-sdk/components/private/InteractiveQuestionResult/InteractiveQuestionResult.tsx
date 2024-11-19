@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactElement, type ReactNode, useState } from "react";
+import { type ReactElement, type ReactNode, isValidElement } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -9,10 +9,11 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Group } from "metabase/ui";
+import { Box, Divider, Group, Stack, Text } from "metabase/ui";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
+import { getQuestionTitle } from "../QuestionTitle";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
@@ -26,23 +27,6 @@ export interface InteractiveQuestionResultProps {
   customTitle?: ReactNode;
 }
 
-type QuestionView = "editor" | "visualization";
-
-const ContentView = ({
-  questionView,
-  onReturnToVisualization,
-}: {
-  questionView: QuestionView;
-  onReturnToVisualization: () => void;
-}) =>
-  match<QuestionView>(questionView)
-    .with("editor", () => (
-      <InteractiveQuestion.Editor onApply={onReturnToVisualization} />
-    ))
-    .otherwise(() => (
-      <InteractiveQuestion.QuestionVisualization height="100%" />
-    ));
-
 export const InteractiveQuestionResult = ({
   height,
   width,
@@ -52,8 +36,8 @@ export const InteractiveQuestionResult = ({
   customTitle,
   withResetButton,
 }: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
-  const [questionView, setQuestionView] =
-    useState<QuestionView>("visualization");
+  const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
+    useDisclosure(false);
 
   const {
     question,
@@ -68,6 +52,29 @@ export const InteractiveQuestionResult = ({
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
+
+  const ResultTitle = () => {
+    if (!withTitle) {
+      return null;
+    }
+
+    const T = ({ text }: { text: any }) => (
+      <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+        {text}
+      </Text>
+    );
+
+    if (!customTitle && question) {
+      const questionTitle = getQuestionTitle({ question });
+      return <T text={questionTitle} />;
+    }
+
+    if (isValidElement(customTitle)) {
+      return customTitle;
+    }
+
+    return <T text={customTitle} />;
+  };
 
   if (isQuestionLoading) {
     return <SdkLoader />;
@@ -84,37 +91,48 @@ export const InteractiveQuestionResult = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Group className={InteractiveQuestionS.TopBar} position="apart" p="md">
-        <InteractiveQuestion.BackButton />
-        {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
-        <Group spacing="xs">
-          {withResetButton && <InteractiveQuestion.ResetButton />}
-          <InteractiveQuestion.ChartTypeSelectorList />
-          <InteractiveQuestion.Filter />
-          <InteractiveQuestion.Summarize />
-          <InteractiveQuestion.Breakout />
-
+      <Stack className={InteractiveQuestionS.TopBar} spacing="sm" p="md">
+        <Group position="apart">
+          <Group spacing="xs">
+            <InteractiveQuestion.BackButton />
+            <ResultTitle />
+          </Group>
           {isSaveEnabled && !isSaveModalOpen && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
           )}
         </Group>
 
-        <InteractiveQuestion.EditorButton
-          isOpen={questionView === "editor"}
-          onClick={() =>
-            setQuestionView(
-              questionView === "editor" ? "visualization" : "editor",
-            )
-          }
-        />
-      </Group>
-
-      <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
-        <Box className={InteractiveQuestionS.Content}>
-          <ContentView
-            questionView={questionView}
-            onReturnToVisualization={() => setQuestionView("visualization")}
+        <Group
+          position="apart"
+          p="sm"
+          bg="var(--mb-color-bg-medium)"
+          style={{ borderRadius: "0.5rem" }}
+        >
+          <Group spacing="xs">
+            {withResetButton && <InteractiveQuestion.ResetButton />}
+            <InteractiveQuestion.ChartTypeSelectorList />
+            <Divider orientation="vertical" />
+            <InteractiveQuestion.Filter />
+            <InteractiveQuestion.Summarize />
+            <InteractiveQuestion.Breakout />
+          </Group>
+          <InteractiveQuestion.EditorButton
+            isOpen={isEditorOpen}
+            onClick={toggleEditor}
           />
+        </Group>
+      </Stack>
+
+      <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
+        <Box className={InteractiveQuestionS.Content}>
+          {match<boolean>(isEditorOpen)
+            .with(true, () => (
+              <InteractiveQuestion.Editor onApply={closeEditor} />
+            ))
+            .with(false, () => (
+              <InteractiveQuestion.QuestionVisualization height="100%" />
+            ))
+            .exhaustive()}
         </Box>
       </Box>
 

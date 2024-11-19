@@ -32,5 +32,8 @@ export const Default = {
     isSaveEnabled: true,
     saveToCollectionId: undefined,
     withTitle: true,
+    onNavigateBack: () => {
+      return null;
+    },
   },
 };
