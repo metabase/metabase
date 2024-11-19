@@ -1,78 +1,20 @@
 (ns metabase.channel.template.handlebars
   (:require
    [clojure.walk :as walk]
-   [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util :as u])
   (:import
    (com.github.jknack.handlebars
-    Parser Handlebars Template)
+    Handlebars Template)
    (com.github.jknack.handlebars.cache
     ConcurrentMapTemplateCache TemplateCache)
    (com.github.jknack.handlebars.io
-    TemplateSource
     ClassPathTemplateLoader)))
 
 (set! *warn-on-reflection* true)
 
-(defn maybe-read
-  [file]
-  (u/ignore-exceptions
-    (slurp (format "test_resources/%s" file))))
-
-;; This is a similar implementation of com.github.jknack.handlebars.cache.ConcurrentMapTemplateCache but with Atom.
-;; It fixes a bug where the cache is not reloaded if you use the source only once.
-(deftype AtomTemplateCache
-         [cache ^:volatile-mutable reload]
-  TemplateCache
-  (^void clear [_]
-    (reset! cache {})
-    nil)
-  (^void evict [_ ^TemplateSource source]
-    (swap! cache dissoc source)
-    nil)
-  (^Template get [^TemplateCache this ^TemplateSource source ^Parser parser]
-    (let [[cached-source cached-template :as entry] (get @cache source)]
-      (def source source)
-      (log/fatalf "Template %s with last modified %s, %s and cached modified %s, %s"
-                  source
-                  (when source (.lastModified source))  (when source (maybe-read source))
-                  (when cached-source (.lastModified ^TemplateSource cached-source)) (when source (maybe-read cached-source)))
-      (cond
-        (nil? entry)
-        (let [template (.parse parser source)]
-          ;; this is the fix for the pre-mentioned bug
-          ;; try uncomment this and run the metabase.channel.template.handlebars-test/reload-template-if-it's-changed test
-          ;; TODO: fix this upstream for the original ConcurrentMapTemplateCache
-          (.lastModified source)
-          (log/fatalf "Caching template %s" source)
-          (swap! cache assoc source [source template])
-          template)
-
-        (and reload (not= (.lastModified source) (.lastModified ^TemplateSource cached-source)))
-        (do
-          (log/fatalf "Reloading template %s" source)
-          (.evict this source)
-          (let [template (.parse parser source)]
-            (swap! cache assoc source [source template])
-            template))
-        :else
-        (do
-          (log/fatalf "Using cached template %s" source)
-          cached-template))))
-
-  (setReload [this value]
-    (set! reload value)
-    this))
-
-(defn- make-atom-template-cache
-  [reload?]
-  (AtomTemplateCache. (atom {}) reload?))
-
 (defn registry
   "Create a new Handlebars instance with a template loader."
   ^Handlebars [loader & {:keys [reload?]}]
-  #_(doto (Handlebars. loader)
-      (.with ^TemplateCache (make-atom-template-cache reload?)))
   (u/prog1 (doto (Handlebars. loader)
              (.with ^TemplateCache (ConcurrentMapTemplateCache.)))
     (when reload?

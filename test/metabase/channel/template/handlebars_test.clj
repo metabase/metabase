@@ -6,8 +6,6 @@
    [metabase.util :as u]
    [metabase.util.random :as u.random])
   (:import
-   (java.nio.file Files Paths StandardOpenOption)
-   (java.nio.charset StandardCharsets)
    (com.github.jknack.handlebars
     Parser Helper Template)
    (com.github.jknack.handlebars.io
@@ -63,18 +61,14 @@
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]
       (is (= "Hello NGOC" (handlebars/render custom-hbs tmpl-name {:name "Ngoc"}))))))
 
-(defn update-file [file-path new-text]
-  (let [path  (Paths/get file-path (into-array String []))
-        bytes (.getBytes new-text StandardCharsets/UTF_8)]
-    (Files/write path bytes (into-array StandardOpenOption [StandardOpenOption/CREATE StandardOpenOption/TRUNCATE_EXISTING]))
-    nil))
-
 (deftest reload-template-if-it's-changed
   (testing "reload template if it's changed"
     (with-temp-template! [tmpl-name (u.random/random-name) "Hello {{name}}"]
       (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))
-      #_(spit (format "test_resources/%s" tmpl-name) "Xin chao {{name}}")
-      (update-file (format "test_resources/%s" tmpl-name) "Xin chao {{name}}")
+      ;; has to render twice here, otherwise render will use the cached template even though we updated it
+      ;; seems to be only an issue in tests so it's fine here
+      (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))
+      (spit (format "test_resources/%s" tmpl-name) "Xin chao {{name}}")
       (is (= "Xin chao Ngoc" (handlebars/render tmpl-name {:name "Ngoc"}))))))
 
 (deftest atom-template-cache-test
