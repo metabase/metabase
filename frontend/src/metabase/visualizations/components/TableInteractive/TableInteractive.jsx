@@ -8,6 +8,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
@@ -1109,6 +1110,18 @@ class TableInteractive extends Component {
     return false;
   }
 
+  renderEmptyMessage = () => {
+    return (
+      <div className={cx(TableS.fill, CS.flex)}>
+        <ErrorMessage
+          type="noRows"
+          title={t`No results!`}
+          message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
+        />
+      </div>
+    );
+  };
+
   render() {
     const {
       width,
@@ -1118,6 +1131,7 @@ class TableInteractive extends Component {
       scrollToColumn,
       scrollToLastColumn,
       theme,
+      renderEmptyMessage,
     } = this.props;
 
     if (!width || !height) {
@@ -1136,6 +1150,8 @@ class TableInteractive extends Component {
         (sum, _c, index) => sum + this.getColumnWidth({ index }),
         0,
       ) + (gutterColumn ? SIDEBAR_WIDTH : 0);
+
+    const isEmpty = rows == null || rows.length === 0;
 
     return (
       <DelayGroup>
@@ -1261,6 +1277,7 @@ class TableInteractive extends Component {
                   tabIndex={null}
                   scrollToColumn={scrollToColumn}
                 />
+                {isEmpty && renderEmptyMessage && this.renderEmptyMessage()}
                 <Grid
                   id="main-data-grid"
                   ref={this.gridRef}
