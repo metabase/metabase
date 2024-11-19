@@ -1,5 +1,5 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
-import { useEffect, useMemo, type ComponentType, type ReactNode } from "react";
+import { type ComponentType, type ReactNode, useEffect, useMemo } from "react";
 
 import { skipToken } from "metabase/api";
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -281,9 +281,8 @@ export const entityObjectLoaderRtkQuery =
   (eolProps: any) =>
   (ComposedComponent: (props: any) => ReactNode) =>
   // eslint-disable-next-line react/display-name
-  (props: any): ReactNode =>
-    (
-      <EntityObjectLoaderRtkQuery {...props} {...eolProps}>
-        {childProps => <ComposedComponent {...childProps} />}
-      </EntityObjectLoaderRtkQuery>
-    );
+  (props: any): ReactNode => (
+    <EntityObjectLoaderRtkQuery {...props} {...eolProps}>
+      {childProps => <ComposedComponent {...childProps} />}
+    </EntityObjectLoaderRtkQuery>
+  );
