@@ -1,19 +1,12 @@
-(ns metabase.channel.template.handlebars.helper
+(ns metabase.channel.template.handlebars-helper
   (:refer-clojure :exclude [hash])
   (:require
-   [clojure.walk :as walk]
    [java-time.api :as t]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.urls :as urls]
-   [metabase.util.log :as log])
+   [metabase.util.urls :as urls])
   (:import
    (com.github.jknack.handlebars
-    Options Parser Handlebars Helper Template Handlebars$SafeString)
-   (com.github.jknack.handlebars.cache TemplateCache)
-   (com.github.jknack.handlebars.io
-    TemplateSource
-    ClassPathTemplateLoader)))
+    Options Handlebars Helper Handlebars$SafeString)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,9 +25,9 @@
    (.hash option key default)))
 
 (defn option-block-body
-  "Get the body"
-  ([^Options option]
-   (.fn option)))
+  "Get the block body."
+  [^Options option]
+  (.fn option))
 
 (defn option-else-block
   "Get the else block."
@@ -49,7 +42,7 @@
 (defmacro defhelper
   "Define a helper function."
   [helper-name description argvec & body]
-  (let [helper-fn-name (symbol (str helper-name \!))
+  (let [helper-fn-name (symbol (str helper-name \*))
         description#   description]
     `(do
        (defn ~helper-fn-name
@@ -62,8 +55,7 @@
                          :is-helper? true})
          ~description#
          (reify Helper (apply [_# context# option#]
-                         (let [f# ~helper-fn-name]
-                          (f# context# option#))))))))
+                         (~helper-fn-name context# option#)))))))
 
 (defn register-helper
   "Register a helper."
@@ -82,17 +74,20 @@
 (defhelper equals
   "Return true if two values are equal.
 
-  {{equals 1 1}}"
+  {{if (equals product.name \"Hot Dog\")}}
+    Hot Dog
+  {{else}}
+    Not Hot Dog
+  {{/if}}"
   [arg options]
   (let [x arg
         y (option-param options 0)]
-    #p [x y]
     (= x y)))
 
 (defhelper format-date
   "Format date helper.
 
-  {{format-date '2000-30-01 'dd-MM-YY'}}
+  {{format-date '2000-30-01''dd-MM-YY'}}
   ;; => 30-01-00
 
   date can be either a string or a date time object."
@@ -123,7 +118,7 @@
      {{dashboard-url 10}} -> \"http://localhost:3000/dashboard/10\""
   [id options]
   (let [params (option-param options 0 nil)]
-   (urls/dashboard-url id params)))
+    (urls/dashboard-url id params)))
 
 (def default-helpers
   "A list of default helpers."

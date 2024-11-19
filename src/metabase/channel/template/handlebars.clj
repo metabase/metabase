@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [hash])
   (:require
    [clojure.walk :as walk]
-   [metabase.channel.template.handlebars.helper :as handlebars.helper]
+   [metabase.channel.template.handlebars-helper :as handlebars-helper]
+   [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -36,16 +37,16 @@
 
 (def ^:private default-hbs
   (delay (u/prog1 (registry (classpath-loader "/" "") :reload? true)
-           (handlebars.helper/register-helpers <> handlebars.helper/default-helpers))))
+           (handlebars-helper/register-helpers <> handlebars-helper/default-helpers))))
 
-;; monitor the default-hbs for changes
-(add-watch #'handlebars.helper/default-helpers :reload-default-helpers!
-           (fn [_ _ _ new-default-helpers]
-             (try
-               (log/debug "Reloading handlebars default helpers")
-              (handlebars.helper/register-helpers @default-hbs new-default-helpers)
-              (catch Exception e
-                (log/warn e "Error reloading default helpers")))))
+(when config/is-dev?
+  (add-watch #'handlebars-helper/default-helpers :reload-default-helpers!
+             (fn [_ _ _ new-default-helpers]
+               (try
+                 (log/debug "Reloading handlebars default helpers")
+                 (handlebars-helper/register-helpers @default-hbs new-default-helpers)
+                 (catch Exception e
+                   (log/warn e "Error reloading default helpers"))))))
 
 (defn render
   "Render a template with a context."
@@ -64,9 +65,9 @@
            (wrap-context ctx))))
 
 (comment
- (render-string "{{now}}" {})
- (render-string "{{format-date (now) \"YYYY-dd-MM\" }}" {})
- (render-string "{{format-date \"2000-01-02\" \"YYYY-dd-MM\" }}" {})
- (render-string "Hello {{name}}" {:name "Ngoc"})
- (render-string "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name false})
- (render "/metabase/email/_header.hbs" {}))
+  (render-string "{{now}}" {})
+  (render-string "{{format-date (now) \"YYYY-dd-MM\" }}" {})
+  (render-string "{{format-date \"2000-01-02\" \"YYYY-dd-MM\" }}" {})
+  (render-string "Hello {{name}}" {:name "Ngoc"})
+  (render-string "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name false})
+  (render "/metabase/email/_header.hbs" {}))
