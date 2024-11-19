@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { match } from "ts-pattern";
 
+import S from "embedding-sdk/components/private/InteractiveQuestion/components/Picker.module.css";
 import { MultiStepPopover } from "embedding-sdk/components/private/util/MultiStepPopover";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
@@ -139,6 +140,7 @@ const FilterInner = ({
 
       <MultiStepPopover.Step value="picker">
         <FilterPicker
+          className={S.PickerContainer}
           query={query}
           stageIndex={-1}
           onSelect={onSelectFilter}
