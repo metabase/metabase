@@ -56,6 +56,7 @@ export const CreateQuestionDefaultView = ({
     onSave,
     onCreate,
     queryResults,
+    saveToCollectionId,
   } = useInteractiveQuestionContext();
 
   // We show "question not found" when the query results is not available in QueryVisualization.
@@ -101,11 +102,12 @@ export const CreateQuestionDefaultView = ({
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion ?? null}
-          opened={true}
-          closeOnSuccess={true}
+          opened
+          closeOnSuccess
           onClose={() => setSaveModalOpen(false)}
           onCreate={onCreate}
           onSave={onSave}
+          saveToCollectionId={saveToCollectionId}
         />
       )}
     </FlexibleSizeComponent>
