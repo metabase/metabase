@@ -124,7 +124,7 @@ export const InteractiveQuestionProvider = ({
     onReset: loadQuestion,
     onNavigateBack,
     runQuestion,
-    replaceQuestion: replaceQuestion,
+    replaceQuestion,
     updateQuestion,
     navigateToNewCard,
     plugins: combinedPlugins,
