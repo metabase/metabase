@@ -32,14 +32,16 @@ export interface LoadQuestionHookResult {
   runQuestion(): Promise<void>;
   loadQuestion(): LoadQuestionResult;
 
-  // Set the question's object directly.
-  // Unlike updateQuestion, this does not turn the question into an ad-hoc question.
-  setQuestion(question: Question): void;
-
   updateQuestion(
     question: Question,
     options?: { run?: boolean },
   ): Promise<void>;
+
+  /**
+   * Replaces both the question and originalQuestion object directly.
+   * Unlike updateQuestion, this does not turn the question into an ad-hoc question.
+   */
+  replaceQuestion(question: Question): void;
 
   navigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
 }
@@ -54,7 +56,7 @@ export function useLoadQuestion({
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
   const [questionState, setQuestionState] = useReducer(questionReducer, {});
-  const { question, queryResults } = questionState;
+  const { question, originalQuestion, queryResults } = questionState;
 
   const deferredRef = useRef<Deferred>();
 
@@ -85,8 +87,6 @@ export function useLoadQuestion({
 
     return state;
   }, [dispatch, options, deserializedCard, cardId]);
-
-  const { originalQuestion } = loadQuestionState.value ?? {};
 
   const [runQuestionState, runQuestion] = useAsyncFn(async () => {
     if (!question) {
@@ -152,6 +152,9 @@ export function useLoadQuestion({
     updateQuestionState.loading ||
     navigateToNewCardState.loading;
 
+  const replaceQuestion = (question: Question) =>
+    setQuestionState({ question, originalQuestion: question });
+
   return {
     question,
     originalQuestion,
@@ -162,7 +165,7 @@ export function useLoadQuestion({
     isQueryRunning,
 
     runQuestion,
-    setQuestion: question => setQuestionState({ question }),
+    replaceQuestion,
     loadQuestion,
     updateQuestion,
     navigateToNewCard,

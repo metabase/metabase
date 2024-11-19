@@ -83,7 +83,7 @@ export const InteractiveQuestionProvider = ({
       onSave?.(createdQuestion, saveContext);
 
       // Set the latest saved question object to update the question title.
-      setQuestion(createdQuestion);
+      replaceQuestion(createdQuestion);
     }
   };
 
@@ -97,7 +97,7 @@ export const InteractiveQuestionProvider = ({
     isQueryRunning,
 
     runQuestion,
-    setQuestion,
+    replaceQuestion,
     loadQuestion,
     updateQuestion,
     navigateToNewCard,
@@ -124,7 +124,7 @@ export const InteractiveQuestionProvider = ({
     onReset: loadQuestion,
     onNavigateBack,
     runQuestion,
-    setQuestion,
+    replaceQuestion: replaceQuestion,
     updateQuestion,
     navigateToNewCard,
     plugins: combinedPlugins,
