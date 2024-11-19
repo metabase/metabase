@@ -71,8 +71,12 @@
 (defn registry
   "Create a new Handlebars instance with a template loader."
   ^Handlebars [loader & {:keys [reload?]}]
-  (doto (Handlebars. loader)
-    (.with ^TemplateCache (make-atom-template-cache reload?))))
+  #_(doto (Handlebars. loader)
+      (.with ^TemplateCache (make-atom-template-cache reload?)))
+  (u/prog1 (doto (Handlebars. loader)
+             (.with ^TemplateCache (ConcurrentMapTemplateCache.)))
+    (when reload?
+      (.setReload (.getCache <>) true))))
 
 (defn classpath-loader
   "Create a ClassPathTemplateLoader with a prefix and postfix."
