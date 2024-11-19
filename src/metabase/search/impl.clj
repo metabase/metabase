@@ -11,6 +11,7 @@
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.api :as search.api]
    [metabase.search.config
@@ -206,7 +207,10 @@
 (defmethod supported-engine? :search.engine/in-place [_] true)
 (defmethod supported-engine? :search.engine/fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
 
-(def ^:private default-engine :search.engine/in-place)
+(defn- default-engine []
+  (if (public-settings/experimental-fulltext-search-enabled)
+    :search.engine/fulltext
+    :search.engine/in-place))
 
 (defn- known-engine? [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
@@ -224,15 +228,16 @@
 
             :else
             engine)))
-      default-engine))
+      (default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
 (defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
-  (when (= default-engine search-engine)
-    (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
-  (log/debugf "Missing implementation for %s so instead using %s" search-engine default-engine)
-  (assoc search-ctx :search-engine default-engine))
+  (let [default (default-engine)]
+    (when (= default search-engine)
+      (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
+    (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
+    (assoc search-ctx :search-engine default)))
 
 (defmethod search.api/results :default [search-ctx]
   (search.api/results (apply-default-engine search-ctx)))
@@ -248,6 +253,8 @@
    [:search-string                                        [:maybe ms/NonBlankString]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
+   [:is-impersonated-user?               {:optional true} :boolean]
+   [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
    [:current-user-perms                                   [:set perms.u/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
@@ -276,6 +283,8 @@
            current-user-perms
            filter-items-in-personal-collection
            ids
+           is-impersonated-user?
+           is-sandboxed-user?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -299,6 +308,8 @@
                         :calculate-available-models? (boolean calculate-available-models?)
                         :current-user-id             current-user-id
                         :current-user-perms          current-user-perms
+                        :is-impersonated-user?       is-impersonated-user?
+                        :is-sandboxed-user?          is-sandboxed-user?
                         :is-superuser?               is-superuser?
                         :models                      models
                         :model-ancestors?            (boolean model-ancestors?)
@@ -318,6 +329,7 @@
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
+    ;; TODO this is rather hidden, perhaps better to do it further down the stack
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (defn- to-toucan-instance [row]

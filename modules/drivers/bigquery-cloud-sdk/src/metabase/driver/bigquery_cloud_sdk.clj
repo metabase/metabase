@@ -217,6 +217,9 @@
                         (str/starts-with? raw-data-type "INT") "INTEGER" ;; INT64
                         (str/starts-with? raw-data-type "FLOAT") "FLOAT" ;; FLOAT 64
                         (str/starts-with? raw-data-type "STRING") "STRING" ;; STRING(255)
+                        (str/starts-with? raw-data-type "BYTES") "BYTES" ;; BYTES(255)
+                        (str/starts-with? raw-data-type "NUMERIC") "NUMERIC" ;; NUMERIC(255)
+                        (str/starts-with? raw-data-type "BIGNUMERIC") "BIGNUMERIC" ;; BIGNUMERIC(255)
                         (= raw-data-type "BOOL") "BOOLEAN"
                         :else raw-data-type)]
     [database-type (database-type->base-type database-type)]))

@@ -17,7 +17,7 @@
 
 (defonce ^:private reindexing? (atom false))
 
-(def ^:private tsv-language "simple")
+(def ^:private tsv-language "english")
 
 (defn- exists? [table-name]
   (t2/exists? :information_schema.tables :table_name (name table-name)))
@@ -53,6 +53,7 @@
              [:legacy_input :text :not-null]
              ;; scoring related
              [:dashboardcard_count :int]
+             [:last_viewed_at :timestamp]
              [:model_rank :int :not-null]
              [:official_collection :boolean]
              [:pinned :boolean]

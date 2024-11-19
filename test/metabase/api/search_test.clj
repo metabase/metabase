@@ -313,7 +313,7 @@
   (when (search/supports-index?)
     (testing "It can use an alternate search engine"
       (with-search-items-in-root-collection "test"
-        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext")]
+        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
           (is (= "search.engine/fulltext" (:engine resp))))))))
 
@@ -735,9 +735,10 @@
                            (search! "rom" :rasta))))))
 
           (testing "Sandboxed users do not see indexed entities in search"
-            (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-              (is (= #{}
-                     (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
+            (with-redefs [premium-features/impersonated-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (with-redefs [premium-features/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
   (assoc m

@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search :as search]
    [metabase.search.config :as search.config]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -43,6 +44,20 @@
                 respond
                 raise)))
    (meta handler)))
+
+(api/defendpoint POST "/re-init"
+  "If fulltext search is enabled, this will blow away the index table, re-create it, and re-populate it."
+  []
+  (api/check-superuser)
+  (cond
+    (not (public-settings/experimental-fulltext-search-enabled))
+    (throw (ex-info "Search index is not enabled." {:status-code 501}))
+
+    (search/supports-index?)
+    (do (search/init-index! {:force-reset? true}) {:message "done"})
+
+    :else
+    (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (api/defendpoint POST "/force-reindex"
   "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
@@ -135,6 +150,8 @@
        :created-at                          created_at
        :created-by                          (set created_by)
        :current-user-id                     api/*current-user-id*
+       :is-impersonated-user?               (premium-features/impersonated-user?)
+       :is-sandboxed-user?                  (premium-features/sandboxed-user?)
        :is-superuser?                       api/*is-superuser?*
        :current-user-perms                  @api/*current-user-permissions-set*
        :filter-items-in-personal-collection filter_items_in_personal_collection
