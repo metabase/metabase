@@ -39,6 +39,7 @@ import {
 } from "./utils";
 import { cartesianDropHandler } from "./visualizations/cartesian";
 import { funnelDropHandler } from "./visualizations/funnel";
+import { pieDropHandler } from "./visualizations/pie";
 import { pivotDropHandler } from "./visualizations/pivot";
 
 const initialCommonState: VisualizerCommonState = {
@@ -168,6 +169,16 @@ const visualizerHistoryItemSlice = createSlice({
         }
       }
 
+      if (display === "pie") {
+        const metric = createMetricColumn();
+        const dimension = createDimensionColumn();
+        state.columns = [metric, dimension];
+        state.settings = {
+          "pie.metric": metric.name,
+          "pie.dimension": [dimension.name],
+        };
+      }
+
       if (display === "pivot") {
         state.columns = [
           {
@@ -202,6 +213,8 @@ const visualizerHistoryItemSlice = createSlice({
           cartesianDropHandler(state, event);
         } else if (state.display === "funnel") {
           funnelDropHandler(state, event);
+        } else if (state.display === "pie") {
+          pieDropHandler(state, event);
         } else if (state.display === "pivot") {
           pivotDropHandler(state, event);
         }
