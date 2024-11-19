@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
@@ -27,6 +27,15 @@ export type InteractiveDashboardProps = {
   plugins?: SdkPluginsConfig;
   className?: string;
   style?: CSSProperties;
+
+  /**
+   * A custom React component to render the question layout.
+   * Use namespaced InteractiveQuestion components to build the layout.
+   *
+   * @todo pass the question context to the question view component,
+   *       once we have a public-facing question context.
+   */
+  renderDrillThroughQuestion?: () => ReactNode;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -43,6 +52,7 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
   style,
+  renderDrillThroughQuestion: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
   const {
     displayOptions,
@@ -81,7 +91,9 @@ const InteractiveDashboardInner = ({
           height={questionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
-        />
+        >
+          {AdHocQuestionView && <AdHocQuestionView />}
+        </InteractiveAdHocQuestion>
       ) : (
         <InteractiveDashboardProvider
           plugins={plugins}

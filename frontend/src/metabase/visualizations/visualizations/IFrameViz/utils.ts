@@ -83,6 +83,34 @@ const parseUrlFromIframe = (iframeHtml: string) => {
   return "";
 };
 
+const parseAllowedAttribuesFromIframe = (
+  iframeHtml: string,
+): AllowedIframeAttributes | null => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(iframeHtml, "text/html");
+  const iframeEl = doc.querySelector("iframe");
+  const src = iframeEl?.getAttribute("src");
+
+  if (!iframeEl || !src) {
+    return null;
+  }
+
+  const result: AllowedIframeAttributes = {};
+  result.src = src;
+
+  const allow = iframeEl.getAttribute("allow");
+  const allowFullscreen = iframeEl.getAttribute("allowfullscreen");
+
+  if (allow != null) {
+    result.allow = allow;
+  }
+  if (allowFullscreen != null) {
+    result.allowFullscreen = allowFullscreen;
+  }
+
+  return result;
+};
+
 const DEFAULT_PROTOCOL = "https://";
 
 const normalizeUrl = (trimmedUrl: string) => {
@@ -122,9 +150,15 @@ export const getIframeDomainName = (
   }
 };
 
-export const getIframeUrl = (
+export type AllowedIframeAttributes = {
+  src?: string;
+  allow?: string;
+  allowFullscreen?: string;
+};
+
+export const getAllowedIframeAttributes = (
   iframeOrUrl: string | undefined,
-): string | null => {
+): AllowedIframeAttributes | null => {
   if (!iframeOrUrl) {
     return null;
   }
@@ -132,12 +166,15 @@ export const getIframeUrl = (
   const trimmedInput = iframeOrUrl.trim();
 
   if (isIframeString(trimmedInput)) {
-    return parseUrlFromIframe(trimmedInput);
+    return parseAllowedAttribuesFromIframe(trimmedInput);
   }
 
   const normalizedUrl = normalizeUrl(trimmedInput);
   if (isSafeUrl(normalizedUrl)) {
-    return replaceSharingLinkWithEmbedLink(normalizedUrl);
+    const src = replaceSharingLinkWithEmbedLink(normalizedUrl);
+    if (src) {
+      return { src };
+    }
   }
 
   return null;
