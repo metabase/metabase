@@ -94,23 +94,23 @@ export const InteractiveQuestionResult = ({
           <InteractiveQuestion.Summarize />
           <InteractiveQuestion.Breakout />
 
-          <ActionIcon
-            size="lg"
-            color="var(--mb-color-brand)"
-            variant={questionView === "editor" ? "filled" : "default"}
-            onClick={() =>
-              setQuestionView(
-                questionView === "editor" ? "visualization" : "editor",
-              )
-            }
-          >
-            <Icon name="notebook" />
-          </ActionIcon>
-
           {isSaveEnabled && !isSaveModalOpen && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
           )}
         </Group>
+
+        <ActionIcon
+          size="lg"
+          color="var(--mb-color-brand)"
+          variant={questionView === "editor" ? "filled" : "default"}
+          onClick={() =>
+            setQuestionView(
+              questionView === "editor" ? "visualization" : "editor",
+            )
+          }
+        >
+          <Icon name="notebook" />
+        </ActionIcon>
       </Group>
 
       <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
