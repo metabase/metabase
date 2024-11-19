@@ -1334,7 +1334,7 @@ describe("filter", () => {
       bucket => {
         const { filterParts, columnInfo } = addExcludeDateFilter(
           query,
-          Lib.excludeDateFilterClause(query, 0, {
+          Lib.excludeDateFilterClause({
             operator: "!=",
             column,
             bucket,
@@ -1357,7 +1357,7 @@ describe("filter", () => {
       operator => {
         const { filterParts, columnInfo } = addExcludeDateFilter(
           query,
-          Lib.excludeDateFilterClause(query, 0, {
+          Lib.excludeDateFilterClause({
             operator,
             column,
             bucket: null,
@@ -1380,7 +1380,7 @@ describe("filter", () => {
       operator => {
         const { filterParts, columnInfo } = addExcludeDateFilter(
           query,
-          Lib.excludeDateFilterClause(query, 0, {
+          Lib.excludeDateFilterClause({
             operator,
             column: Lib.withTemporalBucket(
               column,
@@ -1409,7 +1409,7 @@ describe("filter", () => {
     ])(
       'should properly serialize values for "%s" bucket',
       (bucket, values, args) => {
-        const filter = Lib.excludeDateFilterClause(query, 0, {
+        const filter = Lib.excludeDateFilterClause({
           operator: "!=",
           column,
           bucket,
@@ -1474,7 +1474,7 @@ describe("filter", () => {
     it("should ignore expressions with incorrect column type", () => {
       const { filterParts } = addExcludeDateFilter(
         query,
-        Lib.excludeDateFilterClause(query, 0, {
+        Lib.excludeDateFilterClause({
           operator: "!=",
           column: findColumn(query, tableName, "PRICE"),
           bucket: "day-of-week",

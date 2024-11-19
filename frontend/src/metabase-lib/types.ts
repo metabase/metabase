@@ -284,7 +284,11 @@ export type ExpressionOperatorName =
   | "relative-datetime"
   | "inside"
   | "segment"
-  | "offset";
+  | "offset"
+  | "get-hour"
+  | "get-day-of-week"
+  | "get-month"
+  | "get-quarter";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 

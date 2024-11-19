@@ -373,26 +373,107 @@ export function relativeDateFilterParts(
   );
 }
 
-export function excludeDateFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values, bucket: bucketName }: ExcludeDateFilterParts,
-): ExpressionClause {
+export function excludeDateFilterClause({
+  operator,
+  column,
+  values,
+  bucket: bucketName,
+}: ExcludeDateFilterParts): ExpressionClause {
   if (!bucketName) {
     const columnWithoutBucket = withTemporalBucket(column, null);
     return expressionClause(operator, [columnWithoutBucket]);
   }
 
-  const bucket = findTemporalBucket(query, stageIndex, column, bucketName);
-  const columnWithBucket = withTemporalBucket(column, bucket ?? null);
-  const serializedValues = values.map(value =>
-    serializeExcludeDatePart(value, bucketName),
-  );
-
-  return expressionClause(operator, [columnWithBucket, ...serializedValues]);
+  const columnWithoutBucket = withTemporalBucket(column, null);
+  switch (bucketName) {
+    case "hour-of-day":
+      return expressionClause("!=", [
+        expressionClause("get-hour", [columnWithoutBucket]),
+        ...values,
+      ]);
+    case "day-of-week":
+      return expressionClause("!=", [
+        expressionClause("get-day-of-week", [columnWithoutBucket]),
+        ...values,
+      ]);
+    case "month-of-year":
+      return expressionClause("!=", [
+        expressionClause("get-month", [columnWithoutBucket]),
+        ...values.map(value => value + 1),
+      ]);
+    case "quarter-of-year":
+      return expressionClause("!=", [
+        expressionClause("get-quarter", [columnWithoutBucket]),
+        ...values,
+      ]);
+  }
 }
 
 export function excludeDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): ExcludeDateFilterParts | null {
+  return (
+    expressionExcludeDateFilterParts(query, stageIndex, filterClause) ??
+    temporalBucketExcludeDateFilterParts(query, stageIndex, filterClause)
+  );
+}
+
+function expressionExcludeDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): ExcludeDateFilterParts | null {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (!isExcludeDateOperator(operator) || args.length < 1) {
+    return null;
+  }
+
+  if (operator === "is-null" || operator === "not-null") {
+    const [column] = args;
+    if (!isColumnMetadata(column)) {
+      return null;
+    }
+
+    return { operator, column, values: [], bucket: null };
+  } else {
+    const [expression, ...values] = args;
+    if (!isExpression(expression) || !isNumberLiteralArray(values)) {
+      return null;
+    }
+
+    const { operator: expressionOperator, args: expressionArgs } = expression;
+    if (expressionArgs.length !== 1) {
+      return null;
+    }
+
+    const [column] = expressionArgs;
+    if (!isColumnMetadata(column)) {
+      return null;
+    }
+
+    switch (expressionOperator) {
+      case "get-hour":
+        return { operator, column, values, bucket: "hour-of-day" };
+      case "get-day-of-week":
+        return { operator, column, values, bucket: "day-of-week" };
+      case "get-month":
+        return {
+          operator,
+          column,
+          values: values.map(value => value - 1),
+          bucket: "month-of-year",
+        };
+      case "get-quarter":
+        return { operator, column, values, bucket: "quarter-of-year" };
+      default:
+        return null;
+    }
+  }
+}
+
+function temporalBucketExcludeDateFilterParts(
   query: Query,
   stageIndex: number,
   filterClause: FilterClause,
@@ -863,30 +944,6 @@ function relativeDateFilterPartsRelativeTimeInterval({
     offsetValue,
     options,
   };
-}
-
-function serializeExcludeDatePart(
-  value: number,
-  bucketName: ExcludeDateBucketName,
-): ExpressionArg {
-  if (bucketName === "hour-of-day") {
-    return value;
-  }
-
-  const date = moment();
-  switch (bucketName) {
-    case "day-of-week":
-      date.isoWeekday(value);
-      break;
-    case "month-of-year":
-      date.month(value);
-      break;
-    case "quarter-of-year":
-      date.quarter(value);
-      break;
-  }
-
-  return date.format(DATE_FORMAT);
 }
 
 function deserializeExcludeDatePart(

@@ -103,7 +103,7 @@ export function getFilterClause(
     case "relative":
       return getRelativeFilterClause(column, value);
     case "exclude":
-      return getExcludeFilterClause(query, stageIndex, column, value);
+      return getExcludeFilterClause(column, value);
   }
 }
 
@@ -136,12 +136,10 @@ function getRelativeFilterClause(
 }
 
 function getExcludeFilterClause(
-  query: Lib.Query,
-  stageIndex: number,
   column: Lib.ColumnMetadata,
   value: ExcludeDatePickerValue,
 ): Lib.ExpressionClause {
-  return Lib.excludeDateFilterClause(query, stageIndex, {
+  return Lib.excludeDateFilterClause({
     operator: value.operator,
     bucket: value.unit ?? null,
     column,

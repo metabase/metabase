@@ -266,7 +266,7 @@ function getTestCases(
         unit: "hour-of-day",
         values: [10],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "!=",
         column,
         bucket: "hour-of-day",
@@ -281,7 +281,7 @@ function getTestCases(
         unit: "day-of-week",
         values: [2],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "!=",
         column,
         bucket: "day-of-week",
@@ -296,7 +296,7 @@ function getTestCases(
         unit: "month-of-year",
         values: [2],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "!=",
         column,
         bucket: "month-of-year",
@@ -311,7 +311,7 @@ function getTestCases(
         unit: "quarter-of-year",
         values: [2],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "!=",
         column,
         bucket: "quarter-of-year",
@@ -325,7 +325,7 @@ function getTestCases(
         operator: "is-null",
         values: [],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "is-null",
         column,
         bucket: null,
@@ -339,7 +339,7 @@ function getTestCases(
         operator: "not-null",
         values: [],
       },
-      expression: Lib.excludeDateFilterClause(query, stageIndex, {
+      expression: Lib.excludeDateFilterClause({
         operator: "not-null",
         column,
         bucket: null,

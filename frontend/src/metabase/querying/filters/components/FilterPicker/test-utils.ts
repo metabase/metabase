@@ -298,7 +298,7 @@ export function createQueryWithExcludeDateFilter({
   values = [1],
   bucket = "day-of-week",
 }: ExcludeDateFilterOpts = {}) {
-  const clause = Lib.excludeDateFilterClause(query, 0, {
+  const clause = Lib.excludeDateFilterClause({
     column,
     operator,
     values,
