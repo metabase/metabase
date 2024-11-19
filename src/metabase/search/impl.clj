@@ -248,6 +248,8 @@
    [:search-string                                        [:maybe ms/NonBlankString]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
+   [:is-impersonated-user?               {:optional true} :boolean]
+   [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
    [:current-user-perms                                   [:set perms.u/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
@@ -276,6 +278,8 @@
            current-user-perms
            filter-items-in-personal-collection
            ids
+           is-impersonated-user?
+           is-sandboxed-user?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -299,6 +303,8 @@
                         :calculate-available-models? (boolean calculate-available-models?)
                         :current-user-id             current-user-id
                         :current-user-perms          current-user-perms
+                        :is-impersonated-user?       is-impersonated-user?
+                        :is-sandboxed-user?          is-sandboxed-user?
                         :is-superuser?               is-superuser?
                         :models                      models
                         :model-ancestors?            (boolean model-ancestors?)
@@ -318,6 +324,7 @@
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
+    ;; TODO this is rather hidden, perhaps better to do it further down the stack
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (defn- to-toucan-instance [row]

@@ -12,7 +12,7 @@ import {
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
-import { formatColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -41,7 +41,7 @@ export const getTitleForColumn = (
 ) => {
   const { column: _column, column_title: columnTitle } =
     settings.column(column);
-  return columnTitle || formatColumn(_column);
+  return columnTitle || displayNameForColumn(_column);
 };
 
 export const settings = {
@@ -265,6 +265,6 @@ export const _columnSettings = {
   column_title: {
     title: t`Column title`,
     widget: "input",
-    getDefault: formatColumn,
+    getDefault: displayNameForColumn,
   },
 };

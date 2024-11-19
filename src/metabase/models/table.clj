@@ -311,7 +311,7 @@
                   :view-count    true
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :description :display_name]
+   :search-terms [:name :display_name :description]
    :render-terms {:initial-sync-status true
                   :table-id            :id
                   :table-description   :description

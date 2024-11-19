@@ -245,10 +245,6 @@ class Visualization extends PureComponent {
   }
 
   visualizationIsClickable = clicked => {
-    const { onChangeCardAndRun } = this.props;
-    if (!onChangeCardAndRun) {
-      return false;
-    }
     try {
       return this.getClickActions(clicked).length > 0;
     } catch (e) {
