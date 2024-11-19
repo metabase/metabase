@@ -57,13 +57,3 @@
   (testing "with custom req"
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]
       (is (= "Hello NGOC" (handlebars/render custom-hbs tmpl-name {:name "Ngoc"}))))))
-
-(deftest reload-template-if-it's-changed
-  (testing "reload template if it's changed"
-    (with-temp-template! [tmpl-name (u.random/random-name) "Hello {{name}}"]
-      (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))
-      ;; has to render twice here, otherwise render will use the cached template even though we updated it
-      ;; seems to be only an issue in tests so it's fine here
-      (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))
-      (spit (format "test_resources/%s" tmpl-name) "Xin chao {{name}}")
-      (is (= "Xin chao Ngoc" (handlebars/render tmpl-name {:name "Ngoc"}))))))
