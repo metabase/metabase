@@ -81,10 +81,26 @@
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
   WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
-  [{filter-type :filter-items-in-personal-collection} collection-id-col]
-  (when filter-type
-    (let [parent-ids     (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
-          child-patterns (for [id parent-ids] (format "/%d/%%" id))]
+  [{filter-type :filter-items-in-personal-collection :keys [current-user-id] :as search-ctx} collection-id-col]
+  (case (or filter-type "all")
+    "all" nil
+
+    "only-mine"
+    [:or
+     [:= :collection.personal_owner_id current-user-id]
+     (into [:or]
+           (let [your-collection-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:= current-user-id])
+                 child-patterns      (for [id your-collection-ids] (format "/%d/%%" id))]
+             (for [p child-patterns] [:like :collection.location p])))]
+
+    "exclude-others"
+    (let [with-filter #(personal-collections-where-clause
+                        (assoc search-ctx :filter-items-in-personal-collection %)
+                        collection-id-col)]
+      [:or (with-filter "only-mine") (with-filter "exclude")])
+
+    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+          child-patterns (for [id personal-ids] (format "/%d/%%" id))]
       (case filter-type
         "only"
         `[:or
