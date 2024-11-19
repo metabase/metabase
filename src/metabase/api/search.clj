@@ -129,7 +129,7 @@
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
-   filter_items_in_personal_collection [:maybe[:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
+   filter_items_in_personal_collection [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
