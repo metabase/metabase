@@ -312,9 +312,9 @@
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
-                        :filter-items-in-personal-collection #p (or filter-items-in-personal-collection
+                        :filter-items-in-personal-collection (or filter-items-in-personal-collection
                                                                  (if (and (not= engine :search.engine/in-place)
-                                                                      (#{:search-app :command-palette} context))
+                                                                          (#{:search-app :command-palette} context))
                                                                    "exclude-others"
                                                                    "all"))
                         :is-impersonated-user?               is-impersonated-user?
