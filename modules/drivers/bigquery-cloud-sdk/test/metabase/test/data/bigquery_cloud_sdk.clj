@@ -1,24 +1,44 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
-   (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
-                              BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field Field$Mode
-                              InsertAllRequest InsertAllRequest$RowToInsert InsertAllResponse LegacySQLTypeName Schema
-                              StandardTableDefinition TableId TableInfo)))
+   (com.google.cloud.bigquery
+    BigQuery
+    BigQuery$DatasetDeleteOption
+    BigQuery$DatasetListOption
+    BigQuery$DatasetOption
+    BigQuery$TableListOption
+    BigQuery$TableOption
+    Dataset
+    DatasetId
+    DatasetInfo
+    Field
+    Field$Mode
+    InsertAllRequest
+    InsertAllRequest$RowToInsert
+    InsertAllResponse
+    LegacySQLTypeName
+    Schema
+    StandardTableDefinition
+    TableId
+    TableInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -362,3 +382,23 @@
       {:base_type :type/Float})
     (when (#{:count :cum-count} aggregation-type)
       {:base_type :type/Integer}))))
+
+(defmethod tx/create-view-of-table! :bigquery-cloud-sdk
+  [driver database view-name table-name materialized?]
+  (let [dataset-id (normalize-name (get-in database [:settings :database-source-dataset-name]))]
+    (apply execute! (sql/format
+                     (cond->
+                      {:create-view [[(sql.qp/->honeysql driver [::h2x/identifier :table [dataset-id (normalize-name view-name)]])]]
+                       :select [:*]
+                       :from [[(sql.qp/->honeysql driver [::h2x/identifier :table [dataset-id (normalize-name table-name)]]) :t]]}
+                       materialized? (set/rename-keys {:create-view :create-materialized-view}))
+                     :dialect (sql.qp/quote-style driver)))))
+
+(defmethod tx/drop-view! :bigquery-cloud-sdk
+  [driver database view-name materialized?]
+  (let [dataset-id (normalize-name (get-in database [:settings :database-source-dataset-name]))]
+    (apply execute! (sql/format
+                     (cond->
+                      {:drop-view [[(sql.qp/->honeysql driver [::h2x/identifier :table [dataset-id (normalize-name view-name)]])]]}
+                       materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
+                     :dialect (sql.qp/quote-style driver)))))

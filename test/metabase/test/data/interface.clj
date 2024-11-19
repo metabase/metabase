@@ -825,3 +825,11 @@
   {:arglists '([driver database view-name table-name materialized?])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
+
+(defmulti drop-view!
+  "Drop a view in database.
+   `view-name` is the name of the new view
+   `materialized?` will be true if it should drop a materialized view."
+  {:arglists '([driver database view-name materialized?])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)

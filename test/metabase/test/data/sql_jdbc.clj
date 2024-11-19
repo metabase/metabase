@@ -58,3 +58,12 @@
                     :from [[(sql.qp/->honeysql driver [::h2x/identifier :table [table-name]]) :t]]}
                     materialized? (set/rename-keys {:create-view :create-materialized-view}))
                   :dialect (sql.qp/quote-style driver))))
+
+(defmethod tx/drop-view! :sql-jdbc/test-extensions
+  [driver database view-name materialized?]
+  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                 (sql/format
+                  (cond->
+                   {:drop-view [[(sql.qp/->honeysql driver [::h2x/identifier :table [view-name]])]]}
+                    materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
+                  :dialect (sql.qp/quote-style driver))))

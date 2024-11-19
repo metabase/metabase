@@ -150,3 +150,10 @@
     (throw (Exception. "Material Views not supported.")))
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     (.createView db (name view-name) (name table-name) [])))
+
+(defmethod tx/drop-view! :mongo
+  [_driver database view-name materialized?]
+  (when materialized?
+    (throw (Exception. "Material Views not supported.")))
+  (mongo.connection/with-mongo-database [^MongoDatabase db database]
+    (.drop (mongo.util/collection db (name view-name)))))

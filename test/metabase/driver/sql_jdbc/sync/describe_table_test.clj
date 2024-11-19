@@ -799,26 +799,23 @@
                             (conj true)
                             (driver/database-supports? driver/*driver* ::describe-view-fields nil)
                             (conj false))]
-      (do-with-temporary-dataset
-       (mt/dataset-definition "describe-materialized-views-test"
-                              ["orders"
-                               [{:field-name "amount" :base-type :type/Integer}]
-                               [[1 2]]])
-       (fn []
-         (testing (if materialized? "Materialized View" "View")
-           (tx/create-view-of-table! driver/*driver* (mt/db) :orders_m :orders materialized?)
-           (sync/sync-database! (mt/db))
-           (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders")
-                 orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m")
-                 non-view-fields (t2/select-fn-vec
-                                  (juxt (comp u/lower-case-en :name) :base_type :database_position)
-                                  :model/Field
-                                  :table_id orders-id
-                                  {:order-by [:database_position]})]
-             (is (= 2 (count non-view-fields)))
-             (is (= non-view-fields
-                    (t2/select-fn-vec
-                     (juxt (comp u/lower-case-en :name) :base_type :database_position)
-                     :model/Field
-                     :table_id orders-m-id
-                     {:order-by [:database_position]}))))))))))
+      (try
+        (testing (if materialized? "Materialized View" "View")
+          (tx/create-view-of-table! driver/*driver* (mt/db) :orders_m :orders materialized?)
+          (sync/sync-database! (mt/db))
+          (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders")
+                orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m")
+                non-view-fields (t2/select-fn-vec
+                                 (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                                 :model/Field
+                                 :table_id orders-id
+                                 {:order-by [:database_position]})]
+            (is (= 9 (count non-view-fields)))
+            (is (= non-view-fields
+                   (t2/select-fn-vec
+                    (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                    :model/Field
+                    :table_id orders-m-id
+                    {:order-by [:database_position]})))))
+        (finally
+          (tx/drop-view! driver/*driver* (mt/db) :orders_m materialized?))))))
