@@ -50,6 +50,12 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
 
     getSdkRoot().within(() => {
       cy.findByRole("button", { name: "Visualize" }).click();
+
+      // Should be able to go back to the editor view
+      cy.findByRole("button", { name: "Show editor" }).click();
+
+      // Should be able to visualize the question again
+      cy.findByRole("button", { name: "Visualize" }).click();
     });
 
     saveInteractiveQuestionAsNewQuestion({
