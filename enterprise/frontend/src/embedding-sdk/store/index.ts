@@ -7,11 +7,11 @@ import type {
 import { useContext } from "react";
 import { ReactReduxContext, useDispatch, useStore } from "react-redux";
 
-import type { SdkStoreState } from "embedding-sdk/store/types";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
 import { sdk } from "./reducer";
+import type { SdkStoreState } from "./types";
 
 export const sdkReducers = {
   ...mainReducers,
