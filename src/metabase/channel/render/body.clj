@@ -74,7 +74,7 @@
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
     (types/temporal-field? col)
-    (formatter/format-temporal-str timezone-id value col)
+    ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
     (number? value)
     (formatter/format-number value col visualization-settings)
