@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
@@ -28,7 +29,7 @@ const MOCK_TOKEN =
 registerStaticVisualizations();
 
 export type SetupOpts = {
-  hash?: string;
+  hash?: Record<string, string>;
   queryString?: string;
   numberOfTabs?: number;
   tokenFeatures?: TokenFeatures;
@@ -38,7 +39,7 @@ export type SetupOpts = {
 
 export async function setup(
   {
-    hash,
+    hash = {},
     queryString = "",
     numberOfTabs = 1,
     tokenFeatures = createMockTokenFeatures(),
@@ -86,8 +87,29 @@ export async function setup(
 
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
+  if (hash.locale === "ko") {
+    fetchMock.get("path:/app/locales/ko.json", {
+      charset: "utf-8",
+      headers: {
+        "mime-version": "1.0",
+        "content-type": "text/plain; charset=UTF-8",
+        "content-transfer-encoding": "8bit",
+        "x-generator": "POEditor.com",
+        language: "ko",
+        "plural-forms": "nplurals=1; plural=0;",
+      },
+      translations: {
+        "": {
+          "Export as PDF": {
+            msgstr: ["PDF로 내보내기"],
+          },
+        },
+      },
+    });
+  }
+
   const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
-  const hashString = hash ? `#${hash}` : "";
+  const hashString = _.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`;
   const href = `${pathname}${queryString}${hashString}`;
 
   // Setting initial window.location state,
