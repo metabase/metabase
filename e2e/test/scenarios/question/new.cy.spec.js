@@ -118,7 +118,7 @@ describe("scenarios > question > new", () => {
       // should reopen saved question picker after returning back to editor mode
       openNotebook();
 
-      cy.button("Visualize").should("be.visible");
+      cy.findByLabelText("Switch to visualization").should("be.visible");
 
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
       entityPickerModal().within(() => {
