@@ -690,6 +690,7 @@ describe("SaveQuestionModal", () => {
       databaseId: SAMPLE_DB_ID,
       tableId: ORDERS_ID,
       metadata,
+      // eslint-disable-next-line no-restricted-syntax
     }).legacyQuery({ useStructuredQuery: true }) as StructuredQuery;
 
     const question = query.aggregate(["count"]).question();
