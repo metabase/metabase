@@ -2,15 +2,13 @@
   (:refer-clojure :exclude [hash])
   (:require
    [clojure.walk :as walk]
-   [metabase.channel.template.handlebars.cache :as handlebars.cache]
    [metabase.channel.template.handlebars.helper :as handlebars.helper]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (com.github.jknack.handlebars
-    Helper
     Handlebars Template)
-   (com.github.jknack.handlebars.cache TemplateCache)
+   (com.github.jknack.handlebars.cache ConcurrentMapTemplateCache)
    (com.github.jknack.handlebars.io
     ClassPathTemplateLoader)))
 
@@ -20,7 +18,7 @@
   "Create a new Handlebars instance with a template loader."
   ^Handlebars [loader & {:keys [reload?]}]
   (u/prog1 (doto (Handlebars. loader)
-             (.with ^TemplateCache (handlebars.cache/make-atom-template-cache false)))
+             (.with (ConcurrentMapTemplateCache.)))
     (when reload?
       (.setReload (.getCache <>) true))))
 
@@ -66,7 +64,8 @@
            (wrap-context ctx))))
 
 (comment
- (render-string "{{offset-date-time}}" {})
+ (render-string "{{now}}" {})
+ (render-string "{{format-date (now) \"YYYY-dd-MM\" }}" {})
  (render-string "{{format-date \"2000-01-02\" \"YYYY-dd-MM\" }}" {})
  (render-string "Hello {{name}}" {:name "Ngoc"})
  (render-string "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name false})

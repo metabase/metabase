@@ -1,6 +1,5 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
-   [java-time.api :as t]
    [metabase.email.messages :as messages]
    [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
@@ -9,9 +8,9 @@
    [metabase.util.malli :as mu]))
 
 (defn- join-url
-  [new-user]
+  [user-id]
   ;; TODO: the reset token should come from the event-info, not generated here!
-  (let [reset-token               (user/set-password-reset-token! (:id new-user))
+  (let [reset-token               (user/set-password-reset-token! user-id)
         should-link-to-login-page (and (public-settings/sso-enabled?)
                                        (not (public-settings/enable-password-login)))]
     (if should-link-to-login-page
@@ -27,14 +26,8 @@
   [topic event-info]
   (case topic
     :event/user-invited
-    {:user_invited_today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-     :user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
-     :user_invited_join_url      (join-url (:object event-info))}
-
-    :event/alert-create
-    {:alert_create_condition_description (->> event-info :object
-                                              messages/pulse->alert-condition-kwd
-                                              (get messages/alert-condition-text))}
+    {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
+     :user_invited_join_url      (-> event-info :object :id join-url)}
     {}))
 
 (mu/defmethod notification.payload/payload :notification/system-event

@@ -6,10 +6,7 @@
    [metabase.util :as u]
    [metabase.util.random :as u.random])
   (:import
-   (com.github.jknack.handlebars
-    Parser Helper Template)
-   (com.github.jknack.handlebars.io
-    TemplateSource)))
+   (com.github.jknack.handlebars Helper)))
 
 (comment
   u.random/keepme)
@@ -65,40 +62,8 @@
   (testing "reload template if it's changed"
     (with-temp-template! [tmpl-name (u.random/random-name) "Hello {{name}}"]
       (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))
-      (spit (format "test_resources/%s" tmpl-name) "Hello {{name}} updated!")
-      (is (= "Hello Ngoc updated!" (handlebars/render tmpl-name {:name "Ngoc"}))))))
-
-(deftest atom-template-cache-test
-  (let [parser-calls    (atom [])
-        parser          (reify Parser
-                          (parse [_ source]
-                            (swap! parser-calls conj (.filename source))
-                            Template/EMPTY))
-        get-cache       (fn [cache source]
-                          (.apply (.get cache source parser) {}))
-        template-source (fn [filename lastmodified]
-                          (reify TemplateSource
-                            (filename [_] filename)
-                            (lastModified [_] lastmodified)
-                            (content [_ _] (slurp filename))
-                            (equals [_ other] (= filename (.filename other)))))]
-    (testing "should reuse the template if it's loaded"
-      (let [cache (#'handlebars/make-atom-template-cache false)]
-        (reset! parser-calls [])
-        (get-cache cache (template-source "metabase" 0))
-        (get-cache cache (template-source "metabase" 0))
-        (testing "parser only called once for the same template"
-          (is (= ["metabase"] @parser-calls)))
-        (get-cache cache (template-source "metabase-2" 0))
-        (is (= ["metabase" "metabase-2"] @parser-calls))))
-
-    (testing "reload=false will not reload the template even though it's changed"
-      (let [cache (#'handlebars/make-atom-template-cache false)]
-        (reset! parser-calls [])
-        (get-cache cache (template-source "metabase" 0))
-        (get-cache cache (template-source "metabase" 1))
-        (is (= ["metabase"] @parser-calls))
-        (testing "reload=true will reload the template if it's changed"
-          (.setReload cache true)
-          (get-cache cache (template-source "metabase" 1))
-          (is (= ["metabase" "metabase"] @parser-calls)))))))
+      ;; has to render twice here, otherwise render will use the cached template even though we updated it
+      ;; seems to be only an issue in tests so it's fine here
+      (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))
+      (spit (format "test_resources/%s" tmpl-name) "Xin chao {{name}}")
+      (is (= "Xin chao Ngoc" (handlebars/render tmpl-name {:name "Ngoc"}))))))

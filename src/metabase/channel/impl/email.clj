@@ -193,13 +193,11 @@
                                                                   :below (trs "Alert: {0} has gone below its goal" (:name card))
                                                                   :rows  (trs "Alert: {0} has results" (:name card)))
                                                :icon_cid        (:content-id icon-attachment)
-                                               :card_url        (urls/card-url (:id card))
                                                :alert_content   (html (:content rendered-card))
                                                :alert_schedule  (messages/alert-schedule-text (:schedule alert))
                                                :management_text (if (nil? non-user-email)
                                                                   "Manage your subscriptions"
                                                                   "Unsubscribe")
-                                               :alert_condition (get (find-goal-value card) (messages/pulse->alert-condition-kwd alert))
                                                :management_url  (if (nil? non-user-email)
                                                                   (urls/notification-management-url)
                                                                   (unsubscribe-url-for-non-user (:id alert) non-user-email))}))]

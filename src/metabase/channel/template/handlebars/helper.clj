@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.urls :as urls]
    [metabase.util.log :as log])
   (:import
    (com.github.jknack.handlebars
@@ -48,22 +49,21 @@
 (defmacro defhelper
   "Define a helper function."
   [helper-name description argvec & body]
-  (let [helper-fn-name (symbol (str helper-name \!))]
+  (let [helper-fn-name (symbol (str helper-name \!))
+        description#   description]
     `(do
        (defn ~helper-fn-name
-         ~description
+         ~description#
          ~argvec
          ~@body)
        (def ~(vary-meta helper-name
                         merge
                         {:doc        description
                          :is-helper? true})
-         ~description
+         ~description#
          (reify Helper (apply [_# context# option#]
                          (let [f# ~helper-fn-name]
                           (f# context# option#))))))))
-
-#-(var-get #'format-date!)
 
 (defn register-helper
   "Register a helper."
@@ -78,42 +78,55 @@
 
 ;;---------------- Predefined helpers ----------------;;
 
-(defhelper ifequals
-  "If equals helper.
+;; Generics
+(defhelper equals
+  "Return true if two values are equal.
 
-  {{#ifequals name \"hotdog\"}}
-  Hotdog
-  {{else}}
-  Not a hotdog
-  {{/ifequals}}"
+  {{equals 1 1}}"
   [arg options]
   (let [x arg
         y (option-param options 0)]
-    (if (= x y)
-      (option-block-body options)
-      (option-else-block options))))
+    #p [x y]
+    (= x y)))
 
 (defhelper format-date
   "Format date helper.
 
-  {{format-date date 'YYYY-MM-dd}}"
+  {{format-date '2000-30-01 'dd-MM-YY'}}
+  ;; => 30-01-00
+
+  date can be either a string or a date time object."
   [date options]
-  (let [fmt (option-param fmt 0)]
+  (let [fmt (option-param options 0)]
     (u.date/format fmt
                    (if (string? date)
                      (u.date/parse date)
                      date))))
 
-(defhelper offset-date-time
-  "Get the current offset date time with a custom format"
-  [fmt _options]
-  (let [now (t/offset-date-time)]
-    (cond->> now
-      (string? fmt)
-      (u.date/format fmt))))
+(defhelper now
+  "Get the current date and time. Returned object is a java.time.Instant"
+  [_arg _options]
+  (t/instant))
+
+;; Metabase specifics
+
+(defhelper card-url
+  "Return an appropriate URL for a `Card` with ID.
+
+     {{card-url 10}} -> \"http://localhost:3000/question/10\""
+  [id _options]
+  (urls/card-url id))
+
+(defhelper dashboard-url
+  "Return an appropriate URL for a `Dashboard` with ID.
+
+     {{dashboard-url 10}} -> \"http://localhost:3000/dashboard/10\""
+  [id options]
+  (let [params (option-param options 0 nil)]
+   (urls/dashboard-url id params)))
 
 (def default-helpers
   "A list of default helpers."
-  [["ifequals"         ifequals]
-   ["format-date"      format-date]
-   ["offset-date-time" offset-date-time]])
+  [["equals"      equals]
+   ["format-date" format-date]
+   ["now"         now]])
