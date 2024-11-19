@@ -9,7 +9,7 @@ redirect_from:
 _This documentation was generated from source by running:_
 
 ```
-clojure -M:ee:run environment-variables-documentation
+clojure -M:ee:doc environment-variables-documentation
 ```
 
 Many settings in Metabase can be viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence. Note that, unlike settings configured in the Admin settings of your Metabase, the environment variables won't get written into the application database.
@@ -319,7 +319,7 @@ Timeout in milliseconds for connecting to databases, both Metabase application d
 ### `MB_DB_QUERY_TIMEOUT_MINUTES`
 
 - Type: integer
-- Default: `3`
+- Default: `20`
 
 By default, this is 20 minutes.
 
