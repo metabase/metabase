@@ -30,8 +30,11 @@ export interface LoadQuestionHookResult {
   isQueryRunning: boolean;
 
   runQuestion(): Promise<void>;
-
   loadQuestion(): LoadQuestionResult;
+
+  // Set the question's object directly.
+  // Unlike updateQuestion, this does not turn the question into an ad-hoc question.
+  setQuestion(question: Question): void;
 
   updateQuestion(
     question: Question,
@@ -159,6 +162,7 @@ export function useLoadQuestion({
     isQueryRunning,
 
     runQuestion,
+    setQuestion: question => setQuestionState({ question }),
     loadQuestion,
     updateQuestion,
     navigateToNewCard,

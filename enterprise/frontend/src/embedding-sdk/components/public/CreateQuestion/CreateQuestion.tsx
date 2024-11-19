@@ -20,20 +20,14 @@ export const CreateQuestion = ({
   isSaveEnabled = true,
   ...props
 }: CreateQuestionProps = {}) => {
-  // The questionId is undefined at first.
-  // Once the question is saved, we set the questionId to the saved question's id.
-  const [questionId, setQuestionId] = useState<number | undefined>(undefined);
-
   const [isSaveModalOpen, setSaveModalOpen] = useState(false);
 
   return (
     <InteractiveQuestion
       {...props}
-      questionId={questionId}
       isSaveEnabled={isSaveEnabled}
       onSave={(question, context) => {
         if (question) {
-          setQuestionId(question.id());
           setSaveModalOpen(false);
           onSave?.(question, context);
         }
