@@ -1,9 +1,11 @@
 (ns metabase-enterprise.metabot-v3.envelope
   "(Because 'context' was already taken.)
 
-  The 'envelope' holds the context for our conversation with the LLM. Specifically, it bundles up the history, the
-  reactions, and the context into one convenient location, with a simple API for querying and modifying."
-  (:require [metabase.util :as u]))
+  The 'envelope' holds the context for our conversation with the LLM. Specifically, it bundles up the history, and the
+  context into one convenient location, with a simple API for querying and modifying."
+  (:require
+   [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase.util :as u]))
 
 (def ^:constant max-round-trips
   "The maximum number of times we'll make a request to the LLM before responding to the user. Currently we'll just throw
@@ -16,7 +18,6 @@
   {:session-id session-id
    :history history
    :context context
-   :reactions []
    :max-round-trips max-round-trips
    :round-trips-remaining max-round-trips})
 
@@ -65,12 +66,7 @@
                                    (map message->reaction)
                                    (into []))]
     (into llm-message-reactions
-          (:reactions e))))
-
-(defn add-reactions
-  "Add new reactions to the envelope."
-  [e reactions]
-  (update e :reactions into reactions))
+          (metabot-v3.context/create-reactions (:context e)))))
 
 (defn add-user-message
   "Given a user message (a string) adds it to the envelope."
@@ -82,14 +78,19 @@
   [e msg]
   (update e :history conj msg))
 
+(defn update-context
+  "Given a new context, set it in the envelope."
+  [e context]
+  (assoc e :context context))
+
 (defn add-tool-response
-  "Given an output string and a collection of reactions, adds them to the envelope."
-  [e tool-call-id output reactions]
+  "Given an output string and new context, adds them to the envelope."
+  [e tool-call-id output context]
   (-> e
       (add-message {:role :tool
                     :tool-call-id tool-call-id
                     :content output})
-      (add-reactions reactions)))
+      (update-context context)))
 
 (defn is-tool-call?
   "Is this message a tool call?"

@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.client.schema
   (:require
    [cheshire.core :as json]
-   [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
@@ -54,7 +53,7 @@
    {:encode/api-request #(update-keys % u/->snake_case_en)}
    [:messages      ::messages]
    [:tools         ::request.tools]
-   [:context       {:default {}} ::metabot-v3.context/context]
+   [:context       {:default {}} :map]
    [:instance-info ::request.instance-info]
    [:user-id       integer?]])
 

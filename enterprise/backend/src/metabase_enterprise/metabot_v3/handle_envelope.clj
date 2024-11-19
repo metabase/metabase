@@ -10,11 +10,11 @@
 (defn- invoke-all-tool-calls! [{:keys [context] :as e}]
   (reduce (fn [e {tool-name :name, tool-call-id :id, :keys [arguments]}]
             (let [result (promise)
-                  {:keys [reactions output]}
+                  {:keys [output context]}
                   (o11y/with-span :info {:name tool-name}
                     (u/prog1 (metabot-v3.tools.interface/*invoke-tool* tool-name arguments context)
                       (deliver result <>)))]
-              (envelope/add-tool-response e tool-call-id output reactions)))
+              (envelope/add-tool-response e tool-call-id output context)))
           e
           (envelope/tool-calls-requiring-invocation e)))
 

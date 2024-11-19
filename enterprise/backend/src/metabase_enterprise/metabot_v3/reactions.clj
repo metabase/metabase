@@ -74,7 +74,7 @@
    [:type    [:= :metabot.reaction/message]]
    [:message :string]])
 
-(defreaction :metabot.reaction/filter-data
+(defreaction :metabot.reaction/run-query
   [:map
-   [:type [:= :metabot.reaction/filter-data]]
+   [:type [:= :metabot.reaction/run-query]]
    [:dataset_query :map]])
