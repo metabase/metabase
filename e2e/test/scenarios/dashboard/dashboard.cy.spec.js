@@ -1619,7 +1619,7 @@ function validateIFrame(src, index = 0) {
     .and(
       "have.attr",
       "sandbox",
-      "allow-scripts allow-same-origin allow-forms allow-popups",
+      "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts",
     )
     .and("not.have.attr", "onload");
 }
