@@ -133,6 +133,8 @@ describe("issue 44171", () => {
       .click();
     popover().findByText("Existing Question").click();
 
+    H.popover().findByText("Existing Question").click();
+
     H.sidebar().findByText("Metric 44171-A").click();
 
     H.showDashboardCardActions(0);
