@@ -116,10 +116,6 @@ export const SearchField = ({
   const shouldShowEmptyState =
     query.length > 0 && filteredOptions.length === 0 && !isLoading;
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [value]);
-
   const width = useInitialWidth(rootRef);
 
   return (
