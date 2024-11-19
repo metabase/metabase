@@ -13,13 +13,13 @@ import { Sortable } from "metabase/core/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import { getSettings } from "metabase/visualizer/selectors";
+import { getVisualizerComputedSettings } from "metabase/visualizer/selectors";
 import { updateSettings } from "metabase/visualizer/visualizer.slice";
 
 import { WellItem, type WellItemProps } from "../WellItem";
 
 export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
-  const settings = useSelector(getSettings);
+  const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
 
   const { active, setNodeRef, isOver } = useDroppable({

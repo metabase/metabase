@@ -6,7 +6,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  getSettings,
+  getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import type { DatasetColumn } from "metabase-types/api";
@@ -14,7 +14,7 @@ import type { DatasetColumn } from "metabase-types/api";
 import { WellItem } from "../WellItem";
 
 export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
-  const settings = useSelector(getSettings);
+  const settings = useSelector(getVisualizerComputedSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
 
   const { active, setNodeRef, isOver } = useDroppable({

@@ -6,7 +6,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex, Text } from "metabase/ui";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  getSettings,
+  getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import type { DatasetColumn } from "metabase-types/api";
@@ -16,7 +16,7 @@ import { WellItem } from "../WellItem";
 import { SimpleVerticalWell } from "./SimpleVerticalWell";
 
 export function CartesianVerticalWell() {
-  const settings = useSelector(getSettings);
+  const settings = useSelector(getVisualizerComputedSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
 
   const metrics = useMemo(() => {

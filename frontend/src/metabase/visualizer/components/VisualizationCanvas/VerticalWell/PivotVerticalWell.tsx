@@ -7,7 +7,7 @@ import { isNotNull } from "metabase/lib/types";
 import { type BoxProps, Flex, Stack, Text } from "metabase/ui";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  getSettings,
+  getVisualizerComputedSettings,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
 import { isDraggedColumnItem } from "metabase/visualizer/utils";
@@ -16,7 +16,7 @@ import type { DatasetColumn, RawSeries } from "metabase-types/api";
 import { WellItem } from "../WellItem";
 
 export function PivotVerticalWell() {
-  const settings = useSelector(getSettings);
+  const settings = useSelector(getVisualizerComputedSettings);
   const series = useSelector(getVisualizerRawSeries);
 
   const droppableColumnsWell = useDroppable({

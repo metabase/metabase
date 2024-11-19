@@ -6,7 +6,7 @@ import { useSelector } from "metabase/lib/redux";
 import { Box, Stack, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  getSettings,
+  getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 
@@ -23,7 +23,7 @@ export function PieVerticalWell() {
 
 function PieMetricWell() {
   const columns = useSelector(getVisualizerDatasetColumns);
-  const settings = useSelector(getSettings);
+  const settings = useSelector(getVisualizerComputedSettings);
 
   const { isOver, setNodeRef, active } = useDroppable({
     id: DROPPABLE_ID.PIE_METRIC,
@@ -49,7 +49,7 @@ function PieMetricWell() {
 
 function PieDimensionWell() {
   const columns = useSelector(getVisualizerDatasetColumns);
-  const settings = useSelector(getSettings);
+  const settings = useSelector(getVisualizerComputedSettings);
 
   const { isOver, setNodeRef, active } = useDroppable({
     id: DROPPABLE_ID.PIE_DIMENSION,

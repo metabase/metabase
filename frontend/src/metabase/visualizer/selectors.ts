@@ -2,6 +2,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { isCartesianChart } from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetData, RawSeries, RowValues } from "metabase-types/api";
 import type { VisualizerState } from "metabase-types/store/visualizer";
 
@@ -20,7 +22,20 @@ const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
 const getCards = (state: State) => state.visualizer.cards;
 
-const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
+const getSettings = createSelector(
+  [getVisualizationType, state => getCurrentHistoryItem(state).settings],
+  (display, rawSettings) => {
+    if (display && isCartesianChart(display)) {
+      // Visualizer wells display labels
+      return {
+        ...rawSettings,
+        "graph.x_axis.labels_enabled": false,
+        "graph.y_axis.labels_enabled": false,
+      };
+    }
+    return rawSettings;
+  },
+);
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -30,8 +45,9 @@ const getVisualizerColumnValuesMapping = (state: State) =>
 
 // Public selectors
 
-export const getVisualizationType = (state: State) =>
-  getCurrentHistoryItem(state).display;
+export function getVisualizationType(state: State) {
+  return getCurrentHistoryItem(state).display;
+}
 
 export const getDatasets = (state: State) => state.visualizer.datasets;
 
@@ -138,21 +154,6 @@ export const getVisualizerDatasetColumns = createSelector(
   data => data.cols,
 );
 
-export const getSettings = createSelector(
-  [getVisualizationType, getRawSettings],
-  (display, settings) => {
-    if (display && isCartesianChart(display)) {
-      // Visualizer wells display labels
-      return {
-        ...settings,
-        "graph.x_axis.labels_enabled": false,
-        "graph.y_axis.labels_enabled": false,
-      };
-    }
-    return settings;
-  },
-);
-
 export const getVisualizerRawSeries = createSelector(
   [getVisualizationType, getSettings, getVisualizerDatasetData],
   (display, settings, data): RawSeries => {
@@ -173,4 +174,10 @@ export const getVisualizerRawSeries = createSelector(
       },
     ];
   },
+);
+
+export const getVisualizerComputedSettings = createSelector(
+  [getVisualizerRawSeries],
+  (rawSeries): ComputedVisualizationSettings =>
+    getComputedSettingsForSeries(rawSeries),
 );

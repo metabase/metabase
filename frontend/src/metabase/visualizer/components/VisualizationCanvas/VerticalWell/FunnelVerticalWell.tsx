@@ -1,7 +1,7 @@
 import { useSelector } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
 import {
-  getSettings,
+  getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 
@@ -10,7 +10,7 @@ import { WellItem } from "../WellItem";
 import { SimpleVerticalWell } from "./SimpleVerticalWell";
 
 export function FunnelVerticalWell() {
-  const settings = useSelector(getSettings);
+  const settings = useSelector(getVisualizerComputedSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
 
   const metric = columns.find(

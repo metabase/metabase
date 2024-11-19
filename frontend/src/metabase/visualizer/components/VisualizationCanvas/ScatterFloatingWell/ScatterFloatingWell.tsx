@@ -5,7 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { Stack, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  getSettings,
+  getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 
@@ -13,7 +13,7 @@ import { WellItem } from "../WellItem";
 
 export function ScatterFloatingWell() {
   const columns = useSelector(getVisualizerDatasetColumns);
-  const settings = useSelector(getSettings);
+  const settings = useSelector(getVisualizerComputedSettings);
 
   const { isOver, setNodeRef } = useDroppable({
     id: DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL,
