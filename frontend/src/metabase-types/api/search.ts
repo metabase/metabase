@@ -111,7 +111,7 @@ export type SearchRequest = {
   models?: SearchModel[];
   ids?: SearchResultId[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: SearchContext;
+  context: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;
