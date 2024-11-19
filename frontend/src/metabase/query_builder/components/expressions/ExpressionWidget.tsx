@@ -210,6 +210,10 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         <ExpressionEditorTextfield
           expression={expression}
           expressionIndex={expressionIndex}
+          /**
+           * TODO: Ideally ExpressionEditorTextfield should be generic and support all
+           * three: Lib.ExpressionClause, Lib.AggregationClause, and Lib.FilterableClause.
+           */
           clause={clause as Lib.ExpressionClause | null}
           startRule={startRule}
           name={name}
