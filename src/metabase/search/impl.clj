@@ -260,7 +260,7 @@
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "only" "exclude"]]]
+   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
    [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
    [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:limit                               {:optional true} [:maybe ms/Int]]
@@ -304,17 +304,22 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:archived?                   (boolean archived)
-                        :calculate-available-models? (boolean calculate-available-models?)
-                        :current-user-id             current-user-id
-                        :current-user-perms          current-user-perms
-                        :is-impersonated-user?       is-impersonated-user?
-                        :is-sandboxed-user?          is-sandboxed-user?
-                        :is-superuser?               is-superuser?
-                        :models                      models
-                        :model-ancestors?            (boolean model-ancestors?)
-                        :search-engine               (parse-engine search-engine)
-                        :search-string               search-string}
+        engine (parse-engine search-engine)
+        ctx    (cond-> {:archived?                           (boolean archived)
+                        :calculate-available-models?         (boolean calculate-available-models?)
+                        :current-user-id                     current-user-id
+                        :current-user-perms                  current-user-perms
+                        :filter-items-in-personal-collection (or filter-items-in-personal-collection
+                                                                 (if (= engine :search.engine/in-place)
+                                                                   "all"
+                                                                   "exclude-others"))
+                        :is-impersonated-user?               is-impersonated-user?
+                        :is-sandboxed-user?                  is-sandboxed-user?
+                        :is-superuser?                       is-superuser?
+                        :models                              models
+                        :model-ancestors?                    (boolean model-ancestors?)
+                        :search-engine                       engine
+                        :search-string                       search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
