@@ -252,6 +252,10 @@
     {:error/message "field options"}
     [:base-type {:optional true} [:maybe ::lib.schema.common/base-type]]
 
+    ;; Following option conveys temporal unit that was set on a ref in previous stages. For details refer to
+    ;; [:metabase.lib.schema.ref/field.options] schema.
+    [:inherited-temporal-unit {:optional true} [:maybe ::DateTimeUnit]]
+
     [:source-field
      {:optional true
       :description
@@ -414,9 +418,10 @@
     ;; SUGAR drivers do not need to implement
     :get-year :get-quarter :get-month :get-week :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
-(def ^:private boolean-functions
+(def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
-  #{:and :or :not :< :<= :> :>= := :!=})
+  #{:and :or :not :< :<= :> :>= := :!= :between :starts-with :ends-with :contains :does-not-contain :inside :is-empty
+    :not-empty :is-null :not-null :relative-time-interval :time-interval})
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
@@ -877,7 +882,11 @@
   segment-id [:or SegmentID ::lib.schema.common/non-blank-string])
 
 (mr/def ::BooleanExpression
-  (one-of and or not < <= > >= = !=))
+  (one-of
+   ;; filters drivers must implement
+   and or not = != < > <= >= between starts-with ends-with contains
+    ;; SUGAR filters drivers do not need to implement
+   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval))
 
 (mr/def ::Filter
   [:multi
@@ -893,11 +902,7 @@
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
-   [:else    (one-of
-              ;; filters drivers must implement
-              and or not = != < > <= >= between starts-with ends-with contains
-              ;; SUGAR filters drivers do not need to implement
-              does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval segment)]])
+   [:else     (one-of segment)]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -1633,16 +1638,15 @@
 (mr/def ::check-keys-for-query-type
   [:and
    [:fn
-    {:error/message "Query must specify either `:native` or `:query`, but not both."}
-    (every-pred
-     (some-fn :native :query)
-     (complement (every-pred :native :query)))]
+    {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
+    (complement (every-pred :native :query))]
    [:fn
-    {:error/message "Native queries must specify `:native`; MBQL queries must specify `:query`."}
+    {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
     (fn [{native :native, mbql :query, query-type :type}]
       (core/case query-type
-        :native native
-        :query  mbql))]])
+        :native (core/not mbql)
+        :query  (core/not native)
+        false))]])
 
 (mr/def ::check-query-does-not-have-source-metadata
   "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
@@ -1665,7 +1669,7 @@
 (mr/def ::Query
   [:and
    [:map
-    [:database ::DatabaseID]
+    [:database   {:optional true} ::DatabaseID]
 
     [:type
      [:enum

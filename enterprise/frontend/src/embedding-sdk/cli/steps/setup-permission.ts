@@ -116,13 +116,12 @@ export const setupPermissions: CliStepMethod = async state => {
     }
 
     // Update the permissions for sandboxed collections
-    res = await fetch(`${instanceUrl}/api/collection/graph`, {
+    res = await fetch(`${instanceUrl}/api/collection/graph?skip-graph=true`, {
       method: "PUT",
       headers: { "content-type": "application/json", cookie },
       body: JSON.stringify({
         groups,
         revision: 0,
-        skip_graph: true,
       }),
     });
 

@@ -18,13 +18,13 @@ To view the audit logs, go to the top right of the screen and click on the **gea
 
 ### Team members
 
-Use the __People__ section to gain a better understanding of how people are interacting with Metabase. You'll want to pay attention to the __Overview__ tab, especially when you first launch Metabase at your organization — it will give you data around how many active and newly created accounts you have each day. Further down the page, you'll see charts showing you which people are most engaged.
+Use the **People** section to gain a better understanding of how people are interacting with Metabase. You'll want to pay attention to the **Overview** tab, especially when you first launch Metabase at your organization — it will give you data around how many active and newly created accounts you have each day. Further down the page, you'll see charts showing you which people are most engaged.
 
 ![Team Members](./images/audit-team.png)
 
-The __Team Members__ panel has a view of other options for viewing your team's usage data. The __All Members__ tab will give you a list of your team members, and stats about their activity, such as when they were last active.
+The **Team Members** panel has a view of other options for viewing your team's usage data. The **All Members** tab will give you a list of your team members, and stats about their activity, such as when they were last active.
 
-The __Audit Log__ tab will display, in chronological order, each query, who viewed it, and when. Note that if the person didn't save their query, its name will be listed as `Ad-hoc`. Each query name can be clicked to view more details about the person's interactions with it, including a full revision history. You'll also be able to view the query in Metabase. Note that this link will always show the latest version of the query - use the revision history to see changes over time.
+The **Audit Log** tab will display, in chronological order, each query, who viewed it, and when. Note that if the person didn't save their query, its name will be listed as `Ad-hoc`. Each query name can be clicked to view more details about the person's interactions with it, including a full revision history. You'll also be able to view the query in Metabase. Note that this link will always show the latest version of the query - use the revision history to see changes over time.
 
 Throughout the People section, names can be clicked to access the profile of a specific person’s activity. This profile includes:
 
@@ -43,7 +43,7 @@ The Data section focuses on your databases, schemas and tables, and is divided i
 
 ## Items
 
-The __Items__ section focuses on questions, dashboards, downloads, and Subscriptions and Alerts.
+The **Items** section focuses on questions, dashboards, downloads, and Subscriptions and Alerts.
 
 ### Questions
 
@@ -72,7 +72,7 @@ You can also click on any question to drill into a more detailed profile showing
 
 ### Dashboards
 
-The __Dashboards__ section helps you understand what dashboards people are looking at, and to make sure they're having a smooth experience. If you notice that a popular dashboard has a high average question loading time, you can investigate further using the Questions section outlined above.
+The **Dashboards** section helps you understand what dashboards people are looking at, and to make sure they're having a smooth experience. If you notice that a popular dashboard has a high average question loading time, you can investigate further using the Questions section outlined above.
 
 ![Items](./images/audit-dashboards.png)
 
@@ -89,7 +89,7 @@ A list of all of your dashboards is available as well, and you can see various d
 
 ### Downloads
 
-Use the __Downloads__ section to understand which people are downloading (or exporting) data, and the size (number of rows) of the downloads they're performing. This section contains some visualizations, as well as a list of all downloads.
+Use the **Downloads** section to understand which people are downloading (or exporting) data, and the size (number of rows) of the downloads they're performing. This section contains some visualizations, as well as a list of all downloads.
 
 ### Subscriptions and Alerts
 
@@ -104,7 +104,7 @@ Here admins can get an overview of all of the [dashboard subscriptions][dashboar
 - Created At
 - Filters
 
-Admins can add and remove people from a subscription or alert by clicking on the item's __Recipients__ number. Admins can also delete the subscription or alert entirely by clicking on the **X** on the relevant line.
+Admins can add and remove people from a subscription or alert by clicking on the item's **Recipients** number. Admins can also delete the subscription or alert entirely by clicking on the **X** on the relevant line.
 
 Everyone can view all of their subscriptions and alerts by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
 

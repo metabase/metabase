@@ -175,6 +175,38 @@
   :visibility :settings-manager
   :export?    true)
 
+(def ^:private default-allowed-iframe-hosts
+  "youtube.com,
+youtu.be,
+loom.com,
+vimeo.com,
+docs.google.com,
+calendar.google.com,
+airtable.com,
+typeform.com,
+canva.com,
+codepen.io,
+figma.com,
+grafana.com,
+miro.com,
+excalidraw.com,
+notion.com,
+atlassian.com,
+trello.com,
+asana.com,
+gist.github.com,
+linkedin.com,
+twitter.com,
+x.com")
+
+(defsetting allowed-iframe-hosts
+  (deferred-tru "Allowed iframe hosts")
+  :encryption :no
+  :default    default-allowed-iframe-hosts
+  :audit      :getter
+  :visibility :public
+  :export?    true)
+
 (defsetting custom-homepage
   (deferred-tru "Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.")
   :encryption :no
@@ -760,6 +792,16 @@ See [fonts](../configuring-metabase/fonts.md).")
   :getter  (fn [] (some-> (setting/get-value-of-type :string :source-address-header)
                           u/lower-case-en)))
 
+(defsetting not-behind-proxy
+  (deferred-tru
+   (str "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming "
+        "requests. Defaults to false, but can be set to true via environment variable."))
+  :type       :boolean
+  :setter     :none
+  :visibility :internal
+  :default    false
+  :export?    false)
+
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
   won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
@@ -1006,6 +1048,14 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    false
   :type       :boolean)
+
+(defsetting experimental-search-weight-overrides
+  (deferred-tru "Used to override weights used for search ranking")
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :default    nil
+  :type       :json)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

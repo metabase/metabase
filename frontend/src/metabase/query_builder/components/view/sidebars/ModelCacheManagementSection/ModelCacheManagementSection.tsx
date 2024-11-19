@@ -7,19 +7,10 @@ import {
 } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
-
-import {
-  ErrorIcon,
-  IconButton,
-  LastRefreshTimeLabel,
-  RefreshIcon,
-  Row,
-  StatusContainer,
-  StatusLabel,
-} from "./ModelCacheManagementSection.styled";
 
 type Props = {
   model: Question;
@@ -59,6 +50,21 @@ export function ModelCacheManagementSection({ model }: Props) {
   const isError = persistedModel?.state === "error";
   const lastRefreshTime = moment(persistedModel?.refresh_end).fromNow();
 
+  const canRefreshCache =
+    persistedModel && checkCanRefreshModelCache(persistedModel);
+
+  const refreshButtonLabel =
+    persistedModel?.state === "creating" ? (
+      t`Create now`
+    ) : (
+      <Icon name="refresh" tooltip={t`Refresh now`} />
+    );
+
+  const canManageDB = model.canManageDB();
+
+  const statusMessage = persistedModel ? getStatusMessage(persistedModel) : "";
+  const lastRefreshLabel = t`Last attempt ${lastRefreshTime}`;
+
   return (
     <>
       {
@@ -69,24 +75,32 @@ export function ModelCacheManagementSection({ model }: Props) {
       }
 
       {shouldShowRefreshStatus && (
-        <Row data-testid="model-cache-section">
-          <div>
-            <StatusContainer>
-              <StatusLabel>{getStatusMessage(persistedModel)}</StatusLabel>
-              {isError && <ErrorIcon name="warning" />}
-            </StatusContainer>
-            {isError && (
-              <LastRefreshTimeLabel>
-                {t`Last attempt ${lastRefreshTime}`}
-              </LastRefreshTimeLabel>
-            )}
-          </div>
-          {checkCanRefreshModelCache(persistedModel) && (
-            <IconButton onClick={() => onRefresh(model.id())}>
-              <RefreshIcon name="refresh" tooltip={t`Refresh now`} />
-            </IconButton>
+        <Flex
+          justify="space-between"
+          align="center"
+          data-testid="model-cache-section"
+          c={canManageDB ? "text-dark" : "text-light"}
+          fz="md"
+        >
+          <Box>
+            <Flex align="center" fw="bold" gap="sm">
+              {statusMessage}
+              {isError && <Icon name="warning" c="error" ml="sm" />}
+            </Flex>
+            {isError && <Box pt="sm">{lastRefreshLabel}</Box>}
+          </Box>
+          {canRefreshCache && canManageDB && (
+            <Button
+              variant="subtle"
+              p="xs"
+              c="text-dark"
+              size="xs"
+              onClick={() => onRefresh(model.id())}
+            >
+              {refreshButtonLabel}
+            </Button>
           )}
-        </Row>
+        </Flex>
       )}
     </>
   );

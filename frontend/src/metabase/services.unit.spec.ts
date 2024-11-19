@@ -121,6 +121,8 @@ describe("metabase/services > runQuestionQuery", () => {
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
+        pivot_cols: [],
+        pivot_rows: [],
       });
     });
 
@@ -159,6 +161,8 @@ describe("metabase/services > runQuestionQuery", () => {
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
+        pivot_cols: [],
+        pivot_rows: [],
       });
     });
   });
@@ -185,6 +189,8 @@ describe("metabase/services > runQuestionQuery", () => {
       expect(await call?.request?.json()).toEqual({
         ...question.datasetQuery(),
         parameters: [],
+        pivot_cols: [],
+        pivot_rows: [],
       });
     });
 

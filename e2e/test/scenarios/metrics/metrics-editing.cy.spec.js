@@ -131,7 +131,10 @@ describe("scenarios > metrics > editing", () => {
       popover().findByText("Edit metric definition").click();
       addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Product → Created At", yAxis: "Count" });
+      verifyLineAreaBarChart({
+        xAxis: "Product → Created At: Month",
+        yAxis: "Count",
+      });
     });
 
     it("should be able to change the query definition of a metric based on a model", () => {
@@ -142,7 +145,10 @@ describe("scenarios > metrics > editing", () => {
       popover().findByText("Edit metric definition").click();
       addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Product → Created At", yAxis: "Count" });
+      verifyLineAreaBarChart({
+        xAxis: "Product → Created At: Month",
+        yAxis: "Count",
+      });
     });
 
     it("should pin new metrics automatically", () => {
@@ -395,7 +401,10 @@ describe("scenarios > metrics > editing", () => {
       });
       addBreakout({ columnName: "Created At" });
       saveMetric();
-      verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Sum of Total" });
+      verifyLineAreaBarChart({
+        xAxis: "Created At: Month",
+        yAxis: "Sum of Total",
+      });
     });
   });
 
@@ -459,7 +468,7 @@ describe("scenarios > metrics > editing", () => {
       });
       startNewAggregation();
       popover().within(() => {
-        cy.findByText("Common Metrics").click();
+        cy.findByText("Metrics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
         cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
@@ -482,7 +491,7 @@ describe("scenarios > metrics > editing", () => {
       startNewAggregation();
       popover().within(() => {
         cy.findByPlaceholderText("Find...").type("with filter");
-        cy.findByText("Common Metrics").should("be.visible");
+        cy.findByText("Metrics").should("be.visible");
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
         cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
         cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
@@ -499,7 +508,7 @@ describe("scenarios > metrics > editing", () => {
       });
       startNewAggregation();
       popover().within(() => {
-        cy.findByText("Common Metrics").click();
+        cy.findByText("Metrics").click();
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).realHover();
 

@@ -110,19 +110,19 @@
 
 (def ^:private label-translation
   {:maxPoolSize        {:label       "c3p0_max_pool_size"
-                        :description (deferred-trs "C3P0 Max pool size")}
+                        :description "C3P0 Max pool size"}
    :minPoolSize        {:label       "c3p0_min_pool_size"
-                        :description (deferred-trs "C3P0 Minimum pool size")}
+                        :description "C3P0 Minimum pool size"}
    :numConnections     {:label       "c3p0_num_connections"
-                        :description (deferred-trs "C3P0 Number of connections")}
+                        :description "C3P0 Number of connections"}
    :numIdleConnections {:label       "c3p0_num_idle_connections"
-                        :description (deferred-trs "C3P0 Number of idle connections")}
+                        :description "C3P0 Number of idle connections"}
    :numBusyConnections {:label       "c3p0_num_busy_connections"
-                        :description (deferred-trs "C3P0 Number of busy connections")}
+                        :description "C3P0 Number of busy connections"}
 
    :numThreadsAwaitingCheckoutDefaultUser
    {:label       "c3p0_num_threads_awaiting_checkout_default_user"
-    :description (deferred-trs "C3P0 Number of threads awaiting checkout")}})
+    :description "C3P0 Number of threads awaiting checkout"}})
 
 (defn- stats->prometheus
   "Create an ArrayList of GaugeMetricFamily objects containing measurements from the c3p0 stats. Stats are grouped by
@@ -133,7 +133,7 @@
       (if-let [{gauge-label :label desc :description} (label-translation raw-label)]
         (let [gauge (GaugeMetricFamily.
                      ^String gauge-label
-                     ^String (str desc) ;; site-localized becomes string
+                     ^String desc
                      (List/of "database"))]
           (doseq [m measurements]
             (.addMetric gauge (List/of (:label m)) (:value m)))
@@ -194,11 +194,23 @@
 
 (defn- product-collectors
   []
-  ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set `metabase-email`:
+  ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set, e.g. `metabase-email`:
   [(prometheus/counter :metabase-email/messages
-                       {:description (trs "Number of emails sent.")})
+                       {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
-                       {:description (trs "Number of errors when sending emails.")})])
+                       {:description "Number of errors when sending emails."})
+   (prometheus/counter :metabase-sdk/response-ok
+                       {:description "Number of successful SDK requests."})
+   (prometheus/counter :metabase-sdk/response-error
+                       {:description "Number of errors when responding to SDK requests."})
+   (prometheus/counter :metabase-scim/response-ok
+                       {:description "Number of successful responses from SCIM endpoints"})
+   (prometheus/counter :metabase-scim/response-error
+                       {:description "Number of error responses from SCIM endpoints"})
+   (prometheus/counter :metabase-query-processor/metrics-adjust
+                       {:description "Number of queries with metrics processed by the metrics adjust middleware."})
+   (prometheus/counter :metabase-query-processor/metrics-adjust-errors
+                       {:description "Number of errors when processing metrics in the metrics adjust middleware."})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it

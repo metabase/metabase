@@ -21,6 +21,8 @@ jobs:
   update-release-log:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # don't run this workflow on a cron for forks
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     env:
       VERSION: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
         && inputs.version || vars.CURRENT_VERSION }}

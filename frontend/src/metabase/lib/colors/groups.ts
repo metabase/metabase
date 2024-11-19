@@ -9,27 +9,50 @@ export const getAccentColors = (
     light = true,
     dark = true,
     harmony = false,
+    gray = true,
   }: AccentColorOptions = {},
   palette?: ColorPalette,
 ) => {
   const ranges = [];
-  main && ranges.push(getMainAccentColors(palette));
-  light && ranges.push(getLightAccentColors(palette));
-  dark && ranges.push(getDarkAccentColors(palette));
+  main && ranges.push(getMainAccentColors(palette, gray));
+  light && ranges.push(getLightAccentColors(palette, gray));
+  dark && ranges.push(getDarkAccentColors(palette, gray));
 
   return harmony ? _.unzip(ranges).flat() : ranges.flat();
 };
 
-export const getMainAccentColors = (palette?: ColorPalette) => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}`, palette));
+const getBaseAccentsNames = (withGray = false) => {
+  const accents = _.times(ACCENT_COUNT, i => `accent${i}`);
+  if (withGray) {
+    accents.push("accent-gray");
+  }
+
+  return accents;
 };
 
-export const getLightAccentColors = (palette?: ColorPalette) => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}-light`, palette));
+export const getMainAccentColors = (
+  palette?: ColorPalette,
+  withGray = false,
+) => {
+  return getBaseAccentsNames(withGray).map(accent => color(accent, palette));
 };
 
-export const getDarkAccentColors = (palette?: ColorPalette) => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}-dark`, palette));
+export const getLightAccentColors = (
+  palette?: ColorPalette,
+  withGray = false,
+) => {
+  return getBaseAccentsNames(withGray).map(accent =>
+    color(`${accent}-light`, palette),
+  );
+};
+
+export const getDarkAccentColors = (
+  palette?: ColorPalette,
+  withGray = false,
+) => {
+  return getBaseAccentsNames(withGray).map(accent =>
+    color(`${accent}-dark`, palette),
+  );
 };
 
 export const getStatusColorRanges = () => {

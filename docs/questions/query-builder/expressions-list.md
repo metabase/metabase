@@ -23,6 +23,8 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Sum](#sum)
   - [SumIf](./expressions/sumif.md)
   - [Variance](#variance)
+  - [CumulativeSum](./expressions/cumulative.md)
+  - [CumulativeCount](./expressions/cumulative.md)
 
 - Functions
 
@@ -84,9 +86,9 @@ For an introduction to expressions, check out the [overview of custom expression
     - [year](#year)
 
   - [Window functions](#window-functions)
-    - [Offset](#offset)
-    - [CumulativeCount](#cumulativecount)
-    - [CumulativeSum](#cumulativesum)
+    - [Offset](./expressions/offset.md)
+    - [CumulativeCount](./expressions/cumulative.md)
+    - [CumulativeSum](./expressions/cumulative.md)
 
 - [Limitations](#limitations)
   - [Database limitations](#database-limitations)
@@ -145,7 +147,7 @@ Syntax: `Median(column)`.
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: MariaDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
+Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -167,7 +169,7 @@ Syntax: `Percentile(column, percentile-value)`
 
 Example: `Percentile([Score], 0.9)` would return the value at the 90th percentile for all values in that column.
 
-Databases that don't support `percentile`: H2, MariaDB, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
+Databases that don't support `percentile`: Druid, H2, MariaDB, MySQL, MongoDB, SQL Server, SQLite, Vertica. Presto only provides approximate results.
 
 ### Share
 
@@ -184,6 +186,8 @@ Calculates the standard deviation of the column, which is a measure of the varia
 Syntax: `StandardDeviation(column)`
 
 Example: `StandardDeviation([Population])` would return the SD for the values in the `Population` column.
+
+Databases that don't support `StandardDeviation`: Druid, SQLite.
 
 ### Sum
 
@@ -210,6 +214,8 @@ Syntax: `Variance(column)`
 Example: `Variance([Temperature])` will return a measure of the dispersion from the mean temperature for all temps in that column.
 
 Related: [StandardDeviation](#standarddeviation), [Average](#average).
+
+Databases that don't support `Variance`: Druid, SQLite.
 
 ## Functions
 
@@ -565,6 +571,8 @@ Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
+See the [database limitations](./expressions/datetimediff.md#limitations) for `datetimediff`.
+
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
 Subtracts some unit of time from a date or timestamp value.
@@ -720,7 +728,7 @@ Window functions can only be used in the **Summarize** section. They cannot be u
 
 ### CumulativeCount
 
-For more info, check out our page on [`CumulativeCount`](./expressions/cumulative.md).
+For more info, check out our page on [cumulative functions](./expressions/cumulative.md).
 
 The additive total of rows across a breakout.
 
@@ -730,7 +738,7 @@ Example: `CumulativeCount`.
 
 ### CumulativeSum
 
-For more info, check out our page on [`CumulativeSum`](./expressions/cumulative.md).
+For more info, check out our page on [cumulative functions](./expressions/cumulative.md).
 
 The rolling sum of a column across a breakout.
 
@@ -742,9 +750,9 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
 
-For more info, check out our page on [`Offset`](./expressions/offset.md).
+For more info, check out our page on [Offset](./expressions/offset.md).
 
 Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
@@ -759,38 +767,39 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 ## Limitations
 
 - [Aggregation expressions](#aggregations) can only be used in the **Summarize** section of the query builder.
-- Functions that return a boolean value, like [isempty](#isempty) or [contains](#contains), cannot be used to create a custom column. To create a custom column based on one of these functions, you must combine them with another function, like `case`.
-
-  For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
-
-  ```
-  case(contains([Title], 'Wallet'), true, false)
-  ```
 
 ## Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`.
 
-**Druid**: `regexextract` is only available for the Druid-JDBC driver.
+**Athena**: `convertTimezone`.
 
-**MongoDB**: `regexextract`
+**Databricks**: `convertTimezone`.
 
-**MariaDB**: `Median`, `Percentile`.
+**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`. Function `regexextract` is only available for the Druid-JDBC driver.
 
-**MySQL**: `Median`, `Percentile`.
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexextract`
 
-**Presto**: Only provides _approximate_ results for `Median` and `Percentile`.
+**MariaDB**: `Median`, `Percentile`, `Offset`.
 
-**SQL Server**: `Median`, `Percentile` and `regexextract`
+**MySQL**: `Median`, `Percentile`, `Offset`.
 
-**SQLite**: `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`
+**Presto**: `convertTimezone`. Only provides _approximate_ results for `Median` and `Percentile`.
 
-**Vertica**: `Median` and `Percentile`
+**Redshift**: `Average` will return [integer results for integer columns](https://docs.aws.amazon.com/redshift/latest/dg/r_AVG.html#r_AVG-data-types).
+
+**SparkSQL**: `convertTimezone`.
+
+**SQL Server**: `Median`, `Percentile` and `regexextract`.
+
+**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`.
+
+**Vertica**: `Median` and `Percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
+Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
 
 [expressions]: ./expressions.md

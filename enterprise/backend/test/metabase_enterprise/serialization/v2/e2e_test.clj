@@ -762,11 +762,9 @@
                                                                          :breakout     [[:field %orders.user_id nil]]}}
                                               :visualization_settings
                                               {:pivot_table.column_split
-                                               {:rows    [[:field %people.name {:base-type    :type/Text
-                                                                                :source-field %orders.user_id}]]
-                                                :columns [[:field %products.title {:base-type    :type/Text
-                                                                                   :source-field %orders.product_id}]]
-                                                :values  [[:aggregation 0]]}
+                                               {:rows    ["NAME"]
+                                                :columns ["TITLE"]
+                                                :values  ["sum"]}
                                                :column_settings
                                                {(format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                                 {:pivot_table.column_sort_order "descending"}}}}]
@@ -796,12 +794,10 @@
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
 
                 (let [viz (t2/select-one-fn :visualization_settings Card :entity_id (:entity_id @card1s))]
-                  (testing "column ids inside pivot table transferred"
-                    (is (= [[:field %people.name {:base-type    :type/Text
-                                                  :source-field %orders.user_id}]]
+                  (testing "column names inside pivot table transferred"
+                    (is (= ["NAME"]
                            (get-in viz [:pivot_table.column_split :rows])))
-                    (is (= [[:field %products.title {:base-type    :type/Text
-                                                     :source-field %orders.product_id}]]
+                    (is (= ["TITLE"]
                            (get-in viz [:pivot_table.column_split :columns]))))
                   (testing "column sort order restored"
                     (is (= "descending"
@@ -839,13 +835,10 @@
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
           (mt/with-temp
-            [:model/Channel         _ {:name "My HTTP channel"
-                                       :type :channel/http
-                                       :details {:url         "http://example.com"
-                                                 :auth-method :none}}
-             :model/ChannelTemplate _ {:name         "My template"
-                                       :channel_type :channel/http
-                                       :details      {:my-custom-template true}}]
+            [:model/Channel _ {:name "My HTTP channel"
+                               :type :channel/http
+                               :details {:url         "http://example.com"
+                                         :auth-method :none}}]
             (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) dump-dir)
             (ts/with-db dest-db
               (testing "doing ingestion"
@@ -855,8 +848,4 @@
                          :type    :channel/http
                          :details {:url         "http://example.com"
                                    :auth-method "none"}}
-                        (t2/select-one :model/Channel :name "My HTTP channel")))
-                (is (=? {:name         "My template"
-                         :channel_type :channel/http
-                         :details      {:my-custom-template true}}
-                        (t2/select-one :model/ChannelTemplate :name "My template")))))))))))
+                        (t2/select-one :model/Channel :name "My HTTP channel")))))))))))

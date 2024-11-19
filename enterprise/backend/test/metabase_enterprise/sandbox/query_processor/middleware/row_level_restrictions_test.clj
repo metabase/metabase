@@ -28,6 +28,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.server.middleware.session :as mw.session]
@@ -1087,7 +1088,7 @@
             (is (= {:cached? false, :num-rows 5}
                    (run-query)))))))))
 
-(deftest persistence-disabled-when-sandboxed
+(deftest persistence-disabled-when-sandboxed-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (mt/dataset test-data
       ;; with-gtaps! creates a new copy of the database. So make sure to do that before anything else. Gets really
@@ -1107,7 +1108,7 @@
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
               (persist-models!))
-            (let [persisted-info (t2/select-one 'PersistedInfo
+            (let [persisted-info (t2/select-one :model/PersistedInfo
                                                 :database_id (mt/id)
                                                 :card_id (:id model))]
               (is (= "persisted" (:state persisted-info))
@@ -1215,3 +1216,23 @@
                                      :people {:remappings {"user_id" [:dimension $people.zip]}}}})
       (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
       (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))
+
+(deftest native-sandbox-table-level-block-perms-test
+  (testing "A sandbox powered by a native query source card can be used even when other tables have block perms (#49969)"
+    (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
+                      :attributes {"cat" 50}}
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :blocked)
+      (is (= 10 (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))
+
+(deftest native-sandbox-no-query-metadata-streaming-test
+  (testing "A sandbox powered by a native query source card can be used via the streaming API even if the card has no
+           stored results_metadata (#49985)"
+    (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
+                      :attributes {"cat" 50}}
+      (let [sandbox-card-id (t2/select-one-fn :card_id
+                                              :model/GroupTableAccessPolicy
+                                              :group_id (:id &group)
+                                              :table_id (mt/id :venues))]
+        (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
+        (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
+        (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))

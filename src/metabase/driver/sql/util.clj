@@ -155,6 +155,7 @@
 (def dialects
   "Mapping of dialect kw to dialect, used by sql formatter in [[format-sql]], to dialect."
   {:db2         Dialect/Db2
+   :databricks  Dialect/SparkSql
    :mariadb     Dialect/MariaDb
    :mysql       Dialect/MySql
    :n1ql        Dialect/N1ql

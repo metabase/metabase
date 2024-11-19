@@ -1,10 +1,12 @@
 (ns metabase.query-processor.middleware.update-used-cards-test
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
-   [metabase.pulse :as pulse]
-   [metabase.pulse-test :as pulse-test]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.core :as pulse]
+   [metabase.pulse.send-test :as pulse.send-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.update-used-cards :as qp.update-used-cards]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -17,9 +19,10 @@
 (defmacro with-used-cards-setup!
   [& body]
   `(mt/test-helpers-set-global-values!
-     (binding [qp.pipeline/*execute*    (fn [_driver# _query# respond#] (respond# {} []))
-               qp.util/*execute-async?* false]
-       ~@body)))
+     (notification.tu/with-send-notification-sync
+       (binding [qp.pipeline/*execute*    (fn [_driver# _query# respond#] (respond# {} []))
+                 qp.util/*execute-async?* false]
+         ~@body))))
 
 (defn- card-last-used-at
   [card-id]
@@ -68,7 +71,7 @@
 (deftest alert-test
   (with-used-cards-setup!
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
-      (pulse-test/with-pulse-for-card [pulse {:card card-id}]
+      (pulse.send-test/with-pulse-for-card [pulse {:card card-id}]
         (do-test! card-id #(pulse/send-pulse! pulse))))))
 
 (deftest dashboard-subscription-test

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 
@@ -15,6 +15,7 @@ interface InteractiveAdHocQuestionProps {
   withTitle?: boolean;
   height?: number;
   plugins?: SdkPluginsConfig;
+  children?: ReactNode;
 }
 
 export const InteractiveAdHocQuestion = ({
@@ -23,6 +24,7 @@ export const InteractiveAdHocQuestion = ({
   withTitle = true,
   height,
   plugins,
+  children,
 }: InteractiveAdHocQuestionProps) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
@@ -36,7 +38,9 @@ export const InteractiveAdHocQuestion = ({
       componentPlugins={plugins}
       onNavigateBack={onNavigateBack}
     >
-      <InteractiveQuestionResult height={height} withTitle={withTitle} />
+      {children ?? (
+        <InteractiveQuestionResult height={height} withTitle={withTitle} />
+      )}
     </InteractiveQuestionProviderWithLocation>
   );
 };

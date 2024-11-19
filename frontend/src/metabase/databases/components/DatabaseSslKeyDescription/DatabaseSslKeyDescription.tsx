@@ -10,10 +10,9 @@ const DatabaseSslKeyDescription = (): JSX.Element | null => {
   const { engine } = values;
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
-  const { url: docsUrl } = useDocsUrl(
-    "databases/connections/postgresql",
-    "authenticate-client-certificate",
-  );
+  const { url: docsUrl } = useDocsUrl("databases/connections/postgresql", {
+    anchor: "authenticate-client-certificate",
+  });
 
   if (engine !== "postgres") {
     return null;
@@ -22,7 +21,7 @@ const DatabaseSslKeyDescription = (): JSX.Element | null => {
   return (
     <>
       {jt`If you have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using OpenSSL. ${(
-        <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
+        <ExternalLink key="link" href={docsUrl}>{t`Learn more`}</ExternalLink>
       )}.`}
     </>
   );

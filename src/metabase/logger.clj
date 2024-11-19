@@ -82,6 +82,14 @@
     (name (ns-name a-namespace))
     (name a-namespace)))
 
+(defn level-enabled?
+  "Is logging at `level` enabled for `a-namespace`?"
+  (^Boolean [level]
+   (level-enabled? *ns* level))
+  (^Boolean [a-namespace level]
+   (let [^Logger logger (log.impl/get-logger log/*logger-factory* a-namespace)]
+     (.isEnabled logger level))))
+
 (defn effective-ns-logger
   "Get the logger that will be used for the namespace named by `a-namespace`."
   ^LoggerConfig [a-namespace]

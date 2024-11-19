@@ -191,10 +191,13 @@
                     :parameter_usage_count
                     :can_restore
                     :can_delete
+                    :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
-        (cond->                                             ; card
-         (card/model? card) (t2/hydrate :persisted)))))
+        (cond->
+         (card/model? card) (t2/hydrate :persisted
+                                        ;; can_manage_db determines whether we should enable model persistence settings
+                                        :can_manage_db)))))
 
 (defn get-card
   "Get `Card` with ID."
@@ -429,9 +432,9 @@
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
-(defn check-data-permissions-for-query
-  "Make sure the Current User has the appropriate *data* permissions to run `query`. We don't want Users saving Cards
-  with queries they wouldn't be allowed to run!"
+(defn check-permissions-for-query
+  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
+  queries they wouldn't be allowed to run!"
   [query]
   {:pre [(map? query)]}
   (when-not (query-perms/can-run-query? query)
@@ -481,7 +484,7 @@
    cache_ttl              [:maybe ms/PositiveInt]}
   (check-if-card-can-be-saved dataset_query type)
   ;; check that we have permissions to run the query that we're trying to save
-  (check-data-permissions-for-query dataset_query)
+  (check-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   (let [body (cond-> body
@@ -508,7 +511,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query compatibility/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (check-data-permissions-for-query (:dataset_query card-updates)))))
+      (check-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -702,10 +705,11 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [card-id export-format :as {{:keys [parameters format_rows]} :params}]
+  [card-id export-format :as {{:keys [parameters pivot_results format_rows]} :params}]
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
-   format_rows   [:maybe :boolean]
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
@@ -715,7 +719,8 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           format_rows
+                 :format-rows?           (or format_rows false)
+                 :pivot?                 (or pivot_results false)
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

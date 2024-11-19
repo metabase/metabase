@@ -6,6 +6,8 @@ import type {
   StructuredQuery,
 } from "metabase-types/api";
 
+import { visitMetric, visitModel, visitQuestion } from "../e2e-misc-helpers";
+
 export type QuestionDetails = {
   dataset_query: DatasetQuery;
   /**
@@ -123,7 +125,7 @@ export const question = (
   }: QuestionDetails,
   {
     loadMetadata = false,
-    visitQuestion = false,
+    visitQuestion: shouldVisitQuestion = false,
     wrapId = false,
     idAlias = "questionId",
     interceptAlias = "cardQuery",
@@ -161,21 +163,17 @@ export const question = (
         });
       }
 
-      if (loadMetadata || visitQuestion) {
+      if (loadMetadata || shouldVisitQuestion) {
         if (type === "model") {
-          cy.intercept("POST", "/api/dataset").as("dataset");
-          cy.visit(`/model/${body.id}`);
-          cy.wait("@dataset"); // Wait for `result_metadata` to load
+          visitModel(body.id);
         } else if (type === "metric") {
-          cy.intercept("POST", "/api/dataset").as("dataset");
-          cy.visit(`/metric/${body.id}`);
-          cy.wait("@dataset"); // Wait for `result_metadata` to load
+          visitMetric(body.id);
         } else {
           // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
           cy.intercept("POST", `/api/card/**/${body.id}/query`).as(
             interceptAlias,
           );
-          cy.visit(`/question/${body.id}`);
+          visitQuestion(body.id);
           cy.wait("@" + interceptAlias); // Wait for `result_metadata` to load
         }
       }

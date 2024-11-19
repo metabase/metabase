@@ -231,6 +231,8 @@ import location_component from "./location.svg?component";
 import location_source from "./location.svg?source";
 import lock_component from "./lock.svg?component";
 import lock_source from "./lock.svg?source";
+import lock_filled_component from "./lock_filled.svg?component";
+import lock_filled_source from "./lock_filled.svg?source";
 import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
@@ -858,6 +860,10 @@ export const Icons = {
   lock: {
     component: lock_component,
     source: lock_source,
+  },
+  lock_filled: {
+    component: lock_filled_component,
+    source: lock_filled_source,
   },
   mail: {
     component: mail_component,

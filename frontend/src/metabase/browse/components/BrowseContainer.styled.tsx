@@ -1,10 +1,6 @@
 import styled from "@emotion/styled";
 
 import EmptyState from "metabase/components/EmptyState";
-import {
-  breakpointMinMedium,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
 import { Flex, Grid, Icon } from "metabase/ui";
 
 export const BrowseContainer = styled.div`
@@ -14,6 +10,14 @@ export const BrowseContainer = styled.div`
   margin-top: 1rem;
   container-name: ItemsTableContainer;
   container-type: inline-size;
+`;
+
+export const BrowseGrid = styled(Grid)`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  width: 100%;
 `;
 
 export const BrowseSection = styled(Flex)`
@@ -35,21 +39,6 @@ export const BrowseMain = styled.div`
   flex: 1;
   padding: 0 2.5rem;
   padding-bottom: 2rem;
-`;
-
-export const BrowseGrid = styled(Grid)`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 0 1rem;
-  margin: 0;
-  width: 100%;
-
-  ${breakpointMinSmall} {
-    padding-bottom: 2.5rem;
-  }
-  ${breakpointMinMedium} {
-    padding-bottom: 3rem;
-  }
 `;
 
 export const CenteredEmptyState = styled(EmptyState)`

@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -633,7 +634,8 @@
                    (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
                           :unit         :day)
                    (dissoc :semantic_type :coercion_strategy :table_id
-                           :id :settings :fingerprint :nfc_path))
+                           :id :settings :fingerprint :nfc_path)
+                   lib.temporal-bucket/ensure-temporal-unit-in-display-name)
                (qp.test-util/aggregate-col :count)]
               (mt/cols
                (qp/process-query

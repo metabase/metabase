@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -12,7 +13,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -85,7 +86,7 @@ const setup = ({
 
   setupCardQueryEndpoints(card, TEST_DATASET);
 
-  renderWithProviders(
+  return renderWithProviders(
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
       showVisualizationSelector={showVisualizationSelector}
@@ -94,8 +95,8 @@ const setup = ({
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockJwtConfig({
-          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        config: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
     },
@@ -124,7 +125,6 @@ describe("StaticQuestion", () => {
   it("should render an error if a question isn't found", async () => {
     setup({ isValidCard: false });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByText("Error")).toBeInTheDocument();
     expect(
       screen.getByText("You don't have permissions to do that."),
     ).toBeInTheDocument();
@@ -173,5 +173,20 @@ describe("StaticQuestion", () => {
       target: TEST_PARAM.target,
       value: 1024,
     });
+  });
+
+  it("should cancel the request when the component unmounts", async () => {
+    const abortSpy = jest.spyOn(AbortController.prototype, "abort");
+
+    const { unmount } = setup();
+    await act(async () => unmount());
+
+    // two requests should've been made initially
+    expect(fetchMock.calls(`path:/api/card/1`).length).toBe(1);
+    expect(fetchMock.calls(`path:/api/card/1/query`).length).toBe(1);
+
+    // consequently, two abort calls should've been made for the two requests
+    expect(abortSpy).toHaveBeenCalledTimes(2);
+    abortSpy.mockRestore();
   });
 });

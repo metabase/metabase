@@ -237,7 +237,7 @@
               :create-queries :query-builder}
              (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
-(deftest update-perms-graph-with-skip-graph-skips-graph-test
+(deftest update-perms-graph-with-skip-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions graph is not returned when skip-graph"
       (t2.with-temp/with-temp [:model/PermissionsGroup group       {}
@@ -263,6 +263,19 @@
             (is (not (perm-test-util/validate-graph-api-groups (:groups no-returned-g))))
             (is (mc/validate [:map {:closed true}
                               [:revision pos-int?]] no-returned-g))))))))
+
+(deftest update-perms-graph-force-test
+  (testing "PUT /api/permissions/graph"
+    (testing "permissions graph does not check revision number when force=true"
+      (let [do-perm-put    (fn [url status] (mt/user-http-request
+                                             :crowberto :put status url
+                                             (-> (data-perms.graph/api-graph)
+                                                 (update :revision dec))))]
+        (is (= (str "Looks like someone else edited the permissions and your data is out of date. "
+                    "Please fetch new data and try again.")
+               (do-perm-put "permissions/graph?force=false" 409)))
+
+        (do-perm-put "permissions/graph?force=true" 200)))))
 
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
@@ -302,9 +315,8 @@
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
       (mt/with-premium-features #{}
-        (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                     (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}]))))))))
+        (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                                                               (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))
 
 (deftest get-group-membership-test
   (testing "GET /api/permissions/membership"

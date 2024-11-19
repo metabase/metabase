@@ -270,7 +270,7 @@ describe("scenarios > question > offset", () => {
       openNotebook();
       cy.button("Summarize").click();
       getNotebookStep("summarize")
-        .findByText("Pick the metric you want to see")
+        .findByText("Pick a function or metric")
         .click();
       popover().findByText("Custom Expression").click();
       enterCustomColumnDetails({ formula: prefix, blur: false });
@@ -454,7 +454,7 @@ describe("scenarios > question > offset", () => {
       visualize();
       verifyNoQuestionError();
       verifyLineChart({
-        xAxis: breakoutName,
+        xAxis: breakoutName + ": Month",
         yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
       });
 
@@ -462,7 +462,7 @@ describe("scenarios > question > offset", () => {
         visitQuestion(response?.body.id);
         verifyNoQuestionError();
         verifyLineChart({
-          xAxis: breakoutName,
+          xAxis: breakoutName + ": Month",
           yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
       });
@@ -516,7 +516,7 @@ describe("scenarios > question > offset", () => {
       visualize();
       verifyNoQuestionError();
       verifyLineChart({
-        xAxis: breakoutName,
+        xAxis: breakoutName + ": Month",
         legendItems,
       });
 
@@ -525,7 +525,7 @@ describe("scenarios > question > offset", () => {
         visitQuestion(response?.body.id);
         verifyNoQuestionError();
         verifyLineChart({
-          xAxis: breakoutName,
+          xAxis: breakoutName + ": Month",
           legendItems,
         });
       });
@@ -1302,7 +1302,7 @@ function addCustomAggregation({
   if (!isOpened) {
     if (isFirst) {
       getNotebookStep("summarize")
-        .findByText("Pick the metric you want to see")
+        .findByText("Pick a function or metric")
         .click();
     } else {
       getNotebookStep("summarize").icon("add").first().click();

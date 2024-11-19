@@ -39,7 +39,7 @@ describe("binning related reproductions", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Pick a function or metric").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
@@ -111,7 +111,7 @@ describe("binning related reproductions", () => {
     });
 
     getNotebookStep("summarize")
-      .findByText("Pick the metric you want to see")
+      .findByText("Pick a function or metric")
       .click();
     popover().findByText("Count of rows").click();
     getNotebookStep("summarize")
@@ -292,7 +292,7 @@ describe("binning related reproductions", () => {
       openSummarizeOptions("Notebook mode");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Pick a function or metric").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

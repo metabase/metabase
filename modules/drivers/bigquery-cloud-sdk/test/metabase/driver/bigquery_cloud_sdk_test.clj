@@ -220,15 +220,27 @@
       bigquery.common/service-account-json->service-account-credential
       (.getProjectId)))
 
-(defmacro with-numeric-types-table [[table-name-binding] & body]
+(defmacro with-bigquery-types-table [[table-name-binding] & body]
   `(do-with-temp-obj "table_%s"
-                     (fn [tbl-nm#] [(str "CREATE TABLE `%s.%s` AS SELECT "
-                                         "NUMERIC '%s' AS numeric_col, "
-                                         "DECIMAL '%s' AS decimal_col, "
-                                         "BIGNUMERIC '%s' AS bignumeric_col, "
-                                         "BIGDECIMAL '%s' AS bigdecimal_col")
+                     (fn [tbl-nm#] [(str "CREATE TABLE `%s.%s` "
+                                         "(numeric_col NUMERIC, "
+                                         " decimal_col DECIMAL, "
+                                         " bignumeric_col BIGNUMERIC, "
+                                         " bigdecimal_col BIGDECIMAL, "
+                                         " string255_col STRING(255), "
+                                         " bytes32_col BYTES(32), "
+                                         " numeric29_col NUMERIC(29), "
+                                         " decimal29_col DECIMAL(29), "
+                                         " bignumeric32_col BIGNUMERIC(32), "
+                                         " bigdecimal76_col BIGDECIMAL(76,38))"
+                                         "AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello', "
+                                         "  B'mybytes', NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s'")
                                     ~test-db-name
                                     tbl-nm#
+                                    ~numeric-val
+                                    ~decimal-val
+                                    ~bignumeric-val
+                                    ~bigdecimal-val
                                     ~numeric-val
                                     ~decimal-val
                                     ~bignumeric-val
@@ -717,7 +729,7 @@
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
-    (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
+    (with-bigquery-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema test-db-name :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
@@ -748,7 +760,49 @@
                :database-partitioned false
                :database-position 3
                :database-type "BIGNUMERIC"
-               :name "bigdecimal_col"}]
+               :name "bigdecimal_col"}
+              {:name "string255_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "STRING",
+               :base-type :type/Text,
+               :database-partitioned false,
+               :database-position 4}
+              {:name "bytes32_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "BYTES",
+               :base-type :type/*,
+               :database-partitioned false,
+               :database-position 5}
+              {:name "numeric29_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "NUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 6}
+              {:name "decimal29_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "NUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 7}
+              {:name "bignumeric32_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "BIGNUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 8}
+              {:name "bigdecimal76_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "BIGNUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 9}]
              (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
           "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
@@ -770,15 +824,40 @@
                      first))))))))
 
 (deftest sync-table-with-array-test
-  (testing "Tables with ARRAY (REPEATED) columns can be synced successfully"
+  (testing "Tables with RECORD and ARRAY (REPEATED) columns can be synced successfully"
     (do-with-temp-obj "table_array_type_%s"
-                      (fn [tbl-nm] ["CREATE TABLE `%s.%s` AS SELECT 1 AS int_col, GENERATE_ARRAY(1,10) AS array_col"
+                      (fn [tbl-nm] ["CREATE TABLE `%s.%s` AS SELECT 1 AS int_col,
+                                     GENERATE_ARRAY(1,10) AS array_col,
+                                     STRUCT('Sam' AS name) AS primary,
+                                     [STRUCT('Rudisha' AS name)] AS participants"
                                     test-db-name
                                     tbl-nm])
                       (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
                       (fn [tbl-nm]
                         (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}]
+                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "primary",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "RECORD",
+                                 :base-type :type/Dictionary,
+                                 :database-partitioned false,
+                                 :database-position 2,
+                                 :nested-fields
+                                 #{{:name "name",
+                                    :table-name tbl-nm
+                                    :table-schema test-db-name
+                                    :database-type "STRING",
+                                    :base-type :type/Text,
+                                    :nfc-path ["primary"],
+                                    :database-position 2}}}
+                                {:name "participants",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "ARRAY",
+                                 :base-type :type/Array,
+                                 :database-partitioned false,
+                                 :database-position 3}]
                                (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
                             "`describe-fields` should detect the correct base-type for array type columns")))))
 

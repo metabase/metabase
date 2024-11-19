@@ -112,9 +112,11 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
           defaultBrowserFonteFamily,
         );
 
-        cy.findByText(
-          "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
-        ).should("have.css", "font-family", "Lato, sans-serif");
+        cy.findByText(/Failed to fetch the user/).should(
+          "have.css",
+          "font-family",
+          "Lato, sans-serif",
+        );
       });
     });
   });

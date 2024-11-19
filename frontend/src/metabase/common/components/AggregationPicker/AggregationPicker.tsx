@@ -26,7 +26,6 @@ import * as Lib from "metabase-lib";
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
-  ColumnPickerContainer,
   ColumnPickerHeaderContainer,
   ColumnPickerHeaderTitle,
   ColumnPickerHeaderTitleContainer,
@@ -146,7 +145,7 @@ export function AggregationPicker({
 
       sections.push({
         key: "operators",
-        name: t`Basic Metrics`,
+        name: t`Basic functions`,
         items: operatorItems,
         icon: "table2",
       });
@@ -155,7 +154,7 @@ export function AggregationPicker({
     if (metrics.length > 0) {
       sections.push({
         key: "metrics",
-        name: t`Common Metrics`,
+        name: t`Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
@@ -329,9 +328,11 @@ export function AggregationPicker({
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
     return (
-      <ColumnPickerContainer
+      <Box
         className={className}
+        mih="18.75rem"
         data-testid="aggregation-column-picker"
+        c="summarize"
       >
         <ColumnPickerHeader onClick={handleResetOperator}>
           {operatorInfo.displayName}
@@ -346,7 +347,7 @@ export function AggregationPicker({
           onSelect={handleColumnSelect}
           onClose={onClose}
         />
-      </ColumnPickerContainer>
+      </Box>
     );
   }
 

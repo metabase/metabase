@@ -1,8 +1,14 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { Box, Button, Group, Stack, Text } from "metabase/ui";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type {
   Dashboard,
   VirtualDashboardCard,
@@ -12,10 +18,11 @@ import type {
 import {
   IFrameEditWrapper,
   IFrameWrapper,
+  InteractiveText,
   StyledInput,
 } from "./IFrameViz.styled";
 import { settings } from "./IFrameVizSettings";
-import { getIframeUrl } from "./utils";
+import { getAllowedIframeAttributes, isAllowedIframeUrl } from "./utils";
 
 export interface IFrameVizProps {
   dashcard: VirtualDashboardCard;
@@ -48,7 +55,11 @@ export function IFrameViz({
   const { iframe: iframeOrUrl } = settings;
   const isNew = !!dashcard?.justAdded;
 
-  const iframeUrl = useMemo(() => getIframeUrl(iframeOrUrl), [iframeOrUrl]);
+  const allowedHosts = useSetting("allowed-iframe-hosts");
+  const allowedIframeAttributes = useMemo(
+    () => getAllowedIframeAttributes(iframeOrUrl),
+    [iframeOrUrl],
+  );
 
   const handleIFrameChange = useCallback(
     (newIFrame: string) => {
@@ -97,27 +108,87 @@ export function IFrameViz({
       </IFrameEditWrapper>
     );
   }
+  const src = allowedIframeAttributes?.src;
+
+  const hasAllowedIFrameUrl = src && isAllowedIframeUrl(src, allowedHosts);
+  const hasForbiddenIFrameUrl = src && !isAllowedIframeUrl(src, allowedHosts);
+
+  const renderError = () => {
+    if (hasForbiddenIFrameUrl && isEditing) {
+      return <ForbiddenDomainError url={src} />;
+    }
+    return <GenericError />;
+  };
 
   return (
     <IFrameWrapper data-testid="iframe-card" fade={isEditingParameter}>
-      {iframeUrl ? (
+      {hasAllowedIFrameUrl ? (
         <iframe
           data-testid="iframe-visualization"
-          src={iframeUrl}
           width={width}
           height={height}
           frameBorder={0}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts"
+          referrerPolicy="strict-origin-when-cross-origin"
+          {...allowedIframeAttributes}
         />
       ) : (
-        <Box p={12} w="100%">
-          <Text
-            color="text-medium"
-            align={"center"}
-          >{t`There was a problem loading your iframe`}</Text>
-        </Box>
+        renderError()
       )}
     </IFrameWrapper>
+  );
+}
+
+function ForbiddenDomainError({ url }: { url: string }) {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
+    "configuring-metabase/settings",
+    { anchor: "allowed-domains-for-iframes-in-dashboards" },
+  );
+
+  const domain = useMemo(() => {
+    try {
+      const { hostname } = new URL(url);
+      return hostname;
+    } catch {
+      return url;
+    }
+  }, [url]);
+
+  const renderMessage = () => {
+    if (isAdmin) {
+      return jt`If you’re sure you trust this domain, you can add it to your ${(<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>)} in admin settings.`;
+    }
+    return showMetabaseLinks
+      ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${(<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>)}.`
+      : t`If you’re sure you trust this domain, you can ask an admin to add it to the allowed domains list.`;
+  };
+
+  return (
+    <Box p={12} w="100%" style={{ textAlign: "center" }}>
+      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
+      <Text color="text-dark">
+        {jt`${(
+          <Text key="domain" fw="bold" display="inline">
+            {domain}
+          </Text>
+        )} can not be embedded in iframe cards.`}
+      </Text>
+      <InteractiveText color="text-dark" px="lg" mt="md">
+        {renderMessage()}
+      </InteractiveText>
+    </Box>
+  );
+}
+
+function GenericError() {
+  return (
+    <Box p={12} w="100%" style={{ textAlign: "center" }}>
+      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
+      <Text color="text-dark">
+        {t`There was a problem rendering this content.`}
+      </Text>
+    </Box>
   );
 }
 

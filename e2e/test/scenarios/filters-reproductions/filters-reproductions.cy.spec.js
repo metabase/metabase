@@ -17,6 +17,7 @@ import {
   filterWidget,
   getNotebookStep,
   modal,
+  openNativeEditor,
   openNotebook,
   openOrdersTable,
   openPeopleTable,
@@ -28,6 +29,7 @@ import {
   restore,
   resyncDatabase,
   selectFilterOperator,
+  sidebar,
   startNewQuestion,
   tableHeaderClick,
   visitQuestionAdhoc,
@@ -1411,6 +1413,184 @@ describe("issue 45877", () => {
       cy.findAllByLabelText("false")
         .should("have.length", 1)
         .should("be.checked");
+    });
+  });
+});
+
+describe("issue 47887", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+  });
+
+  it("Case expression with type/Date default value and type/DateTime case value has Date filter popover enabled (metabase#47887)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PEOPLE_ID,
+          expressions: {
+            asdfdsa: [
+              "case",
+              [
+                [
+                  [
+                    "=",
+                    [
+                      "field",
+                      SAMPLE_DATABASE.PEOPLE.NAME,
+                      { "base-type": "type/Text" },
+                    ],
+                    "Won",
+                  ],
+                  [
+                    "datetime-add",
+                    [
+                      "field",
+                      SAMPLE_DATABASE.PEOPLE.CREATED_AT,
+                      { "base-type": "type/DateTimeWithLocalTZ" },
+                    ],
+                    0,
+                    "month",
+                  ],
+                ],
+              ],
+              {
+                default: [
+                  "datetime-add",
+                  [
+                    "field",
+                    SAMPLE_DATABASE.PEOPLE.BIRTH_DATE,
+                    { "base-type": "type/Date" },
+                  ],
+                  0,
+                  "month",
+                ],
+              },
+            ],
+          },
+        },
+        parameters: [],
+      },
+    });
+
+    cy.findByTestId("notebook-button").click();
+    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
+
+    popover().within(() => {
+      cy.findByLabelText("asdfdsa").click();
+      cy.findByText("Specific dates…").click();
+    });
+  });
+});
+
+describe("Issue 48851", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.viewport(1050, 300);
+  });
+
+  const manyValues = Array(12)
+    .fill(0)
+    .map(() => Math.round(Math.random() * 1000_000_000_000).toString(36))
+    .join(", ");
+
+  it("should not overflow the filter popover, even when there are a lot of values (metabase#48851)", () => {
+    openProductsTable();
+    tableHeaderClick("Title");
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Is").click();
+    });
+
+    popover().last().findByText("Contains").click();
+    popover()
+      .first()
+      .findByPlaceholderText("Enter some text")
+      .type(manyValues, { timeout: 0 });
+
+    popover().button("Add filter").should("be.visible");
+  });
+});
+
+describe("issue 49321", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not require multiple clicks to apply a filter (metabase#49321)", () => {
+    openProductsTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Title").click();
+      cy.findByText("Is").click();
+    });
+    popover().last().findByText("Contains").click();
+
+    popover().then($popover => {
+      const { width } = $popover[0].getBoundingClientRect();
+      cy.wrap(width).as("initialWidth");
+    });
+
+    popover()
+      .findByPlaceholderText("Enter some text")
+      .type("aaaaaaaaaa, bbbbbbbbbbb,");
+
+    cy.get("@initialWidth").then(initialWidth => {
+      popover().should($popover => {
+        const { width } = $popover[0].getBoundingClientRect();
+        expect(width).to.eq(initialWidth);
+      });
+    });
+  });
+});
+
+describe("issue 44665", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should use the correct widget for the default value picker (metabase#44665)", () => {
+    openNativeEditor().type("select * from {{param");
+    sidebar()
+      .last()
+      .within(() => {
+        cy.findByText("Search box").click();
+        cy.findByText("Edit").click();
+      });
+
+    modal().within(() => {
+      cy.findByText("Custom list").click();
+      cy.findByRole("textbox").type("foo\nbar\nbaz");
+      cy.button("Done").click();
+    });
+
+    sidebar().last().findByText("Enter a default value…").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a default value…").should("be.visible");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
+    });
+
+    sidebar()
+      .last()
+      .within(() => {
+        cy.findByText("Enter a default value…").click();
+        cy.findByText("Dropdown list").click();
+        cy.findByText("Enter a default value…").click();
+      });
+
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a default value…").should("be.visible");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
     });
   });
 });

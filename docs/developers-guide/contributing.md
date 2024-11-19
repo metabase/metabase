@@ -37,7 +37,7 @@ The core team runs a pretty well defined product process. It is actively being t
 
 ### A) Identify product needs from the community
 
-We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying *problem* or *need*  as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Proposal](https://github.com/metabase/metabase/labels/.Proposal)
+We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying _problem_ or _need_ as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Proposal](https://github.com/metabase/metabase/labels/.Proposal)
 
 ### B) Synthesize these needs into a concrete feature
 

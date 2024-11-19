@@ -30,7 +30,7 @@ export type EditableDashboardProps = {
 export const EditableDashboard = ({
   dashboardId,
   initialParameterValues = {},
-  withDownloads = true,
+  withDownloads = false,
   questionHeight,
   plugins,
   onLoad,
@@ -91,6 +91,7 @@ export const EditableDashboard = ({
             setRefreshElapsedHook={setRefreshElapsedHook}
             isFullscreen={isFullscreen}
             onFullscreenChange={onFullscreenChange}
+            noLoaderWrapper
             onNavigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
             downloadsEnabled={withDownloads}
             onLoad={onLoad}

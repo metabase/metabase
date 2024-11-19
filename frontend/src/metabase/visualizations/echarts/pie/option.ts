@@ -3,16 +3,20 @@ import type { EChartsOption, SunburstSeriesOption } from "echarts";
 
 import { getTextColorForBackground } from "metabase/lib/colors";
 import { checkNotNull } from "metabase/lib/types";
-import { truncateText } from "metabase/visualizations/lib/text";
+import { CHAR_ELLIPSES, truncateText } from "metabase/visualizations/lib/text";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import { DIMENSIONS, OPTION_NAME_SEPERATOR, TOTAL_TEXT } from "./constants";
+import { DIMENSIONS, OPTION_NAME_SEPERATOR, getTotalText } from "./constants";
 import type { PieChartFormatters } from "./format";
 import type { PieChartModel, SliceTreeNode } from "./model/types";
 import { getArrayFromMapValues, getSliceTreeNodesFromPath } from "./util";
+import {
+  calcAvailableDonutSliceLabelLength,
+  calcInnerOuterRadiusesForRing,
+} from "./util/label";
 
 function getTotalGraphicOption(
   settings: ComputedVisualizationSettings,
@@ -38,7 +42,7 @@ function getTotalGraphicOption(
   let labelText = "";
 
   const defaultLabelWillOverflow =
-    renderingContext.measureText(TOTAL_TEXT, fontStyle) >= innerRadius * 2;
+    renderingContext.measureText(getTotalText(), fontStyle) >= innerRadius * 2;
 
   if (settings["pie.show_total"] && !defaultLabelWillOverflow) {
     let sliceValueOrTotal = 0;
@@ -61,7 +65,7 @@ function getTotalGraphicOption(
       labelText = slice.name.toUpperCase();
     } else {
       sliceValueOrTotal = chartModel.total;
-      labelText = TOTAL_TEXT;
+      labelText = getTotalText();
     }
 
     const valueWillOverflow =
@@ -168,55 +172,6 @@ function getSliceLabel(
   return " ";
 }
 
-function getIsLabelVisible(
-  label: string,
-  slice: SliceTreeNode,
-  innerRadius: number,
-  outerRadius: number,
-  fontSize: number,
-  renderingContext: RenderingContext,
-  ring: number,
-  numRings: number,
-) {
-  // We use the law of cosines to determine the length of the chord with the
-  // same endpoints as the arc. The label should be shorter than this chord, and
-  // it should be shorter than the donutWidth.
-  //
-  // See the following document for a more detailed explanation:
-  // https://www.notion.so/metabase/Pie-Chart-Label-Visibility-Explanation-4cf366a78c6a419d95763a431a36b175?pvs=4
-  let arcAngle = slice.startAngle - slice.endAngle;
-  arcAngle = Math.min(Math.abs(arcAngle), Math.PI - 0.001);
-
-  const donutWidth = (outerRadius - innerRadius) / numRings;
-  const ringInnerRadius = innerRadius + donutWidth * (ring - 1);
-
-  const innerCircleChordLength = Math.sqrt(
-    2 * ringInnerRadius * ringInnerRadius -
-      2 * ringInnerRadius * ringInnerRadius * Math.cos(arcAngle),
-  );
-  const maxLabelDimension = Math.min(innerCircleChordLength, donutWidth);
-
-  const fontStyle = {
-    size: fontSize,
-    family: renderingContext.fontFamily,
-    weight: DIMENSIONS.slice.label.fontWeight,
-  };
-  const labelWidth = renderingContext.measureText(label, fontStyle);
-  const labelHeight = renderingContext.measureTextHeight(label, fontStyle);
-
-  if (ring === 1) {
-    return (
-      labelWidth + DIMENSIONS.slice.label.padding <= maxLabelDimension &&
-      labelHeight + DIMENSIONS.slice.label.padding <= maxLabelDimension
-    );
-  }
-
-  return (
-    labelWidth + DIMENSIONS.slice.label.padding <= donutWidth &&
-    labelHeight + DIMENSIONS.slice.label.padding <= innerCircleChordLength
-  );
-}
-
 function getSeriesDataFromSlices(
   chartModel: PieChartModel,
   settings: ComputedVisualizationSettings,
@@ -227,39 +182,63 @@ function getSeriesDataFromSlices(
   outerRadius: number,
   fontSize: number,
 ): SunburstSeriesOption["data"] {
+  const labelsPosition = chartModel.numRings > 1 ? "radial" : "horizontal";
+
   function getSeriesData(
     slices: SliceTreeNode[],
     ring = 1,
     parentName: string | null = null,
   ): SunburstSeriesOption["data"] {
-    if (slices.length === 0) {
+    if (slices.length === 0 || innerRadius <= 0 || outerRadius <= 0) {
       return [];
     }
 
-    let ringBorderWidth = borderWidth;
-    if (ring === 2) {
-      ringBorderWidth = DIMENSIONS.slice.twoRingBorderWidth;
-    }
-    if (ring === 3) {
-      ringBorderWidth = DIMENSIONS.slice.threeRingBorderWidth;
-    }
-
     return slices.map(s => {
+      const ringRadiuses = calcInnerOuterRadiusesForRing(
+        innerRadius,
+        outerRadius,
+        chartModel.numRings,
+        ring,
+      );
       const labelColor = getTextColorForBackground(
         s.color,
         renderingContext.getColor,
       );
       const label = getSliceLabel(s, settings, formatters);
-      const isLabelVisible = getIsLabelVisible(
-        label,
-        s,
-        innerRadius,
-        outerRadius,
-        fontSize,
-        renderingContext,
-        ring,
-        chartModel.numRings,
-      );
+      const availableSpace =
+        calcAvailableDonutSliceLabelLength(
+          ringRadiuses.inner,
+          ringRadiuses.outer,
+          s.startAngle,
+          s.endAngle,
+          fontSize,
+          labelsPosition,
+        ) -
+        2 * DIMENSIONS.slice.label.padding;
+
+      const fontStyle = {
+        size: fontSize,
+        family: renderingContext.fontFamily,
+        weight: DIMENSIONS.slice.label.fontWeight,
+      };
+
+      let displayLabel: string | null = null;
+      const fullLabelLength = renderingContext.measureText(label, fontStyle);
+      if (fullLabelLength <= availableSpace) {
+        displayLabel = label;
+      } else if (settings["pie.show_labels"]) {
+        displayLabel =
+          availableSpace > 0
+            ? truncateText(
+                label,
+                availableSpace,
+                renderingContext.measureText,
+                fontStyle,
+              )
+            : null;
+
+        displayLabel = displayLabel === CHAR_ELLIPSES ? null : displayLabel;
+      }
 
       const name =
         parentName != null
@@ -272,11 +251,12 @@ function getSeriesDataFromSlices(
           : undefined,
         value: s.value,
         name,
-        itemStyle: { color: s.color, borderWidth: ringBorderWidth },
+        itemStyle: { color: s.color, borderWidth },
         label: {
           color: labelColor,
-          formatter: () => (isLabelVisible ? label : " "),
-          rotate: ring === 1 ? 0 : "radial",
+          formatter: () => (displayLabel != null ? displayLabel : " "),
+          rotate: labelsPosition === "horizontal" ? 0 : "radial",
+          verticalAlign: "middle",
         },
         emphasis: {
           itemStyle: {
@@ -308,6 +288,14 @@ function getSeriesDataFromSlices(
   );
 }
 
+const getBorderWidth = (innerSideLength: number, ringsCount = 1) => {
+  if (ringsCount === 1) {
+    // arc length formula: s = 2πr(θ/360°), we want border to be 1 degree
+    return (Math.PI * innerSideLength) / DIMENSIONS.slice.borderProportion;
+  }
+  return 1;
+};
+
 export function getPieChartOption(
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
@@ -327,8 +315,7 @@ export function getPieChartOption(
     chartModel,
   );
 
-  const borderWidth =
-    (Math.PI * innerSideLength) / DIMENSIONS.slice.borderProportion; // arc length formula: s = 2πr(θ/360°), we want border to be 1 degree
+  const borderWidth = getBorderWidth(innerSideLength, chartModel.numRings);
 
   const fontSize =
     chartModel.numRings > 1

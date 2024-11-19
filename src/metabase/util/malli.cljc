@@ -16,7 +16,7 @@
 
 #?(:clj
    (p/import-vars
-    [mu.fn fn]
+    [mu.fn fn instrument-ns?]
     [mu.defn defn defn-]))
 
 (core/defn humanize-include-value

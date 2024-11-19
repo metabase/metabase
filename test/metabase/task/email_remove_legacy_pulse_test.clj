@@ -15,18 +15,19 @@
      :model/Pulse _      {:name "Legacy pulse" :dashboard_id nil :alert_condition nil}
      :model/Pulse _      {:name "Archived pulse" :dashboard_id nil :alert_condition nil :archived true}]
     (mt/with-fake-inbox
-      (#'email-remove-legacy-pulse/email-remove-legacy-pulse)
-      (testing "all receivers are superuser"
-        (is (every? true? (t2/select-fn-vec :is_superuser  :model/User :email [:in (keys @mt/inbox)]))))
-      (let [found-regexes  [#"Hi Ngoc Khuat,"
-                            #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Legacy pulse<\/a></li>"]
-            not-found-re   #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Archived pulse<\/a></li>"
-            expected-email {:subject "[Metabase] Removal of legacy pulses in upcoming Metabase release"
-                            :body    (merge (zipmap (map str found-regexes) (repeat true))
-                                            {(str not-found-re) false})}]
-        (testing "the email should say Hi and contains link to active pulses"
-          (is (= (mt/email-to admin expected-email)
-                 (select-keys (apply mt/regex-email-bodies (conj found-regexes not-found-re)) [(:email admin)]))))))))
+      (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+        (#'email-remove-legacy-pulse/email-remove-legacy-pulse)
+        (testing "all receivers are superuser"
+          (is (every? true? (t2/select-fn-vec :is_superuser  :model/User :email [:in (keys @mt/inbox)]))))
+        (let [found-regexes  [#"Hi Ngoc Khuat,"
+                              #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Legacy pulse<\/a></li>"]
+              not-found-re   #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Archived pulse<\/a></li>"
+              expected-email {:subject "[Metabase] Removal of legacy pulses in upcoming Metabase release"
+                              :body    (merge (zipmap (map str found-regexes) (repeat true))
+                                              {(str not-found-re) false})}]
+          (testing "the email should say Hi and contains link to active pulses"
+            (is (= (mt/email-to admin expected-email)
+                   (select-keys (apply mt/regex-email-bodies (conj found-regexes not-found-re)) [(:email admin)])))))))))
 
 (deftest skip-if-instance-does-not-have-active-legacy-pulse
   (mt/with-temp

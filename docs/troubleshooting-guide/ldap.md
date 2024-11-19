@@ -76,7 +76,7 @@ If you run into an issue, check that you can login to your LDAP directory and is
 - When using Metabase Enterprise with a MySQL database and LDAP enabled, make sure that you disable synchronization of binary fields from your LDAP directory by using the `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST` environment variable. If you do not, you may hit the 60K field size limitation of the text field in MySQL, which will prevent you from creating users or those users from logging in.
 
 [apache-directory-studio]: https://directory.apache.org/studio/
-[ldap-learn]: https://www.metabase.com/learn/permissions/ldap-auth-access-control.html
+[ldap-learn]: https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control.html
 [ldap-docs]: ../people-and-groups/google-and-ldap.md#enabling-ldap-authentication
 
 ## Are you still stuck?

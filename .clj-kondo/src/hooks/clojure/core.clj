@@ -91,8 +91,8 @@
      metabase.models.setting/set!
      metabase.models.setting/validate-settings-formatting!
      metabase.permissions.test-util/with-restored-perms!
-     metabase.pulse/send-notifications!
-     metabase.pulse/send-pulse!
+     metabase.pulse.send/send-notifications!
+     metabase.pulse.send/send-pulse!
      metabase.query-processor.streaming.interface/begin!
      metabase.query-processor.streaming.interface/finish!
      metabase.query-processor.streaming.interface/write-row!

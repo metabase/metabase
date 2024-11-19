@@ -230,9 +230,13 @@
         ;; if still no match try looking based for a matching Field based on ID.
         (let [[_field id-or-name _opts] field-clause]
           (when (integer? id-or-name)
-            (m/find-first (fn [[_field an-id-or-name _opts]]
-                            (= an-id-or-name id-or-name))
-                          field-exports)))
+            (or (m/find-first (fn [[_field an-id-or-name _opts]]
+                                (= an-id-or-name id-or-name))
+                              field-exports)
+                ;; look for a field referenced by the ID in source-metadata
+                (when-let [column (m/find-first #(= (:id %) id-or-name) source-metadata)]
+                  (let [signature (field-signature (:field_ref column))]
+                    (m/find-first #(= (field-signature %) signature) field-exports))))))
         ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)

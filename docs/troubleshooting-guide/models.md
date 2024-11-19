@@ -13,7 +13,6 @@ If you don't see [the model button][model-button-image] (three squares):
 1. Check if you're using a Metabase version that's 0.42.0 or greater by going to the top right of the screen and clicking on the **gear** icon > **About Metabase**.
 2. Clear your browser cache.
 3. Ask your Metabase admin to clear the proxy cache (if you're using one).
-4. Ask your Metabase admin if [nested queries are enabled][nested-query-settings-docs] under **Admin** > **Settings** > **General**.
 
 ## Can't edit or save changes to a model
 
@@ -26,25 +25,25 @@ If your changes to a model's metadata or underlying question aren't showing up:
 
 1. Use model persistence.
 
-    - Metabase can [write back to your data warehouse][model-persistence]. If you enable model persistence, Metabase will read a pre-computed and materialized version of the model directly from the database instead of running the query from scratch. Please consider this option is only available in some supported data warehouses.
+   - Metabase can [write back to your data warehouse][model-persistence]. If you enable model persistence, Metabase will read a pre-computed and materialized version of the model directly from the database instead of running the query from scratch. Please consider this option is only available in some supported data warehouses.
 
 2. Optimize the underlying saved question or SQL query.
 
-    - [Ask for less data][limit-data-learn].
-    - For models that use SQL questions, [look for bottlenecks using SQL EXPLAIN][sql-explain-learn].
+   - [Ask for less data][limit-data-learn].
+   - For models that use SQL questions, [look for bottlenecks using SQL EXPLAIN][sql-explain-learn].
 
 3. Optimize your database schemas.
 
-    - [Aggregate data ahead of time with summary tables][summary-tables-learn].
-    - [Index frequently queried columns][indexes-learn].
-    - [Denormalize your data][denormalize-data-learn].
-    - [Materialize views][materialize-views-learn].
-    - [Pull data out of JSON and slot its keys into columns][flatten-json-learn].
+   - [Aggregate data ahead of time with summary tables][summary-tables-learn].
+   - [Index frequently queried columns][indexes-learn].
+   - [Denormalize your data][denormalize-data-learn].
+   - [Materialize views][materialize-views-learn].
+   - [Pull data out of JSON and slot its keys into columns][flatten-json-learn].
 
 4. Optimize your data warehouse(s) or database(s).
 
-    - [Replicate your database][replicate-database-learn].
-    - [Consider a database optimized for analytics][analytics-database-learn].
+   - [Replicate your database][replicate-database-learn].
+   - [Consider a database optimized for analytics][analytics-database-learn].
 
 **Explanation**
 

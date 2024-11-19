@@ -44,7 +44,7 @@ Editable parameters are responsible for passing filter values from the embedded 
 
 ### You can't disable parameters when the original question or dashboard requires a value
 
-If the filter on a dashboard or question is set to [Always require a value](../dashboards/filters.md#requiring-a-filter), you won't be able to disable the parameter when embedding.
+If the filter on a dashboard or question is set to [Always require a value](../dashboards/filters.md), you won't be able to disable the parameter when embedding.
 
 ## Populating an embedded filter widget with a default value
 
@@ -122,7 +122,7 @@ You can use locked parameters to display filtered data based on attributes captu
 
 Locked parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [editable filter widgets](#adding-a-filter-widget-to-a-static-embed).
 
-If you just want to require a value for the parameter, you could set the filter as editable and configure the underlying question or dashboard to [always require a value](../dashboards/filters.md#requiring-a-filter).
+If you just want to require a value for the parameter, you could set the filter as editable and configure the underlying question or dashboard to [always require a value](../dashboards/filters.md).
 
 ## Updating a locked parameter
 
@@ -168,6 +168,8 @@ Because Metabase doesn't display locked parameters as filter widgets, you can us
 
 ## Customizing the appearance of a static embed
 
+![Look and feel: appearance settings on static embed](./images/04-preview.png)
+
 You can change the appearance of an embedded item by adding hash parameters to the end of the URL in your iframe's `src` attribute.
 
 For example, the following embedding URL will display an embedded item in dark mode, without a border, and with its original title:
@@ -176,30 +178,30 @@ For example, the following embedding URL will display an embedded item in dark m
 your_embedding_url#theme=night&bordered=false&titled=true
 ```
 
-You can preview appearance settings from your question or dashboard's [embedded appearance settings](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+You can preview appearance settings from your question or dashboard's embedded appearance settings.
 
-| Parameter name                            | Possible values                               |
-| ----------------------------------------- | --------------------------------------------- |
-| `bordered`                                | true, false                                   |
-| `titled`                                  | true, false                                   |
-| `theme`                                   | null, transparent, night                      |
-| `refresh` (dashboard only)                | integer (seconds, e.g., `refresh=60`)         |
-| `font`\*                                  | [font name](../configuring-metabase/fonts.md) |
-| `hide_download_button`\* (questions only) | true, false                                   |
+| Parameter name             | Possible values                               |
+| -------------------------- | --------------------------------------------- |
+| `bordered`                 | true, false                                   |
+| `titled`                   | true, false                                   |
+| `theme`                    | null (default), night                         |
+| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`)         |
+| `font`\*                   | [font name](../configuring-metabase/fonts.md) |
+| `downloads`\*\*            | true, false                                   |
 
-\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+\* Avalable on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
+
+\*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
-## Allow people to download the results of an embedded question
+## Disable downloads for an embedded question or dashboard
 
-{% include plans-blockquote.html feature="Downloading results" %}
+{% include plans-blockquote.html feature="Disabling downloads" %}
 
-By default, Metabase will include a **Download** button on embedded questions. You can remove the download button by setting `hide_download_button=true` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. You can remove the option to download results by setting `downloads=false` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
 
-If the download button is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `hide_download_button=false`.
-
-> Downloading results is available only for questions, not dashboards.
+If the download option is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `downloads=true`.
 
 ## Maximum request size
 
@@ -210,5 +212,5 @@ If your static embedding URL exceeds the maximum header size, you'll see a log m
 ## Further reading
 
 - [Static embedding documentation](./static-embedding.md).
-- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
+- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).

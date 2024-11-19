@@ -7,12 +7,12 @@ import {
   getMaxMetricsSupported,
 } from "metabase/visualizations";
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
+import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
   columnsAreValid,
   getDefaultDimensionsAndMetrics,
-  getFriendlyName,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -230,7 +230,7 @@ export const getDefaultXAxisTitle = (
     return null;
   }
 
-  return getFriendlyName(dimensionColumn);
+  return dimensionColumn.display_name;
 };
 
 export const getIsXAxisLabelEnabledDefault = () => true;
@@ -436,4 +436,12 @@ export function getComputedAdditionalColumnsValue(
   ).filter((columnKey: string) => availableAdditionalColumnKeys.has(columnKey));
 
   return filteredStoredColumns;
+}
+
+export function getSeriesModelsForSettings(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  return getCardsSeriesModels(rawSeries, cardsColumns, [], settings);
 }

@@ -39,6 +39,11 @@
   [_driver _feature _database]
   false)
 
+;; Oracle's DATE has a time part. It is mapped to `:type/DateTime`.
+(defmethod driver/database-supports? [:oracle ::date-columns-should-be-emitted-without-time]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel date-columns-should-be-emitted-without-time
   (mt/test-drivers (mt/normal-drivers-with-feature ::date-columns-should-be-emitted-without-time)
     (is (= [["1" "April 7, 2014"      "5" "12"]
@@ -47,7 +52,8 @@
             ["4" "March 11, 2014"     "5" "4"]
             ["5" "May 5, 2013"        "3" "49"]]
            (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                              (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
+                                              (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5}))
+                                              :format_rows true)]
              (take 5 (parse-and-sort-csv result)))))))
 
 (deftest errors-not-include-visualization-settings
@@ -71,7 +77,8 @@
   (testing "NULL values should be written correctly"
     (mt/dataset defs/test-data-null-date
       (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                         (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
+                                         (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5}))
+                                         :format_rows true)]
         (is (= [["1" "April 7, 2014"      "" "5" "12"]
                 ["2" "September 18, 2014" "" "1" "31"]
                 ["3" "September 15, 2014" "" "8" "56"]
@@ -81,7 +88,8 @@
 
 (deftest datetime-fields-are-untouched-when-exported
   (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                     (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5})))]
+                                     (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5}))
+                                     :format_rows true)]
     (is (= [["1" "Plato Yeshua" "April 1, 2014, 8:30 AM"]
             ["2" "Felipinho Asklepios" "December 5, 2014, 3:15 PM"]
             ["3" "Kaneonuskatew Eiran" "November 6, 2014, 4:15 PM"]
@@ -101,7 +109,8 @@
                                               [:field (mt/id :venues :longitude) {:base-type :type/Float}]
                                               [:field (mt/id :venues :latitude) {:base-type :type/Float}]]
                                :order-by     [[:asc (mt/id :venues :id)]]
-                               :limit        5}}))]
+                               :limit        5}})
+                  :format_rows true)]
       (is (= [["1" "165.37400000° W" "10.06460000° N"]
               ["2" "118.32900000° W" "34.09960000° N"]
               ["3" "118.42800000° W" "34.04060000° N"]

@@ -83,6 +83,34 @@ const parseUrlFromIframe = (iframeHtml: string) => {
   return "";
 };
 
+const parseAllowedAttribuesFromIframe = (
+  iframeHtml: string,
+): AllowedIframeAttributes | null => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(iframeHtml, "text/html");
+  const iframeEl = doc.querySelector("iframe");
+  const src = iframeEl?.getAttribute("src");
+
+  if (!iframeEl || !src) {
+    return null;
+  }
+
+  const result: AllowedIframeAttributes = {};
+  result.src = src;
+
+  const allow = iframeEl.getAttribute("allow");
+  const allowFullscreen = iframeEl.getAttribute("allowfullscreen");
+
+  if (allow != null) {
+    result.allow = allow;
+  }
+  if (allowFullscreen != null) {
+    result.allowFullscreen = allowFullscreen;
+  }
+
+  return result;
+};
+
 const DEFAULT_PROTOCOL = "https://";
 
 const normalizeUrl = (trimmedUrl: string) => {
@@ -122,9 +150,15 @@ export const getIframeDomainName = (
   }
 };
 
-export const getIframeUrl = (
+export type AllowedIframeAttributes = {
+  src?: string;
+  allow?: string;
+  allowFullscreen?: string;
+};
+
+export const getAllowedIframeAttributes = (
   iframeOrUrl: string | undefined,
-): string | null => {
+): AllowedIframeAttributes | null => {
   if (!iframeOrUrl) {
     return null;
   }
@@ -132,13 +166,71 @@ export const getIframeUrl = (
   const trimmedInput = iframeOrUrl.trim();
 
   if (isIframeString(trimmedInput)) {
-    return parseUrlFromIframe(trimmedInput);
+    return parseAllowedAttribuesFromIframe(trimmedInput);
   }
 
   const normalizedUrl = normalizeUrl(trimmedInput);
   if (isSafeUrl(normalizedUrl)) {
-    return replaceSharingLinkWithEmbedLink(normalizedUrl);
+    const src = replaceSharingLinkWithEmbedLink(normalizedUrl);
+    if (src) {
+      return { src };
+    }
   }
 
   return null;
+};
+
+const splitPortAndRest = (url: string): [string, string] | [string, null] => {
+  const portPattern = /:(\d+|\*)$/;
+  const match = url.match(portPattern);
+
+  return [match ? url.slice(0, match.index) : url, match ? match[1] : ""];
+};
+
+export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
+  if (allowedIframesSetting === "*") {
+    return true;
+  }
+
+  try {
+    const rawAllowedDomains = allowedIframesSetting
+      .replaceAll(",", "")
+      .split("\n")
+      .map(host => host.trim());
+
+    const parsedUrl = new URL(normalizeUrl(url));
+    const hostname = parsedUrl.hostname;
+    const port = parsedUrl.port;
+
+    return rawAllowedDomains.some(rawAllowedDomain => {
+      try {
+        const [rawAllowedDomainWithoutPort, allowedPort] =
+          splitPortAndRest(rawAllowedDomain);
+
+        const allowedDomain = new URL(
+          normalizeUrl(rawAllowedDomainWithoutPort),
+        );
+
+        const arePortsMatching = allowedPort === "*" || port === allowedPort;
+
+        if (!arePortsMatching) {
+          return false;
+        }
+
+        if (allowedDomain.hostname.startsWith("*.")) {
+          const baseDomain = allowedDomain.hostname.slice(2);
+          return hostname.endsWith("." + baseDomain);
+        }
+
+        return hostname.endsWith(allowedDomain.hostname);
+      } catch (e) {
+        console.warn(
+          `Error while checking against allowed iframe domain ${rawAllowedDomain}`,
+        );
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  }
 };

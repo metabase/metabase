@@ -72,6 +72,7 @@ async function setup({
           onQueryChange(nextQuery);
         }}
         onClose={onClose}
+        stageIndex={-1}
       />
     );
   }
@@ -159,7 +160,7 @@ describe("SummarizeSidebar", () => {
 
       const countButton = screen.getByLabelText("Count");
       await userEvent.click(within(countButton).getByLabelText("close icon"));
-      await userEvent.click(screen.getByText("Add a metric"));
+      await userEvent.click(screen.getByText("Add a function or metric"));
       await userEvent.click(await screen.findByText("Count of rows"));
 
       const aggregations = getNextAggregations();

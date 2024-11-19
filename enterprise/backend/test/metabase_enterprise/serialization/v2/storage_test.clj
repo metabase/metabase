@@ -106,7 +106,8 @@
                          NativeQuerySnippet c2          {:name "grandparent snippet" :collection_id (:id grandparent)}
                          NativeQuerySnippet c3          {:name "parent snippet" :collection_id (:id parent)}
                          NativeQuerySnippet c4          {:name "child snippet" :collection_id (:id child)}]
-        (let [export (into [] (extract/extract nil))]
+        (let [export (into [] (extract/extract {:no-settings   true
+                                                :no-data-model true}))]
           (storage/store! export dump-dir)
           (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
                 p-dir  (str (:entity_id parent)      "_parent_collection")
@@ -175,7 +176,7 @@
                                  (is (= (not-empty (sort ks))
                                         (not-empty ks)))
                                  (do
-                                   ;; check every present key is sorted in a monotone increasing order
+                                  ;; check every present key is sorted in a monotone increasing order
                                    (is (< idx (get order k)))
                                    (recur (rest ks)
                                           (long new-idx)))))))

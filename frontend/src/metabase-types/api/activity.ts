@@ -49,7 +49,7 @@ export type RecentCollectionItem = BaseRecentItem & {
   database_id?: DatabaseId; // for models and questions
   parent_collection: Pick<Collection, "id" | "name" | "authority_level">;
   authority_level?: "official" | null; // for collections
-  moderated_status?: "verified" | null; // for models
+  moderated_status?: "verified" | null; // for cards / models / dashboards
   display?: CardDisplayType; // for questions
 };
 
@@ -57,6 +57,11 @@ export type RecentItem = RecentTableItem | RecentCollectionItem;
 
 export const isRecentTableItem = (item: RecentItem): item is RecentTableItem =>
   item.model === "table";
+
+export const isRecentCollectionItem = (
+  item: RecentItem,
+): item is RecentCollectionItem =>
+  ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);
 
 export interface RecentItemsResponse {
   recent_views: RecentItem[];
