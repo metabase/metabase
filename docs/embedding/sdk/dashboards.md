@@ -23,7 +23,7 @@ You can embed a dashboard using the one of the dashboard components:
 ## Dashboard component props
 
 | Prop                        | Type                                            | Description                                                                                                                                                                                                                                                                                                                      |
-|-----------------------------| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|-----------------------------| ----------------------------------------------- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | dashboardId                 | `number \| string`                              | The ID of the dashboard. This is either:<br>- the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`<br>- the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data |
 | initialParameterValues      | `Record<string, string \| string[]>`            | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
 | withTitle                   | `boolean`                                       | Whether the dashboard should display a title.                                                                                                                                                                                                                                                                                    |
@@ -34,7 +34,7 @@ You can embed a dashboard using the one of the dashboard components:
 | questionPlugins\*           | `{ mapQuestionClickActions: Function } \| null` | Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.                                                                                                                                                                                                     |
 | onLoad                      | `(dashboard: Dashboard \| null) => void`        | Event handler that triggers after dashboard loads with all visible cards and their content.                                                                                                                                                                                                                                      |
 | onLoadWithoutCards          | `(dashboard: Dashboard \| null) => void`        | Event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.                                                                                                                                                  |
-| renderDrillThroughQuestion* | `() => ReactNode`                               | A react component that renders [a question's layout](#customizing-the-question-layout-when-clicking-on-dashboard-cards) shown after clicking on a dashboard card.                                                                                                                                                                |
+| renderDrillThroughQuestion* | `() => ReactNode`                               | A react component that renders [a question's layout](#customizing-the-question-layout-when-clicking-on-dashboard-cards) shown after drilling through a question or clicking on a question card in the dashboard.                                                                                                                 |
 
 _\* Not available for `StaticDashboard`._
 
@@ -79,9 +79,9 @@ export default function App() {
 }
 ```
 
-## Customizing the question layout when clicking on dashboard cards
+## Customizing drill-through question layout
 
-When clicking on a card in the dashboard, you will be taken to the question for that card.
+When drilling through or clicking on a question card in the dashboard, you will be taken to the question view.
 
 By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
 
