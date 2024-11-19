@@ -1,0 +1,4 @@
+dirs:
+  - docs
+useGitIgnore: true
+modifiedFilesOnly: true

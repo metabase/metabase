@@ -8,11 +8,11 @@ on:
     paths:
       - docs/**
 jobs:
-  markdown-link-check:
+  linkspector:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Lint doc links
+      - name: Lint doc links with linkspector.
         run: yarn run docs-lint-links
