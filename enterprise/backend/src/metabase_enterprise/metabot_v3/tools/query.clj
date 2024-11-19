@@ -114,7 +114,7 @@
   [query {:keys [column_id operator value]}]
   (let [columns (into [] (filter lib.types.isa/string?) (lib/filterable-columns query))
         column  (or (find-column columns column_id)
-                    (find-column-error query columns column_id))
+                    (throw (find-column-error query columns column_id)))
         filter  (case (keyword operator)
                   :=                (lib/= column value)
                   :!=               (lib/!= column value)
@@ -130,7 +130,7 @@
   [query {:keys [column_id operator value]}]
   (let [columns (into [] (filter lib.types.isa/numeric?) (lib/filterable-columns query))
         column  (or (find-column columns column_id)
-                    (find-column-error query columns column_id))
+                    (throw (find-column-error query columns column_id)))
         filter  (case (keyword operator)
                   :=  (lib/= column value)
                   :!= (lib/!= column value)
@@ -144,7 +144,7 @@
   [query {:keys [column_id operator value]}]
   (let [columns (into [] (filter lib.types.isa/boolean?) (lib/filterable-columns query))
         column  (or (find-column columns column_id)
-                    (find-column-error query columns column_id))
+                    (throw (find-column-error query columns column_id)))
         filter  (case (keyword operator)
                   :=  (lib/= column value)
                   :!= (lib/!= column value))]
@@ -154,7 +154,7 @@
   [query {:keys [column_id operator value]}]
   (let [columns (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
         column  (or (find-column columns column_id)
-                    (find-column-error query columns column_id))
+                    (throw (find-column-error query columns column_id)))
         filter  (case (keyword operator)
                   :=  (lib/= column value)
                   :!= (lib/!= column value)
@@ -168,7 +168,7 @@
   [query {:keys [column_id date_part operator value]}]
   (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
         column    (or (find-column columns column_id)
-                      (find-column-error query columns column_id))
+                      (throw (find-column-error query columns column_id)))
         date-expr (case (keyword date_part)
                     :year         (lib.expression/get-year column)
                     :quarter      (lib.expression/get-quarter column)
