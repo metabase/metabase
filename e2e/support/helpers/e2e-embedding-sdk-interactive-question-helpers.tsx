@@ -26,7 +26,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
   });
 
   if (collectionPickerPath) {
-    cy.findByTestId("collection-picker-button").click();
+    cy.findByTestId("dashboard-and-collection-picker-button").click();
 
     entityPickerModal().within(() => {
       cy.findByText("Collections").click();
@@ -35,7 +35,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
         cy.findByText(collectionName).click(),
       );
 
-      cy.findByRole("button", { name: "Select" }).click();
+      cy.findByRole("button", { name: "Select this collection" }).click();
     });
   }
 
