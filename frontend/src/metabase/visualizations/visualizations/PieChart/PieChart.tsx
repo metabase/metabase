@@ -117,27 +117,34 @@ export function PieChart(props: VisualizationProps) {
 
   const eventHandlers = useChartEvents(props, chartRef, chartModel);
 
-  const slices = getArrayFromMapValues(chartModel.sliceTree);
-  const legendTitles = slices
-    .filter(s => s.includeInLegend)
-    .map(s => {
-      const label = s.name;
+  const slices = useMemo(
+    () => getArrayFromMapValues(chartModel.sliceTree),
+    [chartModel.sliceTree],
+  );
+  const legendTitles = useMemo(
+    () =>
+      slices
+        .filter(s => s.includeInLegend)
+        .map(s => {
+          const label = s.name;
 
-      // Hidden slices don't have a percentage
-      const sliceHidden = s.normalizedPercentage === 0;
-      const percentDisabled =
-        settings["pie.percent_visibility"] !== "legend" &&
-        settings["pie.percent_visibility"] !== "both";
+          // Hidden slices don't have a percentage
+          const sliceHidden = s.normalizedPercentage === 0;
+          const percentDisabled =
+            settings["pie.percent_visibility"] !== "legend" &&
+            settings["pie.percent_visibility"] !== "both";
 
-      if (sliceHidden || percentDisabled) {
-        return [label];
-      }
+          if (sliceHidden || percentDisabled) {
+            return [label];
+          }
 
-      return [
-        label,
-        formatters.formatPercent(s.normalizedPercentage, "legend"),
-      ];
-    });
+          return [
+            label,
+            formatters.formatPercent(s.normalizedPercentage, "legend"),
+          ];
+        }),
+    [formatters, settings, slices],
+  );
 
   const hiddenSlicesLegendIndices = slices
     .filter(s => s.includeInLegend)
@@ -157,7 +164,7 @@ export function PieChart(props: VisualizationProps) {
     );
 
   const handleToggleSeriesVisibility = (
-    event: MouseEvent,
+    _event: MouseEvent,
     sliceIndex: number,
   ) => {
     const slice = slices[sliceIndex];
