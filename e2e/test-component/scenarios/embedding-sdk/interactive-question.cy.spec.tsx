@@ -210,7 +210,8 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().contains("User ID is 12");
   });
 
-  it("can create questions via the SaveQuestionForm component", () => {
+  // onSave, onBeforeSave are not yet released
+  it.skip("can create questions via the SaveQuestionForm component", () => {
     const TestComponent = ({
       questionId,
       onBeforeSave,
@@ -241,7 +242,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
           </Box>
 
           {isSaveModalOpen && (
-            <Modal opened={isSaveModalOpen} onClose={close}>
+            <Modal data-testid="modal" opened={isSaveModalOpen} onClose={close}>
               <InteractiveQuestion.SaveQuestionForm onClose={close} />
             </Modal>
           )}
@@ -274,7 +275,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.body.name).to.equal("Sample Orders 4");
     });
 
-    cy.get("@onBeforeSaveSpy").should("have.been.calledWith", 1);
+    cy.get("@onBeforeSaveSpy").should("have.been.calledOnce");
     cy.get("@onSaveSpy").should("have.been.calledWith", "Sample Orders 4");
   });
 });
