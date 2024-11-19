@@ -10,8 +10,8 @@ import { SetTitle } from "metabase/hoc/Title";
 import { useSelector } from "metabase/lib/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 
-import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
-import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
+import { PublicOrEmbeddedDashboard } from "../PublicOrEmbeddedDashboard";
+import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const { location, router } = props;
