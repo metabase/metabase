@@ -12,19 +12,23 @@ on:
     - cron: '15 0 * * 2-6' # every weekday at 7/8:15 pm Eastern Time
 
 jobs:
-  auto-patch-trigger:
+  auto_patch_trigger:
+    name: Auto Patch Trigger
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
+    outputs:
+      BUILD_MATRIX: ${{ steps.auto_patch_matrix.outputs.BUILD_MATRIX }}
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
       - name: Prepare build scripts
         run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
-      - name: Trigger auto-patch
+      - name: Generate auto patch matrix
         uses: actions/github-script@v7
+        id: auto_patch_matrix
         with:
           script: | # js
             const {
@@ -60,25 +64,32 @@ jobs:
                 majorVersion: Number(majorVersion),
               });
 
+              const buildMatrix = [];
+
               if (nextPatch && goodCommit && !hasBeenReleased) {
-                await github.rest.actions.createWorkflowDispatch({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  workflow_id: 'tag-for-release.yml',
-                  ref: 'refs/heads/master',
-                  inputs: {
-                    commit: goodCommit,
-                    version: nextPatch,
-                    auto: true,
-                  }
+
+                // let's make this a real testable function that returns an array
+                const releaseChannel = majorVersion === currentRelease
+                  ? 'nightly'
+                  : 'none';
+
+                return ({
+                  version: nextPatch,
+                  commit: goodCommit,
+                  releaseChannel,
                 });
+
               } else {
                 console.log(
                   { nextPatch, goodCommit, hasBeenReleased }
                 );
                 console.error(`No new patch version or no green commit found for v${majorVersion}`);
               }
+
+              return null;
             }
+
+            const buildMatrix = [];
 
             if (context.eventName === 'workflow_dispatch') {
               const inputVersion = Number(context.payload.inputs.version);
@@ -88,7 +99,37 @@ jobs:
                 throw new Error(`Invalid version number: ${inputVersion}`);
               }
 
-              await releasePatchFor(inputVersion);
+              const buildInfo = await releasePatchFor(inputVersion);
+
+              if (buildInfo) {
+                buildMatrix.push(buildInfo);
+              }
             } else { // scheduled release of AUTO_RELEASE_VERSIONS
-              await Promise.all(AUTO_RELEASE_VERSIONS.map(releasePatchFor));
+              const results = await Promise.all(AUTO_RELEASE_VERSIONS.map(releasePatchFor));
+              buildMatrix.push(...results.filter(Boolean));
             }
+
+            console.log({ buildMatrix });
+
+            core.setOutput('BUILD_MATRIX', JSON.stringify(buildMatrix));
+
+  build-patch:
+    needs: auto_patch_trigger
+    uses: ./.github/workflows/tag-for-release.yml
+    strategy:
+      matrix:
+        build_info: ${{ fromJson(needs.auto_patch_trigger.outputs.BUILD_MATRIX) }}
+    with:
+      version: ${{ matrix.build_info.version }}
+      commit: ${{ matrix.build_info.commit }}
+
+  publish-patch:
+    uses: ./.github/workflows/release.yml
+    needs: [auto_patch_trigger, build-patch]
+    strategy:
+      matrix:
+        build_info: ${{ fromJson(needs.auto_patch_trigger.outputs.BUILD_MATRIX) }}
+    with:
+      version: ${{ matrix.build_info.version }}
+      commit: ${{ matrix.build_info.commit }}
+      release-channel: ${{ matrix.build_info.releaseChannel }}
