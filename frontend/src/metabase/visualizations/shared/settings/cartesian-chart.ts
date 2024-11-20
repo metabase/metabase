@@ -12,7 +12,6 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
   columnsAreValid,
   getDefaultDimensionsAndMetrics,
-  getFriendlyName,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -230,7 +229,7 @@ export const getDefaultXAxisTitle = (
     return null;
   }
 
-  return getFriendlyName(dimensionColumn);
+  return dimensionColumn.display_name;
 };
 
 export const getIsXAxisLabelEnabledDefault = () => true;
