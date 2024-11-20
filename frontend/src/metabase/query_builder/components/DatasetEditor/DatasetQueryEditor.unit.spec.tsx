@@ -19,8 +19,8 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-const { NativeQueryEditor } = jest.requireActual(
-  "metabase/query_builder/components/NativeQueryEditor",
+const { AceEditor } = jest.requireActual(
+  "metabase/query_builder/components/NativeQueryEditor/AceEditor",
 );
 
 const TEST_DB = createSampleDatabase();
@@ -109,9 +109,7 @@ describe("DatasetQueryEditor", () => {
   beforeEach(() => {
     jest.unmock("metabase/query_builder/components/NativeQueryEditor");
 
-    jest
-      .spyOn(NativeQueryEditor.prototype, "loadAceEditor")
-      .mockImplementation(_.noop);
+    jest.spyOn(AceEditor.prototype, "loadAceEditor").mockImplementation(_.noop);
   });
 
   it("renders sidebar when query tab is active", async () => {
