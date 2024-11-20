@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import {
   getColumnVizSettings,
   isCartesianChart,
@@ -217,35 +218,40 @@ const visualizerHistoryItemSlice = createSlice({
               column,
               extractReferencedColumns(state.columnValuesMapping),
             );
-
             state.columns.push(copyColumn(columnRef.name, column));
             state.columnValuesMapping[columnRef.name] = [columnRef];
           });
 
-          state.settings = card.visualization_settings;
-          getColumnVizSettings(state.display).forEach(setting => {
-            const originalValue = card.visualization_settings[setting];
+          const entries = getColumnVizSettings(state.display)
+            .map(setting => {
+              const originalValue = card.visualization_settings[setting];
 
-            if (!originalValue) {
-              return;
-            }
+              if (!originalValue) {
+                return null;
+              }
 
-            if (Array.isArray(originalValue)) {
-              state.settings[setting] = originalValue.map(
-                originalColumnName => {
-                  const index = dataset.data.cols.findIndex(
-                    col => col.name === originalColumnName,
-                  );
-                  return state.columns[index].name;
-                },
-              );
-            } else {
-              const index = dataset.data.cols.findIndex(
-                col => col.name === originalValue,
-              );
-              state.settings[setting] = state.columns[index].name;
-            }
-          });
+              if (Array.isArray(originalValue)) {
+                return [
+                  setting,
+                  originalValue.map(originalColumnName => {
+                    const index = dataset.data.cols.findIndex(
+                      col => col.name === originalColumnName,
+                    );
+                    return state.columns[index].name;
+                  }),
+                ];
+              } else {
+                const index = dataset.data.cols.findIndex(
+                  col => col.name === originalValue,
+                );
+                return [setting, state.columns[index].name];
+              }
+            })
+            .filter(isNotNull);
+          state.settings = {
+            ...card.visualization_settings,
+            ...Object.fromEntries(entries),
+          };
 
           return;
         }

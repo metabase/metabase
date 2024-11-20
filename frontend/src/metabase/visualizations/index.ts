@@ -146,7 +146,10 @@ export function getColumnVizSettings(display: VisualizationDisplay) {
   const settings = visualization?.settings ?? {};
 
   // TODO Come up with a better condition
-  return Object.keys(settings).filter(key => settings[key]?.widget === "field");
+  return Object.keys(settings).filter(key => {
+    const { widget } = settings[key] ?? {};
+    return widget === "field" || widget === "fields";
+  });
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
