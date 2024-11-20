@@ -19,17 +19,17 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green("npm run start")}
 `;
 
-  // We don't actually know which path the user will import the component from,
-  // so the suggested import path is the last directory in the path.
+  // We don't actually know which path the user will import the component from.
+  // We assume they will import from their components directory,
+  // so we use the last directory in the path as an example.
   // e.g. "./src/components/metabase" -> "./metabase".
-  const importPath = path.join(
-    "./",
-    path.basename(state.reactComponentDir ?? GENERATED_COMPONENTS_DEFAULT_PATH),
+  const exampleImportPath = path.basename(
+    state.reactComponentDir ?? GENERATED_COMPONENTS_DEFAULT_PATH,
   );
 
   const STEP_2 = `
   Import the component in your React frontend. For example:
-  ${green(`import { AnalyticsPage } from "${importPath}";`)}
+  ${green(`import { AnalyticsPage } from "./${exampleImportPath}";`)}
 
   Make sure the import path is valid.
   Depending on your app, you may need to move the components to a new directory.
