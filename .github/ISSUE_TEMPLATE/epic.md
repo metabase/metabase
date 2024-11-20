@@ -11,6 +11,7 @@ labels: ".Epic"
 
 - [product doc](LINK_TO_PRODUCT_DOC)
 - [technical design doc](LINK_TO_TECHNICAL_DESIGN_DOC)
+- [testing plan](LINK_TO_TESTING_PLAN)
 - feature branch: `BRANCH_NAME` _this should be the feature branch where this work will be done in. PRs will be delivered against this branch_
 - issue links: _related issues, if any_
 
