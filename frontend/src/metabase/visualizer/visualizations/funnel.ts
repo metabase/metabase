@@ -33,14 +33,12 @@ export const funnelDropHandler = (
     let dimensionColumnName = state.settings["funnel.dimension"];
 
     if (!metricColumnName) {
-      const nameIndex = state.columns.length + 1;
-      metricColumnName = `COLUMN_${nameIndex}`;
+      metricColumnName = columnRef.name;
       state.columns.push(copyColumn(metricColumnName, column));
       state.settings["funnel.metric"] = metricColumnName;
     }
     if (!dimensionColumnName) {
-      const nameIndex = state.columns.length + 1;
-      dimensionColumnName = `COLUMN_${nameIndex}`;
+      dimensionColumnName = columnRef.name;
       state.columns.push(createDimensionColumn(dimensionColumnName));
       state.settings["funnel.dimension"] = dimensionColumnName;
     }

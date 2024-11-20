@@ -71,16 +71,21 @@ export function createVisualizerColumnReference(
     return existingRef;
   }
 
-  let name = column.name;
-  const hasDuplicate = otherReferencedColumns.some(ref => ref.name === name);
-  if (hasDuplicate) {
-    name = `${dataSource.name} - ${name}`;
+  let nameIndex = otherReferencedColumns.length + 1;
+  let hasDuplicate = otherReferencedColumns.some(
+    ref => ref.name === `COLUMN_${nameIndex}`,
+  );
+  while (hasDuplicate) {
+    nameIndex++;
+    hasDuplicate = otherReferencedColumns.some(
+      ref => ref.name === `COLUMN_${nameIndex}`,
+    );
   }
 
   return {
     sourceId: dataSource.id,
     originalName: column.name,
-    name,
+    name: `COLUMN_${nameIndex}`,
   };
 }
 

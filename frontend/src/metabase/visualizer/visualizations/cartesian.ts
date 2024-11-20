@@ -73,8 +73,7 @@ export const cartesianDropHandler = (
       return;
     }
 
-    const nameIndex = state.columns.length + 1;
-    const newDimension = copyColumn(`COLUMN_${nameIndex}`, column);
+    const newDimension = copyColumn(columnRef.name, column);
     state.columns.push(newDimension);
     state.columnValuesMapping[newDimension.name] = [columnRef];
     state.settings = {
@@ -93,8 +92,7 @@ export const cartesianDropHandler = (
       return;
     }
 
-    const nameIndex = state.columns.length + 1;
-    const newMetric = copyColumn(`COLUMN_${nameIndex}`, column);
+    const newMetric = copyColumn(columnRef.name, column);
     state.columns.push(newMetric);
     state.columnValuesMapping[newMetric.name] = [columnRef];
     state.settings = {
@@ -107,8 +105,7 @@ export const cartesianDropHandler = (
     let bubbleColumnName = state.settings["scatter.bubble"];
 
     if (!bubbleColumnName) {
-      const nameIndex = state.columns.length + 1;
-      bubbleColumnName = `COLUMN_${nameIndex}`;
+      bubbleColumnName = columnRef.name;
       state.columns.push(copyColumn(bubbleColumnName, column));
       state.settings["scatter.bubble"] = bubbleColumnName;
     }
