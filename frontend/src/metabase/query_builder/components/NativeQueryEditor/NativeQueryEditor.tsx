@@ -150,7 +150,7 @@ export class NativeQueryEditor extends Component<
   NativeQueryEditorState
 > {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
-  aceEditor = createRef<AceEditor>();
+  editor = createRef<AceEditor>();
 
   constructor(props: Props) {
     super(props);
@@ -243,7 +243,7 @@ export class NativeQueryEditor extends Component<
     if (this.props.readOnly) {
       return;
     }
-    this.aceEditor.current?.focus();
+    this.editor.current?.focus();
   }
 
   toggleEditor = () => {
@@ -306,7 +306,7 @@ export class NativeQueryEditor extends Component<
 
     if (newHeight > element.offsetHeight) {
       element.style.height = `${newHeight}px`;
-      this.aceEditor.current?.resize();
+      this.editor.current?.resize();
     }
   }
 
@@ -432,12 +432,12 @@ export class NativeQueryEditor extends Component<
             if (typeof resizableBoxProps?.onResizeStop === "function") {
               resizableBoxProps.onResizeStop(e, data);
             }
-            this.aceEditor.current?.resize();
+            this.editor.current?.resize();
           }}
         >
           <>
             <AceEditor
-              ref={this.aceEditor}
+              ref={this.editor}
               {...this.props}
               onChange={this.onChange}
               isSelectedTextPopoverOpen={this.state.isSelectedTextPopoverOpen}
@@ -463,7 +463,7 @@ export class NativeQueryEditor extends Component<
           isOpen={this.state.isSelectedTextPopoverOpen}
           openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
           runQuery={this.runQuery}
-          target={() => this.aceEditor.current?.getSelectionTarget()}
+          target={() => this.editor.current?.getSelectionTarget()}
           canSaveSnippets={canSaveSnippets}
         />
 
