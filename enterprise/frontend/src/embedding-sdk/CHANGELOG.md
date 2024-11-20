@@ -1,3 +1,25 @@
+## [0.51.5](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.4...embedding-sdk-0.51.5) (2024-11-20)
+
+
+### Bug Fixes
+
+* **sdk:** handle relative urls for metabaseInstance in loading maps ([#50135](https://github.com/metabase/metabase/issues/50135)) ([#50190](https://github.com/metabase/metabase/issues/50190)) ([1f33bc7](https://github.com/metabase/metabase/commit/1f33bc7a75056c9650a16895db85a2c537f31203))
+* **sdk:** remove `Cannot update a component XX` error ([#50078](https://github.com/metabase/metabase/issues/50078)) ([#50084](https://github.com/metabase/metabase/issues/50084)) ([c3ef606](https://github.com/metabase/metabase/commit/c3ef6060afcaba0c5561b58abac6142e8bdbec2a))
+* **sdk:** sdk version wrapped in quotes ([#50014](https://github.com/metabase/metabase/issues/50014)) ([#50031](https://github.com/metabase/metabase/issues/50031)) ([fdf8a78](https://github.com/metabase/metabase/commit/fdf8a78de296220559627d32689abb83afd30997))
+* **sdk:** Split `useSummarizeQuery` into specialized hooks ([#49841](https://github.com/metabase/metabase/issues/49841)) ([#50029](https://github.com/metabase/metabase/issues/50029)) ([185389b](https://github.com/metabase/metabase/commit/185389ba3616dd1b8bad8bbaff556b57eacde051))
+* **sdk:** trigger save handler on question create when using SaveQuestionForm ([#50137](https://github.com/metabase/metabase/issues/50137)) ([#50203](https://github.com/metabase/metabase/issues/50203)) ([e89c976](https://github.com/metabase/metabase/commit/e89c976ebe01fb64a1eecccdeecf303a9ad20d90))
+
+
+### Features
+
+* **sdk:** ability to render question layout when drilling down in interactive dashboard ([#50017](https://github.com/metabase/metabase/issues/50017)) ([#50237](https://github.com/metabase/metabase/issues/50237)) ([28d530e](https://github.com/metabase/metabase/commit/28d530eecab36ce17aec1ecac4a8ccdbb6a1dc56))
+* **sdk:** add background-disabled color ([#49900](https://github.com/metabase/metabase/issues/49900)) ([#50009](https://github.com/metabase/metabase/issues/50009)) ([de400f6](https://github.com/metabase/metabase/commit/de400f699867a434d745ffdfdfb93ac7079aa3cf))
+* **sdk:** detect mismatch between sdk version and mb version ([#50032](https://github.com/metabase/metabase/issues/50032)) ([#50183](https://github.com/metabase/metabase/issues/50183)) ([df161bb](https://github.com/metabase/metabase/commit/df161bb2665783ef0ee000341ce542c0ae9aa08d))
+* **sdk:** expose FilterPicker querying component ([#49768](https://github.com/metabase/metabase/issues/49768)) ([#49906](https://github.com/metabase/metabase/issues/49906)) ([c6378ef](https://github.com/metabase/metabase/commit/c6378ef4b90db8f4481c289b99c74df503a55324))
+* **sdk:** use Alert component for SDKError ([#49895](https://github.com/metabase/metabase/issues/49895)) ([#49972](https://github.com/metabase/metabase/issues/49972)) ([6b7102a](https://github.com/metabase/metabase/commit/6b7102afc4fe076a914d28b7eb7d0f098dbcb36b))
+
+
+
 ## [1.51.4](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.3...embedding-sdk-1.51.4) (2024-11-12)
 
 
