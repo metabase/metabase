@@ -70,7 +70,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
     modal().findAllByTestId("column-header").first().contains("User ID");
   });
 
-  it("should refelct column settings accurately when changing (metabase#30966)", () => {
+  it("should reflect column settings accurately when changing (metabase#30966)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByLabelText("Edit dashboard").click();
     getDashboardCard().realHover();
