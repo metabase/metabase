@@ -119,23 +119,6 @@ export function isValidDraggedItem(item: DndItem): item is DraggedItem {
   return isDraggedColumnItem(item) || isDraggedWellItem(item);
 }
 
-type CreateColumnOpts = {
-  name?: string;
-};
-
-export function createMetricColumn({
-  name = "METRIC_1",
-}: CreateColumnOpts = {}): DatasetColumn {
-  return {
-    name,
-    display_name: name,
-    base_type: "type/Integer",
-    effective_type: "type/Integer",
-    field_ref: ["field", name, { "base-type": "type/Integer" }],
-    source: "artificial",
-  };
-}
-
 export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
   const copy: DatasetColumn = {
     ...column,
@@ -154,19 +137,6 @@ export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
   }
 
   return copy;
-}
-
-export function createDimensionColumn({
-  name = "DIMENSION_1",
-}: CreateColumnOpts = {}): DatasetColumn {
-  return {
-    name,
-    display_name: name,
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    field_ref: ["field", name, { "base-type": "type/Text" }],
-    source: "artificial",
-  };
 }
 
 export function addColumnMapping(
@@ -188,34 +158,6 @@ export function extractReferencedColumns(
     (valueSource): valueSource is VisualizerColumnReference =>
       typeof valueSource !== "string",
   );
-}
-
-export function cloneColumnProperties(
-  visualizerColumn: DatasetColumn,
-  column: DatasetColumn,
-) {
-  const nextColumn = {
-    ...visualizerColumn,
-    base_type: column.base_type,
-    effective_type: column.effective_type,
-    display_name: column.display_name,
-  };
-
-  // TODO Remove manual MBQL manipulation
-  if (isDate(column)) {
-    const opts = { "base-type": column.base_type };
-    const temporalUnit = maybeGetTemporalUnit(column);
-    if (temporalUnit) {
-      opts["temporal-unit"] = temporalUnit;
-    }
-    nextColumn.field_ref = [
-      visualizerColumn?.field_ref?.[0] ?? "field",
-      visualizerColumn?.field_ref?.[1] ?? nextColumn.name,
-      opts,
-    ];
-  }
-
-  return nextColumn;
 }
 
 function maybeGetTemporalUnit(col: DatasetColumn) {

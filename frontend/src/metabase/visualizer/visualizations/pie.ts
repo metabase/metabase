@@ -4,8 +4,7 @@ import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
   checkColumnMappingExists,
-  cloneColumnProperties,
-  createDimensionColumn,
+  copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
@@ -29,13 +28,20 @@ export const pieDropHandler = (
   );
 
   if (over.id === DROPPABLE_ID.PIE_METRIC && isNumeric(column)) {
-    const metricColumnName = state.settings["pie.metric"];
-    if (metricColumnName) {
-      const index = state.columns.findIndex(col => col.name === "METRIC_1");
-      state.columns[index] = cloneColumnProperties(
-        state.columns[index],
-        column,
+    let metricColumnName = state.settings["pie.metric"];
+
+    if (!metricColumnName) {
+      const nameIndex = state.columns.length + 1;
+      metricColumnName = `COLUMN_${nameIndex}`;
+      state.columns.push(copyColumn(metricColumnName, column));
+    } else {
+      const index = state.columns.findIndex(
+        col => col.name === metricColumnName,
       );
+      state.columns[index] = copyColumn(metricColumnName, column);
+    }
+
+    if (metricColumnName) {
       state.columnValuesMapping[metricColumnName] = addColumnMapping(
         state.columnValuesMapping[metricColumnName],
         columnRef,
@@ -44,8 +50,6 @@ export const pieDropHandler = (
   }
 
   if (over.id === DROPPABLE_ID.PIE_DIMENSION) {
-    const dimensions = state.settings["pie.dimension"] ?? [];
-
     const isInUse = Object.values(state.columnValuesMapping).some(
       valueSources => checkColumnMappingExists(valueSources, columnRef),
     );
@@ -53,32 +57,15 @@ export const pieDropHandler = (
       return;
     }
 
-    const index = state.columns.findIndex(col => col.name === dimensions[0]);
-    const dimension = state.columns[index];
-    const isDimensionMappedToValues =
-      state.columnValuesMapping[dimension.name]?.length > 0;
+    const dimensions = state.settings["pie.dimension"] ?? [];
 
-    if (dimensions.length === 1 && dimension && !isDimensionMappedToValues) {
-      state.columns[index] = cloneColumnProperties(
-        state.columns[index],
-        column,
-      );
-      state.columnValuesMapping[dimension.name] = addColumnMapping(
-        state.columnValuesMapping[dimension.name],
-        columnRef,
-      );
-    } else {
-      const nameIndex = dimensions.length + 1;
-      const newDimension = cloneColumnProperties(
-        createDimensionColumn({ name: `DIMENSION_${nameIndex}` }),
-        column,
-      );
-      state.columns.push(newDimension);
-      state.columnValuesMapping[newDimension.name] = [columnRef];
-      state.settings = {
-        ...state.settings,
-        "pie.dimension": [...dimensions, newDimension.name],
-      };
-    }
+    const nameIndex = state.columns.length + 1;
+    const newDimension = copyColumn(`COLUMN_${nameIndex}`, column);
+    state.columns.push(newDimension);
+    state.columnValuesMapping[newDimension.name] = [columnRef];
+    state.settings = {
+      ...state.settings,
+      "pie.dimension": [...dimensions, newDimension.name],
+    };
   }
 };

@@ -3,9 +3,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   checkColumnMappingExists,
-  cloneColumnProperties,
-  createDimensionColumn,
-  createMetricColumn,
+  copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
@@ -33,12 +31,6 @@ export const cartesianDropHandler = (
       state.columns = state.columns.filter(col => col.name !== column.name);
       delete state.columnValuesMapping[column.name];
 
-      if (nextDimensions.length === 0) {
-        const newDimension = createDimensionColumn();
-        state.columns.push(newDimension);
-        nextDimensions.push(newDimension.name);
-      }
-
       state.settings = {
         ...state.settings,
         "graph.dimensions": nextDimensions,
@@ -51,12 +43,6 @@ export const cartesianDropHandler = (
 
       state.columns = state.columns.filter(col => col.name !== column.name);
       delete state.columnValuesMapping[column.name];
-
-      if (nextMetrics.length === 0) {
-        const newMetric = createMetricColumn();
-        state.columns.push(newMetric);
-        nextMetrics.push(newMetric.name);
-      }
 
       state.settings = {
         ...state.settings,
@@ -88,10 +74,7 @@ export const cartesianDropHandler = (
     }
 
     const nameIndex = state.columns.length + 1;
-    const newDimension = cloneColumnProperties(
-      createDimensionColumn({ name: `COLUMN_${nameIndex}` }),
-      column,
-    );
+    const newDimension = copyColumn(`COLUMN_${nameIndex}`, column);
     state.columns.push(newDimension);
     state.columnValuesMapping[newDimension.name] = [columnRef];
     state.settings = {
@@ -111,10 +94,7 @@ export const cartesianDropHandler = (
     }
 
     const nameIndex = state.columns.length + 1;
-    const newMetric = cloneColumnProperties(
-      createMetricColumn({ name: `COLUMN_${nameIndex}` }),
-      column,
-    );
+    const newMetric = copyColumn(`COLUMN_${nameIndex}`, column);
     state.columns.push(newMetric);
     state.columnValuesMapping[newMetric.name] = [columnRef];
     state.settings = {
@@ -123,8 +103,16 @@ export const cartesianDropHandler = (
     };
   }
 
-  // TODO
   if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
-    state.columnValuesMapping["BUBBLE_SIZE"] = [columnRef];
+    let bubbleColumnName = state.settings["scatter.bubble"];
+
+    if (!bubbleColumnName) {
+      const nameIndex = state.columns.length + 1;
+      bubbleColumnName = `COLUMN_${nameIndex}`;
+      state.columns.push(copyColumn(bubbleColumnName, column));
+      state.settings["scatter.bubble"] = bubbleColumnName;
+    }
+
+    state.columnValuesMapping[bubbleColumnName] = [columnRef];
   }
 };
