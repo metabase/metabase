@@ -43,7 +43,6 @@
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
 /node_modules/
-**/node_modules/
 /plugins
 /process.yml
 /reset-password-artifacts

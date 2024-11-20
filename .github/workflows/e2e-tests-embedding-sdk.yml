@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
-      sdkVersion: ${{ fromJson(steps.dependencies.outputs.result).sdkVersion }}
+      sdk_version: ${{ fromJson(steps.dependencies.outputs.result).sdk_version }}
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
       node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
     steps:
@@ -50,14 +50,19 @@ jobs:
         with:
           script: | # js
             const { getBuildRequirements, getMajorVersionNumberFromReleaseBranch, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-
             const targetBranchName = '${{ github.base_ref }}';
-            const sdkVersion = targetBranchName === 'master' ? 'latest' : getMajorVersionNumberFromReleaseBranch(targetBranchName) + '-stable';
+
+            if (targetBranchName === 'master') {
+              return {
+                sdk_version: 'latest'
+              };
+            }
+
+            const sdk_version = getMajorVersionNumberFromReleaseBranch(targetBranchName) + '-stable';
             const version = getVersionFromReleaseBranch(targetBranchName);
             const requirements = getBuildRequirements(version);
-
             return {
-              sdkVersion,
+              sdk_version,
               java_version: requirements.java,
               node_version: requirements.node,
             };
@@ -110,7 +115,7 @@ jobs:
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.even.head.sha }}
+      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
 
@@ -146,13 +151,11 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      - name: Install Embedding SDK package v${{ needs.get-build-requirements.outputs.sdkVersion }}
-        run: yarn add @metabase/embedding-sdk-react@${{ needs.get-build-requirements.outputs.sdkVersion }}
-        shell: bash
+      - name: Install Embedding SDK package v${{ needs.get-build-requirements.outputs.sdk_version }}
+        run: yarn add @metabase/embedding-sdk-react@${{ needs.get-build-requirements.outputs.sdk_version }}
 
       - name: Run E2E tests for Embedding SDK
         run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        shell: bash
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
