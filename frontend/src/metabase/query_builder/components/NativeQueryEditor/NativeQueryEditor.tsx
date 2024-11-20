@@ -1,6 +1,7 @@
+import cx from "classnames";
 import { Component, createRef } from "react";
 import { connect } from "react-redux";
-import type { ResizableBox, ResizableBoxProps } from "react-resizable";
+import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -32,12 +33,7 @@ import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
 import DataSourceSelectors from "./DataSourceSelectors";
 import { Editor, type EditorHandle, type EditorProps } from "./Editor";
-import {
-  DragHandle,
-  DragHandleContainer,
-  NativeQueryEditorRoot,
-  StyledResizableBox,
-} from "./NativeQueryEditor.styled";
+import S from "./NativeQueryEditor.module.css";
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
@@ -366,9 +362,9 @@ export class NativeQueryEditor extends Component<
     const parameters = query.question().parameters();
 
     const dragHandle = resizable ? (
-      <DragHandleContainer>
-        <DragHandle />
-      </DragHandleContainer>
+      <div className={S.dragHandleContainer}>
+        <div className={S.dragHandle} />
+      </div>
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(
@@ -376,7 +372,10 @@ export class NativeQueryEditor extends Component<
     );
 
     return (
-      <NativeQueryEditorRoot data-testid="native-query-editor-container">
+      <div
+        className={S.queryEditor}
+        data-testid="native-query-editor-container"
+      >
         {hasTopBar && (
           <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
@@ -418,10 +417,10 @@ export class NativeQueryEditor extends Component<
             onClose={this.togglePromptVisibility}
           />
         )}
-        <StyledResizableBox
+        <ResizableBox
           ref={this.resizeBox}
-          isOpen={isNativeEditorOpen}
           height={this.state.initialHeight}
+          className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
           handle={dragHandle}
@@ -457,7 +456,7 @@ export class NativeQueryEditor extends Component<
               />
             )}
           </>
-        </StyledResizableBox>
+        </ResizableBox>
 
         <RightClickPopover
           isOpen={this.state.isSelectedTextPopoverOpen}
@@ -481,7 +480,7 @@ export class NativeQueryEditor extends Component<
             />
           </Modal>
         )}
-      </NativeQueryEditorRoot>
+      </div>
     );
   }
 }
