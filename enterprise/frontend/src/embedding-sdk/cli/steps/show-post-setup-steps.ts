@@ -1,11 +1,11 @@
 import { select } from "@inquirer/prompts";
 import { green } from "chalk";
-
-import { checkIsInNextJsProject } from "embedding-sdk/cli/utils/check-nextjs-project";
+import path from "path";
 
 import {
   SDK_LEARN_MORE_MESSAGE,
   getMetabaseInstanceSetupCompleteMessage,
+  getNextJsSetupMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { getSuggestedImportPath } from "../utils/get-suggested-import-path";
@@ -45,7 +45,15 @@ export const showPostSetupSteps: CliStepMethod = async state => {
     POST_SETUP_STEPS.push(STEP_1);
   }
 
-  POST_SETUP_STEPS.push(STEP_2, STEP_3);
+  POST_SETUP_STEPS.push(STEP_2);
+
+  if (isNextJs) {
+    const generatedDir = path.basename(state.reactComponentDir ?? "");
+
+    POST_SETUP_STEPS.push(getNextJsSetupMessage(generatedDir));
+  }
+
+  POST_SETUP_STEPS.push(STEP_3);
 
   for (const message of POST_SETUP_STEPS) {
     printWithPadding(message);
@@ -71,7 +79,11 @@ export const getImportSnippet = ({
 }) => {
   // Refer to https://www.metabase.com/docs/latest/embedding/sdk/next-js
   if (isNextJs) {
-    return `const AnalyticsPage = dynamic(() => import("./${componentDir}/analytics-page"), { ssr: false });`;
+    let snippets = "import dynamic from 'next/dynamic';";
+    snippets += "\n\n";
+    snippets += `const AnalyticsPage = dynamic(() => import("./${componentDir}/analytics-page"), { ssr: false });`;
+
+    return snippets;
   }
 
   return `import { AnalyticsPage } from "./${componentDir}";`;

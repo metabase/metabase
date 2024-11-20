@@ -1,9 +1,9 @@
 import {
-  ANALYTICS_PAGE_SNIPPET,
   ANALYTICS_PROVIDER_SNIPPET_MINIMAL,
   ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER,
   THEME_SWITCHER_SNIPPET,
   getAnalyticsDashboardSnippet,
+  getAnalyticsPageSnippet,
   getEmbeddingProviderSnippet,
   getUserSwitcherSnippet,
 } from "../snippets";
@@ -57,7 +57,7 @@ export function getComponentSnippets(options: Options): SampleComponent[] {
     {
       fileName: "analytics-page",
       componentName: "AnalyticsPage",
-      content: ANALYTICS_PAGE_SNIPPET.trim(),
+      content: getAnalyticsPageSnippet({ isNextJs }).trim(),
     },
   ];
 
@@ -76,7 +76,7 @@ export function getComponentSnippets(options: Options): SampleComponent[] {
     // We must use the default export. A named export will not work.
     // Refer to https://www.metabase.com/docs/latest/embedding/sdk/next-js
     if (isNextJs) {
-      const content = `"use client";\n\n${component.content}\n\nexport default ${component.componentName};`;
+      const content = `"use client"\n\n${component.content}\n\nexport default ${component.componentName}`;
 
       return { ...component, content };
     }
