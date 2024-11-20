@@ -20,6 +20,8 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     ];
   }
 
+  const isNextJs = await checkIsInNextJsProject();
+
   let path: string;
 
   // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
@@ -44,6 +46,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     instanceUrl,
     apiKey,
     dashboards,
+    isNextJs,
 
     // Enable user switching only when a valid license is present,
     // as JWT requires a valid license.
@@ -64,7 +67,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   // Generate index.js file with all the component exports.
   const exportIndexContent = sampleComponents
-    .map(file => `export * from "./${file.name}";`)
+    .map(file => `export * from "./${file.fileName}";`)
     .join("\n")
     .trim();
 

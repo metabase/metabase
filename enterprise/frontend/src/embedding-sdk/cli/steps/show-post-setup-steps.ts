@@ -1,6 +1,8 @@
 import { select } from "@inquirer/prompts";
 import { green } from "chalk";
 
+import { checkIsInNextJsProject } from "embedding-sdk/cli/utils/check-nextjs-project";
+
 import {
   SDK_LEARN_MORE_MESSAGE,
   getMetabaseInstanceSetupCompleteMessage,
@@ -58,4 +60,19 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   printWithPadding(green(SDK_LEARN_MORE_MESSAGE));
 
   return [{ type: "success" }, state];
+};
+
+export const getImportSnippet = ({
+  isNextJs,
+  componentDir,
+}: {
+  isNextJs: boolean;
+  componentDir?: string;
+}) => {
+  // Refer to https://www.metabase.com/docs/latest/embedding/sdk/next-js
+  if (isNextJs) {
+    return `const AnalyticsPage = dynamic(() => import("./${componentDir}/analytics-page"), { ssr: false });`;
+  }
+
+  return `import { AnalyticsPage } from "./${componentDir}";`;
 };
