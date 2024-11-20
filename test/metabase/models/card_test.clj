@@ -1091,6 +1091,7 @@
     [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}
                               {:target [:dimension [:field 33 {:temporal-unit :month}]]}
                               {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))
+
 (deftest we-cannot-insert-invalid-dashboard-internal-cards
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Collection {other-coll-id :id} {}
