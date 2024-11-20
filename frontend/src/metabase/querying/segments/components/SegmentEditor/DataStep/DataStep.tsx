@@ -5,8 +5,13 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/DataPicker";
+import { useDispatch, useStore } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
+import { loadMetadataForTable } from "metabase/questions/actions";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { TableId } from "metabase-types/api";
 
 import { ClauseStep } from "../ClauseStep";
 
@@ -16,7 +21,7 @@ type DataStepProps = {
   onChange: (query: Lib.Query) => void;
 };
 
-export function DataStep({ query, stageIndex }: DataStepProps) {
+export function DataStep({ query, stageIndex, onChange }: DataStepProps) {
   const [isOpened, setIsOpened] = useState(false);
   const tableId = query ? Lib.sourceTableOrCardId(query) : undefined;
   const table =
@@ -25,6 +30,18 @@ export function DataStep({ query, stageIndex }: DataStepProps) {
     query && table ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const tableValue =
     query && table ? getDataPickerValue(query, stageIndex, table) : undefined;
+  const store = useStore();
+  const dispatch = useDispatch();
+
+  const handleChange = async (tableId: TableId) => {
+    await dispatch(loadMetadataForTable(tableId));
+    const metadata = getMetadata(store.getState());
+    const databaseId = checkNotNull(metadata.table(tableId)).db_id;
+    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+    const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+    onChange(newQuery);
+  };
 
   return (
     <ClauseStep label={t`Data`}>
@@ -35,7 +52,7 @@ export function DataStep({ query, stageIndex }: DataStepProps) {
         <DataPickerModal
           title={t`Select a table`}
           value={tableValue}
-          onChange={() => 0}
+          onChange={handleChange}
           onClose={() => setIsOpened(false)}
         />
       )}
