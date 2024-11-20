@@ -59,6 +59,11 @@ export function getEmbeddingThemeOverride(
         const themeColorNames =
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
 
+        // If the sdk color does not exist in the mapping, skip it.
+        if (!themeColorNames) {
+          continue;
+        }
+
         for (const themeColorName of themeColorNames) {
           override.colors[themeColorName] = colorTuple(color);
         }
