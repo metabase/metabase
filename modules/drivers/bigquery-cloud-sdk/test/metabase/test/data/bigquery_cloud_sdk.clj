@@ -14,7 +14,6 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
@@ -109,6 +108,21 @@
          :include-user-id-and-hash true))
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
+
+(mu/defmethod sql.tx/qualified-name-components :bigquery-cloud-sdk
+  ([_driver db-name]
+   [(test-dataset-id db-name)])
+
+  ([_driver
+    db-name    :- :string
+    table-name :- :string]
+   [(test-dataset-id db-name) table-name])
+
+  ([_driver
+    db-name    :- :string
+    table-name :- :string
+    field-name :- :string]
+   [(test-dataset-id db-name) table-name field-name]))
 
 (defmethod ddl.i/format-name :bigquery-cloud-sdk
   [_driver table-or-field-name]
@@ -385,20 +399,23 @@
 
 (defmethod tx/create-view-of-table! :bigquery-cloud-sdk
   [driver database view-name table-name materialized?]
-  (let [dataset-id (normalize-name (get-in database [:settings :database-source-dataset-name]))]
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))
+        qualified-table (sql.tx/qualify-and-quote driver database-name (name table-name))]
     (apply execute! (sql/format
                      (cond->
-                      {:create-view [[(sql.qp/->honeysql driver [::h2x/identifier :table [dataset-id (normalize-name view-name)]])]]
+                      {:create-view [[[:raw qualified-view]]]
                        :select [:*]
-                       :from [[(sql.qp/->honeysql driver [::h2x/identifier :table [dataset-id (normalize-name table-name)]]) :t]]}
+                       :from [[[:raw qualified-table] :t]]}
                        materialized? (set/rename-keys {:create-view :create-materialized-view}))
                      :dialect (sql.qp/quote-style driver)))))
 
 (defmethod tx/drop-view! :bigquery-cloud-sdk
   [driver database view-name materialized?]
-  (let [dataset-id (normalize-name (get-in database [:settings :database-source-dataset-name]))]
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
     (apply execute! (sql/format
                      (cond->
-                      {:drop-view [[(sql.qp/->honeysql driver [::h2x/identifier :table [dataset-id (normalize-name view-name)]])]]}
+                      {:drop-view [[[:raw qualified-view]]]}
                        materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
                      :dialect (sql.qp/quote-style driver)))))

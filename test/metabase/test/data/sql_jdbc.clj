@@ -12,7 +12,6 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.initialize :as initialize]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -50,20 +49,25 @@
 
 (defmethod tx/create-view-of-table! :sql-jdbc/test-extensions
   [driver database view-name table-name materialized?]
-  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
-                 (sql/format
-                  (cond->
-                   {:create-view [[(sql.qp/->honeysql driver [::h2x/identifier :table [view-name]])]]
-                    :select [:*]
-                    :from [[(sql.qp/->honeysql driver [::h2x/identifier :table [table-name]]) :t]]}
-                    materialized? (set/rename-keys {:create-view :create-materialized-view}))
-                  :dialect (sql.qp/quote-style driver))))
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))
+        qualified-table (sql.tx/qualify-and-quote driver database-name (name table-name))]
+    (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                   (sql/format
+                    (cond->
+                     {:create-view [[[:raw qualified-view]]]
+                      :select [:*]
+                      :from [[[:raw qualified-table] :t]]}
+                      materialized? (set/rename-keys {:create-view :create-materialized-view}))
+                    :dialect (sql.qp/quote-style driver)))))
 
 (defmethod tx/drop-view! :sql-jdbc/test-extensions
   [driver database view-name materialized?]
-  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
-                 (sql/format
-                  (cond->
-                   {:drop-view [[(sql.qp/->honeysql driver [::h2x/identifier :table [view-name]])]]}
-                    materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
-                  :dialect (sql.qp/quote-style driver))))
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
+    (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                   (sql/format
+                    (cond->
+                     {:drop-view [[[:raw qualified-view]]]}
+                      materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
+                    :dialect (sql.qp/quote-style driver)))))

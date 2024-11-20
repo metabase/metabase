@@ -25,6 +25,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- uses-default-describe-table? [driver]
@@ -803,8 +804,8 @@
         (testing (if materialized? "Materialized View" "View")
           (tx/create-view-of-table! driver/*driver* (mt/db) :orders_m :orders materialized?)
           (sync/sync-database! (mt/db))
-          (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders")
-                orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m")
+          (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders" :active true)
+                orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m" :active true)
                 non-view-fields (t2/select-fn-vec
                                  (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                  :model/Field
@@ -817,5 +818,7 @@
                     :model/Field
                     :table_id orders-m-id
                     {:order-by [:database_position]})))))
+        (catch Exception e
+          (log/error e "Exception occurred."))
         (finally
           (tx/drop-view! driver/*driver* (mt/db) :orders_m materialized?))))))
