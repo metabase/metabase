@@ -2,9 +2,9 @@ import {
   assertChatVisibility,
   closeMetabotViaCloseButton,
   closeMetabotViaShortcutKey,
-  describeEE,
   metabotChatInput,
   mockMetabotResponse,
+  onlyOnEE,
   openMetabotViaNewMenu,
   openMetabotViaShortcutKey,
   popover,
@@ -39,9 +39,11 @@ describe("Metabot UI", () => {
     });
   });
 
-  describeEE("EE", () => {
+  // token feature has been disabled so skipping for now - there's currently decent coverage for UI related things in our unit tests
+  describe.skip("EE", () => {
     beforeEach(() => {
-      setTokenFeatures("all");
+      onlyOnEE();
+      setTokenFeatures("none");
       cy.visit("/");
       cy.wait("@sessionProperties");
     });
