@@ -1059,7 +1059,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting bug-report-enabled
   (deferred-tru "Enable bug report submissions.")
-  :visibility :internal
+  :visibility :public
   :export?    false
   :type       :boolean
   :default    false
