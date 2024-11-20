@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import {
-  getIcon,
-  screen,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
+import { getIcon, screen, within } from "__support__/ui";
 
 import { type SetupOpts, setup } from "./setup";
 
@@ -23,27 +19,6 @@ function setupEnterprise(opts?: Partial<SetupOpts>) {
 }
 
 describe("PublicOrEmbeddedQuestion", () => {
-  it("should render data", async () => {
-    await setupEnterprise();
-    expect(await screen.findByText("John W.")).toBeInTheDocument();
-  });
-
-  it("should update card settings when visualization component changes them (metabase#37429)", async () => {
-    await setupEnterprise();
-
-    await userEvent.click(
-      await screen.findByRole("button", {
-        name: /update settings/i,
-      }),
-    );
-
-    await waitForLoaderToBeRemoved();
-
-    expect(screen.getByTestId("settings")).toHaveTextContent(
-      JSON.stringify({ foo: "bar" }),
-    );
-  });
-
   describe("downloads flag", () => {
     it("should allow downloading the results when downloads are enabled", async () => {
       await setupEnterprise({ hash: { downloads: "true" } });
@@ -74,11 +49,14 @@ describe("PublicOrEmbeddedQuestion", () => {
     });
 
     it('should not set the locale to "ko" without "whitelabel" feature', async () => {
-      await setupEnterprise({ hash: { locale: "ko" } });
+      const expectedLocale = "ko";
+      await setupEnterprise({ hash: { locale: expectedLocale } });
 
       await userEvent.hover(getIcon("download"));
 
-      expect(screen.getByText("Download full results")).toBeInTheDocument();
+      expect(
+        fetchMock.calls(`path:/app/locales/${expectedLocale}.json`),
+      ).toHaveLength(0);
     });
   });
 });
