@@ -2,6 +2,7 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
+import { GENERATED_COMPONENTS_DEFAULT_PATH } from "../constants/config";
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
@@ -24,7 +25,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
   while (true) {
     path = await input({
       message: "Where do you want to save the example React components?",
-      default: "./components/metabase",
+      default: GENERATED_COMPONENTS_DEFAULT_PATH,
     });
 
     // Create a directory if it doesn't already exist.
