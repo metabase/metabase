@@ -34,6 +34,15 @@ export function parseDataSourceId(id: VisualizerDataSourceId) {
   return { type, sourceId: Number(sourceId) };
 }
 
+export function isDataSourceId(id: string): id is VisualizerDataSourceId {
+  try {
+    const { type, sourceId } = parseDataSourceId(id as VisualizerDataSourceId);
+    return type === "card" && Number.isSafeInteger(sourceId);
+  } catch {
+    return false;
+  }
+}
+
 export function isReferenceToColumn(
   column: DatasetColumn,
   dataSourceId: VisualizerDataSourceId,

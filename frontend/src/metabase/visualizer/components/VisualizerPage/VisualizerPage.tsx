@@ -5,7 +5,8 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useCallback } from "react";
-import { useKeyPressEvent, useUnmount } from "react-use";
+import type { WithRouterProps } from "react-router";
+import { useKeyPressEvent, useMount, useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
@@ -15,8 +16,9 @@ import {
   getDraggedItem,
   getVisualizationType,
 } from "metabase/visualizer/selectors";
-import { isValidDraggedItem } from "metabase/visualizer/utils";
+import { isDataSourceId, isValidDraggedItem } from "metabase/visualizer/utils";
 import {
+  addDataSource,
   handleDrop,
   resetVisualizer,
   setDisplay,
@@ -31,7 +33,7 @@ import { Header } from "../Header";
 import { VisualizationCanvas } from "../VisualizationCanvas";
 import { VisualizationPicker } from "../VisualizationPicker";
 
-export const VisualizerPage = () => {
+export const VisualizerPage = ({ location }: WithRouterProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const display = useSelector(getVisualizationType);
@@ -40,6 +42,13 @@ export const VisualizerPage = () => {
 
   const datasets = useSelector(getDatasets);
   const hasDatasets = Object.values(datasets).length > 0;
+
+  useMount(() => {
+    const { dataSource } = location?.query ?? {};
+    if (isDataSourceId(dataSource)) {
+      dispatch(addDataSource(dataSource));
+    }
+  });
 
   useUnmount(() => {
     dispatch(resetVisualizer());
