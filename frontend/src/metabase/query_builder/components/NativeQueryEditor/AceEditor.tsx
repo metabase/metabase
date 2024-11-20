@@ -1,6 +1,7 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
 import { Component, createRef } from "react";
+import { connect } from "react-redux";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,11 +16,14 @@ import "ace/snippets/sql";
 import "ace/snippets/json";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import Questions from "metabase/entities/questions";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
 import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
+import type { Card, CardId } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 import S from "./AceEditor.global.css";
 import type { EditorProps } from "./Editor";
@@ -38,10 +42,16 @@ type LastAutoComplete = {
   results: AutocompleteItem[];
 };
 
-type AceEditorProps = EditorProps & {
+type SizeProps = {
   width: number | null;
   height: number | null;
 };
+
+type DispatchProps = {
+  fetchQuestion: (cardId: CardId) => Promise<Card>;
+};
+
+type AceEditorProps = EditorProps & SizeProps & DispatchProps;
 
 export class AceEditorInner extends Component<AceEditorProps> {
   editor = createRef<HTMLDivElement>();
@@ -471,4 +481,19 @@ export class AceEditorInner extends Component<AceEditorProps> {
   }
 }
 
-export const AceEditor = ExplicitSize<EditorProps>()(AceEditorInner);
+const mapDispatchToProps = (dispatch: Dispatch) => ({
+  fetchQuestion: async (id: CardId) => {
+    const action = await dispatch(
+      Questions.actions.fetch(
+        { id },
+        { noEvent: true, useCachedForbiddenError: true },
+      ),
+    );
+    return Questions.HACK_getObjectFromAction(action);
+  },
+});
+
+export const AceEditor = _.compose(
+  ExplicitSize(),
+  connect(null, mapDispatchToProps, null, { forwardRef: true }),
+)(AceEditorInner);

@@ -7,7 +7,6 @@ import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import Databases from "metabase/entities/databases";
-import Questions from "metabase/entities/questions";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
@@ -27,7 +26,7 @@ import type {
   ParameterId,
   TableId,
 } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
@@ -113,10 +112,6 @@ interface StateProps {
   canUsePromptInput: boolean;
 }
 
-interface DispatchProps {
-  fetchQuestion: (cardId: CardId) => Promise<Card>;
-}
-
 interface ExplicitSizeProps {
   width: number;
   height: number;
@@ -129,7 +124,6 @@ interface EntityLoaderProps {
 
 type Props = OwnProps &
   StateProps &
-  DispatchProps &
   ExplicitSizeProps &
   EntityLoaderProps &
   EditorProps;
@@ -505,23 +499,11 @@ const mapStateToProps = (state: State) => ({
   canUsePromptInput: getSetting(state, "is-metabot-enabled"),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch) => ({
-  fetchQuestion: async (id: CardId) => {
-    const action = await dispatch(
-      Questions.actions.fetch(
-        { id },
-        { noEvent: true, useCachedForbiddenError: true },
-      ),
-    );
-    return Questions.HACK_getObjectFromAction(action);
-  },
-});
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   ExplicitSize(),
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(mapStateToProps),
 )(NativeQueryEditor);

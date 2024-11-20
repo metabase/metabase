@@ -21,7 +21,6 @@ export type EditorProps = {
 
   readOnly?: boolean;
 
-  fetchQuestion: (cardId: CardId) => Promise<Card>;
   autocompleteResultsFn?: (prefix: string) => Promise<AutocompleteItem[]>;
   cardAutocompleteResultsFn?: (prefix: string) => Promise<CardCompletionItem[]>;
 
