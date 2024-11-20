@@ -10078,6 +10078,10 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_user_key_value_user_id
               - column:
+                  name: context
+                  type: varchar(254)
+                  remarks: 'The context for this KV, e.g. "dashboard-filters" or "nobody-knows"'
+              - column:
                   name: key
                   remarks: 'The key'
                   type: varchar(254)
@@ -10085,8 +10089,8 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: value
-                  remarks: 'The value'
-                  type: varchar(254)
+                  remarks: 'The value, serialized JSON'
+                  type: ${text.type}
                   constraints:
                     nullable: true
               - column:
@@ -10108,14 +10112,13 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-10-08T10:46:36
       author: johnswanson
-      comment: Add a unique constraint for user_id,key
+      comment: Add a unique constraint for user_id,context,key
       changes:
         - addUniqueConstraint:
             tableName: user_key_value
-            columnNames: user_id, key
-            constraintName: unique_user_key_value_user_id_key
+            columnNames: user_id, context, key
+            constraintName: unique_user_key_value_user_id_context_key
       rollback: # will be deleted with table
->>>>>>> c6ae5bb77e9 (Super simple user-local key-value store API)
 
   - changeSet:
       id: v52.2024-10-26T18:42:42
