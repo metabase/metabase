@@ -28,7 +28,7 @@ import type {
   ParameterValuesMap,
 } from "metabase-types/api";
 
-import { PublicOrEmbeddedQuestionView } from "./PublicOrEmbeddedQuestionView";
+import { PublicOrEmbeddedQuestionView } from "../PublicOrEmbeddedQuestionView";
 
 export const PublicOrEmbeddedQuestion = ({
   params: { uuid, token },
