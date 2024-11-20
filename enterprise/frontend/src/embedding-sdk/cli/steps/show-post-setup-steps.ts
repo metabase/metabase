@@ -79,8 +79,10 @@ export const getImportSnippet = ({
 }) => {
   // Refer to https://www.metabase.com/docs/latest/embedding/sdk/next-js
   if (isNextJs) {
+    const importPath = path.normalize(`../${componentDir}/analytics-page`);
+
     let snippets = "import dynamic from 'next/dynamic';";
-    snippets += `\n  const AnalyticsPage = dynamic(() => import("./${componentDir}/analytics-page"), { ssr: false });`;
+    snippets += `\n  const AnalyticsPage = dynamic(() => import(${importPath}), { ssr: false });`;
 
     return snippets;
   }
