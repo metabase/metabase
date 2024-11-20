@@ -73,6 +73,7 @@ export function getComponentSnippets(options: Options): SampleComponent[] {
   return components.map(component => {
     // Next.js uses "use client" to load the component on the client side.
     // It's fine to leave "use client" in the component even when using the Pages Router.
+    // We must use the default export. A named export will not work.
     // Refer to https://www.metabase.com/docs/latest/embedding/sdk/next-js
     if (isNextJs) {
       const content = `"use client";\n\n${component.content}\n\nexport default ${component.componentName};`;
