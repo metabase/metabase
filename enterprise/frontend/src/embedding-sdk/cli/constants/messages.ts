@@ -93,7 +93,7 @@ export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK h
 
 export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?`;
 
-// eslint-disable-next-line no-unconditional-metabase-links-render -- this is for the cli"
+// eslint-disable-next-line no-unconditional-metabase-links-render -- this is for the cli
 const LINK_TO_NEXT_JS_GUIDE = `https://www.metabase.com/docs/latest/embedding/sdk/next-js`;
 
 export const getNextJsSetupMessage = (generatedDir: string) => `
