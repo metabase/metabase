@@ -4,6 +4,8 @@ title: Custom actions
 
 # Custom actions
 
+[Broken link](./broken.md)
+
 Write SQL to update records in your databases.
 
 ![Custom action](./images/custom-action.png)
