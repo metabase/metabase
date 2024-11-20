@@ -332,7 +332,7 @@ const visualizerSlice = createSlice({
         } else {
           state.cards.push(card);
         }
-        state.loadingDatasets[`card:${card.id}`] = false;
+        state.loadingDataSources[`card:${card.id}`] = false;
         state.expandedDataSources[`card:${card.id}`] = true;
         maybeUpdateHistory(state, action);
       })
