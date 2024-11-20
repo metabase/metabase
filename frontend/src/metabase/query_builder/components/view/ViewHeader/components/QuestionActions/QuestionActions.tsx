@@ -9,12 +9,12 @@ import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import {
-  PLUGIN_QUERY_BUILDER_HEADER,
   PLUGIN_MODERATION,
+  PLUGIN_QUERY_BUILDER_HEADER,
 } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
@@ -75,8 +75,6 @@ export const QuestionActions = ({
   onInfoClick,
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
-
-  const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
   const dispatch = useDispatch();
 

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CardType, DashboardTabId } from "metabase-types/api";
+import type { CardType } from "metabase-types/api";
 
 import type {
   CreateQuestionOptions,
