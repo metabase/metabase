@@ -1,6 +1,5 @@
 import { type Component, type LegacyRef, forwardRef } from "react";
 
-import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
@@ -17,10 +16,10 @@ type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
 };
 
 export type EditorProps = {
-  question: Question;
-
   query: NativeQuery;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  onChange: (queryText: string) => void;
+
+  readOnly?: boolean;
 
   fetchQuestion: (cardId: CardId) => Promise<Card>;
   autocompleteResultsFn: (prefix: string) => Promise<AutocompleteItem[]>;
@@ -37,11 +36,7 @@ export type EditorProps = {
   isSelectedTextPopoverOpen: boolean;
   onToggleSelectedTextContextMenu: (open: boolean) => void;
 
-  readOnly?: boolean;
   width: number;
-  viewHeight: number;
-
-  onChange: (queryText: string) => void;
 };
 
 export interface EditorHandle extends Component<EditorProps> {
