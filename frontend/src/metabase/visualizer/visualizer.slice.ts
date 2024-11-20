@@ -36,7 +36,11 @@ import {
   getDataSourceIdFromNameRef,
 } from "./utils";
 import { cartesianDropHandler } from "./visualizations/cartesian";
-import { funnelDropHandler } from "./visualizations/funnel";
+import {
+  addScalarToFunnel,
+  canCombineCardWithFunnel,
+  funnelDropHandler,
+} from "./visualizations/funnel";
 import { pieDropHandler } from "./visualizations/pie";
 import { pivotDropHandler } from "./visualizations/pivot";
 
@@ -239,6 +243,16 @@ const visualizerHistoryItemSlice = createSlice({
           });
 
           return;
+        }
+
+        if (
+          card &&
+          state.display === "funnel" &&
+          canCombineCardWithFunnel(card, dataset)
+        ) {
+          const dataSource = createDataSource("card", card.id, card.name);
+          const [column] = dataset.data.cols;
+          addScalarToFunnel(state, dataSource, column);
         }
       });
   },

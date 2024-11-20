@@ -10,8 +10,11 @@ import {
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
+import type {
+  VisualizerDataSource,
+  VisualizerHistoryItem,
+} from "metabase-types/store/visualizer";
 
 export const funnelDropHandler = (
   state: VisualizerHistoryItem,
@@ -22,37 +25,55 @@ export const funnelDropHandler = (
   }
 
   const { column, dataSource } = active.data.current;
+
+  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
+    addScalarToFunnel(state, dataSource, column);
+  }
+};
+
+export function canCombineCardWithFunnel(card: Card, dataset: Dataset) {
+  return (
+    card.display === "scalar" &&
+    dataset.data?.cols?.length === 1 &&
+    isNumeric(dataset.data.cols[0]) &&
+    dataset.data.rows?.length === 1
+  );
+}
+
+export function addScalarToFunnel(
+  state: VisualizerHistoryItem,
+  dataSource: VisualizerDataSource,
+  column: DatasetColumn,
+) {
   const columnRef = createVisualizerColumnReference(
     dataSource,
     column,
     extractReferencedColumns(state.columnValuesMapping),
   );
 
-  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
-    let metricColumnName = state.settings["funnel.metric"];
-    let dimensionColumnName = state.settings["funnel.dimension"];
+  let metricColumnName = state.settings["funnel.metric"];
+  let dimensionColumnName = state.settings["funnel.dimension"];
 
-    if (!metricColumnName) {
-      metricColumnName = columnRef.name;
-      state.columns.push(copyColumn(metricColumnName, column));
-      state.settings["funnel.metric"] = metricColumnName;
-    }
-    if (!dimensionColumnName) {
-      dimensionColumnName = columnRef.name;
-      state.columns.push(createDimensionColumn(dimensionColumnName));
-      state.settings["funnel.dimension"] = dimensionColumnName;
-    }
-
-    state.columnValuesMapping[metricColumnName] = addColumnMapping(
-      state.columnValuesMapping[metricColumnName],
-      columnRef,
-    );
-    state.columnValuesMapping[dimensionColumnName] = addColumnMapping(
-      state.columnValuesMapping[dimensionColumnName],
-      createDataSourceNameRef(dataSource.id),
-    );
+  if (!metricColumnName) {
+    metricColumnName = columnRef.name;
+    state.columns.push(copyColumn(metricColumnName, column));
+    state.settings["funnel.metric"] = metricColumnName;
   }
-};
+  if (!dimensionColumnName) {
+    dimensionColumnName = "DIMENSION";
+    state.columns.push(createDimensionColumn(dimensionColumnName));
+    state.settings["funnel.dimension"] = dimensionColumnName;
+  }
+
+  state.columnValuesMapping[metricColumnName] = addColumnMapping(
+    state.columnValuesMapping[metricColumnName],
+    columnRef,
+  );
+  state.columnValuesMapping[dimensionColumnName] = addColumnMapping(
+    state.columnValuesMapping[dimensionColumnName],
+    createDataSourceNameRef(dataSource.id),
+  );
+}
 
 function createDimensionColumn(name: string): DatasetColumn {
   return {
