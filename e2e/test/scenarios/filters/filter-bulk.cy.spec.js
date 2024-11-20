@@ -137,15 +137,17 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing 4 rows").should("be.visible");
   });
 
-  it("should have an info icon on the filter modal filters", () => {
+  it.only("should have an info icon on the filter modal filters", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     filter();
 
-    modal().within(() => {
-      cy.get("li").findByLabelText("More info").realHover();
-    });
+    modal()
+      .findByTestId("filter-column-Subtotal")
+      .findByLabelText("More info")
+      // FIXME: I don't understand why this realHover isn't working
+      .realHover();
 
-    hovercard().within(() => {
+    cy.findByRole("dialog").within(() => {
       cy.contains("The date and time an order was submitted");
       cy.contains("Creation timestamp");
     });
