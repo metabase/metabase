@@ -159,7 +159,8 @@
                                           :from [[:dashboardcard_series :dcs]]
                                           :where [:in :dcs.card_id (map :id cards)]
                                           :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}]]})
+                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}
+                            :dummy_alias]]})
          (group-by :card_id)
          (m/map-vals (fn [dashes] (->> dashes
                                        (map (fn [dash] (dissoc dash :card_id)))
