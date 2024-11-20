@@ -48,9 +48,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   POST_SETUP_STEPS.push(STEP_2);
 
   if (isNextJs) {
-    const generatedDir = path.basename(state.reactComponentDir ?? "");
-
-    POST_SETUP_STEPS.push(getNextJsSetupMessage(generatedDir));
+    POST_SETUP_STEPS.push(getNextJsSetupMessage(state.reactComponentDir ?? ""));
   }
 
   POST_SETUP_STEPS.push(STEP_3);

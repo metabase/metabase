@@ -1,4 +1,5 @@
 import { blue, green, yellow } from "chalk";
+import path from "path";
 
 import {
   CONTAINER_NAME,
@@ -98,7 +99,7 @@ const LINK_TO_NEXT_JS_GUIDE = `https://www.metabase.com/docs/latest/embedding/sd
 
 export const getNextJsSetupMessage = (generatedDir: string) => `
   Please import the example CSS in your _app.js file. For example:
-  ${green(`import "../${generatedDir}/analytics.css"`)}
+  ${green(`import "${path.normalize(`../${generatedDir}/analytics.css`)}"`)}
 
   For guides on using Next.js with Embedding SDK, see
   ${green(LINK_TO_NEXT_JS_GUIDE)}
