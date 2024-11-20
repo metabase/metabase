@@ -1,5 +1,4 @@
-name: Lint doc Markdown links
-
+name: Linkspector
 on:
   push:
     paths:
@@ -8,13 +7,14 @@ on:
     paths:
       - docs/**
 jobs:
-  linkspector:
-    runs-on: ubuntu-22.04
+  check-links:
+    name: runner / linkspector
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Run linkspector
+        uses: umbrelladocs/action-linkspector@v1
         with:
-          fetch-depth: 2
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Lint doc links with linkspector.
-        run: yarn run docs-lint-links
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          fail_on_error: true
