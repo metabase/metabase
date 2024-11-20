@@ -172,6 +172,10 @@ export class AceEditor extends Component<AceEditorProps> {
     this._editor?.resize();
   }
 
+  getSelectionTarget() {
+    return this.editor.current?.querySelector(".ace_selection");
+  }
+
   loadAceEditor() {
     const { query } = this.props;
 

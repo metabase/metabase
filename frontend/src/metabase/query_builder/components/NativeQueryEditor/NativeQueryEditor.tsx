@@ -149,7 +149,6 @@ export class NativeQueryEditor extends Component<
   Props,
   NativeQueryEditorState
 > {
-  root = createRef<HTMLDivElement>();
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
   aceEditor = createRef<AceEditor>();
 
@@ -377,10 +376,7 @@ export class NativeQueryEditor extends Component<
     );
 
     return (
-      <NativeQueryEditorRoot
-        data-testid="native-query-editor-container"
-        ref={this.root}
-      >
+      <NativeQueryEditorRoot data-testid="native-query-editor-container">
         {hasTopBar && (
           <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
@@ -467,7 +463,7 @@ export class NativeQueryEditor extends Component<
           isOpen={this.state.isSelectedTextPopoverOpen}
           openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
           runQuery={this.runQuery}
-          target={() => this.root.current?.querySelector(".ace_selection")}
+          target={() => this.aceEditor.current?.getSelectionTarget()}
           canSaveSnippets={canSaveSnippets}
         />
 
