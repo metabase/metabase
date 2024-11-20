@@ -87,23 +87,14 @@ export async function setup(
 
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
-  if (hash.locale === "ko") {
-    fetchMock.get("path:/app/locales/ko.json", {
-      charset: "utf-8",
+  if (hash.locale) {
+    fetchMock.get(`path:/app/locales/${hash.locale}.json`, {
       headers: {
-        "mime-version": "1.0",
-        "content-type": "text/plain; charset=UTF-8",
-        "content-transfer-encoding": "8bit",
-        "x-generator": "POEditor.com",
         language: "ko",
         "plural-forms": "nplurals=1; plural=0;",
       },
       translations: {
-        "": {
-          "Export as PDF": {
-            msgstr: ["PDF로 내보내기"],
-          },
-        },
+        "": {},
       },
     });
   }

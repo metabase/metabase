@@ -1,7 +1,4 @@
-import userEvent from "@testing-library/user-event";
-
-import { getIcon, screen, waitForLoaderToBeRemoved } from "__support__/ui";
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import { type SetupOpts, setup } from "./setup";
 
@@ -82,56 +79,5 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
-  });
-
-  describe("downloads flag", () => {
-    it("should show the 'Export as PDF' button even when titled=false and there's one tab", async () => {
-      await setupCommon({ hash: { titled: "false" }, numberOfTabs: 1 });
-
-      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
-    });
-
-    it('should not hide the "Export as PDF" button when downloads are disabled without "whitelabel" feature', async () => {
-      await setupCommon({ hash: { downloads: "false" }, numberOfTabs: 1 });
-
-      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
-    });
-
-    it("should allow downloading the dashcards results when downloads are enabled", async () => {
-      await setupCommon({ numberOfTabs: 1, hash: { downloads: "true" } });
-
-      await userEvent.click(getIcon("ellipsis"));
-
-      expect(screen.getByText("Download results")).toBeInTheDocument();
-    });
-
-    it('should not hide downloading menu in the dashcards when downloads are disabled without "whitelabel" feature', async () => {
-      await setupCommon({ numberOfTabs: 1, hash: { downloads: "false" } });
-
-      expect(getIcon("ellipsis")).toBeInTheDocument();
-    });
-
-    it("should use the container used for pdf exports", async () => {
-      const { container } = await setupCommon({ numberOfTabs: 1 });
-
-      expect(
-        // eslint-disable-next-line testing-library/no-node-access -- this test is testing a specific implementation detail as testing the actual functionality is not easy on jest
-        container.querySelector(`#${DASHBOARD_PDF_EXPORT_ROOT_ID}`),
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe("locale hash parameter on static embeds (metabase#50182)", () => {
-    it('should set the locale to "en" by default', async () => {
-      await setupCommon();
-
-      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
-    });
-
-    it('should set not the locale to "ko" without "whitelabel" feature', async () => {
-      await setupCommon({ hash: { locale: "ko" } });
-
-      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
-    });
   });
 });

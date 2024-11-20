@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { getIcon, screen, waitForLoaderToBeRemoved } from "__support__/ui";
+import { getIcon, screen } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 
 import { type SetupOpts, setup } from "./setup";
@@ -16,75 +17,6 @@ const setupEnterprise = async (opts?: Partial<SetupOpts>) => {
 };
 
 describe("PublicOrEmbeddedDashboardPage", () => {
-  it("should display dashboard tabs", async () => {
-    await setupEnterprise({ numberOfTabs: 2 });
-
-    expect(screen.getByText("Tab 1")).toBeInTheDocument();
-    expect(screen.getByText("Tab 2")).toBeInTheDocument();
-  });
-
-  it("should display dashboard tabs if title is disabled (metabase#41195)", async () => {
-    await setupEnterprise({ hash: { titled: "false" }, numberOfTabs: 2 });
-
-    expect(screen.getByText("Tab 1")).toBeInTheDocument();
-    expect(screen.getByText("Tab 2")).toBeInTheDocument();
-  });
-
-  it("should display the header if title is enabled and there is only one tab", async () => {
-    await setupEnterprise({ numberOfTabs: 1, hash: { titled: "true" } });
-
-    expect(screen.getByTestId("embed-frame-header")).toBeInTheDocument();
-    expect(screen.queryByText("Tab 1")).not.toBeInTheDocument();
-  });
-
-  it("should select the tab from the url", async () => {
-    await setupEnterprise({ queryString: "?tab=2", numberOfTabs: 3 });
-
-    const secondTab = screen.getByRole("tab", { name: "Tab 2" });
-
-    expect(secondTab).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("should work with ?tab={tabid}-${tab-name}", async () => {
-    // note: as all slugs this is ignored and we only use the id
-    await setupEnterprise({
-      queryString: "?tab=2-this-is-the-tab-name",
-      numberOfTabs: 3,
-    });
-
-    const secondTab = screen.getByRole("tab", { name: "Tab 2" });
-
-    expect(secondTab).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("should default to the first tab if the one passed on the url doesn't exist", async () => {
-    await setupEnterprise({ queryString: "?tab=1111", numberOfTabs: 3 });
-
-    const firstTab = screen.getByRole("tab", { name: "Tab 1" });
-
-    expect(firstTab).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("should render when a filter passed with value starting from '0' (metabase#41483)", async () => {
-    // note: as all slugs this is ignored and we only use the id
-    await setupEnterprise({
-      queryString: "?my-filter-value=01",
-    });
-
-    // should not throw runtime error and render dashboard content
-    expect(screen.getByText(DASHBOARD_TITLE)).toBeInTheDocument();
-  });
-
-  it("should render empty message for dashboard without cards", async () => {
-    await setupEnterprise({
-      numberOfTabs: 0,
-    });
-
-    await waitForLoaderToBeRemoved();
-
-    expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
-  });
-
   describe("downloads flag", () => {
     it("should show the 'Export as PDF' button even when titled=false and there's one tab", async () => {
       await setupEnterprise({ hash: { titled: "false" }, numberOfTabs: 1 });
@@ -130,9 +62,12 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     });
 
     it('should set not the locale to "ko" without "whitelabel" feature', async () => {
-      await setupEnterprise({ hash: { locale: "ko" } });
+      const expectedLocale = "ko";
+      await setupEnterprise({ hash: { locale: expectedLocale } });
 
-      expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+      expect(
+        fetchMock.calls(`path:/app/locales/${expectedLocale}.json`),
+      ).toHaveLength(0);
     });
   });
 });

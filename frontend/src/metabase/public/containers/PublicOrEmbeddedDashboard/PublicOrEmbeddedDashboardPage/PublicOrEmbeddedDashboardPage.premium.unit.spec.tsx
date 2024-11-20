@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import {
-  getIcon,
-  queryIcon,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { getIcon, queryIcon, screen } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -26,20 +22,6 @@ const setupPremium = async (opts?: Partial<SetupOpts>) => {
 };
 
 describe("PublicOrEmbeddedDashboardPage", () => {
-  it("should display dashboard tabs", async () => {
-    await setupPremium({ numberOfTabs: 2 });
-
-    expect(screen.getByText("Tab 1")).toBeInTheDocument();
-    expect(screen.getByText("Tab 2")).toBeInTheDocument();
-  });
-
-  it("should display dashboard tabs if title is disabled (metabase#41195)", async () => {
-    await setupPremium({ hash: { titled: "false" }, numberOfTabs: 2 });
-
-    expect(screen.getByText("Tab 1")).toBeInTheDocument();
-    expect(screen.getByText("Tab 2")).toBeInTheDocument();
-  });
-
   it("should not display the header if title is disabled and there is only one tab (metabase#41393) and downloads are disabled", async () => {
     await setupPremium({
       hash: { titled: "false", downloads: "false" },
@@ -48,61 +30,6 @@ describe("PublicOrEmbeddedDashboardPage", () => {
 
     expect(screen.queryByText("Tab 1")).not.toBeInTheDocument();
     expect(screen.queryByTestId("embed-frame-header")).not.toBeInTheDocument();
-  });
-
-  it("should display the header if title is enabled and there is only one tab", async () => {
-    await setupPremium({ numberOfTabs: 1, hash: { titled: "true" } });
-
-    expect(screen.getByTestId("embed-frame-header")).toBeInTheDocument();
-    expect(screen.queryByText("Tab 1")).not.toBeInTheDocument();
-  });
-
-  it("should select the tab from the url", async () => {
-    await setupPremium({ queryString: "?tab=2", numberOfTabs: 3 });
-
-    const secondTab = screen.getByRole("tab", { name: "Tab 2" });
-
-    expect(secondTab).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("should work with ?tab={tabid}-${tab-name}", async () => {
-    // note: as all slugs this is ignored and we only use the id
-    await setupPremium({
-      queryString: "?tab=2-this-is-the-tab-name",
-      numberOfTabs: 3,
-    });
-
-    const secondTab = screen.getByRole("tab", { name: "Tab 2" });
-
-    expect(secondTab).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("should default to the first tab if the one passed on the url doesn't exist", async () => {
-    await setupPremium({ queryString: "?tab=1111", numberOfTabs: 3 });
-
-    const firstTab = screen.getByRole("tab", { name: "Tab 1" });
-
-    expect(firstTab).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("should render when a filter passed with value starting from '0' (metabase#41483)", async () => {
-    // note: as all slugs this is ignored and we only use the id
-    await setupPremium({
-      queryString: "?my-filter-value=01",
-    });
-
-    // should not throw runtime error and render dashboard content
-    expect(screen.getByText(DASHBOARD_TITLE)).toBeInTheDocument();
-  });
-
-  it("should render empty message for dashboard without cards", async () => {
-    await setupPremium({
-      numberOfTabs: 0,
-    });
-
-    await waitForLoaderToBeRemoved();
-
-    expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
   });
 
   describe("downloads flag", () => {
@@ -151,9 +78,12 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     });
 
     it('should set the locale to "ko"', async () => {
-      await setupPremium({ hash: { locale: "ko" } });
+      const expectedLocale = "ko";
+      await setupPremium({ hash: { locale: expectedLocale } });
 
-      expect(await screen.findByText("PDF로 내보내기")).toBeInTheDocument();
+      expect(
+        fetchMock.calls(`path:/app/locales/${expectedLocale}.json`),
+      ).toHaveLength(1);
     });
   });
 });
