@@ -30,9 +30,8 @@ import type { Dispatch, State } from "metabase-types/store";
 
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
-import { AceEditor } from "./AceEditor";
 import DataSourceSelectors from "./DataSourceSelectors";
-import type { EditorProps } from "./Editor";
+import { Editor, type EditorHandle, type EditorProps } from "./Editor";
 import {
   DragHandle,
   DragHandleContainer,
@@ -151,7 +150,7 @@ export class NativeQueryEditor extends Component<
   NativeQueryEditorState
 > {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
-  editor = createRef<AceEditor>();
+  editor = createRef<EditorHandle>();
 
   constructor(props: Props) {
     super(props);
@@ -437,7 +436,7 @@ export class NativeQueryEditor extends Component<
           }}
         >
           <>
-            <AceEditor
+            <Editor
               ref={this.editor}
               {...this.props}
               onChange={this.onChange}

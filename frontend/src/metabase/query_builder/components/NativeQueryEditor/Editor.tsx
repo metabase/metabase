@@ -1,4 +1,4 @@
-import type { Component } from "react";
+import { type Component, type LegacyRef, forwardRef } from "react";
 
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -9,6 +9,7 @@ import type {
   NativeQuerySnippet,
 } from "metabase-types/api";
 
+import { AceEditor } from "./AceEditor";
 import type { AutocompleteItem, SelectionRange } from "./types";
 
 type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
@@ -43,8 +44,14 @@ export type EditorProps = {
   onChange: (queryText: string) => void;
 };
 
-export interface Editor extends Component<EditorProps> {
+export interface EditorHandle extends Component<EditorProps> {
   focus: () => void;
   resize: () => void;
   getSelectionTarget: () => Element | null;
 }
+
+export const Editor = forwardRef<EditorHandle, EditorProps>(
+  function Editor(props, ref) {
+    return <AceEditor {...props} ref={ref as LegacyRef<AceEditor>} />;
+  },
+);
