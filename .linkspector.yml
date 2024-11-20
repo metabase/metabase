@@ -2,3 +2,5 @@ dirs:
   - docs
 useGitIgnore: true
 modifiedFilesOnly: true
+ignorePatterns:
+  - pattern: "localhost"
