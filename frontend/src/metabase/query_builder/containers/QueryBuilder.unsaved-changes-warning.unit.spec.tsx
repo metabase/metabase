@@ -435,9 +435,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      const editorControlFromVizPage =
-        screen.getAllByLabelText("Switch to editor")[1];
-      await userEvent.click(editorControlFromVizPage);
+      await userEvent.click(screen.getByLabelText("Switch to editor"));
 
       await waitFor(() => {
         expect(screen.getByText("View the SQL")).toBeInTheDocument();
@@ -784,9 +782,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      const editorControlFromVizPage =
-        screen.getAllByLabelText("Switch to editor")[1];
-      await userEvent.click(editorControlFromVizPage);
+      await userEvent.click(screen.getByLabelText("Switch to editor"));
 
       await waitFor(() => {
         expect(screen.getByText("View the SQL")).toBeInTheDocument();

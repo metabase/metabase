@@ -6,6 +6,7 @@ import { useSelector } from "metabase/lib/redux";
 import {
   getFirstQueryResult,
   getQuestion,
+  getUiControls,
 } from "metabase/query_builder/selectors";
 import { Button, Group, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -42,6 +43,7 @@ export const ViewFooter = ({
   const result = useSelector(getFirstQueryResult);
   const shouldHideFooterForNativeQuestionWithoutResult = !isNotebook && !result;
 
+  const { isShowingNotebookNativePreview } = useSelector(getUiControls);
   if (!question || shouldHideFooterForNativeQuestionWithoutResult) {
     return null;
   }
@@ -104,7 +106,9 @@ export const ViewFooter = ({
           />
         )}
         {isNotebook ? (
-          <ConvertToNativeQuestionButton />
+          isShowingNotebookNativePreview ? (
+            <ConvertToNativeQuestionButton />
+          ) : null
         ) : (
           <RightViewFooterButtonGroup />
         )}
