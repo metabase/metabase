@@ -31,8 +31,7 @@
    (let [base-url   (dashboard-url id)
          url-params (flatten
                      (for [param parameters
-                           :let  [param  (update-keys param keyword)
-                                  values (shared.params/param-val-or-default param)]]
+                           :let  [values (shared.params/param-val-or-default param)]]
                        (for [value (if ((some-fn sequential? set? nil?) values)
                                      values
                                      [values])]

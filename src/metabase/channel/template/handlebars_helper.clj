@@ -10,20 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn option-param
-  "Get a parameter from the options by index."
-  ([^Options option idx]
-   (.param option idx))
-  ([^Options option idx default]
-   (.param option idx default)))
-
-(defn option-hash
-  "Get a parameter from the options by key."
-  ([^Options option key]
-   (.hash option key))
-  ([^Options option key default]
-   (.hash option key default)))
-
 (defn option-block-body
   "Get the block body."
   [^Options option]
@@ -125,9 +111,8 @@
   "Return an appropriate URL for a `Dashboard` with ID.
 
      {{dashboard-url 10}} -> \"http://localhost:3000/dashboard/10\""
-  [id _params _kparams options]
-  (let [params (option-param options 0 nil)]
-    (urls/dashboard-url id params)))
+  [id [parameters] _kparams _options]
+  (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
 (def default-helpers
   "A list of default helpers."
