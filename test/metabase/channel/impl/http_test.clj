@@ -147,7 +147,7 @@
        (ex-data e#))))
 
 (deftest ^:parallel can-connect-no-auth-test
-  (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400]]
+  (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400 get-500]]
     (let [can-connect?* (fn [route]
                           (can-connect? {:url         (str url (:path route))
                                          :auth-method "none"
@@ -166,9 +166,7 @@
                 :request-body   "Bad request"}
                (exception-data (can-connect?* get-400)))))
       (is (=? {:request-status 500
-               ;; not sure why it's returns a response map is nil body
-               ;; looks like a jetty bug: https://stackoverflow.com/q/46299061
-               #_:request-body   #_"Internal server error"}
+               :request-body   "Internal server error"}
               (exception-data (can-connect?* get-500)))))))
 
 (deftest ^:parallel can-connect-header-auth-test
