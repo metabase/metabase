@@ -58,7 +58,6 @@
   (when (t2/exists? :model/Channel :name name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
-  (test-channel-connection! type details)
   (u/prog1 (t2/insert-returning-instance! :model/Channel body)
     (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
 
@@ -78,13 +77,7 @@
    details     [:maybe :map]
    active      [:maybe :boolean]}
   (validation/check-has-application-permission :setting)
-  (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))
-        details-changed? (some-> details (not= (:details channel-before-update)))
-        type-changed?    (some-> type (not= (:type channel-before-update)))]
-
-    (when (or details-changed? type-changed?)
-      (test-channel-connection! (or type (:type channel-before-update))
-                                (or details (:details channel-before-update))))
+  (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))]
     (t2/update! :model/Channel id body)
     (u/prog1 (t2/select-one :model/Channel id)
       (events/publish-event! :event/channel-update {:object          <>

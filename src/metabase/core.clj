@@ -18,6 +18,7 @@
    [metabase.models.cloud-migration :as cloud-migration]
    [metabase.models.database :as database]
    [metabase.models.setting :as settings]
+   [metabase.notification.core :as notification]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -124,27 +125,27 @@
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
 
-  (init-status/set-progress! 0.5)
+  (init-status/set-progress! 0.4)
   ;; Set up Prometheus
   (log/info "Setting up prometheus metrics")
   (prometheus/setup!)
-  (init-status/set-progress! 0.6)
+  (init-status/set-progress! 0.5)
 
   (premium-features/airgap-check-user-count)
-  (init-status/set-progress! 0.65)
+  (init-status/set-progress! 0.55)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
     (config-from-file/init-from-file-if-code-available!)
-    (init-status/set-progress! 0.7)
+    (init-status/set-progress! 0.6)
     (when new-install?
       (log/info "Looks like this is a new installation ... preparing setup wizard")
       ;; create setup token
       (create-setup-token-and-log-setup-url!)
       ;; publish install event
       (events/publish-event! :event/install {}))
-    (init-status/set-progress! 0.8)
+    (init-status/set-progress! 0.7)
     ;; deal with our sample database as needed
     (when (config/load-sample-content?)
       (if new-install?
@@ -152,18 +153,19 @@
         (sample-data/extract-and-sync-sample-database!)
         ;; otherwise update if appropriate
         (sample-data/update-sample-database-if-needed!)))
-    (init-status/set-progress! 0.9))
+    (init-status/set-progress! 0.8))
 
   (ensure-audit-db-installed!)
-  (init-status/set-progress! 0.95)
+  (notification/truncate-then-seed-notification!)
+  (init-status/set-progress! 0.9)
 
   (embed.settings/check-and-sync-settings-on-startup! env/env)
-  (init-status/set-progress! 0.97)
+  (init-status/set-progress! 0.95)
 
   (settings/migrate-encrypted-settings!)
-  ;; start scheduler at end of init!
+   ;; start scheduler at end of init!
   (task/start-scheduler!)
-  ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
+   ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
   (database/check-and-schedule-tasks!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))

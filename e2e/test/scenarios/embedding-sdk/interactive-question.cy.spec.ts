@@ -10,12 +10,12 @@ import {
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
-import { describeSDK } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
+  describeSDK,
   getSdkRoot,
   signInAsAdminAndEnableEmbeddingSdk,
-  visitInteractiveQuestionStory,
-} from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { visitInteractiveQuestionStory } from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/test/scenarios/embedding-sdk/helpers/save-interactive-question-e2e-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -153,5 +153,24 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     });
 
     getSdkRoot().contains("User ID is 12");
+  });
+
+  it("can create questions via the SaveQuestionForm component", () => {
+    visitInteractiveQuestionStory({
+      storyId: "embeddingsdk-interactivequestion-savequestionform--default",
+    });
+
+    saveInteractiveQuestionAsNewQuestion({
+      entityName: "Orders",
+      questionName: "Sample Orders 4",
+    });
+
+    cy.wait("@createCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      expect(response?.body.name).to.equal("Sample Orders 4");
+    });
+
+    getSdkRoot().contains("onBeforeSave is called");
+    getSdkRoot().contains("question saved as Sample Orders 4");
   });
 });

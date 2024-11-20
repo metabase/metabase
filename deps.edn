@@ -318,6 +318,15 @@
                "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
+  ;; run the prod server when generating docs
+  ;; as some default values differ between dev and prod
+  ;;
+  ;; clojure -M:ee:doc
+  :doc
+  {:main-opts ["-m" "metabase.bootstrap"]
+   :jvm-opts  ["-Dmb.run.mode=prod"
+               "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
+
   ;; alias for CI-specific options.
   :ci
   {:jvm-opts ["-Xmx12g"
