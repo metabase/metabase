@@ -13,7 +13,6 @@ import {
   getColumnVizSettings,
   isCartesianChart,
 } from "metabase/visualizations";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
@@ -31,12 +30,9 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import {
-  addColumnMapping,
   copyColumn,
   createDataSource,
-  createDataSourceNameRef,
   createVisualizerColumnReference,
-  extractReferencedColumns,
   getDataSourceIdFromNameRef,
 } from "./utils";
 import { cartesianDropHandler } from "./visualizations/cartesian";
@@ -243,37 +239,6 @@ const visualizerHistoryItemSlice = createSlice({
           });
 
           return;
-        }
-
-        if (state.display === "funnel") {
-          if (
-            card?.display === "scalar" &&
-            dataset.data?.cols?.length === 1 &&
-            isNumeric(dataset.data.cols[0]) &&
-            dataset.data.rows?.length === 1
-          ) {
-            const dataSource = createDataSource("card", card.id, card.name);
-
-            const columnRef = createVisualizerColumnReference(
-              dataSource,
-              dataset.data.cols[0],
-              extractReferencedColumns(state.columnValuesMapping),
-            );
-
-            const metricColumnName = state.settings["funnel.metric"];
-            const dimensionColumnName = state.settings["funnel.dimension"];
-
-            if (metricColumnName && dimensionColumnName) {
-              state.columnValuesMapping[metricColumnName] = addColumnMapping(
-                state.columnValuesMapping[metricColumnName],
-                columnRef,
-              );
-              state.columnValuesMapping[dimensionColumnName] = addColumnMapping(
-                state.columnValuesMapping[dimensionColumnName],
-                createDataSourceNameRef(dataSource.id),
-              );
-            }
-          }
         }
       });
   },
