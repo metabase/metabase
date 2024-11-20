@@ -54,13 +54,11 @@
     [:value {:encode/database json/generate-string
              :decode/database json/parse-string}
      :any]]
-   (into [:multi
-          {:dispatch :context}]
-         (map (fn [context]
-                [context [:map [:value [:maybe {:encode/database json/generate-string
-                                                :decode/database json/parse-string}
-                                        context]]]]))
-         (known-contexts))])
+    (into [:multi
+           {:dispatch :context}]
+          (map (fn [context]
+                 [context context]))
+          (known-contexts))])
 
 (defn- update-user-key-value-schema! []
   (log/debug "Updating user-key-value schema")
