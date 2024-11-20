@@ -32,7 +32,7 @@ export const DataImporter = () => {
       if (dataSourceIds.has(source.id)) {
         dispatch(removeDataSource(source));
       } else {
-        dispatch(addDataSource(source));
+        dispatch(addDataSource(source.id));
       }
     },
     [dataSourceIds, dispatch],

@@ -34,6 +34,7 @@ import {
   createDataSource,
   createVisualizerColumnReference,
   getDataSourceIdFromNameRef,
+  parseDataSourceId,
 } from "./utils";
 import { cartesianDropHandler } from "./visualizations/cartesian";
 import {
@@ -70,13 +71,13 @@ const initialState: VisualizerState = {
 
 export const addDataSource = createAsyncThunk(
   "visualizer/dataImporter/addDataSource",
-  async (source: VisualizerDataSource, { dispatch }) => {
-    if (source.type === "card") {
-      const cardId = source.sourceId;
-      await dispatch(fetchCard(cardId));
-      await dispatch(fetchCardQuery(cardId));
+  async (id: VisualizerDataSourceId, { dispatch }) => {
+    const { type, sourceId } = parseDataSourceId(id);
+    if (type === "card") {
+      await dispatch(fetchCard(sourceId));
+      await dispatch(fetchCardQuery(sourceId));
     } else {
-      console.warn(`Unsupported data source type: ${source.type}`);
+      console.warn(`Unsupported data source type: ${type}`);
     }
   },
 );

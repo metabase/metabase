@@ -29,6 +29,11 @@ export function createDataSource(
   };
 }
 
+export function parseDataSourceId(id: VisualizerDataSourceId) {
+  const [type, sourceId] = id.split(":");
+  return { type, sourceId: Number(sourceId) };
+}
+
 export function isReferenceToColumn(
   column: DatasetColumn,
   dataSourceId: VisualizerDataSourceId,
