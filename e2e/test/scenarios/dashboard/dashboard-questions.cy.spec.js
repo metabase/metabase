@@ -227,6 +227,38 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findByText("Total Orders");
       H.dashboardCards().findByText("80.52");
     });
+
+    it("can save a question directly to a dashboard", () => {
+      H.createDashboard(
+        {
+          name: "Test Dash",
+          collection_id: S.THIRD_COLLECTION_ID,
+        },
+        { wrapId: true },
+      );
+
+      cy.get("@dashboardId").then(dashboardId => {
+        H.visitDashboard(dashboardId);
+      });
+      //cy.visit("/");
+      cy.findByLabelText("Navigation bar").findByText("New").click();
+      H.popover().findByText("Question").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      cy.findByTestId("qb-header").findByText("Save").click();
+      cy.findByLabelText(/Where do you want to save/).should(
+        "have.text",
+        "Test Dash",
+      );
+
+      H.modal().button("Save").click();
+
+      cy.findByTestId("edit-bar")
+        .findByText("You're editing this dashboard.")
+        .should("exist");
+    });
   });
 
   describe("limited users", () => {
