@@ -78,14 +78,38 @@ const darkTheme = defineEmbeddingSdkTheme({
   },
 });
 
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <MetabaseProvider config={storybookSdkDefaultConfig} theme={darkTheme}>
+    <Box p="xl" bg={colors.background}>
+      {children}
+    </Box>
+  </MetabaseProvider>
+);
+
 export const DarkTheme = {
   render(args: InteractiveQuestionComponentProps) {
     return (
-      <MetabaseProvider config={storybookSdkDefaultConfig} theme={darkTheme}>
-        <Box p="xl" bg={colors.background}>
-          <InteractiveQuestion {...args} />;
-        </Box>
-      </MetabaseProvider>
+      <Wrapper>
+        <InteractiveQuestion {...args} />;
+      </Wrapper>
+    );
+  },
+
+  args: {
+    questionId: QUESTION_ID,
+    isSaveEnabled: true,
+    saveToCollectionId: undefined,
+  },
+};
+
+export const DarkThemeEditor = {
+  render(args: InteractiveQuestionComponentProps) {
+    return (
+      <Wrapper>
+        <InteractiveQuestion {...args}>
+          <InteractiveQuestion.Editor />
+        </InteractiveQuestion>
+      </Wrapper>
     );
   },
 
