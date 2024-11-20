@@ -1,4 +1,3 @@
-import type { Ace } from "ace-builds";
 import { Component, createRef } from "react";
 import { connect } from "react-redux";
 import type { ResizableBox, ResizableBoxProps } from "react-resizable";
@@ -45,6 +44,7 @@ import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { RightClickPopover } from "./RightClickPopover";
 import { VisibilityToggler } from "./VisibilityToggler";
 import { MIN_HEIGHT_LINES } from "./constants";
+import type { SelectionRange } from "./types";
 import {
   calcInitialEditorHeight,
   formatQuery,
@@ -97,7 +97,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
-  setNativeEditorSelectedRange: (range: Ace.Range) => void;
+  setNativeEditorSelectedRange: (range: SelectionRange) => void;
   openDataReferenceAtQuestion: (id: CardId) => void;
   openSnippetModalWithSelectedText: () => void;
   insertSnippet: (snippet: NativeQuerySnippet) => void;

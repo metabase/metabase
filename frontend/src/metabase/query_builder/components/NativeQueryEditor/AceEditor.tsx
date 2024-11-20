@@ -30,6 +30,7 @@ import type {
 
 import { EditorRoot } from "./NativeQueryEditor.styled";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
+import type { SelectionRange } from "./types";
 import { getAutocompleteResultMeta } from "./utils";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
@@ -59,7 +60,7 @@ export type AceEditorProps = {
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
 
   nativeEditorSelectedText?: string;
-  setNativeEditorSelectedRange: (range: Ace.Range) => void;
+  setNativeEditorSelectedRange: (range: SelectionRange) => void;
 
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
