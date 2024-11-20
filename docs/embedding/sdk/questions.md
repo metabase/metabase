@@ -241,6 +241,10 @@ export default function App() {
 
 With the `CreateQuestion` component, you can embed the query builder without a pre-defined question.
 
+This component is built on top of the `InteractiveQuestion` component with [namespaced components](#interactive-question-components). It [shares the same props as InteractiveQuestion](#question-props), except it lacks the `questionId` prop and the ability to pass custom children.
+
+To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
+
 ```tsx
 import React from "react";
 import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
@@ -250,7 +254,7 @@ const config = {...}
 export default function App() {
     return (
         <MetabaseProvider config={config}>
-            <CreateQuestion/>
+            <CreateQuestion />
         </MetabaseProvider>
     );
 }
