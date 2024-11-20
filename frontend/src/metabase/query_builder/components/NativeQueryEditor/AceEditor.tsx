@@ -321,8 +321,8 @@ export class AceEditorInner extends Component<AceEditorProps> {
   }, AUTOCOMPLETE_DEBOUNCE_DURATION);
 
   handleSelectionChange = () => {
-    if (this._editor && this.props.setNativeEditorSelectedRange) {
-      this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
+    if (this._editor) {
+      this.props.onSelectionChange?.(this._editor.getSelectionRange());
     }
   };
 
@@ -332,10 +332,8 @@ export class AceEditorInner extends Component<AceEditorProps> {
         this._editor.completers = this.nextCompleters(cursor);
       }
 
-      if (this._editor && this.props.setNativeEditorSelectedRange) {
-        this.props.setNativeEditorSelectedRange(
-          this._editor.getSelectionRange(),
-        );
+      if (this._editor) {
+        this.props.onSelectionChange?.(this._editor.getSelectionRange());
       }
 
       const cardTagId = this.cardTagIdAtCursor(cursor);

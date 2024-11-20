@@ -353,6 +353,7 @@ export class NativeQueryEditor extends Component<
       resizable,
       editorContext = "question",
       setDatasetQuery,
+      setNativeEditorSelectedRange,
       sidebarFeatures,
       canChangeDatabase,
       setParameterValueToDefault,
@@ -441,6 +442,7 @@ export class NativeQueryEditor extends Component<
               {...this.props}
               onChange={this.onChange}
               isSelectedTextPopoverOpen={this.state.isSelectedTextPopoverOpen}
+              onSelectionChange={setNativeEditorSelectedRange}
               onCursorMoveOverCardTag={openDataReferenceAtQuestion}
               onToggleSelectedTextContextMenu={(
                 isSelectedTextPopoverOpen: boolean,

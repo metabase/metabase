@@ -26,7 +26,7 @@ export type EditorProps = {
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
 
   nativeEditorSelectedText?: string;
-  setNativeEditorSelectedRange: (range: SelectionRange) => void;
+  onSelectionChange?: (range: SelectionRange) => void;
 
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
