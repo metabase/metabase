@@ -171,11 +171,6 @@
                #_:request-body   #_"Internal server error"}
               (exception-data (can-connect?* get-500)))))))
 
-(with-server [url []]
-  (can-connect? {:url         (str url "/sup")
-                 :auth-method "none"
-                 :method      "get"}))
-
 (deftest ^:parallel can-connect-header-auth-test
   (with-server [url [(make-route :get "/user"
                                  (fn [x]
