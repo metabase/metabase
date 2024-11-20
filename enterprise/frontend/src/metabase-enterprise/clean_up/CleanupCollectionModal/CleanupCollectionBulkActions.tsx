@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
-import ZIndex from "metabase/css/core/z-index.module.css";
 
 import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
-import { UndoToast } from "metabase/containers/UndoListing";
-import { Portal } from "metabase/ui";
+import { FloatingUndoList, UndoToast } from "metabase/containers/UndoListing";
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 
@@ -80,13 +77,13 @@ export const CleanupCollectionBulkActions = ({
   return (
     <>
       {undo && (
-        <Portal data-testid="undo-list">
+        <FloatingUndoList>
           <UndoToast
             undo={undo}
             onUndo={() => undo.actions?.[0]()}
             onDismiss={() => setUndo(undefined)}
           />
-        </Portal>
+        </FloatingUndoList>
       )}
 
       <BulkActionBar

@@ -1,7 +1,6 @@
 import cx from "classnames";
 
 import Animation from "metabase/css/core/animation.module.css";
-import ZIndex from "metabase/css/core/z-index.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { Box, type BoxProps, Flex, Portal, Text } from "metabase/ui";
@@ -44,10 +43,9 @@ export const BulkActionBarPortal = ({
   }
   return (
     <Portal>
-      <Box
-        component={BulkActionsToast}
+      <BulkActionsToast
         isNavbarOpen={isNavbarOpen}
-        className={cx(className, ZIndex.FloatingElement, Animation.popToast)}
+        className={cx(className, Animation.popToast)}
       >
         <Box component={ToastCard} dark data-testid="toast-card" {...props}>
           {message && <Text color="text-white">{message}</Text>}
@@ -55,7 +53,7 @@ export const BulkActionBarPortal = ({
             {children}
           </Flex>
         </Box>
-      </Box>
+      </BulkActionsToast>
     </Portal>
   );
 };
