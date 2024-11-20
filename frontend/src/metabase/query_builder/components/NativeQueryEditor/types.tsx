@@ -1,8 +1,13 @@
 import type { Card } from "metabase-types/api";
 
+export type Location = {
+  row: number;
+  column: number;
+};
+
 export type SelectionRange = {
-  start: number;
-  end: number;
+  start: Location;
+  end: Location;
 };
 
 export type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
