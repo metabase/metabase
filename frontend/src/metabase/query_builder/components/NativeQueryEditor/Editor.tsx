@@ -35,8 +35,6 @@ export type EditorProps = {
 
   isSelectedTextPopoverOpen: boolean;
   onToggleSelectedTextContextMenu: (open: boolean) => void;
-
-  width: number;
 };
 
 export interface EditorHandle extends Component<EditorProps> {
@@ -47,6 +45,6 @@ export interface EditorHandle extends Component<EditorProps> {
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(
   function Editor(props, ref) {
-    return <AceEditor {...props} ref={ref as LegacyRef<AceEditor>} />;
+    return <AceEditor {...props} ref={ref as LegacyRef<typeof AceEditor>} />;
   },
 );

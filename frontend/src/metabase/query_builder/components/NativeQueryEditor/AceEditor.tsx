@@ -14,6 +14,7 @@ import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/json";
 
+import ExplicitSize from "metabase/components/ExplicitSize";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
@@ -37,7 +38,12 @@ type LastAutoComplete = {
   results: AutocompleteItem[];
 };
 
-export class AceEditor extends Component<EditorProps> {
+type AceEditorProps = EditorProps & {
+  width: number | null;
+  height: number | null;
+};
+
+export class AceEditorInner extends Component<AceEditorProps> {
   editor = createRef<HTMLDivElement>();
 
   // this is overwritten when the editor mounts
@@ -58,7 +64,7 @@ export class AceEditor extends Component<EditorProps> {
     this._editor?.destroy?.();
   }
 
-  componentDidUpdate(prevProps: EditorProps) {
+  componentDidUpdate(prevProps: AceEditorProps) {
     const { query, readOnly } = this.props;
     if (!query || !this._editor) {
       return;
@@ -470,3 +476,5 @@ export class AceEditor extends Component<EditorProps> {
     );
   }
 }
+
+export const AceEditor = ExplicitSize<EditorProps>()(AceEditorInner);
