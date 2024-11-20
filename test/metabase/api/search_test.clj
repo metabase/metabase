@@ -1689,7 +1689,7 @@
 
       (finally
         (public-settings/experimental-search-weight-overrides! original-overrides)))))
-        
+
 (deftest dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
     (let [search-name (random-uuid)

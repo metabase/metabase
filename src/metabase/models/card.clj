@@ -22,6 +22,7 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
+   [metabase.models.dashboard.constants :as dashboard.constants]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -156,8 +157,10 @@
                                                    [:d.collection_id :collection_id]
                                                    [:d.id :id]]
                                           :from [[:dashboardcard_series :dcs]]
+                                          :where [:in :dcs.card_id (map :id cards)]
                                           :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}]] })
+                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}
+                            :dummy_alias]]})
          (group-by :card_id)
          (m/map-vals (fn [dashes] (->> dashes
                                        (map (fn [dash] (dissoc dash :card_id)))
@@ -468,14 +471,14 @@
                              (:dashboard_id changes)))]
     (when will-be-dq?
       (cond
-       (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
-       (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
-       (api/column-will-change? :collection_position card changes)
-       (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
+        (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
+        (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
+        (api/column-will-change? :collection_position card changes)
+        (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
        ;; `column-will-change?` seems broken in the case where we 'change' :question to "question"
-       (and (api/column-will-change? :type card changes)
-            (not (contains? #{"question" :question} (:type changes))))
-       (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
+        (and (api/column-will-change? :type card changes)
+             (not (contains? #{"question" :question} (:type changes))))
+        (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
   (let [dashboard-id->name (->> (t2/hydrate card :in_dashboards)
@@ -728,7 +731,10 @@
     (when-not already-on-dashboard?
       (let [cards-on-first-tab (or (:cards (first tabs))
                                    dashcards)
-            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab)]
+            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab
+                                                              (:width (:default (get dashboard.constants/card-size-defaults (:display card))))
+                                                              (:height (:default (get dashboard.constants/card-size-defaults (:display card))))
+                                                              autoplace/default-grid-width)]
         (t2/insert! :model/DashboardCard (assoc new-spot
                                                 :card_id (:id card)
                                                 :dashboard_id dashboard-id))
