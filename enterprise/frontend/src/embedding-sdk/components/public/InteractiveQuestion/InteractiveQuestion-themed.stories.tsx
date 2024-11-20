@@ -1,10 +1,7 @@
 import type { ComponentProps } from "react";
 
 import { MetabaseProvider, defineEmbeddingSdkTheme } from "embedding-sdk";
-import {
-  CommonSdkStoryWrapper,
-  storybookSdkDefaultConfig,
-} from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box } from "metabase/ui";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
@@ -21,7 +18,6 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [CommonSdkStoryWrapper],
 };
 
 const colors = {
