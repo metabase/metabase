@@ -4,7 +4,7 @@
 ### Bug Fixes
 
 * **sdk:** handle relative urls for metabaseInstance in loading maps ([#50135](https://github.com/metabase/metabase/issues/50135)) ([#50190](https://github.com/metabase/metabase/issues/50190)) ([1f33bc7](https://github.com/metabase/metabase/commit/1f33bc7a75056c9650a16895db85a2c537f31203))
-* **sdk:** remove `Cannot update a component XX while rendering a ([#50078](https://github.com/metabase/metabase/issues/50078)) ([#50084](https://github.com/metabase/metabase/issues/50084)) ([c3ef606](https://github.com/metabase/metabase/commit/c3ef6060afcaba0c5561b58abac6142e8bdbec2a))
+* **sdk:** remove `Cannot update a component XX` error ([#50078](https://github.com/metabase/metabase/issues/50078)) ([#50084](https://github.com/metabase/metabase/issues/50084)) ([c3ef606](https://github.com/metabase/metabase/commit/c3ef6060afcaba0c5561b58abac6142e8bdbec2a))
 * **sdk:** sdk version wrapped in quotes ([#50014](https://github.com/metabase/metabase/issues/50014)) ([#50031](https://github.com/metabase/metabase/issues/50031)) ([fdf8a78](https://github.com/metabase/metabase/commit/fdf8a78de296220559627d32689abb83afd30997))
 * **sdk:** Split `useSummarizeQuery` into specialized hooks ([#49841](https://github.com/metabase/metabase/issues/49841)) ([#50029](https://github.com/metabase/metabase/issues/50029)) ([185389b](https://github.com/metabase/metabase/commit/185389ba3616dd1b8bad8bbaff556b57eacde051))
 * **sdk:** trigger save handler on question create when using SaveQuestionForm ([#50137](https://github.com/metabase/metabase/issues/50137)) ([#50203](https://github.com/metabase/metabase/issues/50203)) ([e89c976](https://github.com/metabase/metabase/commit/e89c976ebe01fb64a1eecccdeecf303a9ad20d90))
