@@ -6,14 +6,17 @@ import { t } from "ttag";
 
 import { FieldSet } from "metabase/components/FieldSet";
 import Button from "metabase/core/components/Button/Button";
-import { formatValue } from "metabase/lib/formatting";
+import { useSelector } from "metabase/lib/redux";
+import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
+import { getMetadata } from "metabase/selectors/metadata";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import * as Q from "metabase-lib/v1/queries/utils/query";
 import type { Segment, StructuredQuery } from "metabase-types/api";
 
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
 import FormTextArea from "../FormTextArea";
-import PartialQueryBuilder from "../PartialQueryBuilder";
 
 import {
   FormBody,
@@ -25,10 +28,6 @@ import {
   FormSubmitButton,
 } from "./SegmentForm.styled";
 
-const QUERY_BUILDER_FEATURES = {
-  filter: true,
-};
-
 export interface SegmentFormProps {
   segment?: Segment;
   previewSummary?: string;
@@ -39,12 +38,11 @@ export interface SegmentFormProps {
 
 const SegmentForm = ({
   segment,
-  previewSummary,
-  updatePreviewSummary,
   onIsDirtyChange,
   onSubmit,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
+  const metadata = useSelector(getMetadata);
 
   const { isValid, getFieldProps, getFieldMeta, handleSubmit, dirty } =
     useFormik({
@@ -69,12 +67,8 @@ const SegmentForm = ({
               : t`Make changes to your segment and leave an explanatory note.`
           }
         >
-          <PartialQueryBuilder
-            {...getQueryBuilderProps(getFieldProps("definition"))}
-            features={QUERY_BUILDER_FEATURES}
-            canChangeTable={isNew}
-            previewSummary={getResultSummary(previewSummary)}
-            updatePreviewSummary={updatePreviewSummary}
+          <SegmentEditor
+            {...getSegmentEditorProps(getFieldProps("definition"), metadata)}
           />
         </FormLabel>
         <FormBodyContent>
@@ -152,10 +146,6 @@ const SegmentFormActions = ({
   );
 };
 
-const getResultSummary = (previewSummary?: string) => {
-  return previewSummary ? t`${formatValue(previewSummary)} rows` : "";
-};
-
 const getFormErrors = (values: Partial<Segment>) => {
   const errors: Record<string, string> = {};
 
@@ -179,14 +169,34 @@ const getFormErrors = (values: Partial<Segment>) => {
   return errors;
 };
 
-const getQueryBuilderProps = ({
-  name,
-  value,
-  onChange,
-}: FieldInputProps<StructuredQuery>) => {
+const getSegmentEditorProps = (
+  { name, value, onChange }: FieldInputProps<StructuredQuery | undefined>,
+  metadata: Metadata,
+) => {
+  const tableId = value?.["source-table"];
+  const table = metadata.table(tableId);
+  const metadataProvider = table
+    ? Lib.metadataProvider(table.db_id, metadata)
+    : undefined;
+  const query =
+    table && value && metadataProvider
+      ? Lib.fromLegacyQuery(table.db_id, metadataProvider, {
+          type: "query",
+          database: table.db_id,
+          query: value,
+        })
+      : undefined;
+
   return {
-    value,
-    onChange: (value: StructuredQuery) => onChange({ target: { name, value } }),
+    query,
+    onChange: (query: Lib.Query) => {
+      const datasetQuery = Lib.toLegacyQuery(query);
+      if (datasetQuery.type === "query") {
+        onChange({
+          target: { name, value: datasetQuery.query },
+        });
+      }
+    },
   };
 };
 

@@ -4,7 +4,7 @@ import type * as Lib from "metabase-lib";
 const STAGE_INDEX = -1;
 
 type SegmentEditorProps = {
-  query: Lib.Query;
+  query: Lib.Query | undefined;
   onChange: (query: Lib.Query) => void;
 };
 

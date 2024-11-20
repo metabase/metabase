@@ -11,21 +11,20 @@ import * as Lib from "metabase-lib";
 import { ClauseStep } from "../ClauseStep";
 
 type DataStepProps = {
-  query: Lib.Query;
+  query: Lib.Query | undefined;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
 };
 
 export function DataStep({ query, stageIndex }: DataStepProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
-  const tableInfo = table
-    ? Lib.displayInfo(query, stageIndex, table)
-    : undefined;
-  const tableValue = table
-    ? getDataPickerValue(query, stageIndex, table)
-    : undefined;
+  const tableId = query ? Lib.sourceTableOrCardId(query) : undefined;
+  const table =
+    query && tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+  const tableInfo =
+    query && table ? Lib.displayInfo(query, stageIndex, table) : undefined;
+  const tableValue =
+    query && table ? getDataPickerValue(query, stageIndex, table) : undefined;
 
   return (
     <ClauseStep label={t`Data`}>
