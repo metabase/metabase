@@ -9,7 +9,7 @@ import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
-import { NativeQueryEditorRoot } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import S from "metabase/query_builder/components/NativeQueryEditor/AceEditor.global.css";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -96,7 +96,7 @@ export const NotebookNativePreview = (): JSX.Element => {
           </Flex>
         )}
         {showQuery && (
-          <NativeQueryEditorRoot style={{ height: "100%", flex: 1 }}>
+          <div style={{ height: "100%", flex: 1 }} className={S.editor}>
             <AceEditor
               value={formattedQuery}
               mode={engineType}
@@ -112,7 +112,7 @@ export const NotebookNativePreview = (): JSX.Element => {
                 highlightGutterLine: false,
               }}
             />
-          </NativeQueryEditorRoot>
+          </div>
         )}
       </Box>
       <Box ta="end" p="1.5rem">
