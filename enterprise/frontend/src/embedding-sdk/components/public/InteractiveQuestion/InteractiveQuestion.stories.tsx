@@ -33,3 +33,19 @@ export const Default = {
     saveToCollectionId: undefined,
   },
 };
+
+export const EditorOnly = {
+  render(args: InteractiveQuestionComponentProps) {
+    return (
+      <InteractiveQuestion {...args}>
+        <InteractiveQuestion.Editor />
+      </InteractiveQuestion>
+    );
+  },
+
+  args: {
+    questionId: QUESTION_ID,
+    isSaveEnabled: true,
+    saveToCollectionId: undefined,
+  },
+};
