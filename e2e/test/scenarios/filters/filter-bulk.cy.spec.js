@@ -145,6 +145,7 @@ describe("scenarios > filters > bulk filtering", () => {
       .findByTestId("filter-column-Subtotal")
       .findByLabelText("More info")
       // FIXME: I don't understand why this realHover isn't working
+      // Plan: git bisect
       .realHover();
 
     cy.findByRole("dialog").within(() => {
