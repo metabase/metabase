@@ -1,15 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { match } from "ts-pattern";
+import { jt, t } from "ttag";
 
-import {
-  SummarizeBadgeList,
-  SummarizePicker,
-} from "embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizePicker";
+import { SummarizePicker } from "embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizePicker";
 import { MultiStepPopover } from "embedding-sdk/components/private/util/MultiStepPopover";
 
 import { ToolbarButton } from "../util/ToolbarButton";
 
+import { SummarizeBadgeList } from "./SummarizeBadgeList";
 import {
   type SDKAggregationItem,
   useSummarizeData,
@@ -19,9 +18,9 @@ export const SummarizeDropdown = () => {
   const aggregationItems = useSummarizeData();
 
   const label = match(aggregationItems.length)
-    .with(0, () => `Summarize`)
-    .with(1, () => `1 summary`)
-    .otherwise(value => `${value} summaries`);
+    .with(0, () => t`Summarize`)
+    .with(1, () => t`1 summary`)
+    .otherwise(value => jt`${value} summaries`);
 
   const [selectedAggregationItem, setSelectedAggregationItem] =
     useState<SDKAggregationItem>();

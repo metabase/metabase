@@ -29,7 +29,7 @@ const SummarizePopover = ({
             onClick={toggle}
           />
         ) : (
-          <AddBadgeListItem name="Add grouping" onClick={toggle} />
+          <AddBadgeListItem name={t`Add another summary`} onClick={toggle} />
         )}
       </Popover.Target>
       <Popover.Dropdown>
