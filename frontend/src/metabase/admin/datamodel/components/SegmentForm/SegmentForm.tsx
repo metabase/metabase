@@ -169,36 +169,39 @@ const getFormErrors = (values: Partial<Segment>) => {
   return errors;
 };
 
-const getSegmentEditorProps = (
-  { name, value, onChange }: FieldInputProps<StructuredQuery | undefined>,
-  metadata: Metadata,
-) => {
-  const tableId = value?.["source-table"];
+function getQuery(metadata: Metadata, definition: StructuredQuery | undefined) {
+  const tableId = definition?.["source-table"];
   const table = metadata.table(tableId);
   const metadataProvider = table
     ? Lib.metadataProvider(table.db_id, metadata)
     : undefined;
-  const query =
-    table && value && metadataProvider
-      ? Lib.fromLegacyQuery(table.db_id, metadataProvider, {
-          type: "query",
-          database: table.db_id,
-          query: value,
-        })
-      : undefined;
 
+  return table && definition && metadataProvider
+    ? Lib.fromLegacyQuery(table.db_id, metadataProvider, {
+        type: "query",
+        database: table.db_id,
+        query: definition,
+      })
+    : undefined;
+}
+
+function getQueryDefinition(query: Lib.Query) {
+  const datasetQuery = Lib.toLegacyQuery(query);
+  if (datasetQuery.type === "query") {
+    return datasetQuery.query;
+  }
+}
+
+function getSegmentEditorProps(
+  { name, value, onChange }: FieldInputProps<StructuredQuery | undefined>,
+  metadata: Metadata,
+) {
   return {
-    query,
-    onChange: (query: Lib.Query) => {
-      const datasetQuery = Lib.toLegacyQuery(query);
-      if (datasetQuery.type === "query") {
-        onChange({
-          target: { name, value: datasetQuery.query },
-        });
-      }
-    },
+    query: getQuery(metadata, value),
+    onChange: (query: Lib.Query) =>
+      onChange({ target: { name, value: getQueryDefinition(query) } }),
   };
-};
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SegmentForm;
