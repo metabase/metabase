@@ -1,4 +1,4 @@
-import { Route } from "metabase/hoc/Route";
+import { Route } from "metabase/hoc/Title";
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicAction from "metabase/public/containers/PublicAction";
 import PublicApp from "metabase/public/containers/PublicApp";

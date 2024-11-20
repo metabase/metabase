@@ -1,4 +1,4 @@
-import { Route } from "metabase/hoc/Route";
+import { Route } from "metabase/hoc/Title";
 
 import ApplicationPermissionsPage from "./pages/ApplicationPermissionsPage";
 
