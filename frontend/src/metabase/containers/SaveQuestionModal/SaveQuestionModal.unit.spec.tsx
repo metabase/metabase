@@ -254,7 +254,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(2);
+      expect(call.length).toBe(1);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -278,7 +278,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(2);
+      expect(call.length).toBe(1);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -302,7 +302,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(2);
+      expect(call.length).toBe(1);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -325,7 +325,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(2);
+      expect(call.length).toBe(1);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -399,7 +399,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(2);
+      expect(call.length).toBe(1);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -424,7 +424,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(2);
+      expect(call.length).toBe(1);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
