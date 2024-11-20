@@ -51,3 +51,10 @@ export type ErrorWithMessage = {
   pos?: number | null;
   len?: number | null;
 };
+
+export type Token = {
+  type: number;
+  op?: string;
+  start: number;
+  end: number;
+};

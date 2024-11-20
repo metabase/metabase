@@ -81,10 +81,26 @@
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
   WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
-  [{filter-type :filter-items-in-personal-collection} collection-id-col]
-  (when filter-type
-    (let [parent-ids     (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
-          child-patterns (for [id parent-ids] (format "/%d/%%" id))]
+  [{filter-type :filter-items-in-personal-collection :keys [current-user-id] :as search-ctx} collection-id-col]
+  (case (or filter-type "all")
+    "all" nil
+
+    "only-mine"
+    [:or
+     [:= :collection.personal_owner_id current-user-id]
+     (into [:or]
+           (let [your-collection-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:= current-user-id])
+                 child-patterns      (for [id your-collection-ids] (format "/%d/%%" id))]
+             (for [p child-patterns] [:like :collection.location p])))]
+
+    "exclude-others"
+    (let [with-filter #(personal-collections-where-clause
+                        (assoc search-ctx :filter-items-in-personal-collection %)
+                        collection-id-col)]
+      [:or (with-filter "only-mine") (with-filter "exclude")])
+
+    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+          child-patterns (for [id personal-ids] (format "/%d/%%" id))]
       (case filter-type
         "only"
         `[:or
@@ -108,13 +124,13 @@
   [search-context qry]
   (as-> qry qry
     (sql.helpers/where qry (when (seq (:models search-context))
-                             [:in :model (:models search-context)]))
+                             [:in :search_index.model (:models search-context)]))
     (sql.helpers/where qry (when-let [ids (:ids search-context)]
                              [:and
-                              [:in :model_id ids]
+                              [:in :search_index.model_id ids]
                               ;; NOTE: we limit id-based search to only a subset of the models
                               ;; TODO this should just become part of the model spec e.g. :search-by-id?
-                              [:in :model ["card" "dataset" "metric" "dashboard" "action"]]]))
+                              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
     (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
               (or (when-some [v (get search-context context-key)]
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))

@@ -133,7 +133,7 @@
     (testing "But stop words are skipped"
       (is (= 0 (index-hits "or")))
       ;; stop words depend on a dictionary
-      (is (= 0 #_3 (index-hits "its the satisfaction of it"))))
+      (is (= #_0 3 (index-hits "its the satisfaction of it"))))
     (testing "We can combine the individual results"
       (is (= (+ (index-hits "satisfaction")
                 (index-hits "user"))
@@ -150,9 +150,9 @@
 (deftest phrase-test
   (with-index
     ;; Less matches without an english dictionary
-    (is (= 2 #_3 (index-hits "projected")))
+    (is (= #_2 3 (index-hits "projected")))
     (is (= 2 (index-hits "revenue")))
-    (is (= 1 #_2 (index-hits "projected revenue")))
+    (is (= #_1 2 (index-hits "projected revenue")))
     (testing "only sometimes do these occur sequentially in a phrase"
       (is (= 1 (index-hits "\"projected revenue\""))))
     (testing "legacy search has a bunch of results"

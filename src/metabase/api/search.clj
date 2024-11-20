@@ -45,6 +45,20 @@
                 raise)))
    (meta handler)))
 
+(api/defendpoint POST "/re-init"
+  "If fulltext search is enabled, this will blow away the index table, re-create it, and re-populate it."
+  []
+  (api/check-superuser)
+  (cond
+    (not (public-settings/experimental-fulltext-search-enabled))
+    (throw (ex-info "Search index is not enabled." {:status-code 501}))
+
+    (search/supports-index?)
+    (do (search/init-index! {:force-reset? true}) {:message "done"})
+
+    :else
+    (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
+
 (api/defendpoint POST "/force-reindex"
   "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
   []
@@ -108,14 +122,15 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
+  [q context archived created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_engine search_native_query
    verified ids calculate_available_models]
   {q                                   [:maybe ms/NonBlankString]
+   context                             [:maybe :keyword]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
-   filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   filter_items_in_personal_collection [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -133,6 +148,7 @@
     (search/search
      (search/search-context
       {:archived                            archived
+       :context                             context
        :created-at                          created_at
        :created-by                          (set created_by)
        :current-user-id                     api/*current-user-id*
