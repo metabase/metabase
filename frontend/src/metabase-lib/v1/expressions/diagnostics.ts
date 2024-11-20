@@ -19,7 +19,7 @@ import {
 } from "./recursive-parser";
 import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
-import type { ErrorWithMessage } from "./types";
+import type { ErrorWithMessage, Token } from "./types";
 
 import {
   MBQL_CLAUSES,
@@ -28,13 +28,6 @@ import {
   parseMetric,
   parseSegment,
 } from "./index";
-
-type Token = {
-  type: number;
-  op: string;
-  start: number;
-  end: number;
-};
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens: Token[]) {

@@ -13,7 +13,7 @@ We built a single command to spin up a Metabase and help you get an embedded das
 ## Prerequisites
 
 - Docker (should be up and running on your machine)
-- [Node.js 18.x LTS](https://nodejs.org/en) or higher.
+- [Node.js 20.x LTS](https://nodejs.org/en) or higher.
 - License (Optional - only if you want to try out multi-tenancy).
 - Database (you can connect to your app's database).
 

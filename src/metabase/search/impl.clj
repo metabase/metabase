@@ -156,12 +156,16 @@
                       archived_directly model]}]
   (let [matching-columns    (into #{} (keep :column relevant-scores))
         match-context-thunk (some :match-context-thunk relevant-scores)
-        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))]
+        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))
+        use-display-name?   (and display_name
+                                 ;; This collection will be empty unless we used in-place matching.
+                                 ;; For now, for simplicity and performance reasons, we are not bothering to check
+                                 ;; *where* the matches in the tsvector came from.
+                                 (or (empty? matching-columns)
+                                     (contains? matching-columns :display_name)))]
     (-> result
         (assoc
-         :name           (if (and (contains? matching-columns :display_name) display_name)
-                           display_name
-                           name)
+         :name           (if use-display-name? display_name name)
          :context        (when (and match-context-thunk
                                     (empty?
                                      (remove matching-columns displayed-columns)))

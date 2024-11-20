@@ -22,6 +22,7 @@ const metadata = createMockMetadata({
 });
 
 const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+// eslint-disable-next-line no-restricted-syntax
 const ordersQuery = ordersTable.legacyQuery({ useStructuredQuery: true });
 
 // this component does not manage its own filter state, so we need a wrapper to test
