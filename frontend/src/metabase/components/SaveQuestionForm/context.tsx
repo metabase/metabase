@@ -90,7 +90,9 @@ export const SaveQuestionProvider = ({
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
 
   const initialDashboardId =
-    question.type() === "question" && !isAnalytics && lastUsedDashboard?.can_write
+    question.type() === "question" &&
+    !isAnalytics &&
+    lastUsedDashboard?.can_write
       ? lastUsedDashboard?.id
       : undefined;
 
