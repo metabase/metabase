@@ -71,9 +71,9 @@
             :from   :somewhere
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
-                      [:in :model #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}]
-                      [:in :model_id [1 2 3 4]]
-                      [:in :model ["card" "dataset" "metric" "dashboard" "action"]]
+                      [:in :search_index.model #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}]
+                      [:in :search_index.model_id [1 2 3 4]]
+                      [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                       [:= :search_index.archived true]
                       [:>= [:cast :search_index.model_created_at :date] #t"2024-10-01"]
                       [:< [:cast :search_index.model_created_at :date] #t"2024-10-02"]
