@@ -1,9 +1,9 @@
 import {
-  ANALYTICS_PAGE_SNIPPET,
   ANALYTICS_PROVIDER_SNIPPET_MINIMAL,
   ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER,
   THEME_SWITCHER_SNIPPET,
   getAnalyticsDashboardSnippet,
+  getAnalyticsPageSnippet,
   getEmbeddingProviderSnippet,
   getUserSwitcherSnippet,
 } from "../snippets";
@@ -14,10 +14,17 @@ interface Options {
   apiKey: string;
   dashboards: DashboardInfo[];
   userSwitcherEnabled: boolean;
+  isNextJs: boolean;
 }
 
-export function getComponentSnippets(options: Options) {
-  const { userSwitcherEnabled } = options;
+type SampleComponent = {
+  fileName: string;
+  componentName: string;
+  content: string;
+};
+
+export function getComponentSnippets(options: Options): SampleComponent[] {
+  const { userSwitcherEnabled, isNextJs } = options;
 
   const analyticsDashboardSnippet = getAnalyticsDashboardSnippet(options);
   const embeddingProviderSnippet = getEmbeddingProviderSnippet(options);
@@ -26,36 +33,54 @@ export function getComponentSnippets(options: Options) {
     ? ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER
     : ANALYTICS_PROVIDER_SNIPPET_MINIMAL;
 
-  const components = [
+  const components: SampleComponent[] = [
     {
-      name: "analytics-provider",
+      fileName: "analytics-provider",
+      componentName: "AnalyticsProvider",
       content: analyticsProviderSnippet.trim(),
     },
     {
-      name: "embedding-provider",
+      fileName: "embedding-provider",
+      componentName: "EmbeddingProvider",
       content: embeddingProviderSnippet.trim(),
     },
     {
-      name: "analytics-dashboard",
+      fileName: "analytics-dashboard",
+      componentName: "AnalyticsDashboard",
       content: analyticsDashboardSnippet.trim(),
     },
     {
-      name: "theme-switcher",
+      fileName: "theme-switcher",
+      componentName: "ThemeSwitcher",
       content: THEME_SWITCHER_SNIPPET.trim(),
     },
     {
-      name: "analytics-page",
-      content: ANALYTICS_PAGE_SNIPPET.trim(),
+      fileName: "analytics-page",
+      componentName: "AnalyticsPage",
+      content: getAnalyticsPageSnippet({ isNextJs }).trim(),
     },
   ];
 
   // Only generate the user switcher when multi-tenancy is enabled.
   if (userSwitcherEnabled) {
     components.push({
-      name: "user-switcher",
+      fileName: "user-switcher",
+      componentName: "UserSwitcher",
       content: getUserSwitcherSnippet().trim(),
     });
   }
 
-  return components;
+  return components.map(component => {
+    // Next.js uses "use client" to load the component on the client side.
+    // It's fine to leave "use client" in the component even when using the Pages Router.
+    // We must use the default export. A named export will not work.
+    // Refer to https://www.metabase.com/docs/latest/embedding/sdk/next-js
+    if (isNextJs) {
+      const content = `"use client"\n\n${component.content}\n\nexport default ${component.componentName}`;
+
+      return { ...component, content };
+    }
+
+    return component;
+  });
 }

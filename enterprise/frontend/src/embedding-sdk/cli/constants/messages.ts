@@ -1,4 +1,5 @@
 import { blue, green, yellow } from "chalk";
+import path from "path";
 
 import {
   CONTAINER_NAME,
@@ -92,3 +93,14 @@ export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK h
 )}`;
 
 export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?`;
+
+// eslint-disable-next-line no-unconditional-metabase-links-render -- this is for the cli
+const LINK_TO_NEXT_JS_GUIDE = `https://www.metabase.com/docs/latest/embedding/sdk/next-js`;
+
+export const getNextJsSetupMessage = (generatedDir: string) => `
+  Please import the example CSS in your _app.js file. For example:
+  ${green(`import "${path.normalize(`../${generatedDir}/analytics.css`)}"`)}
+
+  For guides on using Next.js with Embedding SDK, see
+  ${green(LINK_TO_NEXT_JS_GUIDE)}
+`;

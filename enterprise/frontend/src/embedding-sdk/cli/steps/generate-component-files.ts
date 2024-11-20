@@ -2,6 +2,8 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
+import { checkIsInNextJsProject } from "embedding-sdk/cli/utils/check-nextjs-project";
+
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
@@ -17,6 +19,8 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
       state,
     ];
   }
+
+  const isNextJs = await checkIsInNextJsProject();
 
   let path: string;
 
@@ -42,6 +46,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     instanceUrl,
     apiKey,
     dashboards,
+    isNextJs,
 
     // Enable user switching only when a valid license is present,
     // as JWT requires a valid license.
@@ -49,8 +54,8 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
   });
 
   // Generate sample components files in the specified directory.
-  for (const { name, content } of sampleComponents) {
-    await fs.writeFile(`${path}/${name}.jsx`, content);
+  for (const { fileName, content } of sampleComponents) {
+    await fs.writeFile(`${path}/${fileName}.jsx`, content);
   }
 
   // Generate analytics.css sample styles.
@@ -58,7 +63,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   // Generate index.js file with all the component exports.
   const exportIndexContent = sampleComponents
-    .map(file => `export * from "./${file.name}";`)
+    .map(file => `export * from "./${file.fileName}"`)
     .join("\n")
     .trim();
 

@@ -1,11 +1,14 @@
 import { select } from "@inquirer/prompts";
 import { green } from "chalk";
+import path from "path";
 
 import {
   SDK_LEARN_MORE_MESSAGE,
   getMetabaseInstanceSetupCompleteMessage,
+  getNextJsSetupMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
+import { checkIsInNextJsProject } from "../utils/check-nextjs-project";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {
@@ -17,9 +20,11 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green("npm run start")}
 `;
 
+  const isNextJs = await checkIsInNextJsProject();
+
   const STEP_2 = `
   Import the component in your React frontend.
-  ${green(`import { AnalyticsPage } from "./${state.reactComponentDir}";`)}
+  ${green(getImportSnippet({ isNextJs, componentDir: state.reactComponentDir }))}
 
   Add the component to your page.
   ${green(`<AnalyticsPage />`)}
@@ -37,7 +42,13 @@ export const showPostSetupSteps: CliStepMethod = async state => {
     POST_SETUP_STEPS.push(STEP_1);
   }
 
-  POST_SETUP_STEPS.push(STEP_2, STEP_3);
+  POST_SETUP_STEPS.push(STEP_2);
+
+  if (isNextJs) {
+    POST_SETUP_STEPS.push(getNextJsSetupMessage(state.reactComponentDir ?? ""));
+  }
+
+  POST_SETUP_STEPS.push(STEP_3);
 
   for (const message of POST_SETUP_STEPS) {
     printWithPadding(message);
@@ -52,4 +63,24 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   printWithPadding(green(SDK_LEARN_MORE_MESSAGE));
 
   return [{ type: "success" }, state];
+};
+
+export const getImportSnippet = ({
+  isNextJs,
+  componentDir,
+}: {
+  isNextJs: boolean;
+  componentDir?: string;
+}) => {
+  // Refer to https://www.metabase.com/docs/latest/embedding/sdk/next-js
+  if (isNextJs) {
+    const importPath = path.normalize(`../${componentDir}/analytics-page`);
+
+    let snippets = "import dynamic from 'next/dynamic';";
+    snippets += `\n  const AnalyticsPage = dynamic(() => import("${importPath}"), { ssr: false });`;
+
+    return snippets;
+  }
+
+  return `import { AnalyticsPage } from "./${componentDir}";`;
 };
