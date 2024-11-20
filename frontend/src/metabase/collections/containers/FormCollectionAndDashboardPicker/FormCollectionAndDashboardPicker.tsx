@@ -90,8 +90,6 @@ export function FormCollectionAndDashboardPicker({
   const [dashboardIdInput, dashboardIdMeta, dashboardIdHelpers] =
     dashboardField;
 
-  console.log({ collectionField, dashboardField });
-
   const pickerValue = dashboardIdInput.value
     ? ({ id: dashboardIdInput.value, model: "dashboard" } as const)
     : ({ id: collectionIdInput.value, model: "collection" } as const);

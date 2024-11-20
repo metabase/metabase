@@ -6,7 +6,6 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
-
 import { IMPERSONATED_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";
