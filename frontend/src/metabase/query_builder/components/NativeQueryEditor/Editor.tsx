@@ -23,7 +23,7 @@ export type EditorProps = {
 
   fetchQuestion: (cardId: CardId) => Promise<Card>;
   autocompleteResultsFn?: (prefix: string) => Promise<AutocompleteItem[]>;
-  cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
+  cardAutocompleteResultsFn?: (prefix: string) => Promise<CardCompletionItem[]>;
 
   nativeEditorSelectedText?: string;
   onSelectionChange?: (range: SelectionRange) => void;

@@ -428,6 +428,10 @@ export class AceEditorInner extends Component<AceEditorProps> {
     prefix,
     callback,
   ) => {
+    if (!this.props.cardAutocompleteResultsFn) {
+      return callback(null, []);
+    }
+
     // This ensures the user is only typing the first "word" considered by the autocompleter
     // inside the {{#...}} tag.
     // e.g. if `|` is the cursor position and the user is typing:
