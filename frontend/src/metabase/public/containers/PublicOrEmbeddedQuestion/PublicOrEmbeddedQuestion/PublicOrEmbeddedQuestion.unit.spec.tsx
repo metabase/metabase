@@ -9,7 +9,7 @@ import {
 } from "__support__/ui";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-import { type SetupOpts, setup } from "./SetupOpts";
+import { type SetupOpts, setup } from "./setup";
 
 const FAKE_UUID = "123456";
 
@@ -34,8 +34,6 @@ describe("PublicOrEmbeddedQuestion", () => {
   it("should update card settings when visualization component changes them (metabase#37429)", async () => {
     await setupPremium();
 
-    await waitForLoaderToBeRemoved();
-
     await userEvent.click(
       await screen.findByRole("button", {
         name: /update settings/i,
@@ -52,7 +50,6 @@ describe("PublicOrEmbeddedQuestion", () => {
   describe("downloads flag", () => {
     it("should allow downloading the results when downloads are enabled", async () => {
       await setupPremium({ hash: { downloads: "true" } });
-      await waitForLoaderToBeRemoved();
 
       await userEvent.click(getIcon("download"));
 
@@ -66,9 +63,27 @@ describe("PublicOrEmbeddedQuestion", () => {
     it("should not allow downloading results when downloads are enabled", async () => {
       await setupPremium({ hash: { downloads: "false" } });
 
-      await waitForLoaderToBeRemoved();
-
       expect(queryIcon("download")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("locale hash parameter on static embeds (metabase#50182)", () => {
+    it('should set the locale to "en" by default', async () => {
+      await setupPremium();
+
+      await userEvent.hover(getIcon("download"));
+
+      expect(screen.getByText("Download full results")).toBeInTheDocument();
+    });
+
+    it('should set the locale to "ko"', async () => {
+      await setupPremium({ hash: { locale: "ko" } });
+
+      await userEvent.hover(getIcon("download"));
+
+      expect(
+        screen.getByText("전체 결과를 다운로드합니다"),
+      ).toBeInTheDocument();
     });
   });
 });

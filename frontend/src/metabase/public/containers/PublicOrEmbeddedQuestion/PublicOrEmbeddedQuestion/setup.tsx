@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
@@ -7,7 +8,11 @@ import {
   setupPublicQuestionEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TokenFeatures } from "metabase-types/api";
@@ -65,7 +70,7 @@ export type SetupOpts = {
 
 export async function setup(
   {
-    hash,
+    hash = {},
     hasEnterprisePlugins,
     tokenFeatures = createMockTokenFeatures(),
     questionName,
@@ -91,6 +96,27 @@ export async function setup(
     }),
   );
 
+  if (hash.locale === "ko") {
+    fetchMock.get("path:/app/locales/ko.json", {
+      charset: "utf-8",
+      headers: {
+        "mime-version": "1.0",
+        "content-type": "text/plain; charset=UTF-8",
+        "content-transfer-encoding": "8bit",
+        "x-generator": "POEditor.com",
+        language: "ko",
+        "plural-forms": "nplurals=1; plural=0;",
+      },
+      translations: {
+        "": {
+          "Download full results": {
+            msgstr: ["전체 결과를 다운로드합니다"],
+          },
+        },
+      },
+    });
+  }
+
   renderWithProviders(
     <Route path="public/question/:uuid" component={PublicOrEmbeddedQuestion} />,
     {
@@ -100,4 +126,5 @@ export async function setup(
     },
   );
   expect(await screen.findByText(questionName)).toBeInTheDocument();
+  await waitForLoaderToBeRemoved();
 }
