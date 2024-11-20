@@ -1198,3 +1198,37 @@
                     :dashcard-download        expected-header
                     :public-dashcard-download expected-header}
                    (update-vals formatted-results first)))))))))
+
+(deftest proper-locale-in-exports-test
+  (testing "User Locale is used properly in download and exports."
+    (mt/with-temporary-setting-values [public-settings/site-locale "ko"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card card
+                       {:display       :table
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query
+                                        {:source-table (mt/id :products)
+                                         :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                         :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                        [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+          (testing "formatted"
+            (is (= [[["Category" "Created At: Monat" "Summe von Price"]
+                     ["Doohickey" "Mai, 2016" "144.12"]
+                     ["Doohickey" "Juni, 2016" "82.92"]
+                     ["Doohickey" "Juli, 2016" "78.22"]
+                     ["Doohickey" "August, 2016" "71.09"]
+                     ["Doohickey" "September, 2016" "45.65"]
+                     ["Doohickey" "November, 2016" "72.19"]
+                     ["Doohickey" "Dezember, 2016" "137.95"]
+                     ["Doohickey" "Januar, 2017" "53.29"]
+                     ["Doohickey" "Februar, 2017" "102.42"]]
+                    #{:unsaved-card-download :card-download :dashcard-download
+                      :alert-attachment :subscription-attachment
+                      :public-question-download :public-dashcard-download}]
+                   (mt/with-test-user :crowberto
+                     (mt/with-user-locale "nl"
+                       (->> (update-vals (all-outputs! card {:export-format :csv :format-rows true :pivot false}) (fn [rows] (take 10 rows)))
+                            (group-by second)
+                            ((fn [m] (update-vals m #(into #{} (mapv first %)))))
+                            (apply concat))))))))))))

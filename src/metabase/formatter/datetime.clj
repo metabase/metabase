@@ -8,6 +8,7 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
@@ -234,7 +235,7 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
   "Return a formatter which, given a temporal literal string, reformts it by combining time zone, column, and viz
   setting information to create a final desired output format."
   [timezone-id col viz-settings]
-  (Locale/setDefault (Locale. (public-settings/site-locale)))
+  (Locale/setDefault (Locale. (or i18n/*user-locale* (public-settings/site-locale))))
   (let [merged-viz-settings (common/normalize-keys
                              (common/viz-settings-for-col col viz-settings))]
     (fn [temporal-str]
