@@ -32,9 +32,7 @@ export type EditorProps = {
   snippetCollections?: Collection[];
 
   onCursorMoveOverCardTag?: (id: CardId) => void;
-
-  isSelectedTextPopoverOpen: boolean;
-  onToggleSelectedTextContextMenu: (open: boolean) => void;
+  onRightClickSelection?: () => void;
 };
 
 export interface EditorHandle extends Component<EditorProps> {

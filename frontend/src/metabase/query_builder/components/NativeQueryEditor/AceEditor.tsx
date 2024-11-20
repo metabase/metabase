@@ -70,14 +70,6 @@ export class AceEditorInner extends Component<AceEditorProps> {
       return;
     }
 
-    if (
-      this.props.isSelectedTextPopoverOpen &&
-      !this.props.nativeEditorSelectedText &&
-      prevProps.nativeEditorSelectedText
-    ) {
-      // close selected text popover if text is deselected
-      this.props.onToggleSelectedTextContextMenu(false);
-    }
     // Check that the query prop changed before updating the editor. Otherwise,
     // we might overwrite just typed characters before onChange is called.
     const queryPropUpdated = this.props.query !== prevProps.query;
@@ -360,7 +352,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
       selections.some(selection => isEventOverElement(event, selection))
     ) {
       event.preventDefault();
-      this.props.onToggleSelectedTextContextMenu(true);
+      this.props.onRightClickSelection?.();
     }
   };
 

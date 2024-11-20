@@ -204,6 +204,17 @@ export class NativeQueryEditor extends Component<
     document.removeEventListener("keydown", this.handleKeyDown);
   }
 
+  componentDidUpdate(prevProps: Props) {
+    if (
+      this.state.isSelectedTextPopoverOpen &&
+      !this.props.nativeEditorSelectedText &&
+      prevProps.nativeEditorSelectedText
+    ) {
+      // close selected text popover if text is deselected
+      this.setState({ isSelectedTextPopoverOpen: false });
+    }
+  }
+
   handleKeyDown = (e: KeyboardEvent) => {
     const { isRunning, cancelQuery, enableRun } = this.props;
 
@@ -281,6 +292,10 @@ export class NativeQueryEditor extends Component<
     this.setState(prev => ({
       isPromptInputVisible: !prev.isPromptInputVisible,
     }));
+  };
+
+  handleRightClickSelection = () => {
+    this.setState({ isSelectedTextPopoverOpen: true });
   };
 
   _updateSize(doc: string) {
@@ -441,12 +456,9 @@ export class NativeQueryEditor extends Component<
               ref={this.editor}
               {...this.props}
               onChange={this.onChange}
-              isSelectedTextPopoverOpen={this.state.isSelectedTextPopoverOpen}
               onSelectionChange={setNativeEditorSelectedRange}
               onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-              onToggleSelectedTextContextMenu={(
-                isSelectedTextPopoverOpen: boolean,
-              ) => this.setState({ isSelectedTextPopoverOpen })}
+              onRightClickSelection={this.handleRightClickSelection}
             />
 
             {hasEditingSidebar && !readOnly && (
