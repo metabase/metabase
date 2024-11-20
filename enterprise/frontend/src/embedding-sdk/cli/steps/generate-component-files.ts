@@ -5,6 +5,7 @@ import { input } from "@inquirer/prompts";
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
+import { checkIsInTypeScriptProject } from "../utils/check-typescript-project";
 import { getComponentSnippets } from "../utils/get-component-snippets";
 import { printError, printSuccess } from "../utils/print";
 
@@ -48,9 +49,13 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     userSwitcherEnabled: !!token,
   });
 
+  const isInTypeScriptProject = await checkIsInTypeScriptProject();
+  const fileExtension = isInTypeScriptProject ? "ts" : "js";
+  const componentExtension = isInTypeScriptProject ? "tsx" : "jsx";
+
   // Generate sample components files in the specified directory.
   for (const { name, content } of sampleComponents) {
-    await fs.writeFile(`${path}/${name}.jsx`, content);
+    await fs.writeFile(`${path}/${name}.${componentExtension}`, content);
   }
 
   // Generate analytics.css sample styles.
@@ -62,7 +67,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     .join("\n")
     .trim();
 
-  await fs.writeFile(`${path}/index.js`, exportIndexContent);
+  await fs.writeFile(`${path}/index.${fileExtension}`, exportIndexContent);
 
   printSuccess(getGeneratedComponentFilesMessage(path));
 
