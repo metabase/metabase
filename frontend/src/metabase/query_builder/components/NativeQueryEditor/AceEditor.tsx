@@ -340,7 +340,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
 
       const cardTagId = this.cardTagIdAtCursor(cursor);
       if (cardTagId) {
-        this.props.openDataReferenceAtQuestion(cardTagId);
+        this.props.onCursorMoveOverCardTag?.(cardTagId);
       }
     },
     100,

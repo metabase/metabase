@@ -344,6 +344,7 @@ export class NativeQueryEditor extends Component<
       readOnly,
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
+      openDataReferenceAtQuestion,
       hasParametersList = true,
       hasTopBar = true,
       hasEditingSidebar = true,
@@ -440,6 +441,7 @@ export class NativeQueryEditor extends Component<
               {...this.props}
               onChange={this.onChange}
               isSelectedTextPopoverOpen={this.state.isSelectedTextPopoverOpen}
+              onCursorMoveOverCardTag={openDataReferenceAtQuestion}
               onToggleSelectedTextContextMenu={(
                 isSelectedTextPopoverOpen: boolean,
               ) => this.setState({ isSelectedTextPopoverOpen })}

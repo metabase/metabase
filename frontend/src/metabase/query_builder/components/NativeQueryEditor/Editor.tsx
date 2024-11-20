@@ -31,7 +31,7 @@ export type EditorProps = {
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
 
-  openDataReferenceAtQuestion: (id: CardId) => void;
+  onCursorMoveOverCardTag?: (id: CardId) => void;
 
   isSelectedTextPopoverOpen: boolean;
   onToggleSelectedTextContextMenu: (open: boolean) => void;
