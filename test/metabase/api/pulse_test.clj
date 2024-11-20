@@ -7,7 +7,7 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.api.channel-test :as api.channel-test]
    [metabase.api.pulse :as api.pulse]
-   [metabase.channel.http-test :as channel.http-test]
+   [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]

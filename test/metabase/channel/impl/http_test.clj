@@ -1,9 +1,10 @@
-(ns metabase.channel.http-test
+(ns metabase.channel.impl.http-test
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :as compojure]
+   [compojure.route :as compojure.route]
    [metabase.channel.core :as channel]
    [metabase.notification.test-util :as notification.tu]
    [metabase.server.handler :as server.handler]
@@ -54,8 +55,11 @@
 
 (defn do-with-server
   [route+handlers f]
+  (def route+handlers route+handlers)
   (let [handler        (->> route+handlers
-                            (map :route)
+                            (mapv :route)
+                            (cons (compojure.route/not-found {:status-code 404 :body "Not found."}))
+                            reverse ;; not found is last
                             (apply compojure/routes))
         ^Server server (jetty/run-jetty (apply-middleware handler middlewares) {:port 0 :join? false})]
     (try
@@ -166,6 +170,11 @@
                ;; looks like a jetty bug: https://stackoverflow.com/q/46299061
                #_:request-body   #_"Internal server error"}
               (exception-data (can-connect?* get-500)))))))
+
+(with-server [url []]
+  (can-connect? {:url         (str url "/sup")
+                 :auth-method "none"
+                 :method      "get"}))
 
 (deftest ^:parallel can-connect-header-auth-test
   (with-server [url [(make-route :get "/user"

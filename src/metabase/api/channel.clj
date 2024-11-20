@@ -30,16 +30,6 @@
                                   (t2/select :model/Channel)
                                   (t2/select :model/Channel :active true))))
 
-(defn- test-channel-connection!
-  "Test if a channel can be connected, throw an exception if it fails."
-  [type details]
-  (try
-    (let [result (channel/can-connect? type details)]
-      (when-not (true? result)
-        (throw (ex-info "Unable to connect channel" (merge {:status-code 400} result)))))
-    (catch Exception e
-      (throw (ex-info "Unable to connect channel" (merge {:status-code 400} (ex-data e)))))))
-
 (def ^:private ChannelType
   (mu/with-api-error-message
    [:fn {:decode/string keyword}
@@ -84,12 +74,26 @@
                                                     :user-id         api/*current-user-id*
                                                     :previous-object channel-before-update}))))
 
+(defn- test-channel-connection!
+  "Test if a channel can be connected, throw an exception if it fails."
+  [type details]
+  (try
+    (let [result (channel/can-connect? type details)]
+      (if-not (true? result)
+        {:status 400
+         :body   {:message "Unable to connect channel"
+                  :data    {:connection-result result}}}
+        {:ok true}))
+    (catch Exception e
+      {:status 400
+       :body   {:message     (ex-message e)
+                :data        (ex-data e)}})))
+
 (api/defendpoint POST "/test"
   "Test a channel connection"
   [:as {{:keys [type details]} :body}]
   {type    ChannelType
    details :map}
-  (test-channel-connection! type details)
-  {:ok true})
+  (test-channel-connection! type details))
 
 (api/define-routes)

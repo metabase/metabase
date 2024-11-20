@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.channel.http-test :as channel.http-test]
+   [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.email :as email]
