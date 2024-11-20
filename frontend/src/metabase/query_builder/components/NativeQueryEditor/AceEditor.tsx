@@ -26,6 +26,8 @@ import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
 import type { AutocompleteItem } from "./types";
 import { getAutocompleteResultMeta } from "./utils";
 
+import "./AceEditor.global.css";
+
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
