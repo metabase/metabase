@@ -157,6 +157,7 @@
                                                    [:d.collection_id :collection_id]
                                                    [:d.id :id]]
                                           :from [[:dashboardcard_series :dcs]]
+                                          :where [:in :dcs.card_id (map :id cards)]
                                           :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
                                                  [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}]]})
          (group-by :card_id)
