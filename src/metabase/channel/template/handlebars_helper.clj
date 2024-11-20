@@ -40,10 +40,20 @@
   (Handlebars$SafeString. (apply str text)))
 
 (defmacro defhelper
-  "Define a helper function."
+  "Define a helper function.
+
+  Helper is a function that takes 4 arguments: context, params, hash, and options.
+
+  (defhelper format-name
+    \"Format a name with title and uppercase options.\"
+    [name _params {:keys [title uppercase] :or {title \"Mr.\"}} _options]
+    (if uppercase
+      (str title (u/upper-case-en name))
+      (str title name)))"
   [helper-name description argvec & body]
   (let [helper-fn-name (symbol (str helper-name \*))
         description#   description]
+    (assert (= 4 (count argvec)) "Helper function must have 4 arguments: context, params, hash, and options")
     `(do
        (defn ~helper-fn-name
          ~description#
@@ -55,7 +65,7 @@
                          :is-helper? true})
          ~description#
          (reify Helper (apply [_# context# option#]
-                         (~helper-fn-name context# option#)))))))
+                         (~helper-fn-name context# (.params option#) (update-keys (.hash option#) keyword) option#)))))))
 
 (defn register-helper
   "Register a helper."
@@ -79,10 +89,8 @@
   {{else}}
     Not Hot Dog
   {{/if}}"
-  [arg options]
-  (let [x arg
-        y (option-param options 0)]
-    (= x y)))
+  [x [y] _kparams _options]
+  (= x y))
 
 (defhelper format-date
   "Format date helper.
@@ -91,16 +99,16 @@
   ;; => 30-01-00
 
   date can be either a string or a date time object."
-  [date options]
-  (let [fmt (option-param options 0)]
-    (u.date/format fmt
-                   (if (string? date)
-                     (u.date/parse date)
-                     date))))
+  [date [fmt] _kparams _options]
+  (assert (string? fmt) "Format must be a string")
+  (u.date/format fmt
+                 (if (string? date)
+                   (u.date/parse date)
+                   date)))
 
 (defhelper now
   "Get the current date and time. Returned object is a java.time.Instant"
-  [_arg _options]
+  [_context _params _kparams _options]
   (t/instant))
 
 ;; Metabase specifics
@@ -108,15 +116,16 @@
 (defhelper card-url
   "Return an appropriate URL for a `Card` with ID.
 
-     {{card-url 10}} -> \"http://localhost:3000/question/10\""
-  [id _options]
+  {{card-url 10}}
+  ;; => \"http://localhost:3000/question/10\""
+  [id _params _kparams _options]
   (urls/card-url id))
 
 (defhelper dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 
      {{dashboard-url 10}} -> \"http://localhost:3000/dashboard/10\""
-  [id options]
+  [id _params _kparams options]
   (let [params (option-param options 0 nil)]
     (urls/dashboard-url id params)))
 

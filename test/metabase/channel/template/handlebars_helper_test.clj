@@ -12,15 +12,13 @@
 
 (handlebars-helper/defhelper
   format-name
-  "Arithmetic operations"
-  [name options]
-  (let [title (handlebars-helper/option-hash options "title" "Mr.")
-        upper-case? (handlebars-helper/option-hash options "uppercase" false)]
-    (if upper-case?
-      (str title (u/upper-case-en name))
-      (str title name))))
+  "Format a name with title and uppercase options."
+  [name _params {:keys [title uppercase] :or {title "Mr."}} _options]
+  (if uppercase
+    (str title (u/upper-case-en name))
+    (str title name)))
 
-(deftest option-hash-test
+(deftest helper-with-keyword-params-test
   (let [hbs (handlebars/registry (handlebars/classpath-loader "/" ""))]
     (handlebars-helper/register-helper hbs "format-name" format-name)
     (is (= "Mr.Romeo" (handlebars/render-string hbs "{{format-name name}}" {:name "Romeo"})))
@@ -29,12 +27,10 @@
 (handlebars-helper/defhelper
   ifequals
   "ifequals"
-  [arg options]
-  (let [x arg
-        y (handlebars-helper/option-param options 0)]
-    (if (= x y)
-      (handlebars-helper/option-block-body options)
-      (handlebars-helper/option-else-block options))))
+  [x [y] _kparams options]
+  (if (= x y)
+    (handlebars-helper/option-block-body options)
+    (handlebars-helper/option-else-block options)))
 
 (deftest block-body-test
   (let [hbs (handlebars/registry (handlebars/classpath-loader "/" ""))
