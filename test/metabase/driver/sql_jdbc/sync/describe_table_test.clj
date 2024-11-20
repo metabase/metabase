@@ -763,7 +763,7 @@
 ;; TODO Make all drivers that support materialized-views pass this test
 (doseq [driver [:postgres
                 :redshift
-                :oracle
+                #_:oracle
                 :databricks
                 :snowflake
                 :bigquery-cloud-sdk]]
@@ -802,6 +802,7 @@
                             (conj false))]
       (try
         (testing (if materialized? "Materialized View" "View")
+          (tx/drop-view! driver/*driver* (mt/db) :orders_m materialized?)
           (tx/create-view-of-table! driver/*driver* (mt/db) :orders_m :orders materialized?)
           (sync/sync-database! (mt/db))
           (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders" :active true)

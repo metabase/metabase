@@ -59,7 +59,8 @@
                       :select [:*]
                       :from [[[:raw qualified-table] :t]]}
                       materialized? (set/rename-keys {:create-view :create-materialized-view}))
-                    :dialect (sql.qp/quote-style driver)))))
+                    :dialect (sql.qp/quote-style driver))
+                   {:transaction? false})))
 
 (defmethod tx/drop-view! :sql-jdbc/test-extensions
   [driver database view-name materialized?]
@@ -68,6 +69,7 @@
     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
                    (sql/format
                     (cond->
-                     {:drop-view [[[:raw qualified-view]]]}
+                     {:drop-view [[:if-exists [:raw qualified-view]]]}
                       materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
-                    :dialect (sql.qp/quote-style driver)))))
+                    :dialect (sql.qp/quote-style driver))
+                   {:transaction? false})))
