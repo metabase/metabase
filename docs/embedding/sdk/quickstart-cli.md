@@ -61,7 +61,7 @@ npm run start
 
 ## Generates React components that you'll import into your app
 
-Generates example React components files. By default, it will save them in `./components/metabase` in your React app, though the tool will prompt you to save them to a different directory (e.g., `./src/components/metabase`).
+Generates example React components files. By default, it will save them in `./src/components/metabase` in your React app, though the tool will prompt you to save them to a different directory (e.g., `./src/analytics`).
 
 ## Add the Metabase/React components to your app
 
@@ -70,7 +70,7 @@ Once the mock server is running, go back to the tool's terminal session and pres
 Prompts you to add the following `import` in your client app:
 
 ```sh
-import { AnalyticsPage } from "../metabase/components";
+import { AnalyticsPage } from "./metabase";
 ```
 
 Make sure the `from` path is valid (depending on your app, you may need to move the components to a new directory).
