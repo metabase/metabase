@@ -5,7 +5,7 @@ on:
     types:
       - labeled
 jobs:
-  on-issue-opened:
+  on-issue-labeled:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     if: |
