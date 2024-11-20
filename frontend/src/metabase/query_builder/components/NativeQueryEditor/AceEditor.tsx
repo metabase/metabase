@@ -157,12 +157,12 @@ export class AceEditor extends Component<EditorProps> {
 
     const minLineNumberWidth = 20;
     editor.getSession().gutterRenderer = {
-      getWidth: (session, lastLineNumber, config) =>
+      getWidth: (_session, lastLineNumber, config) =>
         Math.max(
           minLineNumberWidth,
           lastLineNumber.toString().length * config.characterWidth,
         ),
-      getText: (session, row) => row + 1,
+      getText: (_session, row) => row + 1,
     };
 
     // initialize the content
@@ -321,7 +321,7 @@ export class AceEditor extends Component<EditorProps> {
   };
 
   handleCursorChange = _.debounce(
-    (e: Event, { cursor }: { cursor: Ace.Position }) => {
+    (_evt: Event, { cursor }: { cursor: Ace.Position }) => {
       if (this._editor && this.nextCompleters) {
         this._editor.completers = this.nextCompleters(cursor);
       }
@@ -399,10 +399,10 @@ export class AceEditor extends Component<EditorProps> {
   };
 
   getSnippetCompletions: AceCompletionsGetter = (
-    editor,
-    session,
+    _editor,
+    _session,
     pos,
-    prefix,
+    _prefix,
     callback,
   ) => {
     const name = this.getSnippetNameAtCursor(pos);
@@ -426,8 +426,8 @@ export class AceEditor extends Component<EditorProps> {
   };
 
   getCardTagCompletions: AceCompletionsGetter = async (
-    editor,
-    session,
+    _editor,
+    _session,
     pos,
     prefix,
     callback,
