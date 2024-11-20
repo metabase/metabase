@@ -607,6 +607,7 @@ export function FieldValuesWidgetInner({
             options={options}
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
+            alwaysShowOptions={valuesMode !== "search"}
           />
         ) : !isSimpleInput ? (
           <Box pr="1rem">

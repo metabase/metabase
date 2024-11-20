@@ -2,6 +2,11 @@ name: Build ee-extra
 description: Build Metabase Enterprise Edition with extra features
 
 inputs:
+  java-version:
+    required: true
+    # Use Java 17 to run steps like `jar uf`, otherwise the build fails because it tries to verify every file the JAR
+    # and some have 17+ bytecode for whatever reason... see https://metaboat.slack.com/archives/C5XHN8GLW/p1731504670951389
+    default: '17'
   iam-role:
     description: "The IAM role to assume"
     required: true
@@ -12,10 +17,10 @@ runs:
     - name: Prepare Java
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
     - name: Reveal its original version.properties
-      run: jar xf  ./bin/docker/metabase.jar version.properties && cat version.properties
+      run: jar xf ./bin/docker/metabase.jar version.properties && cat version.properties
       shell: bash
     - name: get major version
       id: major_version
@@ -106,7 +111,8 @@ runs:
       run: jar uf bin/docker/metabase.jar modules/*.jar
       shell: bash
     - name: Launch uberjar
-      run: java -jar ./bin/docker/metabase.jar &
+      run: >-
+        java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./bin/docker/metabase.jar &
       shell: bash
     - name: Wait for Metabase to start
       run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done

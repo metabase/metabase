@@ -13,7 +13,9 @@ You can style your embedded Metabase components with a theme.
 Here's an example that includes the various styling options available:
 
 ```js
-const theme = {
+import {defineEmbeddingSdkTheme} from "@metabase/embedding-sdk-react";
+
+const theme = defineEmbeddingSdkTheme({
   // Specify a font to use from the set of fonts supported by Metabase.
   // You can set the font to "Custom" to use the custom font
   // configured in your Metabase instance.
@@ -46,6 +48,9 @@ const theme = {
 
     // Slightly darker background color used for hover and accented elements
     "background-hover": "#F9FBFC",
+
+    // Muted background color used for disabled elements, such as disabled buttons and inputs.
+    "background-disabled": "#F3F5F7",
 
     // Color used for borders
     border: "#EEECEC",
@@ -169,7 +174,7 @@ const theme = {
       zIndex: 4,
     },
   },
-};
+});
 ```
 
 ### Customizing loader and error components

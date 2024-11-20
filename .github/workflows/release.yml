@@ -303,6 +303,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
+        # checkout the commit that was tagged so we get the right dockerfile
+        ref: ${{ inputs.commit }}
         fetch-depth: 0  # IMPORTANT! to get all the tags
     - name: prepare release scripts
       run: cd release && yarn && yarn build

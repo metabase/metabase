@@ -34,6 +34,7 @@ export function useLoadStaticQuestion(
 
   useEffect(() => {
     const cancelDeferred = defer();
+    let ignore = false; // flag to ignore the result if the component unmounts: https://react.dev/learn/you-might-not-need-an-effect#fetching-data
 
     async function loadCardData() {
       setQuestionState(state => ({ ...state, loading: true }));
@@ -49,20 +50,24 @@ export function useLoadStaticQuestion(
           cancelDeferred,
         });
 
-        setQuestionState({
-          card,
-          result,
-          loading: false,
-          error: null,
-        });
+        if (!ignore) {
+          setQuestionState({
+            card,
+            result,
+            loading: false,
+            error: null,
+          });
+        }
       } catch (error) {
         if (typeof error === "object") {
-          setQuestionState({
-            result: null,
-            card: null,
-            loading: false,
-            error,
-          });
+          if (!ignore) {
+            setQuestionState({
+              result: null,
+              card: null,
+              loading: false,
+              error,
+            });
+          }
         } else {
           console.error("error loading static question", error);
         }
@@ -74,6 +79,7 @@ export function useLoadStaticQuestion(
     return () => {
       // cancel pending requests upon unmount
       cancelDeferred.resolve();
+      ignore = true;
     };
   }, [questionId, parameterValues]);
 

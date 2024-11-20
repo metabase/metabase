@@ -6,11 +6,10 @@
   (:require
    [buddy.core.codecs :as codecs]
    [cheshire.core :as json]
-   [clojure.core.cache :as cache]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.render.core :as channel.render]
-   [metabase.config :as config]
+   [metabase.channel.template.core :as channel.template]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email :as email]
@@ -29,8 +28,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
-   [stencil.core :as stencil]
-   [stencil.loader :as stencil-loader]
    [toucan2.core :as t2])
   (:import
    (java.time LocalTime)
@@ -44,11 +41,6 @@
   []
   (or (public-settings/application-name)
       (trs "Metabase")))
-
-;; Dev only -- disable template caching
-(when config/is-dev?
-  (alter-meta! #'stencil/render-file assoc :style/indent 1)
-  (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
 (defn logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
@@ -115,15 +107,15 @@
                            (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
       :recipients   recipients
       :message-type :html
-      :message      (stencil/render-file "metabase/email/user_joined_notification"
-                                         (merge (common-context)
-                                                {:logoHeader        true
-                                                 :joinedUserName    (or (:first_name new-user) (:email new-user))
-                                                 :joinedViaSSO      google-auth?
-                                                 :joinedUserEmail   (:email new-user)
-                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
-                                                 :adminEmail        (first recipients)
-                                                 :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
+      :message      (channel.template/render "metabase/email/user_joined_notification.hbs"
+                                             (merge (common-context)
+                                                    {:logoHeader        true
+                                                     :joinedUserName    (or (:first_name new-user) (:email new-user))
+                                                     :joinedViaSSO      google-auth?
+                                                     :joinedUserEmail   (:email new-user)
+                                                     :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
+                                                     :adminEmail        (first recipients)
+                                                     :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
@@ -131,8 +123,8 @@
   {:pre [(u/email? email)
          ((some-fn string? nil?) password-reset-url)]}
   (let [google-sso? (= "google" sso-source)
-        message-body (stencil/render-file
-                      "metabase/email/password_reset"
+        message-body (channel.template/render
+                      "metabase/email/password_reset.hbs"
                       (merge (common-context)
                              {:emailType        "password_reset"
                               :google           google-sso?
@@ -162,8 +154,8 @@
                              :device     (:device_description login-history)
                              :location   (:location login-history)
                              :timestamp  timestamp})
-        message-body (stencil/render-file "metabase/email/login_from_new_device"
-                                          context)]
+        message-body (channel.template/render "metabase/email/login_from_new_device.hbs"
+                                              context)]
     (email/send-message!
      {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
       :recipients   [(:email user-info)]
@@ -226,8 +218,8 @@
                     :card-url (urls/card-url (:id card))
                     :collection-url (urls/collection-url (:id collection))
                     :caching-log-details-url (urls/tools-caching-details-url (:id persisted-info))})}
-        message-body (stencil/render-file "metabase/email/persisted-model-error"
-                                          (merge (common-context) context))]
+        message-body (channel.template/render "metabase/email/persisted-model-error.hbs"
+                                              (merge (common-context) context))]
     (when (seq emails)
       (email/send-message!
        {:subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
@@ -248,7 +240,7 @@
         email {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
                :recipients   [email]
                :message-type :html
-               :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
+               :message      (channel.template/render "metabase/email/follow_up_email.hbs" context)}]
     (email/send-message! email)))
 
 (defn send-creator-sentiment-email!
@@ -272,7 +264,7 @@
         message {:subject      "Metabase would love your take on something"
                  :recipients   [email]
                  :message-type :html
-                 :message      (stencil/render-file "metabase/email/creator_sentiment_email" context)}]
+                 :message      (channel.template/render "metabase/email/creator_sentiment_email.hbs" context)}]
     (email/send-message! message)))
 
 (defn generate-pulse-unsubscribe-hash
@@ -369,12 +361,12 @@
        {:recipients   [(:email user)]
         :message-type :html
         :subject      subject
-        :message      (stencil/render-file template-path template-context)})
+        :message      (channel.template/render template-path template-context)})
       (catch Exception e
         (log/errorf e "Failed to send message to '%s' with subject '%s'" (:email user) subject)))))
 
 (defn- template-path [template-name]
-  (str "metabase/email/" template-name ".mustache"))
+  (str "metabase/email/" template-name ".hbs"))
 
 ;; Paths to the templates for all of the alerts emails
 (def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
@@ -425,8 +417,8 @@
      :subject (trs "Subscription to {0} removed" dashboard-name)
      :recipients (distinct (map :email [pulse-creator dashboard-creator]))
      :message-type :html
-     :message (stencil/render-file
-               "metabase/email/broken_subscription_notification.mustache"
+     :message (channel.template/render
+               "metabase/email/broken_subscription_notification.hbs"
                (merge context
                       {:dashboardName            dashboard-name
                        :badParameters            (map

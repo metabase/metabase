@@ -28,6 +28,7 @@ import {
   openNotebook,
   openOrdersTable,
   openProductsTable,
+  openQuestionActions,
   openTable,
   popover,
   queryBuilderFooter,
@@ -1126,7 +1127,7 @@ describe("issue 44532", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
-      cy.findByText("Created At").should("exist"); // x-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
       cy.findByText("January 2023").should("exist");
@@ -1152,7 +1153,7 @@ describe("issue 44532", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
-      cy.findByText("Created At").should("exist"); // x-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
       cy.findByText("January 2023").should("exist");
@@ -1285,7 +1286,7 @@ describe("issue 43294", () => {
     queryBuilderFooter().findByLabelText("Switch to visualization").click();
     echartsContainer().within(() => {
       cy.findByText("Count").should("be.visible");
-      cy.findByText("Created At").should("be.visible");
+      cy.findByText("Created At: Month").should("be.visible");
     });
   });
 });
@@ -2210,7 +2211,7 @@ describe("issue 36027", () => {
     visualize();
 
     echartsContainer().within(() => {
-      cy.findByText("Created At").should("be.visible"); // x-axis
+      cy.findByText("Created At: Month").should("be.visible"); // x-axis
       cy.findByText("Count").should("be.visible"); // y-axis
 
       // x-axis values
@@ -2355,5 +2356,132 @@ describe("issue 48829", () => {
     visualize();
 
     modal().should("not.exist");
+  });
+});
+
+describe("issue 50038", () => {
+  const QUESTION = {
+    name: "question with a very long name that will be too long to fit on one line which normally would result in some weird looking buttons with inconsistent heights",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const OTHER_QUESTION = {
+    name: "question that also has a long name that is so long it will break in the button",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+
+    createQuestion(QUESTION, { wrapId: true, idAlias: "questionId" });
+    createQuestion(OTHER_QUESTION, {
+      wrapId: true,
+      idAlias: "otherQuestionId",
+    });
+
+    cy.get("@questionId").then(questionId => {
+      cy.get("@otherQuestionId").then(otherQuestionId => {
+        createQuestion(
+          {
+            name: "Joined question",
+            query: {
+              "source-table": `card__${questionId}`,
+              joins: [
+                {
+                  "source-table": `card__${otherQuestionId}`,
+                  fields: "all",
+                  strategy: "left-join",
+                  condition: [
+                    "=",
+                    ["field", ORDERS_ID, {}],
+                    ["field", PRODUCTS_ID, {}],
+                  ],
+                },
+              ],
+            },
+          },
+          { visitQuestion: true },
+        );
+      });
+    });
+  });
+
+  function assertEqualHeight(selector, otherSelector) {
+    selector.invoke("outerHeight").then(height => {
+      otherSelector.invoke("outerHeight").should("eq", height);
+    });
+  }
+
+  it("should not break data source and join source buttons when the source names are too long (metabase#50038)", () => {
+    openNotebook();
+    getNotebookStep("data").within(() => {
+      assertEqualHeight(
+        cy.findByText(QUESTION.name).parent().should("be.visible"),
+        cy.findByTestId("fields-picker").should("be.visible"),
+      );
+    });
+    getNotebookStep("join").within(() => {
+      assertEqualHeight(
+        cy
+          .findAllByText(OTHER_QUESTION.name)
+          .first()
+          .parent()
+          .should("be.visible"),
+        cy.findByTestId("fields-picker").should("be.visible"),
+      );
+    });
+  });
+});
+
+describe("issue 47940", () => {
+  const questionDetails = {
+    name: "Issue 47940",
+    query: {
+      "source-table": ORDERS_ID,
+      limit: 5,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  });
+
+  it("should be able to convert a question with date casting to a model", () => {
+    cy.log("create a question without any column casting");
+    createQuestion(questionDetails, { visitQuestion: true });
+    cy.wait("@cardQuery");
+
+    cy.log("add coercion");
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      semantic_type: "type/Category",
+      coercion_strategy: "Coercion/UNIXMicroSeconds->DateTime",
+    });
+
+    cy.log("get new query results with coercion applied");
+    queryBuilderHeader().findByTestId("run-button").click();
+    cy.wait("@cardQuery");
+    queryBuilderHeader().button("Save").click();
+    modal().button("Save").click();
+    cy.wait("@updateCard");
+
+    cy.log("turn into a model");
+    openQuestionActions();
+    popover().findByText("Turn into a model").click();
+    cy.findByRole("dialog").findByText("Turn this into a model").click();
+    cy.wait("@updateCard");
+
+    cy.log("verify there is a table displayed");
+    cy.findByTestId("visualization-root").should(
+      "contain",
+      "December 31, 1969, 4:00 PM",
+    );
   });
 });

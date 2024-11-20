@@ -136,18 +136,17 @@
 (mu/defn- streaming-result-fn :- fn?
   [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
    ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
-  (let [orig qp.pipeline/*result*]
-    (fn result [result]
-      (when (= (:status result) :completed)
-        (log/debug "Finished writing results; closing results writer.")
-        (try
-          (qp.si/finish! results-writer result)
-          (catch EofException e
-            (log/error e "Client closed connection prematurely")))
-        (u/ignore-exceptions
-          (.flush os)
-          (.close os)))
-      (orig result))))
+  (fn result [result]
+    (when (= (:status result) :completed)
+      (log/debug "Finished writing results; closing results writer.")
+      (try
+        (qp.si/finish! results-writer result)
+        (catch EofException e
+          (log/error e "Client closed connection prematurely")))
+      (u/ignore-exceptions
+        (.flush os)
+        (.close os)))
+    (qp.pipeline/default-result-handler result)))
 
 (defn do-with-streaming-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of

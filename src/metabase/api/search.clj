@@ -1,10 +1,15 @@
 (ns metabase.api.search
+  ;; Allowing search.config to be accessed for developer API to set weights
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
+   [clojure.string :as str]
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search :as search]
+   [metabase.search.config :as search.config]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
@@ -40,23 +45,60 @@
                 raise)))
    (meta handler)))
 
+(api/defendpoint POST "/re-init"
+  "If fulltext search is enabled, this will blow away the index table, re-create it, and re-populate it."
+  []
+  (api/check-superuser)
+  (cond
+    (not (public-settings/experimental-fulltext-search-enabled))
+    (throw (ex-info "Search index is not enabled." {:status-code 501}))
+
+    (search/supports-index?)
+    (do (search/init-index! {:force-reset? true}) {:message "done"})
+
+    :else
+    (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
+
 (api/defendpoint POST "/force-reindex"
   "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
   []
   (api/check-superuser)
   (cond
     (not (public-settings/experimental-fulltext-search-enabled))
-    {:status-code 501, :message "Search index is not enabled."}
+    (throw (ex-info "Search index is not enabled." {:status-code 501}))
 
     (search/supports-index?)
-    (do
-      (if (task/job-exists? task.search-index/job-key)
-        (task/trigger-now! task.search-index/job-key)
-        (search/reindex!))
-      {:status-code 200})
+    (if (task/job-exists? task.search-index/reindex-job-key)
+      (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
+      (do (search/reindex!) {:message "done"}))
 
     :else
-    {:status-code 501, :message "Search index is not supported for this installation."}))
+    (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
+
+(defn- set-weights! [overrides]
+  (api/check-superuser)
+  (let [allowed-key? (set (keys @#'search.config/default-weights))
+        unknown-weights (seq (remove allowed-key? (keys overrides)))]
+    (when unknown-weights
+      (throw (ex-info (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))
+                      {:status-code 400})))
+    (public-settings/experimental-search-weight-overrides!
+     (merge (public-settings/experimental-search-weight-overrides) overrides))
+    (search.config/weights)))
+
+(api/defendpoint GET "/weights"
+  "Return the current weights being used to rank the search results"
+  [:as {overrides :params}]
+  ;; remove cookie
+  (let [overrides (-> overrides (dissoc :search_engine) (update-vals parse-double))]
+    (if (seq overrides)
+      (set-weights! overrides)
+      (search.config/weights))))
+
+(api/defendpoint PUT "/weights"
+  "Return the current weights being used to rank the search results"
+  [:as {overrides :body}]
+  (set-weights! overrides))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.
@@ -80,14 +122,15 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
+  [q context archived created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_engine search_native_query
    verified ids calculate_available_models]
   {q                                   [:maybe ms/NonBlankString]
+   context                             [:maybe :keyword]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
-   filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   filter_items_in_personal_collection [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -105,9 +148,12 @@
     (search/search
      (search/search-context
       {:archived                            archived
+       :context                             context
        :created-at                          created_at
        :created-by                          (set created_by)
        :current-user-id                     api/*current-user-id*
+       :is-impersonated-user?               (premium-features/impersonated-user?)
+       :is-sandboxed-user?                  (premium-features/sandboxed-user?)
        :is-superuser?                       api/*is-superuser?*
        :current-user-perms                  @api/*current-user-permissions-set*
        :filter-items-in-personal-collection filter_items_in_personal_collection

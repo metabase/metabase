@@ -19,6 +19,7 @@ import {
   getPinnedSection,
   hovercard,
   join,
+  main,
   mapColumnTo,
   modal,
   navigationSidebar,
@@ -767,7 +768,9 @@ describe("issue 25885", () => {
     cy.findByLabelText("Display name")
       .should("have.value", oldName)
       .clear()
-      .type(newName);
+      .type(newName)
+      .blur();
+    tableInteractive().findByTextEnsureVisible(newName);
   }
 
   function verifyColumnName(name: string) {
@@ -980,7 +983,7 @@ describe("issue 34574", () => {
     createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
       visitModel(modelId),
     );
-    cy.wait(["@rootCollection", "@card", "@metadata", "@dataset"]);
+    cy.wait(["@card", "@metadata", "@dataset"]);
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       // make sure the model fully loaded
@@ -994,7 +997,7 @@ describe("issue 34574", () => {
         "# Hello{enter}## World{enter}This is an **important** description!",
       );
       cy.realPress("Tab");
-      cy.wait(["@rootCollection", "@metadata", "@updateCard"]);
+      cy.wait(["@metadata", "@updateCard"]);
 
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").get("textarea").should("not.exist");
@@ -1361,6 +1364,36 @@ describe("issue 20624", () => {
     tableInteractive().within(() => {
       cy.findByText("Retailer").should("be.visible");
       cy.findByText("Vendor").should("not.exist");
+    });
+  });
+});
+
+describe("issue 37300", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+
+    createQuestion(
+      {
+        type: "model",
+        query: {
+          "source-table": PRODUCTS_ID,
+          filter: ["=", ["field", PRODUCTS.ID, null], "999991"],
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should show the table headers even when there are no results (metabase/metabase#37300)", () => {
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+
+    main().within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("Ean").should("be.visible");
+
+      cy.findByText("No results!").should("be.visible");
     });
   });
 });

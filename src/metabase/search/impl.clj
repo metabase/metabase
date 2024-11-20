@@ -11,6 +11,7 @@
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.api :as search.api]
    [metabase.search.config
@@ -18,7 +19,7 @@
     :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.fulltext :as search.fulltext]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -141,6 +142,10 @@
              (assoc search-result :effective_location nil)))
          search-results)))
 
+(def ^:private ^:const displayed-columns
+  "All the result components that by default are displayed by the frontend."
+  #{:name :display_name :collection_name :description})
+
 ;;; TODO OMG mix of kebab-case and snake_case here going to make me throw up, we should use all kebab-case in Clojure
 ;;; land and then convert the stuff that actually gets sent over the wire in the REST API to snake_case in the API
 ;;; endpoint itself, not in the search impl.
@@ -149,17 +154,21 @@
   [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
                       collection_authority_level collection_type collection_effective_ancestors effective_parent
                       archived_directly model]}]
-  (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
-        match-context-thunk (first (keep :match-context-thunk relevant-scores))
-        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))]
+  (let [matching-columns    (into #{} (keep :column relevant-scores))
+        match-context-thunk (some :match-context-thunk relevant-scores)
+        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))
+        use-display-name?   (and display_name
+                                 ;; This collection will be empty unless we used in-place matching.
+                                 ;; For now, for simplicity and performance reasons, we are not bothering to check
+                                 ;; *where* the matches in the tsvector came from.
+                                 (or (empty? matching-columns)
+                                     (contains? matching-columns :display_name)))]
     (-> result
         (assoc
-         :name           (if (and (contains? matching-columns :display_name) display_name)
-                           display_name
-                           name)
+         :name           (if use-display-name? display_name name)
          :context        (when (and match-context-thunk
                                     (empty?
-                                     (remove matching-columns search.config/displayed-columns)))
+                                     (remove matching-columns displayed-columns)))
                            (match-context-thunk))
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
@@ -202,7 +211,10 @@
 (defmethod supported-engine? :search.engine/in-place [_] true)
 (defmethod supported-engine? :search.engine/fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
 
-(def ^:private default-engine :search.engine/in-place)
+(defn- default-engine []
+  (if (public-settings/experimental-fulltext-search-enabled)
+    :search.engine/fulltext
+    :search.engine/in-place))
 
 (defn- known-engine? [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
@@ -220,30 +232,40 @@
 
             :else
             engine)))
-      default-engine))
+      (default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
+(defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
+  (let [default (default-engine)]
+    (when (= default search-engine)
+      (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
+    (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
+    (assoc search-ctx :search-engine default)))
+
 (defmethod search.api/results :default [search-ctx]
-  (search.api/results (assoc search-ctx :search-engine default-engine)))
+  (search.api/results (apply-default-engine search-ctx)))
 
 (defmethod search.api/model-set :default [search-ctx]
-  (search.api/model-set (assoc search-ctx :search-engine default-engine)))
+  (search.api/model-set (apply-default-engine search-ctx)))
 
 (defmethod search.api/score :default [results search-ctx]
-  (search.api/score results (assoc search-ctx :search-engine default-engine)))
+  (search.api/score results (apply-default-engine search-ctx)))
 
 (mr/def ::search-context.input
   [:map {:closed true}
    [:search-string                                        [:maybe ms/NonBlankString]]
+   [:context                             {:optional true} [:maybe :keyword]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
+   [:is-impersonated-user?               {:optional true} :boolean]
+   [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
    [:current-user-perms                                   [:set perms.u/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "only" "exclude"]]]
+   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
    [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
    [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:limit                               {:optional true} [:maybe ms/Int]]
@@ -259,6 +281,7 @@
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           context
            calculate-available-models?
            created-at
            created-by
@@ -266,6 +289,8 @@
            current-user-perms
            filter-items-in-personal-collection
            ids
+           is-impersonated-user?
+           is-sandboxed-user?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -285,15 +310,24 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:archived?                   (boolean archived)
-                        :calculate-available-models? (boolean calculate-available-models?)
-                        :current-user-id             current-user-id
-                        :current-user-perms          current-user-perms
-                        :is-superuser?               is-superuser?
-                        :models                      models
-                        :model-ancestors?            (boolean model-ancestors?)
-                        :search-engine               (parse-engine search-engine)
-                        :search-string               search-string}
+        engine (parse-engine search-engine)
+        ctx    (cond-> {:archived?                           (boolean archived)
+                        :context                             (or context :unknown)
+                        :calculate-available-models?         (boolean calculate-available-models?)
+                        :current-user-id                     current-user-id
+                        :current-user-perms                  current-user-perms
+                        :filter-items-in-personal-collection (or filter-items-in-personal-collection
+                                                                 (if (and (not= engine :search.engine/in-place)
+                                                                          (#{:search-app :command-palette} context))
+                                                                   "exclude-others"
+                                                                   "all"))
+                        :is-impersonated-user?               is-impersonated-user?
+                        :is-sandboxed-user?                  is-sandboxed-user?
+                        :is-superuser?                       is-superuser?
+                        :models                              models
+                        :model-ancestors?                    (boolean model-ancestors?)
+                        :search-engine                       engine
+                        :search-string                       search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -308,6 +342,7 @@
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
+    ;; TODO this is rather hidden, perhaps better to do it further down the stack
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (defn- to-toucan-instance [row]
@@ -371,7 +406,7 @@
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
   (let [reducible-results (search.api/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-string :search-native-query])
+        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)
