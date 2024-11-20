@@ -572,7 +572,4 @@
        {:tables (sort-by :id [{:id (mt/id :venues)}
                               {:id (mt/id :categories)}])}
        (-> (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata"))
-            ;; The output is so large, these help debugging
-           #_#_#_(update :fields #(map (fn [x] (select-keys x [:id])) %))
-               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-             (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
+           #_(api.test-util/select-query-metadata-keys-for-debugging)))))

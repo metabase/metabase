@@ -13,7 +13,6 @@ import {
   appBar,
   assertQueryBuilderRowCount,
   assertTabSelected,
-  changeSynchronousBatchUpdateSetting,
   commandPalette,
   commandPaletteSearch,
   createDashboard,
@@ -1469,12 +1468,6 @@ describe("issues 15279 and 24500", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true);
-  });
-
-  afterEach(() => {
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("corrupted dashboard filter should still appear in the UI without breaking other filters (metabase#15279, metabase#24500)", () => {
@@ -1788,7 +1781,6 @@ describe("issue 25374", () => {
 
     restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
 
     cy.createNativeQuestionAndDashboard({
       questionDetails,
@@ -1829,10 +1821,6 @@ describe("issue 25374", () => {
 
       cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     });
-  });
-
-  afterEach(() => {
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {

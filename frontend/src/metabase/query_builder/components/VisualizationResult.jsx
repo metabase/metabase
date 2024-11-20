@@ -23,6 +23,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "scrollToColumn",
   "renderTableHeaderWrapper",
   "mode",
+  "renderEmptyMessage",
 ];
 
 export default class VisualizationResult extends Component {
@@ -60,11 +61,12 @@ export default class VisualizationResult extends Component {
       onNavigateBack,
       className,
       isRunning,
+      renderEmptyMessage,
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
     const noResults = datasetContainsNoResults(result.data);
-    if (noResults && !isRunning) {
+    if (noResults && !isRunning && !renderEmptyMessage) {
       const supportsRowsPresentAlert = question.alertType() === ALERT_TYPE_ROWS;
 
       // successful query but there were 0 rows returned with the result

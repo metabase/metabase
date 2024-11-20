@@ -47,6 +47,9 @@ type InnerProps = {
 
 type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 function ExplicitSize<T>({
   selector,
   wrapped = false,
