@@ -32,10 +32,6 @@ export const DragHandle = styled.div`
   border-radius: 4px;
 `;
 
-export const EditorRoot = styled.div`
-  flex: 1 0 auto;
-`;
-
 export const StyledResizableBox = styled(ResizableBox)<
   ResizableBoxProps & {
     isOpen: boolean;

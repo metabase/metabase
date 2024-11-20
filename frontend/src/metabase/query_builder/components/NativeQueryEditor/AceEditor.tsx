@@ -22,7 +22,6 @@ import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 
 import S from "./AceEditor.global.css";
 import type { EditorProps } from "./Editor";
-import { EditorRoot } from "./NativeQueryEditor.styled";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
 import type { AutocompleteItem } from "./types";
 import { getAutocompleteResultMeta } from "./utils";
@@ -461,7 +460,7 @@ export class AceEditor extends Component<EditorProps> {
 
   render() {
     return (
-      <EditorRoot
+      <div
         className={S.editor}
         id={ACE_ELEMENT_ID}
         data-testid="native-query-editor"

@@ -2,6 +2,7 @@
   height: 100%;
   background-color: var(--mb-color-bg-light);
   color: var(--mb-color-text-dark);
+  flex: 1 0 auto;
 
   .ace_search {
     font-family: Lato;
