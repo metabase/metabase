@@ -11,7 +11,7 @@ labels: ".Epic"
 
 - [product doc](LINK_TO_PRODUCT_DOC)
 - [engineering doc](LINK_TO_ENGINEERING_DOC)
-- feature branch: `BRANCH_NAME` _this should be the feature branch where this work will be done in. PRs will be delivered against this branch, if any_
+- feature branch: `BRANCH_NAME` _this should be the feature branch where this work will be done in. PRs will be delivered against this branch_
 - issue links: _related issues, if any_
 
 ### Implementation Plan
