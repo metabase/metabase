@@ -4,9 +4,7 @@ title: Custom actions
 
 # Custom actions
 
-[Broken link](./broken.md).
 
-[Another broken link](./broken-again.md).
 
 Write SQL to update records in your databases.
 
