@@ -157,7 +157,7 @@
                                                    [:d.id :id]]
                                           :from [[:dashboardcard_series :dcs]]
                                           :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}]] })
+                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}]]})
          (group-by :card_id)
          (m/map-vals (fn [dashes] (->> dashes
                                        (map (fn [dash] (dissoc dash :card_id)))
@@ -468,14 +468,14 @@
                              (:dashboard_id changes)))]
     (when will-be-dq?
       (cond
-       (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
-       (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
-       (api/column-will-change? :collection_position card changes)
-       (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
+        (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
+        (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
+        (api/column-will-change? :collection_position card changes)
+        (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
        ;; `column-will-change?` seems broken in the case where we 'change' :question to "question"
-       (and (api/column-will-change? :type card changes)
-            (not (contains? #{"question" :question} (:type changes))))
-       (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
+        (and (api/column-will-change? :type card changes)
+             (not (contains? #{"question" :question} (:type changes))))
+        (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
   (let [dashboard-id->name (->> (t2/hydrate card :in_dashboards)
