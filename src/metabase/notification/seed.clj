@@ -18,7 +18,7 @@
                             :template     {:name         "User joined Email template"
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
-                                                          :subject        "{{payload.custom.user_invited_email_subject}}"
+                                                          :subject        "{{i18n-trs \"You''re invited to join {0}''s {1}\" context.site_name context.application_name}}"
                                                           :path           "metabase/email/new_user_invite.hbs"
                                                           :recipient-type :cc}
                                            :created_at   :%now

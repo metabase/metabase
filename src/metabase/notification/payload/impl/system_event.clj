@@ -1,10 +1,8 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
-   [metabase.email.messages :as messages]
    [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.malli :as mu]))
 
 (defn- join-url
@@ -26,8 +24,7 @@
   [topic event-info]
   (case topic
     :event/user-invited
-    {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
-     :user_invited_join_url      (-> event-info :object :id join-url)}
+    {:user_invited_join_url (-> event-info :object :id join-url)}
     {}))
 
 (mu/defmethod notification.payload/payload :notification/system-event

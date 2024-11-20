@@ -56,7 +56,16 @@
     [:channel/email :notification/alert]
     {:channel_type :channel/email
      :details      {:type    :email/handlebars-resource
-                    :subject "{{computed.subject}}"
+                    :subject (str "{{#with payload.alert}}"
+                                  "{{#if (equals alert_condition \"goal\")}}"
+                                  "{{#if alert_above_goal}}"
+                                  "{{i18n-trs \"Alert: {0} has reached its goal\" payload.card.name}}"
+                                  "{{else}}"
+                                  "{{i18n-trs \"Alert: {0} has gone below its goal\" payload.card.name}}"
+                                  "{{/if}}"
+                                  "{{else}}"
+                                  "{{i18n-trs \"Alert: {0} has results\" payload.card.name}}"
+                                  "{{/if}}{{/with}}")
                     :path    "metabase/email/alert.hbs"}}
     nil))
 

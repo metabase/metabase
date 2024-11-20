@@ -5,9 +5,8 @@
    [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
-   [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.template.handlebars :as handlebars]
+   [metabase.channel.template.core :as channel.template]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.email.result-attachment :as email.result-attachment]
@@ -80,10 +79,10 @@
   [{:keys [details] :as _template} payload]
   (case (keyword (:type details))
     :email/handlebars-resource
-    (handlebars/render (:path details) payload)
+    (channel.template/render (:path details) payload)
 
     :email/handlebars-text
-    (handlebars/render-string (:body details) payload)
+    (channel.template/render-string (:body details) payload)
 
     (do
       (log/warnf "Unknown email template type: %s" (:type details))
@@ -147,13 +146,13 @@
         email-to-users            (when (seq user-emails)
                                     (let [message-ctx (message-context-fn nil)]
                                       (construct-email
-                                       (channel.params/substitute-params (-> template :details :subject) message-ctx)
+                                       (channel.template/render-string (-> template :details :subject) message-ctx)
                                        user-emails
                                        (render-message-body template (message-context-fn nil) attachments))))
         email-to-nonusers         (for [non-user-email non-user-emails]
                                     (let [message-ctx (message-context-fn non-user-email)]
                                       (construct-email
-                                       (channel.params/substitute-params (-> template :details :subject) message-ctx)
+                                       (channel.template/render-string (-> template :details :subject) message-ctx)
                                        [non-user-email]
                                        (render-message-body template (message-context-fn non-user-email) attachments))))]
     (filter some? (conj email-to-nonusers email-to-users))))
@@ -281,7 +280,7 @@
                                     :notification-recipient/external-email
                                     [(:email details)]
                                     :notification-recipient/template
-                                    [(not-empty (channel.params/substitute-params (:pattern details) notification-payload :ignore-missing? (:is_optional details)))]
+                                    [(not-empty (channel.template/render-string (:pattern details) notification-payload #_:ignore-missing? #_(:is_optional details)))]
                                     nil)]
                      :let  [emails (filter some? emails)]
                      :when (seq emails)]
@@ -294,7 +293,7 @@
    template             :- models.channel/ChannelTemplate
    recipients           :- [:sequential models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
-  [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
+  [(construct-email (channel.template/render-string (-> template :details :subject) notification-payload)
                     (notification-recipients->emails recipients notification-payload)
                     [{:type    "text/html; charset=utf-8"
                       :content (render-body template notification-payload)}]

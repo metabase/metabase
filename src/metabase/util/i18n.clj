@@ -67,7 +67,7 @@
     ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
     [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
 
-(defn- translate-site-locale
+(defn translate-site-locale
   "Translate a string with the System locale."
   [format-string args pluralization-opts]
   (let [translated (translate (site-locale) format-string args pluralization-opts)]
@@ -75,7 +75,7 @@
                 (pr-str format-string) (pr-str (site-locale-string)) (pr-str translated))
     translated))
 
-(defn- translate-user-locale
+(defn translate-user-locale
   "Translate a string with the current User's locale."
   [format-string args pluralization-opts]
   (let [translated (translate (user-locale) format-string args pluralization-opts)]

@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n]
    [metabase.util.urls :as urls])
   (:import
    (com.github.jknack.handlebars
@@ -114,10 +115,27 @@
   [id [parameters] _kparams _options]
   (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
+(defhelper i18n-trs
+  "Translate a string to the site locale with optional parameters.
+
+  {{i18n-trs \"Hello, {{0}}!\" \"Alice\"}"
+  [text params _kparams _options]
+  (i18n/translate-site-locale text params {}))
+
+(defhelper i18n-tru
+  "Translate a string to the user locale with optional parameters.
+
+  {{i18n-trs \"Hello, {{0}}!\" \"Alice\"}"
+  [text params _kparams _options]
+  (i18n/translate-user-locale text params {}))
+
 (def default-helpers
   "A list of default helpers."
   [["equals"      equals]
    ["format-date" format-date]
    ["now"         now]
+   ;; metabase specifics
    ["card-url"    card-url]
-   ["dashboard-url" dashboard-url]])
+   ["dashboard-url" dashboard-url]
+   ["i18n-trs"    i18n-trs]
+   ["i18n-tru"    i18n-tru]])
