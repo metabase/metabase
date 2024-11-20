@@ -10,6 +10,7 @@ describe("Dashboard > Dashboard Questions", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
+      H.setTokenFeatures("all");
     });
 
     it("can save a new question to a dashboard and move it to a collection", () => {
@@ -258,15 +259,114 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("edit-bar")
         .findByText("You're editing this dashboard.")
         .should("exist");
+    it("can find dashboard questions in the search", () => {
+      H.createQuestion({
+        name: "Total Orders Dashboard Question",
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        database_id: SAMPLE_DATABASE.id,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      cy.visit("/");
+
+      H.commandPaletteSearch("Total Orders", false);
+
+      cy.log("Command palette should show the dashboard question");
+      H.commandPalette()
+        .findByText("Total Orders Dashboard Question")
+        .should("be.visible");
+
+      cy.log(
+        "Command palette should show the dashboard question in the dashboard",
+      );
+      H.commandPalette()
+        .findByText("Total Orders Dashboard Question")
+        .parent()
+        .findByText(/Orders in a dashboard/)
+        .should("be.visible");
+      H.closeCommandPalette();
+
+      cy.log("Search page should show the dashboard question in the dashboard");
+      H.commandPaletteSearch("Total Orders");
+      H.commandPalette()
+        .findByText("Total Orders Dashboard Question")
+        .parent()
+        .findByText(/Orders in a dashboard/)
+        .should("be.visible");
+    });
+
+    it("can move a question into a dashboard that already has a dashcard with the same question", () => {
+      H.visitQuestion(S.ORDERS_QUESTION_ID);
+      H.openQuestionActions();
+      H.popover().findByText("Move").click();
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().button("Move").click();
+      // should only have one instance of this card
+      H.dashboardCards().findAllByText("Orders").should("have.length", 1);
+    });
+
+    it("can share a dashboard card via public link", () => {
+      H.createQuestion(
+        {
+          name: "Total Orders",
+          dashboard_id: S.ORDERS_DASHBOARD_ID,
+          database_id: SAMPLE_DATABASE.id,
+          query: {
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: "scalar",
+        },
+        { visitQuestion: true },
+      );
+
+      H.openSharingMenu("Create a public link");
+      cy.findByTestId("public-link-input")
+        .invoke("val")
+        .then(publicLink => {
+          cy.signOut();
+          cy.visit(publicLink);
+          cy.findByTestId("embed-frame-header")
+            .findByText("Total Orders")
+            .should("be.visible");
+        });
+    });
+
+    it("perserves bookmarks when moving a question to a dashboard", () => {
+      // bookmark it
+      H.visitQuestion(S.ORDERS_QUESTION_ID);
+      H.queryBuilderHeader().icon("bookmark").click();
+      cy.findByTestId("sidebar-toggle").click();
+      H.navigationSidebar().findByText("Orders");
+      H.openQuestionActions();
+
+      // move it
+      H.popover().findByText("Move").click();
+      H.navigationSidebar().findByText("Orders");
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().button("Move").click();
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      // it's still bookmarked
+      cy.findByTestId("sidebar-toggle").click();
+      H.navigationSidebar().findByText("Orders");
+      H.dashboardCards().findByText("Orders").click();
+
+      // unbookmark it
+      H.queryBuilderHeader().icon("bookmark_filled").click();
+      cy.findByTestId("sidebar-toggle").click();
+      H.navigationSidebar().findByText("Collections").should("be.visible");
+      H.navigationSidebar().findByText("Orders").should("not.exist");
     });
   });
 
   describe("limited users", () => {
-    beforeEach(() => {
-      cy.signIn("readonlynosql");
-    });
-
     it("cannot save dashboard question in a read only dashboard", () => {
+      cy.signIn("readonlynosql");
+
       cy.intercept("POST", "/api/card").as("saveQuestion");
       cy.intercept("GET", "/api/dashboard/*").as("getADashboard");
 
@@ -289,6 +389,75 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.wait("@saveQuestion").then(({ response }) => {
         expect(response.statusCode).to.eq(200);
       });
+    });
+
+    it("cannot move a question to a dashboard, when it would be removed from a read-only dashboard", () => {
+      cy.signInAsAdmin();
+
+      H.createQuestion(
+        {
+          name: "Total Orders Question",
+          database_id: SAMPLE_DATABASE.id,
+          collection_id: null, // our analytics
+          query: {
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: "scalar",
+        },
+        {
+          wrapId: true,
+          idAlias: "totalOrdersQuestionId",
+        },
+      );
+
+      H.createDashboard(
+        {
+          name: "Personal dashboard",
+          collection_id: S.ADMIN_PERSONAL_COLLECTION_ID,
+        },
+        { wrapId: true, idAlias: "personalDashboardId" },
+      );
+
+      cy.get("@personalDashboardId").then(personalDashboardId => {
+        H.visitDashboard(personalDashboardId);
+      });
+
+      H.editDashboard();
+      H.openAddQuestionMenu();
+      H.popover()
+        .findByText(/Existing Question/)
+        .click();
+      H.sidebar()
+        .findByText(/our analyt/i)
+        .click();
+      H.sidebar().findByText("Total Orders Question").click();
+      H.saveDashboard();
+      H.dashboardCards().findByText("Total Orders Question");
+
+      cy.signOut();
+      cy.signIn("normal");
+
+      cy.get("@totalOrdersQuestionId").then(totalOrdersQuestionId => {
+        H.visitQuestion(totalOrdersQuestionId);
+      });
+
+      H.openQuestionActions();
+      H.popover().findByText("Move").click();
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().button("Move").click();
+
+      cy.log(
+        "We should get a modal saying that we can't move it into a dashboard because it would move it out of a dashboard that we can't access",
+      );
+
+      // FIXME, this should not crash out
+      H.main()
+        .findByText(/Sorry, you don’t have permission to see that./)
+        .should("not.exist");
+      H.modal()
+        .findByText(/You can't move this question/i)
+        .should("be.visible");
     });
   });
 });
