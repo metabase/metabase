@@ -9,7 +9,7 @@ import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -18,10 +18,16 @@ import { ClauseStep } from "../ClauseStep";
 type DataStepProps = {
   query: Lib.Query | undefined;
   stageIndex: number;
+  isNew: boolean;
   onChange: (query: Lib.Query) => void;
 };
 
-export function DataStep({ query, stageIndex, onChange }: DataStepProps) {
+export function DataStep({
+  query,
+  stageIndex,
+  isNew,
+  onChange,
+}: DataStepProps) {
   const [isOpened, setIsOpened] = useState(false);
   const tableId = query ? Lib.sourceTableOrCardId(query) : undefined;
   const table =
@@ -45,7 +51,10 @@ export function DataStep({ query, stageIndex, onChange }: DataStepProps) {
 
   return (
     <ClauseStep label={t`Data`}>
-      <Button onClick={() => setIsOpened(true)}>
+      <Button
+        rightIcon={isNew && <Icon name="chevrondown" />}
+        onClick={() => setIsOpened(true)}
+      >
         {tableInfo ? tableInfo.displayName : t`Select a table`}
       </Button>
       {isOpened && (

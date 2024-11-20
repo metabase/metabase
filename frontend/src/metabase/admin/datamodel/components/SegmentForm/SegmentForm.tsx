@@ -69,6 +69,7 @@ const SegmentForm = ({
         >
           <SegmentEditor
             {...getSegmentEditorProps(getFieldProps("definition"), metadata)}
+            isNew={isNew}
           />
         </FormLabel>
         <FormBodyContent>
