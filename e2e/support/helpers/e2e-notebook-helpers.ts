@@ -19,16 +19,8 @@ export function startSort() {
 /**
  * Switch to a notebook editor from a simple query view (aka "chill mode").
  */
-export function openNotebook(
-  { hideHover }: { hideHover: boolean } = { hideHover: true },
-) {
-  notebookButton().click();
-
-  // just click on the notebook button keeps the tooltip open
-  // but we don't want this tooltip to messup our tests
-  if (hideHover) {
-    cy.get("body").click();
-  }
+export function openNotebook() {
+  return notebookButton().click();
 }
 
 /**
