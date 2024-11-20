@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
+import ZIndex from "metabase/css/core/z-index.module.css";
 
 import {
   BulkActionBar,

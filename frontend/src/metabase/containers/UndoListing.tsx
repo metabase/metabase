@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
+import cx from "classnames";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";

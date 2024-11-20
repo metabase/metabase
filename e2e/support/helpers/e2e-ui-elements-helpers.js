@@ -1,7 +1,7 @@
 // Functions that get key elements in the app
 
 export const POPOVER_ELEMENT =
-  ".popover[data-state~='visible'],[data-element-id='mantine-popover'],[data-element-id='mantine-menu'],[role='menu']";
+  ".popover[data-state~='visible'],[data-element-id=mantine-popover],[data-combobox-popover=true]";
 
 /** The currently visible popover dropdown or menu dropdown.*/
 export const popover = () => cy.get(POPOVER_ELEMENT).should("be.visible");
