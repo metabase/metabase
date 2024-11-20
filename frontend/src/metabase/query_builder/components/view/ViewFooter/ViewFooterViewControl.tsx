@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
@@ -37,6 +37,28 @@ const ViewFooterControl = ({
 
   const dispatch = useDispatch();
 
+  const [value, setValue] = useState<"editor" | "table" | "visualization">(
+    isNotebook ? "editor" : isShowingRawTable ? "table" : "visualization",
+  );
+
+  const handleValueChange = (value: "editor" | "table" | "visualization") => {
+    if (value === "editor") {
+      dispatch(setQueryBuilderMode("notebook"));
+    } else {
+      if (value === "table") {
+        dispatch(setUIControls({ isShowingRawTable: true }));
+      } else {
+        dispatch(setUIControls({ isShowingRawTable: false }));
+      }
+
+      if (isNotebook) {
+        dispatch(setQueryBuilderMode("view"));
+      }
+    }
+
+    setValue(value);
+  };
+
   const data = useMemo(
     () =>
       [
@@ -45,13 +67,7 @@ const ViewFooterControl = ({
               value: "editor",
               label: (
                 <Tooltip label={t`Editor`}>
-                  <Icon
-                    aria-label={t`Switch to editor`}
-                    name="notebook"
-                    onClick={() => {
-                      dispatch(setQueryBuilderMode("notebook"));
-                    }}
-                  />
+                  <Icon aria-label={t`Switch to editor`} name="notebook" />
                 </Tooltip>
               ),
             }
@@ -60,16 +76,7 @@ const ViewFooterControl = ({
           value: "table",
           label: (
             <Tooltip label={t`Results`}>
-              <Icon
-                aria-label={t`Switch to data`}
-                name="table2"
-                onClick={() => {
-                  dispatch(setUIControls({ isShowingRawTable: true }));
-                  if (isNotebook) {
-                    dispatch(setQueryBuilderMode("view"));
-                  }
-                }}
-              />
+              <Icon aria-label={t`Switch to data`} name="table2" />
             </Tooltip>
           ),
         },
@@ -78,34 +85,21 @@ const ViewFooterControl = ({
           // TODO: also we need to add a spinner :boom:
           label: (
             <Tooltip label={t`Visualization`}>
-              <Icon
-                aria-label={t`Switch to visualization`}
-                name={vizIcon}
-                onClick={() => {
-                  dispatch(setUIControls({ isShowingRawTable: false }));
-                  if (isNotebook) {
-                    dispatch(setQueryBuilderMode("view"));
-                  }
-                }}
-              />
+              <Icon aria-label={t`Switch to visualization`} name={vizIcon} />
             </Tooltip>
           ),
         },
       ].filter(isNotNull),
-    [dispatch, isNotebook, shouldShowEditorButton, vizIcon],
+    [shouldShowEditorButton, vizIcon],
   );
-
-  function getSelectedControlValue() {
-    if (isNotebook) {
-      return "editor";
-    }
-
-    return isShowingRawTable ? "table" : "visualization";
-  }
 
   return (
     (isVisualized || shouldShowEditorButton) && (
-      <EditorViewControl value={getSelectedControlValue()} data={data} />
+      <EditorViewControl
+        value={value}
+        data={data}
+        onChange={handleValueChange}
+      />
     )
   );
 };

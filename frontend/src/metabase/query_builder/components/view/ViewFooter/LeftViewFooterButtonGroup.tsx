@@ -12,7 +12,7 @@ import {
   getIsVisualized,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Button, Flex } from "metabase/ui";
+import { Button, Flex, rem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderUIControls } from "metabase-types/store";
 
@@ -21,11 +21,13 @@ import { ViewFooterControl } from "./ViewFooterViewControl";
 interface LeftViewFooterButtonGroupProps {
   question: Question;
   hideChartSettings?: boolean;
+  isNotebook: boolean;
 }
 
 export const LeftViewFooterButtonGroup = ({
   question,
   hideChartSettings = false,
+  isNotebook,
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
@@ -40,17 +42,17 @@ export const LeftViewFooterButtonGroup = ({
 
   const isVisualized = useSelector(getIsVisualized);
   const shouldShowChartSettingsButton =
-    !hideChartSettings && (!isShowingRawTable || isVisualized);
+    !isNotebook && !hideChartSettings && (!isShowingRawTable || isVisualized);
 
   return (
     <Flex gap="0.75rem">
-      <ViewFooterControl question={question} />
+      <ViewFooterControl question={question} isNotebook={isNotebook} />
       {shouldShowChartSettingsButton && (
         <Button
           variant={isShowingChartSettingsSidebar ? "filled" : "default"}
           radius="xl"
-          /* mah is a hack for 32px height button, we don't have it atm */
-          mah="xl"
+          pt={rem(7)}
+          pb={rem(7)}
           styles={{
             ...(!isShowingChartSettingsSidebar && {
               root: {
