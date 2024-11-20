@@ -30,8 +30,9 @@ import type { Dispatch, State } from "metabase-types/store";
 
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
-import { AceEditor, type AceEditorProps } from "./AceEditor";
+import { AceEditor } from "./AceEditor";
 import DataSourceSelectors from "./DataSourceSelectors";
+import type { EditorProps } from "./Editor";
 import {
   DragHandle,
   DragHandleContainer,
@@ -136,7 +137,7 @@ type Props = OwnProps &
   DispatchProps &
   ExplicitSizeProps &
   EntityLoaderProps &
-  AceEditorProps;
+  EditorProps;
 
 interface NativeQueryEditorState {
   initialHeight: number;

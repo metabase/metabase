@@ -18,23 +18,12 @@ import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
-import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  Card,
-  CardId,
-  Collection,
-  NativeQuerySnippet,
-} from "metabase-types/api";
 
+import type { EditorProps } from "./Editor";
 import { EditorRoot } from "./NativeQueryEditor.styled";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
-import type {
-  AutocompleteItem,
-  CardCompletionItem,
-  SelectionRange,
-} from "./types";
+import type { AutocompleteItem } from "./types";
 import { getAutocompleteResultMeta } from "./utils";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
@@ -48,35 +37,7 @@ type LastAutoComplete = {
   results: AutocompleteItem[];
 };
 
-export type AceEditorProps = {
-  question: Question;
-
-  query: NativeQuery;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
-
-  fetchQuestion: (cardId: CardId) => Promise<Card>;
-  autocompleteResultsFn: (prefix: string) => Promise<AutocompleteItem[]>;
-  cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
-
-  nativeEditorSelectedText?: string;
-  setNativeEditorSelectedRange: (range: SelectionRange) => void;
-
-  snippets?: NativeQuerySnippet[];
-  snippetCollections?: Collection[];
-
-  openDataReferenceAtQuestion: (id: CardId) => void;
-
-  isSelectedTextPopoverOpen: boolean;
-  onToggleSelectedTextContextMenu: (open: boolean) => void;
-
-  readOnly?: boolean;
-  width: number;
-  viewHeight: number;
-
-  onChange: (queryText: string) => void;
-};
-
-export class AceEditor extends Component<AceEditorProps> {
+export class AceEditor extends Component<EditorProps> {
   editor = createRef<HTMLDivElement>();
 
   // this is overwritten when the editor mounts
@@ -97,7 +58,7 @@ export class AceEditor extends Component<AceEditorProps> {
     this._editor?.destroy?.();
   }
 
-  componentDidUpdate(prevProps: AceEditorProps) {
+  componentDidUpdate(prevProps: EditorProps) {
     const { query, readOnly } = this.props;
     if (!query || !this._editor) {
       return;
@@ -173,7 +134,7 @@ export class AceEditor extends Component<AceEditorProps> {
   }
 
   getSelectionTarget() {
-    return this.editor.current?.querySelector(".ace_selection");
+    return this.editor.current?.querySelector(".ace_selection") ?? null;
   }
 
   loadAceEditor() {
