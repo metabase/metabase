@@ -22,6 +22,7 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
+   [metabase.models.dashboard.constants :as dashboard.constants]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -728,7 +729,10 @@
     (when-not already-on-dashboard?
       (let [cards-on-first-tab (or (:cards (first tabs))
                                    dashcards)
-            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab)]
+            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab
+                                                              (:width (:default (get dashboard.constants/card-size-defaults (:display card))))
+                                                              (:height (:default (get dashboard.constants/card-size-defaults (:display card))))
+                                                              autoplace/default-grid-width)]
         (t2/insert! :model/DashboardCard (assoc new-spot
                                                 :card_id (:id card)
                                                 :dashboard_id dashboard-id))
