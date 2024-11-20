@@ -1227,7 +1227,7 @@
                       :alert-attachment :subscription-attachment
                       :public-question-download :public-dashcard-download}]
                    (mt/with-test-user :crowberto
-                     (mt/with-user-locale "nl"
+                     (mt/with-user-locale "de"
                        (->> (update-vals (all-outputs! card {:export-format :csv :format-rows true :pivot false}) (fn [rows] (take 10 rows)))
                             (group-by second)
                             ((fn [m] (update-vals m #(into #{} (mapv first %)))))

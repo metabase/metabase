@@ -16,6 +16,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- wrap-format-str-in-user-locale
+  [s]
+  (.withLocale
+   (t/formatter s)
+   (i18n/user-locale)))
+
 (defn temporal-string?
   "Returns `true` if the string `s` is parseable as a datetime.
 
@@ -28,7 +34,7 @@
      (catch Exception _e false))))
 
 (defn- reformat-temporal-str [timezone-id s new-format-string]
-  (t/format new-format-string (u.date/parse s timezone-id)))
+  (t/format (wrap-format-str-in-user-locale new-format-string) (u.date/parse s timezone-id)))
 
 (defn- day-of-week
   [n abbreviate]
@@ -210,7 +216,7 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
                                 time-style
                                 (str ", " time-style))
         default-format-string (post-process-date-style date-time-style viz-settings)]
-    (t/format default-format-string (u.date/parse temporal-str timezone-id))))
+    (t/format (wrap-format-str-in-user-locale default-format-string) (u.date/parse temporal-str timezone-id))))
 
 (defmethod format-timestring :default [timezone-id temporal-str {:keys [unit] :as col} {:keys [date-style] :as viz-settings}]
   (if (= :default unit)
@@ -235,7 +241,7 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
   "Return a formatter which, given a temporal literal string, reformts it by combining time zone, column, and viz
   setting information to create a final desired output format."
   [timezone-id col viz-settings]
-  (Locale/setDefault (Locale. (or i18n/*user-locale* (public-settings/site-locale))))
+  (Locale/setDefault (Locale. (public-settings/site-locale)))
   (let [merged-viz-settings (common/normalize-keys
                              (common/viz-settings-for-col col viz-settings))]
     (fn [temporal-str]
