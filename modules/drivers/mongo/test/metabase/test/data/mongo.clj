@@ -156,4 +156,4 @@
   (when materialized?
     (throw (Exception. "Material Views not supported.")))
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
-    (.drop (mongo.util/collection db (name view-name)))))
+    (some-> db (mongo.util/collection (name view-name)) .drop)))

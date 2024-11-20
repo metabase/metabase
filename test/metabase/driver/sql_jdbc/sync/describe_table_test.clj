@@ -804,7 +804,7 @@
         (testing (if materialized? "Materialized View" "View")
           (tx/drop-view! driver/*driver* (mt/db) :orders_m materialized?)
           (tx/create-view-of-table! driver/*driver* (mt/db) :orders_m :orders materialized?)
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/db) {:scan :schema})
           (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders" :active true)
                 orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m" :active true)
                 non-view-fields (t2/select-fn-vec

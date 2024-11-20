@@ -416,6 +416,6 @@
         qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
     (apply execute! (sql/format
                      (cond->
-                      {:drop-view [[[:raw qualified-view]]]}
+                      {:drop-view [[:if-exists [:raw qualified-view]]]}
                        materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
                      :dialect (sql.qp/quote-style driver)))))

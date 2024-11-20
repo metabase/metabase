@@ -827,7 +827,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti drop-view!
-  "Drop a view in database.
+  "Drop a view in database if it exists.
    `view-name` is the name of the new view
    `materialized?` will be true if it should drop a materialized view."
   {:arglists '([driver database view-name materialized?])}
