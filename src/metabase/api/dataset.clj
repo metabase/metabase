@@ -140,7 +140,7 @@
         query                         (dissoc query :was-pivot)
         viz-settings                  (-> (json/parse-string visualization_settings viz-setting-key-fn)
                                           (update :table.columns mbql.normalize/normalize)
-                                          mb.viz/db->norm)
+                                          mb.viz/norm->db)
         query                         (-> query
                                           (assoc :viz-settings viz-settings)
                                           (dissoc :constraints)

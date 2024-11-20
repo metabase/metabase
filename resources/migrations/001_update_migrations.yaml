@@ -10026,48 +10026,6 @@ databaseChangeLog:
       rollback: # not necessary, will be removed with the table
 
   - changeSet:
-      id: v52.2024-10-01T08:00:01
-      author: qnkhuat
-      comment: Migrate user invited email to system event notification
-      rollback: # not necessary, will be removed with the table
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/user-invited'
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSystemNotificationUserJoined"
-
-  - changeSet:
-      id: v52.2024-10-01T08:00:02
-      author: qnkhuat
-      comment: Migrate user invited email to system event notification
-      rollback: # not necessary, will be removed with the table
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/alert-create'
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSystemNotificationAlertCreated"
-
-  - changeSet:
-      id: v52.2024-10-01T08:00:03
-      author: qnkhuat
-      comment: Migrate user invited email to system event notification
-      rollback: # not necessary, will be removed with the table
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/slack-token-invalid'
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSystemNotificationSlackTokenError"
-
-  - changeSet:
       id: v52.2024-10-15T08:00:00
       author: qnkhuat
       comment: add notification_subscription.cron_schedule

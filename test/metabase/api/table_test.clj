@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.table :as api.table]
+   [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
@@ -701,6 +702,27 @@
                     u/the-id
                     (format "table/card__%d/query_metadata")
                     (mt/user-http-request :crowberto :get 200))))))))
+
+(deftest ^:parallel virtual-table-metadata-deleted-cards-test
+  (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
+    (mt/with-temp
+      [Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
+       Card {card-id-2 :id} {:dataset_query {:type     :query
+                                             :query    {:source-table (str "card__" card-id-1)}}}]
+      (letfn [(query-metadata [expected-status card-id]
+                (->> (format "table/card__%d/query_metadata" card-id)
+                     (mt/user-http-request :crowberto :get expected-status)))]
+        (api.test-util/before-and-after-deleted-card
+         card-id-1
+         #(testing "Before delete"
+            (doseq [card-id [card-id-1 card-id-2]]
+              (is (=? {:db_id             (mt/id)
+                       :id                (str "card__" card-id)
+                       :type              "question"}
+                      (query-metadata 200 card-id)))))
+         #(testing "After delete"
+            (doseq [card-id [card-id-1 card-id-2]]
+              (is (empty? (query-metadata 204 card-id))))))))))
 
 (deftest ^:parallel include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { shouldRenderAdhocDescription } from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription";
 import type Question from "metabase-lib/v1/Question";
 
 import { AdHocQuestionDescription } from "./AdHocQuestionDescription";
@@ -20,7 +21,7 @@ export const QuestionDescription = ({
   isObjectDetail,
   onClick,
 }: QuestionDescriptionProps) => {
-  if (!isNative && AdHocQuestionDescription.shouldRender(question)) {
+  if (!isNative && shouldRenderAdhocDescription({ question })) {
     return <AdHocQuestionDescription question={question} onClick={onClick} />;
   }
 

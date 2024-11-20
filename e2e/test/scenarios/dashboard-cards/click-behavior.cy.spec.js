@@ -49,7 +49,7 @@ const COUNT_COLUMN_SOURCE = {
   name: COUNT_COLUMN_NAME,
 };
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
-const CREATED_AT_COLUMN_NAME = "Created At";
+const CREATED_AT_COLUMN_NAME = "Created At: Month";
 const CREATED_AT_COLUMN_SOURCE = {
   type: "column",
   id: CREATED_AT_COLUMN_ID,

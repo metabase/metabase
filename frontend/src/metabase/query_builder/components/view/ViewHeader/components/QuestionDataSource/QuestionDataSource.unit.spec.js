@@ -556,6 +556,7 @@ describe("QuestionDataSource", () => {
           const isMultiSchemaDB =
             card.dataset_query.database === MULTI_SCHEMA_DB_ID;
 
+          // eslint-disable-next-line no-restricted-syntax
           question.legacyQuery({ useStructuredQuery: true }).table = () =>
             getNestedQuestionTableMock(isMultiSchemaDB);
 
