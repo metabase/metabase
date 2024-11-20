@@ -78,9 +78,12 @@ export const InteractiveQuestionProvider = ({
       const saveContext = { isNewQuestion: true };
 
       await onBeforeSave?.(question, saveContext);
-      await handleCreateQuestion(question);
-      onSave?.(question, saveContext);
-      await loadQuestion();
+
+      const createdQuestion = await handleCreateQuestion(question);
+      onSave?.(createdQuestion, saveContext);
+
+      // Set the latest saved question object to update the question title.
+      replaceQuestion(createdQuestion);
     }
   };
 
@@ -94,6 +97,7 @@ export const InteractiveQuestionProvider = ({
     isQueryRunning,
 
     runQuestion,
+    replaceQuestion,
     loadQuestion,
     updateQuestion,
     navigateToNewCard,
@@ -120,6 +124,7 @@ export const InteractiveQuestionProvider = ({
     onReset: loadQuestion,
     onNavigateBack,
     runQuestion,
+    replaceQuestion,
     updateQuestion,
     navigateToNewCard,
     plugins: combinedPlugins,
