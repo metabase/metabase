@@ -1,12 +1,13 @@
 export const SANKEY_CHART_STYLE = {
   nodeLabels: {
     weight: 400,
-    size: 14,
-    textBorderWidth: 2,
+    size: 13,
+    textBorderWidth: 3,
   },
   edgeLabels: {
     weight: 400,
-    size: 14,
+    size: 12,
+    textBorderWidth: 3,
   },
   padding: {
     percent: 0.05,

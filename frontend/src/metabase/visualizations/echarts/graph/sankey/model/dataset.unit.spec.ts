@@ -122,14 +122,26 @@ describe("getSankeyData", () => {
           level: 0,
           hasInputs: false,
           hasOutputs: true,
-          columnValues: {},
+          inputColumnValues: {},
+          outputColumnValues: {
+            [getColumnKey(columns[0])]: "A",
+            [getColumnKey(columns[1])]: "C",
+            [getColumnKey(columns[2])]: 13,
+            [getColumnKey(columns[3])]: 130,
+          },
         },
         {
           value: "B",
           level: 1,
           hasInputs: true,
           hasOutputs: true,
-          columnValues: {
+          outputColumnValues: {
+            [getColumnKey(columns[0])]: "B",
+            [getColumnKey(columns[1])]: "C",
+            [getColumnKey(columns[2])]: 20,
+            [getColumnKey(columns[3])]: 200,
+          },
+          inputColumnValues: {
             [getColumnKey(columns[0])]: "A",
             [getColumnKey(columns[1])]: "B",
             [getColumnKey(columns[2])]: 11,
@@ -141,19 +153,20 @@ describe("getSankeyData", () => {
           level: 2,
           hasInputs: true,
           hasOutputs: false,
-          columnValues: {
+          inputColumnValues: {
             [getColumnKey(columns[0])]: "A",
             [getColumnKey(columns[1])]: "C",
             [getColumnKey(columns[2])]: 22,
             [getColumnKey(columns[3])]: 220,
           },
+          outputColumnValues: {},
         },
       ],
       links: [
         {
           source: "A",
           target: "B",
-          value: 10,
+          value: 11,
           columnValues: {
             [getColumnKey(columns[0])]: "A",
             [getColumnKey(columns[1])]: "B",

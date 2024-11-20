@@ -16,12 +16,16 @@ const getMostRightNodes = (
   const shouldIncludeAllNodesWithoutOutputs =
     settings["sankey.node_align"] !== "left";
 
-  return sankeyData.nodes.filter(
-    node =>
-      node.level === maxLevel ||
-      (shouldIncludeAllNodesWithoutOutputs && !node.hasOutputs),
-  );
+  return sankeyData.nodes
+    .map((node, index) => ({ node, index }))
+    .filter(
+      ({ node }) =>
+        node.level === maxLevel ||
+        (shouldIncludeAllNodesWithoutOutputs && !node.hasOutputs),
+    );
 };
+
+const MAX_RIGHT_LABEL_LENGTH_PERCENT = 0.25;
 
 export const getSankeyLayout = (
   chartModel: SankeyChartModel,
@@ -49,7 +53,7 @@ export const getSankeyLayout = (
   const mostRightNodes = getMostRightNodes(chartModel.data, settings);
   const maxRightLabelWidth = Math.max(
     ...mostRightNodes
-      .map(node => chartModel.formatters.node(node.value))
+      .map(({ node }) => chartModel.formatters.node(node.value))
       .map(formattedNode =>
         renderingContext.measureText(formattedNode, {
           ...SANKEY_CHART_STYLE.nodeLabels,
@@ -57,8 +61,17 @@ export const getSankeyLayout = (
         }),
       ),
   );
+  const maxAllowedRightLabel = MAX_RIGHT_LABEL_LENGTH_PERCENT * width;
 
-  padding.right += maxRightLabelWidth;
+  padding.right += Math.min(maxAllowedRightLabel, maxRightLabelWidth);
+  const nodeIndicesWithTruncatedLabels =
+    maxAllowedRightLabel < maxRightLabelWidth
+      ? new Set(mostRightNodes.map(({ index }) => index))
+      : null;
 
-  return { padding };
+  return {
+    padding,
+    truncateLabelWidth: maxAllowedRightLabel,
+    nodeIndicesWithTruncatedLabels,
+  };
 };

@@ -451,7 +451,10 @@ function findSankeyColumnPair(dimensionColumns, rows) {
     }
   }
 
-  return { source: null, target: null };
+  return {
+    source: dimensionColumns[0].column,
+    target: dimensionColumns[1].column,
+  };
 }
 
 export function getSankeyColumns(series) {
@@ -462,7 +465,7 @@ export function getSankeyColumns(series) {
 
   const { cols, rows } = data;
 
-  // Single pass through columns to categorize them - O(n)
+  // Single pass through columns to categorize them
   const { dimensionColumns, metricColumn } = cols.reduce(
     (acc, col, index) => {
       if (isMetric(col)) {
@@ -483,12 +486,12 @@ export function getSankeyColumns(series) {
 
         // Only do full cardinality check if initial sample looks promising
         if (
-          uniqueValues.size > 1 &&
+          uniqueValues.size > 0 &&
           uniqueValues.size <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
         ) {
           const cardinality = getColumnCardinality(cols, rows, index);
           if (
-            cardinality > 1 &&
+            cardinality > 0 &&
             cardinality <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
           ) {
             acc.dimensionColumns.push({ column: col, index, cardinality });

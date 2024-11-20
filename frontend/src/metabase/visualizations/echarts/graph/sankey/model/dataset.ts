@@ -123,10 +123,11 @@ export const getSankeyData = (
     const link: SankeyLink = linkMap.get(linkKey) ?? {
       source,
       target,
-      value,
+      value: 0,
       columnValues: {},
     };
 
+    link.value = sumMetric(link.value, value);
     cols.forEach((_column, index) => {
       const columnKey = columnInfos[index].key;
       const columnValue = row[index];

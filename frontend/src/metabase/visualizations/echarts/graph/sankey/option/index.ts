@@ -1,6 +1,7 @@
 import type { SankeySeriesOption } from "echarts/charts";
 import type { EChartsCoreOption } from "echarts/core";
 
+import { truncateText } from "metabase/visualizations/lib/text";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -37,10 +38,10 @@ export const getSankeyChartOption = (
       ? SANKEY_CHART_STYLE.edgeColor.gray
       : settings["sankey.edge_color"];
 
-  const edgeLabelColor =
-    settings["sankey.edge_color"] === "gray"
-      ? renderingContext.getColor("text-dark")
-      : renderingContext.getColor("text-light");
+  const nodeLabelStyle = {
+    ...SANKEY_CHART_STYLE.nodeLabels,
+    family: renderingContext.fontFamily,
+  };
 
   const series: SankeySeriesOption = {
     animation: false,
@@ -54,8 +55,10 @@ export const getSankeyChartOption = (
       show: settings["sankey.show_edge_labels"],
       formatter: params =>
         typeof params.value === "number" ? formatters.value(params.value) : "",
-      color: edgeLabelColor,
-      fontSize: SANKEY_CHART_STYLE.nodeLabels.size,
+      color: renderingContext.getColor("text-dark"),
+      fontSize: SANKEY_CHART_STYLE.edgeLabels.size,
+      textBorderWidth: SANKEY_CHART_STYLE.edgeLabels.textBorderWidth,
+      textBorderColor: renderingContext.getColor("white"),
       fontFamily: renderingContext.fontFamily,
     },
     emphasis: {
@@ -71,10 +74,25 @@ export const getSankeyChartOption = (
     },
     label: {
       color: renderingContext.getColor("text-dark"),
-      fontSize: SANKEY_CHART_STYLE.nodeLabels.size,
+      fontSize: nodeLabelStyle.size,
+      fontWeight: nodeLabelStyle.weight,
+      fontFamily: nodeLabelStyle.family,
       textBorderWidth: SANKEY_CHART_STYLE.nodeLabels.textBorderWidth,
       textBorderColor: renderingContext.getColor("white"),
-      fontFamily: renderingContext.fontFamily,
+      formatter: param => {
+        const shouldTruncate = layout.nodeIndicesWithTruncatedLabels?.has(
+          param.dataIndex,
+        );
+        if (shouldTruncate) {
+          return truncateText(
+            String(param.value),
+            layout.truncateLabelWidth,
+            renderingContext.measureText,
+            nodeLabelStyle,
+          );
+        }
+        return String(param.value);
+      },
     },
   };
 

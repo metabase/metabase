@@ -37,6 +37,14 @@ const getSankeyClickData = (
   });
 };
 
+const isSankeyEdgeEvent = (
+  event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
+): event is EChartsSeriesMouseEvent<SankeyLink> => event.dataType === "edge";
+
+const isSankeyNodeEvent = (
+  event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
+): event is EChartsSeriesMouseEvent<SankeyNode> => event.dataType === "node";
+
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
   chartModel: SankeyChartModel,
@@ -55,7 +63,7 @@ export const useChartEvents = (
             settings,
           };
 
-          if (event.dataType === "node") {
+          if (isSankeyNodeEvent(event)) {
             const source = chartModel.sankeyColumns.source;
             const target = chartModel.sankeyColumns.target;
 
@@ -68,11 +76,7 @@ export const useChartEvents = (
               event.data.inputColumnValues,
               (_col, index) => index === source.index || index === target.index,
             );
-          } else if (event.dataType === "edge") {
-            const valueColumn = chartModel.sankeyColumns.value.column;
-            clickData.column = valueColumn;
-            clickData.value =
-              event.data.columnValues[getColumnKey(valueColumn)];
+          } else if (isSankeyEdgeEvent(event)) {
             clickData.data = getSankeyClickData(
               rawSeries,
               event.data.columnValues,
@@ -90,24 +94,5 @@ export const useChartEvents = (
 
   return {
     eventHandlers,
-  };
-};
-
-export const getSankeyClickEvent = (node: any): ClickObject => {
-  return {
-    element: {
-      source: node.name, // The name of the clicked node
-      sourceLinks: node.sourceLinks, // Outgoing links
-      targetLinks: node.targetLinks, // Incoming links
-    },
-    event: new MouseEvent("click"),
-    // These fields are required for drills to work
-    dimensions: [
-      {
-        value: node.name,
-        column: node.column,
-      },
-    ],
-    settings: {},
   };
 };

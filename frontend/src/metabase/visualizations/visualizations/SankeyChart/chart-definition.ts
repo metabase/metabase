@@ -16,8 +16,7 @@ import type {
   ComputedVisualizationSettings,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, RawSeries } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
@@ -92,19 +91,7 @@ export const SANKEY_CHART_DEFINITION = {
   noun: t`sankey chart`,
   minSize: getMinSize("sankey"),
   defaultSize: getDefaultSize("sankey"),
-  isSensible: ({ cols, rows }: DatasetData) => {
-    const numDimensions = cols.filter(
-      col => isDimension(col) && !isDate(col),
-    ).length;
-    const numMetrics = cols.filter(isMetric).length;
-
-    return (
-      rows.length >= 2 &&
-      cols.length >= 3 &&
-      numDimensions >= 2 &&
-      numMetrics >= 1
-    );
-  },
+  isSensible: () => false,
   checkRenderable: (
     rawSeries: RawSeries,
     settings: ComputedVisualizationSettings,
