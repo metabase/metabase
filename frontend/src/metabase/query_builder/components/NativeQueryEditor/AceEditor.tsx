@@ -30,17 +30,16 @@ import type {
 
 import { EditorRoot } from "./NativeQueryEditor.styled";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
-import type { SelectionRange } from "./types";
+import type {
+  AutocompleteItem,
+  CardCompletionItem,
+  SelectionRange,
+} from "./types";
 import { getAutocompleteResultMeta } from "./utils";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
-  collection_name: string;
-};
-
-type AutocompleteItem = [string, string];
 type AceCompletionsGetter = Ace.Completer["getCompletions"];
 
 type LastAutoComplete = {
