@@ -302,3 +302,18 @@
   Returns truthy if all entity IDs have been dropped, or falsey if any errors were encountered."
   []
   (v2.entity-ids/drop-entity-ids!))
+
+
+;; (defn find-connected-entities
+;;   "Extract everything that touches entity.
+
+;;   If entity is a card, we should be able to recreate: the entire field -> table -> schema -> database tree.
+;;   If entity is a dashboard, we should be able to recreate: all cards, their fields -> tables -> schemas -> database tree.
+;;   If entity is a collection, we should be able to recreate: all dashboards, their fields -> tables -> schemas -> database tree"
+;;   [entity-type entity-id]
+;;   (case entity-type
+;;     :model/Card
+;;     )
+
+
+;;   )
