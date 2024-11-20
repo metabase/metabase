@@ -31,7 +31,7 @@ import {
   ColumnPickerHeaderTitleContainer,
 } from "./AggregationPicker.styled";
 
-interface AggregationPickerProps {
+export interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndex: number;

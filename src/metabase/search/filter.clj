@@ -124,13 +124,13 @@
   [search-context qry]
   (as-> qry qry
     (sql.helpers/where qry (when (seq (:models search-context))
-                             [:in :model (:models search-context)]))
+                             [:in :search_index.model (:models search-context)]))
     (sql.helpers/where qry (when-let [ids (:ids search-context)]
                              [:and
-                              [:in :model_id ids]
+                              [:in :search_index.model_id ids]
                               ;; NOTE: we limit id-based search to only a subset of the models
                               ;; TODO this should just become part of the model spec e.g. :search-by-id?
-                              [:in :model ["card" "dataset" "metric" "dashboard" "action"]]]))
+                              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
     (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
               (or (when-some [v (get search-context context-key)]
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))

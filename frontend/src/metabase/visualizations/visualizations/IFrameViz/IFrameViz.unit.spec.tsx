@@ -58,7 +58,11 @@ describe("IFrameViz", () => {
     const iframe = screen.getByTestId("iframe-visualization");
     expect(iframe).toHaveAttribute(
       "sandbox",
-      "allow-scripts allow-same-origin allow-forms allow-popups",
+      "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts",
+    );
+    expect(iframe).toHaveAttribute(
+      "referrerPolicy",
+      "strict-origin-when-cross-origin",
     );
   });
 
@@ -144,6 +148,22 @@ describe("IFrameViz", () => {
     );
   });
 
+  it("should preserve allow and allowfullscreen attributes from iframe", () => {
+    setup({
+      isEditing: false,
+      isPreviewing: true,
+      settings: {
+        iframe:
+          "<iframe src='https://example.com' allow='camera; microphone' allowfullscreen='true'></iframe>",
+      },
+    });
+
+    const iframe = screen.getByTestId("iframe-visualization");
+    expect(iframe).toHaveAttribute("src", "https://example.com");
+    expect(iframe).toHaveAttribute("allow", "camera; microphone");
+    expect(iframe).toHaveAttribute("allowfullscreen", "true");
+  });
+
   it("should not render iframe for unsafe URLs", () => {
     setup({
       isEditing: false,
@@ -159,23 +179,29 @@ describe("IFrameViz", () => {
     ).toBeInTheDocument();
   });
 
-  it("should sanitize iframe with onload attribute", () => {
+  it("should sanitize iframe with onload attribute while preserving allowed attributes", () => {
     setup({
       isEditing: false,
       isPreviewing: true,
       settings: {
         iframe:
-          "<iframe src='https://example.com' onload=\"alert('XSS')\"></iframe>",
+          "<iframe src='https://example.com' allow='camera' allowfullscreen='true' onload=\"alert('XSS')\"></iframe>",
       },
     });
 
     const iframe = screen.getByTestId("iframe-visualization");
     expect(iframe).toBeInTheDocument();
     expect(iframe).toHaveAttribute("src", "https://example.com");
+    expect(iframe).toHaveAttribute("allow", "camera");
+    expect(iframe).toHaveAttribute("allowfullscreen", "true");
     expect(iframe).not.toHaveAttribute("onload");
     expect(iframe).toHaveAttribute(
       "sandbox",
-      "allow-scripts allow-same-origin allow-forms allow-popups",
+      "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts",
+    );
+    expect(iframe).toHaveAttribute(
+      "referrerPolicy",
+      "strict-origin-when-cross-origin",
     );
   });
 

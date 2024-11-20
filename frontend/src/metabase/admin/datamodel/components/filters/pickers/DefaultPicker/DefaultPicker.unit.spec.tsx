@@ -27,17 +27,20 @@ const metadata = createMockMetadata({
 const ordersTable = checkNotNull(metadata.table(PRODUCTS_ID));
 
 const makeQuery = (query = {}): StructuredQuery => {
-  return ordersTable
-    .question()
-    .setDatasetQuery({
-      type: "query",
-      query: {
-        "source-table": PRODUCTS_ID,
-        ...query,
-      },
-      database: SAMPLE_DB_ID,
-    })
-    .legacyQuery({ useStructuredQuery: true }) as StructuredQuery;
+  return (
+    ordersTable
+      .question()
+      .setDatasetQuery({
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          ...query,
+        },
+        database: SAMPLE_DB_ID,
+      })
+      // eslint-disable-next-line no-restricted-syntax
+      .legacyQuery({ useStructuredQuery: true }) as StructuredQuery
+  );
 };
 
 const numericQuery = makeQuery({

@@ -11,7 +11,7 @@ const setup = () => {
   render(
     <BadgeListItem
       name={name}
-      onSelectItem={onSelectItem}
+      onClick={onSelectItem}
       onRemoveItem={onRemoveItem}
     />,
   );

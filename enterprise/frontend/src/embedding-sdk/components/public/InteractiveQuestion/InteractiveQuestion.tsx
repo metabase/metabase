@@ -18,6 +18,7 @@ import {
   SdkSaveQuestionForm,
   Summarize,
   SummarizeButton,
+  SummarizeDropdown,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
 import {
@@ -98,6 +99,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeButton: typeof SummarizeButton;
+  SummarizeDropdown: typeof SummarizeDropdown;
   /** @deprecated Use `InteractiveQuestion.Editor` instead */
   Notebook: typeof Editor;
   Editor: typeof Editor;
@@ -122,6 +124,7 @@ InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
 InteractiveQuestion.SummarizeButton = SummarizeButton;
+InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
 /** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
 InteractiveQuestion.Editor = Editor;

@@ -27,6 +27,7 @@ const QUERY = Question.create({
   tableId: ORDERS_ID,
   metadata,
 })
+  // eslint-disable-next-line no-restricted-syntax
   .legacyQuery({ useStructuredQuery: true })
   .aggregate(["count"])
   .filter(["time-interval", ["field", ORDERS.CREATED_AT, null], -30, "day"])

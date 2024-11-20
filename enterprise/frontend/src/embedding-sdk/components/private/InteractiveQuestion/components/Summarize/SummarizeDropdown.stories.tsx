@@ -1,14 +1,14 @@
 import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box, Group } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 
-import { Summarize } from "./Summarize";
+import { SummarizeDropdown } from "./SummarizeDropdown";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Summarize/Summarize",
-  component: Summarize,
+  title: "EmbeddingSDK/InteractiveQuestion/Summarize/SummarizeDropdown",
+  component: SummarizeDropdown,
   parameters: {
     layout: "fullscreen",
   },
@@ -16,16 +16,15 @@ export default {
 };
 
 export const SummarizeDropdownStory = {
-  storyName: "Default",
   render() {
     return (
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
-          <Group noWrap align="flex-start">
-            <InteractiveQuestion.Summarize />
+          <Stack>
+            <InteractiveQuestion.SummarizeDropdown />
 
             <InteractiveQuestion.QuestionVisualization />
-          </Group>
+          </Stack>
         </InteractiveQuestion>
       </Box>
     );
