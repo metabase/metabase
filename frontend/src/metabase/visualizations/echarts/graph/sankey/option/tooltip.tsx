@@ -3,7 +3,6 @@ import { renderToString } from "react-dom/server";
 
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 
@@ -57,7 +56,7 @@ export const getTooltipOption = (
   metricColumn: DatasetColumn,
   formatters: SankeyFormatters,
 ): TooltipOption => {
-  const metricColumnName = getFriendlyName(metricColumn);
+  const metricColumnName = metricColumn.display_name;
   const metricColumnKey = getColumnKey(metricColumn);
   return {
     ...getTooltipBaseOption(containerRef),

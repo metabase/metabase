@@ -9,7 +9,6 @@ import type {
 } from "metabase/visualizations/echarts/graph/sankey/model/types";
 import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ClickObject,
   ComputedVisualizationSettings,
@@ -32,7 +31,7 @@ const getSankeyClickData = (
     return {
       col,
       value: columnValues[getColumnKey(col)],
-      key: getFriendlyName(col),
+      key: col.display_name,
     };
   });
 };
