@@ -25,7 +25,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green(`import { AnalyticsPage } from "${importPath}";`)}
 
   Make sure the import path is valid.
-  Depending on your app, you may need to move the components to a new directory.
+  Depending on your app's directory structure, you may need to move the components to a new directory.
 
   Then, add the component to your page.
   ${green(`<AnalyticsPage />`)}
