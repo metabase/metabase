@@ -1,8 +1,11 @@
 (ns metabase.search.postgres.scoring
   (:require
+   [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.search.config :as search.config]))
+   [metabase.search.config :as search.config]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (def ^:private seconds-in-a-day 86400)
 
@@ -14,7 +17,13 @@
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
   [column ceiling]
-  [:least [:/ [:coalesce column [:inline 0]] [:inline (double ceiling)]] [:inline 1]])
+  [:least
+   [:inline 1]
+   [:/
+    [:coalesce column [:inline 0]]
+    (if (number? ceiling)
+      [:inline (double ceiling)]
+      [:cast ceiling :float])]])
 
 (defn atan-size
   "Prefer items whose value is larger, with diminishing gains."
@@ -22,7 +31,7 @@
   ;; 2/PI * tan^-1 (x/N)
   [:*
    [:/ [:inline 2] [:pi]]
-   [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] [:inline scaling]]]])
+   [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] scaling]]])
 
 (defn inverse-duration
   "Score at item based on the duration between two dates, where less is better."
@@ -42,7 +51,7 @@
   "Prefer items whose value is earlier in some list."
   [idx-col len]
   (if (pos? len)
-    [:/ [:- [:inline (dec len)] idx-col] [:inline len]]
+    [:/ [:- [:inline (dec len)] idx-col] [:inline (double len)]]
     [:inline 1]))
 
 (defn- sum-columns [column-names]
@@ -53,7 +62,7 @@
     [:inline 1]))
 
 (defn- weighted-score [[column-alias expr]]
-  [:* [:inline (search.config/weights column-alias 0)] expr])
+  [:* [:inline (search.config/weight column-alias)] expr])
 
 (defn- select-items [scorers]
   (concat
@@ -62,9 +71,15 @@
    [[(sum-columns (map weighted-score scorers))
      :total_score]]))
 
-;; Divides rank by log(len(doc))
 ;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
-(def ^:private ts-rank-normalization 1)
+;;  0 (the default) ignores the document length
+;;  1 divides the rank by 1 + the logarithm of the document length
+;;  2 divides the rank by the document length
+;;  4 divides the rank by the mean harmonic distance between extents (this is implemented only by ts_rank_cd)
+;;  8 divides the rank by the number of unique words in document
+;; 16 divides the rank by 1 + the logarithm of the number of unique words in document
+;; 32 divides the rank by itself + 1
+(def ^:private ts-rank-normalization 0)
 
 ;; TODO move these to the spec definitions
 (def ^:private bookmarked-models [:card :collection :dashboard])
@@ -74,13 +89,34 @@
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
-(def base-scorers
+(defn- view-count-percentile-query [p-value]
+  (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
+    {:select   [:model [expr :vcp]]
+     :from     [:search_index]
+     :group-by [:model]
+     :having   [:is-not expr nil]}))
+
+(def ^:private view-count-percentiles
+  (memoize/ttl (fn [p-value]
+                 (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
+                            [(keyword model) vcp])))
+               :ttl/threshold (u/hours->ms 1)))
+
+(defn- view-count-expr [percentile]
+  (let [views (view-count-percentiles percentile)
+        cases (for [[sm v] views]
+                [[:= :model (name sm)] v])]
+    (size :view_count (into [:case] cat cases))
+    #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
+
+(defn base-scorers
   "The default constituents of the search ranking scores."
+  []
   {:text       [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
-   :view-count (atan-size :view_count search.config/view-count-scaling)
+   :view-count (view-count-expr search.config/view-count-scaling-percentile)
    :pinned     (truthy :pinned)
    :bookmarked bookmark-score-expr
-   :recency    (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)
+   :recency    (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
    :dashboard  (size :dashboardcard_count search.config/dashboard-count-ceiling)
    :model      (idx-rank :model_rank (count search.config/all-models))})
 
@@ -88,7 +124,7 @@
   "Return the select-item expressions used to calculate the score for each search result."
   metabase-enterprise.search.scoring
   []
-  base-scorers)
+  (base-scorers))
 
 (defn- scorer-select-items [] (select-items (scorers)))
 

@@ -230,14 +230,14 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
                      date-format)
           temporal-str)))))
 
-(defn format-temporal-str
-  "Reformat a temporal literal string by combining time zone, column, and viz setting information to create a final
-  desired output format."
-  ([timezone-id temporal-str col] (format-temporal-str timezone-id temporal-str col {}))
-  ([timezone-id temporal-str col viz-settings]
-   (Locale/setDefault (Locale. (public-settings/site-locale)))
-   (let [merged-viz-settings (common/normalize-keys
-                              (common/viz-settings-for-col col viz-settings))]
-     (if (str/blank? temporal-str)
-       ""
-       (format-timestring timezone-id temporal-str col merged-viz-settings)))))
+(defn make-temporal-str-formatter
+  "Return a formatter which, given a temporal literal string, reformts it by combining time zone, column, and viz
+  setting information to create a final desired output format."
+  [timezone-id col viz-settings]
+  (Locale/setDefault (Locale. (public-settings/site-locale)))
+  (let [merged-viz-settings (common/normalize-keys
+                             (common/viz-settings-for-col col viz-settings))]
+    (fn [temporal-str]
+      (if (str/blank? temporal-str)
+        ""
+        (format-timestring timezone-id temporal-str col merged-viz-settings)))))

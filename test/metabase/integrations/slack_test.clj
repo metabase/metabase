@@ -7,12 +7,15 @@
    [metabase.integrations.slack :as slack]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset Charset)
    (org.apache.http NameValuePair)
    (org.apache.http.client.utils URLEncodedUtils)))
+
+(use-fixtures :once (fixtures/initialize :notifications))
 
 (set! *warn-on-reflection* true)
 

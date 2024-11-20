@@ -3,13 +3,12 @@ import _ from "underscore";
 import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
-  getFriendlyName,
 } from "metabase/visualizations/lib/utils";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export function getOptionFromColumn(col) {
   return {
-    name: getFriendlyName(col),
+    name: col.display_name,
     value: col.name,
   };
 }

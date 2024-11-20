@@ -13,8 +13,8 @@ import {
   editDashboard,
   filterWidget,
   getDashboardCard,
+  getEmbeddedPageUrl,
   getIframeBody,
-  getIframeUrl,
   getRequiredToggle,
   goToTab,
   main,
@@ -938,10 +938,20 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     };
 
     const questionDetails = {
-      name: "Orders",
+      name: "Line chart",
       query: {
         "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+        ],
+        limit: 5,
       },
+      display: "bar",
     };
     createQuestion(questionDetails)
       .then(({ body: { id: card_id } }) => {
@@ -960,24 +970,38 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         });
       })
       .then(dashboard => {
-        visitDashboard(dashboard.id);
+        return getEmbeddedPageUrl({
+          resource: { dashboard: dashboard.id },
+          params: {},
+        });
+      })
+      .then(urlOptions => {
+        const baseUrl = Cypress.config("baseUrl");
+        Cypress.config("baseUrl", null);
+        cy.visit(
+          `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${baseUrl + urlOptions.url}`,
+        );
       });
 
-    openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
-      // EE users don't have to accept terms
-      acceptTerms: false,
-    });
+    getIframeBody().within(() => {
+      cy.findByText(questionDetails.name).should("exist");
+      cy.findByText("April 2022").should("exist");
 
-    getIframeUrl().then(iframeUrl => {
-      Cypress.config("baseUrl", null);
-      cy.visit(
-        `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${iframeUrl}`,
-      );
+      // TODO: Enable this once we fix the flakiness https://app.trunk.io/metabase/flaky-tests/test/facb35f0-6d76-5e7d-b21c-40401bbc3ff6?repo=metabase%2Fmetabase
+      // (metabase#49537)
+      // chartPathWithFillColor("#509EE3").last().realHover();
+      // echartsTooltip().should("be.visible");
+      // assertEChartsTooltip({
+      //   header: "August 2022",
+      //   rows: [
+      //     {
+      //       name: "Count",
+      //       value: "79",
+      //       secondaryValue: "+23.44%",
+      //     },
+      //   ],
+      // });
     });
-
-    getIframeBody().findByText("Rows 1-21 of first 2000").should("exist");
 
     cy.get("#iframe").should($iframe => {
       const [iframe] = $iframe;
