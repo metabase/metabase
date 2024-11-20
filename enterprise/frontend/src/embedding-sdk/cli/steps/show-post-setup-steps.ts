@@ -1,6 +1,8 @@
 import { select } from "@inquirer/prompts";
 import { green } from "chalk";
+import path from "path";
 
+import { GENERATED_COMPONENTS_DEFAULT_PATH } from "../constants/config";
 import {
   SDK_LEARN_MORE_MESSAGE,
   getMetabaseInstanceSetupCompleteMessage,
@@ -17,11 +19,22 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green("npm run start")}
 `;
 
-  const STEP_2 = `
-  Import the component in your React frontend.
-  ${green(`import { AnalyticsPage } from "./${state.reactComponentDir}";`)}
+  // We don't actually know which path the user will import the component from,
+  // so the suggested import path is the last directory in the path.
+  // e.g. "./src/components/metabase" -> "./metabase".
+  const importPath = path.join(
+    "./",
+    path.basename(state.reactComponentDir ?? GENERATED_COMPONENTS_DEFAULT_PATH),
+  );
 
-  Add the component to your page.
+  const STEP_2 = `
+  Import the component in your React frontend. For example:
+  ${green(`import { AnalyticsPage } from "${importPath}";`)}
+
+  Make sure the import path is valid.
+  Depending on your app, you may need to move the components to a new directory.
+
+  Then, add the component to your page.
   ${green(`<AnalyticsPage />`)}
 `;
 
