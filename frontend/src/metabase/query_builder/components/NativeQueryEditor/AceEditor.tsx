@@ -460,12 +460,13 @@ export class AceEditor extends Component<EditorProps> {
 
   render() {
     return (
-      <div
-        className={S.editor}
-        id={ACE_ELEMENT_ID}
-        data-testid="native-query-editor"
-        ref={this.editor}
-      />
+      <div className={S.editor}>
+        <div
+          id={ACE_ELEMENT_ID}
+          data-testid="native-query-editor"
+          ref={this.editor}
+        />
+      </div>
     );
   }
 }
