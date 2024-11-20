@@ -7,6 +7,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Button, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
+import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type { Expression } from "metabase-types/api";
 
 import {
@@ -15,7 +16,10 @@ import {
 } from "../../analytics";
 
 import { CombineColumns, hasCombinations } from "./CombineColumns";
-import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
+import {
+  ExpressionEditorTextfield,
+  type SuggestionShortcut,
+} from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
   Container,
@@ -43,7 +47,7 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   clause?: Clause | undefined;
   name?: string;
   withName?: boolean;
-  startRule?: string;
+  startRule?: "expression" | "aggregation" | "boolean";
   reportTimezone?: string;
   header?: ReactNode;
   expressionIndex?: number;
@@ -116,6 +120,12 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     if (isValidExpressionClause) {
       onChangeClause?.(name, clause);
       onClose?.();
+    }
+  };
+
+  const handleError = (error: ErrorWithMessage | string | null) => {
+    if (error) {
+      setError(typeof error === "string" ? error : error.message);
     }
   };
 
@@ -200,7 +210,11 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         <ExpressionEditorTextfield
           expression={expression}
           expressionIndex={expressionIndex}
-          clause={clause}
+          /**
+           * TODO: Ideally ExpressionEditorTextfield should be generic and support all
+           * three: Lib.ExpressionClause, Lib.AggregationClause, and Lib.FilterableClause.
+           */
+          clause={clause as Lib.ExpressionClause | null}
           startRule={startRule}
           name={name}
           query={query}
@@ -209,7 +223,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           textAreaId="expression-content"
           onChange={handleExpressionChange}
           onCommit={handleCommit}
-          onError={(errorMessage: string) => setError(errorMessage)}
+          onError={handleError}
           shortcuts={[
             !startRule &&
               hasCombinations(query, stageIndex) && {
@@ -227,7 +241,9 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
                 group: "shortcuts",
                 action: () => setIsExtractingColumn(true),
               },
-          ].filter(Boolean)}
+          ].filter((shortcut): shortcut is SuggestionShortcut => {
+            return Boolean(shortcut);
+          })}
         />
       </ExpressionFieldWrapper>
       {withName && (

@@ -509,7 +509,9 @@
                                           :limit    1} :r]
                                         [:= :r.moderated_item_id :c.id]]
                             :where      [:in :c.id ids]})
-          dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])
+          dbs (if (seq cards)
+                (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])
+                {})
           metadata-field-ids (into #{}
                                    (comp (mapcat :result_metadata)
                                          (keep :id))
