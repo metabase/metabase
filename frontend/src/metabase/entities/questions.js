@@ -49,12 +49,29 @@ const Questions = createEntity({
         dispatch,
         cardApi.endpoints.getCard,
       ),
-    create: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
-        entityQuery,
-        dispatch,
-        cardApi.endpoints.createCard,
-      ),
+    create: (entityQuery, dispatch) => {
+      const { dashboard_id, collection_id, ...rest } = entityQuery;
+
+      // return entityCompatibleQuery(
+      //   entityQuery,
+      //   dispatch,
+      //   cardApi.endpoints.createCard,
+      // );
+
+      if (dashboard_id) {
+        return entityCompatibleQuery(
+          { ...rest, dashboard_id },
+          dispatch,
+          cardApi.endpoints.createCard,
+        );
+      } else {
+        return entityCompatibleQuery(
+          { ...rest, collection_id },
+          dispatch,
+          cardApi.endpoints.createCard,
+        );
+      }
+    },
     update: (entityQuery, dispatch) => {
       return entityCompatibleQuery(
         entityQuery,
