@@ -24,8 +24,8 @@
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
   :feature :none
-  []
-  (merge (fulltext.scoring/base-scorers) (additional-scorers)))
+  [search-ctx]
+  (merge (fulltext.scoring/base-scorers search-ctx) (additional-scorers)))
 
 ;; ------------ LEGACY ----------
 
