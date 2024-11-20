@@ -33,6 +33,7 @@ import {
   copyColumn,
   createDataSource,
   createVisualizerColumnReference,
+  extractReferencedColumns,
   getDataSourceIdFromNameRef,
   parseDataSourceId,
 } from "./utils";
@@ -210,12 +211,15 @@ const visualizerHistoryItemSlice = createSlice({
           state.columns = [];
           state.columnValuesMapping = {};
 
-          dataset.data.cols.forEach((column, i) => {
-            const name = `COLUMN_${i + 1}`;
-            state.columns.push(copyColumn(name, column));
-            state.columnValuesMapping[name] = [
-              createVisualizerColumnReference(source, column, []),
-            ];
+          dataset.data.cols.forEach(column => {
+            const columnRef = createVisualizerColumnReference(
+              source,
+              column,
+              extractReferencedColumns(state.columnValuesMapping),
+            );
+
+            state.columns.push(copyColumn(columnRef.name, column));
+            state.columnValuesMapping[columnRef.name] = [columnRef];
           });
 
           state.settings = card.visualization_settings;
