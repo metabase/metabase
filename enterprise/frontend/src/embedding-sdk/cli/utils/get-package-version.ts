@@ -33,7 +33,7 @@ export const readJson = async (path: string) => {
 };
 
 export const getProjectDependenciesFromPackageJson = async (
-  field = "dependencies",
+  field: "dependencies" | "devDependencies" = "dependencies",
 ): Promise<DependencyMap | null> => {
   try {
     const packageJsonPath = path.join(process.cwd(), "package.json");
