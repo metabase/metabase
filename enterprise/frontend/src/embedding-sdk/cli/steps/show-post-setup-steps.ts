@@ -1,13 +1,12 @@
 import { select } from "@inquirer/prompts";
 import { green } from "chalk";
-import path from "path";
 
-import { GENERATED_COMPONENTS_DEFAULT_PATH } from "../constants/config";
 import {
   SDK_LEARN_MORE_MESSAGE,
   getMetabaseInstanceSetupCompleteMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
+import { getSuggestedImportPath } from "../utils/get-suggested-import-path";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {
@@ -19,17 +18,11 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green("npm run start")}
 `;
 
-  // We don't actually know which path the user will import the component from.
-  // We assume they will import from their components directory,
-  // so we use the last directory in the path as an example.
-  // e.g. "./src/components/metabase" -> "./metabase".
-  const exampleImportPath = path.basename(
-    state.reactComponentDir ?? GENERATED_COMPONENTS_DEFAULT_PATH,
-  );
+  const importPath = getSuggestedImportPath(state.reactComponentDir);
 
   const STEP_2 = `
   Import the component in your React frontend. For example:
-  ${green(`import { AnalyticsPage } from "./${exampleImportPath}";`)}
+  ${green(`import { AnalyticsPage } from "${importPath}";`)}
 
   Make sure the import path is valid.
   Depending on your app, you may need to move the components to a new directory.
