@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
@@ -40,6 +40,14 @@ const ViewFooterControl = ({
   const [value, setValue] = useState<"editor" | "table" | "visualization">(
     isNotebook ? "editor" : isShowingRawTable ? "table" : "visualization",
   );
+
+  // handle "convert to native question" case when segment control is rendered
+  // but we do not show "editor" value for it
+  useEffect(() => {
+    if (isNative && value === "editor") {
+      setValue("visualization");
+    }
+  }, [isNative, value]);
 
   const handleValueChange = (value: "editor" | "table" | "visualization") => {
     if (value === "editor") {

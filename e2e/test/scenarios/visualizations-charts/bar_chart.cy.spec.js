@@ -935,7 +935,7 @@ describe("scenarios > visualizations > bar chart", () => {
     // Test "graph.other_category_aggregation_fn" for native queries
     openNotebook();
     queryBuilderHeader().button("View the SQL").click();
-    cy.findByTestId("native-query-preview-sidebar")
+    cy.findByTestId("view-footer")
       .button("Convert this question to SQL")
       .click();
     cy.wait("@dataset");
@@ -943,10 +943,8 @@ describe("scenarios > visualizations > bar chart", () => {
 
     openVizType("Data");
     setOtherCategoryAggregationFn("Average");
-
     chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
     assertEChartsTooltip({ rows: [{ name: "Other", value: "1.5" }] });
-
     otherSeriesChartPaths().first().realHover();
     assertEChartsTooltip({
       header: "September 2022",
