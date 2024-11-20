@@ -1,9 +1,11 @@
+;; This namespace is *mostly* appdb agnostic, but not committing to it at this stage.
 (ns metabase.search.postgres.scoring
   (:require
    [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
+   [metabase.search.postgres.index :as search.index]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -106,7 +108,7 @@
 (defn- view-count-percentile-query [p-value]
   (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
     {:select   [:search_index.model [expr :vcp]]
-     :from     [:search_index]
+     :from     [[search.index/*active-table* :search_index]]
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
@@ -120,7 +122,9 @@
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
                 [[:= :search_index.model [:inline (name sm)]] v])]
-    (size :view_count (into [:case] cat cases))
+    (size :view_count (if (seq cases)
+                        (into [:case] cat cases)
+                        1))
     #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
 
 (defn base-scorers

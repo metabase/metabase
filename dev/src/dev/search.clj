@@ -11,20 +11,20 @@
   (mapv (juxt :model :id :name) xs))
 
 (comment
-  (#'search.index/drop-table! @#'search.index/active-table)
+  (#'search.index/drop-table! @#'search.index/*active-table*)
   (search.index/reset-index!)
   (search.index/maybe-create-pending!)
   (search.index/activate-pending!)
 
   {:initialized? @@#'search.index/initialized? :reindexing? @@#'search.index/reindexing?}
   (zipmap [:active :next :retired] (map #'search.index/exists?
-                                        [@#'search.index/active-table
+                                        [@#'search.index/*active-table*
                                          @#'search.index/pending-table
                                          @#'search.index/retired-table]))
 
   (search.postgres/init! true)
   (search.postgres/init! false)
-  (t2/count :search_index)
+  (t2/count search.index/*active-table*)
 
   ;; doesn't work, need to drop to lower level postgres functions
   (basic-view (#'search.postgres/hybrid "satis:*"))
