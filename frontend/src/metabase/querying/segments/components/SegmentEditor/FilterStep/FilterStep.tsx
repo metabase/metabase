@@ -19,7 +19,7 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
   return (
     <ClauseStep label={t`Filters`}>
       {query && (
-        <Flex>
+        <Flex align="center" gap="md">
           {filters.map((filter, filterIndex) => (
             <ChangeFilterPopover
               key={filterIndex}
