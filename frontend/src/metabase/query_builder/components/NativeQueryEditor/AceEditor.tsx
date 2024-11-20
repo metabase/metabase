@@ -20,13 +20,12 @@ import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
 import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 
+import S from "./AceEditor.global.css";
 import type { EditorProps } from "./Editor";
 import { EditorRoot } from "./NativeQueryEditor.styled";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
 import type { AutocompleteItem } from "./types";
 import { getAutocompleteResultMeta } from "./utils";
-
-import "./AceEditor.global.css";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
@@ -463,6 +462,7 @@ export class AceEditor extends Component<EditorProps> {
   render() {
     return (
       <EditorRoot
+        className={S.editor}
         id={ACE_ELEMENT_ID}
         data-testid="native-query-editor"
         ref={this.editor}
