@@ -849,7 +849,7 @@
         (= (count path) 1) (first path)
         :else              path))))
 
-(defn- export-fk?
+(defn- maybe-export-fk
   "Exactly like the above `*export-fk*`, except returns `nil` if the target was not found"
   [id model]
   (try (*export-fk* id model)
@@ -1343,7 +1343,7 @@
   (if-not (= type "link")
     click-behavior
     ;; if the card doesn't exist anymore, just remove the entire click behavior
-    (when-let [new-target-id (export-fk? old-target-id (link-card-model->toucan-model linkType))]
+    (when-let [new-target-id (maybe-export-fk old-target-id (link-card-model->toucan-model linkType))]
       (assoc click-behavior :targetId new-target-id))))
 
 (defn- import-viz-click-behavior-link
@@ -1555,7 +1555,7 @@
     (case type
       "link" (when-let [model (link-card-model->toucan-model linkType)]
                ;; if the card was deleted, just ignore it.
-               (when (export-fk? targetId model)
+               (when (maybe-export-fk targetId model)
                  {[(name model) targetId] src}))
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
