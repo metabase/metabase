@@ -29,10 +29,10 @@
          (binding [search.index/*active-table* table-name#]
            (search.index/create-table! table-name#)
            (#'search.index/batch-upsert! table-name#
-            ;; yup, we have two different shapes called "entry" at the moment
-            (map (comp #'search.index/entity->entry
-                       #'search.ingestion/->entry)
-                 ~entities))
+                                         ;; yup, we have two different shapes called "entry" at the moment
+                                         (map (comp #'search.index/entity->entry
+                                                    #'search.ingestion/->entry)
+                                              ~entities))
            ~@body)
          (finally
            (#'search.index/drop-table! table-name#))))))
@@ -58,26 +58,26 @@
 
 (deftest ^:parallel model-test
   (with-index-contents
-   [{:model "dataset" :id 1 :name "card ancient"}
-    {:model "card"    :id 2 :name "card recent"}
-    {:model "metric"  :id 3 :name "card old"}]
-   (is (= [["metric"  3 "card old"]
-           ["card"    2 "card recent"]
-           ["dataset" 1 "card ancient"]]
-          (search :model "card")))))
+    [{:model "dataset" :id 1 :name "card ancient"}
+     {:model "card"    :id 2 :name "card recent"}
+     {:model "metric"  :id 3 :name "card old"}]
+    (is (= [["metric"  3 "card old"]
+            ["card"    2 "card recent"]
+            ["dataset" 1 "card ancient"]]
+           (search :model "card")))))
 
 (deftest ^:parallel recency-test
   (let [right-now   (Instant/now)
         long-ago    (.minus right-now 1 ChronoUnit/DAYS)
         forever-ago (.minus right-now 10 ChronoUnit/DAYS)]
     (with-index-contents
-     [{:model "card" :id 1 :name "card ancient" :last_viewed_at forever-ago}
-      {:model "card" :id 2 :name "card recent"  :last_viewed_at right-now}
-      {:model "card" :id 3 :name "card old"     :last_viewed_at long-ago}]
-     (is (= [["card" 2 "card recent"]
-             ["card" 3 "card old"]
-             ["card" 1 "card ancient"]]
-            (search :recency "card"))))))
+      [{:model "card" :id 1 :name "card ancient" :last_viewed_at forever-ago}
+       {:model "card" :id 2 :name "card recent"  :last_viewed_at right-now}
+       {:model "card" :id 3 :name "card old"     :last_viewed_at long-ago}]
+      (is (= [["card" 2 "card recent"]
+              ["card" 3 "card old"]
+              ["card" 1 "card ancient"]]
+             (search :recency "card"))))))
 
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
@@ -98,10 +98,10 @@
                    :model/RecentViews _ (recent-view 3 forever-ago)
                    :model/RecentViews _ (recent-view 3 long-ago)]
       (with-index-contents
-       [{:model "dataset" :id 1 :name "card ancient"}
-        {:model "metric"  :id 2 :name "card recent"}
-        {:model "card"    :id 3 :name "card old"}]
-       (is (= [["metric"  2 "card recent"]
-               ["card"    3 "card old"]
-               ["dataset" 1 "card ancient"]]
-              (search :user-recency "card")))))))
+        [{:model "dataset" :id 1 :name "card ancient"}
+         {:model "metric"  :id 2 :name "card recent"}
+         {:model "card"    :id 3 :name "card old"}]
+        (is (= [["metric"  2 "card recent"]
+                ["card"    3 "card old"]
+                ["dataset" 1 "card ancient"]]
+               (search :user-recency "card")))))))
