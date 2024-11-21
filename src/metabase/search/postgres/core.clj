@@ -11,6 +11,7 @@
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.search.postgres.scoring :as search.scoring]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -158,8 +159,8 @@
   []
   (search.index/ensure-ready! false)
   (search.index/maybe-create-pending!)
-  (search.ingestion/populate-index!)
-  (search.index/activate-pending!))
+  (u/prog1 (search.ingestion/populate-index!)
+    (search.index/activate-pending!)))
 
 (comment
   (init! true)

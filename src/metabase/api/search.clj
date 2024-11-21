@@ -70,7 +70,7 @@
     (search/supports-index?)
     (if (task/job-exists? task.search-index/reindex-job-key)
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
-      (do (search/reindex!) {:message "done"}))
+      (do (task.search-index/reindex!) {:message "done"}))
 
     :else
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
