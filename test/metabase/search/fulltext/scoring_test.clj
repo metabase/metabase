@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    ;; For now, this is specialized to postgres, but we should be able to abstract it to all index-based engines.
+   [metabase.search :as search]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.search.postgres.core :as search.postgres]
@@ -22,18 +23,19 @@
 (defmacro with-index-contents
   "Populate the index with the given appdb agnostic entity shapes."
   [entities & body]
-  `(let [table-name# (search.index/random-table-name)]
-     (try
-       (binding [search.index/*active-table* table-name#]
-         (search.index/create-table! table-name#)
-         (#'search.index/batch-upsert! table-name#
-          ;; yup, we have two different shapes called "entry" at the moment
-          (map (comp #'search.index/entity->entry
-                     #'search.ingestion/->entry)
-               ~entities))
-         ~@body)
-       (finally
-         (#'search.index/drop-table! table-name#)))))
+  `(when (search/supports-index?)
+     (let [table-name# (search.index/random-table-name)]
+       (try
+         (binding [search.index/*active-table* table-name#]
+           (search.index/create-table! table-name#)
+           (#'search.index/batch-upsert! table-name#
+            ;; yup, we have two different shapes called "entry" at the moment
+            (map (comp #'search.index/entity->entry
+                       #'search.ingestion/->entry)
+                 ~entities))
+           ~@body)
+         (finally
+           (#'search.index/drop-table! table-name#))))))
 
 (defn- search [ranker-key search-string & {:as raw-ctx}]
   (let [search-ctx (search.impl/search-context
@@ -92,6 +94,8 @@
     (mt/with-temp [:model/User        _ {:id user-id}
                    :model/RecentViews _ (recent-view 1 forever-ago)
                    :model/RecentViews _ (recent-view 2 right-now)
+                   :model/RecentViews _ (recent-view 2 forever-ago)
+                   :model/RecentViews _ (recent-view 3 forever-ago)
                    :model/RecentViews _ (recent-view 3 long-ago)]
       (with-index-contents
        [{:model "dataset" :id 1 :name "card ancient"}

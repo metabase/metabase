@@ -94,7 +94,7 @@
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
 (defn- user-recency-expr [{:keys [current-user-id]}]
-  {:select [[[:greatest :recent_views.timestamp] :last_viewed_at]]
+  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
    :from   [:recent_views]
    :where  [:and
             [:= :recent_views.user_id current-user-id]
