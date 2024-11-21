@@ -1,3 +1,17 @@
+## [0.51.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.6...embedding-sdk-0.51.7) (2024-11-21)
+
+
+### Bug Fixes
+
+* **sdk:** cli suggests a relative import path with reminder message ([#50276](https://github.com/metabase/metabase/issues/50276)) ([#50298](https://github.com/metabase/metabase/issues/50298)) ([785ef5f](https://github.com/metabase/metabase/commit/785ef5f2bf8f0c3e6fe08108a7079ab96b1e40af))
+
+
+### Features
+
+* **sdk:** revamp CreateQuestion and create question behaviour ([#50290](https://github.com/metabase/metabase/issues/50290)) ([b5d95fb](https://github.com/metabase/metabase/commit/b5d95fb446384642fb218b8b735be448e3d8550c)), closes [#50088](https://github.com/metabase/metabase/issues/50088)
+
+
+
 ## [0.51.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.5...embedding-sdk-0.51.6) (2024-11-20)
 
 
