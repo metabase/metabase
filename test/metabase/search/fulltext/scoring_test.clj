@@ -37,7 +37,7 @@
          (finally
            (#'search.index/drop-table! table-name#))))))
 
-(defn- search [ranker-key search-string & {:as raw-ctx}]
+(defn- search* [ranker-key search-string & {:as raw-ctx}]
   (let [search-ctx (search.impl/search-context
                     (merge
                      {:archived              false
@@ -52,6 +52,19 @@
                      raw-ctx))]
     (is (get (search.scoring/scorers search-ctx) ranker-key) "The ranker is enabled")
     (map (juxt :model :id :name) (#'search.postgres/fulltext search-string search-ctx))))
+
+(defn- search-no-weights
+  "Like search but with all weights set to 0."
+  [& args]
+  (binding [search.config/*default-weights* (update-vals @#'search.config/*default-weights* (constantly 0))]
+    (apply search* args)))
+
+(defn- search [& args]
+  (let [result (apply search* args)]
+    (is (not= (apply search-no-weights args)
+              result)
+        "sanity check: search-no-weights should be different")
+    result))
 
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
@@ -79,25 +92,45 @@
               ["card" 1 "card ancient"]]
              (search :recency "card"))))))
 
-(deftest ^:parallel view-count-test
-  (testing "the more view count the better"
+(deftest view-count-test
+  ;; search.scoring/view-count-percentiles is memoized so need to redef
+  (with-redefs [search.scoring/view-count-percentiles #'search.scoring/view-count-percentiles*]
+    (testing "the more view count the better"
+      (with-index-contents
+        [{:model "card" :id 1 :name "card well known" :view_count 10}
+         {:model "card" :id 2 :name "card famous"     :view_count 100}
+         {:model "card" :id 3 :name "card popular"    :view_count 50}]
+        (is (= [["card" 2 "card famous"]
+                ["card" 3 "card popular"]
+                ["card" 1 "card well known"]]
+               (search :view-count "card")))))
+
+    (testing "don't error on fresh instances with no view count"
+      (with-index-contents
+        [{:model "card"      :id 1 :name "view card"      :view_count 0}
+         {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
+         {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
+        (is (= [["dashboard" 2 "view dashboard"]
+                ["card"      1 "view card"]
+                ["dataset"   3 "view dataset"]]
+               (search :view-count "view")))))))
+
+(deftest ^:parallel dashboard-count-test
+  (testing "cards used in dashboard have higher rank"
     (with-index-contents
-      [{:model "card" :id 1 :name "card famous"     :view_count 100}
-       {:model "card" :id 2 :name "card popular"    :view_count 50}
-       {:model "card" :id 3 :name "card well known" :view_count 10}]
-      (is (= [["card" 1 "card famous"]
-              ["card" 2 "card popular"]
-              ["card" 3 "card well known"]]
-             (search :view-count "card")))))
-  (testing "don't error on fresh instances with no view count"
+      [{:model "card" :id 1 :name "card no used" :dashboardcard_count 2}
+       {:model "card" :id 2 :name "card used" :dashboardcard_count 3}]
+     (is (= [["card" 2 "card used"]
+             ["card" 1 "card no used"]]
+            (search :dashboard "card")))))
+
+  (testing "it has a ceiling, more than the ceiling is considered to be equal"
     (with-index-contents
-      [{:model "card"      :id 1 :name "view card"      :view_count 0}
-       {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
-       {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
-      (is (= [["dashboard" 2 "view dashboard"]
-              ["dataset" 3 "view dataset"]
-              ["card" 1 "view card"]]
-             (search :view-count "view"))))))
+      [{:model "card" :id 1 :name "card" :dashboardcard_count 22}
+       {:model "card" :id 2 :name "card" :dashboardcard_count 11}]
+      (is (= [["card" 1 "card"]
+              ["card" 2 "card"]]
+             (search* :dashboard "card"))))))
 
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
