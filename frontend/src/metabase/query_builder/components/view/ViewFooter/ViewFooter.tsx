@@ -20,13 +20,13 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
   const question = useSelector(getQuestion);
   const result = useSelector(getFirstQueryResult);
 
-  if (!question || !result) {
+  if (!question) {
     return null;
   }
 
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hideChartSettings =
-    (result.error && !isEditable) || question.isArchived();
+    (result?.error && !isEditable) || question.isArchived();
 
   return (
     <ViewFooterRoot
@@ -38,6 +38,7 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
           <LeftViewFooterButtonGroup
             question={question}
             hideChartSettings={hideChartSettings}
+            isResultLoaded={!!result}
           />
         )}
         <RightViewFooterButtonGroup />

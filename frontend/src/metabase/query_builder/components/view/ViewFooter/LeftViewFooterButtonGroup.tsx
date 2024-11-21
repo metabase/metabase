@@ -17,7 +17,7 @@ import {
   getIsVisualized,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -26,11 +26,13 @@ import type { QueryBuilderUIControls } from "metabase-types/store";
 interface LeftViewFooterButtonGroupProps {
   question: Question;
   hideChartSettings?: boolean;
+  isResultLoaded: boolean;
 }
 
 export const LeftViewFooterButtonGroup = ({
   question,
   hideChartSettings = false,
+  isResultLoaded,
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
@@ -49,7 +51,9 @@ export const LeftViewFooterButtonGroup = ({
   const dispatch = useDispatch();
   const isVisualized = useSelector(getIsVisualized);
   const shouldShowChartSettingsButton =
-    !hideChartSettings && (!isShowingRawTable || isVisualized);
+    !hideChartSettings &&
+    (!isShowingRawTable || isVisualized) &&
+    isResultLoaded;
 
   const data = useMemo(
     () =>
@@ -72,7 +76,8 @@ export const LeftViewFooterButtonGroup = ({
           : null,
         {
           value: "table",
-          label: (
+          disabled: !isResultLoaded,
+          label: isResultLoaded ? (
             <Tooltip label={t`Results`}>
               <Icon
                 aria-label={t`Switch to data`}
@@ -82,12 +87,14 @@ export const LeftViewFooterButtonGroup = ({
                 }}
               />
             </Tooltip>
+          ) : (
+            <Loader size="xs" />
           ),
         },
         {
           value: "visualization",
-          // TODO: also we need to add a spinner :boom:
-          label: (
+          disabled: !isResultLoaded,
+          label: isResultLoaded ? (
             <Tooltip label={t`Visualization`}>
               <Icon
                 aria-label={t`Switch to visualization`}
@@ -97,10 +104,12 @@ export const LeftViewFooterButtonGroup = ({
                 }}
               />
             </Tooltip>
+          ) : (
+            <Loader size="xs" />
           ),
         },
       ].filter(isNotNull),
-    [dispatch, shouldShowEditorButton, vizIcon],
+    [dispatch, isResultLoaded, shouldShowEditorButton, vizIcon],
   );
 
   function getSelectedControlValue() {
