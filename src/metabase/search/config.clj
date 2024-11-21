@@ -152,6 +152,11 @@
   [scorer-key]
   (get (weights) scorer-key 0))
 
+(defn scorer-param
+  "Get a nested parameter scoped to the given scorer"
+  [scorer-key param-key]
+  (get (weights) (keyword (name scorer-key) (name param-key))))
+
 (defn model->alias
   "Given a model string returns the model alias"
   [model]
