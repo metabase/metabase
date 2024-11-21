@@ -31,7 +31,7 @@ import {
   ColumnPickerHeaderTitleContainer,
 } from "./AggregationPicker.styled";
 
-interface AggregationPickerProps {
+export interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndex: number;
@@ -42,6 +42,7 @@ interface AggregationPickerProps {
   allowTemporalComparisons?: boolean;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
+  onBack?: () => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -78,6 +79,7 @@ export function AggregationPicker({
   allowTemporalComparisons = false,
   onClose,
   onQueryChange,
+  onBack,
 }: AggregationPickerProps) {
   const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
@@ -216,7 +218,8 @@ export function AggregationPicker({
 
   const handleResetOperator = useCallback(() => {
     setOperator(null);
-  }, []);
+    onBack?.();
+  }, [onBack]);
 
   const handleColumnSelect = useCallback(
     (column: Lib.ColumnMetadata) => {

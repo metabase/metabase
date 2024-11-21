@@ -6,7 +6,7 @@ import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../context";
 
-import S from "./FilterPicker.module.css";
+import S from "./Picker.module.css";
 
 interface Props {
   className?: string;

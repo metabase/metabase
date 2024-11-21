@@ -26,7 +26,7 @@ export interface InteractiveQuestionResultProps {
   customTitle?: ReactNode;
 }
 
-type QuestionView = "editor" | "filter" | "summarize" | "visualization";
+type QuestionView = "editor" | "filter" | "visualization";
 
 const ContentView = ({
   questionView,
@@ -38,9 +38,6 @@ const ContentView = ({
   match<QuestionView>(questionView)
     .with("filter", () => (
       <InteractiveQuestion.Filter onClose={onReturnToVisualization} />
-    ))
-    .with("summarize", () => (
-      <InteractiveQuestion.Summarize onClose={onReturnToVisualization} />
     ))
     .with("editor", () => (
       <InteractiveQuestion.Editor onApply={onReturnToVisualization} />
@@ -105,11 +102,7 @@ export const InteractiveQuestionResult = ({
               )
             }
           />
-          <InteractiveQuestion.SummarizeButton
-            onOpen={() => setQuestionView("summarize")}
-            onClose={() => setQuestionView("visualization")}
-            isOpen={questionView === "summarize"}
-          />
+          <InteractiveQuestion.SummarizeDropdown />
           <InteractiveQuestion.EditorButton
             isOpen={questionView === "editor"}
             onClick={() =>
