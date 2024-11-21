@@ -14,6 +14,7 @@ import {
   popover,
   queryWritableDB,
   resetSnowplow,
+  resetTestTable,
   restore,
   setTokenFeatures,
   uploadFile,
@@ -26,7 +27,6 @@ describeWithSnowplow(
   { tags: ["@external", "@actions"] },
   () => {
     beforeEach(() => {
-      restore();
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
       cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
@@ -104,10 +104,7 @@ describeWithSnowplow(
 
       cy.findByRole("complementary").findByText("public").click();
 
-      // NOTE: This test is somehow not idempotent, so the assertions here allow for
-      // a number of Queryable Tables greater than 1, and multiple copies of
-      // Dog Breeds
-      // Ryan suggests using resetTestTable in addition to restore('postgres-writable'). resetTestTable resets the data db.
+      // FIXME: Perhaps revert this change since it works in CI even if not very well locally
       cy.findByTestId("admin-metadata-table-list").within(() => {
         cy.findByText(/Queryable Table/).should("exist");
         cy.findAllByText(/Dog Breeds/)

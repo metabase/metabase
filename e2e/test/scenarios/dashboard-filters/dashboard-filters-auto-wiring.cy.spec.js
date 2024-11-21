@@ -569,7 +569,6 @@ describe("dashboard filters auto-wiring", () => {
       setFilter("ID");
       selectDashboardFilter(getDashboardCard(0), "ID");
       saveDashboard();
-      cy.pause();
 
       cy.get("@ordersQuestionId").then(ordersQuestionId => {
         addQuestionFromQueryBuilder({ questionId: ordersQuestionId });

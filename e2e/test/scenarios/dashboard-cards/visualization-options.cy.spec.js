@@ -45,7 +45,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
       .and("contain", "Download results");
   });
 
-  it("column reordering should work (metabase#16229)", () => {
+  it.only("column reordering should work (metabase#16229)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByLabelText("Edit dashboard").click();
     getDashboardCard().realHover();

@@ -7,7 +7,7 @@ import {
 } from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
-import { FLOATING_ELEMENT_Z_INDEX } from "metabase/css/core/floating-elements/common";
+import { FLOATING_ELEMENT_Z_INDEX } from "metabase/css/core/floating-elements/constants";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 

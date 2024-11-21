@@ -32,8 +32,6 @@ import { createMockUndo } from "metabase-types/api/mocks";
 
 import { BulkActionBarPortal } from "../../../components/BulkActionBar/BulkActionBar";
 
-export const FLOATING_ELEMENT_Z_INDEX = 200;
-
 const LauncherGroup = ({
   title,
   children,
