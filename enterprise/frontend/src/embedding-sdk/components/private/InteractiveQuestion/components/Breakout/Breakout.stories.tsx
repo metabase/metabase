@@ -2,13 +2,13 @@ import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Flex } from "metabase/ui";
 
-import { BreakoutDropdowon } from "./Breakout";
+import { Breakout } from "./Breakout";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/Breakout",
-  component: BreakoutDropdowon,
+  component: Breakout,
   parameters: {
     layout: "fullscreen",
   },
