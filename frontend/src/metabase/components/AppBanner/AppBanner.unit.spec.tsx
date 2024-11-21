@@ -115,6 +115,15 @@ describe("AppBanner", () => {
       expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
     });
 
+    it("should not render when token status is missing", () => {
+      setup({
+        isAdmin: true,
+        tokenStatusStatus: undefined,
+      });
+
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
+
     it.each(["past-due", "unpaid", "invalid"])(
       "should not render for hosted instances for %s token status (metabase#50335)",
       status => {
