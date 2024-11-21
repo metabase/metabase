@@ -358,6 +358,7 @@ export class NativeQueryEditor extends Component<
       hasTopBar = true,
       hasEditingSidebar = true,
       resizableBoxProps = {},
+      snippets = [],
       snippetCollections = [],
       resizable,
       editorContext = "question",
@@ -366,6 +367,8 @@ export class NativeQueryEditor extends Component<
       sidebarFeatures,
       canChangeDatabase,
       setParameterValueToDefault,
+      autocompleteResultsFn,
+      cardAutocompleteResultsFn,
     } = this.props;
 
     const isPromptInputVisible = this.isPromptInputVisible();
@@ -448,7 +451,12 @@ export class NativeQueryEditor extends Component<
           <>
             <Editor
               ref={this.editor}
-              {...this.props}
+              query={query}
+              autocompleteResultsFn={autocompleteResultsFn}
+              cardAutocompleteResultsFn={cardAutocompleteResultsFn}
+              snippets={snippets}
+              snippetCollections={snippetCollections}
+              readOnly={readOnly}
               onChange={this.onChange}
               onSelectionChange={setNativeEditorSelectedRange}
               onCursorMoveOverCardTag={openDataReferenceAtQuestion}
