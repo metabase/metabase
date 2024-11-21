@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-  [metabase.search.postgres.index :as search.index]
+   [metabase.search.postgres.index :as search.index]
    [metabase.search.spec :as search.spec]
    [metabase.task :as task]
    [metabase.util :as u]
