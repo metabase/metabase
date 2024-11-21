@@ -1,9 +1,12 @@
+;; This namespace is *mostly* appdb agnostic, but not committing to it at this stage.
 (ns metabase.search.postgres.scoring
   (:require
    [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.config :as config]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
+   [metabase.search.postgres.index :as search.index]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -21,9 +24,12 @@
    [:inline 1]
    [:/
     [:coalesce column [:inline 0]]
-    (if (number? ceiling)
-      [:inline (double ceiling)]
-      [:cast ceiling :float])]])
+    ;; protect against div / 0
+    [:greatest
+     [:inline 1]
+     (if (number? ceiling)
+       [:inline (double ceiling)]
+       [:cast ceiling :float])]]])
 
 (defn atan-size
   "Prefer items whose value is larger, with diminishing gains."
@@ -61,14 +67,14 @@
             (rest column-names))
     [:inline 1]))
 
-(defn- weighted-score [[column-alias expr]]
-  [:* [:inline (search.config/weight column-alias)] expr])
+(defn- weighted-score [context [column-alias expr]]
+  [:* [:inline (search.config/weight context column-alias)] expr])
 
-(defn- select-items [scorers]
+(defn- select-items [context scorers]
   (concat
    (for [[column-alias expr] scorers]
      [expr column-alias])
-   [[(sum-columns (map weighted-score scorers))
+   [[(sum-columns (map (partial weighted-score context) scorers))
      :total_score]]))
 
 ;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
@@ -92,7 +98,7 @@
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
 (defn- user-recency-expr [{:keys [current-user-id]}]
-  {:select [[[:greatest :recent_views.timestamp] :last_viewed_at]]
+  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
    :from   [:recent_views]
    :where  [:and
             [:= :recent_views.user_id current-user-id]
@@ -106,22 +112,43 @@
 (defn- view-count-percentile-query [p-value]
   (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
     {:select   [:search_index.model [expr :vcp]]
-     :from     [:search_index]
+     :from     [[search.index/*active-table* :search_index]]
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
-(def ^:private view-count-percentiles
-  (memoize/ttl (fn [p-value]
-                 (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
-                            [(keyword model) vcp])))
-               :ttl/threshold (u/hours->ms 1)))
+(defn- view-count-percentiles*
+  [p-value]
+  (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
+             [(keyword model) vcp])))
+
+(def ^{:private true
+       :arglists '([p-value])}
+  view-count-percentiles
+  (if config/is-prod?
+    (memoize/ttl view-count-percentiles*
+                 :ttl/threshold (u/hours->ms 1))
+    view-count-percentiles*))
 
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
-                [[:= :search_index.model [:inline (name sm)]] v])]
-    (size :view_count (into [:case] cat cases))
+                [[:= :search_index.model [:inline (name sm)]] (max v 1)])]
+    (size :view_count (if (seq cases)
+                        (into [:case] cat cases)
+                        1))
     #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
+
+(defn- model-rank-exp [{:keys [context]}]
+  (let [search-order search.config/models-search-order
+        n            (double (count search-order))
+        cases        (map-indexed (fn [i sm]
+                                    [[:= :search_index.model sm]
+                                     (or (search.config/scorer-param context :model sm)
+                                         [:inline (/ (- n i) n)])])
+                                  search-order)]
+    (-> (into [:case] cat (concat cases))
+        ;; if you're not listed, get a very poor score
+        (into [:else [:inline 0.01]]))))
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
@@ -133,7 +160,7 @@
    :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
    :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
    :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model        (idx-rank :model_rank (count search.config/all-models))})
+   :model        (model-rank-exp search-ctx)})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
@@ -141,7 +168,7 @@
   [search-ctx]
   (base-scorers search-ctx))
 
-(defn- scorer-select-items [search-ctx] (select-items (scorers search-ctx)))
+(defn- scorer-select-items [search-ctx] (select-items (:context search-ctx) (scorers search-ctx)))
 
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
+import { archiveAndTrack } from "metabase/archive/analytics";
 import type {
   OnArchive,
   OnCopy,
@@ -221,7 +222,13 @@ function EntityItemMenu({
       result.push({
         title: t`Move to trash`,
         icon: "trash",
-        action: onArchive,
+        action: () =>
+          archiveAndTrack({
+            archive: onArchive,
+            model: item.model,
+            modelId: item.id,
+            triggeredFrom: "collection",
+          }),
       });
     }
 
@@ -247,6 +254,7 @@ function EntityItemMenu({
     return result;
   }, [
     item.id,
+    item.model,
     isPinned,
     isXrayShown,
     isMetabotShown,

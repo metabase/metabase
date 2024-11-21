@@ -10,6 +10,7 @@ import type {
 export type ReportableEntityName =
   | "question"
   | "model"
+  | "metric"
   | "dashboard"
   | "collection";
 

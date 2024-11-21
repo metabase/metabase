@@ -70,35 +70,34 @@
     (search/supports-index?)
     (if (task/job-exists? task.search-index/reindex-job-key)
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
-      (do (search/reindex!) {:message "done"}))
+      (do (task.search-index/reindex!) {:message "done"}))
 
     :else
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-(defn- set-weights! [overrides]
+(defn- set-weights! [context overrides]
   (api/check-superuser)
-  (let [allowed-key? (set (keys @#'search.config/default-weights))
-        unknown-weights (seq (remove allowed-key? (keys overrides)))]
-    (when unknown-weights
-      (throw (ex-info (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))
+  (when (= context :all)
+    (throw (ex-info (str "Cannot set weights for all context")
+                    {:status-code 400})))
+  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
+        rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
+        unknown-rankers (seq (remove known-ranker? rankers))]
+    (when unknown-rankers
+      (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
     (public-settings/experimental-search-weight-overrides!
-     (merge (public-settings/experimental-search-weight-overrides) overrides))
-    (search.config/weights)))
+     (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
 
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
   [:as {overrides :params}]
   ;; remove cookie
-  (let [overrides (-> overrides (dissoc :search_engine) (update-vals parse-double))]
-    (if (seq overrides)
-      (set-weights! overrides)
-      (search.config/weights))))
-
-(api/defendpoint PUT "/weights"
-  "Return the current weights being used to rank the search results"
-  [:as {overrides :body}]
-  (set-weights! overrides))
+  (let [context   (keyword (:context overrides :default))
+        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+    (when (seq overrides)
+      (set-weights! context overrides))
+    (search.config/weights context)))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.
