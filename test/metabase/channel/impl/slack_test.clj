@@ -1,4 +1,4 @@
-(ns metabase.channel.slack-test
+(ns metabase.channel.impl.slack-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.impl.slack :as channel.slack]
