@@ -91,10 +91,7 @@ const CreateSegmentForm = ({
 
       scheduleCallback(async () => {
         try {
-          await createSegment({
-            ...segment,
-            table_id: segment.definition["source-table"],
-          });
+          await createSegment(segment);
           onChangeLocation("/admin/datamodel/segments");
         } catch (error) {
           setIsDirty(isDirty);

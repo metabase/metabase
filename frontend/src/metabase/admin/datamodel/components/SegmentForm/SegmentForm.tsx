@@ -11,7 +11,7 @@ import { SegmentEditor } from "metabase/querying/segments/components/SegmentEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Segment, StructuredQuery } from "metabase-types/api";
+import type { Segment, StructuredQuery, TableId } from "metabase-types/api";
 
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
@@ -67,7 +67,11 @@ const SegmentForm = ({
           }
         >
           <SegmentEditor
-            {...getSegmentEditorProps(getFieldProps("definition"), metadata)}
+            {...getSegmentEditorProps(
+              getFieldProps("definition"),
+              getFieldProps("table_id"),
+              metadata,
+            )}
             isNew={isNew}
           />
         </FormLabel>
@@ -161,7 +165,7 @@ const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
     errors.revision_message = t`Revision message is required`;
   }
 
-  const query = getQuery(values.definition, metadata);
+  const query = getQuery(values.definition, values.table_id, metadata);
   const filters = query ? Lib.filters(query, -1) : [];
   if (filters.length === 0) {
     errors.definition = t`At least one filter is required`;
@@ -170,18 +174,21 @@ const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
   return errors;
 };
 
-function getQuery(definition: StructuredQuery | undefined, metadata: Metadata) {
-  const tableId = definition?.["source-table"];
+function getQuery(
+  query: StructuredQuery | undefined,
+  tableId: TableId | undefined,
+  metadata: Metadata,
+) {
   const table = metadata.table(tableId);
   const metadataProvider = table
     ? Lib.metadataProvider(table.db_id, metadata)
     : undefined;
 
-  return table && definition && metadataProvider
+  return table && query && metadataProvider
     ? Lib.fromLegacyQuery(table.db_id, metadataProvider, {
         type: "query",
         database: table.db_id,
-        query: definition,
+        query: query,
       })
     : undefined;
 }
@@ -194,13 +201,26 @@ function getQueryDefinition(query: Lib.Query) {
 }
 
 function getSegmentEditorProps(
-  { name, value, onChange }: FieldInputProps<StructuredQuery | undefined>,
+  definitionProps: FieldInputProps<StructuredQuery | undefined>,
+  tableIdProps: FieldInputProps<TableId | undefined>,
   metadata: Metadata,
 ) {
   return {
-    query: getQuery(value, metadata),
-    onChange: (query: Lib.Query) =>
-      onChange({ target: { name, value: getQueryDefinition(query) } }),
+    query: getQuery(definitionProps.value, tableIdProps.value, metadata),
+    onChange: (query: Lib.Query) => {
+      definitionProps.onChange({
+        target: {
+          name: definitionProps.name,
+          value: getQueryDefinition(query),
+        },
+      });
+      tableIdProps.onChange({
+        target: {
+          name: tableIdProps.name,
+          value: Lib.sourceTableOrCardId(query),
+        },
+      });
+    },
   };
 }
 

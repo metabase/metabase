@@ -127,6 +127,7 @@ const AddFilterButton = forwardRef(function AddFilterButton(
       c="text-light"
       disabled={disabled}
       rightIcon={<Icon name="add" />}
+      aria-label={t`Add filters`}
       onClick={onClick}
     />
   ) : (
