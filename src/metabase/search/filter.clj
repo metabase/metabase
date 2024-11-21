@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.search.filter
+(ns metabase.search.filter
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
@@ -88,10 +88,7 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     (into [:or]
-           (let [your-collection-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:= current-user-id])
-                 child-patterns      (for [id your-collection-ids] (format "/%d/%%" id))]
-             (for [p child-patterns] [:like :collection.location p])))]
+     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id]))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause
