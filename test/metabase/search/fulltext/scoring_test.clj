@@ -109,7 +109,13 @@
       (is (= [["metric"  3 "card old"]
               ["card"    2 "card recent"]
               ["dataset" 1 "card ancient"]]
-             (search :model "card"))))))
+             (search :model "card"))))
+    (testing "We can override this order with weights"
+      (is (= [["dataset" 1 "card ancient"]
+              ["metric"  3 "card old"]
+              ["card"    2 "card recent"]]
+             (mt/with-dynamic-redefs [search.config/weights (constantly {:model 1.0 :model/dataset 1.0})]
+               (search :model "card")))))))
 
 (deftest ^:parallel recency-test
   (let [right-now   (Instant/now)
