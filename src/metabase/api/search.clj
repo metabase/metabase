@@ -75,30 +75,28 @@
     :else
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-(defn- set-weights! [overrides]
+(defn- set-weights! [context overrides]
   (api/check-superuser)
-  (let [allowed-key? (set (keys @#'search.config/default-weights))
+  (when (= context :all)
+    (throw (ex-info (str "Cannot set weights for all context")
+                    {:status-code 400})))
+  (let [allowed-key?    (set (keys (:default @#'search.config/static-weights)))
         unknown-weights (seq (remove allowed-key? (keys overrides)))]
     (when unknown-weights
       (throw (ex-info (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))
                       {:status-code 400})))
     (public-settings/experimental-search-weight-overrides!
-     (merge (public-settings/experimental-search-weight-overrides) overrides))
-    (search.config/weights)))
+     (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
 
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
   [:as {overrides :params}]
   ;; remove cookie
-  (let [overrides (-> overrides (dissoc :search_engine) (update-vals parse-double))]
-    (if (seq overrides)
-      (set-weights! overrides)
-      (search.config/weights))))
-
-(api/defendpoint PUT "/weights"
-  "Return the current weights being used to rank the search results"
-  [:as {overrides :body}]
-  (set-weights! overrides))
+  (let [context   (keyword (:context overrides :default))
+        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+    (when (seq overrides)
+      (set-weights! context overrides))
+    (search.config/weights context)))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.

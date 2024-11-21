@@ -67,14 +67,14 @@
             (rest column-names))
     [:inline 1]))
 
-(defn- weighted-score [[column-alias expr]]
-  [:* [:inline (search.config/weight column-alias)] expr])
+(defn- weighted-score [context [column-alias expr]]
+  [:* [:inline (search.config/weight context column-alias)] expr])
 
-(defn- select-items [scorers]
+(defn- select-items [context scorers]
   (concat
    (for [[column-alias expr] scorers]
      [expr column-alias])
-   [[(sum-columns (map weighted-score scorers))
+   [[(sum-columns (map weighted-score context scorers))
      :total_score]]))
 
 ;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
@@ -138,12 +138,12 @@
                         1))
     #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
 
-(defn- model-rank-exp []
+(defn- model-rank-exp [{:keys [context]}]
   (let [search-order search.config/models-search-order
         n            (double (count search-order))
         cases        (map-indexed (fn [i sm]
                                     [[:= :search_index.model sm]
-                                     (or (search.config/scorer-param :model sm)
+                                     (or (search.config/scorer-param context :model sm)
                                          [:inline (/ (- n i) n)])])
                                   search-order)]
     (-> (into [:case] cat (concat cases))
@@ -160,7 +160,7 @@
    :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
    :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
    :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model        (model-rank-exp)})
+   :model        (model-rank-exp search-ctx)})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
@@ -168,7 +168,7 @@
   [search-ctx]
   (base-scorers search-ctx))
 
-(defn- scorer-select-items [search-ctx] (select-items (scorers search-ctx)))
+(defn- scorer-select-items [search-ctx] (select-items (:context search-ctx) (scorers search-ctx)))
 
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)
