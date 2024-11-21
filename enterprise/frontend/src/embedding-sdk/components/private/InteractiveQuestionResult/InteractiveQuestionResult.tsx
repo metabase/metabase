@@ -89,10 +89,10 @@ export const InteractiveQuestionResult = ({
         {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
         <Group spacing="xs">
           {withResetButton && <InteractiveQuestion.ResetButton />}
-          <InteractiveQuestion.ChartTypeSelectorList />
+          <InteractiveQuestion.ChartTypeDropdown />
           <InteractiveQuestion.Filter />
-          <InteractiveQuestion.Summarize />
-          <InteractiveQuestion.Breakout />
+          <InteractiveQuestion.SummarizeDropdown />
+          <InteractiveQuestion.BreakoutDropdown />
           <InteractiveQuestion.EditorButton
             isOpen={questionView === "editor"}
             onClick={() =>

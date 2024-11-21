@@ -252,7 +252,7 @@
       (batch-upsert! *active-table* entries))
     (when @reindexing?
       (batch-upsert! pending-table entries))
-    (count entries)))
+    (->> entries (map :model) frequencies)))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
