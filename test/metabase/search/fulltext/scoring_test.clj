@@ -19,8 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; arbitrary
-(def ^:private ^:dynamic *user-id* nil)
 (def ^:private ^:dynamic *user-ctx* nil)
 
 ;; We act on a random localized table, making this thread-safe.
@@ -45,24 +43,19 @@
 (defmacro with-api-user [raw-ctx & body]
   `(let [raw-ctx# ~raw-ctx]
      (if-let [user-id# (:current-user-id raw-ctx#)]
-       (binding [*user-id* user-id#]
-         ;; for brevity in some tests, we don't require that the user really exists
-         (if (t2/exists? :model/User user-id#)
-           (mw.session/with-current-user user-id#
-             ~@body)
-           (binding [*user-ctx* (merge {:current-user-perms    #{"/"}
-                                        :is-superuser?         true
-                                        :is-sandboxed-user?    false
-                                        :is-impersonated-user? false}
-                                       (select-keys raw-ctx# [:current-user-perms
-                                                              :is-superuser?
-                                                              :is-sandboxed-user?
-                                                              :is-impersonated-user?]))]
-             ~@body)))
-       (mt/with-temp [:model/User {user-id# :id} {:is_superuser true}]
-         (binding [*user-id* user-id#]
-           (mw.session/with-current-user user-id#
-             ~@body))))))
+       ;; for brevity in some tests, we don't require that the user really exists
+       (if (t2/exists? :model/User user-id#)
+         (mw.session/with-current-user user-id# ~@body)
+         (binding [*user-ctx* (merge {:current-user-perms    #{"/"}
+                                      :is-superuser?         true
+                                      :is-sandboxed-user?    false
+                                      :is-impersonated-user? false}
+                                     (select-keys raw-ctx# [:current-user-perms
+                                                            :is-superuser?
+                                                            :is-sandboxed-user?
+                                                            :is-impersonated-user?]))]
+           ~@body))
+       (mt/with-test-user :crowberto ~@body))))
 
 (defn- search [ranker-key search-string & {:as raw-ctx}]
   (with-api-user raw-ctx
@@ -70,9 +63,10 @@
                       (merge
                        {:archived              false
                         :search-string         search-string
-                        :current-user-id       *user-id*
+                        :current-user-id       (or (:current-user-id raw-ctx)
+                                                   api/*current-user-id*)
                         :current-user-perms    (or (:current-user-perms *user-ctx*)
-                                                   api/*current-user-permissions-set*)
+                                                   @api/*current-user-permissions-set*)
                         :is-superuser?         (or (:is-superuser? *user-ctx*)
                                                    api/*is-superuser?*)
                         :is-impersonated-user? (or (:is-impersonated-user? *user-ctx*)
@@ -87,6 +81,28 @@
 
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
+
+(deftest ^:parallel text-test
+  (with-index-contents
+   [{:model "card" :id 1 :name "orders"}
+    {:model "card" :id 2 :name "unrelated"}
+    {:model "card" :id 3 :name "classified" :description "available only by court order"}
+    {:model "card" :id 4 :name "order"}
+    {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
+    {:model "card" :id 6 :name "ordering"}]
+   ;; WARNING: this is likely to diverge between appdb types as we support more.
+   (testing "Preferences according to textual matches "
+     ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
+     ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
+     (is (= [["card" 1 "orders"]
+             ["card" 4 "order"]
+             ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
+             ["card" 5 "orders, invoices, other stuff"]
+             ["card" 6 "ordering"]
+             ;; If the match is only in a secondary field, it is less preferred.
+             ["card" 3 "classified"]]
+            (search :model "order")))))
+  )
 
 (deftest ^:parallel model-test
   (with-index-contents
@@ -117,25 +133,28 @@
 ;; These require some related appdb content
 
 (deftest ^:parallel user-recency-test
-  (let [right-now   (Instant/now)
+  (let [user-id     (mt/user->id :crowberto)
+        right-now   (Instant/now)
         long-ago    (.minus right-now 10 ChronoUnit/DAYS)
         forever-ago (.minus right-now 30 ChronoUnit/DAYS)
         recent-view (fn [model-id timestamp]
                       {:model     "card"
                        :model_id  model-id
-                       :user_id   #p *user-id*
+                       :user_id   user-id
                        :timestamp timestamp})]
     (with-index-contents
-      [{:model "dataset" :id 1 :name "card ancient"}
-       {:model "metric" :id 2 :name "card recent"}
-       {:model "card" :id 3 :name "card old"}]
+      [{:model "card"    :id 1 :name "card ancient"}
+       {:model "metric"  :id 2 :name "card recent"}
+       {:model "dataset" :id 3 :name "card unseen"}
+       {:model "dataset" :id 4 :name "card old"}]
       (mt/with-temp [:model/RecentViews _ (recent-view 1 forever-ago)
                      :model/RecentViews _ (recent-view 2 right-now)
                      :model/RecentViews _ (recent-view 2 forever-ago)
-                     :model/RecentViews _ (recent-view 3 forever-ago)
-                     :model/RecentViews _ (recent-view 3 long-ago)]
+                     :model/RecentViews _ (recent-view 4 forever-ago)
+                     :model/RecentViews _ (recent-view 4 long-ago)]
         (testing "We prefer results more recently viewed by the current user"
           (is (= [["metric"  2 "card recent"]
-                  ["card"    3 "card old"]
-                  ["dataset" 1 "card ancient"]]
-                 (search :user-recency "card"))))))))
+                  ["dataset" 4 "card old"]
+                  ["card"    1 "card ancient"]
+                  ["dataset" 3 "card unseen"]]
+                 (search :user-recency "card" {:current-user-id user-id}))))))))
