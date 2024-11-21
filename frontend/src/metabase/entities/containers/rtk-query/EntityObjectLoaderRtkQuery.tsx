@@ -32,7 +32,7 @@ interface ChildrenProps<Entity, EntityWrapper> {
   fetched: boolean;
   loading: boolean;
   /**
-   * object is EntityWrapper when Props["wrapped"] is true.
+   * object is EntityWrapper when Props["wrapped"] is true
    */
   object: EntityWrapper | Entity | undefined;
   reload: () => void;
@@ -55,7 +55,6 @@ export interface Props<Entity, EntityWrapper> {
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper: ComponentType<LoadingAndErrorWrapperProps>;
-  properties: unknown; // TODO
   reload?: boolean;
   // reloadInterval?: (state: State, props: unknown) => number;
   requestType?: RequestType;
