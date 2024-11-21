@@ -9,7 +9,7 @@ import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Text } from "metabase/ui";
+import { Button, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -56,6 +56,7 @@ export function DataStep({
           variant="subtle"
           p={0}
           c="text-dark"
+          rightIcon={<Icon name="chevrondown" />}
           onClick={() => setIsOpened(true)}
         >
           {tableInfo ? tableInfo.displayName : t`Select a table`}

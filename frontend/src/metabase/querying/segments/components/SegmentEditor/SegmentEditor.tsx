@@ -24,7 +24,7 @@ export function SegmentEditor({ query, isNew, onChange }: SegmentEditorProps) {
         onChange={onChange}
       />
       <FilterStep query={query} stageIndex={STAGE_INDEX} onChange={onChange} />
-      <PreviewStep query={query} />
+      <PreviewStep query={query} stageIndex={STAGE_INDEX} />
     </Flex>
   );
 }

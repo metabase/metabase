@@ -1,5 +1,12 @@
 .root {
   position: relative;
+  min-width: 8rem;
+  min-height: 4.5rem;
+
+  &:last-child {
+    flex-grow: 1;
+    justify-content: end;
+  }
 
   &:not(:last-child) {
     border-right: 1px solid var(--mb-color-border);

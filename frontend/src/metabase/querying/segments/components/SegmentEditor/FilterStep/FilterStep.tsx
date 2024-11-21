@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { type Ref, forwardRef, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { ClauseStep } from "metabase/querying/segments/components/SegmentEditor/ClauseStep";
 import { Button, Flex, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { ClauseStep } from "../ClauseStep";
 
 type FilterStepProps = {
   query: Lib.Query | undefined;
@@ -18,7 +19,7 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
 
   return (
     <ClauseStep label={t`Filtered by`}>
-      {query && (
+      {query ? (
         <Flex align="center" gap="md">
           {filters.map((filter, filterIndex) => (
             <FilterPopover
@@ -35,6 +36,8 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
             onChange={onChange}
           />
         </Flex>
+      ) : (
+        <AddFilterButton disabled />
       )}
     </ClauseStep>
   );
@@ -84,15 +87,7 @@ function FilterPopover({
             {filterInfo.displayName}
           </FilterPill>
         ) : (
-          <Button
-            variant="subtle"
-            p={0}
-            c="text-light"
-            rightIcon={<Icon name="add" />}
-            onClick={() => setIsOpened(!isOpened)}
-          >
-            {t`Add filters`}
-          </Button>
+          <AddFilterButton compact onClick={() => setIsOpened(!isOpened)} />
         )}
       </Popover.Target>
       <Popover.Dropdown>
@@ -106,3 +101,37 @@ function FilterPopover({
     </Popover>
   );
 }
+
+type AddFilterButtonProps = {
+  compact?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+};
+
+const AddFilterButton = forwardRef(function AddFilterButton(
+  { compact, disabled, onClick }: AddFilterButtonProps,
+  ref: Ref<HTMLButtonElement>,
+) {
+  return compact ? (
+    <Button
+      ref={ref}
+      compact
+      c="text-light"
+      disabled={disabled}
+      rightIcon={<Icon name="add" />}
+      onClick={onClick}
+    />
+  ) : (
+    <Button
+      ref={ref}
+      variant="subtle"
+      p={0}
+      c="text-light"
+      disabled={disabled}
+      rightIcon={<Icon name="add" />}
+      onClick={onClick}
+    >
+      {t`Add filters to narrow your answer`}
+    </Button>
+  );
+});
