@@ -8313,6 +8313,7 @@ databaseChangeLog:
       id: v50.2024-05-29T18:42:14
       author: johnswanson
       comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: mysql

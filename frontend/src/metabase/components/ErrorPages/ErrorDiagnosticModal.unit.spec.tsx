@@ -88,6 +88,7 @@ describe("ErrorDiagnosticsModal", () => {
     "question",
     "dashboard",
     "collection",
+    "metric",
     "model",
   ];
 
@@ -138,6 +139,15 @@ describe("ErrorDiagnosticsModal", () => {
       localizedEntityName: "Dashboard",
     });
     expect(screen.queryByText(/query results/i)).not.toBeInTheDocument();
+  });
+
+  it("should show query results checkbox for metrics", () => {
+    setup({
+      ...defaultErrorPayload,
+      entityName: "metric",
+      localizedEntityName: "Metric",
+    });
+    expect(screen.getByText(/query results/i)).toBeInTheDocument();
   });
 
   it("should not show backend logs checkboxes when we don't have any logs", () => {

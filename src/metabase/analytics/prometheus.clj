@@ -210,7 +210,10 @@
    (prometheus/counter :metabase-query-processor/metrics-adjust
                        {:description "Number of queries with metrics processed by the metrics adjust middleware."})
    (prometheus/counter :metabase-query-processor/metrics-adjust-errors
-                       {:description "Number of errors when processing metrics in the metrics adjust middleware."})])
+                       {:description "Number of errors when processing metrics in the metrics adjust middleware."})
+   (prometheus/counter :metabase-search/index
+                       {:description "Number of entries indexed for search"
+                        :labels      [:model]})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
@@ -267,8 +270,15 @@
 (defn inc!
   "Call iapetos.core/inc on the metric in the global registry,
    if it has already been initialized and the metric is registered."
-  [metric]
-  (some-> system .-registry metric prometheus/inc))
+  ([metric] (inc! metric nil 1))
+  ([metric labels-or-amount]
+   (if (seq? labels-or-amount)
+     (inc! metric labels-or-amount 1)
+     (inc! metric nil labels-or-amount)))
+  ([metric labels amount]
+   (when-let [registry (some-> system .-registry)]
+     (when (metric registry)
+       (prometheus/inc registry metric labels amount)))))
 
 (comment
   (require 'iapetos.export)
