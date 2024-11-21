@@ -62,7 +62,6 @@
         ;; scoring related
          [:dashboardcard_count :int]
          [:last_viewed_at :timestamp]
-         [:model_rank :int :not-null]
          [:official_collection :boolean]
          [:pinned :boolean]
          [:verified :boolean]
@@ -121,9 +120,7 @@
       (select-keys
        ;; remove attrs that get aliased
        (remove #{:id :created_at :updated_at :native_query}
-               (conj search.spec/attr-columns
-                     :model :model_rank
-                     :display_data :legacy_input)))
+               (conj search.spec/attr-columns :model :display_data :legacy_input)))
       (update :display_data json/generate-string)
       (update :legacy_input json/generate-string)
       (assoc
@@ -255,7 +252,7 @@
       (batch-upsert! *active-table* entries))
     (when @reindexing?
       (batch-upsert! pending-table entries))
-    (count entries)))
+    (->> entries (map :model) frequencies)))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."

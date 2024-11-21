@@ -81,17 +81,18 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(def ^:private default-weights
-  {:pinned              0
-   :bookmarked          2
-   :recency             1.5
-   :user-recency        1.5
-   :dashboard           0.5
-   :model               2
-   :official-collection 2
-   :verified            2
-   :view-count          2
-   :text                10})
+(def ^:private static-weights
+  {:default
+   {:pinned              0
+    :bookmarked          2
+    :recency             1.5
+    :user-recency        1.5
+    :dashboard           0.5
+    :model               2
+    :official-collection 2
+    :verified            2
+    :view-count          2
+    :text                10}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
@@ -144,13 +145,25 @@
 
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
-  []
-  (merge default-weights (public-settings/experimental-search-weight-overrides)))
+  [context]
+  (let [context   (or context :default)
+        overrides (public-settings/experimental-search-weight-overrides)]
+    (if (= :all context)
+      (merge-with merge static-weights overrides)
+      (merge {}
+             (get static-weights context)
+             (get overrides context)))))
 
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."
-  [scorer-key]
-  (get (weights) scorer-key 0))
+  [context scorer-key]
+  (get (weights context) scorer-key (when-not (namespace scorer-key) 0)))
+
+(defn scorer-param
+  "Get a nested parameter scoped to the given scorer"
+  [context scorer-key param-key]
+  (let [flat-key (keyword (name scorer-key) (name param-key))]
+    (weight context flat-key)))
 
 (defn model->alias
   "Given a model string returns the model alias"
