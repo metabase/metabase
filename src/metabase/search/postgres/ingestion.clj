@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-  [metabase.search.postgres.index :as search.index]
+   [metabase.search.postgres.index :as search.index]
    [metabase.search.spec :as search.spec]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -90,7 +90,7 @@
          (m/distinct-by (juxt :id :model))
          (map ->entry)
          (partition-all insert-batch-size)))
-       (transduce (map search.index/batch-update!) + 0)))
+       (transduce (map search.index/batch-update!) (partial merge-with +))))
 
 (defn populate-index!
   "Go over all searchable items and populate the index with them."
@@ -112,9 +112,8 @@
   "Wait up to 'delay-ms' for a queued batch to become ready, and process the batch if we get one.
   Returns the number of search index entries that get updated as a result."
   [first-delay-ms next-delay-ms]
-  (if-let [queued-updates (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)]
-    (bulk-ingest! queued-updates)
-    0))
+  (when-let [queued-updates (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)]
+    (bulk-ingest! queued-updates)))
 
 (defn- index-worker-exists? []
   (task/job-exists? @(requiring-resolve 'metabase.task.search-index/reindex-job-key))

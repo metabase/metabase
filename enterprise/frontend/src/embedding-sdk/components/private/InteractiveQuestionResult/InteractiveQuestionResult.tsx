@@ -89,24 +89,23 @@ export const InteractiveQuestionResult = ({
         {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
         <Group spacing="xs">
           {withResetButton && <InteractiveQuestion.ResetButton />}
-          <InteractiveQuestion.ChartTypeSelectorList />
-          <InteractiveQuestion.Filter />
-          <InteractiveQuestion.Summarize />
-          <InteractiveQuestion.Breakout />
+          <InteractiveQuestion.ChartTypeDropdown />
+          <InteractiveQuestion.FilterDropdown />
+          <InteractiveQuestion.SummarizeDropdown />
+          <InteractiveQuestion.BreakoutDropdown />
+          <InteractiveQuestion.EditorButton
+            isOpen={questionView === "editor"}
+            onClick={() =>
+              setQuestionView(
+                questionView === "editor" ? "visualization" : "editor",
+              )
+            }
+          />
 
           {isSaveEnabled && !isSaveModalOpen && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
           )}
         </Group>
-
-        <InteractiveQuestion.EditorButton
-          isOpen={questionView === "editor"}
-          onClick={() =>
-            setQuestionView(
-              questionView === "editor" ? "visualization" : "editor",
-            )
-          }
-        />
       </Group>
 
       <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
