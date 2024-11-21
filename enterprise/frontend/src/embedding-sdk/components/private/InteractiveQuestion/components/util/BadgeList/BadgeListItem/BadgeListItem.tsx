@@ -7,13 +7,12 @@ import { ActionIcon, Icon } from "metabase/ui";
 type BadgeListItemRootProps = BadgeProps & HTMLAttributes<HTMLDivElement>;
 
 interface BadgeListItemProps extends BadgeListItemRootProps {
-  onSelectItem?: () => void;
   onRemoveItem?: () => void;
   name: string;
 }
 
 const _BadgeListItem = (
-  { name, onRemoveItem, onSelectItem, ...rest }: BadgeListItemProps,
+  { name, onRemoveItem, ...rest }: BadgeListItemProps,
   ref: Ref<HTMLDivElement>,
 ) => (
   <Badge

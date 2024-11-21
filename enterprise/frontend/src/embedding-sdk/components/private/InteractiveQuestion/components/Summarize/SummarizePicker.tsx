@@ -30,7 +30,7 @@ export const SummarizePicker = ({
   }
 
   const query = question.query();
-
+  const stageIndex = -1;
   const onQueryChange = (newQuery: Lib.Query) => {
     updateQuestion(question.setQuery(newQuery), { run: true });
   };
@@ -39,11 +39,12 @@ export const SummarizePicker = ({
     <AggregationPicker
       className={cx(S.PickerContainer, className)}
       query={query}
-      stageIndex={-1}
+      stageIndex={stageIndex}
       clause={aggregation?.aggregation}
       clauseIndex={aggregation?.aggregationIndex}
       operators={
-        aggregation?.operators ?? Lib.availableAggregationOperators(query, -1)
+        aggregation?.operators ??
+        Lib.availableAggregationOperators(query, stageIndex)
       }
       allowTemporalComparisons
       onQueryChange={onQueryChange}
