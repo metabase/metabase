@@ -80,7 +80,7 @@ When you click on a metric, Metabase will assume that you're using that metric a
 
 ## Metric permissions
 
-Like questions, models, and dashboards, whether a group can view or edit a metric depends on [collection permissions](../permissions/collections.md). By "view" we mean the ability to see the metric in a collection, or see the metric as an option when building a query with the metric's data source. If a metric is used in another question, whether a group can view the question depends on the question's collection, not the metrics.
+Like questions, models, and dashboards, whether a group can view or edit a metric depends on [collection permissions](../permissions/collections.md). By "view" we mean the ability to see the metric in a collection, or see the metric as an option when building a query with the metric's data source. If a metric is used in another question, whether a group can view the question depends on the question's collection, not the metric's collection.
 
 By "editing" a metric, we mean [editing the metric's query definition](#editing-a-metric).
 
