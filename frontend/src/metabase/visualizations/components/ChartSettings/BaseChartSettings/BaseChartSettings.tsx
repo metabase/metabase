@@ -22,8 +22,6 @@ import { ChartSettingsMenu } from "./BaseChartSettings.styled";
 import { useChartSettingsSections } from "./hooks";
 import type { BaseChartSettingsProps } from "./types";
 
-const maxTabsNumber = 4;
-
 export const BaseChartSettings = ({
   initial,
   series,
@@ -198,11 +196,17 @@ export const BaseChartSettings = ({
             onTabChange={handleShowSection}
             styles={{
               tab: {
-                flexBasis: `${100 / maxTabsNumber}%`,
+                // tab should stay at the same position even when number of tabs
+                // change. e.g. 2 tabs to 3 tabs -> layout should not change
+                flexBasis: "25%",
+                maxWidth: "50%", // show ... for long tab names
+              },
+              tabsList: {
+                flexWrap: "nowrap",
               },
             }}
           >
-            <Tabs.List>
+            <Tabs.List pl="md" pr="md">
               {sectionNames.map(sectionName => (
                 <Tabs.Tab key={sectionName} value={sectionName}>
                   {sectionName}
