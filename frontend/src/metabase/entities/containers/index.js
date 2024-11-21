@@ -10,7 +10,7 @@ export function addEntityContainers(entity) {
 
   // Entity.load higher-order component
   entity.load = ({ id, query, ...props } = {}) => {
-    // TODO: map all entities
+    // TODO: https://github.com/metabase/metabase/issues/50323
     if (!entity.rtk) {
       return entity.loadLegacy({ id, query, ...props });
     }
