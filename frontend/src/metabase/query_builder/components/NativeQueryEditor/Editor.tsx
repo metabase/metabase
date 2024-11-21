@@ -17,7 +17,7 @@ type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
 
 export type EditorProps = {
   query: NativeQuery;
-  onChange: (queryText: string) => void;
+  onChange?: (queryText: string) => void;
 
   readOnly?: boolean;
 

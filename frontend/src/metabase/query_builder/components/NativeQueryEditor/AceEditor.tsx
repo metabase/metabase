@@ -312,7 +312,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
     if (!this._editor || this._localUpdate) {
       return;
     }
-    this.props.onChange(this._editor.getValue());
+    this.props.onChange?.(this._editor.getValue());
     this._retriggerAutocomplete();
   }, 1);
 
