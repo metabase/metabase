@@ -210,8 +210,13 @@ export function addHeadingWhileEditing(
   cy.findByPlaceholderText("Heading").type(string, options);
 }
 
-export function openAddQuestionMenu() {
+export function openAddQuestionMenu(
+  option?: "Existing Question" | "New Question" | "New SQL query",
+) {
   dashboardHeader().findByLabelText("Add questions").click();
+  if (option) {
+    popover().findByText(option).click();
+  }
 }
 
 export function openQuestionsSidebar() {
