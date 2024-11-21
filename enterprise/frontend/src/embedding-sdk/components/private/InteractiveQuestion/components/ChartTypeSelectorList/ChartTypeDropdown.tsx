@@ -10,7 +10,7 @@ import { useQuestionVisualization } from "../../hooks/use-question-visualization
 import { useSensibleVisualizations } from "../../hooks/use-sensible-visualizations";
 import { ToolbarButton } from "../util/ToolbarButton";
 
-export const ChartTypeSelectorList = () => {
+export const ChartTypeDropdown = () => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 

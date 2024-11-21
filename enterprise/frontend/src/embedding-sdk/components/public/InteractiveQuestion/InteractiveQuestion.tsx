@@ -5,8 +5,8 @@ import {
   BackButton,
   Breakout,
   BreakoutDropdown,
+  ChartTypeDropdown,
   ChartTypeSelector,
-  ChartTypeSelectorList,
   Editor,
   EditorButton,
   Filter,
@@ -112,7 +112,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
-  ChartTypeSelectorList: typeof ChartTypeSelectorList;
+  ChartTypeSelectorList: typeof ChartTypeDropdown;
   EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
   Breakout: typeof Breakout;
@@ -143,6 +143,6 @@ InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
-InteractiveQuestion.ChartTypeSelectorList = ChartTypeSelectorList;
+InteractiveQuestion.ChartTypeSelectorList = ChartTypeDropdown;
 
 export { InteractiveQuestion };
