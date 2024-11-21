@@ -4,6 +4,7 @@ import { getIn } from "icepick";
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "embedding-sdk/lib/theme/embedding-color-palette";
 import type { MantineTheme } from "metabase/ui";
+import { FLOATING_ELEMENT_Z_INDEX } from "metabase/css/core/floating-elements/common";
 
 // https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/
 type FlattenObjectKeys<
@@ -99,12 +100,25 @@ export function getThemeSpecificCssVariables(theme: MantineTheme) {
     return getIn(theme.other, key.split("."));
   };
 
+  console.log(
+    "@m3s2q554",
+    "getValue('popover.zIndex')",
+    getValue("popover.zIndex"),
+  );
+
+  console.log(
+    "@m3s2qrio",
+    "getValue('question.backgroundColor')",
+    getValue("question.backgroundColor"),
+  );
+
   return css`
     --mb-color-bg-dashboard: ${getValue("dashboard.backgroundColor")};
     --mb-color-bg-dashboard-card: ${getValue("dashboard.card.backgroundColor")};
     --mb-color-bg-question: ${getValue("question.backgroundColor")};
 
-    --mb-floating-element-z-index: ${getValue("popover.zIndex")};
+    --mb-floating-element-z-index: ${getValue("popover.zIndex") ??
+    FLOATING_ELEMENT_Z_INDEX};
 
     --mb-color-text-collection-browser-expand-button: ${getValue(
       "collectionBrowser.breadcrumbs.expandButton.textColor",

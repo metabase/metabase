@@ -7,6 +7,7 @@ import {
 } from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
+import { FLOATING_ELEMENT_Z_INDEX } from "metabase/css/core/floating-elements/common";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 
@@ -89,7 +90,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   popover: {
-    zIndex: 200,
+    zIndex: FLOATING_ELEMENT_Z_INDEX,
   },
 };
 
