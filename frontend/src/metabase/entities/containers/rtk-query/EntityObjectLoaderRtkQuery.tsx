@@ -9,7 +9,6 @@ import {
   setRequestError,
   setRequestLoaded,
   setRequestLoading,
-  setRequestPromise,
 } from "metabase/redux/requests";
 import type { Dispatch } from "metabase-types/store";
 
@@ -162,16 +161,6 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     if (isLoading) {
       // @ts-expect-error - invalid typings in redux-actions package
       dispatch(setRequestLoading(requestStatePath, queryKey));
-
-      // TODO: is this necessary?
-      dispatch(
-        setRequestPromise(
-          // @ts-expect-error - invalid typings in redux-actions package
-          requestStatePath,
-          queryKey,
-          new Promise<void>(resolve => resolve()),
-        ),
-      );
     }
   }, [dispatch, isLoading, requestStatePath, queryKey]);
 
