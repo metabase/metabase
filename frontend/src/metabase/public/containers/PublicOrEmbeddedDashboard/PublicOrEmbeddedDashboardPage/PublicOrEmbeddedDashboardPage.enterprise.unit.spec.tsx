@@ -61,7 +61,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       expect(screen.getByText("Export as PDF")).toBeInTheDocument();
     });
 
-    it('should set not the locale to "ko" without "whitelabel" feature', async () => {
+    it('should not set the locale to "ko" without "whitelabel" feature', async () => {
       const expectedLocale = "ko";
       await setupEnterprise({ hash: { locale: expectedLocale } });
 
