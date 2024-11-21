@@ -42,7 +42,7 @@ export const LeftViewFooterButtonGroup = ({
 
   const isVisualized = useSelector(getIsVisualized);
   const shouldShowChartSettingsButton =
-    !isNotebook && !hideChartSettings && (!isShowingRawTable || isVisualized);
+    !isNotebook && !hideChartSettings && !isShowingRawTable && isVisualized;
 
   return (
     <Flex gap="0.75rem">
