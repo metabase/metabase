@@ -1,42 +1,24 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
-import { parseTimestamp } from "metabase/lib/time";
 import { isExpression } from "metabase-lib/v1/expressions";
-import { getFilterArgumentFormatOptions } from "metabase-lib/v1/operators/utils";
 import {
   getFilterOptions,
   hasFilterOptions,
   isCustom,
   isFieldFilter,
-  isSegment,
   isStandard,
   setFilterOptions,
 } from "metabase-lib/v1/queries/utils/filter";
-import {
-  generateTimeFilterValuesDescriptions,
-  getRelativeDatetimeField,
-  isStartingFrom,
-} from "metabase-lib/v1/queries/utils/query-time";
-import type {
-  FieldFilter,
-  FieldReference,
-  Filter as FilterObject,
-} from "metabase-types/api";
+import { getRelativeDatetimeField } from "metabase-lib/v1/queries/utils/query-time";
+import type { Filter as FilterObject } from "metabase-types/api";
 
 import type Dimension from "../../Dimension";
 import type { FilterOperator } from "../../deprecated-types";
 import type StructuredQuery from "../StructuredQuery";
 
 import MBQLClause from "./MBQLClause";
-
-interface FilterDisplayNameOpts {
-  includeDimension?: boolean;
-  includeOperator?: boolean;
-}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Filter extends MBQLClause {
@@ -64,63 +46,6 @@ export default class Filter extends MBQLClause {
    */
   remove(): StructuredQuery {
     return this._query.removeFilter(this._index);
-  }
-
-  /**
-   * Returns the array of arguments as dates if they are specific dates, and returns their temporal unit.
-   */
-  specificDateArgsAndUnit() {
-    const field = this.dimension()?.field();
-    const isSpecific = ["=", "between", "<", ">"].includes(this.operatorName());
-    if ((field?.isDate() || field?.isTime()) && isSpecific) {
-      const args = this.arguments();
-      const dates = args.map(d => parseTimestamp(d));
-      if (dates.every(d => d.isValid())) {
-        const detectedUnit = dates.some(d => d.minutes())
-          ? "minute"
-          : dates.some(d => d.hours())
-            ? "hour"
-            : "day";
-        const unit = this.dimension()?.temporalUnit() ?? detectedUnit;
-        return [dates, unit];
-      }
-    }
-    return [undefined, undefined];
-  }
-
-  /**
-   * Returns the display name for the filter
-   */
-  displayName({
-    includeDimension = true,
-    includeOperator = true,
-  }: FilterDisplayNameOpts = {}) {
-    if (this.isSegment()) {
-      const segment = this.segment();
-      return segment ? segment.displayName() : t`Unknown Segment`;
-    } else if (this.isStandard()) {
-      if (isStartingFrom(this)) {
-        includeOperator = false;
-      }
-      const [dates, dateUnit] = this.specificDateArgsAndUnit();
-      const origOp = this.operatorName();
-      const dateRangeStr =
-        dates &&
-        ["=", "between"].includes(origOp) &&
-        formatDateTimeRangeWithUnit(dates, dateUnit, { type: "tooltip" });
-      const op = dateRangeStr ? "=" : origOp;
-      return [
-        includeDimension && this.dimension()?.displayName(),
-        includeOperator && this.operator(op)?.moreVerboseName,
-        dateRangeStr || this.formattedArguments().join(" "),
-      ]
-        .map(s => s || "")
-        .join(" ");
-    } else if (this.isCustom()) {
-      return this._query.formatExpression(this);
-    } else {
-      return t`Unknown Filter`;
-    }
   }
 
   /**
@@ -164,8 +89,6 @@ export default class Filter extends MBQLClause {
       }
 
       return true;
-    } else if (this.isSegment()) {
-      return !!this.segment();
     } else if (this.isCustom()) {
       return true;
     }
@@ -183,13 +106,6 @@ export default class Filter extends MBQLClause {
   }
 
   /**
-   * Returns true if this is a segment
-   */
-  isSegment() {
-    return isSegment(this);
-  }
-
-  /**
    * Returns true if this is custom filter created with the expression editor
    */
   isCustom() {
@@ -201,19 +117,6 @@ export default class Filter extends MBQLClause {
    */
   isFieldFilter() {
     return isFieldFilter(this);
-  }
-
-  // SEGMENT FILTERS
-  segmentId() {
-    if (this.isSegment()) {
-      return this[1];
-    }
-  }
-
-  segment() {
-    if (this.isSegment()) {
-      return this.metadata().segment(this.segmentId());
-    }
   }
 
   // FIELD FILTERS
@@ -241,102 +144,6 @@ export default class Filter extends MBQLClause {
     return dimension ? dimension.filterOperator(opName) : null;
   }
 
-  setOperator(operatorName: string) {
-    const dimension = this.dimension();
-    const operator = dimension && dimension.filterOperator(operatorName);
-    const filter: FieldFilter = [operatorName, dimension && dimension.mbql()];
-
-    if (operator) {
-      for (let i = 0; i < operator.fields.length; i++) {
-        if (operator.fields[i].default !== undefined) {
-          filter.push(operator.fields[i].default);
-        } else {
-          filter.push(undefined);
-        }
-      }
-
-      if (operator.optionsDefaults) {
-        filter.push(operator.optionsDefaults);
-      }
-
-      const oldOperator = this.operator();
-      const oldFilter = this;
-
-      if (oldOperator) {
-        // copy over values of the same type
-        for (let i = 0; i < oldFilter.length - 2; i++) {
-          const field = operator.multi
-            ? operator.fields[0]
-            : operator.fields[i];
-          const oldField = oldOperator.multi
-            ? oldOperator.fields[0]
-            : oldOperator.fields[i];
-
-          if (
-            field &&
-            oldField &&
-            field.type === oldField.type &&
-            oldFilter[i + 2] !== undefined
-          ) {
-            filter[i + 2] = oldFilter[i + 2];
-          }
-        }
-      }
-    }
-
-    return this.set(filter);
-  }
-
-  setDimension(
-    fieldRef: FieldReference | null | undefined,
-    {
-      useDefaultOperator = false,
-    }: {
-      useDefaultOperator?: boolean;
-    } = {},
-  ): Filter {
-    if (!fieldRef) {
-      return this.set([]);
-    }
-
-    const dimension = this._query.parseFieldReference(fieldRef);
-
-    if (
-      dimension &&
-      (!this.isFieldFilter() || !dimension.isEqual(this.dimension()))
-    ) {
-      const operator = // see if the new dimension supports the existing operator
-        dimension.filterOperator(this.operatorName()) || // otherwise use the default operator, if enabled
-        (useDefaultOperator && dimension.defaultFilterOperator());
-      const operatorName = operator && operator.name;
-      const filter: Filter = this.set(
-        this.isFieldFilter()
-          ? [this[0], dimension.mbql(), ...this.slice(2)]
-          : [null, dimension.mbql()],
-      );
-
-      if (operatorName && filter.operatorName() !== operatorName) {
-        return filter.setOperator(operatorName);
-      } else {
-        return filter;
-      }
-    }
-
-    return this;
-  }
-
-  setArgument(index: number, value: any) {
-    return this.set([
-      ...this.slice(0, index + 2),
-      value,
-      ...this.slice(index + 3),
-    ]);
-  }
-
-  setArguments(values: any[]) {
-    return this.set([...this.slice(0, 2), ...values]);
-  }
-
   filterOperators(selected: string): FilterOperator[] | null | undefined {
     const dimension = this.dimension();
     return dimension ? dimension.filterOperators(selected) : null;
@@ -352,42 +159,6 @@ export default class Filter extends MBQLClause {
 
   setOptions(options: any) {
     return this.set(setFilterOptions(this, options));
-  }
-
-  formattedArguments(maxDisplayValues: number = 1) {
-    const dimension = this.dimension();
-    const operator = this.operator();
-    const args = this.arguments();
-
-    if (operator && operator.multi && args.length > maxDisplayValues) {
-      const n = args.length;
-      return [ngettext(msgid`${n} selection`, `${n} selections`, n)];
-    } else if (
-      dimension &&
-      dimension.field().isDate() &&
-      !dimension.field().isTime()
-    ) {
-      return generateTimeFilterValuesDescriptions(this);
-    } else {
-      return args
-        .map((value, index) => [
-          value,
-          getFilterArgumentFormatOptions(operator, index),
-        ])
-        .filter(([value, options]) => value !== undefined && !options.hide)
-        .map(
-          (
-            [value, _options],
-            _index, // FIXME: remapping
-          ) => value, // <Value
-          //   key={index}
-          //   value={value}
-          //   column={dimension.field()}
-          //   remap
-          //   {...options}
-          // />
-        );
-    }
   }
 
   isDimension(otherDimension: Dimension) {

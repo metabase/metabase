@@ -167,40 +167,6 @@ describe("Filter", () => {
     });
   });
 
-  describe("setDimension", () => {
-    it("should set the dimension for existing filter clause", () => {
-      expect(
-        filter(["=", ["field", ORDERS.SUBTOTAL, null], 42]).setDimension(
-          ["field", ORDERS.TOTAL, null],
-          {
-            useDefaultOperator: true,
-          },
-        ),
-      ).toEqual(["=", ["field", ORDERS.TOTAL, null], 42]);
-    });
-
-    it("should set the dimension for new filter clause", () => {
-      expect(filter([]).setDimension(["field", ORDERS.TOTAL, null])).toEqual([
-        null,
-        ["field", ORDERS.TOTAL, null],
-      ]);
-    });
-
-    it("should set the dimension and default operator for empty filter clauses", () => {
-      expect(
-        filter([]).setDimension(["field", ORDERS.TOTAL, null], {
-          useDefaultOperator: true,
-        }),
-      ).toEqual(["=", ["field", ORDERS.TOTAL, null], undefined]);
-    });
-
-    it("should set the dimension correctly when changing from segment", () => {
-      expect(
-        filter(["segment", 1]).setDimension(["field", ORDERS.TOTAL, null]),
-      ).toEqual([null, ["field", ORDERS.TOTAL, null]]);
-    });
-  });
-
   const CASES = [
     ["isStandard", ["=", ["field", 1, null], 42]],
     ["isStandard", [null, ["field", 1, null]]], // assume null operator is standard

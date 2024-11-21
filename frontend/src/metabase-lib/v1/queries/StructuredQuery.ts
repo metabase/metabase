@@ -10,10 +10,6 @@ import * as Lib from "metabase-lib";
 import type { Dimension } from "metabase-lib/v1/Dimension";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 import DimensionOptions from "metabase-lib/v1/DimensionOptions";
-import {
-  DISPLAY_QUOTES,
-  format as formatExpression,
-} from "metabase-lib/v1/expressions/format";
 import * as Q from "metabase-lib/v1/queries/utils/query";
 import type {
   DatabaseId,
@@ -28,7 +24,6 @@ import type { Query } from "../../types";
 import type Question from "../Question";
 import type Database from "../metadata/Database";
 import type Field from "../metadata/Field";
-import type Segment from "../metadata/Segment";
 import type Table from "../metadata/Table";
 
 import AtomicQuery from "./AtomicQuery";
@@ -44,24 +39,6 @@ export const STRUCTURED_QUERY_TEMPLATE = {
     "source-table": null,
   },
 };
-
-export interface FilterSection {
-  name: string;
-  icon: string;
-  items: (DimensionOption | SegmentOption)[];
-}
-
-export interface DimensionOption {
-  dimension: Dimension;
-}
-
-export interface SegmentOption {
-  name: string;
-  filter: ["segment", number];
-  icon: string;
-  query: StructuredQuery;
-}
-
 /**
  * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
  */
@@ -185,14 +162,6 @@ class StructuredQuery extends AtomicQuery {
     return this.addFilter(filter);
   }
 
-  formatExpression(expression, { quotes = DISPLAY_QUOTES, ...options } = {}) {
-    return formatExpression(expression, {
-      quotes,
-      ...options,
-      legacyQuery: this,
-    });
-  }
-
   // FILTERS
 
   /**
@@ -204,70 +173,11 @@ class StructuredQuery extends AtomicQuery {
     );
   });
 
-  filterFieldOptionSections(
-    filter?: (Filter | FilterWrapper) | null | undefined,
-    { includeSegments = true } = {},
-    includeAppliedSegments = false,
-  ) {
-    const filterDimensionOptions = this.filterDimensionOptions();
-    const filterSegmentOptions = includeSegments
-      ? this.filterSegmentOptions(filter, includeAppliedSegments)
-      : [];
-    return filterDimensionOptions.sections({
-      extraItems: filterSegmentOptions.map(segment => ({
-        name: segment.name,
-        icon: "star",
-        filter: ["segment", segment.id],
-        query: this,
-      })),
-    });
-  }
-
   /**
    * @returns @type {DimensionOptions} that can be used in filters.
    */
   filterDimensionOptions(): DimensionOptions {
     return this.dimensionOptions();
-  }
-
-  /**
-   * @returns @type {Segment}s that can be used as filters.
-   */
-  filterSegmentOptions(
-    filter?: Filter | FilterWrapper,
-    includeAppliedSegments = false,
-  ): Segment[] {
-    if (filter && !(filter instanceof FilterWrapper)) {
-      filter = new FilterWrapper(filter, null, this);
-    }
-
-    const currentSegmentId = filter && filter.isSegment() && filter.segmentId();
-    return this.table().segments.filter(
-      segment =>
-        (currentSegmentId != null && currentSegmentId === segment.id) ||
-        (!segment.archived &&
-          (includeAppliedSegments || !this.segments().includes(segment))),
-    );
-  }
-
-  /**
-   *  @returns @type {Segment}s that are currently applied to the question
-   */
-  segments = _.once(() => {
-    return this.filters()
-      .filter(filter => filter.isSegment())
-      .map(filter => filter.segment());
-  });
-
-  /**
-   * @returns whether a new filter can be added or not
-   */
-  canAddFilter() {
-    return (
-      Q.canAddFilter(this.legacyQuery({ useStructuredQuery: true })) &&
-      (this.filterDimensionOptions().count > 0 ||
-        this.filterSegmentOptions().length > 0)
-    );
   }
 
   /**

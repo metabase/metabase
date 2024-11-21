@@ -14,33 +14,24 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
-  isAddress,
   isBoolean,
   isCategory,
-  isCity,
-  isComment,
   isCoordinate,
-  isCountry,
   isCurrency,
   isDate,
   isDateWithoutTime,
-  isDescription,
   isDimension,
-  isEntityName,
   isFK,
   isLocation,
   isMetric,
   isNumber,
   isNumeric,
   isPK,
-  isScope,
-  isState,
   isString,
   isStringLike,
   isSummable,
   isTime,
   isTypeFK,
-  isZipCode,
   isa,
 } from "metabase-lib/v1/types/utils/isa";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/v1/utils";
@@ -60,8 +51,6 @@ import Base from "./Base";
 import type Metadata from "./Metadata";
 import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
-
-const LONG_TEXT_MIN = 80;
 
 /**
  * @typedef { import("./Metadata").FieldValues } FieldValues
@@ -214,26 +203,6 @@ class FieldInner extends Base {
     return isStringLike(this);
   }
 
-  isAddress() {
-    return isAddress(this);
-  }
-
-  isCity() {
-    return isCity(this);
-  }
-
-  isZipCode() {
-    return isZipCode(this);
-  }
-
-  isState() {
-    return isState(this);
-  }
-
-  isCountry() {
-    return isCountry(this);
-  }
-
   isCoordinate() {
     return isCoordinate(this);
   }
@@ -244,10 +213,6 @@ class FieldInner extends Base {
 
   isSummable() {
     return isSummable(this);
-  }
-
-  isScope() {
-    return isScope(this);
   }
 
   isCategory() {
@@ -278,20 +243,6 @@ class FieldInner extends Base {
     return isFK(this);
   }
 
-  isEntityName() {
-    return isEntityName(this);
-  }
-
-  isLongText() {
-    return (
-      isString(this) &&
-      (isComment(this) ||
-        isDescription(this) ||
-        this?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
-          LONG_TEXT_MIN)
-    );
-  }
-
   /**
    * Predicate to decide whether `this` is comparable with `field`.
    *
@@ -304,17 +255,6 @@ class FieldInner extends Base {
       field.effective_type === "type/MongoBSONID"
       ? this.effective_type === field.effective_type
       : true;
-  }
-
-  /**
-   * @param {Field} field
-   */
-  isCompatibleWith(field) {
-    return (
-      this.isDate() === field.isDate() ||
-      this.isNumeric() === field.isNumeric() ||
-      this.id === field.id
-    );
   }
 
   /**
@@ -366,11 +306,6 @@ class FieldInner extends Base {
     return fieldDimension;
   }
 
-  sourceField() {
-    const d = this.dimension().sourceDimension();
-    return d && d.field();
-  }
-
   // FILTERS
   filterOperators(selected) {
     return getFilterOperators(this, this.table, selected);
@@ -406,13 +341,6 @@ class FieldInner extends Base {
   }
 
   // BREAKOUTS
-
-  /**
-   * Returns a default breakout MBQL clause for this field
-   */
-  getDefaultBreakout() {
-    return this.dimension().defaultBreakout();
-  }
 
   /**
    * Returns a default date/time unit for this field

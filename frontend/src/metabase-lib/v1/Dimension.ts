@@ -314,15 +314,6 @@ export default class Dimension {
     return this.field().filterOperator(operatorName);
   }
 
-  /**
-   * The default filter operator for this dimension
-   */
-  defaultFilterOperator(): FilterOperator | null | undefined {
-    // let the DatePicker choose the default operator, otherwise use the first one
-    // TODO: replace with a defaultFilter()- or similar which includes arguments
-    return this.field().isDate() ? null : this.filterOperators()[0];
-  }
-
   // BREAKOUTS
 
   /**
