@@ -14,7 +14,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; Create blocks for the Slack message with diagnostic information
 (defn- create-slack-message-blocks
   "Create blocks for the Slack message with diagnostic information"
   [diagnostic-info file-info]

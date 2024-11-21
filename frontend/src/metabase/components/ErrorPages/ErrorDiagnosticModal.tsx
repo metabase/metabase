@@ -42,7 +42,7 @@ export const ErrorDiagnosticModal = ({
   const dispatch = useDispatch();
   const [isSlackSending, setIsSlackSending] = useState(false);
   const [sendBugReport] = useSendBugReportMutation();
-  const isBugReportingEnabled = useSetting("bug-report-enabled");
+  const isBugReportingEnabled = useSetting("bug-reporting-enabled");
 
   const slackSettings = useSelector(getSlackSettings);
   const enableBugReportField = Boolean(

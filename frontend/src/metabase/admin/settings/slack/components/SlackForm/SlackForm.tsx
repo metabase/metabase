@@ -36,7 +36,7 @@ const SlackForm = ({
   isReadOnly,
   onSubmit = () => undefined,
 }: SlackFormProps): JSX.Element => {
-  const isBugReportingEnabled = useSetting("bug-report-enabled");
+  const isBugReportingEnabled = useSetting("bug-reporting-enabled");
   const handleSubmit = useCallback(
     (values: SlackSettings) =>
       onSubmit(SLACK_SCHEMA.cast(values) as SlackSettings),
