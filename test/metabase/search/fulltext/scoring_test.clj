@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    ;; For now, this is specialized to postgres, but we should be able to abstract it to all index-based engines.
+   [metabase.api.common :as api]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search :as search]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
@@ -9,14 +11,15 @@
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.search.postgres.scoring :as search.scoring]
-   [metabase.test :as mt])
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
   (:import (java.time Instant)
            (java.time.temporal ChronoUnit)))
 
 (set! *warn-on-reflection* true)
 
-;; arbitrary
-(def ^:private user-id 7331)
+(def ^:private ^:dynamic *user-ctx* nil)
 
 ;; We act on a random localized table, making this thread-safe.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -37,21 +40,41 @@
          (finally
            (#'search.index/drop-table! table-name#))))))
 
+(defmacro with-api-user [raw-ctx & body]
+  `(let [raw-ctx# ~raw-ctx]
+     (if-let [user-id# (:current-user-id raw-ctx#)]
+       ;; for brevity in some tests, we don't require that the user really exists
+       (if (t2/exists? :model/User user-id#)
+         (mw.session/with-current-user user-id# ~@body)
+         (binding [*user-ctx* (merge {:current-user-id       user-id#
+                                      :current-user-perms    #{"/"}
+                                      :is-superuser?         true
+                                      :is-sandboxed-user?    false
+                                      :is-impersonated-user? false}
+                                     (select-keys raw-ctx# [:current-user-perms
+                                                            :is-superuser?
+                                                            :is-sandboxed-user?
+                                                            :is-impersonated-user?]))]
+           ~@body))
+       (mt/with-test-user :crowberto ~@body))))
+
 (defn- search* [ranker-key search-string & {:as raw-ctx}]
-  (let [search-ctx (search.impl/search-context
-                    (merge
-                     {:archived              false
-                      :search-string         search-string
-                      :current-user-id       user-id
-                      :current-user-perms    #{"/"}
-                      :is-superuser?         true
-                      :is-impersonated-user? false
-                      :is-sandboxed-user?    false
-                      :models                search.config/all-models
-                      :model-ancestors?      false}
-                     raw-ctx))]
-    (is (get (search.scoring/scorers search-ctx) ranker-key) "The ranker is enabled")
-    (map (juxt :model :id :name) (#'search.postgres/fulltext search-string search-ctx))))
+  (with-api-user raw-ctx
+    (let [search-ctx (search.impl/search-context
+                      (merge
+                       (or *user-ctx*
+                           {:current-user-id       api/*current-user-id*
+                            :current-user-perms    @api/*current-user-permissions-set*
+                            :is-superuser?         api/*is-superuser?*
+                            :is-impersonated-user? (premium-features/impersonated-user?)
+                            :is-sandboxed-user?    (premium-features/impersonated-user?)})
+                       {:archived         false
+                        :search-string    search-string
+                        :models           search.config/all-models
+                        :model-ancestors? false}
+                       raw-ctx))]
+      (is (get (search.scoring/scorers search-ctx) ranker-key) "The ranker is enabled")
+      (map (juxt :model :id :name) (#'search.postgres/fulltext search-string search-ctx)))))
 
 (defn- search-no-weights
   "Like search but with all weights set to 0."
@@ -69,15 +92,37 @@
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
 
+(deftest ^:parallel text-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "orders"}
+     {:model "card" :id 2 :name "unrelated"}
+     {:model "card" :id 3 :name "classified" :description "available only by court order"}
+     {:model "card" :id 4 :name "order"}
+     {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
+     {:model "card" :id 6 :name "ordering"}]
+   ;; WARNING: this is likely to diverge between appdb types as we support more.
+    (testing "Preferences according to textual matches "
+     ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
+     ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
+      (is (= [["card" 1 "orders"]
+              ["card" 4 "order"]
+             ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
+              ["card" 5 "orders, invoices, other stuff"]
+              ["card" 6 "ordering"]
+             ;; If the match is only in a secondary field, it is less preferred.
+              ["card" 3 "classified"]]
+             (search :model "order"))))))
+
 (deftest ^:parallel model-test
   (with-index-contents
     [{:model "dataset" :id 1 :name "card ancient"}
      {:model "card"    :id 2 :name "card recent"}
      {:model "metric"  :id 3 :name "card old"}]
-    (is (= [["metric"  3 "card old"]
-            ["card"    2 "card recent"]
-            ["dataset" 1 "card ancient"]]
-           (search :model "card")))))
+    (testing "There is a preferred ordering in which different models are returned"
+      (is (= [["metric"  3 "card old"]
+              ["card"    2 "card recent"]
+              ["dataset" 1 "card ancient"]]
+             (search :model "card"))))))
 
 (deftest ^:parallel recency-test
   (let [right-now   (Instant/now)
@@ -85,12 +130,13 @@
         forever-ago (.minus right-now 10 ChronoUnit/DAYS)]
     (with-index-contents
       [{:model "card" :id 1 :name "card ancient" :last_viewed_at forever-ago}
-       {:model "card" :id 2 :name "card recent"  :last_viewed_at right-now}
-       {:model "card" :id 3 :name "card old"     :last_viewed_at long-ago}]
-      (is (= [["card" 2 "card recent"]
-              ["card" 3 "card old"]
-              ["card" 1 "card ancient"]]
-             (search :recency "card"))))))
+       {:model "card" :id 2 :name "card recent" :last_viewed_at right-now}
+       {:model "card" :id 3 :name "card old" :last_viewed_at long-ago}]
+      (testing "More recently viewed results are preferred"
+        (is (= [["card" 2 "card recent"]
+                ["card" 3 "card old"]
+                ["card" 1 "card ancient"]]
+               (search :recency "card")))))))
 
 (deftest view-count-test
   ;; search.scoring/view-count-percentiles is memoized so need to redef
@@ -136,18 +182,19 @@
 ;; These require some related appdb content
 
 (deftest ^:parallel bookmark-test
-  (testing "bookmarked items are ranker higher"
-    (with-index-contents
-      [{:model "card" :id 1 :name "card normal"}
-       {:model "card" :id 2 :name "card loved"}]
-      (mt/with-temp [:model/User         _ {:id user-id}
-                     :model/CardBookmark _ {:card_id 2 :user_id user-id}]
-        (is (= [["card" 2 "card loved"]
-                ["card" 1 "card normal"]]
-               (search :bookmarked "card")))))))
+  (let [user-id (mt/user->id :crowberto)]
+    (testing "bookmarked items are ranker higher"
+      (with-index-contents
+        [{:model "card" :id 1 :name "card normal"}
+         {:model "card" :id 2 :name "card loved"}]
+        (mt/with-temp [:model/CardBookmark _ {:card_id 2 :user_id user-id}]
+          (is (= [["card" 2 "card loved"]
+                  ["card" 1 "card normal"]]
+                 (search :bookmarked "card" {:current-user-id user-id}))))))))
 
 (deftest ^:parallel user-recency-test
-  (let [right-now   (Instant/now)
+  (let [user-id     (mt/user->id :crowberto)
+        right-now   (Instant/now)
         long-ago    (.minus right-now 10 ChronoUnit/DAYS)
         forever-ago (.minus right-now 30 ChronoUnit/DAYS)
         recent-view (fn [model-id timestamp]
@@ -155,17 +202,19 @@
                        :model_id  model-id
                        :user_id   user-id
                        :timestamp timestamp})]
-    (mt/with-temp [:model/User        _ {:id user-id}
-                   :model/RecentViews _ (recent-view 1 forever-ago)
-                   :model/RecentViews _ (recent-view 2 right-now)
-                   :model/RecentViews _ (recent-view 2 forever-ago)
-                   :model/RecentViews _ (recent-view 3 forever-ago)
-                   :model/RecentViews _ (recent-view 3 long-ago)]
-      (with-index-contents
-        [{:model "dataset" :id 1 :name "card ancient"}
-         {:model "metric"  :id 2 :name "card recent"}
-         {:model "card"    :id 3 :name "card old"}]
-        (is (= [["metric"  2 "card recent"]
-                ["card"    3 "card old"]
-                ["dataset" 1 "card ancient"]]
-               (search :user-recency "card")))))))
+    (with-index-contents
+      [{:model "card"    :id 1 :name "card ancient"}
+       {:model "metric"  :id 2 :name "card recent"}
+       {:model "dataset" :id 3 :name "card unseen"}
+       {:model "dataset" :id 4 :name "card old"}]
+      (mt/with-temp [:model/RecentViews _ (recent-view 1 forever-ago)
+                     :model/RecentViews _ (recent-view 2 right-now)
+                     :model/RecentViews _ (recent-view 2 forever-ago)
+                     :model/RecentViews _ (recent-view 4 forever-ago)
+                     :model/RecentViews _ (recent-view 4 long-ago)]
+        (testing "We prefer results more recently viewed by the current user"
+          (is (= [["metric"  2 "card recent"]
+                  ["dataset" 4 "card old"]
+                  ["card"    1 "card ancient"]
+                  ["dataset" 3 "card unseen"]]
+                 (search :user-recency "card" {:current-user-id user-id}))))))))

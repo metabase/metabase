@@ -24,11 +24,12 @@
    [:inline 1]
    [:/
     [:coalesce column [:inline 0]]
-    (if (number? ceiling)
-      (if (zero? ceiling)
-        [:inline 1.0]
-        [:inline (double ceiling)])
-      [:cast ceiling :float])]])
+    ;; protect against div / 0
+    [:greatest
+     [:inline 1]
+     (if (number? ceiling)
+       [:inline (double ceiling)]
+       [:cast ceiling :float])]]])
 
 (defn atan-size
   "Prefer items whose value is larger, with diminishing gains."
