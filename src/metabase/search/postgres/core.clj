@@ -84,7 +84,7 @@
                                {:score        score
                                 :name         k
                                 :weight       weight
-                                :contribution (* weight (or score 1))}))
+                                :contribution (* weight score)}))
                            (keys (search.scoring/scorers nil))))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
