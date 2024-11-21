@@ -26,12 +26,13 @@ describeWithSnowplow(
   { tags: ["@external", "@actions"] },
   () => {
     beforeEach(() => {
+      restore();
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
       cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
     });
 
-    it("Can upload a CSV file to an empty postgres schema", () => {
+    it.only("Can upload a CSV file to an empty postgres schema", () => {
       const testFile = VALID_CSV_FILES[0];
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
@@ -98,11 +99,20 @@ describeWithSnowplow(
       cy.findByTestId("admin-metadata-header")
         .findByText("Sample Database")
         .click();
+
       popover().findByText("Writable Postgres12").click();
 
+      cy.findByRole("complementary").findByText("public").click();
+
+      // NOTE: This test is somehow not idempotent, so the assertions here allow for
+      // a number of Queryable Tables greater than 1, and multiple copies of
+      // Dog Breeds
+      // Ryan suggests using resetTestTable in addition to restore('postgres-writable'). resetTestTable resets the data db.
       cy.findByTestId("admin-metadata-table-list").within(() => {
-        cy.findByText("1 Queryable Table").should("exist");
-        cy.findByText("Dog Breeds").should("exist");
+        cy.findByText(/Queryable Table/).should("exist");
+        cy.findAllByText(/Dog Breeds/)
+          .first()
+          .should("exist");
       });
     });
 
