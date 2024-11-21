@@ -42,18 +42,34 @@ const ViewFooterControl = ({
   );
 
   useEffect(() => {
+    // switch from editor to view
+    if (!isNotebook && value === "editor") {
+      setValue("visualization");
+    }
+  }, [isNative, isNotebook, value]);
+
+  useEffect(() => {
+    // if another visualization type is selected but the value "table" is
+    // selected we need to switch to "visualization"
+    if (!isShowingRawTable && value === "table") {
+      setValue("visualization");
+    }
+  }, [isShowingRawTable, value]);
+
+  useEffect(() => {
     // handle "convert to native question" case when segment control is rendered
     // but we do not show "editor" value for it
     if (isNative && value === "editor") {
       setValue("visualization");
     }
+  }, [isNative, value]);
 
-    // if another visualization type is selected but the value "table" is
-    // selected we need to switch to "visualization"
-    if (value === "table" && !isShowingRawTable) {
-      setValue("visualization");
+  useEffect(() => {
+    // switch back to editor
+    if (isNotebook && value !== "editor") {
+      setValue("editor");
     }
-  }, [isNative, isShowingRawTable, value]);
+  }, [isNotebook, value]);
 
   const handleValueChange = (value: "editor" | "table" | "visualization") => {
     if (value === "editor") {
