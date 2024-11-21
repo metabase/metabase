@@ -6,6 +6,7 @@ import type { Card, CardId } from "metabase-types/api";
 
 export interface SdkQuestionState {
   question?: Question;
+  originalQuestion?: Question;
   queryResults?: any[];
 }
 

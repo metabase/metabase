@@ -8,8 +8,10 @@ import {
   POPOVER_ELEMENT,
   assertQueryBuilderRowCount,
   cartesianChartCircle,
+  createDashboard,
   createNativeQuestion,
   createQuestion,
+  editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
@@ -28,10 +30,13 @@ import {
   resetTestTable,
   restore,
   resyncDatabase,
+  saveDashboard,
   selectFilterOperator,
+  setFilter,
   sidebar,
   startNewQuestion,
   tableHeaderClick,
+  visitDashboard,
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
@@ -1547,6 +1552,62 @@ describe("issue 49321", () => {
       });
     });
   });
+});
+
+describe("issue 49642", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  const QUESTION = {
+    name: "Issue 49642",
+    query: {
+      "source-table": PEOPLE_ID, // people has >1000 rows
+    },
+  };
+
+  it("should allow searching for more values when the filter contains more than 1000 values (metabase#49642)", () => {
+    createDashboard().then(({ body: dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+    editDashboard();
+
+    createQuestion(QUESTION);
+    addQuestion(QUESTION.name);
+
+    setFilter("Text or Category", "Is");
+    mapFilterToQuestion("Name");
+    sidebar().findByText("A single value").click();
+
+    saveDashboard();
+
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Zackery Bailey").should("not.exist");
+      cy.findByPlaceholderText("Search by Name").type("Zackery");
+      cy.findByText("Zackery Bailey").should("be.visible");
+      cy.findByText("Zackery Kuhn").should("be.visible").click();
+
+      cy.findByPlaceholderText("Search by Name").should(
+        "have.value",
+        "Zackery Kuhn",
+      );
+
+      cy.findByText("Zackery Bailey").should("be.visible");
+      cy.findByText("Zackery Kuhn").should("be.visible");
+    });
+  });
+
+  function addQuestion(name) {
+    cy.findByTestId("dashboard-header").icon("add").click();
+    cy.findByTestId("add-card-sidebar").findByText(name).click();
+  }
+
+  const mapFilterToQuestion = (column = "Category") => {
+    cy.findByText("Select…").click();
+    popover().within(() => cy.findByText(column).click());
+  };
 });
 
 describe("issue 44665", () => {
