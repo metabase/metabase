@@ -55,11 +55,10 @@
 
 (defn do-with-server
   [route+handlers f]
-  (let [handler        (->> route+handlers
-                            (mapv :route)
-                            (cons (compojure.route/not-found {:status-code 404 :body "Not found."}))
-                            reverse ;; not found is last
-                            (apply compojure/routes))
+  (let [handler        (as-> route+handlers routes+handlers
+                            (mapv :route routes+handlers)
+                            (conj routes+handlers (compojure.route/not-found {:status-code 404 :body "Not found."}))
+                            (apply compojure/routes routes+handlers))
         ^Server server (jetty/run-jetty (apply-middleware handler middlewares) {:port 0 :join? false})]
     (try
       (f (str "http://localhost:" (.. server getURI getPort)))
