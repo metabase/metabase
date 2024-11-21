@@ -52,8 +52,6 @@ describe("scenarios > question > nested", () => {
       name: "GH_12568: Simple",
       query: {
         "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
       },
       display: "line",
     };
@@ -66,25 +64,25 @@ describe("scenarios > question > nested", () => {
       { loadBaseQuestionMetadata: true },
     );
 
-    tableHeaderClick("Count");
+    tableHeaderClick("Total");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count by Count: Auto binned");
-    chartPathWithFillColor("#A989C5").should("have.length.of.at.least", 8);
+    cy.contains("Count by Total: Auto binned");
+    chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 8);
 
     // Go back to the nested question and make sure Sum over time works
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested GUI").click();
 
-    tableHeaderClick("Count");
+    tableHeaderClick("Total");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sum of Count");
+    cy.contains("Sum of Total by Created At: Month");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("137");
+    cy.findByText("52.76");
 
     // Make sure it works for a SQL question
     const sqlQuestionDetails = {

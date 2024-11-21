@@ -349,7 +349,7 @@
           rows    (mt/rows results)]
       (is (= ["Product → Category"
               "User → Source"
-              "Created At"
+              "Created At: Year"
               "pivot-grouping"
               "Count"]
              (map :display_name (mt/cols results))))
@@ -605,7 +605,7 @@
                       :filter      [:between $created_at "2019-01-01" "2021-01-01"]})]
         (mt/with-native-query-testing-context query
           (let [results (qp.pivot/run-pivot-query query)]
-            (is (= ["Rating" "Created At" "pivot-grouping" "Count"]
+            (is (= ["Rating" "Created At: Year" "pivot-grouping" "Count"]
                    (map :display_name (mt/cols results))))
             (is (= order-by-aggregation-expected-results
                    (mt/rows results)))))))))

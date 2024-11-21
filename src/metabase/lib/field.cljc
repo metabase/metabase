@@ -96,6 +96,18 @@
                     {::original-effective-type original-effective-type})
                   (when-let [original-temporal-unit (::original-temporal-unit opts)]
                     {::original-temporal-unit original-temporal-unit})
+                  ;; `:inherited-temporal-unit` is transfered from `:temoral-unit` ref option only when
+                  ;; the [[lib.metadata.calculation/*propagate-inherited-temoral-unit*]] is thruthy, ie. bound. Intent
+                  ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
+                  ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
+                  ;; contained `:temporal-unit` contains no `:inherent-temporal-unit`. If the column like this was used
+                  ;; to generate ref for eg. order by it would contain the `:inherent-temporal-unit`, while
+                  ;; the original column (eg. in breakout) would not.
+                  (let [inherited-temporal-unit-keys (cond-> (list :inherited-temporal-unit)
+                                                       lib.metadata.calculation/*propagate-inherited-temoral-unit*
+                                                       (conj :temporal-unit))]
+                    (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
+                      {:inherited-temporal-unit inherited-temporal-unit}))
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -246,10 +258,7 @@
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)
-        temporal-format    (fn [display-name]
-                             (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                                        (str/replace \- \space)
-                                                                        u/capitalize-en)))
+        temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
         bin-format         (fn [display-name]
                              (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
@@ -356,8 +365,14 @@
   [_query _stage-number field-metadata]
   (lib.temporal-bucket/available-temporal-buckets-for-type
    ((some-fn :effective-type :base-type) field-metadata)
-   (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
-       :month)
+   ;; `:ineherited-temporal-unit` being set means field was bucketed on former stage. For this case, make the default nil
+   ;; for next bucketing attempt (of already bucketed) field eg. through BreakoutPopover on FE, by setting `:inherited`
+   ;; default unit.
+   (if (or (nil? (:inherited-temporal-unit field-metadata))
+           (= :default (:inherited-temporal-unit field-metadata)))
+     (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
+         :month)
+     :inherited)
    (::temporal-unit field-metadata)))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
@@ -438,6 +453,8 @@
                                    {::original-effective-type original-effective-type})
                                  (when-let [original-temporal-unit (::original-temporal-unit metadata)]
                                    {::original-temporal-unit original-temporal-unit})
+                                 (when-let [inherited-temporal-unit (:inherited-temporal-unit metadata)]
+                                   {:inherited-temporal-unit inherited-temporal-unit})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (when-not inherited-column?

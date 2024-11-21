@@ -133,7 +133,13 @@
             (is (= expected-units
                    (into #{} (map :unit) options)))
             (is (= (assoc-in expected-defaults [0 :unit] unit)
-                   (filter :default options)))))))))
+                   (filter :default options)))))))
+    (testing "inherited-temporal-unit other than default disables a default bucket"
+      (is (not-any? :default (lib.temporal-bucket/available-temporal-buckets-method
+                              nil -1 (assoc column :inherited-temporal-unit :day)))))
+    (testing "default inherited-temporal-unit does not disable a default bucket"
+      (is (some :default (lib.temporal-bucket/available-temporal-buckets-method
+                          nil -1 (assoc column :inherited-temporal-unit :default)))))))
 
 (deftest ^:parallel temporal-bucketing-options-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))

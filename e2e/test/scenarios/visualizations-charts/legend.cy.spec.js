@@ -187,7 +187,7 @@ describe("scenarios > visualizations > legend", () => {
       chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
       echartsContainer().within(() => {
         cy.findByText("Count").should("exist"); // y-axis label
-        cy.findByText("Created At").should("exist"); // x-axis label
+        cy.findByText("Created At: Year").should("exist"); // x-axis label
 
         // some y-axis values
         cy.findByText("1,800").should("exist");
@@ -235,7 +235,7 @@ describe("scenarios > visualizations > legend", () => {
 
       echartsContainer().within(() => {
         cy.findByText("Count").should("exist"); // y-axis label
-        cy.findByText("Created At").should("exist"); // x-axis label
+        cy.findByText("Created At: Year").should("exist"); // x-axis label
 
         // Ensure y-axis adjusts to visible series range
         cy.findByText("1,800").should("not.exist");
@@ -251,7 +251,7 @@ describe("scenarios > visualizations > legend", () => {
 
       echartsContainer().within(() => {
         cy.findByText("Count").should("exist"); // y-axis label
-        cy.findByText("Created At").should("exist"); // x-axis label
+        cy.findByText("Created At: Year").should("exist"); // x-axis label
         cy.findByText("1,800").should("exist");
         cy.findByText("1,500").should("exist");
         cy.findByText("1,200").should("exist");
@@ -413,7 +413,7 @@ describe("scenarios > visualizations > legend", () => {
     chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
-      cy.findByText("Created At").should("exist"); // x-axis label
+      cy.findByText("Created At: Year").should("exist"); // x-axis label
 
       // some y-axis values
       cy.findByText("1,800").should("exist");
@@ -449,7 +449,7 @@ describe("scenarios > visualizations > legend", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
-      cy.findByText("Created At").should("exist"); // x-axis label
+      cy.findByText("Created At: Year").should("exist"); // x-axis label
 
       // some y-axis values
       cy.findByText("1,800").should("exist");
@@ -493,7 +493,7 @@ describe("scenarios > visualizations > legend", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
-      cy.findByText("Created At").should("exist"); // x-axis label
+      cy.findByText("Created At: Year").should("exist"); // x-axis label
 
       // Ensure y-axis adjusts to visible series range
       cy.findByText("1,800").should("not.exist");
@@ -509,7 +509,7 @@ describe("scenarios > visualizations > legend", () => {
 
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
-      cy.findByText("Created At").should("exist"); // x-axis label
+      cy.findByText("Created At: Year").should("exist"); // x-axis label
       cy.findByText("1,800").should("exist");
       cy.findByText("1,500").should("exist");
       cy.findByText("1,200").should("exist");
