@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import AceEditor from "react-ace";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
@@ -9,12 +8,12 @@ import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
-import S from "metabase/query_builder/components/NativeQueryEditor/AceEditor.global.css";
+import { Editor } from "metabase/query_builder/components/NativeQueryEditor/Editor";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { createDatasetQuery } from "./utils";
+import { createDatasetQuery, createNativeQuery } from "./utils";
 
 const TITLE = {
   sql: t`SQL for this question`,
@@ -44,6 +43,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const showEmptySidebar = !canRun;
 
   const formattedQuery = formatNativeQuery(data?.query, engine);
+  const query = createNativeQuery(question, formattedQuery);
 
   const handleConvertClick = useCallback(() => {
     if (!formattedQuery) {
@@ -96,22 +96,8 @@ export const NotebookNativePreview = (): JSX.Element => {
           </Flex>
         )}
         {showQuery && (
-          <div style={{ height: "100%", flex: 1 }} className={S.editor}>
-            <AceEditor
-              value={formattedQuery}
-              mode={engineType}
-              readOnly
-              height="100%"
-              highlightActiveLine={false}
-              navigateToFileEnd={false}
-              width="100%"
-              fontSize={12}
-              style={{ backgroundColor: color("bg-light") }}
-              showPrintMargin={false}
-              setOptions={{
-                highlightGutterLine: false,
-              }}
-            />
+          <div style={{ height: "100%", flex: 1 }}>
+            <Editor query={query} readOnly />
           </div>
         )}
       </Box>
