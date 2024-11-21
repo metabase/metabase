@@ -11,6 +11,7 @@ export type ReportableEntityName =
   | "question"
   | "model"
   | "dashboard"
+  | "metric"
   | "collection";
 
 export type ErrorPayload = Partial<{
