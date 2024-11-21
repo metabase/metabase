@@ -4,6 +4,7 @@ import { EditorViewControl } from "embedding-sdk/components/private/EditorViewCo
 import {
   BackButton,
   Breakout,
+  BreakoutDropdown,
   ChartTypeSelector,
   Editor,
   EditorButton,
@@ -113,6 +114,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
   Breakout: typeof Breakout;
+  BreakoutDropdown: typeof BreakoutDropdown;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -137,6 +139,7 @@ InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 
 export { InteractiveQuestion };

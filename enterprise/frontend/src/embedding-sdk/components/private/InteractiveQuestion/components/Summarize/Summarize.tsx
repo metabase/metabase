@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { PropsWithChildren } from "react";
+import { t } from "ttag";
 
 import { Group, Popover } from "metabase/ui";
 
