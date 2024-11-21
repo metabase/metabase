@@ -21,7 +21,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { PublicOrEmbeddedDashboardPage } from "./PublicOrEmbeddedDashboardPage";
+import { PublicOrEmbeddedDashboardPage } from "../PublicOrEmbeddedDashboardPage";
 
 const MOCK_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjExfSwicGFyYW1zIjp7fSwiaWF0IjoxNzEyNjg0NTA1LCJfZW1iZWRkaW5nX3BhcmFtcyI6e319.WbZTB-cQYh4gjh61ZzoLOcFbJ6j6RlOY3GS4fwzv3W4";
