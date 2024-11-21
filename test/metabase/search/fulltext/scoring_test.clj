@@ -111,7 +111,7 @@
               ["card" 6 "ordering"]
               ;; If the match is only in a secondary field, it is less preferred.
               ["card" 3 "classified"]]
-             (search* :model "order"))))))
+             (search :text "order"))))))
 
 (deftest ^:parallel model-test
   (with-index-contents
@@ -178,6 +178,8 @@
                                    (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term]))
                   first-result-id (-> (search* :view-count search-term) first)]
               (is (some? first-result-id))
+              ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
+              ;; but we can solve this later if it actually becomes a flake
               (is (not= outlier-card-id first-result-id)))))))))
 
 (deftest ^:parallel dashboard-count-test
@@ -191,9 +193,9 @@
 
   (testing "it has a ceiling, more than the ceiling is considered to be equal"
     (with-index-contents
-      [{:model "card" :id 1 :name "card" :dashboardcard_count 22}
+      [{:model "card" :id 1 :name "card popular" :dashboardcard_count 22}
        {:model "card" :id 2 :name "card" :dashboardcard_count 11}]
-      (is (= [["card" 1 "card"]
+      (is (= [["card" 1 "card popular"]
               ["card" 2 "card"]]
              (search* :dashboard "card"))))))
 

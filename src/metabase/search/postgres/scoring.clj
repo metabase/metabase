@@ -121,7 +121,9 @@
   (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
              [(keyword model) vcp])))
 
-(def ^:private view-count-percentiles
+(def ^{:private true
+       :arglists '([p-value])}
+  view-count-percentiles
   (if config/is-prod?
     (memoize/ttl view-count-percentiles*
                  :ttl/threshold (u/hours->ms 1))
