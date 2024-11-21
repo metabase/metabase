@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Box } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import S from "./ClauseStep.module.css";
 
@@ -11,13 +11,13 @@ type ClauseStepProps = {
 
 export function ClauseStep({ label, children }: ClauseStepProps) {
   return (
-    <Box className={S.root} px="md" py="lg">
+    <Flex className={S.root} p="md" align="center">
       {label && (
         <Box className={S.label} fz="xs">
           {label}
         </Box>
       )}
       {children}
-    </Box>
+    </Flex>
   );
 }

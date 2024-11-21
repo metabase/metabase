@@ -3,6 +3,7 @@ import type * as Lib from "metabase-lib";
 
 import { DataStep } from "./DataStep";
 import { FilterStep } from "./FilterStep";
+import { PreviewStep } from "./PreviewStep";
 import S from "./SegmentEditor.module.css";
 
 const STAGE_INDEX = -1;
@@ -23,6 +24,7 @@ export function SegmentEditor({ query, isNew, onChange }: SegmentEditorProps) {
         onChange={onChange}
       />
       <FilterStep query={query} stageIndex={STAGE_INDEX} onChange={onChange} />
+      <PreviewStep query={query} />
     </Flex>
   );
 }
