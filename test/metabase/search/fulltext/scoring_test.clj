@@ -157,7 +157,7 @@
       (is (= [["dashboard" 2 "view dashboard"]
               ["card"      1 "view card"]
               ["dataset"   3 "view dataset"]]
-             (search :view-count "view"))))))
+             (search* :view-count "view"))))))
 
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
