@@ -137,6 +137,13 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   const {
     action = entityDefinition.actionTypes.FETCH,
     transformResponse = defaultTransformResponse,
+    /**
+     * Hack: this hook appears to be acquired conditionally, which in
+     * normal circumstances would violate the rules of React hooks.
+     * As long as fetchType never changes during component's lifecycle
+     * and getUseGetQuery is a pure function, we have a guarantee that
+     * the same hook will be used and rules of hooks are not violated.
+     */
     useGetQuery,
   } = entityDefinition.rtk.getUseGetQuery(fetchType);
 
