@@ -259,6 +259,8 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("edit-bar")
         .findByText("You're editing this dashboard.")
         .should("exist");
+    });
+
     it("can find dashboard questions in the search", () => {
       H.createQuestion({
         name: "Total Orders Dashboard Question",
