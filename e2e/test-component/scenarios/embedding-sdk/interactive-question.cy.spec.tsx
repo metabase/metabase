@@ -148,8 +148,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  // InteractiveQuestion.FilterPicker is not exposed in SDK 1.51.4
-  it.skip("can add a filter via the FilterPicker component", () => {
+  it("can add a filter via the FilterPicker component", () => {
     cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
@@ -205,8 +204,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().contains("User ID is 12");
   });
 
-  // onSave, onBeforeSave are not yet released
-  it.skip("can create questions via the SaveQuestionForm component", () => {
+  it("can create questions via the SaveQuestionForm component", () => {
     const TestComponent = ({
       questionId,
       onBeforeSave,

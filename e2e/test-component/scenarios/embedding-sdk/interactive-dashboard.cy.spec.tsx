@@ -48,8 +48,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
     );
   });
 
-  // TODO: sdk with this feature is not yet released
-  it.skip("should be able to display custom question layout when clicking on dashboard cards", () => {
+  it("should be able to display custom question layout when clicking on dashboard cards", () => {
     cy.get<string>("@dashboardId").then(dashboardId => {
       mountSdkContent(
         <InteractiveDashboard
