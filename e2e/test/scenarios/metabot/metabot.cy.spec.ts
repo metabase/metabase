@@ -43,7 +43,7 @@ describe("Metabot UI", () => {
   describe.skip("EE", () => {
     beforeEach(() => {
       onlyOnEE();
-      setTokenFeatures("none");
+      setTokenFeatures("all");
       cy.visit("/");
       cy.wait("@sessionProperties");
     });
