@@ -120,27 +120,19 @@ const AddFilterButton = forwardRef(function AddFilterButton(
   { compact, disabled, onClick }: AddFilterButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  return compact ? (
+  return (
     <Button
       ref={ref}
-      compact
       c="text-light"
+      p={compact ? undefined : 0}
+      variant={compact ? "default" : "subtle"}
+      compact={compact}
       disabled={disabled}
       rightIcon={<Icon name="add" />}
-      aria-label={t`Add filters`}
-      onClick={onClick}
-    />
-  ) : (
-    <Button
-      ref={ref}
-      variant="subtle"
-      p={0}
-      c="text-light"
-      disabled={disabled}
-      rightIcon={<Icon name="add" />}
+      aria-label={compact ? t`Add filters` : undefined}
       onClick={onClick}
     >
-      {t`Add filters to narrow your answer`}
+      {!compact && t`Add filters to narrow your answer`}
     </Button>
   );
 });
