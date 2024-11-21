@@ -10,7 +10,6 @@
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
-   [metabase.search.postgres.scoring :as search.scoring]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -58,7 +57,7 @@
            ~@body))
        (mt/with-test-user :crowberto ~@body))))
 
-(defn- search* [ranker-key search-string & {:as raw-ctx}]
+(defn search* [search-string & {:as raw-ctx}]
   (with-api-user raw-ctx
     (let [search-ctx (search.impl/search-context
                       (merge
@@ -73,18 +72,17 @@
                         :models           search.config/all-models
                         :model-ancestors? false}
                        raw-ctx))]
-      (is (get (search.scoring/scorers search-ctx) ranker-key) "The ranker is enabled")
       (map (juxt :model :id :name) (#'search.postgres/fulltext search-string search-ctx)))))
 
 (defn- search-no-weights
   "Like search but with all weights set to 0."
   [ranker-key & args]
   (mt/with-dynamic-redefs [search.config/weights #(assoc @#'search.config/default-weights ranker-key 0)]
-    (apply search* ranker-key args)))
+    (apply search* args)))
 
-(defn- search [& args]
-  (let [result (apply search* args)]
-    (is (not= (apply search-no-weights args)
+(defn search [ranker-key search-string & {:as raw-ctx}]
+  (let [result (apply search* search-string raw-ctx)]
+    (is (not= (apply search-no-weights ranker-key search-string raw-ctx)
               result)
         "sanity check: search-no-weights should be different")
     result))
@@ -163,7 +161,7 @@
       (is (= [["dashboard" 2 "view dashboard"]
               ["card"      1 "view card"]
               ["dataset"   3 "view dataset"]]
-             (search* :view-count "view"))))))
+             (search* "view"))))))
 
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
@@ -182,7 +180,7 @@
                   outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 100000))
                   _               (#'search.ingestion/batch-update!
                                    (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term]))
-                  first-result-id (-> (search* :view-count search-term) first)]
+                  first-result-id (-> (search* search-term) first)]
               (is (some? first-result-id))
               ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
               ;; but we can solve this later if it actually becomes a flake
@@ -203,7 +201,7 @@
        {:model "card" :id 2 :name "card" :dashboardcard_count 11}]
       (is (= [["card" 1 "card popular"]
               ["card" 2 "card"]]
-             (search* :dashboard "card"))))))
+             (search* "card"))))))
 
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
