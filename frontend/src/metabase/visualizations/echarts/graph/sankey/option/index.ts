@@ -43,6 +43,11 @@ export const getSankeyChartOption = (
     family: renderingContext.fontFamily,
   };
 
+  const valueFormatter =
+    layout.labelValueFormatting === "compact"
+      ? formatters.valueCompact
+      : formatters.value;
+
   const series: SankeySeriesOption = {
     animation: false,
     type: "sankey",
@@ -54,7 +59,7 @@ export const getSankeyChartOption = (
     edgeLabel: {
       show: settings["sankey.show_edge_labels"],
       formatter: params =>
-        typeof params.value === "number" ? formatters.value(params.value) : "",
+        typeof params.value === "number" ? valueFormatter(params.value) : "",
       color: renderingContext.getColor("text-dark"),
       fontSize: SANKEY_CHART_STYLE.edgeLabels.size,
       textBorderWidth: SANKEY_CHART_STYLE.edgeLabels.textBorderWidth,
@@ -67,6 +72,7 @@ export const getSankeyChartOption = (
     draggable: false,
     nodes,
     links,
+    nodeWidth: SANKEY_CHART_STYLE.nodeWidth,
     lineStyle: {
       color: edgeColor,
       opacity: 0.2,

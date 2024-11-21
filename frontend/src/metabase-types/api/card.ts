@@ -274,6 +274,7 @@ export type VisualizationSettings = {
   "sankey.value"?: string;
   "sankey.node_align"?: "left" | "right" | "justify";
   "sankey.show_edge_labels"?: boolean;
+  "sankey.label_value_formatting"?: "auto" | "full" | "compact";
 
   [key: string]: any;
 } & EmbedVisualizationSettings;

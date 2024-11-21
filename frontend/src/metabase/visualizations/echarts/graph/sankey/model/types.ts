@@ -39,6 +39,7 @@ export type Formatter = (value: RowValue) => string;
 export interface SankeyFormatters {
   node: Formatter;
   value: Formatter;
+  valueCompact: Formatter;
 }
 
 export interface SankeyChartModel {

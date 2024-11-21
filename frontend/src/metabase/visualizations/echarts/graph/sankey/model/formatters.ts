@@ -20,6 +20,18 @@ export const getSankeyFormatters = (
         formatValue(value, settings.column?.(columns.value.column) ?? {}),
       );
     }),
+    valueCompact: cachedFormatter((value: RowValue) => {
+      if (typeof value !== "number") {
+        return "";
+      }
+
+      return String(
+        formatValue(value, {
+          ...(settings.column?.(columns.value.column) ?? {}),
+          compact: true,
+        }),
+      );
+    }),
     node: cachedFormatter((value: RowValue) => {
       return String(
         formatValue(value, settings.column?.(columns.source.column) ?? {}),

@@ -8,11 +8,14 @@ import type { SankeyChartModel, SankeyData } from "../model/types";
 
 import type { SankeyChartLayout } from "./types";
 
+const getNodeLevelsCount = (sankeyData: SankeyData) =>
+  Math.max(...sankeyData.nodes.map(node => node.level));
+
 const getMostRightNodes = (
   sankeyData: SankeyData,
+  maxLevel: number,
   settings: ComputedVisualizationSettings,
 ) => {
-  const maxLevel = Math.max(...sankeyData.nodes.map(node => node.level));
   const shouldIncludeAllNodesWithoutOutputs =
     settings["sankey.node_align"] !== "left";
 
@@ -23,6 +26,41 @@ const getMostRightNodes = (
         node.level === maxLevel ||
         (shouldIncludeAllNodesWithoutOutputs && !node.hasOutputs),
     );
+};
+
+const getLabelValueFormatting = (
+  chartModel: SankeyChartModel,
+  settings: ComputedVisualizationSettings,
+  boundaryWidth: number,
+  nodeLevelsCount: number,
+  renderingContext: RenderingContext,
+): SankeyChartLayout["labelValueFormatting"] => {
+  if (!settings["sankey.show_edge_labels"] || nodeLevelsCount === 0) {
+    return null;
+  }
+
+  if (
+    settings["sankey.label_value_formatting"] === "compact" ||
+    settings["sankey.label_value_formatting"] === "full"
+  ) {
+    return settings["sankey.label_value_formatting"];
+  }
+
+  const maxEdgeLabelWidth = Math.max(
+    ...chartModel.data.links.map(edge => {
+      const formattedValue = chartModel.formatters.value(edge.value);
+      return renderingContext.measureText(formattedValue, {
+        ...SANKEY_CHART_STYLE.edgeLabels,
+        family: renderingContext.fontFamily,
+      });
+    }),
+  );
+
+  const widthPerLevel =
+    boundaryWidth / nodeLevelsCount -
+    nodeLevelsCount * SANKEY_CHART_STYLE.nodeWidth;
+
+  return maxEdgeLabelWidth >= widthPerLevel ? "compact" : "full";
 };
 
 const MAX_RIGHT_LABEL_LENGTH_PERCENT = 0.25;
@@ -50,7 +88,13 @@ export const getSankeyLayout = (
     left: horizontalPadding,
   };
 
-  const mostRightNodes = getMostRightNodes(chartModel.data, settings);
+  const nodeLevelsCount = getNodeLevelsCount(chartModel.data);
+
+  const mostRightNodes = getMostRightNodes(
+    chartModel.data,
+    nodeLevelsCount,
+    settings,
+  );
   const maxRightLabelWidth = Math.max(
     ...mostRightNodes
       .map(({ node }) => chartModel.formatters.node(node.value))
@@ -69,9 +113,19 @@ export const getSankeyLayout = (
       ? new Set(mostRightNodes.map(({ index }) => index))
       : null;
 
+  const boundaryWidth = width - padding.left - padding.right;
+  const labelValueFormatting = getLabelValueFormatting(
+    chartModel,
+    settings,
+    boundaryWidth,
+    nodeLevelsCount,
+    renderingContext,
+  );
+
   return {
     padding,
     truncateLabelWidth: maxAllowedRightLabel,
     nodeIndicesWithTruncatedLabels,
+    labelValueFormatting,
   };
 };

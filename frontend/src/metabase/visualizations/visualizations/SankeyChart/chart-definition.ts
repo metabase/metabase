@@ -16,7 +16,7 @@ import type {
   ComputedVisualizationSettings,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, Series } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
@@ -68,6 +68,25 @@ export const SETTINGS_DEFINITIONS = {
     widget: "toggle",
     default: false,
     inline: true,
+  },
+  "sankey.label_value_formatting": {
+    section: t`Display`,
+    title: t`Auto formatting`,
+    widget: "segmentedControl",
+    props: {
+      options: [
+        { name: t`Auto`, value: "auto" },
+        { name: t`Compact`, value: "compact" },
+        { name: t`Full`, value: "full" },
+      ],
+    },
+    getHidden: (
+      _series: Series,
+      vizSettings: ComputedVisualizationSettings,
+    ) => {
+      return !vizSettings["sankey.show_edge_labels"];
+    },
+    default: "auto",
   },
   "sankey.edge_color": {
     section: t`Display`,
