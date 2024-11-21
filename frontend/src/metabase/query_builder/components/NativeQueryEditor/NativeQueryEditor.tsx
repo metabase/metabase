@@ -18,7 +18,6 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
-  Card,
   CardId,
   Collection,
   DatabaseId,
@@ -46,12 +45,6 @@ import {
   getEditorLineHeight,
   getMaxAutoSizeLines,
 } from "./utils";
-
-type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
-  collection_name: string;
-};
-
-type AutocompleteItem = [string, string];
 
 type OwnProps = typeof NativeQueryEditor.defaultProps & {
   question: Question;
@@ -85,8 +78,6 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   editorContext?: "question";
 
   handleResize: () => void;
-  autocompleteResultsFn: (prefix: string) => Promise<AutocompleteItem[]>;
-  cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
@@ -367,8 +358,6 @@ export class NativeQueryEditor extends Component<
       sidebarFeatures,
       canChangeDatabase,
       setParameterValueToDefault,
-      autocompleteResultsFn,
-      cardAutocompleteResultsFn,
     } = this.props;
 
     const isPromptInputVisible = this.isPromptInputVisible();
@@ -452,8 +441,6 @@ export class NativeQueryEditor extends Component<
             <Editor
               ref={this.editor}
               query={query}
-              autocompleteResultsFn={autocompleteResultsFn}
-              cardAutocompleteResultsFn={cardAutocompleteResultsFn}
               snippets={snippets}
               snippetCollections={snippetCollections}
               readOnly={readOnly}

@@ -23,16 +23,25 @@ import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
 import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, CardId } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
+import type { Dispatch, State } from "metabase-types/store";
 
 import S from "./AceEditor.global.css";
 import type { EditorProps } from "./Editor";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
-import type { AutocompleteItem } from "./types";
+import {
+  getAutocompleteResultsFn,
+  getCardAutocompleteResultsFn,
+} from "./selectors";
+import type { AutocompleteItem, CardCompletionItem } from "./types";
 import { getAutocompleteResultMeta } from "./utils";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
+
+const mapStateToProps = (state: State) => ({
+  autocompleteResultsFn: getAutocompleteResultsFn(state),
+  cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
+});
 
 type AceCompletionsGetter = Ace.Completer["getCompletions"];
 
@@ -47,11 +56,16 @@ type SizeProps = {
   height: number | null;
 };
 
+type StateProps = {
+  autocompleteResultsFn?: (prefix: string) => Promise<AutocompleteItem[]>;
+  cardAutocompleteResultsFn?: (prefix: string) => Promise<CardCompletionItem[]>;
+};
+
 type DispatchProps = {
   fetchQuestion: (cardId: CardId) => Promise<Card>;
 };
 
-type AceEditorProps = EditorProps & SizeProps & DispatchProps;
+type AceEditorProps = EditorProps & SizeProps & StateProps & DispatchProps;
 
 export class AceEditorInner extends Component<AceEditorProps> {
   editor = createRef<HTMLDivElement>();
@@ -495,5 +509,5 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
 
 export const AceEditor = _.compose(
   ExplicitSize(),
-  connect(null, mapDispatchToProps, null, { forwardRef: true }),
+  connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
 )(AceEditorInner);

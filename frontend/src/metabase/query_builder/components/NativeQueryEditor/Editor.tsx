@@ -2,27 +2,19 @@ import { type Component, type LegacyRef, forwardRef } from "react";
 
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
-  Card,
   CardId,
   Collection,
   NativeQuerySnippet,
 } from "metabase-types/api";
 
 import { AceEditor } from "./AceEditor";
-import type { AutocompleteItem, SelectionRange } from "./types";
-
-type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
-  collection_name: string;
-};
+import type { SelectionRange } from "./types";
 
 export type EditorProps = {
   query: NativeQuery;
   onChange?: (queryText: string) => void;
 
   readOnly?: boolean;
-
-  autocompleteResultsFn?: (prefix: string) => Promise<AutocompleteItem[]>;
-  cardAutocompleteResultsFn?: (prefix: string) => Promise<CardCompletionItem[]>;
 
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
