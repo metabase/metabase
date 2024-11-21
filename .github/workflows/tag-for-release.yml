@@ -155,7 +155,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: 17 # 11 throws an error on jar uf
+        java-version: 21
 
     - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
       id: find_release_artifact

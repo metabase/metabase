@@ -7,6 +7,7 @@
    [metabase.search.fulltext :as search.fulltext]
    [metabase.search.impl :as search.impl]
    [metabase.search.postgres.core :as search.postgres]
+   [metabase.search.spec :as search.spec]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -14,7 +15,8 @@
 (comment
   search.api/keep-me
   search.config/keep-me
-  search.impl/keep-me)
+  search.impl/keep-me
+  search.spec/keep-me)
 
 (p/import-vars
  [search.config
@@ -25,7 +27,9 @@
  [search.impl
   search
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
-  search-context])
+  search-context]
+ [search.spec
+  define-spec])
 
 ;; TODO The following need to be cleaned up to use multimethods.
 

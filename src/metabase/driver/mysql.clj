@@ -954,7 +954,8 @@
                :where
                [:and [:raw "c.table_schema not in ('information_schema','performance_schema','sys','mysql')"]
                 [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
-                (when (:db details) [:= :c.table_schema (:db details)])
+                (when-let [db-name ((some-fn :db :dbname) details)]
+                  [:= :c.table_schema db-name])
                 (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
               :dialect (sql.qp/quote-style driver)))
 

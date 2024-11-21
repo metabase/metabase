@@ -1058,18 +1058,13 @@
         (field-values/update-field-values! db))))
   {:status :ok})
 
-;; "Discard saved field values" action in db UI
-(defn- database->field-values-ids [database-or-id]
-  (map :id (mdb.query/query {:select    [[:fv.id :id]]
-                             :from      [[:metabase_fieldvalues :fv]]
-                             :left-join [[:metabase_field :f] [:= :fv.field_id :f.id]
-                                         [:metabase_table :t] [:= :f.table_id :t.id]]
-                             :where     [:= :t.db_id (u/the-id database-or-id)]})))
-
 (defn- delete-all-field-values-for-database! [database-or-id]
-  (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
-    (t2/query-one {:delete-from :metabase_fieldvalues
-                   :where       [:in :id field-values-ids]})))
+  (t2/query-one {:delete-from :metabase_fieldvalues
+                 :where      [:in :field_id
+                              {:select     [:f.id]
+                               :from       [[:metabase_field :f]]
+                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                               :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 (api/defendpoint POST "/:id/discard_values"

@@ -13,7 +13,7 @@ source-hash() {
 }
 
 uberjar-hash() {
-  # java -jar target/uberjar/metabase.jar version | grep -oE 'source_hash [a-f0-9]+' | awk '{ print $2 }'
+  # java --add-opens java.base/java.nio=ALL-UNNAMED -jar target/uberjar/metabase.jar version | grep -oE 'source_hash [a-f0-9]+' | awk '{ print $2 }'
   # pulling the version.properties directly from the jar is much faster
   unzip -c target/uberjar/metabase.jar version.properties | grep "$VERSION_PROPERTY_NAME" | cut -f2 -d=
 }

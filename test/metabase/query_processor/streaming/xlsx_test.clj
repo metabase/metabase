@@ -12,7 +12,9 @@
    [metabase.test :as mt])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)))
+   com.sun.management.ThreadMXBean
+   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)
+   java.lang.management.ManagementFactory))
 
 (set! *warn-on-reflection* true)
 
@@ -390,7 +392,7 @@
   [sheet]
   (mapv (fn [row]
           (mapv spreadsheet/read-cell row))
-        (spreadsheet/into-seq sheet)))
+        (some-> sheet spreadsheet/into-seq)))
 
 (defn parse-xlsx-results
   "Given a byte array representing an XLSX document, parses the query result sheet using the provided `parse-fn`"
@@ -404,20 +406,20 @@
        (parse-fn sheet)))))
 
 (defn- xlsx-export
-  ([ordered-cols viz-settings rows]
-   (xlsx-export ordered-cols viz-settings rows parse-cell-content))
-
-  ([ordered-cols viz-settings rows parse-fn]
-   (with-open [bos (ByteArrayOutputStream.)
-               os  (BufferedOutputStream. bos)]
-     (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
-       (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
-       (doall (map-indexed
-               (fn [i row] (qp.si/write-row! results-writer row i ordered-cols viz-settings))
-               rows))
-       (qp.si/finish! results-writer {:row_count (count rows)}))
-     (let [bytea (.toByteArray bos)]
-       (parse-xlsx-results bytea parse-fn)))))
+  [ordered-cols viz-settings rows & {:keys [parse-fn pivot-export-options]}]
+  (with-open [bos (ByteArrayOutputStream.)
+              os  (BufferedOutputStream. bos)]
+    (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
+      (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols
+                                           :pivot? (some? pivot-export-options)
+                                           :pivot-export-options pivot-export-options}}
+                    viz-settings)
+      (doall (map-indexed
+              (fn [i row] (qp.si/write-row! results-writer row i ordered-cols viz-settings))
+              rows))
+      (qp.si/finish! results-writer {:row_count (count rows)}))
+    (let [bytea (.toByteArray bos)]
+      (parse-xlsx-results bytea (or parse-fn parse-cell-content)))))
 
 (defn- parse-format-strings
   [sheet]
@@ -426,6 +428,9 @@
            (.. cell getCellStyle getDataFormatString))
          row)))
 
+(defn- get-allocated-bytes []
+  (.getCurrentThreadAllocatedBytes ^ThreadMXBean (ManagementFactory/getThreadMXBean)))
+
 (deftest export-format-test
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
@@ -433,7 +438,7 @@
              (rest (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
                                 {}
                                 [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
-                                parse-format-strings)))))
+                                :parse-fn parse-format-strings)))))
 
     (testing "Misc format strings are included correctly in exports"
       (is (= ["[$€]#,##0.00"]
@@ -442,7 +447,7 @@
                                                              {::mb.viz/currency           "EUR"
                                                               ::mb.viz/currency-in-header false}}}
                                   [[1.23]]
-                                  parse-format-strings))))
+                                  :parse-fn parse-format-strings))))
       (is (= ["yyyy.m.d, h:mm:ss am/pm"]
              (second (xlsx-export [{:field_ref [:field 0] :name "Col" :effective_type :type/Temporal}]
                                   {::mb.viz/column-settings {{::mb.viz/field-id 0}
@@ -451,7 +456,7 @@
                                                               ::mb.viz/time-style     "h:mm A",
                                                               ::mb.viz/time-enabled   "seconds"}}}
                                   [[#t "2020-03-28T10:12:06.681"]]
-                                  parse-format-strings)))))))
+                                  :parse-fn parse-format-strings)))))))
 
 (deftest column-order-test
   (testing "Column titles are ordered correctly in the output"
@@ -675,22 +680,22 @@
     (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
                  {}
                  [["a" "abcdefghijklmnopqrstuvwxyz"]]
-                 assert-non-default-widths))
+                 :parse-fn assert-non-default-widths))
   (testing "Auto-sizing works when the number of rows is at or above the auto-sizing threshold"
     (binding [qp.xlsx/*auto-sizing-threshold* 2]
       (xlsx-export [{:id 0, :name "Col1"}]
                    {}
                    [["abcdef"] ["abcedf"]]
-                   assert-non-default-widths)
+                   :parse-fn assert-non-default-widths)
       (xlsx-export [{:id 0, :name "Col1"}]
                    {}
                    [["abcdef"] ["abcedf"] ["abcdef"]]
-                   assert-non-default-widths)))
+                   :parse-fn assert-non-default-widths)))
   (testing "An auto-sized column does not exceed max-column-width (the width of 255 characters)"
     (let [[col-width] (xlsx-export [{:id 0, :name "Col1"}]
                                    {}
                                    [[(apply str (repeat 256 "0"))]]
-                                   parse-column-widths)]
+                                   :parse-fn parse-column-widths)]
       (is (= 65280 col-width)))))
 
 (deftest poi-tempfiles-test
@@ -748,3 +753,24 @@
                           {}
                           [[1]
                            [2]]))))))
+
+(deftest pivot-table-resource-usage-test
+  (testing "pivot table initialization should complete in reasonable time and memory"
+    ;; We test XLSX export of an empty table (0 rows) with pivoting enabled. This should test the initialization of
+    ;; pivot machinery that used to allocate and retain a lot of memory (and hence was slow on smaller heaps).
+    (let [do-export #(xlsx-export [{:display_name "A"}
+                                   {:display_name "B"}
+                                   {:display_name "C"}
+                                   {:display_name "D"}
+                                   {:display_name "pivot-grouping"}
+                                   {:display_name "E"}
+                                   {:display_name "F"}]
+                                  {}
+                                  []
+                                  :pivot-export-options {:pivot-rows [0 1], :pivot-cols [2 3], :pivot-measures [5 4]})
+          ;; Run once before measuring to warm-up and thus reduce flakiness.
+          _ (do-export)
+          start-bytes (get-allocated-bytes)]
+      (do-export)
+      ;; Should always allocate less than 100Mb.
+      (is (< (- (get-allocated-bytes) start-bytes) (* 100 1024 1024))))))

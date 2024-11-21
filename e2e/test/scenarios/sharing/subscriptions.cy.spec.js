@@ -332,7 +332,8 @@ describe("scenarios > dashboard > subscriptions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Questions to attach");
       cy.findAllByRole("listitem")
-        .contains("Orders") // yields the whole <li> element
+        .contains("Orders")
+        .closest("li")
         .within(() => {
           cy.findByRole("checkbox").should("be.checked");
         });

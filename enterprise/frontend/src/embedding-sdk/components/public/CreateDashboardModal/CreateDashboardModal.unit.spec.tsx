@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import {
   createMockCollection,
@@ -126,7 +126,7 @@ function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
   return renderWithProviders(<CreateDashboardModal {...props} />, {
     mode: "sdk",
     sdkProviderProps: {
-      config: createMockJwtConfig(),
+      config: createMockAuthProviderUriConfig(),
     },
     storeInitialState: {
       currentUser: CURRENT_USER,

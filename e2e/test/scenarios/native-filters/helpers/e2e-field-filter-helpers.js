@@ -82,8 +82,8 @@ export function applyFilterByType(
  *
  * @param {string} value
  */
-export function addDefaultStringFilter(value) {
-  enterDefaultValue(value, "Add filter");
+export function addDefaultStringFilter(value, buttonLabel = "Update filter") {
+  enterDefaultValue(value, buttonLabel);
 }
 
 // FIELD FILTER NUMBER FILTERS
@@ -108,12 +108,12 @@ export function addWidgetNumberFilter(
  * @param {array|string} value
  * @return {function}
  */
-export function addDefaultNumberFilter(value) {
+export function addDefaultNumberFilter(value, buttonLabel = "Add filter") {
   if (isBetweenFilter(value)) {
     cy.findByText("Enter a default value…").click();
-    addBetweenFilter(value);
+    addBetweenFilter(value, buttonLabel);
   } else {
-    enterDefaultValue(value);
+    enterDefaultValue(value, buttonLabel);
   }
 }
 
@@ -193,7 +193,11 @@ function enterDefaultValue(value, buttonLabel = "Add filter") {
  * @param {string} searchTerm
  * @param {string} result
  */
-export function pickDefaultValue(searchTerm, result) {
+export function pickDefaultValue(
+  searchTerm,
+  result,
+  buttonLabel = "Add filter",
+) {
   cy.findByText("Enter a default value…").click();
   cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
 
@@ -207,7 +211,7 @@ export function pickDefaultValue(searchTerm, result) {
   //
   cy.findByLabelText(result).should("be.visible").click();
 
-  cy.button("Add filter").click();
+  cy.button(buttonLabel).click();
 }
 
 /**

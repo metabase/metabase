@@ -223,7 +223,8 @@
                                                  (mt/mbql-query checkins
                                                    {:aggregation [[:sum $id]]
                                                     :breakout    [$user_id]}))]
-      (is (= {:perms/view-data      {(mt/id :users) :unrestricted
+      (is (= {:card-ids             #{card-id}
+              :perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder
                                      (mt/id :checkins) :query-builder}}
@@ -237,6 +238,7 @@
                                          [:field "USER_ID" {:base-type :type/Integer, :join-alias "__alias__"}]]}]
                  :limit 10})
               :throw-exceptions? true)))
+
       (is (= {:perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder
@@ -304,3 +306,22 @@
                    (query-perms/required-perms-for-query
                     (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                (lib/->pMBQL native-query)))))))))))
+
+(deftest ^:parallel native-query-source-card-id-join-permissions-test
+  (testing "MBQL query with native source card (#30077)"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type :native
+                                                              :native {:query "SELECT * FROM orders"}}}]
+      (let [query {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (mt/id :products)
+                              :joins        [{:alias "Join Alias"
+                                              :condition [:= true false]
+                                              :source-query
+                                              {:qp/stage-is-from-source-card card-id
+                                               :native "SELECT * FROM orders"}}]}}]
+        ;; The source card of the joined native query is detected, and we don't require full native perms
+        (is (= {:card-ids             #{card-id}
+                :perms/create-queries {(mt/id :products) :query-builder}
+                :perms/view-data      {(mt/id :products) :unrestricted}}
+               (query-perms/required-perms-for-query query :already-preprocessed? true)))))))

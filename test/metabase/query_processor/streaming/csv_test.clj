@@ -39,6 +39,11 @@
   [_driver _feature _database]
   false)
 
+;; Oracle's DATE has a time part. It is mapped to `:type/DateTime`.
+(defmethod driver/database-supports? [:oracle ::date-columns-should-be-emitted-without-time]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel date-columns-should-be-emitted-without-time
   (mt/test-drivers (mt/normal-drivers-with-feature ::date-columns-should-be-emitted-without-time)
     (is (= [["1" "April 7, 2014"      "5" "12"]

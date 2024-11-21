@@ -188,7 +188,7 @@ export const useCommandPalette = ({
               icon: icon.name,
               section: "search",
               keywords: debouncedSearchText,
-              priority: Priority.NORMAL,
+              priority: Priority.NORMAL - index,
               perform: () => {
                 trackSearchClick("item", index, "command-palette");
               },

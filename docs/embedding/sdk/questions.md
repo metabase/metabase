@@ -10,10 +10,9 @@ title: "Embedded analytics SDK - components"
 
 There are different ways you can embed questions:
 
-- [`StaticQuestion`](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
-- [`InteractiveQuestion`](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
-- [`CreateQuestion`]()
-- [`ModifyQuestion`](#embedding-an-editable-question). Embeds the interactive question and the query builder.
+- [Static question](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
+- [Interactive question](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
+- [Query builder](#embedding-the-query-builder). Embeds the graphical query builder without a pre-defined query.
 
 ## Embedding a static question
 
@@ -69,19 +68,19 @@ export default function App() {
 
 ## Question props
 
-| Prop               | Type                                               | Description                                                                                                                                                                                                                                                                                                        |
-| ------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| questionId         | `number \| string`                                 | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.<br>- The `entity_id` key of the question object. You can find a question's entity ID in the info panel when viewing a question. |
-| plugins            | `{ mapQuestionClickActions: Function } \| null`    | Additional mapper function to override or add drill-down menu.                                                                                                                                                                                                                                                     |
-| height             | `number \| string`                                 | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
-| entityTypeFilter   | `("table" \| "question" \| "model" \| "metric")[]` | (optional) An array that specifies which entity types are available in the data picker                                                                                                                                                                                                                             |
-| isSaveEnabled      | `boolean`                                          | (optional) Whether people can save the question.                                                                                                                                                                                                                                                                   |
-| withResetButton    | `boolean`                                          | (optional, default: `true`) Determines whether a reset button is displayed. Only relevant when using the default layout                                                                                                                                                                                            |
-| withTitle          | `boolean`                                          | (optional, default: `false`) Determines whether the question title is displayed. Only relevant when using the default layout.                                                                                                                                                                                      |
-| customTitle        | `string \| undefined`                              | (optional) Allows a custom title to be displayed instead of the default question title. Only relevant when using the default layout.                                                                                                                                                                               |
-| onBeforeSave       | `() => void`                                       | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
-| onSave             | `() => void`                                       | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
-| saveToCollectionId | `number`                                           | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to static questions.                                                                                                                                                           |
+| Prop               | Type                                                                 | Description                                                                                                                                                                                                                                                                                                        |
+| ------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| questionId         | number or string                                                     | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.<br>- The `entity_id` key of the question object. You can find a question's entity ID in the info panel when viewing a question. |
+| plugins            | `{ mapQuestionClickActions: Function }` or null                      | Additional mapper function to override or add drill-down menu.                                                                                                                                                                                                                                                     |
+| height             | number or string                                                     | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
+| entityTypeFilter   | string array; options include "table", "question", "model", "metric" | (optional) An array that specifies which entity types are available in the data picker                                                                                                                                                                                                                             |
+| isSaveEnabled      | boolean                                                              | (optional) Whether people can save the question.                                                                                                                                                                                                                                                                   |
+| withResetButton    | boolean                                                              | (optional, default: `true`) Determines whether a reset button is displayed. Only relevant when using the default layout                                                                                                                                                                                            |
+| withTitle          | boolean                                                              | (optional, default: `false`) Determines whether the question title is displayed. Only relevant when using the default layout.                                                                                                                                                                                      |
+| customTitle        | string or undefined                                                  | (optional) Allows a custom title to be displayed instead of the default question title. Only relevant when using the default layout.                                                                                                                                                                               |
+| onBeforeSave       | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
+| onSave             | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
+| saveToCollectionId | number                                                               | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to static questions.                                                                                                                                                           |
 
 ## Customizing interactive questions
 
@@ -142,6 +141,7 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
+| `FilterPicker`          | Picker for adding a new filter to the question                                                                               |
 | `FilterButton`          | The button used in the default layout to open the Filter pane. You can replace this button with your own implementation.     |
 | `ResetButton`           | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
 | `Title`                 | The question's title                                                                                                         |
@@ -151,13 +151,15 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 | `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
+| `QuestionSettings`      | The settings for the current visualization                                                                                   |
 
 ## Interactive question plugins
 
+You can use plugins to add custom functionality to your questions.
+
 ### `mapQuestionClickActions`
 
-This plugin allows you to add custom actions to
-the click-through menu of an interactive question. You can add and
+This plugin allows you to add custom actions to the click-through menu of an interactive question. You can add and
 customize the appearance and behavior of the custom actions.
 
 ```typescript
@@ -216,9 +218,32 @@ return (
 );
 ```
 
-## Creating a question
+## Embedding an editable interactive question
 
-With the `CreateQuestion` component, you can create a new question from scratch with Metabase's query builder.
+You can edit an existing question using the query builder by passing the `isSaveEnabled` prop on the `InteractiveQuestion` component.
+
+```tsx
+import React from "react";
+import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+    return (
+        <MetabaseProvider config={config}>
+            <InteractiveQuestion questionId={1} isSaveEnabled />
+        </MetabaseProvider>
+    );
+}
+```
+
+## Embedding the query builder
+
+With the `CreateQuestion` component, you can embed the query builder without a pre-defined question.
+
+This component is built on top of the `InteractiveQuestion` component with [namespaced components](#interactive-question-components). It [shares the same props as InteractiveQuestion](#question-props), except it lacks the `questionId` prop and the ability to pass custom children.
+
+To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
 
 ```tsx
 import React from "react";
@@ -229,26 +254,7 @@ const config = {...}
 export default function App() {
     return (
         <MetabaseProvider config={config}>
-            <CreateQuestion/>
-        </MetabaseProvider>
-    );
-}
-```
-
-## Embedding an editable question
-
-With the `ModifyQuestion` component, you can edit an existing question using the query builder by passing the question's ID.
-
-```tsx
-import React from "react";
-import {MetabaseProvider, ModifyQuestion} from "@metabase/embedding-sdk-react";
-
-const config = {...}
-
-export default function App() {
-    return (
-        <MetabaseProvider config={config}>
-            <ModifyQuestion questionId={1}/>
+            <CreateQuestion />
         </MetabaseProvider>
     );
 }

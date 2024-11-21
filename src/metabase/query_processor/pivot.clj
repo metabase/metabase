@@ -4,6 +4,7 @@
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
   (:require
+   [cheshire.core :as json]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -15,6 +16,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util :as lib.util]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
@@ -371,6 +373,27 @@
     (when (some some? (vals pivot-opts))
       pivot-opts)))
 
+(mu/defn- column-sort-order :- ::pivot-opts
+  "Looks at the `pivot_table.column_sort_order` key in the card's visualization settings and generates a map from the
+  column's index to the setting (either ascending or descending)."
+  [query        :- [:map
+                    [:database ::lib.schema.id/database]]
+   viz-settings :- [:maybe :map]]
+  (let [metadata-provider  (or (:lib/metadata query)
+                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+        query              (lib/query metadata-provider query)
+        index-in-breakouts (into {}
+                                 (comp (filter (comp #{:source/breakouts :source/aggregations} :lib/source))
+                                       (map-indexed (fn [i column] [(:name column) i])))
+                                 (lib/returned-columns query))]
+    (-> (or (:column_settings viz-settings)
+            (::mb.viz/column-settings viz-settings))
+        (update-keys (fn [k]
+                       (if (string? k)
+                         (-> k json/parse-string last index-in-breakouts)
+                         (->> k ::mb.viz/column-name index-in-breakouts))))
+        (update-vals (comp keyword :pivot_table.column_sort_order)))))
+
 (mu/defn- field-ref-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports field ref-based settings only."
@@ -420,10 +443,13 @@
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
-  (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
-    (if (and (every? string? rows) (every? string? columns))
-      (column-name-pivot-options query viz-settings)
-      (field-ref-pivot-options query viz-settings))))
+  (when viz-settings
+    (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
+      (merge
+       (if (and (every? string? rows) (every? string? columns))
+         (column-name-pivot-options query viz-settings)
+         (field-ref-pivot-options query viz-settings))
+       {:column-sort-order (column-sort-order query viz-settings)}))))
 
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero

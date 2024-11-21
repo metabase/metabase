@@ -14,7 +14,7 @@ import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
-import { Group, Icon, Tooltip, UnstyledButton } from "metabase/ui";
+import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
@@ -128,10 +128,12 @@ export function NotebookDataPicker({
           onClick={handleClick}
           onAuxClick={handleAuxClick}
         >
-          <Group spacing="xs">
-            {tableInfo && <Icon name={getTableIcon(tableInfo)} />}
+          <Flex align="center" gap="xs">
+            {tableInfo && (
+              <Icon name={getTableIcon(tableInfo)} style={{ flexShrink: 0 }} />
+            )}
             {tableInfo?.displayName ?? placeholder}
-          </Group>
+          </Flex>
         </UnstyledButton>
       </Tooltip>
       {isOpen && (

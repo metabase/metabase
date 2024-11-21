@@ -7,7 +7,7 @@
   for example, running the `migrate` command and passing it `force` can be done using one of the following ways:
 
     clojure -M:run migrate force
-    java -jar metabase.jar migrate force
+    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate force
 
   Logic below translates resolves the command itself to a function marked with `^:command` metadata and calls the
   function with arguments as appropriate.

@@ -13,6 +13,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
@@ -235,7 +236,9 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
+              ;; This is necessary, because in the wild, there may be cards created prior to this change.
+              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."

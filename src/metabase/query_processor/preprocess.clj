@@ -104,6 +104,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   [#'normalize/normalize-preprocessing-middleware
    (ensure-pmbql #'qp.perms/remove-permissions-key)
+   (ensure-pmbql #'qp.perms/remove-source-card-keys)
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)

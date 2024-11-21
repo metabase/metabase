@@ -2,7 +2,9 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   type StructuredQuestionDetails,
+  chartPathWithFillColor,
   createQuestion,
+  echartsContainer,
   getDraggableElements,
   modal,
   moveDnDKitElement,
@@ -12,7 +14,7 @@ import {
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 43075", () => {
   const questionDetails: StructuredQuestionDetails = {
@@ -101,5 +103,53 @@ describe("issue 45255", () => {
 
     // Has (empty) in the chart
     cy.findByTestId("funnel-chart").findByText("(empty)");
+  });
+});
+
+describe("issue 49874", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("when two axis should show only one related to the hovered series", () => {
+    const question = {
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["sum", ["field", ORDERS.QUANTITY, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: 1,
+      },
+      display: "bar",
+    };
+
+    visitQuestionAdhoc(question);
+
+    echartsContainer().within(() => {
+      cy.findByText("Sum of Quantity").should("be.visible");
+      cy.findByText("Sum of Total").should("be.visible");
+    });
+
+    chartPathWithFillColor("#88BF4D").first().realHover();
+
+    echartsContainer().within(() => {
+      cy.findByText("Sum of Quantity").should("be.visible");
+      cy.findByText("Sum of Total").should("not.exist");
+    });
+
+    chartPathWithFillColor("#98D9D9").first().realHover();
+
+    echartsContainer().within(() => {
+      cy.findByText("Sum of Quantity").should("not.exist");
+      cy.findByText("Sum of Total").should("be.visible");
+    });
   });
 });

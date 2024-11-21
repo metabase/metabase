@@ -15,7 +15,7 @@ To give you an idea of how Metabase and Prometheus would work in your production
 Download the latest [Metabase JAR](https://www.metabase.com/start/oss/), and run Metabase using an environment variable to specify the Prometheus server port:
 
 ```sh
-MB_PROMETHEUS_SERVER_PORT=9191 java -jar metabase.jar
+MB_PROMETHEUS_SERVER_PORT=9191 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 The `MB_PROMETHEUS_SERVER_PORT=9191` specifies which port (`9191`) Metabase will use to send data to Prometheus. To clarify the ports that will be involved here:

@@ -13,6 +13,7 @@
 ;;;
 ;;;    (hooks.common/trace #'calculate-bird-scarcity)
 
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- trace* [f]
   {:pre [(fn? f)]}
   (fn traced-fn [node]
@@ -372,7 +373,29 @@
                 body))]
     {:node node*}))
 
-(defn node->qualified-symbol [node]
+(defn with-vec-first-binding
+  "For macros like
+
+    (with-temp-file [binding \"temp.txt\" \"content\"]
+      (slurp binding))
+
+    =>
+    (let [binding nil]
+      (slurp binding))
+
+    where the first arg is a vector of bindings."
+  [{{[_ {[x & _args] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or x (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn node->qualified-symbol
+  "If the node is a symbol, return it as a qualified symbol if it's not already. Otherwise return nil."
+  [node]
   (try
     (when (hooks/token-node? node)
       (let [sexpr (hooks/sexpr node)]
@@ -382,8 +405,8 @@
               (and resolved (:ns resolved))
               (symbol (name (:ns resolved)) (name (:name resolved)))
 
-              ;; if it wasn't resolved but is still qualified it's probably using the full namespace name rather than an
-              ;; alias.
+             ;; if it wasn't resolved but is still qualified it's probably using the full namespace name rather than an
+             ;; alias.
               (qualified-symbol? sexpr)
               sexpr)))))
     ;; some symbols like `*count/Integer` aren't resolvable.

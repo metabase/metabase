@@ -100,6 +100,12 @@ describe("scenarios > home > homepage", () => {
 
       cy.visit("/");
       cy.wait("@getXrayCandidates");
+      // The repeated assertion below uses { timeout: 0 } and sometimes it happens too fast,
+      // even before React finishes re-rendering after @getXrayCandidates completes.
+      // This assertion prevents it.
+      cy.findByTestId("home-page")
+        .findByTestId("loading-indicator")
+        .should("not.exist");
 
       repeatAssertion(() =>
         cy

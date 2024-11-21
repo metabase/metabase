@@ -52,9 +52,10 @@ async function metabaseAuthHandler(req, res) {
 
   try {
     const response = await fetch(ssoUrl, { method: "GET" });
-    const token = await response.json();
+    const session = await response.text();
 
-    return res.status(200).json(token);
+    console.log("Received session", session);
+    return res.status(200).set("Content-Type", "application/json").end(session);
   } catch (error) {
     if (error instanceof Error) {
       res.status(401).json({

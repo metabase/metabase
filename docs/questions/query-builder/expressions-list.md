@@ -800,6 +800,6 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
+Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
 
 [expressions]: ./expressions.md

@@ -45,7 +45,9 @@ const ContentView = ({
     .with("editor", () => (
       <InteractiveQuestion.Editor onApply={onReturnToVisualization} />
     ))
-    .otherwise(() => <InteractiveQuestion.QuestionVisualization />);
+    .otherwise(() => (
+      <InteractiveQuestion.QuestionVisualization height="100%" />
+    ));
 
 export const InteractiveQuestionResult = ({
   height,

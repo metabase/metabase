@@ -128,7 +128,7 @@ To undo this auto-connecting of cards, click on the toast that pops up when Meta
 
 ## Filtering dashboards with native/SQL questions
 
-If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
+If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/filters).
 
 You can't connect a time grouping parameter widget to a card with a SQL question.
 
@@ -255,7 +255,7 @@ Here you can limit the current filter's choices. If you toggle on one of these d
 - Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Regular SQL variables won't work.
 - You can't link filters that use "Custom List" or "From another model or question" as their value's source.
 
-To learn more about linked filters, check out [Linking filters in dashboards](https://www.metabase.com/learn/dashboards/linking-filters).
+To learn more about linked filters, check out [Linking filters in dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/linking-filters).
 
 ## Auto-apply filters
 
@@ -283,4 +283,4 @@ You can also set up a dashboard question to [update a filter on click](./interac
 - [Interactive dashboards](./interactive.md)
 - [Dashboard subscriptions](./subscriptions.md)
 - [Charts with multiple series](./multiple-series.md)
-- [Learn dashboards](https://www.metabase.com/learn/dashboards)
+- [Learn dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards)

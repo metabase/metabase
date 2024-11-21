@@ -12,7 +12,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users-personal-collections :web-server :plugins))
+  (fixtures/initialize :test-users-personal-collections :web-server :plugins :notifications))
 
 (defn- publish-user-invited-event!
   [user invitor from-setup?]
@@ -25,7 +25,7 @@
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
     (notification.tu/with-notification-testing-setup
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
-                                                  :details      {:type    :email/mustache-text
+                                                  :details      {:type    :email/handlebars-text
                                                                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
                                                                  :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}}
                      :model/User             {user-id :id} {:email "ngoc@metabase.com"}
@@ -62,9 +62,9 @@
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
     (notification.tu/with-notification-testing-setup
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
-                                                  :details      {:type    :email/mustache-resource
+                                                  :details      {:type    :email/handlebars-resource
                                                                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
-                                                                 :path    "notification/channel_template/hello_world"}}
+                                                                 :path    "notification/channel_template/hello_world.hbs"}}
                      :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                      :model/PermissionsGroup {group-id :id} {:name "Avengers"}
                      :model/PermissionsGroupMembership _ {:group_id group-id
@@ -201,7 +201,7 @@
         admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
     (testing "send to admins with a link to setting page"
       (check admin-emails [#"Your Slack connection stopped working"
-                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
+                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/notifications/slack\"[^>]*>Go to settings</a>"]))
 
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]

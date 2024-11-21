@@ -27,24 +27,6 @@ export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
 
 export type SearchModel = (typeof SEARCH_MODELS)[number];
 
-export interface SearchScore {
-  weight: number;
-  score: number;
-  name:
-    | "pinned"
-    | "bookmarked"
-    | "recency"
-    | "dashboard"
-    | "model"
-    | "official collection score"
-    | "verified"
-    | "text-consecutivity"
-    | "text-total-occurrences"
-    | "text-fullness";
-  match?: string;
-  column?: string;
-}
-
 interface BaseSearchResult<
   Id extends SearchResultId,
   Model extends SearchModel,
@@ -107,7 +89,6 @@ export interface SearchResult<
   initial_sync_status: InitialSyncStatus | null;
   dashboard_count: number | null;
   context: any; // this might be a dead property
-  scores: SearchScore[];
   last_edited_at: string | null;
   last_editor_id: UserId | null;
   last_editor_common_name: string | null;

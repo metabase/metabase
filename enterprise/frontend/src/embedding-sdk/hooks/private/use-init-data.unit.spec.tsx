@@ -20,12 +20,12 @@ import {
 import { refreshTokenAsync } from "embedding-sdk/store/auth";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig, SDKConfigWithJWT } from "embedding-sdk/types";
+import type { SDKConfig, SDKConfigWithAuthProvider } from "embedding-sdk/types";
 import { GET } from "metabase/lib/api";
 import {
   createMockSettings,
@@ -79,7 +79,7 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
-} & Partial<SDKConfigWithJWT>) => {
+} & Partial<SDKConfigWithAuthProvider>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
@@ -119,8 +119,8 @@ const setup = ({
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  const config = createMockJwtConfig({
-    jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
+  const config = createMockAuthProviderUriConfig({
+    authProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
     ...configOpts,
   });
 
@@ -156,8 +156,8 @@ describe("useInitData hook", () => {
     });
   });
 
-  describe("JWT authentication", () => {
-    it("start loading data if JWT URI and auth type are valid", async () => {
+  describe("authProviderUri authentication", () => {
+    it("start loading data if authProviderUri and auth type are valid", async () => {
       setup({ isValidConfig: true });
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-login-status",
@@ -226,8 +226,8 @@ describe("useInitData hook", () => {
         exp: Number.MAX_SAFE_INTEGER,
       }));
 
-      const config = createMockJwtConfig({
-        jwtProviderUri: "http://TEST_URI/sso/metabase",
+      const config = createMockAuthProviderUriConfig({
+        authProviderUri: "http://TEST_URI/sso/metabase",
         fetchRequestToken,
       });
 

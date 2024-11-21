@@ -8,7 +8,7 @@ They're pretty useful.
 
 ## Line charts
 
-**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html) and [Time series analysis](https://www.metabase.com/learn/time-series) tutorials.
+**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
 
 ![Trend lines](../../images/goal-line.png)
 
@@ -20,7 +20,7 @@ If you're trying to group a number by a column that has a lot of possible values
 
 ![Row chart](../../images/row.png)
 
-If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/basics/visualizing-data/histograms.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
+If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/histograms)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
 
 ## Combo line and bar charts
 
@@ -162,6 +162,6 @@ Currently, you can't hide the legend or change its position on the chart.
 
 ## Further reading
 
-- [Guide to line charts](https://www.metabase.com/learn/visualization/line-charts)
-- [Master the bar chart](https://www.metabase.com/learn/visualization/bar-charts)
-- [Visualize your data as a histogram](https://www.metabase.com/learn/visualization/histograms)
+- [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts)
+- [Master the bar chart](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/bar-charts)
+- [Visualize your data as a histogram](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/histograms)

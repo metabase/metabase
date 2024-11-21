@@ -114,7 +114,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
     it("should work when set initially as default value and then through the filter widget", () => {
       cy.log("the default value should apply");
-      FieldFilter.addDefaultStringFilter("2");
+      FieldFilter.addDefaultStringFilter("2", "Add filter");
       SQLFilter.runQuery();
       cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Small Marble Shoes");

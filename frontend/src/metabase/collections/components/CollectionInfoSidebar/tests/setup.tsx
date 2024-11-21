@@ -1,6 +1,12 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { Collection, TokenFeature } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import type { Collection } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
 
@@ -15,12 +21,16 @@ export const setup = ({
   enableOfficialCollections: boolean;
   enableSerialization?: boolean;
 }) => {
-  const withFeatures: TokenFeature[] = [];
-  if (enableOfficialCollections) {
-    withFeatures.push("official_collections");
-  }
-  if (enableSerialization) {
-    withFeatures.push("serialization");
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({
+        serialization: enableSerialization,
+        official_collections: enableOfficialCollections,
+      }),
+    }),
+  });
+  if (enableEnterprisePlugins) {
+    setupEnterprisePlugins();
   }
   return renderWithProviders(
     <>
@@ -32,8 +42,7 @@ export const setup = ({
       />
     </>,
     {
-      withFeatures,
-      shouldSetupEnterprisePlugins: enableEnterprisePlugins,
+      storeInitialState: state,
     },
   );
 };

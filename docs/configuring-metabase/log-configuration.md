@@ -65,7 +65,7 @@ By default Metabase will include emoji characters in logs. You can disable emoji
 
 ```
 export MB_EMOJI_IN_LOGS="false"
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 [default-log-config]: https://github.com/metabase/metabase/blob/master/resources/log4j2.xml

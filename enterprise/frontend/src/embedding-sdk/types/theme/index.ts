@@ -51,6 +51,9 @@ export interface MetabaseColors {
   /** Slightly darker background color used for hover and accented elements. */
   "background-hover"?: string;
 
+  /** Muted background color used for disabled elements, such as disabled buttons and inputs. */
+  "background-disabled"?: string;
+
   /** Color used for borders */
   border?: string;
 

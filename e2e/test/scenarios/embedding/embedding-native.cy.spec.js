@@ -235,7 +235,9 @@ describe("scenarios > embedding > native questions", () => {
         // That's the synonymous to the locked filter.
         visitEmbeddedPage(payload, {
           setFilters: { id: 92 },
-          hideFilters: ["id", "product_id", "state", "created_at", "total"],
+          additionalHashOptions: {
+            hideFilters: ["id", "product_id", "state", "created_at", "total"],
+          },
         });
 
         cy.findByTestId("table-row").should("have.length", 1);

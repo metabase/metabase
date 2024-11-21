@@ -29,9 +29,7 @@ const sdkPackageTemplateJson = fs.readFileSync(
   "utf-8",
 );
 const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
-const EMBEDDING_SDK_VERSION = JSON.stringify(
-  sdkPackageTemplateJsonContent.version,
-);
+const EMBEDDING_SDK_VERSION = sdkPackageTemplateJsonContent.version;
 
 // TODO: Reuse babel and css configs from webpack.config.js
 // Babel:

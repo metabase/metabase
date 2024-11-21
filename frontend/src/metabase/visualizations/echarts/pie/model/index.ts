@@ -24,7 +24,7 @@ import type { ShowWarning } from "../../types";
 import {
   OTHER_SLICE_KEY,
   OTHER_SLICE_MIN_PERCENTAGE,
-  OTHER_SLICE_NAME,
+  getOtherSliceName,
 } from "../constants";
 import { getDimensionFormatter } from "../format";
 import { getArrayFromMapValues } from "../util";
@@ -188,7 +188,7 @@ function aggregateChildrenSlices(
 
     node.children.set(OTHER_SLICE_KEY, {
       key: OTHER_SLICE_KEY,
-      name: OTHER_SLICE_NAME,
+      name: getOtherSliceName(),
       value: otherTotal,
       displayValue: otherTotal,
       normalizedPercentage: otherTotal / node.value,
@@ -471,7 +471,7 @@ export function getPieChartModel(
 
     sliceTree.set(OTHER_SLICE_KEY, {
       key: OTHER_SLICE_KEY,
-      name: OTHER_SLICE_NAME,
+      name: getOtherSliceName(),
       value: otherTotal,
       displayValue: otherTotal,
       normalizedPercentage: visible ? otherTotal / total : 0,
@@ -509,7 +509,7 @@ export function getPieChartModel(
   if (sliceTree.size === 0) {
     sliceTree.set(OTHER_SLICE_KEY, {
       key: OTHER_SLICE_KEY,
-      name: OTHER_SLICE_NAME,
+      name: getOtherSliceName(),
       value: 1,
       displayValue: 0,
       normalizedPercentage: 0,

@@ -1232,8 +1232,13 @@ describe("notifications", { tags: "@external" }, () => {
 
           auth.populateFields();
 
+          cy.button("Send a test").click();
+
+          cy.button("Success").should("exist");
           cy.button("Create destination").click();
         });
+
+        cy.findByRole("heading", { name: "Awesome Hook" }).should("exist");
 
         cy.visit(WEBHOOK_TEST_DASHBOARD);
         cy.findByRole("heading", { name: /Requests 1/ }).should("exist");

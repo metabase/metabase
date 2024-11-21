@@ -43,16 +43,10 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-tertiary": ["text-light", "text-tertiary"],
   background: ["bg-white", "background"],
   "background-hover": ["bg-light"],
+  "background-disabled": ["background-disabled"],
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
-
-  // positive: "success",
-  // negative: "danger",
-  // warning: "warning",
-
-  // white
-  // black
 };
 
 const originalColors = { ...colors };

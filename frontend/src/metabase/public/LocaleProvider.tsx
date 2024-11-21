@@ -1,11 +1,11 @@
 import { type PropsWithChildren, useEffect, useState } from "react";
 
 import { setLocaleHeader } from "metabase/lib/api";
-import { loadLocalization } from "metabase/lib/i18n";
+import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
 
 export const LocaleProvider = ({
   children,
-  locale = "en",
+  locale,
 }: PropsWithChildren<{ locale?: string | null }>) => {
   // The state is not used explicitly, but we need to trigger a re-render when the locale changes
   // as changing the locale in ttag doesn't trigger react components to update
@@ -15,7 +15,10 @@ export const LocaleProvider = ({
     if (locale) {
       setIsLoadingLocale(true);
       setLocaleHeader(locale);
-      loadLocalization(locale).then(() => setIsLoadingLocale(false));
+      loadLocalization(locale).then(translatedObject => {
+        setIsLoadingLocale(false);
+        setUserLocale(translatedObject);
+      });
     }
   }, [locale]);
 

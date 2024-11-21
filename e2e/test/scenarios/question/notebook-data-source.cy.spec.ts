@@ -420,6 +420,9 @@ describe("issue 28106", () => {
     cy.signInAsAdmin();
 
     resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    cy.intercept("GET", "/api/collection/root").as("getRootCollection");
+    cy.intercept("GET", "/api/collection/tree**").as("getTree");
   });
 
   it(
@@ -427,6 +430,8 @@ describe("issue 28106", () => {
     { tags: "@external" },
     () => {
       startNewQuestion();
+      cy.wait(["@getRootCollection", "@getTree"]);
+
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
         cy.findByText("Writable Postgres12").click();
@@ -435,13 +440,7 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
-        // that's why we need to scroll and wait multiple times.
-        // Test is flaky because of this - that's why there are 3 attempts.
-        for (let i = 0; i < 3; ++i) {
-          cy.get("@schemasList").scrollTo("bottom");
-          cy.wait(100);
-        }
+        scrollAllTheWayDown();
 
         // assert scrolling worked and the last item is visible
         entityPickerModalItem(1, "Public").should("be.visible");
@@ -460,6 +459,23 @@ describe("issue 28106", () => {
       });
     },
   );
+
+  // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
+  // that's why we need to scroll and wait multiple times.
+  function scrollAllTheWayDown() {
+    cy.get("@schemasList").realMouseWheel({ deltaY: 100 });
+    cy.wait(100);
+
+    cy.get("@schemasList").then($element => {
+      const list = $element[0];
+      const isScrolledAllTheWayDown =
+        list.scrollHeight - list.scrollTop === list.clientHeight;
+
+      if (!isScrolledAllTheWayDown) {
+        scrollAllTheWayDown();
+      }
+    });
+  }
 });
 
 describe("issue 32252", () => {

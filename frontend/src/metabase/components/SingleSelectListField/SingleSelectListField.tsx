@@ -36,6 +36,7 @@ const SingleSelectListField = ({
   options,
   optionRenderer,
   placeholder = t`Find...`,
+  alwaysShowOptions = false,
   isDashboardFilter,
   checkedColor,
 }: SingleSelectListFieldProps) => {
@@ -134,23 +135,24 @@ const SingleSelectListField = ({
       )}
 
       <OptionsList isDashboardFilter={isDashboardFilter}>
-        {filteredOptions.map(option => (
-          <OptionContainer key={option[0]}>
-            <OptionItem
-              data-testid={`${option[0]}-filter-value`}
-              selectedColor={
-                (checkedColor ?? isDashboardFilter)
-                  ? "var(--mb-color-background-selected)"
-                  : "var(--mb-color-filter)"
-              }
-              selected={selectedValue === option[0]}
-              onClick={() => onClickOption(option[0])}
-              onMouseDown={e => e.preventDefault()}
-            >
-              {optionRenderer(option)}
-            </OptionItem>
-          </OptionContainer>
-        ))}
+        {(alwaysShowOptions || debouncedFilter.length > 0) &&
+          filteredOptions.map(option => (
+            <OptionContainer key={option[0]}>
+              <OptionItem
+                data-testid={`${option[0]}-filter-value`}
+                selectedColor={
+                  (checkedColor ?? isDashboardFilter)
+                    ? "var(--mb-color-background-selected)"
+                    : "var(--mb-color-filter)"
+                }
+                selected={selectedValue === option[0]}
+                onClick={() => onClickOption(option[0])}
+                onMouseDown={e => e.preventDefault()}
+              >
+                {optionRenderer(option)}
+              </OptionItem>
+            </OptionContainer>
+          ))}
       </OptionsList>
     </>
   );

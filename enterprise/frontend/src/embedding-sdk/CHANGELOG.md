@@ -1,3 +1,34 @@
+## [1.52.1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.38...embedding-sdk-1.52.1) (2024-11-07)
+
+
+### Bug Fixes
+
+* **sdk:** ability to save questions in interactive question ([#48866](https://github.com/metabase/metabase/issues/48866)) ([e99c67a](https://github.com/metabase/metabase/commit/e99c67a1532b34f0396c5e9f4a7cc30c1c731858))
+* **sdk:** Change QuestionEditor tab name to 'Editor' ([#48821](https://github.com/metabase/metabase/issues/48821)) ([405ed53](https://github.com/metabase/metabase/commit/405ed53baa5a3346e7ac253fc8cd8e7bf9a72dff))
+* **sdk:** Editable dashboard should not overlap content below it ([#49293](https://github.com/metabase/metabase/issues/49293)) ([548a9a7](https://github.com/metabase/metabase/commit/548a9a7433f7ed47049faaf1e3773f93d3b6e356))
+* **sdk:** fix defaultProps react error ([#48764](https://github.com/metabase/metabase/issues/48764)) ([9ffc185](https://github.com/metabase/metabase/commit/9ffc1851eaf333904089d06ef0fe68f1d987c72b))
+* **sdk:** Fix interactive dashboard scroll in fullscreen mode ([#49366](https://github.com/metabase/metabase/issues/49366)) ([5879f90](https://github.com/metabase/metabase/commit/5879f90bfa601fe3a35db153d86cac4d0c1dcc58))
+* **sdk:** hide downloads by default ([#48755](https://github.com/metabase/metabase/issues/48755)) ([f481cad](https://github.com/metabase/metabase/commit/f481cad33787298bfbddd1d665dde9740f0eb64d))
+* **sdk:** Improve InteractiveQuestion chart selector ([#48837](https://github.com/metabase/metabase/issues/48837)) ([70904e8](https://github.com/metabase/metabase/commit/70904e8cd938eea01eb3692c409a0ef26aecfbf6))
+* **sdk:** pin iframe-resizer version to avoid excess logs for sdk cli ([#49312](https://github.com/metabase/metabase/issues/49312)) ([cf934f9](https://github.com/metabase/metabase/commit/cf934f928dcf0990805ca9db5edafa57d14b73d8))
+* **sdk:** reduce visual artifacts on PDF/PNG exports on custom sdk themes ([#48645](https://github.com/metabase/metabase/issues/48645)) ([d91bbcd](https://github.com/metabase/metabase/commit/d91bbcd4891050908c8b6a9dd901bfb04b7f9fa8))
+* **sdk:** remove runtime error on aggregated question drill ([#49064](https://github.com/metabase/metabase/issues/49064)) ([df158d8](https://github.com/metabase/metabase/commit/df158d8896d46b817d23884297146a875d45f97d))
+* **sdk:** static question should cancel requests on component unmount ([#48808](https://github.com/metabase/metabase/issues/48808)) ([2fd311c](https://github.com/metabase/metabase/commit/2fd311c521bfa1491da6ef196d9aed0d741d1d5c))
+* **sdk:** support hiding columns in InteractiveQuestion ([#49013](https://github.com/metabase/metabase/issues/49013)) ([6a927de](https://github.com/metabase/metabase/commit/6a927deefb44f4ef390600d1dbcda1de72b4d2d7))
+
+
+### Features
+
+* **sdk:** `defineEmbeddingSdkConfig` to make typing easier ([#48879](https://github.com/metabase/metabase/issues/48879)) ([aa72eb8](https://github.com/metabase/metabase/commit/aa72eb83aebd2adc3dbd700d28f1b7d18b2e0987))
+* **sdk:** ability to enforce the destination collection to save to and hide the collection picker ([#49251](https://github.com/metabase/metabase/issues/49251)) ([de559f4](https://github.com/metabase/metabase/commit/de559f49d6dc245bc35d73d373a3cbba3c8062e4))
+* **sdk:** Add `isOpen` prop to control CreateDashboardModal visibility ([#49452](https://github.com/metabase/metabase/issues/49452)) ([9f49d1a](https://github.com/metabase/metabase/commit/9f49d1aa141f5bb291eb10a0b0549f30e8daa081))
+* **sdk:** Add chart viz selection for `InteractiveQuestion` ([#47744](https://github.com/metabase/metabase/issues/47744)) ([a288c15](https://github.com/metabase/metabase/commit/a288c15e579975cd3ed783cd6c18f39a84445c41))
+* **sdk:** Allow to hide columns in CollectionBrowser ([#49449](https://github.com/metabase/metabase/issues/49449)) ([839b713](https://github.com/metabase/metabase/commit/839b713f50e2c1696923dc3e1cf0b5091537272f))
+* **sdk:** refactor the auth code to provide better error messages ([#49214](https://github.com/metabase/metabase/issues/49214)) ([6452cd3](https://github.com/metabase/metabase/commit/6452cd3c17089ad8675b25bdf76ec4284ce3c32e)), closes [#49492](https://github.com/metabase/metabase/issues/49492)
+* **sdk:** small usability improvements for embedding cli ([#49591](https://github.com/metabase/metabase/issues/49591)) ([dba17e6](https://github.com/metabase/metabase/commit/dba17e6c3699b37da8bcb747688a9f5f24f74ff7))
+
+
+
 ## [0.1.38](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.37...embedding-sdk-0.1.38) (2024-10-09)
 
 

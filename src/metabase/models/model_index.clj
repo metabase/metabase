@@ -9,6 +9,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
+   [metabase.search :as search]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -35,6 +36,8 @@
 (derive :model/ModelIndexValue :metabase/model)
 
 (derive :model/ModelIndex :hook/created-at-timestamped?)
+;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
+#_(derive :model/ModelIndex :hook/search-index)
 
 (t2/deftransforms ModelIndex
   {:pk_ref    mi/transform-field-ref
@@ -179,3 +182,30 @@
                                            :schedule   (default-schedule)
                                            :state      "initial"
                                            :creator_id creator-id}])))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "indexed-entity"
+  {:model        :model/ModelIndexValue
+   :visibility   :app-user
+   :attrs        {:id            :model_pk
+                  :collection-id :collection.id
+                  :creator-id    false
+                ;; this seems wrong, I'd expect it to track whether the model is archived.
+                  :archived      false
+                  :database-id   :model.database_id
+                  :created-at    false
+                  :updated-at    false}
+   :search-terms [:name]
+   :render-terms {:collection-name :collection.name
+                  :collection-type :collection.type
+                  :model-id        :model.id
+                  :model-name      :model.name
+                  :pk-ref          :model_index.pk_ref
+                  :model-index-id  :model_index.id}
+   :joins        {:model_index [:model/ModelIndex [:= :model_index.id :this.model_index_id]]
+                  :model       [:model/Card [:= :model.id :model_index.model_id]]
+                  :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
+
+;; TODO resolve the toucan2 issue preventing us from using this hook
+(underive :model/ModelIndexValue :hook/search-index)

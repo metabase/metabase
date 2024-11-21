@@ -50,10 +50,6 @@ If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan
 
 To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
 
-## Enable nested queries
-
-By default, Metabase allows your users to use a previously saved question as a source for queries. If you have a lot of slow running queries, you may want to switch this option off, as performance problem can occur.
-
 ## Enable X-rays
 
 [X-rays](../exploration-and-organization/x-rays.md) are a great way for people to get quick summary stats on your data. If these X-ray queries get too slow or expensive, you can turn them off here.

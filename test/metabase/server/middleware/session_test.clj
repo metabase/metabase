@@ -474,7 +474,13 @@
         (is (= (mt/user->id :rasta) *current-user-id*))
        ;; *is-superuser?* and permissions set are overrided
         (is (true? api/*is-superuser?*))
-        (is (= #{"/"} @api/*current-user-permissions-set*))))))
+        (is (= #{"/"} @api/*current-user-permissions-set*)))))
+  (testing "as-admin preserves any locale settings"
+    (let [original "fr"]
+      (binding [i18n/*user-locale* original]
+        (mw.session/as-admin
+          (is (= original i18n/*user-locale*))
+          (is (= "French" (.getDisplayLanguage (i18n/user-locale)))))))))
 
 ;;; ----------------------------------------------------- Locale -----------------------------------------------------
 

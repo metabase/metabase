@@ -102,7 +102,7 @@ A failed scan is caused by a failed scan query---you can look at the logs to deb
 Note that when you [change a search box filter to a dropdown filter](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from the Table Metadata, you'll trigger a scan query for that field. If you have a dropdown filter that isn't picking up all the values in a field, remember that Metabase only samples the first 1,000 unique values per field, and stores a maximum of 100 kilobytes of text. If you've got more than 1,000 unique values in a column, or a lot of text-heavy data (like long URLs or survey responses), you can:
 
 - Use a search box filter for that field.
-- Clean up the data further in your [ETL or ELT](https://www.metabase.com/learn/analytics/etl-landscape) process.
+- Clean up the data further in your [ETL or ELT](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) process.
 
 ## Fingerprinting
 

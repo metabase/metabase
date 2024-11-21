@@ -109,13 +109,13 @@ A personal collection works just like any other collection except that its permi
 - [Working with collection permissions][collection-permissions].
 
 [collections]: ../exploration-and-organization/collections.md
-[collection-permissions]: https://www.metabase.com/learn/permissions/collection-permissions
+[collection-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/collection-permissions
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
 [data-sandboxing]: ../permissions/data-sandboxes.md
 [offical-collections]: ../exploration-and-organization/collections.md#official-collections
-[permissions]: https://www.metabase.com/learn/permissions
-[sandbox-columns]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
-[sandbox-rows]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
+[permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
+[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
+[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
 [sql-snippet-folders]: ../questions/native-editor/sql-snippets.md

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.api.application-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
    [metabase.models :refer [PermissionsGroup]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -63,4 +64,21 @@
                            {:monitoring   "no"
                             :setting      "yes"
                             :subscription "no"}}
-                          (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph" new-graph))))))))))
+                          (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph" new-graph)))))
+
+          (testing "omits graph in response when skip-graph=true"
+            (let [result (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph?skip-graph=true"
+                                               (a-perms/graph))]
+              (is (int? (:revision result)))
+              (is (nil? (:groups result)))))
+
+          (testing "omits revision ID check when force=true"
+            (let [result (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph?force=true"
+                                               (-> (a-perms/graph)
+                                                   (update :revision dec)
+                                                   (assoc-in [:groups group-id :monitoring] "yes")))]
+              (is (partial= {group-id
+                             {:monitoring   "yes"
+                              :setting      "yes"
+                              :subscription "no"}}
+                            (:groups result))))))))))

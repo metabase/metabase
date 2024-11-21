@@ -2,11 +2,11 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.channel.template.core :as channel.template]
    [metabase.email :as email]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
-   [stencil.core :as stencil]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -14,7 +14,7 @@
 (defn- has-legacy-pulse? []
   (pos? (t2/count :model/Pulse :dashboard_id nil :alert_condition nil :archived false)))
 
-(def ^:private template-path (str "metabase/email/warn_deprecate_pulse.mustache"))
+(def ^:private template-path (str "metabase/email/warn_deprecate_pulse.hbs"))
 
 (defn- email-remove-legacy-pulse []
   (when (and (email/email-configured?)
@@ -27,9 +27,9 @@
          {:recipients   [(:email admin)]
           :message-type :html
           :subject      "[Metabase] Removal of legacy pulses in upcoming Metabase release"
-          :message      (stencil/render-file template-path {:userName    (:common_name admin)
-                                                            :pulses      legacy-pulse
-                                                            :instanceURL (urls/site-url)})})))))
+          :message      (channel.template/render template-path {:userName    (:common_name admin)
+                                                                :pulses      legacy-pulse
+                                                                :instanceURL (urls/site-url)})})))))
 
 (jobs/defjob ^{:doc "Send email to admins and warn about removal of Pulse in 49, This job will only run once."}
   EmailRemoveLegacyPulse [_ctx]

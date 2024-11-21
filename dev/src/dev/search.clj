@@ -39,9 +39,7 @@
               :search.engine/index-only        search.index/search
               :search.engine/legacy            legacy-results
               :search.engine/hybrid            @#'search.postgres/hybrid
-              :search.engine/hybrid-multi      @#'search.postgres/hybrid-multi
-              :search.engine/minimal           @#'search.postgres/minimal
-              :search.engine/minimal-wth-perms @#'search.postgres/minimal-with-perms)]
+              :search.engine/fulltext           @#'search.postgres/fulltext)]
       (time
        (dotimes [_ n]
          (doall (apply f search-term args))))))
@@ -51,7 +49,7 @@
   ;; 30x speed-up for test-data on my machine
   (mini-bench 500 :index-only "sample")
   ;; No noticeable degradation, without permissions and filters
-  (mini-bench 500 :minimal "sample")
+  (mini-bench 500 :fulltext "sample")
 
   ;; but joining to the "hydrated query" reverses the advantage
   (mini-bench 100 :legacy nil)
@@ -60,8 +58,6 @@
   (mini-bench 100 :hybrid "sample")
   ;; using index + LIKE on the join ... still a little bit more overhead
   (mini-bench 100 :hybrid "sample" {:search-string "sample"})
-  ;; oh! this monstrosity is actually 2x faster than baseline B-)
-  (mini-bench 100 :hybrid-multi "sample")
   (mini-bench 100 :minimal "sample"))
 
 (defn- test-search [user search-string & [search-engine]]

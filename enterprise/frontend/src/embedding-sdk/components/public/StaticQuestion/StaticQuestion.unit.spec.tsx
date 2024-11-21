@@ -13,7 +13,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -95,8 +95,8 @@ const setup = ({
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockJwtConfig({
-          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        config: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
     },
@@ -125,7 +125,6 @@ describe("StaticQuestion", () => {
   it("should render an error if a question isn't found", async () => {
     setup({ isValidCard: false });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByText("Error")).toBeInTheDocument();
     expect(
       screen.getByText("You don't have permissions to do that."),
     ).toBeInTheDocument();

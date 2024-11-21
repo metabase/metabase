@@ -56,7 +56,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=</your/path/to/metabase/directory/>
-ExecStart=/usr/bin/java -jar </your/path/to/metabase/directory/>metabase.jar
+ExecStart=/usr/bin/java --add-opens java.base/java.nio=ALL-UNNAMED -jar </your/path/to/metabase/directory/>metabase.jar
 EnvironmentFile=/etc/default/metabase
 User=metabase
 Type=simple

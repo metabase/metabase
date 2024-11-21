@@ -1,6 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
+  assertEChartsTooltip,
+  createDashboardWithQuestions,
   createNativeQuestion,
   createQuestionAndDashboard,
   describeEE,
@@ -9,6 +11,7 @@ import {
   getIframeBody,
   modal,
   openStaticEmbeddingModal,
+  otherSeriesChartPaths,
   popover,
   queryBuilderMain,
   restore,
@@ -24,7 +27,7 @@ import {
   withDatabase,
 } from "e2e/support/helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe.skip("issue 15860", () => {
   const q1IdFilter = {
@@ -1022,5 +1025,210 @@ describe.skip("issue 49142", () => {
       .its("0.contentDocument.body")
       .should("be.visible")
       .and("contain", "Embeddable dashboard");
+  });
+});
+
+describe("issue 8490", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createDashboardWithQuestions({
+      dashboardDetails: {
+        name: "Dashboard to test locale",
+        enable_embedding: true,
+      },
+      questions: [
+        {
+          name: "Line chart",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            filter: [
+              "time-interval",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              -12,
+              "month",
+            ],
+          },
+          limit: 100,
+          visualization_settings: {
+            "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+            "graph.metrics": ["count"],
+            "graph.max_categories_enabled": true,
+            "graph.max_categories": 2,
+          },
+          display: "bar",
+          enable_embedding: true,
+        },
+        {
+          name: "Order quantity trend",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "sum",
+                ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+              ],
+            ],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            filter: [
+              "and",
+              [
+                "time-interval",
+                ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+                -2,
+                "month",
+              ],
+              [
+                "=",
+                [
+                  "field",
+                  PRODUCTS.VENDOR,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": ORDERS.PRODUCT_ID,
+                  },
+                ],
+                "Alfreda Konopelski II Group",
+              ],
+            ],
+          },
+          display: "smartscalar",
+        },
+        {
+          name: "Pie chart",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.VENDOR,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+            limit: 5,
+          },
+          visualization_settings: {
+            "pie.slice_threshold": 20,
+          },
+          display: "pie",
+        },
+      ],
+      cards: [{}, { col: 11 }],
+    }).then(({ dashboard, questions: [lineChartQuestion] }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+      cy.wrap(lineChartQuestion.id).as("lineChartQuestionId");
+    });
+  });
+
+  it("static embeddings should respect `#locale` hash in the URL (metabase#8490)", () => {
+    cy.log("test a static embedded dashboard");
+    cy.get("@dashboardId").then(dashboardId => {
+      visitEmbeddedPage(
+        {
+          resource: { dashboard: dashboardId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      // PDF export
+      cy.findByText("PDF로 내보내기").should("be.visible");
+      // Powered by
+      cy.findByText("제공:").should("be.visible");
+
+      cy.log("assert the line chart");
+      getDashboardCard(0).within(() => {
+        // X-axis labels: Jan 2024
+        cy.findByText("1월 2024").should("be.visible");
+        // Aggregation "count"
+        cy.findByText("카운트").should("be.visible");
+        // "Other" bar tooltip
+        otherSeriesChartPaths().first().realHover();
+      });
+    });
+
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "Gizmo",
+          value: "4",
+        },
+        {
+          name: "Widget",
+          value: "2",
+        },
+        {
+          name: "합계",
+          value: "6",
+        },
+      ],
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      cy.log("assert the trend chart");
+      getDashboardCard(2).within(() => {
+        // N/A
+        cy.findByText("해당 없음").should("be.visible");
+        // (No data)
+        cy.findByText("(데이터 없음)").should("be.visible");
+      });
+
+      cy.log("assert the pie chart");
+      getDashboardCard(1).within(() => {
+        // Total
+        cy.findByText("합계").should("be.visible");
+        // Other
+        cy.findByTestId("chart-legend").findByText("기타").should("be.visible");
+      });
+    });
+
+    cy.log("test a static embedded question");
+
+    cy.log("assert the line chart");
+    cy.get("@lineChartQuestionId").then(lineChartQuestionId => {
+      visitEmbeddedPage(
+        {
+          resource: { question: lineChartQuestionId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      // X-axis labels: Jan 2023
+      cy.findByText("11월 2023").should("be.visible");
+      // Powered by
+      cy.findByText("제공:").should("be.visible");
+      // Aggregation "count"
+      cy.findByText("카운트").should("be.visible");
+    });
   });
 });

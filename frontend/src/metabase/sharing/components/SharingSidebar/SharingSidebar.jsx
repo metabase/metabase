@@ -79,6 +79,7 @@ const cardsToPulseCards = (cards, pulseCards) => {
     return {
       ...card,
       format_rows: pulseCard.format_rows,
+      pivot_results: pulseCard.pivot_results,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
     };

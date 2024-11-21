@@ -5,11 +5,14 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import * as Lib from "metabase-lib";
 
-import { FilterColumnPicker } from "./FilterColumnPicker";
+import {
+  FilterColumnPicker,
+  type FilterColumnPickerProps,
+} from "./FilterColumnPicker";
 import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
 
-export interface FilterPickerProps {
+export type FilterPickerProps = {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
@@ -17,7 +20,10 @@ export interface FilterPickerProps {
 
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
-}
+} & Pick<
+  FilterColumnPickerProps,
+  "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
+>;
 
 export function FilterPicker({
   query,
@@ -26,6 +32,9 @@ export function FilterPicker({
   filterIndex,
   onSelect,
   onClose,
+  withColumnItemIcon,
+  withColumnGroupIcon,
+  withCustomExpression,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
 
@@ -96,6 +105,9 @@ export function FilterPicker({
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleChange}
         onExpressionSelect={openExpressionEditor}
+        withColumnGroupIcon={withColumnGroupIcon}
+        withColumnItemIcon={withColumnItemIcon}
+        withCustomExpression={withCustomExpression}
       />
     );
   }

@@ -733,7 +733,9 @@ describe("scenarios > admin > permissions", () => {
         true,
       );
 
-      cy.intercept("PUT", "/api/collection/graph").as("updateGraph");
+      cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
+        "updateGraph",
+      );
 
       cy.button("Save changes").click();
       modal().within(() => {
@@ -742,7 +744,6 @@ describe("scenarios > admin > permissions", () => {
 
       cy.wait("@updateGraph").then(interception => {
         cy.log("should skip graph in request and response");
-        expect(interception.request.body.skip_graph).to.equal(true);
         expect(interception.response.body).to.not.haveOwnProperty("groups");
       });
 

@@ -41,25 +41,25 @@
                                                     {:channel_type :channel/email
                                                      :name          "My Template"}
                                                     template)))]
-      (testing "template is a mustache template"
+      (testing "template is a handlebars template"
         (testing "success"
-          (is (some? (insert! {:details {:type    "email/mustache-text"
+          (is (some? (insert! {:details {:type    "email/handlebars-text"
                                          :subject "Hello {{name}}"
                                          :body    "Welcome {{name}}"}}))))
 
         (testing "invalid template"
           (is (thrown? Exception
-                       (insert! {:details {:type    "email/mustache-text"
+                       (insert! {:details {:type    "email/handlebars-text"
                                            :subject "Hello {{name}"
                                            :body    nil}})))))
 
       (testing "template is a resource path"
         (testing "success"
-          (is (some? (insert! {:details {:type    "email/mustache-resource"
+          (is (some? (insert! {:details {:type    "email/handlebars-resource"
                                          :subject "Hello {{name}}"
                                          :path    "/path/to/resource"}}))))
         (testing "invalid template"
           (is (thrown? Exception
-                       (insert! {:details {:type    "email/mustache-resource"
+                       (insert! {:details {:type    "email/handlebars-resource"
                                            :subject "Hello {{name}}"
                                            :path    nil}}))))))))

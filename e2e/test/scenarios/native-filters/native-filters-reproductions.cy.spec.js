@@ -3,6 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   filterWidget,
   getDashboardCard,
+  modal,
   moveDnDKitElement,
   openNativeEditor,
   openSharingMenu,
@@ -10,6 +11,7 @@ import {
   queryBuilderMain,
   removeMultiAutocompleteValue,
   restore,
+  sidebar,
   sidesheet,
   tableInteractive,
   visitDashboard,
@@ -484,7 +486,7 @@ describe("issue 15444", () => {
     // This flow tests the ability to pick the filter from a dropdown when there are not too many results (easy to choose from).
     popover().within(() => {
       cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+      cy.button("Update filter").click();
     });
 
     SQLFilter.runQuery();
@@ -1074,7 +1076,7 @@ describe("issue 31606", { tags: "@external" }, () => {
       .should("have.value", "ID")
       .should("be.disabled");
 
-    FieldFilter.addDefaultStringFilter("2");
+    FieldFilter.addDefaultStringFilter("2", "Add filter");
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("Enter a default value…").should("not.exist");
@@ -1213,5 +1215,51 @@ describe("issue 31606", () => {
       .should("have.length", 2)
       .first()
       .should("contain.text", "Foo");
+  });
+});
+
+describe("issue 49577", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not show the values initially when using a single select search box (metabase#49577)", () => {
+    openNativeEditor().type("select * from {{param");
+    sidebar()
+      .last()
+      .within(() => {
+        cy.findByText("Search box").click();
+        cy.findByText("Edit").click();
+      });
+
+    modal().within(() => {
+      cy.findByText("Custom list").click();
+      cy.findByRole("textbox").type("foo\nbar\nbaz");
+      cy.button("Done").click();
+    });
+
+    filterWidget().click();
+
+    popover().within(() => {
+      cy.findByText("foo").should("not.exist");
+      cy.findByText("bar").should("not.exist");
+      cy.findByText("baz").should("not.exist");
+
+      cy.findByPlaceholderText("Search").should("be.visible").type("fo");
+
+      cy.findByText("foo").should("be.visible");
+    });
+
+    sidebar().last().findByText("Dropdown list").click();
+
+    filterWidget().click();
+
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").should("be.visible");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
+    });
   });
 });

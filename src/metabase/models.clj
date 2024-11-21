@@ -1,5 +1,10 @@
 (ns metabase.models
+  ;; metabase.search.postgres.ingestion has not been exposed publicly yet, it needs a higher level API
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabase.config :as config]
    [metabase.models.action :as action]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
@@ -54,9 +59,12 @@
    [metabase.models.view-log :as view-log]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search :as search]
+   [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 ;; Fool the linter
@@ -192,3 +200,37 @@
        (when (isa? metabase-models-keyword :metabase/model)
          metabase-models-keyword)))
    (next-method symb)))
+
+;; Models must derive from :hook/search-index if their state can influence the contents of the Search Index.
+;; Note that it might not be the model itself that depends on it, for example, Dashcards are used in Card entries.
+;; Don't worry about whether you've added it in the right place, we have tests to ensure that it is derived if, and only
+;; if, it is required.
+
+(t2/define-after-insert :hook/search-index
+  [instance]
+  (when (search/supports-index?)
+    (search.ingestion/update-index! instance true))
+  instance)
+
+;; Hidden behind an obscure environment variable, as it may cause performance problems.
+;; See https://github.com/camsaul/toucan2/issues/195
+(defn- update-hook-enabled? []
+  (or config/is-dev?
+      config/is-test?
+      (when-let [setting (:mb-experimental-search-index-realtime-updates env/env)]
+        (and (not (str/blank? setting))
+             (not= "false" setting)))))
+
+(when (update-hook-enabled?)
+  (t2/define-after-update :hook/search-index
+    [instance]
+    (when (search/supports-index?)
+      (search.ingestion/update-index! instance))
+    nil))
+
+;; Too much of a performance risk.
+#_(t2/define-before-delete :metabase/model
+    [instance]
+    (when (search/supports-index?)
+      (search.ingestion/update-index! instance))
+    instance)

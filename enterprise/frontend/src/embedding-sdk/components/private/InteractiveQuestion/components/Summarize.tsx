@@ -1,16 +1,16 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import {
   SummarizeAggregationItemList,
   SummarizeBreakoutColumnList,
-  useSummarizeQuery,
 } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
 import { Button, Divider, Group, Stack } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import { useInteractiveQuestionContext } from "../context";
 
 type SummarizeProps = {
   onClose: () => void;
@@ -38,8 +38,11 @@ const SummarizeInner = ({
 
   const [currentQuery, setCurrentQuery] = useState<Lib.Query>(question.query());
 
+  // yeah we need to change this
+  const stageIndex = Lib.stageCount(currentQuery);
+
   const onApplyFilter = () => {
-    if (query) {
+    if (currentQuery) {
       onQueryChange(currentQuery);
       onClose();
     }
@@ -52,39 +55,22 @@ const SummarizeInner = ({
     onClose();
   };
 
-  const {
-    query,
-    stageIndex,
-    aggregations,
-    handleAddBreakout,
-    handleQueryChange,
-    handleRemoveBreakout,
-    handleReplaceBreakouts,
-    handleUpdateBreakout,
-    hasAggregations,
-  } = useSummarizeQuery({
-    query: currentQuery,
-    onQueryChange: setCurrentQuery,
-  });
+  const hasAggregations = Lib.aggregations(currentQuery, stageIndex).length > 0;
 
   return (
     <Stack className={CS.overflowHidden} h="100%" w="100%">
       <Stack className={CS.overflowYScroll}>
         <SummarizeAggregationItemList
-          query={query}
+          query={currentQuery}
+          onQueryChange={setCurrentQuery}
           stageIndex={stageIndex}
-          aggregations={aggregations}
-          onQueryChange={handleQueryChange}
         />
         <Divider my="lg" />
         {hasAggregations && (
           <SummarizeBreakoutColumnList
-            query={query}
+            query={currentQuery}
+            onQueryChange={setCurrentQuery}
             stageIndex={stageIndex}
-            onAddBreakout={handleAddBreakout}
-            onUpdateBreakout={handleUpdateBreakout}
-            onRemoveBreakout={handleRemoveBreakout}
-            onReplaceBreakouts={handleReplaceBreakouts}
           />
         )}
       </Stack>

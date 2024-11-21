@@ -21,7 +21,7 @@ There are 3 ways to release
 1. Copy the `.env-template` file to `.env` and fill in all environment variables
 2. Run `cd release && yarn && yarn release-offline v0.77.77 1234567890abcdef1234567890abcdef12345678 --build`
 3. Wait for the build and test jobs to finish
-4. Test the built jar locally: `MB_JETTY_PORT=3033 java -jar target/uberjar/metabase.jar`
+4. Test the built jar locally: `MB_JETTY_PORT=3033 java --add-opens java.base/java.nio=ALL-UNNAMED -jar target/uberjar/metabase.jar`
 5. If everything is successful, run `yarn release-offline v0.77.77 1234567890abcdef1234567890abcdef12345678 --publish`
 
 You can also run publish steps in isolation using these flags instead of `--publish`

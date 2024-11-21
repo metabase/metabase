@@ -139,7 +139,7 @@ case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 - [Custom expressions tutorial][custom-expressions-learn]
 
 [custom-expressions-doc]: ../expressions.md
-[custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
+[custom-expressions-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
 [data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
 [notebook-editor-def]: https://www.metabase.com/glossary/query_builder
 [numpy]: https://numpy.org/doc/

@@ -368,9 +368,9 @@
                     {perm-type (Permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
-    ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
-    ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
-    ;; restrictive group permission.
+    ;; The DB-level permission is the most-restrictive table-level permission within a DB. So for each group, select the
+    ;; most-restrictive table-level permission. Then use normal coalesce logic to select the *least* restrictive group
+    ;; permission.
     (let [perm-values (most-restrictive-per-group
                        perm-type
                        (->> (get-permissions user-id perm-type database-id)

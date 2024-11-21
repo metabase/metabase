@@ -5,7 +5,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useSetting, useUserSetting } from "metabase/common/hooks";
+import {
+  useHasTokenFeature,
+  useSetting,
+  useUserSetting,
+} from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
@@ -17,7 +21,9 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { getHasOwnDatabase } from "metabase/selectors/data";
 import { getIsEmbedded } from "metabase/selectors/embed";
+import { getSetting } from "metabase/selectors/settings";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import type { IconName, IconProps } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -35,8 +41,9 @@ import {
   TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
-import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
-import { trackOnboardingChecklistOpened } from "../SidebarItems/SidebarOnboardingSection/analytics";
+import { AddDatabase } from "../SidebarItems/AddDatabase";
+import { DwhUploadCSV } from "../SidebarItems/DwhUploadCSV/DwhUploadCSV";
+import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -136,6 +143,33 @@ export function MainNavbarView({
   const showOnboardingChecklist =
     isAdmin && showOnboarding && !isEmbedded && !isWhiteLabelled;
 
+  // Instances with DWH enabled already have uploads enabled by default.
+  // It is not possible to turn the uploads off, nor to delete the attached database.
+  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
+  );
+
+  const rootCollection = collections.find(
+    c => c.id === "root" || c.id === null,
+  );
+  const canCurateRootCollection = rootCollection?.can_write;
+  const canUploadToDatabase = databases
+    ?.find(db => db.id === uploadDbId)
+    ?.canUpload();
+
+  /**
+   * the user must have:
+   *   - "write" permissions for the root collection AND
+   *   - "upload" permissions for the attached DWH
+   */
+  const canUpload = canCurateRootCollection && canUploadToDatabase;
+  const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
+
+  const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
+  const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -160,6 +194,7 @@ export function MainNavbarView({
                 {t`How to use Metabase`}
               </PaddedSidebarLink>
             )}
+            {showUploadCSVButton && <DwhUploadCSV />}
           </SidebarSection>
 
           {bookmarks.length > 0 && (
@@ -217,14 +252,15 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
+          {showAddDatabaseButton && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <AddDatabase />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection
-          collections={collections}
-          databases={databases}
-          hasDataAccess={hasDataAccess}
-          isAdmin={isAdmin}
-        />
       </SidebarContentRoot>
     </ErrorBoundary>
   );

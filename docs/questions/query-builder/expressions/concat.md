@@ -106,4 +106,4 @@ concat([City], ", ", [Country])
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

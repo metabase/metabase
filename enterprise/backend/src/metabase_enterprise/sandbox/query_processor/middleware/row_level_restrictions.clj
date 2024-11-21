@@ -23,6 +23,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
@@ -173,12 +174,16 @@
 
 (mu/defn- native-query-metadata :- [:+ :map]
   [source-query :- [:map [:source-query :any]]]
-  (let [result (mw.session/as-admin
-                 ((requiring-resolve 'metabase.query-processor/process-query)
-                  {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
-                   :type     :query
-                   :query    {:source-query source-query
-                              :limit        0}}))]
+  (let [result
+        ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
+        ;; to a custom handler, and we don't want to accidentally terminate the stream here!
+        (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+          (mw.session/as-admin
+            ((requiring-resolve 'metabase.query-processor/process-query)
+             {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+              :type     :query
+              :query    {:source-query source-query
+                         :limit        0}})))]
     (or (-> result :data :results_metadata :columns not-empty)
         (throw (ex-info (tru "Error running query to determine metadata")
                         {:source-query source-query
@@ -196,17 +201,17 @@
   (let [table-metadata   (original-table-metadata table-id)
         ;; make sure source query has `:source-metadata`; add it if needed
         [metadata save?] (cond
-                          ;; if it already has `:source-metadata`, we're good to go.
+                           ;; if it already has `:source-metadata`, we're good to go.
                            (seq source-metadata)
                            [source-metadata false]
 
-                          ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
-                          ;; get the expected metadata.
+                           ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
+                           ;; get the expected metadata.
                            (not (get-in source-query [:source-query :native]))
                            [(mbql-query-metadata source-query) true]
 
-                          ;; otherwise if it's a native query we'll have to run the query really quickly to get the
-                          ;; expected metadata.
+                           ;; otherwise if it's a native query we'll have to run the query really quickly to get the
+                           ;; expected metadata.
                            :else
                            [(native-query-metadata source-query) true])
         metadata (reconcile-metadata metadata table-metadata)]

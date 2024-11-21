@@ -130,7 +130,7 @@ When you [X-ray](../exploration-and-organization/x-rays.md) a table, model, or e
 
 ### Field Filters
 
-Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
+Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 
 ### Editing types in the Table Metadata page
 
@@ -150,6 +150,6 @@ Metabase currently does not support array types with any database. You'll only b
 
 ## Further Reading
 
-- [Exploring data with Metabase's data browser](https://www.metabase.com/learn/getting-started/data-browser.html).
+- [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
 - [The Table Metadata page: editing metadata](./metadata-editing.md).
-- [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/sql-questions/field-filters.html).
+- [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters).

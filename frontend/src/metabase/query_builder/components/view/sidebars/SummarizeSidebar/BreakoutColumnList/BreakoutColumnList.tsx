@@ -4,32 +4,28 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
+import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks/use-breakout-query-handlers";
 import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ColumnGroupName, SearchContainer } from "./BreakoutColumnList.styled";
 import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
 
-export interface BreakoutColumnListProps {
-  query: Lib.Query;
-  stageIndex: number;
-  onAddBreakout: (column: Lib.ColumnMetadata) => void;
-  onUpdateBreakout: (
-    breakout: Lib.BreakoutClause,
-    column: Lib.ColumnMetadata,
-  ) => void;
-  onRemoveBreakout: (breakout: Lib.BreakoutClause) => void;
-  onReplaceBreakouts: (column: Lib.ColumnMetadata) => void;
-}
+export type BreakoutColumnListProps = UpdateQueryHookProps;
 
 export function BreakoutColumnList({
   query,
-  stageIndex,
-  onAddBreakout,
-  onUpdateBreakout,
-  onRemoveBreakout,
-  onReplaceBreakouts,
+  onQueryChange,
+  stageIndex = -1,
 }: BreakoutColumnListProps) {
+  const {
+    onAddBreakout,
+    onUpdateBreakout,
+    onRemoveBreakout,
+    onReplaceBreakouts,
+  } = useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
+
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(
     searchQuery,

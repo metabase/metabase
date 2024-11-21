@@ -138,5 +138,5 @@ datetimeDiff([Aging Start], [Aging End], "month")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
-- [Time series analysis](https://www.metabase.com/learn/time-series/start)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
+- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)
