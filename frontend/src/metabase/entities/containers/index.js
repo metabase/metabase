@@ -12,7 +12,8 @@ export function addEntityContainers(entity) {
    * @deprecated HOCs are deprecated
    */
   entity.load = ({ id, query, ...props } = {}) => {
-    // TODO: https://github.com/metabase/metabase/issues/50323
+    // TODO: define rtk for all remaining entities
+    // https://github.com/metabase/metabase/issues/50323
     if (!entity.rtk) {
       return entity.loadLegacy({ id, query, ...props });
     }
