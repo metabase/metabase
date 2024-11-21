@@ -39,9 +39,6 @@ export function addEntityContainers(entity) {
       ...props,
     });
 
-  /**
-   * @deprecated HOCs are deprecated
-   */
   entity.Loader = ({ id, ...props }) => (
     <EntityObjectLoader entityType={entity.name} entityId={id} {...props} />
   );
@@ -53,25 +50,16 @@ export function addEntityContainers(entity) {
   entity.loadList = ({ query, ...props } = {}) =>
     entityListLoader({ entityType: entity.name, entityQuery: query, ...props });
 
-  /**
-   * @deprecated HOCs are deprecated
-   */
   entity.ListLoader = ({ query, ...props }) => (
     <EntityListLoader entityType={entity.name} entityQuery={query} {...props} />
   );
   entity.ListLoader.displayName = `${ObjectName}.ListLoader`;
 
-  /**
-   * @deprecated HOCs are deprecated
-   */
   entity.Name = ({ id, ...props }) => (
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
   entity.Name.displayName = `${ObjectName}.Name`;
 
-  /**
-   * @deprecated HOCs are deprecated
-   */
   entity.Link = ({ id, ...props }) => (
     <EntityLink entityType={entity.name} entityId={id} {...props} />
   );
