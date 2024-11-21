@@ -79,6 +79,26 @@
               ["card" 1 "card ancient"]]
              (search :recency "card"))))))
 
+(deftest ^:parallel view-count-test
+  (testing "the more view count the better"
+    (with-index-contents
+      [{:model "card" :id 1 :name "card famous"     :view_count 100}
+       {:model "card" :id 2 :name "card popular"    :view_count 50}
+       {:model "card" :id 3 :name "card well known" :view_count 10}]
+      (is (= [["card" 1 "card famous"]
+              ["card" 2 "card popular"]
+              ["card" 3 "card well known"]]
+             (search :view-count "card")))))
+  (testing "don't error on fresh instances with no view count"
+    (with-index-contents
+      [{:model "card"      :id 1 :name "view card"      :view_count 0}
+       {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
+       {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
+      (is (= [["dashboard" 2 "view dashboard"]
+              ["dataset" 3 "view dataset"]
+              ["card" 1 "view card"]]
+             (search :view-count "view"))))))
+
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
 

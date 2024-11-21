@@ -121,7 +121,7 @@
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
-                [[:= :search_index.model [:inline (name sm)]] v])]
+                [[:= :search_index.model [:inline (name sm)]] (if (zero? v) 1 v)])]
     (size :view_count (if (seq cases)
                         (into [:case] cat cases)
                         1))

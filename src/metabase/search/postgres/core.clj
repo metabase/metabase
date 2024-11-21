@@ -94,9 +94,9 @@
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
   [search-ctx qry]
-  (let [collection-id-col      :search_index.collection_id
-        permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
-        personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
+  (let [collection-id-col :search_index.collection_id
+        permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
       true (sql.helpers/where permitted-clause)
