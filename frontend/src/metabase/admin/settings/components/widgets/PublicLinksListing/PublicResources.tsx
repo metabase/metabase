@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import {
@@ -9,6 +10,7 @@ import {
   useListPublicDashboardsQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import type {
   GetPublicAction,
@@ -22,18 +24,20 @@ export const PublicLinksDashboardListing = () => {
   const query = useListPublicDashboardsQuery();
   const [revoke] = useDeleteDashboardPublicLinkMutation();
   return (
-    <PublicLinksListing<GetPublicDashboard>
-      revoke={revoke}
-      getUrl={dashboard => Urls.dashboard(dashboard)}
-      getPublicUrl={({ public_uuid }: GetPublicDashboard) => {
-        if (public_uuid) {
-          return Urls.publicDashboard(public_uuid);
-        }
-        return null;
-      }}
-      noLinksMessage={t`No dashboards have been publicly shared yet.`}
-      {...query}
-    />
+    <div className={cx(CS.bordered, CS.rounded, CS.full)}>
+      <PublicLinksListing<GetPublicDashboard>
+        revoke={revoke}
+        getUrl={dashboard => Urls.dashboard(dashboard)}
+        getPublicUrl={({ public_uuid }: GetPublicDashboard) => {
+          if (public_uuid) {
+            return Urls.publicDashboard(public_uuid);
+          }
+          return null;
+        }}
+        noLinksMessage={t`No dashboards have been publicly shared yet.`}
+        {...query}
+      />
+    </div>
   );
 };
 
@@ -41,18 +45,20 @@ export const PublicLinksQuestionListing = () => {
   const query = useListPublicCardsQuery();
   const [revoke] = useDeleteCardPublicLinkMutation();
   return (
-    <PublicLinksListing<GetPublicCard>
-      revoke={revoke}
-      getUrl={question => Urls.question(question)}
-      getPublicUrl={({ public_uuid }) => {
-        if (public_uuid) {
-          return Urls.publicQuestion({ uuid: public_uuid });
-        }
-        return null;
-      }}
-      noLinksMessage={t`No questions have been publicly shared yet.`}
-      {...query}
-    />
+    <div className={cx(CS.bordered, CS.rounded, CS.full)}>
+      <PublicLinksListing<GetPublicCard>
+        revoke={revoke}
+        getUrl={question => Urls.question(question)}
+        getPublicUrl={({ public_uuid }) => {
+          if (public_uuid) {
+            return Urls.publicQuestion({ uuid: public_uuid });
+          }
+          return null;
+        }}
+        noLinksMessage={t`No questions have been publicly shared yet.`}
+        {...query}
+      />
+    </div>
   );
 };
 
@@ -62,17 +68,19 @@ export const PublicLinksActionListing = () => {
   const [revoke] = useDeleteActionPublicLinkMutation();
 
   return (
-    <PublicLinksListing<GetPublicAction>
-      revoke={revoke}
-      getUrl={action => Urls.action({ id: action.model_id }, action.id)}
-      getPublicUrl={({ public_uuid }) => {
-        if (public_uuid) {
-          return Urls.publicAction(siteUrl, public_uuid);
-        }
-        return null;
-      }}
-      noLinksMessage={t`No actions have been publicly shared yet.`}
-      {...query}
-    />
+    <div className={cx(CS.bordered, CS.rounded, CS.full)}>
+      <PublicLinksListing<GetPublicAction>
+        revoke={revoke}
+        getUrl={action => Urls.action({ id: action.model_id }, action.id)}
+        getPublicUrl={({ public_uuid }) => {
+          if (public_uuid) {
+            return Urls.publicAction(siteUrl, public_uuid);
+          }
+          return null;
+        }}
+        noLinksMessage={t`No actions have been publicly shared yet.`}
+        {...query}
+      />
+    </div>
   );
 };
