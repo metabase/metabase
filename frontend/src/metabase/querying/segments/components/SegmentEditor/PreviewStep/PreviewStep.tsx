@@ -1,9 +1,10 @@
 import { Link } from "react-router";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import * as Urls from "metabase/lib/urls";
-import { Button, Flex, Text } from "metabase/ui";
+import { Button, Flex, Loader, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";
@@ -28,7 +29,9 @@ type PreviewQueryProps = {
 
 function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
   const countQuery = Lib.aggregateByCount(query, stageIndex);
-  const { data } = useGetAdhocQueryQuery(Lib.toLegacyQuery(countQuery));
+  const { data, isFetching } = useGetAdhocQueryQuery(
+    Lib.toLegacyQuery(countQuery),
+  );
   const count = data?.data?.rows?.[0]?.[0];
 
   const previewUrl = Urls.newQuestion({
@@ -38,7 +41,12 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
   return (
     <ClauseStep>
       <Flex gap="md" align="center">
-        {count != null && <Text weight="bold">{t`${count} rows`}</Text>}
+        {match({ count, isFetching })
+          .with({ isFetching: true }, () => <Loader />)
+          .with({ isFetching: false, count: P.nonNullable }, () => (
+            <Text weight="bold">{t`${count} rows`}</Text>
+          ))
+          .otherwise(() => null)}
         <Button
           component={Link}
           to={previewUrl}
