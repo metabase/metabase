@@ -752,8 +752,8 @@
   metabase.api.search-test/do-test-users                                                clojure.core/let
   metabase.async.api-response-test/with-response                                        clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
-  metabase.channel.http-test/with-captured-http-requests                                clojure.core/fn
-  metabase.channel.http-test/with-server                                                clojure.core/let
+  metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
+  metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
   metabase.db.data-migrations/defmigration                                              clojure.core/def
@@ -855,7 +855,8 @@
    metabase.api.search-test/with-search-items-in-root-collection                                                             hooks.common/do*
    metabase.api.user-test/with-temp-user-email                                                                               hooks.common/with-one-binding
    metabase.async.streaming-response-test/with-start-execution-chan                                                          hooks.common/with-one-binding
-   metabase.channel.template.handlebars-test/with-temp-template                                                              hooks.common/with-vec-first-binding
+   metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
+   metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity

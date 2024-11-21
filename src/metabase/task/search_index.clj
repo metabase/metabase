@@ -5,9 +5,11 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.search :as search]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.task :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (org.quartz DisallowConcurrentExecution JobDetail Trigger)))
@@ -30,28 +32,37 @@
 
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
 
-(defn- reindex! []
-  (when (search/supports-index?)
-    (if (not @recreated?)
-      (do (log/info "Recreating search index from the latest schema")
-          ;; Each instance in a multi-instance deployment will recreate the table the first time it is selected to run
-          ;; the job, resulting in a momentary lack of search results.
-          ;; One solution to this would be to store metadata about the index in another table, which we can use to
-          ;; determine whether it was built by another version of Metabase and should be rebuilt.
+(defn- report->prometheus! [report]
+  (doseq [[model cnt] report]
+    (prometheus/inc! :metabase-search/index {:model model} cnt)))
 
-          (search/init-index! {:force-reset? (not @recreated?)})
-          (reset! recreated? true))
-      (do (log/info "Reindexing searchable entities")
-          (search/reindex!)))
-    ;; It would be nice to output how many entries were updated.
-    (log/info "Done indexing.")))
+(defn reindex!
+  "Reindex the whole AppDB"
+  []
+  (when (search/supports-index?)
+    (let [timer  (u/start-timer)
+          report (if (not @recreated?)
+                   (do (log/info "Recreating search index from the latest schema")
+                       ;; Each instance in a multi-instance deployment will recreate the table the first time it is
+                       ;; selected to run the job, resulting in a momentary lack of search results.  One solution to
+                       ;; this would be to store metadata about the index in another table, which we can use to
+                       ;; determine whether it was built by another version of Metabase and should be rebuilt.
+
+                       (u/prog1 (search/init-index! {:force-reset? (not @recreated?)})
+                         (reset! recreated? true)))
+                   (do (log/info "Reindexing searchable entities")
+                       (search/reindex!)))]
+      (report->prometheus! report)
+      (log/infof "Done indexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report)))))
 
 (defn- update-index! []
   (when (search/supports-index?)
     (while true
-      (let [updated-entry-count (search.ingestion/process-next-batch Long/MAX_VALUE 100)]
-        (when (pos? updated-entry-count)
-          (log/infof "Updated %d search index entries" updated-entry-count))))))
+      (let [timer  (u/start-timer)
+            report (search.ingestion/process-next-batch Long/MAX_VALUE 100)]
+        (when (seq report)
+          (report->prometheus! report)
+          (log/debugf "Indexed search entries in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report)))))))
 
 (defn- force-scheduled-task! [^JobDetail job ^Trigger trigger]
   ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
