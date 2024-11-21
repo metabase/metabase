@@ -11,6 +11,7 @@
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.search.postgres.scoring :as search.scoring]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -71,7 +72,7 @@
   (when s
     (OffsetDateTime/parse s)))
 
-(defn- rehydrate [index-row]
+(defn- rehydrate [context index-row]
   ;; Useful for debugging scoring
   #_(dissoc index-row :legacy_input :created_at :updated_at :last_edited_at)
   (-> (merge
@@ -80,7 +81,7 @@
       (assoc :scores (mapv (fn [k]
                              ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
                              (let [score  (or (get index-row k) 0)
-                                   weight (search.config/weight k)]
+                                   weight (search.config/weight context k)]
                                {:score        score
                                 :name         k
                                 :weight       weight
@@ -94,9 +95,9 @@
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
   [search-ctx qry]
-  (let [collection-id-col      :search_index.collection_id
-        permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
-        personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
+  (let [collection-id-col :search_index.collection_id
+        permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
       true (sql.helpers/where permitted-clause)
@@ -112,8 +113,8 @@
        (add-collection-join-and-where-clauses search-ctx)
        (search.scoring/with-scores search-ctx)
        (search.filter/with-filters search-ctx)
-       (t2/query)
-       (map rehydrate)))
+       t2/query
+       (map (partial rehydrate (:context search-ctx)))))
 
 (def ^:private default-engine fulltext)
 
@@ -158,8 +159,8 @@
   []
   (search.index/ensure-ready! false)
   (search.index/maybe-create-pending!)
-  (search.ingestion/populate-index!)
-  (search.index/activate-pending!))
+  (u/prog1 (search.ingestion/populate-index!)
+    (search.index/activate-pending!)))
 
 (comment
   (init! true)
