@@ -116,8 +116,8 @@
 
 (def default-helpers
   "A list of default helpers."
-  [["equals"      equals]
-   ["format-date" format-date]
-   ["now"         now]
-   ["card-url"    card-url]
-   ["dashboard-url" dashboard-url]])
+  {"equals"        equals
+   "format-date"   format-date
+   "now"           now
+   "card-url"      card-url
+   "dashboard-url" dashboard-url})
