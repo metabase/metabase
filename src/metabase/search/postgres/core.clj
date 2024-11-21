@@ -112,7 +112,7 @@
        (add-collection-join-and-where-clauses search-ctx)
        (search.scoring/with-scores search-ctx)
        (search.filter/with-filters search-ctx)
-       (t2/query)
+       t2/query
        (map rehydrate)))
 
 (def ^:private default-engine fulltext)

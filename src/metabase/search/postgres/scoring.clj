@@ -24,7 +24,9 @@
    [:/
     [:coalesce column [:inline 0]]
     (if (number? ceiling)
-      [:inline (double ceiling)]
+      (if (zero? ceiling)
+        [:inline 1.0]
+        [:inline (double ceiling)])
       [:cast ceiling :float])]])
 
 (defn atan-size

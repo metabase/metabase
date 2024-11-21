@@ -102,6 +102,17 @@
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
 
+(deftest ^:parallel bookmark-test
+  (testing "bookmarked items are ranker higher"
+    (with-index-contents
+      [{:model "card" :id 1 :name "card normal"}
+       {:model "card" :id 2 :name "card loved"}]
+      (mt/with-temp [:model/User         _ {:id user-id}
+                     :model/CardBookmark _ {:card_id 2 :user_id user-id}]
+        (is (= [["card" 2 "card loved"]
+                ["card" 1 "card normal"]]
+               (search :bookmarked "card")))))))
+
 (deftest ^:parallel user-recency-test
   (let [right-now   (Instant/now)
         long-ago    (.minus right-now 10 ChronoUnit/DAYS)
