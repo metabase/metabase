@@ -14,7 +14,7 @@ import { Button, Flex, rem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderUIControls } from "metabase-types/store";
 
-import { ViewFooterControl } from "./ViewFooterViewControl";
+import { ViewFooterControl } from "./ViewFooterControl";
 
 interface LeftViewFooterButtonGroupProps {
   question: Question;
