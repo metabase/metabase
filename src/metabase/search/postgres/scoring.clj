@@ -3,6 +3,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.config :as config]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.postgres.index :as search.index]
@@ -115,11 +116,18 @@
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
-(def ^:private view-count-percentiles
-  (memoize/ttl (fn [p-value]
-                 (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
-                            [(keyword model) vcp])))
-               :ttl/threshold (u/hours->ms 1)))
+(defn- view-count-percentiles*
+  [p-value]
+  (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
+             [(keyword model) vcp])))
+
+(def ^{:private true
+       :arglists '([p-value])}
+  view-count-percentiles
+  (if config/is-prod?
+    (memoize/ttl view-count-percentiles*
+                 :ttl/threshold (u/hours->ms 1))
+    view-count-percentiles*))
 
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
@@ -129,6 +137,18 @@
                         (into [:case] cat cases)
                         1))
     #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
+
+(defn- model-rank-exp []
+  (let [search-order search.config/models-search-order
+        n            (double (count search-order))
+        cases        (map-indexed (fn [i sm]
+                                    [[:= :search_index.model sm]
+                                     (or (search.config/scorer-param :model sm)
+                                         [:inline (/ (- n i) n)])])
+                                  search-order)]
+    (-> (into [:case] cat (concat cases))
+        ;; if you're not listed, get a very poor score
+        (into [:else [:inline 0.01]]))))
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
@@ -140,7 +160,7 @@
    :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
    :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
    :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model        (idx-rank :model_rank (count search.config/all-models))})
+   :model        (model-rank-exp)})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
