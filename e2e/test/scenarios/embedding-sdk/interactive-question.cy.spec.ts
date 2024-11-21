@@ -10,12 +10,12 @@ import {
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
-import { describeSDK } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
+  describeSDK,
   getSdkRoot,
   signInAsAdminAndEnableEmbeddingSdk,
-  visitInteractiveQuestionStory,
-} from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { visitInteractiveQuestionStory } from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/test/scenarios/embedding-sdk/helpers/save-interactive-question-e2e-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

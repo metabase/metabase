@@ -1,4 +1,4 @@
-import { type Ref, forwardRef } from "react";
+import { type ReactNode, type Ref, forwardRef } from "react";
 
 import { Button, type ButtonProps, Icon, type IconName } from "metabase/ui";
 
@@ -11,7 +11,7 @@ function _ToolbarButton(
     isHighlighted,
     ...buttonProps
   }: {
-    label: string;
+    label: ReactNode;
     icon: IconName;
     isHighlighted: boolean;
   } & ButtonProps,

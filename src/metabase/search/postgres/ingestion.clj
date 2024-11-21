@@ -32,7 +32,9 @@
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
   (->> (:search-terms (search.spec/spec (:model m)))
-       (map m)
+       (keep m)
+       (map str/trim)
+       (remove str/blank?)
        (str/join " ")))
 
 (defn- display-data [m]
@@ -41,7 +43,7 @@
 (defn- ->entry [m]
   (-> m
       (select-keys
-       (into [:id :model] search.spec/attr-columns))
+       (into [:model] search.spec/attr-columns))
       (update :archived boolean)
       (assoc
        :display_data (display-data m)
