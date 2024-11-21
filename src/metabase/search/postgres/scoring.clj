@@ -3,6 +3,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.config :as config]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.postgres.index :as search.index]
@@ -115,11 +116,18 @@
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
-(def ^:private view-count-percentiles
-  (memoize/ttl (fn [p-value]
-                 (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
-                            [(keyword model) vcp])))
-               :ttl/threshold (u/hours->ms 1)))
+(defn- view-count-percentiles*
+  [p-value]
+  (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
+             [(keyword model) vcp])))
+
+(def ^{:private true
+       :arglists '([p-value])}
+  view-count-percentiles
+  (if config/is-prod?
+    (memoize/ttl view-count-percentiles*
+                 :ttl/threshold (u/hours->ms 1))
+    view-count-percentiles*))
 
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
