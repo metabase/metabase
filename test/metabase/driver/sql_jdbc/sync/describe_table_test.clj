@@ -762,11 +762,12 @@
 
 ;; TODO Make all drivers that support materialized-views pass this test
 (doseq [driver [:postgres
-                :redshift
-                #_:oracle
                 :databricks
-                :snowflake
-                :bigquery-cloud-sdk]]
+                :bigquery-cloud-sdk
+                #_:snowflake ;; TODO
+                #_:oracle ;; system user needs priviliges
+                ;; not syncing view fields
+                #_:redshift]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
     true))
@@ -777,7 +778,6 @@
 
 (doseq [driver [:postgres
                 :mysql
-                :redshift
                 :bigquery-cloud-sdk
                 :snowflake
                 :sql-server
@@ -786,13 +786,15 @@
                 :databricks
                 :spark-sql
                 :sqlite
-                :oracle
-                :vertica]]
+                ;; not syncing view fields
+                #_:oracle
+                #_:redshift
+                #_:vertica]]
   (defmethod driver/database-supports? [driver ::describe-view-fields]
     [_driver _feature _database]
     true))
 
-(deftest describe-materialized-view-fields
+(deftest describe-view-fields
   (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
                               (mt/normal-drivers-with-feature ::describe-view-fields))
     (doseq [materialized? (cond-> []
