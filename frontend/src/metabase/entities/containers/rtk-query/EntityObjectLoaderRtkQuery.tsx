@@ -26,27 +26,16 @@ import type {
 } from "./types";
 
 interface ChildrenProps<Entity, EntityWrapper> {
-  // bulkUpdate
-  // create
-  // delete
   dispatch: Dispatch;
   dispatchApiErrorEvent: boolean;
   error: unknown;
-  // fetch
-  // fetchForeignKeys
-  // fetchList
-  // fetchMetadata
-  // fetchMetadataAndForeignTables
-  // fetchMetadataDeprecated
   fetched: boolean;
-  // invalidateLists
   loading: boolean;
-  object: EntityWrapper | Entity | undefined; // EntityWrapper when "wrapped" is true, Entity otherwise
+  /**
+   * object is EntityWrapper when Props["wrapped"] is true.
+   */
+  object: EntityWrapper | Entity | undefined;
   reload: () => void;
-  // setFieldOrder
-  // table: EntityWrapper;
-  // update
-  // updateProperty
 }
 
 interface LoadingAndErrorWrapperProps {
@@ -93,7 +82,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   fetchType = "fetch",
   loadingAndErrorWrapper = true,
   LoadingAndErrorWrapper = DefaultLoadingAndErrorWrapper,
-  // reload = false,
+  reload = false,
   requestType = "fetch",
   selectorName = "getObject",
   wrapped = false,
@@ -150,7 +139,9 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     error: rtkError,
     isLoading,
     refetch,
-  } = useGetQuery(entityId != null ? finalQuery : skipToken);
+  } = useGetQuery(entityId != null ? finalQuery : skipToken, {
+    refetchOnMountOrArgChange: reload,
+  });
 
   const queryKey = useMemo(
     () => entityDefinition.getQueryKey(finalQuery),
