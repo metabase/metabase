@@ -49,7 +49,7 @@
 
 (deftest idempotent-test
   (with-index
-    (let [count-rows  (fn [] (t2/count @#'search.index/active-table))
+    (let [count-rows  (fn [] (t2/count @#'search.index/*active-table*))
           rows-before (count-rows)]
       (search.ingestion/populate-index!)
       (is (= rows-before (count-rows))))))
@@ -74,7 +74,7 @@
 #_(deftest related-update-test
     (with-index
       (testing "The index is updated when model dependencies change"
-        (let [index-table    @#'search.index/active-table
+        (let [index-table    @#'search.index/*active-table*
               table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
               legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
                                   :legacy_input

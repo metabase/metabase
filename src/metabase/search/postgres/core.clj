@@ -78,13 +78,14 @@
        (json/parse-string (:legacy_input index-row) keyword)
        (select-keys index-row [:total_score :pinned]))
       (assoc :scores (mapv (fn [k]
-                             (let [score  (get index-row k)
+                             ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
+                             (let [score  (or (get index-row k) 0)
                                    weight (search.config/weight k)]
                                {:score        score
                                 :name         k
                                 :weight       weight
                                 :contribution (* weight score)}))
-                           (keys (search.scoring/scorers))))
+                           (keys (search.scoring/scorers nil))))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
@@ -162,4 +163,4 @@
 
 (comment
   (init! true)
-  (t2/select-fn-vec :legacy_input :search_index))
+  (t2/select-fn-vec :legacy_input search.index/*active-table*))

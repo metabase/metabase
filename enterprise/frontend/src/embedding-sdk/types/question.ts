@@ -6,6 +6,7 @@ import type { Card, CardId } from "metabase-types/api";
 
 export interface SdkQuestionState {
   question?: Question;
+  originalQuestion?: Question;
   queryResults?: any[];
 }
 
@@ -21,4 +22,9 @@ export interface NavigateToNewCardParams {
   previousCard: Card;
   objectId: ObjectId;
   cancelDeferred?: Deferred;
+}
+
+export interface QuestionStateParams {
+  question: Question;
+  updateQuestion: (question: Question, opts: { run: boolean }) => void;
 }

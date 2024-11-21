@@ -4,8 +4,9 @@ import { EditorViewControl } from "embedding-sdk/components/private/EditorViewCo
 import {
   BackButton,
   Breakout,
+  BreakoutDropdown,
+  ChartTypeDropdown,
   ChartTypeSelector,
-  ChartTypeSelectorList,
   Editor,
   EditorButton,
   Filter,
@@ -19,6 +20,7 @@ import {
   SdkSaveQuestionForm,
   Summarize,
   SummarizeButton,
+  SummarizeDropdown,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
 import {
@@ -99,6 +101,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeButton: typeof SummarizeButton;
+  SummarizeDropdown: typeof SummarizeDropdown;
   /** @deprecated Use `InteractiveQuestion.Editor` instead */
   Notebook: typeof Editor;
   Editor: typeof Editor;
@@ -109,10 +112,11 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
-  ChartTypeSelectorList: typeof ChartTypeSelectorList;
+  ChartTypeSelectorList: typeof ChartTypeDropdown;
   EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
   Breakout: typeof Breakout;
+  BreakoutDropdown: typeof BreakoutDropdown;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -124,6 +128,7 @@ InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
 InteractiveQuestion.SummarizeButton = SummarizeButton;
+InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
 /** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
 InteractiveQuestion.Editor = Editor;
@@ -136,7 +141,8 @@ InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
-InteractiveQuestion.ChartTypeSelectorList = ChartTypeSelectorList;
+InteractiveQuestion.ChartTypeSelectorList = ChartTypeDropdown;
 
 export { InteractiveQuestion };
