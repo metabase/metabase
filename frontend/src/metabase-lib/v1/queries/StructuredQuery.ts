@@ -8,19 +8,14 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import type { Dimension } from "metabase-lib/v1/Dimension";
-import { ExpressionDimension, FieldDimension } from "metabase-lib/v1/Dimension";
+import { FieldDimension } from "metabase-lib/v1/Dimension";
 import DimensionOptions from "metabase-lib/v1/DimensionOptions";
-import type { AggregationOperator } from "metabase-lib/v1/deprecated-types";
 import {
   DISPLAY_QUOTES,
   format as formatExpression,
 } from "metabase-lib/v1/expressions/format";
-import { getAggregationOperators } from "metabase-lib/v1/operators/utils";
 import * as Q from "metabase-lib/v1/queries/utils/query";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import { createLookupByProperty } from "metabase-lib/v1/utils";
 import type {
-  Aggregation,
   DatabaseId,
   DatasetQuery,
   Filter,
@@ -37,7 +32,6 @@ import type Segment from "../metadata/Segment";
 import type Table from "../metadata/Table";
 
 import AtomicQuery from "./AtomicQuery";
-import AggregationWrapper from "./structured/Aggregation";
 import FilterWrapper from "./structured/Filter";
 
 type DimensionFilterFn = (dimension: Dimension) => boolean;
@@ -182,18 +176,7 @@ class StructuredQuery extends AtomicQuery {
     return metadata.table(this._sourceTableId());
   });
 
-  hasAggregations() {
-    return this.aggregations().length > 0;
-  }
-
   // ALIASES: allows
-
-  /**
-   * @returns alias for addAggregation
-   */
-  aggregate(aggregation: Aggregation): StructuredQuery {
-    return this.addAggregation(aggregation);
-  }
 
   /**
    * @returns alias for addFilter
@@ -202,136 +185,12 @@ class StructuredQuery extends AtomicQuery {
     return this.addFilter(filter);
   }
 
-  // AGGREGATIONS
-
-  /**
-   * @returns an array of MBQL @type {Aggregation}s.
-   */
-  aggregations = _.once((): AggregationWrapper[] => {
-    return Q.getAggregations(
-      this.legacyQuery({ useStructuredQuery: true }),
-    ).map(
-      (aggregation, index) => new AggregationWrapper(aggregation, index, this),
-    );
-  });
-
-  /**
-   * @returns an array of aggregation options for the currently selected table
-   */
-  aggregationOperators = _.once((): AggregationOperator[] => {
-    const table = this.table();
-
-    if (table) {
-      const fieldOptions = this.fieldOptions()
-        .all()
-        .map(dimension => dimension.field())
-        .filter(field => field != null);
-
-      return getAggregationOperators(table.db, fieldOptions);
-    }
-
-    return [];
-  });
-
-  aggregationOperatorsLookup = _.once(
-    (): Record<string, AggregationOperator> => {
-      return createLookupByProperty(this.aggregationOperators(), "short");
-    },
-  );
-
-  aggregationOperator(short: string): AggregationOperator {
-    return this.aggregationOperatorsLookup()[short];
-  }
-
-  /**
-   * @returns the field options for the provided aggregation
-   */
-  aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
-    const aggregation: AggregationOperator =
-      typeof agg === "string" ? this.aggregationOperator(agg) : agg;
-
-    if (aggregation) {
-      const fieldOptions = this.fieldOptions(field => {
-        return (
-          aggregation.validFieldsFilters.length > 0 &&
-          aggregation.validFieldsFilters[0]([field]).length === 1
-        );
-      });
-      // HACK Atte Keinänen 6/18/17: Using `fieldOptions` with a field filter function
-      // ends up often omitting all expressions because the field object of ExpressionDimension is empty.
-      // Expressions can be applied to all aggregations so we can simply add all expressions to the
-      // dimensions list in this hack.
-      //
-      // A real solution would have a `dimensionOptions` method instead of `fieldOptions` which would
-      // enable filtering based on dimension properties.
-      return new DimensionOptions({
-        ...fieldOptions,
-        dimensions: _.uniq([
-          ...fieldOptions.dimensions.filter(
-            d => !(d instanceof ExpressionDimension),
-          ),
-        ]),
-      });
-    } else {
-      return new DimensionOptions({
-        count: 0,
-        fks: [],
-        dimensions: [],
-      });
-    }
-  }
-
-  /**
-   * @returns true if the aggregation can be removed
-   */
-  canRemoveAggregation() {
-    return this.aggregations().length > 1;
-  }
-
-  /**
-   * @returns true if the query has no aggregation
-   */
-  isBareRows() {
-    return !this.hasAggregations();
-  }
-
-  /**
-   * @returns true if the query has no aggregation
-   */
-  isRaw() {
-    return !this.hasAggregations();
-  }
-
   formatExpression(expression, { quotes = DISPLAY_QUOTES, ...options } = {}) {
     return formatExpression(expression, {
       quotes,
       ...options,
       legacyQuery: this,
     });
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the provided MBQL @type {Aggregation} added.
-   */
-  addAggregation(_aggregation: Aggregation): StructuredQuery {
-    return this._updateQuery(Q.addAggregation, arguments);
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the MBQL @type {Aggregation} updated at the provided index.
-   */
-  updateAggregation(
-    _index: number,
-    _aggregation: Aggregation,
-  ): StructuredQuery {
-    return this._updateQuery(Q.updateAggregation, arguments);
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the aggregation at the provided index removed.
-   */
-  removeAggregation(_index: number): StructuredQuery {
-    return this._updateQuery(Q.removeAggregation, arguments);
   }
 
   // FILTERS
@@ -509,68 +368,6 @@ class StructuredQuery extends AtomicQuery {
           .dimensions()
           .map(d => (d._query ? d : this.parseFieldReference(d.mbql())))
       : [];
-  });
-
-  aggregationDimensions = _.once(() => {
-    return this.aggregations().map(aggregation =>
-      aggregation.aggregationDimension(),
-    );
-  });
-
-  // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
-  // NOTE: these will not have the correct columnName() if there are duplicates
-  columnDimensions = _.once((): Dimension[] => {
-    if (this.hasAggregations()) {
-      return this.aggregationDimensions();
-    } else {
-      const table = this.tableDimensions();
-
-      const sorted = _.chain(table)
-        .filter(d => {
-          const f = d.field();
-          return (
-            f.active !== false &&
-            f.visibility_type !== "sensitive" &&
-            f.visibility_type !== "retired" &&
-            f.parent_id == null
-          );
-        })
-        .sortBy(d => d.displayName()?.toLowerCase())
-        .sortBy(d => {
-          const type = d.field().semantic_type;
-          return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
-        })
-        .sortBy(d => d.field().position)
-        .value();
-
-      return sorted;
-    }
-  });
-
-  // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
-  columnNames = _.once(() => {
-    // NOTE: dimension.columnName() doesn't include suffixes for duplicated column names so we need to do that here
-    const nameCounts = new Map();
-    return this.columnDimensions().map(dimension => {
-      const name = dimension.columnName();
-
-      if (nameCounts.has(name)) {
-        const count = nameCounts.get(name) + 1;
-        nameCounts.set(name, count);
-        return `${name}_${count}`;
-      } else {
-        nameCounts.set(name, 1);
-        return name;
-      }
-    });
-  });
-
-  columns = _.once(() => {
-    const names = this.columnNames();
-    return this.columnDimensions().map((dimension, index) => ({
-      ...dimension.column(),
-      name: names[index],
-    }));
   });
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {

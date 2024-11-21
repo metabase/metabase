@@ -1,37 +1,4 @@
-import * as A from "./aggregation";
 import * as F from "./filter";
-
-// AGGREGATION
-/**
- * @deprecated use MLv2
- */
-export const getAggregations = query => A.getAggregations(query.aggregation);
-
-/**
- * @deprecated use MLv2
- */
-export const addAggregation = (query, aggregation) =>
-  setAggregationClause(query, A.addAggregation(query.aggregation, aggregation));
-
-/**
- * @deprecated use MLv2
- */
-export const updateAggregation = (query, index, aggregation) =>
-  setAggregationClause(
-    query,
-    A.updateAggregation(query.aggregation, index, aggregation),
-  );
-
-/**
- * @deprecated use MLv2
- */
-export const removeAggregation = (query, index) =>
-  setAggregationClause(query, A.removeAggregation(query.aggregation, index));
-
-/**
- * @deprecated use MLv2
- */
-export const isBareRows = query => A.isBareRows(query.aggregation);
 
 // FILTER
 
@@ -49,9 +16,6 @@ export { getFilterClause } from "./filter";
 
 // we can enforce various constraints in these functions:
 
-function setAggregationClause(query, aggregationClause) {
-  return setClause("aggregation", query, aggregationClause);
-}
 function setFilterClause(query, filterClause) {
   return setClause("filter", query, filterClause);
 }
