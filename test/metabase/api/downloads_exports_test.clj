@@ -309,7 +309,32 @@
                  (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true})
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
-                      (apply concat)))))))))
+                      (apply concat)))))
+        (testing "only when `public-settings/enable-pivoted-exports` is true (true by default)."
+          (is (= [[["Doohickey" "2016" "$632.14"]
+                   ["Doohickey" "2017" "$854.19"]
+                   ["Doohickey" "2018" "$496.43"]
+                   ["Doohickey" "2019" "$203.13"]
+                   ["Gadget" "2016" "$679.83"]
+                   ["Gadget" "2017" "$1,059.11"]
+                   ["Gadget" "2018" "$844.51"]
+                   ["Gadget" "2019" "$435.75"]
+                   ["Gizmo" "2016" "$529.70"]
+                   ["Gizmo" "2017" "$1,080.18"]
+                   ["Gizmo" "2018" "$997.94"]
+                   ["Gizmo" "2019" "$227.06"]
+                   ["Widget" "2016" "$987.39"]
+                   ["Widget" "2017" "$1,014.68"]
+                   ["Widget" "2018" "$912.20"]
+                   ["Widget" "2019" "$195.04"]]
+                  #{:unsaved-card-download :card-download :dashcard-download
+                    :alert-attachment :subscription-attachment
+                    :public-question-download :public-dashcard-download}]
+                 (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
+                   (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
+                        (group-by second)
+                        ((fn [m] (update-vals m #(into #{} (mapv first %)))))
+                        (apply concat))))))))))
 
 (deftest simple-pivot-export-row-col-totals-test
   (testing "Pivot table csv exports respect row/column totals viz-settings"
@@ -620,7 +645,20 @@
                        (->> (spreadsheet/load-workbook in)
                             (spreadsheet/select-sheet "pivot")
                             ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
-          (is (not (nil? pivot))))))))
+          (is (not (nil? pivot))))
+        (testing "but only when `public-settings/enable-pivoted-exports` is true"
+          (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
+            (let [result      (mt/user-http-request :crowberto :post 200
+                                                    (format "card/%d/query/xlsx" pivot-card-id)
+                                                    :format_rows   true
+                                                    :pivot_results true)
+                  sheet-names (with-open [in (io/input-stream result)]
+                                (->> (spreadsheet/load-workbook in)
+                                     spreadsheet/sheet-seq
+                                     (mapv (fn [s] (.getSheetName ^XSSFSheet s)))))]
+              ;; when xlsx exports without pivot, we have only a single Query result sheet.
+              (is (= ["Query result"]
+                     sheet-names)))))))))
 
 (deftest ^:parallel zero-column-native-pivot-tables-test
   (testing "Pivot tables with zero columns download correctly as xlsx."
