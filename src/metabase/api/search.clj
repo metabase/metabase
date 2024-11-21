@@ -77,7 +77,7 @@
 
 (defn- set-weights! [overrides]
   (api/check-superuser)
-  (let [allowed-key? (set (keys @#'search.config/*default-weights*))
+  (let [allowed-key? (set (keys @#'search.config/default-weights))
         unknown-weights (seq (remove allowed-key? (keys overrides)))]
     (when unknown-weights
       (throw (ex-info (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))

@@ -78,9 +78,9 @@
 
 (defn- search-no-weights
   "Like search but with all weights set to 0."
-  [& args]
-  (binding [search.config/*default-weights* (update-vals @#'search.config/*default-weights* (constantly 0))]
-    (apply search* args)))
+  [ranker-key & args]
+  (mt/with-dynamic-redefs [search.config/weights #(assoc @#'search.config/default-weights ranker-key 0)]
+    (apply search* ranker-key args)))
 
 (defn- search [& args]
   (let [result (apply search* args)]
@@ -94,24 +94,24 @@
 
 (deftest ^:parallel text-test
   (with-index-contents
-    [{:model "card" :id 1 :name "orders"}
-     {:model "card" :id 2 :name "unrelated"}
+    [{:model "card" :id 1 :name "unrelated"}
+     {:model "card" :id 2 :name "orders"}
      {:model "card" :id 3 :name "classified" :description "available only by court order"}
      {:model "card" :id 4 :name "order"}
      {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
      {:model "card" :id 6 :name "ordering"}]
-   ;; WARNING: this is likely to diverge between appdb types as we support more.
-    (testing "Preferences according to textual matches "
-     ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
-     ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
-      (is (= [["card" 1 "orders"]
+    ;; WARNING: this is likely to diverge between appdb types as we support more.
+    (testing "Preferences according to textual matches"
+      ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
+      ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
+      (is (= [["card" 2 "orders"]
               ["card" 4 "order"]
-             ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
+              ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
               ["card" 5 "orders, invoices, other stuff"]
               ["card" 6 "ordering"]
-             ;; If the match is only in a secondary field, it is less preferred.
+              ;; If the match is only in a secondary field, it is less preferred.
               ["card" 3 "classified"]]
-             (search :model "order"))))))
+             (search* :model "order"))))))
 
 (deftest ^:parallel model-test
   (with-index-contents
@@ -138,28 +138,47 @@
                 ["card" 1 "card ancient"]]
                (search :recency "card")))))))
 
-(deftest view-count-test
-  ;; search.scoring/view-count-percentiles is memoized so need to redef
-  (with-redefs [search.scoring/view-count-percentiles #'search.scoring/view-count-percentiles*]
-    (testing "the more view count the better"
-      (with-index-contents
-        [{:model "card" :id 1 :name "card well known" :view_count 10}
-         {:model "card" :id 2 :name "card famous"     :view_count 100}
-         {:model "card" :id 3 :name "card popular"    :view_count 50}]
-        (is (= [["card" 2 "card famous"]
-                ["card" 3 "card popular"]
-                ["card" 1 "card well known"]]
-               (search :view-count "card")))))
+(deftest ^:parallel view-count-test
+  (testing "the more view count the better"
+    (with-index-contents
+      [{:model "card" :id 1 :name "card well known" :view_count 10}
+       {:model "card" :id 2 :name "card famous"     :view_count 100}
+       {:model "card" :id 3 :name "card popular"    :view_count 50}]
+      (is (= [["card" 2 "card famous"]
+              ["card" 3 "card popular"]
+              ["card" 1 "card well known"]]
+             (search :view-count "card")))))
 
-    (testing "don't error on fresh instances with no view count"
-      (with-index-contents
-        [{:model "card"      :id 1 :name "view card"      :view_count 0}
-         {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
-         {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
-        (is (= [["dashboard" 2 "view dashboard"]
-                ["card"      1 "view card"]
-                ["dataset"   3 "view dataset"]]
-               (search :view-count "view")))))))
+  (testing "don't error on fresh instances with no view count"
+    (with-index-contents
+      [{:model "card"      :id 1 :name "view card"      :view_count 0}
+       {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
+       {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
+      (is (= [["dashboard" 2 "view dashboard"]
+              ["card"      1 "view card"]
+              ["dataset"   3 "view dataset"]]
+             (search :view-count "view"))))))
+
+(deftest view-count-edge-case-test
+  (testing "view count max out at p99, outlier is not preferred"
+    (when (search/supports-index?)
+      (let [table-name (search.index/random-table-name)]
+        (binding [search.index/*active-table* table-name]
+          (search.index/create-table! table-name)
+          (mt/with-model-cleanup [:model/Card]
+            (let [search-term    "view-count-edge-case"
+                  card-with-view #(merge (mt/with-temp-defaults :model/Card)
+                                         {:name search-term
+                                          :view_count %})
+                  _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
+                                                                  (for [i (range 1 80)]
+                                                                    (card-with-view i))))
+                  outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 100000))
+                  _               (#'search.ingestion/batch-update!
+                                   (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term]))
+                  first-result-id (-> (search* :view-count search-term) first)]
+              (is (some? first-result-id))
+              (is (not= outlier-card-id first-result-id)))))))))
 
 (deftest ^:parallel dashboard-count-test
   (testing "cards used in dashboard have higher rank"

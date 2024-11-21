@@ -81,9 +81,7 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(def ^{:private true
-       :dynamic true}
-  *default-weights*
+(def ^:private default-weights
   "The default weights for the various scorers. Dynamic for testing."
   {:pinned              0
    :bookmarked          2
@@ -148,7 +146,7 @@
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   []
-  (merge *default-weights* (public-settings/experimental-search-weight-overrides)))
+  (merge default-weights (public-settings/experimental-search-weight-overrides)))
 
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."
