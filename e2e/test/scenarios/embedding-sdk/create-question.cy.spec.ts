@@ -7,12 +7,10 @@ import {
 import {
   EMBEDDING_SDK_STORY_HOST,
   describeSDK,
-} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
-import {
   getSdkRoot,
   signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
 
 describeSDK("scenarios > embedding-sdk > create-question", () => {
   beforeEach(() => {

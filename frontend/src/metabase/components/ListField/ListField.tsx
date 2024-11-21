@@ -1,14 +1,14 @@
 import type * as React from "react";
-import { useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
-import { waitTimeContext } from "metabase/context/wait-time";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { Checkbox } from "metabase/ui";
+import { Checkbox, Flex } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -19,6 +19,8 @@ import {
 } from "./ListField.styled";
 import type { ListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
+
+const DEBOUNCE_FILTER_TIME = 100;
 
 function createOptionsFromValuesWithoutOptions(
   values: RowValue[],
@@ -35,6 +37,7 @@ export const ListField = ({
   optionRenderer,
   placeholder,
   isDashboardFilter,
+  isLoading,
 }: ListFieldProps) => {
   const [selectedValues, setSelectedValues] = useState(new Set(value));
   const [addedOptions, setAddedOptions] = useState<Option>(() =>
@@ -59,8 +62,7 @@ export const ListField = ({
   }, [augmentedOptions.length]);
 
   const [filter, setFilter] = useState("");
-  const waitTime = useContext(waitTimeContext);
-  const debouncedFilter = useDebouncedValue(filter, waitTime);
+  const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -150,29 +152,37 @@ export const ListField = ({
         </EmptyStateContainer>
       )}
 
-      <OptionsList isDashboardFilter={isDashboardFilter}>
-        {filteredOptions.length > 0 && (
-          <OptionContainer>
-            <Checkbox
-              variant="stacked"
-              label={getToggleAllLabel(debouncedFilter, isAll)}
-              checked={isAll}
-              indeterminate={!isAll && !isNone}
-              onChange={handleToggleAll}
-            />
-          </OptionContainer>
-        )}
-        {filteredOptions.map((option, index) => (
-          <OptionContainer key={index}>
-            <Checkbox
-              data-testid={`${option[0]}-filter-value`}
-              checked={selectedValues.has(option[0])}
-              label={optionRenderer(option)}
-              onChange={() => handleToggleOption(option[0])}
-            />
-          </OptionContainer>
-        ))}
-      </OptionsList>
+      {isLoading && (
+        <Flex p="md" align="center" justify="center">
+          <LoadingSpinner size={24} />
+        </Flex>
+      )}
+
+      {!isLoading && (
+        <OptionsList isDashboardFilter={isDashboardFilter}>
+          {filteredOptions.length > 0 && (
+            <OptionContainer>
+              <Checkbox
+                variant="stacked"
+                label={getToggleAllLabel(debouncedFilter, isAll)}
+                checked={isAll}
+                indeterminate={!isAll && !isNone}
+                onChange={handleToggleAll}
+              />
+            </OptionContainer>
+          )}
+          {filteredOptions.map((option, index) => (
+            <OptionContainer key={index}>
+              <Checkbox
+                data-testid={`${option[0]}-filter-value`}
+                checked={selectedValues.has(option[0])}
+                label={optionRenderer(option)}
+                onChange={() => handleToggleOption(option[0])}
+              />
+            </OptionContainer>
+          ))}
+        </OptionsList>
+      )}
     </>
   );
 };

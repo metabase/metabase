@@ -10,6 +10,7 @@
    [metabase.formatter :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -668,7 +669,7 @@
                    :or   {format-rows? true
                           pivot?       false}} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [opts               (when (and pivot? pivot-export-options)
+        (let [opts               (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
                                    (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                    :pivot-rows []}
                                                                   pivot-export-options) ordered-cols))
