@@ -248,6 +248,8 @@
                          :card.id
                          :card.database_id
                          :card.display
+                         :card.result_metadata
+                         :card.visualization_settings
                          [:card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
                          [:collection.id :collection_id]
@@ -291,6 +293,8 @@
      :database_id (:database_id card)
      :description (:description card)
      :display (some-> card :display name)
+     :result_metadata (:result_metadata card)
+     :visualization_settings (:visualization_settings card)
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)

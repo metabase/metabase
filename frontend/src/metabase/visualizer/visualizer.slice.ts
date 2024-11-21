@@ -31,6 +31,7 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import {
+  canCombineCard,
   copyColumn,
   createDataSource,
   createVisualizerColumnReference,
@@ -38,7 +39,10 @@ import {
   getDataSourceIdFromNameRef,
   parseDataSourceId,
 } from "./utils";
-import { cartesianDropHandler } from "./visualizations/cartesian";
+import {
+  addMetricColumnToCartesianChart,
+  cartesianDropHandler,
+} from "./visualizations/cartesian";
 import {
   addScalarToFunnel,
   canCombineCardWithFunnel,
@@ -200,13 +204,16 @@ const visualizerHistoryItemSlice = createSlice({
       .addCase(fetchCardQuery.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
 
-        if (
-          card &&
-          (!state.display ||
-            (card.display === state.display && state.columns.length === 0))
-        ) {
-          const source = createDataSource("card", card.id, card.name);
+        if (!card) {
+          return;
+        }
 
+        const source = createDataSource("card", card.id, card.name);
+
+        if (
+          !state.display ||
+          (card.display === state.display && state.columns.length === 0)
+        ) {
           state.display = card.display;
 
           state.columns = [];
@@ -257,13 +264,30 @@ const visualizerHistoryItemSlice = createSlice({
         }
 
         if (
-          card &&
+          ["area", "bar", "line"].includes(state.display) &&
+          canCombineCard(state.display, state.columns, state.settings, card)
+        ) {
+          const metrics = card.visualization_settings["graph.metrics"] ?? [];
+          const columns = dataset.data.cols.filter(col =>
+            metrics.includes(col.name),
+          );
+          columns.forEach(column => {
+            const columnRef = createVisualizerColumnReference(
+              source,
+              column,
+              extractReferencedColumns(state.columnValuesMapping),
+            );
+            addMetricColumnToCartesianChart(state, column, columnRef);
+          });
+          return;
+        }
+
+        if (
           state.display === "funnel" &&
           canCombineCardWithFunnel(card, dataset)
         ) {
-          const dataSource = createDataSource("card", card.id, card.name);
           const [column] = dataset.data.cols;
-          addScalarToFunnel(state, dataSource, column);
+          addScalarToFunnel(state, source, column);
         }
       });
   },

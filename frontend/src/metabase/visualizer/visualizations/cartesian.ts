@@ -9,7 +9,11 @@ import {
   isDraggedColumnItem,
   isDraggedWellItem,
 } from "metabase/visualizer/utils";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { DatasetColumn } from "metabase-types/api";
+import type {
+  VisualizerColumnReference,
+  VisualizerHistoryItem,
+} from "metabase-types/store/visualizer";
 
 export const cartesianDropHandler = (
   state: VisualizerHistoryItem,
@@ -83,22 +87,7 @@ export const cartesianDropHandler = (
   }
 
   if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
-    const metrics = state.settings["graph.metrics"] ?? [];
-
-    const isInUse = Object.values(state.columnValuesMapping).some(
-      valueSources => checkColumnMappingExists(valueSources, columnRef),
-    );
-    if (isInUse) {
-      return;
-    }
-
-    const newMetric = copyColumn(columnRef.name, column);
-    state.columns.push(newMetric);
-    state.columnValuesMapping[newMetric.name] = [columnRef];
-    state.settings = {
-      ...state.settings,
-      "graph.metrics": [...metrics, newMetric.name],
-    };
+    addMetricColumnToCartesianChart(state, column, columnRef);
   }
 
   if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
@@ -113,3 +102,26 @@ export const cartesianDropHandler = (
     state.columnValuesMapping[bubbleColumnName] = [columnRef];
   }
 };
+
+export function addMetricColumnToCartesianChart(
+  state: VisualizerHistoryItem,
+  column: DatasetColumn,
+  columnRef: VisualizerColumnReference,
+) {
+  const metrics = state.settings["graph.metrics"] ?? [];
+
+  const isInUse = Object.values(state.columnValuesMapping).some(valueSources =>
+    checkColumnMappingExists(valueSources, columnRef),
+  );
+  if (isInUse) {
+    return;
+  }
+
+  const newMetric = copyColumn(columnRef.name, column);
+  state.columns.push(newMetric);
+  state.columnValuesMapping[newMetric.name] = [columnRef];
+  state.settings = {
+    ...state.settings,
+    "graph.metrics": [...metrics, newMetric.name],
+  };
+}
