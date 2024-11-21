@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef } from "react";
 import _ from "underscore";
 
 import { extractRemappings } from "metabase/visualizations";
+import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getSankeyLayout } from "metabase/visualizations/echarts/graph/sankey/layout";
 import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/sankey/model";
 import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
@@ -10,7 +11,6 @@ import { getTooltipOption } from "metabase/visualizations/echarts/graph/sankey/o
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-import { SankeyChartRenderer } from "./SankeyChart.styled";
 import { SANKEY_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./events";
 
@@ -66,7 +66,7 @@ export const SankeyChart = ({
   );
 
   return (
-    <SankeyChartRenderer
+    <ResponsiveEChartsRenderer
       ref={containerRef}
       option={option}
       eventHandlers={eventHandlers}

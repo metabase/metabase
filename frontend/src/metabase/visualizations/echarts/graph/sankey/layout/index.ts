@@ -8,7 +8,7 @@ import type { SankeyChartModel, SankeyData } from "../model/types";
 
 import type { SankeyChartLayout } from "./types";
 
-const getNodeLevelsCount = (sankeyData: SankeyData) =>
+const getLastLevelIndex = (sankeyData: SankeyData) =>
   Math.max(...sankeyData.nodes.map(node => node.level));
 
 const getMostRightNodes = (
@@ -35,7 +35,7 @@ const getLabelValueFormatting = (
   nodeLevelsCount: number,
   renderingContext: RenderingContext,
 ): SankeyChartLayout["labelValueFormatting"] => {
-  if (!settings["sankey.show_edge_labels"] || nodeLevelsCount === 0) {
+  if (!settings["sankey.show_edge_labels"]) {
     return null;
   }
 
@@ -56,9 +56,9 @@ const getLabelValueFormatting = (
     }),
   );
 
+  const totalNodesWidth = SANKEY_CHART_STYLE.nodeWidth * nodeLevelsCount;
   const widthPerLevel =
-    boundaryWidth / nodeLevelsCount -
-    nodeLevelsCount * SANKEY_CHART_STYLE.nodeWidth;
+    (boundaryWidth - totalNodesWidth) / Math.min(nodeLevelsCount - 1, 1);
 
   return maxEdgeLabelWidth >= widthPerLevel ? "compact" : "full";
 };
@@ -88,11 +88,11 @@ export const getSankeyLayout = (
     left: horizontalPadding,
   };
 
-  const nodeLevelsCount = getNodeLevelsCount(chartModel.data);
+  const lastLevelIndex = getLastLevelIndex(chartModel.data);
 
   const mostRightNodes = getMostRightNodes(
     chartModel.data,
-    nodeLevelsCount,
+    lastLevelIndex,
     settings,
   );
   const maxRightLabelWidth = Math.max(
@@ -118,7 +118,7 @@ export const getSankeyLayout = (
     chartModel,
     settings,
     boundaryWidth,
-    nodeLevelsCount,
+    lastLevelIndex + 1,
     renderingContext,
   );
 
