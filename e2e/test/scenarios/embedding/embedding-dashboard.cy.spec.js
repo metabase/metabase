@@ -25,6 +25,7 @@ import {
   publishChanges,
   restore,
   saveDashboard,
+  selectDropdown,
   setEmbeddingParameter,
   setTokenFeatures,
   sidebar,
@@ -144,7 +145,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      popover().last().findByText("Lina Heaney").click();
+      selectDropdown().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -333,7 +334,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         multiAutocompleteInput().type("Aly");
       });
 
-      popover().last().contains("Alycia McCullough - 2016");
+      selectDropdown().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       popover()
@@ -349,7 +350,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         multiAutocompleteInput().type("{backspace}Aly");
       });
 
-      popover().last().contains("Alycia McCullough");
+      selectDropdown().contains("Alycia McCullough");
 
       // close the suggestions popover
       popover()
@@ -370,7 +371,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         multiAutocompleteInput().type("Aly");
       });
 
-      popover().last().contains("Alycia McCullough - 2016");
+      selectDropdown().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       popover()
