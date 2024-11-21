@@ -13,11 +13,10 @@ export const HoverCard = (props: HoverCardProps) => {
   return <MantineHoverCard {...props} />;
 };
 HoverCard.Target = MantineHoverCard.Target;
-HoverCard.Dropdown = MantineHoverCard.Dropdown;
-// function Dropdown(props: HoverCardDropdownProps) {
-// return (
-//   <Guard {...props}>
-//     <MantineHoverCard.Dropdown {...props} />
-//   </Guard>
-// );
-// };
+HoverCard.Dropdown = function Dropdown(props: HoverCardDropdownProps) {
+  return (
+    <Guard {...props}>
+      <MantineHoverCard.Dropdown {...props} />
+    </Guard>
+  );
+};

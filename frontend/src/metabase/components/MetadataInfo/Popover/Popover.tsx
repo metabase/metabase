@@ -16,7 +16,7 @@ const POPOVER_SLOW_OPEN_DELAY = 250;
 //
 // When opening fast, we still delay a little bit to avoid a flickering popover
 // when the target is being clicked.
-const POPOVER_FAST_OPEN_DELAY = 50;
+const POPOVER_FAST_OPEN_DELAY = 150;
 
 // When switching to another hover target in the same delay group,
 // we don't close immediately but delay by a short amount to avoid flicker.
@@ -84,8 +84,6 @@ export function Popover({
         onClick={stopPropagation}
         onMouseDown={stopPropagation}
         onMouseUp={stopPropagation}
-        onMouseEnter={stopPropagation}
-        onMouseLeave={stopPropagation}
       >
         {/* HACK: adds an element between the target and the card */}
         {/* to avoid the card from disappearing */}
