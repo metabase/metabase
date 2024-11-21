@@ -53,11 +53,7 @@ const ViewFooterControl = ({
     if (value === "editor") {
       dispatch(setQueryBuilderMode("notebook"));
     } else {
-      if (value === "table") {
-        dispatch(setUIControls({ isShowingRawTable: true }));
-      } else {
-        dispatch(setUIControls({ isShowingRawTable: false }));
-      }
+      dispatch(setUIControls({ isShowingRawTable: value === "table" }));
 
       if (isNotebook) {
         dispatch(setQueryBuilderMode("view"));
