@@ -109,6 +109,3 @@
       (count
        (dotimes [_ 1000]
          (test-search user "trivia" :minimal)))))))
-
-#_(ngoc/with-tc
-    (test-search (t2/select-one :model/User :is_superuser true) "accounts" :fulltext))

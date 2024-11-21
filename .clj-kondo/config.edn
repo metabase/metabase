@@ -127,7 +127,6 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
-     metabase.search.fulltext.scoring-test/with-index-contents
      metabase.channel.core/send!
      metabase.models.notification/create-notification!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
