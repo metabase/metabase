@@ -30,8 +30,7 @@ jobs:
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
-    if: |
-      !cancelled()
+    if: !cancelled()
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:

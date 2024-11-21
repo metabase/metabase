@@ -15,11 +15,11 @@ import {
   tableInteractive,
 } from "e2e/support/helpers";
 import {
+  mountInteractiveQuestion,
   mountSdkContent,
   sdkJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdkForComponentTests,
-} from "e2e/support/helpers/component-embedding-sdk-helpers";
-import { mountInteractiveQuestion } from "e2e/support/helpers/component-embedding-sdk-interactive-question-helpers";
+} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Flex, Modal, Popover } from "metabase/ui";
@@ -132,13 +132,8 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a pre-defined collection", () => {
-    cy.get("@questionId").then(questionId => {
-      mountSdkContent(
-        <InteractiveQuestion
-          questionId={questionId}
-          saveToCollectionId={Number(THIRD_COLLECTION_ID)}
-        />,
-      );
+    mountInteractiveQuestion({
+      saveToCollectionId: Number(THIRD_COLLECTION_ID),
     });
 
     saveInteractiveQuestionAsNewQuestion({

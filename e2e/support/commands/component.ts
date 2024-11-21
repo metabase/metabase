@@ -17,4 +17,4 @@ declare global {
   }
 }
 
-Cypress.Commands.add("mount", mount); // used for Cypress Component Testing - https://docs.cypress.io/app/component-testing
+Cypress.Commands.add("mount", mount); // used for Cypress Component Testing - https://docs.cypress.io/app/component-testing/react/overview

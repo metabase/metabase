@@ -5,7 +5,7 @@ import {
   mountSdkContent,
   sdkJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdkForComponentTests,
-} from "e2e/support/helpers/component-embedding-sdk-helpers";
+} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
