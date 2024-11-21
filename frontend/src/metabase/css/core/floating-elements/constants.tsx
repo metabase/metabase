@@ -1,0 +1,1 @@
+export const FLOATING_ELEMENT_Z_INDEX = 200;
