@@ -442,7 +442,6 @@ export class NativeQueryEditor extends Component<
               ref={this.editor}
               query={query}
               snippets={snippets}
-              snippetCollections={snippetCollections}
               readOnly={readOnly}
               onChange={this.onChange}
               onSelectionChange={setNativeEditorSelectedRange}
