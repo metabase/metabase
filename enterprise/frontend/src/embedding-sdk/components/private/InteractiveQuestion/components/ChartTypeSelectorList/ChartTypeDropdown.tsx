@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import { Icon, Menu } from "metabase/ui";
@@ -66,7 +67,7 @@ export const ChartTypeDropdown = () => {
         />
       </Menu.Target>
       <Menu.Dropdown h="30rem">
-        <Menu.Label>Sensible</Menu.Label>
+        <Menu.Label>{t`Sensible`}</Menu.Label>
         {sensibleItems.map(({ iconName, label, value }, index) => (
           <Menu.Item
             key={`${value}/${index}`}
@@ -77,7 +78,7 @@ export const ChartTypeDropdown = () => {
           </Menu.Item>
         ))}
 
-        <Menu.Label>Nonsensible</Menu.Label>
+        <Menu.Label>{t`Nonsensible`}</Menu.Label>
         {nonsensibleItems.map(({ iconName, label, value }, index) => (
           <Menu.Item
             key={`${value}/${index}`}
