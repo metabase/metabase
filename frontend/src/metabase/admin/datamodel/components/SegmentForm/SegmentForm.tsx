@@ -4,6 +4,10 @@ import { useEffect } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import {
+  getSegmentQuery,
+  getSegmentQueryDefinition,
+} from "metabase/admin/datamodel/utils/segments";
 import { FieldSet } from "metabase/components/FieldSet";
 import Button from "metabase/core/components/Button/Button";
 import { useSelector } from "metabase/lib/redux";
@@ -165,7 +169,7 @@ const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
     errors.revision_message = t`Revision message is required`;
   }
 
-  const query = getQuery(values.definition, values.table_id, metadata);
+  const query = getSegmentQuery(values.definition, values.table_id, metadata);
   const filters = query ? Lib.filters(query, -1) : [];
   if (filters.length === 0) {
     errors.definition = t`At least one filter is required`;
@@ -174,44 +178,18 @@ const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
   return errors;
 };
 
-function getQuery(
-  query: StructuredQuery | undefined,
-  tableId: TableId | undefined,
-  metadata: Metadata,
-) {
-  const table = metadata.table(tableId);
-  const metadataProvider = table
-    ? Lib.metadataProvider(table.db_id, metadata)
-    : undefined;
-
-  return table && query && metadataProvider
-    ? Lib.fromLegacyQuery(table.db_id, metadataProvider, {
-        type: "query",
-        database: table.db_id,
-        query: query,
-      })
-    : undefined;
-}
-
-function getQueryDefinition(query: Lib.Query) {
-  const datasetQuery = Lib.toLegacyQuery(query);
-  if (datasetQuery.type === "query") {
-    return datasetQuery.query;
-  }
-}
-
 function getSegmentEditorProps(
   definitionProps: FieldInputProps<StructuredQuery | undefined>,
   tableIdProps: FieldInputProps<TableId | undefined>,
   metadata: Metadata,
 ) {
   return {
-    query: getQuery(definitionProps.value, tableIdProps.value, metadata),
+    query: getSegmentQuery(definitionProps.value, tableIdProps.value, metadata),
     onChange: (query: Lib.Query) => {
       definitionProps.onChange({
         target: {
           name: definitionProps.name,
-          value: getQueryDefinition(query),
+          value: getSegmentQueryDefinition(query),
         },
       });
       tableIdProps.onChange({
