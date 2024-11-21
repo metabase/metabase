@@ -338,7 +338,7 @@ describe("Dashboard > Dashboard Questions", () => {
         });
     });
 
-    it("perserves bookmarks when moving a question to a dashboard", () => {
+    it("preserves bookmarks when moving a question to a dashboard", () => {
       // bookmark it
       H.visitQuestion(S.ORDERS_QUESTION_ID);
       H.queryBuilderHeader().icon("bookmark").click();
@@ -362,6 +362,29 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("sidebar-toggle").click();
       H.navigationSidebar().findByText("Collections").should("be.visible");
       H.navigationSidebar().findByText("Orders").should("not.exist");
+    });
+
+    it("can add and delete a question to a dashboard when the question already appears in that dashboard", () => {
+      cy.intercept("PUT", "/api/card/*").as("updateCard");
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.editDashboard();
+      H.openAddQuestionMenu("Existing Question");
+      H.sidebar().findByText("Orders, Count").click();
+      H.dashboardCards().findByText("Orders, Count");
+      H.dashboardCards().findByText("Orders");
+      H.saveDashboard();
+
+      H.dashboardCards().findByText("Orders, Count");
+      H.dashboardCards().findByText("Orders").click();
+      H.openQuestionActions("Move");
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().button("Move").click();
+
+      cy.wait("@updateCard");
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+
+      H.dashboardCards().findByText("Orders, Count");
+      H.dashboardCards().findByText("Orders");
     });
   });
 
