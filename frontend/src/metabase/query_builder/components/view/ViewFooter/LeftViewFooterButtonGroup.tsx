@@ -1,11 +1,9 @@
-import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   onCloseChartSettings,
   onOpenChartSettings,
-  setUIControls,
 } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
@@ -35,14 +33,9 @@ export const LeftViewFooterButtonGroup = ({
 
   const dispatch = useDispatch();
 
-  useUnmount(() => {
-    // reset showing raw table, so new mount will default to viz
-    dispatch(setUIControls({ isShowingRawTable: false }));
-  });
-
   const isVisualized = useSelector(getIsVisualized);
   const shouldShowChartSettingsButton =
-    !isNotebook && !hideChartSettings && !isShowingRawTable && isVisualized;
+    !isNotebook && !hideChartSettings && (!isShowingRawTable || isVisualized);
 
   return (
     <Flex gap="0.75rem">
