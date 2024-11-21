@@ -540,7 +540,7 @@ describe("metabase/visualization/lib/utils", () => {
       });
     });
 
-    it("should not return source and target when dimensions are not overlapping", () => {
+    it("should return source and target without overlapping values if that is the only option", () => {
       const cols = [
         createMockColumn({
           name: "dim1",
@@ -570,8 +570,8 @@ describe("metabase/visualization/lib/utils", () => {
       });
 
       expect(getSankeyColumns(series)).toEqual({
-        source: null,
-        target: null,
+        source: "dim1",
+        target: "dim2",
         metric: "amount",
       });
     });
