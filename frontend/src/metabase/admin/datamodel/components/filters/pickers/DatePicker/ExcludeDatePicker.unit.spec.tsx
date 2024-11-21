@@ -16,6 +16,7 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+// eslint-disable-next-line no-restricted-syntax
 const query = ordersTable.legacyQuery({ useStructuredQuery: true });
 const filter = new Filter(
   [null, ["field", ORDERS.CREATED_AT, null]],

@@ -78,13 +78,14 @@
        (json/parse-string (:legacy_input index-row) keyword)
        (select-keys index-row [:total_score :pinned]))
       (assoc :scores (mapv (fn [k]
-                             (let [score  (get index-row k)
+                             ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
+                             (let [score  (or (get index-row k) 0)
                                    weight (search.config/weight k)]
                                {:score        score
                                 :name         k
                                 :weight       weight
                                 :contribution (* weight score)}))
-                           (keys (search.scoring/scorers))))
+                           (keys (search.scoring/scorers nil))))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
@@ -93,9 +94,9 @@
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
   [search-ctx qry]
-  (let [collection-id-col      :search_index.collection_id
-        permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
-        personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
+  (let [collection-id-col :search_index.collection_id
+        permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
       true (sql.helpers/where permitted-clause)
@@ -111,7 +112,7 @@
        (add-collection-join-and-where-clauses search-ctx)
        (search.scoring/with-scores search-ctx)
        (search.filter/with-filters search-ctx)
-       (t2/query)
+       t2/query
        (map rehydrate)))
 
 (def ^:private default-engine fulltext)
@@ -162,4 +163,4 @@
 
 (comment
   (init! true)
-  (t2/select-fn-vec :legacy_input :search_index))
+  (t2/select-fn-vec :legacy_input search.index/*active-table*))

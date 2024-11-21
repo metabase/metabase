@@ -61,6 +61,7 @@ const MetabotQueryEditor = ({
   return (
     <NativeQueryEditor
       question={question}
+      // eslint-disable-next-line no-restricted-syntax
       query={question.legacyQuery({ useStructuredQuery: true })}
       viewHeight={height}
       resizable={false}

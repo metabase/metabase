@@ -40,11 +40,6 @@
   "Results in more dashboards than this are all considered to be equally popular."
   10)
 
-(def ^:const view-count-scaling
-  "A constant factor influencing how quickly the incremental score grows with view count for a given search model.
-  The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
-  0.2)
-
 (def ^:const view-count-scaling-percentile
   "The percentile of the given search model's view counts, to be multiplied by [[view-count-scaling]].
   The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
@@ -90,8 +85,9 @@
   {:pinned              0
    :bookmarked          2
    :recency             1.5
-   :dashboard           1
-   :model               0.5
+   :user-recency        1.5
+   :dashboard           0.5
+   :model               2
    :official-collection 2
    :verified            2
    :view-count          2
@@ -155,6 +151,11 @@
   "The relative strength the corresponding score has in influencing the total score."
   [scorer-key]
   (get (weights) scorer-key 0))
+
+(defn scorer-param
+  "Get a nested parameter scoped to the given scorer"
+  [scorer-key param-key]
+  (get (weights) (keyword (name scorer-key) (name param-key))))
 
 (defn model->alias
   "Given a model string returns the model alias"
