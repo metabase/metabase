@@ -305,7 +305,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Created At: Month: Quarter").should("be.visible");
         cy.findByText(multiStageQuestionDetails.name).click();
       });
-      tableInteractive().findByText("Created At: Quarter").should("be.visible");
+      tableInteractive()
+        .findByText("Created At: Month: Quarter")
+        .should("be.visible");
       backToDashboard();
       editDashboard();
       removeQuestion();
