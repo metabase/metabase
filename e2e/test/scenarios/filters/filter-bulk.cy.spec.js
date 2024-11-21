@@ -142,13 +142,11 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     modal()
-      .findByTestId("filter-column-Subtotal")
+      .findByTestId("filter-column-Created At")
       .findByLabelText("More info")
-      // FIXME: I don't understand why this realHover isn't working
-      // Plan: git bisect
       .realHover();
 
-    cy.findByRole("dialog").within(() => {
+    hovercard().within(() => {
       cy.contains("The date and time an order was submitted");
       cy.contains("Creation timestamp");
     });
