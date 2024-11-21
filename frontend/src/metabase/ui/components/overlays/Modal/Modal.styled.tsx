@@ -24,6 +24,9 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
       content: {
         backgroundColor: "var(--mb-color-background)",
       },
+      header: {
+        backgroundColor: "var(--mb-color-background)",
+      },
     }),
   },
   ModalRoot: {

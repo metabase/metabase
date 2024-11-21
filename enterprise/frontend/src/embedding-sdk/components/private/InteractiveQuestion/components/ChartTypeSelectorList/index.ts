@@ -1,1 +1,1 @@
-export * from "./ChartTypeSelectorList";
+export * from "./ChartTypeDropdown";

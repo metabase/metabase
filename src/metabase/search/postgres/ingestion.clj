@@ -3,8 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.search.config :as search.config]
-   [metabase.search.postgres.index :as search.index]
+  [metabase.search.postgres.index :as search.index]
    [metabase.search.spec :as search.spec]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -22,17 +21,12 @@
 
 (def ^:private insert-batch-size 150)
 
-(def ^:private model-rankings
-  (zipmap search.config/models-search-order (range)))
-
-(defn- model-rank [model]
-  ;; Give unknown models the lowest priority
-  (model-rankings model (count model-rankings)))
-
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
   (->> (:search-terms (search.spec/spec (:model m)))
-       (map m)
+       (keep m)
+       (map str/trim)
+       (remove str/blank?)
        (str/join " ")))
 
 (defn- display-data [m]
@@ -41,13 +35,12 @@
 (defn- ->entry [m]
   (-> m
       (select-keys
-       (into [:id :model] search.spec/attr-columns))
+       (into [:model] search.spec/attr-columns))
       (update :archived boolean)
       (assoc
        :display_data (display-data m)
        :legacy_input m
-       :searchable_text (searchable-text m)
-       :model_rank (model-rank (:model m)))))
+       :searchable_text (searchable-text m))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs :when v]

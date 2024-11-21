@@ -26,7 +26,7 @@ export const BadgeList = <T,>({
       {items.map(({ name, item }, index) => (
         <BadgeListItem
           key={`${name}/${index}`}
-          onSelectItem={() => onSelectItem?.(item, index)}
+          onClick={() => onSelectItem?.(item, index)}
           onRemoveItem={() => onRemoveItem?.(item, index)}
           name={name}
         />

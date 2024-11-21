@@ -2,20 +2,20 @@ import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Flex } from "metabase/ui";
 
-import { Breakout } from "./Breakout";
+import { BreakoutDropdowon } from "./Breakout";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/Breakout",
-  component: Breakout,
+  component: BreakoutDropdowon,
   parameters: {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
 };
 
-export const BreakoutPicker = {
+export const BreakoutMainComponent = {
   render() {
     return (
       <Box p="lg">
