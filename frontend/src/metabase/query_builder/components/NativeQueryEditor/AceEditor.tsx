@@ -356,7 +356,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
     const selections = Array.from(document.querySelectorAll(".ace_selection"));
 
     if (
-      this.props.nativeEditorSelectedText &&
+      this._editor?.getSelection() &&
       // For some reason the click doesn't target the selection element directly.
       // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
       selections.some(selection => isEventOverElement(event, selection))

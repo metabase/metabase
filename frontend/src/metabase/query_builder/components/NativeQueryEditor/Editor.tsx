@@ -24,14 +24,12 @@ export type EditorProps = {
   autocompleteResultsFn?: (prefix: string) => Promise<AutocompleteItem[]>;
   cardAutocompleteResultsFn?: (prefix: string) => Promise<CardCompletionItem[]>;
 
-  nativeEditorSelectedText?: string;
-  onSelectionChange?: (range: SelectionRange) => void;
-
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
 
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
+  onSelectionChange?: (range: SelectionRange) => void;
 };
 
 export interface EditorHandle extends Component<EditorProps> {
