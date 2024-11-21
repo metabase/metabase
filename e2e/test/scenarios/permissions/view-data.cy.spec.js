@@ -404,7 +404,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
     ]);
   });
 
-  it("impersonation modal should be positioned behind the page leave confirmation modal", () => {
+  it.only("impersonation modal should be positioned behind the page leave confirmation modal", () => {
     // Try leaving the page
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
@@ -422,21 +422,23 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
     cy.findByRole("dialog").findByText("Edit settings").click();
 
     // Page leave confirmation should be on top
-    modal()
-      .as("leaveConfirmation")
+    cy.findByTestId("leave-confirmation")
       .findByText("Discard your changes?")
-      .should("be.visible");
-
-    // Cancel
-    cy.get("@leaveConfirmation").findByText("Cancel").click();
+      .should("be.visible")
+      .as("leaveConfirmation")
+      .findByText("Cancel")
+      .click();
 
     // Ensure the impersonation modal is still open
     cy.findByRole("dialog")
       .findByText("Map a user attribute to database roles")
       .should("be.visible");
 
+    // FIXME: This isn't working
     // Go to settings
     cy.findByRole("dialog").findByText("Edit settings").click();
+
+    // I deleted the alias leaveconfirmation
     cy.get("@leaveConfirmation").findByText("Discard changes").click();
 
     cy.focused().should("have.attr", "placeholder", "username");

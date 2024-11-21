@@ -1,7 +1,6 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
-import cx from "classnames";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
@@ -160,8 +159,20 @@ export function UndoListing() {
   const dispatch = useDispatch();
   const undos = useSelector(state => state.undo);
 
+  const [lastId, setLastId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLastId(`${undos.at(-1)?.id}`);
+  }, [undos]);
+
   return (
-    <FloatingUndoList>
+    <FloatingUndoList
+      key={
+        // Remount the list when an undo is added so that the
+        // listing appears on top
+        lastId
+      }
+    >
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}
