@@ -56,7 +56,6 @@ export interface Props<Entity, EntityWrapper> {
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
-  // reloadInterval?: (state: State, props: unknown) => number;
   requestType?: RequestType;
   selectorName?: string;
   wrapped?: boolean;
