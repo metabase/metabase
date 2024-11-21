@@ -15,10 +15,13 @@
    [metabase.models.pulse-test :as pulse-test]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once (fixtures/initialize :notifications))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |

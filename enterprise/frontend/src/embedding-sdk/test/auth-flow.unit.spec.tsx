@@ -34,12 +34,19 @@ const MOCK_SESSION = {
 
 const MOCK_CARD = createMockCard({ id: 1 });
 
-const setup = (sdkConfig: SDKConfig) => {
+const setup = ({
+  sdkConfig,
+  locale,
+}: {
+  sdkConfig: SDKConfig;
+  locale?: string;
+}) => {
   return render(
     <MetabaseProvider
       config={{
         ...sdkConfig,
       }}
+      locale={locale}
     >
       <StaticQuestion questionId={1} />
     </MetabaseProvider>,
@@ -51,7 +58,7 @@ const getLastAuthProviderApiCall = () => fetchMock.lastCall(AUTH_PROVIDER_URL);
 const getLastCardQueryApiCall = () =>
   fetchMock.lastCall(`${METABASE_INSTANCE_URL}/api/card/${MOCK_CARD.id}/query`);
 
-describe("SDK auth flow", () => {
+describe("SDK auth and init flow", () => {
   beforeEach(() => {
     fetchMock.reset();
     fetchMock.get(AUTH_PROVIDER_URL, {
@@ -79,7 +86,7 @@ describe("SDK auth flow", () => {
       authProviderUri: AUTH_PROVIDER_URL,
     });
 
-    const { rerender } = setup(sdkConfig);
+    const { rerender } = setup({ sdkConfig });
 
     expect(fetchMock.calls(AUTH_PROVIDER_URL)).toHaveLength(1);
 
@@ -111,7 +118,7 @@ describe("SDK auth flow", () => {
         authProviderUri: AUTH_PROVIDER_URL,
       });
 
-      setup(sdkConfig);
+      setup({ sdkConfig });
 
       await waitForRequest(() => getLastAuthProviderApiCall());
       expect(getLastAuthProviderApiCall()![1]).toMatchObject({
@@ -142,7 +149,7 @@ describe("SDK auth flow", () => {
         fetchRequestToken: customFetchFunction,
       });
 
-      setup(sdkConfig);
+      setup({ sdkConfig });
 
       expect(customFetchFunction).toHaveBeenCalledWith(AUTH_PROVIDER_URL);
 
@@ -169,7 +176,7 @@ describe("SDK auth flow", () => {
         apiKey: MOCK_API_KEY,
       });
 
-      setup(sdkConfig);
+      setup({ sdkConfig });
 
       await waitForRequest(() => getLastUserApiCall());
       expect(getLastUserApiCall()![1]).toMatchObject({
@@ -185,6 +192,29 @@ describe("SDK auth flow", () => {
       expect(getLastCardQueryApiCall()![1]).toMatchObject({
         headers: { "X-Api-Key": [MOCK_API_KEY] },
       });
+    });
+  });
+
+  describe("locale", () => {
+    it("should load the locale from the correct url", () => {
+      const metabaseInstanceUrl = "http://metabase:3000";
+
+      // This can happen if the request is made before api.basename is set
+      const wrongPath = "/app/locales/de.json";
+      const correctPath = `${metabaseInstanceUrl}/app/locales/de.json`;
+
+      fetchMock.get(wrongPath, 200);
+      fetchMock.get(correctPath, 200);
+
+      const sdkConfig = defineEmbeddingSdkConfig({
+        metabaseInstanceUrl: metabaseInstanceUrl,
+        apiKey: MOCK_API_KEY,
+      });
+
+      setup({ sdkConfig, locale: "de" });
+
+      expect(fetchMock.calls(wrongPath)).toHaveLength(0);
+      expect(fetchMock.calls(correctPath)).toHaveLength(1);
     });
   });
 });

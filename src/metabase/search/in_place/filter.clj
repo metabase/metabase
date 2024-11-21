@@ -19,8 +19,8 @@
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
+   [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
-   [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])

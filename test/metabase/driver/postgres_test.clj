@@ -37,6 +37,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -886,6 +887,75 @@
                                               " \"public\".\"birds\".\"type\" AS \"type\" "
                                               "FROM \"public\".\"birds\" "
                                               "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
+                                              "LIMIT 10")
+                                 :params nil}}
+                  (-> (qp/process-query
+                       {:database (u/the-id db)
+                        :type     :query
+                        :query    {:source-table table-id
+                                   :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
+                                   :limit        10}})
+                      :data
+                      (select-keys [:rows :native_form]))))))))))
+
+(deftest enums-test-3
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db)
+                      [(sql.tx/create-materialized-view-of-table-sql driver/*driver* db "birds_m" "birds")])
+       (sync/sync-database! db)
+
+       (testing "check that describe-table properly describes the database & base types of the enum fields"
+         (is (=? [{:table-schema               "public"
+                   :table-name                 "birds_m"
+                   :name                       "name"
+                   :database-type              "varchar"
+                   :base-type                  :type/Text
+                   :pk?                        false
+                   :database-position          0
+                   :database-required          false
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds_m"
+                   :name                       "status"
+                   :database-type              "bird_status"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          1
+                   :database-required          false
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds_m"
+                   :name                       "type"
+                   :database-type              "bird type"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          2
+                   :database-required          false
+                   :database-is-auto-increment false
+                   :json-unfolding             false}]
+                 (->> (driver/describe-fields :postgres db {:table-names ["birds_m"]})
+                      (into #{})
+                      (sort-by :database-position)))))
+
+       (testing "check that when syncing the DB the enum types get recorded appropriately"
+         (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds_m")]
+           (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
+                    {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
+                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                  (set (map (partial into {})
+                            (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
+
+       (testing "End-to-end check: make sure everything works as expected when we run an actual query"
+         (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds_m")
+               bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
+           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+                   :native_form {:query  (str "SELECT \"public\".\"birds_m\".\"name\" AS \"name\","
+                                              " \"public\".\"birds_m\".\"status\" AS \"status\","
+                                              " \"public\".\"birds_m\".\"type\" AS \"type\" "
+                                              "FROM \"public\".\"birds_m\" "
+                                              "WHERE \"public\".\"birds_m\".\"type\" = CAST('toucan' AS \"bird type\") "
                                               "LIMIT 10")
                                  :params nil}}
                   (-> (qp/process-query

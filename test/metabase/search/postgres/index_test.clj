@@ -49,7 +49,7 @@
 
 (deftest idempotent-test
   (with-index
-    (let [count-rows  (fn [] (t2/count @#'search.index/active-table))
+    (let [count-rows  (fn [] (t2/count @#'search.index/*active-table*))
           rows-before (count-rows)]
       (search.ingestion/populate-index!)
       (is (= rows-before (count-rows))))))
@@ -74,7 +74,7 @@
 #_(deftest related-update-test
     (with-index
       (testing "The index is updated when model dependencies change"
-        (let [index-table    @#'search.index/active-table
+        (let [index-table    @#'search.index/*active-table*
               table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
               legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
                                   :legacy_input
@@ -133,7 +133,7 @@
     (testing "But stop words are skipped"
       (is (= 0 (index-hits "or")))
       ;; stop words depend on a dictionary
-      (is (= 0 #_3 (index-hits "its the satisfaction of it"))))
+      (is (= #_0 3 (index-hits "its the satisfaction of it"))))
     (testing "We can combine the individual results"
       (is (= (+ (index-hits "satisfaction")
                 (index-hits "user"))
@@ -150,9 +150,9 @@
 (deftest phrase-test
   (with-index
     ;; Less matches without an english dictionary
-    (is (= 2 #_3 (index-hits "projected")))
+    (is (= #_2 3 (index-hits "projected")))
     (is (= 2 (index-hits "revenue")))
-    (is (= 1 #_2 (index-hits "projected revenue")))
+    (is (= #_1 2 (index-hits "projected revenue")))
     (testing "only sometimes do these occur sequentially in a phrase"
       (is (= 1 (index-hits "\"projected revenue\""))))
     (testing "legacy search has a bunch of results"

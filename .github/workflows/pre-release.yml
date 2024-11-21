@@ -115,7 +115,7 @@ jobs:
           name: metabase-test-${{ matrix.edition }}-uberjar
       - name: Launch uberjar (and keep it running)
         run: >-
-          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &
       - name: Wait for Metabase to start
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 

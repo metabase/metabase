@@ -77,9 +77,30 @@
   (-> (merge
        (json/parse-string (:legacy_input index-row) keyword)
        (select-keys index-row [:total_score :pinned]))
+      (assoc :scores (mapv (fn [k]
+                             ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
+                             (let [score  (or (get index-row k) 0)
+                                   weight (search.config/weight k)]
+                               {:score        score
+                                :name         k
+                                :weight       weight
+                                :contribution (* weight score)}))
+                           (keys (search.scoring/scorers nil))))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
+
+(defn add-collection-join-and-where-clauses
+  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
+  so we can return its `:name`."
+  [search-ctx qry]
+  (let [collection-id-col      :search_index.collection_id
+        permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
+    (cond-> qry
+      true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+      true (sql.helpers/where permitted-clause)
+      personal-clause (sql.helpers/where personal-clause))))
 
 (defn- fulltext
   "Search purely using the index."
@@ -87,8 +108,8 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (let [base-query (search.index/search-query search-term search-ctx [:legacy_input])]
-         (search.permissions/add-collection-join-and-where-clauses base-query "search-index" search-ctx))
+  (->> (search.index/search-query search-term search-ctx [:legacy_input])
+       (add-collection-join-and-where-clauses search-ctx)
        (search.scoring/with-scores search-ctx)
        (search.filter/with-filters search-ctx)
        (t2/query)
@@ -114,8 +135,8 @@
   [search-ctx]
   ;; We ignore any current models filter
   (let [search-ctx (assoc search-ctx :models search.config/all-models)]
-    (->> (-> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
-             (search.permissions/add-collection-join-and-where-clauses "search-index" search-ctx))
+    (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
+         (add-collection-join-and-where-clauses search-ctx)
          (search.filter/with-filters search-ctx)
          t2/query
          (into #{} (map :model)))))
@@ -124,7 +145,7 @@
   "Do no scoring, whatsoever"
   [result _scoring-ctx]
   {:score  (:total_score result 1)
-   :result (assoc result :all-scores [] :relevant-scores [])})
+   :result (assoc result :all-scores (:scores result))})
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."
@@ -142,4 +163,4 @@
 
 (comment
   (init! true)
-  (t2/select-fn-vec :legacy_input :search_index))
+  (t2/select-fn-vec :legacy_input search.index/*active-table*))

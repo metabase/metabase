@@ -38,6 +38,7 @@
          :name
          :official-collection
          :dashboardcard-count
+         :last-viewed-at
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count

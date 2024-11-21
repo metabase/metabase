@@ -8,7 +8,8 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
 
@@ -77,18 +78,59 @@
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
 
+(defn personal-collections-where-clause
+  "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
+  WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
+  [{filter-type :filter-items-in-personal-collection :keys [current-user-id] :as search-ctx} collection-id-col]
+  (case (or filter-type "all")
+    "all" nil
+
+    "only-mine"
+    [:or
+     [:= :collection.personal_owner_id current-user-id]
+     (into [:or]
+           (let [your-collection-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:= current-user-id])
+                 child-patterns      (for [id your-collection-ids] (format "/%d/%%" id))]
+             (for [p child-patterns] [:like :collection.location p])))]
+
+    "exclude-others"
+    (let [with-filter #(personal-collections-where-clause
+                        (assoc search-ctx :filter-items-in-personal-collection %)
+                        collection-id-col)]
+      [:or (with-filter "only-mine") (with-filter "exclude")])
+
+    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+          child-patterns (for [id personal-ids] (format "/%d/%%" id))]
+      (case filter-type
+        "only"
+        `[:or
+          ;; top level personal collections
+          [:and [:not= :collection.personal_owner_id nil] [:= :collection.location "/"]]
+          ;; their sub-collections
+          ~@(for [p child-patterns] [:like :collection.location p])]
+
+        "exclude"
+        `[:or
+          ;; not in a collection
+          [:= ~collection-id-col nil]
+          [:and
+           ;; neither in a top-level personal collection
+           [:= :collection.personal_owner_id nil]
+           ;; nor within one of their sub-collections
+           ~@(for [p child-patterns] [:not-like :collection.location p])]]))))
+
 (defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."
   [search-context qry]
   (as-> qry qry
     (sql.helpers/where qry (when (seq (:models search-context))
-                             [:in :model (:models search-context)]))
+                             [:in :search_index.model (:models search-context)]))
     (sql.helpers/where qry (when-let [ids (:ids search-context)]
                              [:and
-                              [:in :model_id ids]
+                              [:in :search_index.model_id ids]
                               ;; NOTE: we limit id-based search to only a subset of the models
                               ;; TODO this should just become part of the model spec e.g. :search-by-id?
-                              [:in :model ["card" "dataset" "metric" "dashboard" "action"]]]))
+                              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
     (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
               (or (when-some [v (get search-context context-key)]
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
