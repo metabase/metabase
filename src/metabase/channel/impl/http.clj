@@ -60,7 +60,6 @@
     true
     (catch Exception e
       (let [data (ex-data e)]
-        (def data data)
         ;; throw an appriopriate error if it's a connection error
         (if (= ::http/unexceptional-status (:type data))
           (throw (ex-info (tru "Failed to connect to channel") {:request-status (:status data)

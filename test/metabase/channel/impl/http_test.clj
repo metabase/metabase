@@ -55,7 +55,6 @@
 
 (defn do-with-server
   [route+handlers f]
-  (def route+handlers route+handlers)
   (let [handler        (->> route+handlers
                             (mapv :route)
                             (cons (compojure.route/not-found {:status-code 404 :body "Not found."}))
