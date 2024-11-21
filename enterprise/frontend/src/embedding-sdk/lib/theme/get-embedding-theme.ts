@@ -61,6 +61,10 @@ export function getEmbeddingThemeOverride(
 
         // If the sdk color does not exist in the mapping, skip it.
         if (!themeColorNames) {
+          console.warn(
+            `Color ${name} does not exist in the Embedding SDK. Please remove it from the theme configuration.`,
+          );
+
           continue;
         }
 
