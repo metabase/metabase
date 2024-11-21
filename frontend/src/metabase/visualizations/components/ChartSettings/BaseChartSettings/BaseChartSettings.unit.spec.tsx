@@ -1,4 +1,4 @@
-/* eslint-disable jest/expect-expect */
+/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "assertTabIsSelected"] }] */
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
