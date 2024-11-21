@@ -1,4 +1,4 @@
-import { jt } from "ttag";
+import { jt, t } from "ttag";
 
 import type { MoveDestination } from "metabase/collections/types";
 import { coerceCollectionId } from "metabase/collections/utils";
@@ -35,6 +35,15 @@ const getMessage = (question: Question, collectionLink: JSX.Element) => {
 };
 
 function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
+  if (!destination) {
+    return (
+      <ToastRoot>
+        <StyledIcon name="warning" />
+        {t`Something went wrong`}
+      </ToastRoot>
+    );
+  }
+
   const link =
     destination.model === "dashboard" ? (
       <DashboardLink key="dashboard-link" id={destination.id} />
