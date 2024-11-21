@@ -432,31 +432,23 @@
       (log/debug "Uploaded image" <>))))
 
 (mu/defn post-chat-message!
-  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
-   Takes an optional map of options that can include :blocks and/or :attachments."
-  ([channel-id :- ms/NonBlankString
-    text-or-nil :- [:maybe :string]]
-   (post-chat-message! channel-id text-or-nil nil))
-
-  ([channel-id  :- ms/NonBlankString
-    text-or-nil :- [:maybe :string]
-    options     :- [:maybe [:map
-                            [:blocks {:optional true} [:maybe [:or vector? :map]]]
-                            [:attachments {:optional true} [:maybe :map]]]]]
-   (let [{:keys [blocks attachments]} options
-         params (cond-> {:channel     channel-id
-                         :username    "MetaBot"
-                         :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-                         :text        text-or-nil}
-                 ;; If blocks is a vector, convert to JSON string
-                  (vector? blocks)
-                  (assoc :blocks (json/generate-string blocks))
-
-                 ;; If blocks is a map, extract and convert to JSON string
-                  (and (map? blocks) (:blocks blocks))
-                  (assoc :blocks (json/generate-string (:blocks blocks)))
-
-                 ;; If attachments exist, convert to JSON string
-                  attachments
-                  (assoc :attachments (json/generate-string attachments)))]
-     (POST "chat.postMessage" {:form-params params}))))
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` can be either serialized JSON for notification attachments or a map containing blocks."
+  [channel-id  :- ms/NonBlankString
+   text-or-nil :- [:maybe :string]
+   & [message-content]]
+  ;; TODO: it would be nice to have an emoji or icon image to use here
+  (let [base-params {:channel     channel-id
+                     :username    "MetaBot"
+                     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+                     :text        text-or-nil}
+        message-params (cond
+                        ;; If message-content contains :blocks key, it's a new-style message
+                         (:blocks message-content)
+                         {:blocks (json/generate-string (:blocks message-content))}
+                        ;; Otherwise treat it as notification attachments
+                         (seq message-content)
+                         {:attachments (json/generate-string message-content)}
+                         :else
+                         {})]
+    (POST "chat.postMessage"
+      {:form-params (merge base-params message-params)})))
