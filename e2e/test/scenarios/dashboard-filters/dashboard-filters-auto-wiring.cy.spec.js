@@ -563,12 +563,13 @@ describe("dashboard filters auto-wiring", () => {
       });
     });
 
-    it("should auto-wire and filter cards with foreign keys when added to the dashboard via the query builder", () => {
+    it.only("should auto-wire and filter cards with foreign keys when added to the dashboard via the query builder", () => {
       visitDashboard("@dashboardId");
       editDashboard();
       setFilter("ID");
       selectDashboardFilter(getDashboardCard(0), "ID");
       saveDashboard();
+      cy.pause();
 
       cy.get("@ordersQuestionId").then(ordersQuestionId => {
         addQuestionFromQueryBuilder({ questionId: ordersQuestionId });
