@@ -16,7 +16,10 @@ import type {
 
 export const getSankeyChartColumns = <TColumn extends DatasetColumn>(
   columns: TColumn[],
-  settings: ComputedVisualizationSettings,
+  settings: Pick<
+    ComputedVisualizationSettings,
+    "sankey.source" | "sankey.target" | "sankey.value"
+  >,
 ): SankeyChartColumns | null => {
   if (
     settings["sankey.source"] == null ||

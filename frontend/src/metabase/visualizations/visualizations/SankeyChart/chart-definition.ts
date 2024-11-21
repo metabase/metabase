@@ -7,7 +7,7 @@ import {
   dimensionSetting,
   metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
-import { getSankeyColumns } from "metabase/visualizations/lib/utils";
+import { findSensibleSankeyColumns } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -16,7 +16,8 @@ import type {
   ComputedVisualizationSettings,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type { RawSeries, Series } from "metabase-types/api";
+import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetData, RawSeries, Series } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
@@ -26,19 +27,22 @@ export const SETTINGS_DEFINITIONS = {
     section: t`Data`,
     title: t`Source`,
     showColumnSetting: true,
-    getDefault: ([series]: RawSeries) => getSankeyColumns(series).source,
+    getDefault: ([series]: RawSeries) =>
+      findSensibleSankeyColumns(series.data)?.source,
   }),
   ...dimensionSetting("sankey.target", {
     section: t`Data`,
     title: t`Target`,
     showColumnSetting: true,
-    getDefault: ([series]: RawSeries) => getSankeyColumns(series).target,
+    getDefault: ([series]: RawSeries) =>
+      findSensibleSankeyColumns(series.data)?.target,
   }),
   ...metricSetting("sankey.value", {
     section: t`Data`,
     title: t`Value`,
     showColumnSetting: true,
-    getDefault: ([series]: RawSeries) => getSankeyColumns(series).metric,
+    getDefault: ([series]: RawSeries) =>
+      findSensibleSankeyColumns(series.data)?.metric,
   }),
   "sankey.node_align": {
     section: t`Display`,
@@ -106,11 +110,45 @@ export const SETTINGS_DEFINITIONS = {
 export const SANKEY_CHART_DEFINITION = {
   uiName: t`Sankey`,
   identifier: "sankey",
-  iconName: "link",
+  iconName: "sankey",
   noun: t`sankey chart`,
   minSize: getMinSize("sankey"),
   defaultSize: getDefaultSize("sankey"),
-  isSensible: () => false,
+  isSensible: (data: DatasetData) => {
+    const { cols, rows } = data;
+    const numDimensions = cols.filter(
+      col => isDimension(col) && !isDate(col),
+    ).length;
+    const numMetrics = cols.filter(isMetric).length;
+
+    const hasEnoughRows = rows.length >= 1;
+    const hasSuitableColumnTypes =
+      cols.length >= 3 && numDimensions >= 2 && numMetrics >= 1;
+
+    if (!hasSuitableColumnTypes || !hasEnoughRows) {
+      return false;
+    }
+
+    const suitableColumns = findSensibleSankeyColumns(data);
+    if (!suitableColumns) {
+      return false;
+    }
+
+    const sankeyColumns = getSankeyChartColumns(cols, {
+      "sankey.source": suitableColumns.source,
+      "sankey.target": suitableColumns.target,
+      "sankey.value": suitableColumns.metric,
+    });
+    if (!sankeyColumns) {
+      return false;
+    }
+
+    return !hasCyclicFlow(
+      data.rows,
+      sankeyColumns.source.index,
+      sankeyColumns.target.index,
+    );
+  },
   checkRenderable: (
     rawSeries: RawSeries,
     settings: ComputedVisualizationSettings,

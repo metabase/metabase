@@ -270,7 +270,7 @@ export type VisualizationSettings = {
 
   // Sankey settings
   "sankey.source"?: string;
-  "sankey.destination"?: string;
+  "sankey.target"?: string;
   "sankey.value"?: string;
   "sankey.node_align"?: "left" | "right" | "justify";
   "sankey.show_edge_labels"?: boolean;

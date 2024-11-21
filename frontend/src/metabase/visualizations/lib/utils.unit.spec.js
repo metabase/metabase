@@ -4,15 +4,14 @@ import {
   cardHasBecomeDirty,
   computeMaxDecimalsForValues,
   computeSplit,
+  findSensibleSankeyColumns,
   getCardAfterVisualizationClick,
   getColumnCardinality,
   getDefaultDimensionsAndMetrics,
   getDefaultPivotColumn,
-  getSankeyColumns,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import { createMockColumn } from "metabase-types/api/mocks";
-import { createMockDataset } from "metabase-types/api/mocks/dataset";
 
 // TODO Atte Keinänen 5/31/17 Rewrite tests using metabase-lib methods instead of a raw format
 
@@ -410,14 +409,9 @@ describe("metabase/visualization/lib/utils", () => {
     });
   });
 
-  describe("getSankeyColumns", () => {
+  describe("findSensibleSankeyColumns", () => {
     it("should return null values when no data is provided", () => {
-      const series = { data: null };
-      expect(getSankeyColumns(series)).toEqual({
-        source: null,
-        target: null,
-        metric: null,
-      });
+      expect(findSensibleSankeyColumns(null)).toEqual(null);
     });
 
     it("should detect source, target, and metric columns on a suitable dataset", () => {
@@ -445,11 +439,9 @@ describe("metabase/visualization/lib/utils", () => {
         ["B", "C", 15],
       ];
 
-      const series = createMockDataset({
-        data: { cols, rows },
-      });
+      const data = { cols, rows };
 
-      expect(getSankeyColumns(series)).toEqual({
+      expect(findSensibleSankeyColumns(data)).toEqual({
         source: "source",
         target: "target",
         metric: "amount",
@@ -488,11 +480,9 @@ describe("metabase/visualization/lib/utils", () => {
         rows.push([`unique_${i}`, source.toString(), target.toString(), 10]);
       }
 
-      const series = createMockDataset({
-        data: { cols, rows },
-      });
+      const data = { cols, rows };
 
-      expect(getSankeyColumns(series)).toEqual({
+      expect(findSensibleSankeyColumns(data)).toEqual({
         source: "good_source",
         target: "good_target",
         metric: "amount",
@@ -529,11 +519,9 @@ describe("metabase/visualization/lib/utils", () => {
         ["2023-01-03", "B", "C", 30],
       ];
 
-      const series = createMockDataset({
-        data: { cols, rows },
-      });
+      const data = { cols, rows };
 
-      expect(getSankeyColumns(series)).toEqual({
+      expect(findSensibleSankeyColumns(data)).toEqual({
         source: "source",
         target: "target",
         metric: "amount",
@@ -565,11 +553,9 @@ describe("metabase/visualization/lib/utils", () => {
         ["C", "Z", 30],
       ];
 
-      const series = createMockDataset({
-        data: { cols, rows },
-      });
+      const data = { cols, rows };
 
-      expect(getSankeyColumns(series)).toEqual({
+      expect(findSensibleSankeyColumns(data)).toEqual({
         source: "dim1",
         target: "dim2",
         metric: "amount",
@@ -596,15 +582,9 @@ describe("metabase/visualization/lib/utils", () => {
         ["C", 30],
       ];
 
-      const series = createMockDataset({
-        data: { cols, rows },
-      });
+      const data = { cols, rows };
 
-      expect(getSankeyColumns(series)).toEqual({
-        source: null,
-        target: null,
-        metric: "amount",
-      });
+      expect(findSensibleSankeyColumns(data)).toEqual(null);
     });
   });
 });

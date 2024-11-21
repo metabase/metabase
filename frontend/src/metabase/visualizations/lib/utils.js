@@ -427,7 +427,7 @@ const MAX_SANKEY_COLUMN_PAIRS_TO_CHECK = 6;
 
 function findSankeyColumnPair(dimensionColumns, rows) {
   if (dimensionColumns.length < 2) {
-    return { source: null, target: null };
+    return null;
   }
 
   const pairsToCheck = Math.min(
@@ -445,22 +445,21 @@ function findSankeyColumnPair(dimensionColumns, rows) {
 
     if (targetCol) {
       return {
-        source: sourceCol.column,
-        target: targetCol.column,
+        source: sourceCol.column.name,
+        target: targetCol.column.name,
       };
     }
   }
 
   return {
-    source: dimensionColumns[0].column,
-    target: dimensionColumns[1].column,
+    source: dimensionColumns[0].column.name,
+    target: dimensionColumns[1].column.name,
   };
 }
 
-export function getSankeyColumns(series) {
-  const { data } = series;
+export function findSensibleSankeyColumns(data) {
   if (!data?.cols || !data?.rows) {
-    return { source: null, target: null, metric: null };
+    return null;
   }
 
   const { cols, rows } = data;
@@ -503,13 +502,20 @@ export function getSankeyColumns(series) {
     { dimensionColumns: [], metricColumn: null },
   );
 
+  if (!metricColumn) {
+    return null;
+  }
+
   dimensionColumns.sort((a, b) => a.cardinality - b.cardinality);
 
-  const { source, target } = findSankeyColumnPair(dimensionColumns, rows);
+  const dimensionPair = findSankeyColumnPair(dimensionColumns, rows);
+  if (!dimensionPair) {
+    return null;
+  }
 
   return {
-    source: source?.name ?? null,
-    target: target?.name ?? null,
-    metric: metricColumn?.name ?? null,
+    source: dimensionPair.source,
+    target: dimensionPair.target,
+    metric: metricColumn.name,
   };
 }
