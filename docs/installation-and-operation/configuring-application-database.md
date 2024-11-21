@@ -18,7 +18,7 @@ Metabase will read the connection configuration information when the application
 
 ## PostgreSQL
 
-We recommend that you use [PostgreSQL](https://www.postgresql.org/) for your Metabase application database.
+We recommend that you use [PostgreSQL](https://www.postgresql.org/) for your Metabase application database. The minimum version we support is 12, but we always suggest to be on the latest version you can.
 
 You can use [environment variables](../configuring-metabase/environment-variables.md) to set a Postgres database as Metabase's application database. For example, the following commands tell Metabase to use a Postgres database as its application database:
 
