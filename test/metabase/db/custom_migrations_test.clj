@@ -2384,9 +2384,22 @@
             (fn [dimensions]             ; 4 dimensions are consumed
               ;; crazy as it sounds, the FE uses the JSON encoded form of the dimensions as IDs and keys
               (let [dimension-strs (mapv json/generate-string dimensions)
-                    dimension-keys (mapv keyword dimension-strs)]
+                    dimension-keys (mapv keyword dimension-strs)
+                    click-behavior (fn [target-id & dimension-indices]
+                                     {:targetId target-id
+                                      :parameterMapping (into {} (for [i dimension-indices]
+                                                                   [(dimension-keys i)
+                                                                    {:source {:type "column"
+                                                                              :id "0"
+                                                                              :name "0"}
+                                                                     :target {:type "dimension"
+                                                                              :id (dimension-strs i)
+                                                                              :dimension (dimensions i)}
+                                                                     :id (dimension-strs i)}]))
+                                      :linkType "question"
+                                      :type "link"})]
                 (fn [[target-id0 target-id1 target-id2]]
-                  {:table.cell_column "model_id",
+                  {:table.cell_column "model_id"
                    :table.columns
                    [{:enabled true
                      :fieldRef ["field" 146 {:base-type "type/Text", :join-alias "People - User"}]
@@ -2400,55 +2413,11 @@
                    :table.pivot_column "end_timestamp",
                    ;; interesting part starts here (the fields above this are just random stuff from viz settings)
                    :column_settings
-                   {:name0
-                    {:click_behavior    ; this has two mappings on the column_settings level
-                     {:targetId target-id0
-                      :parameterMapping
-                      {(dimension-keys 0)
-                       {:source {:type "column"
-                                 :id "0"
-                                 :name "0"}
-                        :target {:type "dimension",
-                                 :id (dimension-strs 0)
-                                 :dimension (dimensions 0)}
-                        :id (dimension-strs 0)}
-                       (dimension-keys 1)
-                       {:source {:type "column"
-                                 :id "0"
-                                 :name "0"}
-                        :target {:type "dimension",
-                                 :id (dimension-strs 1)
-                                 :dimension (dimensions 1)}
-                        :id (dimension-strs 1)}}
-                      :linkType "question"
-                      :type "link"}}
-                    :name1
-                    {:click_behavior    ; the target is a dashboard, so the dimension should not change
-                     {:targetId target-id1
-                      :parameterMapping
-                      {(dimension-keys 2)
-                       {:source {:type "column"
-                                 :id "0"
-                                 :name "0"}
-                        :target {:type "dimension",
-                                 :id (dimension-strs 2)
-                                 :dimension (dimensions 2)}
-                        :id (dimension-strs 2)}}
-                      :linkType "dashboard"
-                      :type "link"}}}
-                   :click_behavior      ; one mapping on the visualization_settings level
-                   {:targetId target-id2
-                    :parameterMapping
-                    {(dimension-keys 3)
-                     {:source {:type "column"
-                               :id "0"
-                               :name "0"}
-                      :target {:type "dimension",
-                               :id (dimension-strs 3)
-                               :dimension (dimensions 3)}
-                      :id (dimension-strs 3)}}
-                    :linkType "question"
-                    :type "link"}})))
+                   {:name0 {:click_behavior (click-behavior target-id0 0 1)} ; two column_settings level mappings
+                    :name1 {:click_behavior (-> (click-behavior target-id1 2) ; dashboard target -> should not change
+                                                (assoc :linkType "dashboard"))}}
+                   :click_behavior
+                   (click-behavior target-id2 3)}))) ; a single visualization_settings level mapping
 
             dimensions (mapv (fn [id] ["dimension" ["field" id nil]]) (range 200 204))
             viz-settings-without-stage-numbers (viz-settings-generator dimensions)
