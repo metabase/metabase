@@ -75,7 +75,7 @@ export default class Revision extends Component {
             style={{ borderWidth: 2 }}
           />
         </div>
-        <div className={cx(CS.flexFull, CS.mt1, CS.mb4)}>
+        <div className={cx(CS.flex1, CS.mt1, CS.mb4)}>
           <div className={cx(CS.flex, CS.mb1, CS.textMedium)}>
             <span>
               <strong>{this.getName()}</strong> {this.getAction()}
