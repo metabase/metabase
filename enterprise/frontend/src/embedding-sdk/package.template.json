@@ -9,8 +9,12 @@
   "license": "SEE LICENSE IN LICENSE.txt",
   "main": "./dist/main.bundle.js",
   "exports": {
-    ".": "./dist/main.bundle.js",
+    ".": {
+      "types": "./dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
+      "default": "./dist/main.bundle.js"
+    },
     "./next": {
+      "types": "./dist/enterprise/frontend/src/embedding-sdk/next.d.ts",
       "require": "./dist/next.cjs",
       "import": "./dist/next.js"
     }
