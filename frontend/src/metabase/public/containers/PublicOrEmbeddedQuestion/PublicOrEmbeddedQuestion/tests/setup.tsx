@@ -23,7 +23,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { PublicOrEmbeddedQuestion } from "./PublicOrEmbeddedQuestion";
+import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 
 registerStaticVisualizations();
 
