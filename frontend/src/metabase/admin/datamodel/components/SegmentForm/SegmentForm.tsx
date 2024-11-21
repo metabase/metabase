@@ -11,7 +11,6 @@ import { SegmentEditor } from "metabase/querying/segments/components/SegmentEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import * as Q from "metabase-lib/v1/queries/utils/query";
 import type { Segment, StructuredQuery } from "metabase-types/api";
 
 import FormInput from "../FormInput";
@@ -48,7 +47,7 @@ const SegmentForm = ({
     useFormik({
       initialValues: segment ?? {},
       isInitialValid: false,
-      validate: getFormErrors,
+      validate: values => getFormErrors(values, metadata),
       onSubmit,
     });
 
@@ -147,7 +146,7 @@ const SegmentFormActions = ({
   );
 };
 
-const getFormErrors = (values: Partial<Segment>) => {
+const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
   const errors: Record<string, string> = {};
 
   if (!values.name) {
@@ -162,15 +161,16 @@ const getFormErrors = (values: Partial<Segment>) => {
     errors.revision_message = t`Revision message is required`;
   }
 
-  const filters = values.definition && Q.getFilters(values.definition);
-  if (!filters || filters.length === 0) {
+  const query = getQuery(values.definition, metadata);
+  const filters = query ? Lib.filters(query, -1) : [];
+  if (filters.length === 0) {
     errors.definition = t`At least one filter is required`;
   }
 
   return errors;
 };
 
-function getQuery(metadata: Metadata, definition: StructuredQuery | undefined) {
+function getQuery(definition: StructuredQuery | undefined, metadata: Metadata) {
   const tableId = definition?.["source-table"];
   const table = metadata.table(tableId);
   const metadataProvider = table
@@ -198,7 +198,7 @@ function getSegmentEditorProps(
   metadata: Metadata,
 ) {
   return {
-    query: getQuery(metadata, value),
+    query: getQuery(value, metadata),
     onChange: (query: Lib.Query) =>
       onChange({ target: { name, value: getQueryDefinition(query) } }),
   };
