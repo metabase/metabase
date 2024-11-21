@@ -1596,7 +1596,15 @@
   ([]
    "search/weights")
   ([params]
-   (str (weights-url) (when (seq params) "?") (str/join "&" (map (fn [[k v]] (str (name k) "=" v)) params))))
+   (str (weights-url)
+        (when (seq params) "?")
+        (str/join "&" (map (fn [[k v]]
+                             (str
+                              (namespace k)
+                              (when (namespace k) "/")
+                              (name k)
+                              "=" v))
+                           params))))
   ([context params]
    (weights-url (assoc params :context (name context)))))
 
@@ -1613,32 +1621,39 @@
         (is (= (assoc original-weights :recency 4.0 :text 30.0)
                (mt/user-http-request :crowberto :get 200 (weights-url {:text 30}))))
         (is (= (assoc original-weights :recency 4.0 :text 30.0)
-               (mt/user-http-request :crowberto :get 200 base-url)))
+               (mt/user-http-request :crowberto :get 200 base-url))))
 
-        (testing "custom context"
-          (let [context          :none-given
-                context-url      (weights-url context {})
-                original-weights (search.config/weights context)]
-            (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
-            (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
-            (is (= (assoc original-weights :recency 5.0)
-                   (mt/user-http-request :crowberto :get 200 (weights-url context {:recency 5}))))
-            (is (= (assoc original-weights :recency 5.0 :text 40.0)
-                   (mt/user-http-request :crowberto :get 200 (weights-url context {:text 40}))))
-            (is (= (assoc original-weights :recency 5.0 :text 40.0)
-                   (mt/user-http-request :crowberto :get 200 context-url)))))
+      (testing "custom context"
+        (let [context          :none-given
+              context-url      (weights-url context {})
+              original-weights (search.config/weights context)]
+          (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
+          (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
+          (is (= (assoc original-weights :recency 5.0)
+                 (mt/user-http-request :crowberto :get 200 (weights-url context {:recency 5}))))
+          (is (= (assoc original-weights :recency 5.0 :text 40.0)
+                 (mt/user-http-request :crowberto :get 200 (weights-url context {:text 40}))))
+          (is (= (assoc original-weights :recency 5.0 :text 40.0)
+                 (mt/user-http-request :crowberto :get 200 context-url)))))
 
-        (testing "all weights (nested)"
-          (let [context     :all
-                context-url (weights-url context {})
-                all-weights (search.config/weights context)]
-            (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))
-            (is (= (mt/user-http-request :crowberto :get 200 base-url)
-                   (:default (mt/user-http-request :crowberto :get 200 context-url))))
-            (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 4})))
-            (is (mt/user-http-request :crowberto :get 400 (weights-url context {:recency 4})))
-            (is (mt/user-http-request :crowberto :get 400 (weights-url context {:text 30})))
-            (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url))))))
+      (testing "all weights (nested)"
+        (let [context     :all
+              context-url (weights-url context {})
+              all-weights (search.config/weights context)]
+          (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))
+          (is (= (mt/user-http-request :crowberto :get 200 base-url)
+                 (:default (mt/user-http-request :crowberto :get 200 context-url))))
+          (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 4})))
+          (is (mt/user-http-request :crowberto :get 400 (weights-url context {:recency 4})))
+          (is (mt/user-http-request :crowberto :get 400 (weights-url context {:text 30})))
+          (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))))
+
+      (testing "ranker parameters"
+        (let [context :just-for-fun]
+          (is (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 10})))
+          (is (= 10.0 (search.config/scorer-param context :model :dataset)))
+          (is (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 5})))
+          (is (= 5.0 (search.config/scorer-param context :model :dataset)))))
 
       (finally
         (public-settings/experimental-search-weight-overrides! original-overrides)))))

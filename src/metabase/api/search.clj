@@ -80,10 +80,11 @@
   (when (= context :all)
     (throw (ex-info (str "Cannot set weights for all context")
                     {:status-code 400})))
-  (let [allowed-key?    (set (keys (:default @#'search.config/static-weights)))
-        unknown-weights (seq (remove allowed-key? (keys overrides)))]
-    (when unknown-weights
-      (throw (ex-info (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))
+  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
+        rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
+        unknown-rankers (seq (remove known-ranker? rankers))]
+    (when unknown-rankers
+      (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
     (public-settings/experimental-search-weight-overrides!
      (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
