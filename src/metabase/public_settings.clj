@@ -359,7 +359,7 @@ x.com")
   :type       :boolean
   :default    true
   :export?    true
-  :visibility :authenticated
+  :visibility :internal
   :audit      :getter)
 
 (defsetting enable-public-sharing
