@@ -21,7 +21,9 @@ export type EntityQuery = any;
 
 export type EntityQuerySelector = (state: State, props: unknown) => EntityQuery;
 
-export type EntityType = "database" | "table" | string; // TODO
+// TODO: add more entity types
+// https://github.com/metabase/metabase/issues/50323
+export type EntityType = "database" | "table" | string;
 
 export type EntityTypeSelector = (state: State, props: unknown) => EntityType;
 

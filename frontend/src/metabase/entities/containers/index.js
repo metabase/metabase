@@ -12,7 +12,7 @@ export function addEntityContainers(entity) {
    * @deprecated HOCs are deprecated
    */
   entity.load = ({ id, query, ...props } = {}) => {
-    // TODO: define rtk for all remaining entities
+    // TODO: define rtk mappings for all remaining entities
     // https://github.com/metabase/metabase/issues/50323
     if (!entity.rtk) {
       return entity.loadLegacy({ id, query, ...props });
@@ -27,6 +27,8 @@ export function addEntityContainers(entity) {
   };
 
   /**
+   * TODO: remove this in https://github.com/metabase/metabase/issues/50322
+   *
    * @deprecated HOCs are deprecated
    */
   entity.loadLegacy = ({ id, query, ...props } = {}) =>
