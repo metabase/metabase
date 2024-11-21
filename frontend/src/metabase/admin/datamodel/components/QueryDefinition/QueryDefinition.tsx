@@ -24,7 +24,7 @@ export function QueryDefinition({
   }
 
   const stageIndex = -1;
-  const filters = query ? Lib.filters(query, -1) : [];
+  const filters = Lib.filters(query, -1);
 
   return (
     <Flex className={className} gap="md" wrap="wrap">
