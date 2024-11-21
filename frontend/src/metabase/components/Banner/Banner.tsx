@@ -23,6 +23,7 @@ export const Banner = ({
 }: BannerProps) => {
   return (
     <Flex
+      data-testid="app-banner"
       align="center"
       bg={bg || "bg-medium"}
       py="sm"
