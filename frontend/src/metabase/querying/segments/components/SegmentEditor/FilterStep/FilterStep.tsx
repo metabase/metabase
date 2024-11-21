@@ -16,6 +16,7 @@ type FilterStepProps = {
 
 export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
   const filters = query ? Lib.filters(query, stageIndex) : [];
+  const hasFilters = filters.length > 0;
 
   return (
     <ClauseStep label={t`Filtered by`}>
@@ -27,12 +28,14 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
               query={query}
               stageIndex={stageIndex}
               filter={filter}
+              hasFilters={hasFilters}
               onChange={onChange}
             />
           ))}
           <FilterPopover
             query={query}
             stageIndex={stageIndex}
+            hasFilters={hasFilters}
             onChange={onChange}
           />
         </Flex>
@@ -47,6 +50,7 @@ type FilterPopoverProps = {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
+  hasFilters: boolean;
   onChange: (query: Lib.Query) => void;
 };
 
@@ -54,6 +58,7 @@ function FilterPopover({
   query,
   stageIndex,
   filter,
+  hasFilters,
   onChange,
 }: FilterPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -87,7 +92,10 @@ function FilterPopover({
             {filterInfo.displayName}
           </FilterPill>
         ) : (
-          <AddFilterButton compact onClick={() => setIsOpened(!isOpened)} />
+          <AddFilterButton
+            compact={hasFilters}
+            onClick={() => setIsOpened(!isOpened)}
+          />
         )}
       </Popover.Target>
       <Popover.Dropdown>
