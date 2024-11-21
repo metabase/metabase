@@ -74,7 +74,7 @@
   (concat
    (for [[column-alias expr] scorers]
      [expr column-alias])
-   [[(sum-columns (map weighted-score context scorers))
+   [[(sum-columns (map (partial weighted-score context) scorers))
      :total_score]]))
 
 ;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
