@@ -69,6 +69,7 @@ export function DataStep({
       {isOpened && (
         <DataPickerModal
           title={t`Select a table`}
+          models={["table"]}
           value={tableValue}
           onChange={handleChange}
           onClose={() => setIsOpened(false)}
