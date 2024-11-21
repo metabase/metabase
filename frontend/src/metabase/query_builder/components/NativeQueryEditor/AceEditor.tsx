@@ -17,12 +17,13 @@ import "ace/snippets/json";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Questions from "metabase/entities/questions";
+import Snippets from "metabase/entities/snippets";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
 import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, CardId } from "metabase-types/api";
+import type { Card, CardId, NativeQuerySnippet } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import S from "./AceEditor.global.css";
@@ -59,6 +60,7 @@ type SizeProps = {
 type StateProps = {
   autocompleteResultsFn?: (prefix: string) => Promise<AutocompleteItem[]>;
   cardAutocompleteResultsFn?: (prefix: string) => Promise<CardCompletionItem[]>;
+  snippets?: NativeQuerySnippet[];
 };
 
 type DispatchProps = {
@@ -509,5 +511,6 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
 
 export const AceEditor = _.compose(
   ExplicitSize(),
+  Snippets.loadList({ loadingAndErrorWrapper: false }),
   connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
 )(AceEditorInner);

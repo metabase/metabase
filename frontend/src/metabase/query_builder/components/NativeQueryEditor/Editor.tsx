@@ -1,7 +1,7 @@
 import { type Component, type LegacyRef, forwardRef } from "react";
 
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { CardId, NativeQuerySnippet } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 import { AceEditor } from "./AceEditor";
 import type { SelectionRange } from "./types";
@@ -9,11 +9,7 @@ import type { SelectionRange } from "./types";
 export type EditorProps = {
   query: NativeQuery;
   onChange?: (queryText: string) => void;
-
   readOnly?: boolean;
-
-  snippets?: NativeQuerySnippet[];
-
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange) => void;

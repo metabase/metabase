@@ -349,7 +349,6 @@ export class NativeQueryEditor extends Component<
       hasTopBar = true,
       hasEditingSidebar = true,
       resizableBoxProps = {},
-      snippets = [],
       snippetCollections = [],
       resizable,
       editorContext = "question",
@@ -441,7 +440,6 @@ export class NativeQueryEditor extends Component<
             <Editor
               ref={this.editor}
               query={query}
-              snippets={snippets}
               readOnly={readOnly}
               onChange={this.onChange}
               onSelectionChange={setNativeEditorSelectedRange}
