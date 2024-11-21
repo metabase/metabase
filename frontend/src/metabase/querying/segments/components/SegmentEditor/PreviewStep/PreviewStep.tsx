@@ -41,7 +41,7 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
   return (
     <ClauseStep>
       <Flex gap="md" align="center">
-        {match({ count, isFetching })
+        {match({ isFetching, count })
           .with({ isFetching: true }, () => <Loader />)
           .with({ isFetching: false, count: P.nonNullable }, () => (
             <Text weight="bold">{t`${count} rows`}</Text>
