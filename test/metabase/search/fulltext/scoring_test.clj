@@ -46,7 +46,8 @@
        ;; for brevity in some tests, we don't require that the user really exists
        (if (t2/exists? :model/User user-id#)
          (mw.session/with-current-user user-id# ~@body)
-         (binding [*user-ctx* (merge {:current-user-perms    #{"/"}
+         (binding [*user-ctx* (merge {:current-user-id       user-id#
+                                      :current-user-perms    #{"/"}
                                       :is-superuser?         true
                                       :is-sandboxed-user?    false
                                       :is-impersonated-user? false}
@@ -61,20 +62,16 @@
   (with-api-user raw-ctx
     (let [search-ctx (search.impl/search-context
                       (merge
-                       {:archived              false
-                        :search-string         search-string
-                        :current-user-id       (or (:current-user-id raw-ctx)
-                                                   api/*current-user-id*)
-                        :current-user-perms    (or (:current-user-perms *user-ctx*)
-                                                   @api/*current-user-permissions-set*)
-                        :is-superuser?         (or (:is-superuser? *user-ctx*)
-                                                   api/*is-superuser?*)
-                        :is-impersonated-user? (or (:is-impersonated-user? *user-ctx*)
-                                                   (premium-features/impersonated-user?))
-                        :is-sandboxed-user?    (or (:is-sandboxed-user? *user-ctx*)
-                                                   (premium-features/impersonated-user?))
-                        :models                search.config/all-models
-                        :model-ancestors?      false}
+                       (or *user-ctx*
+                           {:current-user-id       api/*current-user-id*
+                            :current-user-perms    @api/*current-user-permissions-set*
+                            :is-superuser?         api/*is-superuser?*
+                            :is-impersonated-user? (premium-features/impersonated-user?)
+                            :is-sandboxed-user?    (premium-features/impersonated-user?)})
+                       {:archived         false
+                        :search-string    search-string
+                        :models           search.config/all-models
+                        :model-ancestors? false}
                        raw-ctx))]
       (is (get (search.scoring/scorers search-ctx) ranker-key) "The ranker is enabled")
       (map (juxt :model :id :name) (#'search.postgres/fulltext search-string search-ctx)))))
