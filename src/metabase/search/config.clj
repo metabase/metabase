@@ -82,7 +82,6 @@
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
 (def ^:private default-weights
-  "The default weights for the various scorers. Dynamic for testing."
   {:pinned              0
    :bookmarked          2
    :recency             1.5

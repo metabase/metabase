@@ -94,8 +94,8 @@
 
 (deftest ^:parallel text-test
   (with-index-contents
-    [{:model "card" :id 1 :name "unrelated"}
-     {:model "card" :id 2 :name "orders"}
+    [{:model "card" :id 1 :name "orders"}
+     {:model "card" :id 2 :name "unrelated"}
      {:model "card" :id 3 :name "classified" :description "available only by court order"}
      {:model "card" :id 4 :name "order"}
      {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
@@ -104,7 +104,7 @@
     (testing "Preferences according to textual matches"
       ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
       ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
-      (is (= [["card" 2 "orders"]
+      (is (= [["card" 1 "orders"]
               ["card" 4 "order"]
               ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
               ["card" 5 "orders, invoices, other stuff"]
