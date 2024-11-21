@@ -119,7 +119,7 @@
   [_ database]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     {:tables (set (for [collection (mongo.util/list-collection-names db)
-                        :when (not= collection "system.indexes")]
+                        :when (not (contains? #{"system.indexes" "system.views"} collection))]
                     {:schema nil, :name collection}))}))
 
 (defmethod driver/describe-table-indexes :mongo
