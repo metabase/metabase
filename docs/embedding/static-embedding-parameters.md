@@ -180,15 +180,15 @@ your_embedding_url#theme=night&bordered=false&titled=true
 
 You can preview appearance settings from your question or dashboard's embedded appearance settings.
 
-| Parameter name             | Possible values                                                                                                               |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `background`               | true (default), false. Dashboards only.                                                                                       |
-| `bordered`                 | true (default), false.                                                                                                        |
-| `titled`                   | true (default), false.                                                                                                        |
-| `theme`                    | null (default), night. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds)) |
-| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                        |
-| `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                 |
-| `downloads`\*\*            | true (default), false.                                                                                                        |
+| Parameter name             | Possible values                                                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `background`               | true (default), false. Dashboards only.                                                                                                        |
+| `bordered`                 | true (default), false.                                                                                                                         |
+| `titled`                   | true (default), false.                                                                                                                         |
+| `theme`                    | null (default), night. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
+| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                         |
+| `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                  |
+| `downloads`\*\*            | true (default), false.                                                                                                                         |
 
 \* Avalable on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
 
