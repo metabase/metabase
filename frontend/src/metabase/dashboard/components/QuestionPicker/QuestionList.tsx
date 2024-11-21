@@ -74,6 +74,7 @@ export function QuestionList({
 
     return {
       ...baseQuery,
+      context: "question-picker",
       models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
         ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
         : ["card", "dataset", "metric"],

@@ -1,4 +1,5 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
+import { safeSearchContext } from "metabase-types/analytics";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 type SearchRequestFilter = Pick<
@@ -30,7 +31,7 @@ export const trackSearchRequest = (
     verified_items: !!searchRequest.verified,
     search_native_queries: !!searchRequest.search_native_query,
     search_archived: !!searchRequest.archived,
-    context: searchRequest.context ?? null,
+    context: safeSearchContext(searchRequest.context),
     runtime_milliseconds: duration,
     total_results: searchResponse.total,
     page_results: searchResponse.limit,
@@ -46,6 +47,6 @@ export const trackSearchClick = (
     event: "search_click",
     position,
     target_type: itemType,
-    context: context ?? null,
+    context: safeSearchContext(context),
   });
 };

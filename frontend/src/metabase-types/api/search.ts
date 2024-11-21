@@ -99,10 +99,17 @@ export interface SearchResult<
 }
 
 export type SearchContext =
-  | "search-bar"
-  | "search-app"
+  | "available-models"
   | "command-palette"
   | "entity-picker"
+  | "metabot"
+  | "metrics-browser"
+  | "model-upload"
+  | "model-browser"
+  | "question-picker"
+  | "search-app"
+  | "search-bar"
+  | "skip-token" // never sent to the backend, used in a sentinel payload
   | "strategy-editor"
   | "use-available-data";
 

@@ -159,6 +159,7 @@ function useHasVerifiedMetrics() {
   const result = useFetchMetrics(
     contentVerificationEnabled
       ? {
+          context: "metrics-browser",
           filter_items_in_personal_collection: "exclude",
           model_ancestors: false,
           limit: 0,
@@ -193,6 +194,7 @@ function useFilteredMetrics(metricFilters: MetricFilterSettings) {
     hasVerifiedMetrics.isLoading || hasVerifiedMetrics.error
       ? skipToken
       : {
+          context: "metrics-browser",
           filter_items_in_personal_collection: "exclude",
           model_ancestors: false,
           ...filters,

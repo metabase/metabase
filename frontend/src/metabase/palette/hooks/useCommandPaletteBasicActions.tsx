@@ -32,7 +32,7 @@ export const useCommandPaletteBasicActions = ({
     enabled: isLoggedIn,
   });
   const { data: models = [] } = useSearchListQuery({
-    query: { models: ["dataset"], limit: 1 },
+    query: { context: "command-palette", models: ["dataset"], limit: 1 },
     enabled: isLoggedIn,
   });
 

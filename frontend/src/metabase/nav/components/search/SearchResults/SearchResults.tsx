@@ -82,21 +82,22 @@ export const SearchResults = ({
     [searchText],
   );
 
+  const context = isSearchBar
+    ? SearchContextTypes.SEARCH_BAR
+    : SearchContextTypes.SEARCH_APP;
+
   const query: {
     q?: string;
     limit: number;
     models?: SearchModel[];
-    context?: "search-bar" | "search-app";
+    context: "search-bar" | "search-app";
   } & SearchFilters = {
     q: debouncedSearchText,
+    context: context,
     limit: DEFAULT_SEARCH_LIMIT,
     ...searchFilters,
     models: models ?? searchFilters.type,
   };
-
-  if (isSearchBar) {
-    query.context = SearchContextTypes.SEARCH_BAR;
-  }
 
   const {
     data: list = [],
