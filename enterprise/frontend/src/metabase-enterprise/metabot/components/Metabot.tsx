@@ -11,6 +11,7 @@ import { MetabotChat } from "./MetabotChat";
 
 export const Metabot = () => {
   const currentUser = useSelector(getCurrentUser);
+
   const { visible, setVisible } = useMetabotAgent();
 
   const onClose = useCallback(() => setVisible(false), [setVisible]);
