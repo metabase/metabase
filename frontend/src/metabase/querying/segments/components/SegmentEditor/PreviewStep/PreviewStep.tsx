@@ -39,7 +39,12 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
     <ClauseStep>
       <Flex gap="md" align="center">
         {count != null && <Text weight="bold">{t`${count} rows`}</Text>}
-        <Button component={Link} to={previewUrl} variant="filled">
+        <Button
+          component={Link}
+          to={previewUrl}
+          target="_blank"
+          variant="filled"
+        >
           {t`Preview`}
         </Button>
       </Flex>

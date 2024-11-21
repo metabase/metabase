@@ -66,6 +66,8 @@ const UpdateSegmentForm = _.compose(
   }),
   Tables.load({
     id: (_state, { segment }) => segment?.table_id,
+    fetchType: "fetchMetadataAndForeignTables",
+    requestType: "fetchMetadataDeprecated",
   }),
 )(UpdateSegmentFormInner);
 

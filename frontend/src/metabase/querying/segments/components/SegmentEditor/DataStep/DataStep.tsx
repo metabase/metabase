@@ -5,7 +5,6 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/DataPicker";
-import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -41,14 +40,14 @@ export function DataStep({
   const dispatch = useDispatch();
 
   const handleChange = async (tableId: TableId) => {
-    await dispatch(Tables.actions.fetch({ id: tableId }));
+    await dispatch(
+      Tables.actions.fetchMetadataAndForeignTables({ id: tableId }),
+    );
     const metadata = getMetadata(store.getState());
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    const newDatasetQuery = Lib.toLegacyQuery(newQuery);
-    await dispatch(Questions.actions.fetchAdhocMetadata(newDatasetQuery));
     onChange(newQuery);
   };
 
