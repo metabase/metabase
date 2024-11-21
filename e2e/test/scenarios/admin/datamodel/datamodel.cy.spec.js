@@ -8,6 +8,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createSegment,
   entityPickerModal,
+  entityPickerModalTab,
   filter,
   getNotebookStep,
   modal,
@@ -398,6 +399,7 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
     // It shouldn't show in a new question data picker
     startNewQuestion();
     entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.contains("Products").should("exist");
       cy.contains("Orders").should("not.exist");
     });
