@@ -36,7 +36,6 @@ export const useNotebookNativePreview = () => {
   const showLoader = isFetching;
   const showError = !isFetching && canRun && !!error;
   const showQuery = !isFetching && canRun && !error;
-  const showEmptySidebar = !canRun;
 
   const formattedQuery = formatNativeQuery(data?.query, engine);
 
@@ -52,17 +51,16 @@ export const useNotebookNativePreview = () => {
     dispatch(setUIControls({ isNativeEditorOpen: true }));
   }, [question, dispatch, formattedQuery]);
 
-  const getErrorMessage = () => (typeof error === "string" ? error : undefined);
+  const errorMessage = typeof error === "string" ? error : undefined;
 
   return {
     engineType,
     showLoader,
     formattedQuery,
-    showEmptySidebar,
     showError,
     showQuery,
     handleConvertClick,
-    getErrorMessage,
+    errorMessage,
     title: TITLE[engineType],
     buttonTitle: BUTTON_TITLE[engineType],
   };

@@ -12,11 +12,10 @@ export const NotebookNativePreview = (): JSX.Element => {
   const {
     engineType,
     showLoader,
-    showEmptySidebar,
     showError,
     showQuery,
     formattedQuery,
-    getErrorMessage,
+    errorMessage,
     title,
   } = useNotebookNativePreview();
 
@@ -43,12 +42,11 @@ export const NotebookNativePreview = (): JSX.Element => {
       </Box>
       <Box style={{ flex: 1 }}>
         {showLoader && <DelayedLoadingSpinner delay={1000} />}
-        {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
             <Icon name="warning" size="2rem" color={color("error")} />
             {t`Error generating the query.`}
-            <Box mt="sm">{getErrorMessage()}</Box>
+            <Box mt="sm">{errorMessage}</Box>
           </Flex>
         )}
         {showQuery && (
