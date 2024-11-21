@@ -196,6 +196,8 @@ export class AceEditorInner extends Component<AceEditorProps> {
     // reset undo manager to prevent undoing to empty editor
     editor.getSession().getUndoManager().reset();
 
+    editor.resize();
+
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     editor.setOptions({
       enableBasicAutocompletion: true,
