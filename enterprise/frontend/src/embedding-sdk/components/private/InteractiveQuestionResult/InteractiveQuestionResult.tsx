@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactElement, type ReactNode, isValidElement } from "react";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -105,17 +105,22 @@ export const InteractiveQuestionResult = ({
         <Group
           position="apart"
           p="sm"
-          bg="var(--mb-color-bg-medium)"
+          bg="var(--mb-color-background-disabled)"
           style={{ borderRadius: "0.5rem" }}
         >
           <Group spacing="xs">
-            {withResetButton && <InteractiveQuestion.ResetButton />}
-            <InteractiveQuestion.ChartTypeSelectorList />
-            <Divider orientation="vertical" />
-            <InteractiveQuestion.Filter />
-            <InteractiveQuestion.Summarize />
-            <InteractiveQuestion.Breakout />
+            <InteractiveQuestion.ChartTypeDropdown />
+            <Divider
+              mx="xs"
+              orientation="vertical"
+              // we have to do this for now because Mantine's divider overrides this color no matter what
+              color="var(--mb-color-border) !important"
+            />
+            <InteractiveQuestion.FilterDropdown />
+            <InteractiveQuestion.SummarizeDropdown />
+            <InteractiveQuestion.BreakoutDropdown />
           </Group>
+
           <InteractiveQuestion.EditorButton
             isOpen={isEditorOpen}
             onClick={toggleEditor}
@@ -135,7 +140,6 @@ export const InteractiveQuestionResult = ({
             .exhaustive()}
         </Box>
       </Box>
-
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
       {isSaveEnabled && isSaveModalOpen && question && (
         <SaveQuestionModal

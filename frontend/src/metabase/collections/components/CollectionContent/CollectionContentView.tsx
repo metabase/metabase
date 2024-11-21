@@ -32,6 +32,7 @@ import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -265,6 +266,9 @@ export const CollectionContentView = ({
                   uploadsEnabled={uploadsEnabled}
                   saveFile={saveFile}
                 />
+              </ErrorBoundary>
+              <ErrorBoundary>
+                <PLUGIN_COLLECTIONS.cleanUpAlert collection={collection} />
               </ErrorBoundary>
               <ErrorBoundary>
                 <PinnedItemOverview
