@@ -178,30 +178,33 @@ jobs:
 
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.28.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/${{ github.repository_owner }}/metabase-enterprise-head:latest
         format: sarif
         output: trivy-results.sarif
+        version: "v0.57.1"
 
     - name: Run Trivy vulnerability scanner if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.28.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
         image-ref: docker.io/${{ github.repository_owner }}/metabase-head:latest
         format: sarif
         output: trivy-results.sarif
+        version: "v0.57.1"
 
     - name: Run Trivy vulnerability scanner if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.28.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
+        version: "v0.57.1"
         image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
         format: sarif
         output: trivy-results.sarif

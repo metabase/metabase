@@ -28,6 +28,7 @@ import {
   openNotebook,
   openOrdersTable,
   openProductsTable,
+  openQuestionActions,
   openTable,
   popover,
   queryBuilderFooter,
@@ -2434,5 +2435,53 @@ describe("issue 50038", () => {
         cy.findByTestId("fields-picker").should("be.visible"),
       );
     });
+  });
+});
+
+describe("issue 47940", () => {
+  const questionDetails = {
+    name: "Issue 47940",
+    query: {
+      "source-table": ORDERS_ID,
+      limit: 5,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  });
+
+  it("should be able to convert a question with date casting to a model", () => {
+    cy.log("create a question without any column casting");
+    createQuestion(questionDetails, { visitQuestion: true });
+    cy.wait("@cardQuery");
+
+    cy.log("add coercion");
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      semantic_type: "type/Category",
+      coercion_strategy: "Coercion/UNIXMicroSeconds->DateTime",
+    });
+
+    cy.log("get new query results with coercion applied");
+    queryBuilderHeader().findByTestId("run-button").click();
+    cy.wait("@cardQuery");
+    queryBuilderHeader().button("Save").click();
+    modal().button("Save").click();
+    cy.wait("@updateCard");
+
+    cy.log("turn into a model");
+    openQuestionActions();
+    popover().findByText("Turn into a model").click();
+    cy.findByRole("dialog").findByText("Turn this into a model").click();
+    cy.wait("@updateCard");
+
+    cy.log("verify there is a table displayed");
+    cy.findByTestId("visualization-root").should(
+      "contain",
+      "December 31, 1969, 4:00 PM",
+    );
   });
 });

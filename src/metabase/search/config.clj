@@ -40,11 +40,6 @@
   "Results in more dashboards than this are all considered to be equally popular."
   10)
 
-(def ^:const view-count-scaling
-  "A constant factor influencing how quickly the incremental score grows with view count for a given search model.
-  The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
-  0.2)
-
 (def ^:const view-count-scaling-percentile
   "The percentile of the given search model's view counts, to be multiplied by [[view-count-scaling]].
   The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
@@ -90,8 +85,9 @@
   {:pinned              0
    :bookmarked          2
    :recency             1.5
-   :dashboard           1
-   :model               0.5
+   :user-recency        1.5
+   :dashboard           0.5
+   :model               2
    :official-collection 2
    :verified            2
    :view-count          2
@@ -185,6 +181,7 @@
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
+   [:context               {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms.u/PathSchema]]
@@ -199,7 +196,7 @@
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+   [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]

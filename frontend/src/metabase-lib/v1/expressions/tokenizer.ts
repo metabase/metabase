@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import type { ErrorWithMessage, Token } from "./types";
+
 export const TOKEN = {
   Operator: 1,
   Number: 2,
@@ -29,16 +31,49 @@ export const OPERATOR = {
   False: "false",
 };
 
-/**
- *
- * @param {string} expression
- */
-export function tokenize(expression) {
+const parseOperator = (expression: string, index: number) => {
+  const character = expression[index];
+
+  switch (character) {
+    case OPERATOR.OpenParenthesis:
+    case OPERATOR.CloseParenthesis:
+    case OPERATOR.Comma:
+    case OPERATOR.Plus:
+    case OPERATOR.Minus:
+    case OPERATOR.Star:
+    case OPERATOR.Slash:
+    case OPERATOR.Equal:
+      return expression.substring(index, index + 1);
+
+    case OPERATOR.LessThan:
+    case OPERATOR.GreaterThan:
+      if (expression[index + 1] === OPERATOR.Equal) {
+        // OPERATOR.LessThanEqual (<=) or
+        // OPERATOR.GreaterThanEqual (>=)
+        return expression.substring(index, index + 2);
+      }
+
+      return expression.substring(index, index + 1);
+
+    case "!":
+      if (expression[index + 1] === OPERATOR.Equal) {
+        // OPERATOR.NotEqual (!=)
+        return expression.substring(index, index + 2);
+      }
+  }
+
+  return undefined;
+};
+
+export function tokenize(expression: string): {
+  tokens: Token[];
+  errors: ErrorWithMessage[];
+} {
   const source = expression;
   const length = expression.length;
   let index = 0;
 
-  const isWhiteSpace = cp =>
+  const isWhiteSpace = (cp: number) =>
     cp === 0x0009 || // tab
     cp === 0x000a || // line feed
     cp === 0x000b || // vertical tab
@@ -65,9 +100,9 @@ export function tokenize(expression) {
     cp === 0x205f || // four-eighteenths em space
     cp === 0x3000; // cjk language space
 
-  const isDigit = cp => cp >= 0x30 && cp <= 0x39; // 0..9
+  const isDigit = (cp: number) => cp >= 0x30 && cp <= 0x39; // 0..9
 
-  const isAlpha = cp =>
+  const isAlpha = (cp: number) =>
     (cp >= 0x41 && cp <= 0x5a) || // A..Z
     (cp >= 0x61 && cp <= 0x7a); // a..z
 
@@ -83,46 +118,16 @@ export function tokenize(expression) {
 
   const scanOperator = () => {
     const start = index;
-    const ch = source[start];
+    const op = parseOperator(source, start);
 
-    switch (ch) {
-      case OPERATOR.OpenParenthesis:
-      case OPERATOR.CloseParenthesis:
-      case OPERATOR.Comma:
-      case OPERATOR.Plus:
-      case OPERATOR.Minus:
-      case OPERATOR.Star:
-      case OPERATOR.Slash:
-      case OPERATOR.Equal:
-        ++index;
-        break;
-
-      case OPERATOR.LessThan:
-      case OPERATOR.GreaterThan:
-        ++index;
-        if (source[index] === OPERATOR.Equal) {
-          // OPERATOR.LessThanEqual (<=) or
-          // OPERATOR.GreaterThanEqual (>=)
-          ++index;
-        }
-        break;
-
-      case "!":
-        if (source[start + 1] === OPERATOR.Equal) {
-          // OPERATOR.NotEqual (!=)
-          index += 2;
-        }
-        break;
-
-      default:
-        break;
-    }
-    if (index === start) {
+    if (!op) {
       return null;
     }
+
+    index += op.length;
+
     const type = TOKEN.Operator;
-    const end = index;
-    const op = source.slice(start, end);
+    const end = start + op.length;
     const error = null;
     return { type, op, start, end, error };
   };
@@ -261,6 +266,18 @@ export function tokenize(expression) {
       } else if (ch === "\\") {
         // ignore the next char, even if it's [ or ]
         index++;
+      } else {
+        const operator = parseOperator(source, index);
+
+        // if while scanning for bracket identifier we hit an operator not within brackets,
+        // then we have an incomplete bracket identifier
+        if (operator && !isInsideBracketIdentifier()) {
+          const type = TOKEN.Identifier;
+          const end = index;
+          const error = t`Missing a closing bracket`;
+
+          return { type, start, end, error };
+        }
       }
     }
     const type = TOKEN.Identifier;
@@ -270,9 +287,25 @@ export function tokenize(expression) {
     return { type, start, end, error };
   };
 
-  const isIdentifierStart = cp => isAlpha(cp) || cp === 0x5f; // underscore;
+  const isInsideBracketIdentifier = () => {
+    for (let i = index + 1; i < length; ++i) {
+      const character = source[i];
 
-  const isIdentifierChar = cp =>
+      if (character === "]") {
+        return true;
+      }
+
+      if (character === "[") {
+        return false;
+      }
+    }
+
+    return false;
+  };
+
+  const isIdentifierStart = (cp: number) => isAlpha(cp) || cp === 0x5f; // underscore;
+
+  const isIdentifierChar = (cp: number) =>
     isAlpha(cp) ||
     isDigit(cp) ||
     cp === 0x2e || // dot
@@ -313,24 +346,22 @@ export function tokenize(expression) {
     return { type, start, end, error };
   };
 
+  const scanToken = () => {
+    return (
+      scanOperator() ??
+      scanNumericLiteral() ??
+      scanStringLiteral() ??
+      scanIdentifier() ??
+      scanBracketIdentifier()
+    );
+  };
+
   const main = () => {
     const tokens = [],
       errors = [];
     while (index < length) {
       skipWhitespaces();
-      let token = scanOperator();
-      if (!token) {
-        token = scanNumericLiteral();
-      }
-      if (!token) {
-        token = scanStringLiteral();
-      }
-      if (!token) {
-        token = scanIdentifier();
-      }
-      if (!token) {
-        token = scanBracketIdentifier();
-      }
+      const token = scanToken();
       if (token) {
         const { error, ...t } = token;
         tokens.push(t);
