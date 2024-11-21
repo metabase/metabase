@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { ClauseStep } from "metabase/querying/segments/components/SegmentEditor/ClauseStep";
-import { Button, Flex, Popover } from "metabase/ui";
+import { Button, Flex, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 type FilterStepProps = {
@@ -17,11 +17,11 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
   const filters = query ? Lib.filters(query, stageIndex) : [];
 
   return (
-    <ClauseStep label={t`Filters`}>
+    <ClauseStep label={t`Filtered by`}>
       {query && (
         <Flex align="center" gap="md">
           {filters.map((filter, filterIndex) => (
-            <ChangeFilterPopover
+            <FilterPopover
               key={filterIndex}
               query={query}
               stageIndex={stageIndex}
@@ -29,7 +29,7 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
               onChange={onChange}
             />
           ))}
-          <AddFilterPopover
+          <FilterPopover
             query={query}
             stageIndex={stageIndex}
             onChange={onChange}
@@ -40,77 +40,60 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
   );
 }
 
-type AddFilterPopoverProps = {
+type FilterPopoverProps = {
   query: Lib.Query;
   stageIndex: number;
+  filter?: Lib.FilterClause;
   onChange: (query: Lib.Query) => void;
 };
 
-function AddFilterPopover({
-  query,
-  stageIndex,
-  onChange,
-}: AddFilterPopoverProps) {
-  const [isOpened, setIsOpened] = useState(false);
-
-  const handleSelect = (newFilter: Lib.Filterable) => {
-    const newQuery = Lib.filter(query, stageIndex, newFilter);
-    onChange(newQuery);
-    setIsOpened(false);
-  };
-
-  return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
-      <Popover.Target>
-        <Button onClick={() => setIsOpened(!isOpened)}>{t`Add filter`}</Button>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <FilterPicker
-          query={query}
-          stageIndex={stageIndex}
-          onSelect={handleSelect}
-        />
-      </Popover.Dropdown>
-    </Popover>
-  );
-}
-
-type ChangeFilterPopoverProps = {
-  query: Lib.Query;
-  stageIndex: number;
-  filter: Lib.FilterClause;
-  onChange: (query: Lib.Query) => void;
-};
-
-function ChangeFilterPopover({
+function FilterPopover({
   query,
   stageIndex,
   filter,
   onChange,
-}: ChangeFilterPopoverProps) {
+}: FilterPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const filterInfo = Lib.displayInfo(query, stageIndex, filter);
+  const filterInfo = filter
+    ? Lib.displayInfo(query, stageIndex, filter)
+    : undefined;
 
   const handleSelect = (newFilter: Lib.Filterable) => {
-    const newQuery = Lib.replaceClause(query, stageIndex, filter, newFilter);
+    const newQuery = filter
+      ? Lib.replaceClause(query, stageIndex, filter, newFilter)
+      : Lib.filter(query, stageIndex, newFilter);
     onChange(newQuery);
     setIsOpened(false);
   };
 
   const handleRemove = () => {
-    const newQuery = Lib.removeClause(query, stageIndex, filter);
-    onChange(newQuery);
+    if (filter) {
+      const newQuery = Lib.removeClause(query, stageIndex, filter);
+      onChange(newQuery);
+    }
   };
 
   return (
-    <Popover opened={isOpened}>
+    <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
-        <FilterPill
-          onClick={() => setIsOpened(!isOpened)}
-          onRemoveClick={handleRemove}
-        >
-          {filterInfo.displayName}
-        </FilterPill>
+        {filterInfo ? (
+          <FilterPill
+            onClick={() => setIsOpened(!isOpened)}
+            onRemoveClick={handleRemove}
+          >
+            {filterInfo.displayName}
+          </FilterPill>
+        ) : (
+          <Button
+            variant="subtle"
+            p={0}
+            c="text-light"
+            rightIcon={<Icon name="add" />}
+            onClick={() => setIsOpened(!isOpened)}
+          >
+            {t`Add filters`}
+          </Button>
+        )}
       </Popover.Target>
       <Popover.Dropdown>
         <FilterPicker

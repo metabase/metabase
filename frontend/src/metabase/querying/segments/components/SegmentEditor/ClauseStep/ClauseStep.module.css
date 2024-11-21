@@ -1,0 +1,15 @@
+.root {
+  position: relative;
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.label {
+  position: absolute;
+  top: 0;
+  left: 0.5rem;
+  padding: 0 0.5rem;
+  transform: translateY(-50%);
+  color: var(--mb-color-text-medium);
+  background-color: white;
+  text-transform: uppercase;
+}

@@ -15,7 +15,7 @@ type SegmentEditorProps = {
 
 export function SegmentEditor({ query, isNew, onChange }: SegmentEditorProps) {
   return (
-    <Flex className={S.editor} align="center" gap="md">
+    <Flex className={S.root}>
       <DataStep
         query={query}
         stageIndex={STAGE_INDEX}
