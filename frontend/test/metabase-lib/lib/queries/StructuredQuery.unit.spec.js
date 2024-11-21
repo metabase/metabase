@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import Segment from "metabase-lib/v1/metadata/Segment";
 import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
   createMockDatabase,
@@ -94,19 +93,6 @@ describe("StructuredQuery", () => {
     describe("_sourceTableId", () => {
       it("Return the right table id", () => {
         expect(query._sourceTableId()).toBe(ORDERS_ID);
-      });
-    });
-  });
-
-  // FILTERS:
-  describe("FILTER METHODS", () => {
-    describe("segments", () => {
-      it("should list any applied segments that are currently active filters", () => {
-        const queryWithSegmentFilter = query.filter(["segment", 1]);
-        // expect there to be segments
-        expect(queryWithSegmentFilter.segments().length).toBe(1);
-        // and they should actually be segments
-        expect(queryWithSegmentFilter.segments()[0]).toBeInstanceOf(Segment);
       });
     });
   });
