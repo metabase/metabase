@@ -12,7 +12,7 @@ function _ToolbarButton(
     ...buttonProps
   }: {
     label: ReactNode;
-    icon: IconName;
+    icon?: IconName;
     isHighlighted?: boolean;
   } & ButtonProps,
   ref: Ref<HTMLButtonElement>,

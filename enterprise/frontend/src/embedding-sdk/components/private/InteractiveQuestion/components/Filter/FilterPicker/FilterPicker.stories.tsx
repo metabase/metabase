@@ -22,7 +22,7 @@ export const PickerInPopover = {
         <InteractiveQuestion questionId={QUESTION_ID}>
           <Box>
             <Flex justify="space-between" w="100%">
-              <InteractiveQuestion.Filter withIcon />
+              <InteractiveQuestion.Filter withColumnItemIcon />
             </Flex>
 
             <InteractiveQuestion.QuestionVisualization />
