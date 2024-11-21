@@ -19,7 +19,8 @@ export const EditorButton = ({
     }) && (
       <ActionIcon
         size="lg"
-        color="var(--mb-color-brand)"
+        c={isOpen ? "text-white" : "text-dark"}
+        color="brand"
         variant={isOpen ? "filled" : "default"}
         onClick={onClick}
       >
