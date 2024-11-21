@@ -85,8 +85,9 @@
   {:pinned              0
    :bookmarked          2
    :recency             1.5
-   :dashboard           1
-   :model               0.5
+   :user-recency        1.5
+   :dashboard           0.5
+   :model               2
    :official-collection 2
    :verified            2
    :view-count          2

@@ -85,15 +85,29 @@
 (def ^:private bookmarked-models [:card :collection :dashboard])
 
 (def ^:private bookmark-score-expr
-  (let [match-clause (fn [m] [[:and [:= :model m] [:!= nil (keyword (str m "_bookmark." m "_id"))]]
+  (let [match-clause (fn [m] [[:and
+                               [:= :search_index.model [:inline m]]
+                               [:!= nil (keyword (str m "_bookmark." m "_id"))]]
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
+(defn- user-recency-expr [{:keys [current-user-id]}]
+  {:select [[[:greatest :recent_views.timestamp] :last_viewed_at]]
+   :from   [:recent_views]
+   :where  [:and
+            [:= :recent_views.user_id current-user-id]
+            [:= :recent_views.model_id :search_index.model_id]
+            [:= :recent_views.model
+             [:case
+              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
+              [:= :search_index.model [:inline "metric"]] [:inline "card"]
+              :else :search_index.model]]]})
+
 (defn- view-count-percentile-query [p-value]
   (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
-    {:select   [:model [expr :vcp]]
+    {:select   [:search_index.model [expr :vcp]]
      :from     [:search_index]
-     :group-by [:model]
+     :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
 (def ^:private view-count-percentiles
@@ -105,35 +119,36 @@
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
-                [[:= :model (name sm)] v])]
+                [[:= :search_index.model [:inline (name sm)]] v])]
     (size :view_count (into [:case] cat cases))
     #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  []
-  {:text       [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
-   :view-count (view-count-expr search.config/view-count-scaling-percentile)
-   :pinned     (truthy :pinned)
-   :bookmarked bookmark-score-expr
-   :recency    (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
-   :dashboard  (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model      (idx-rank :model_rank (count search.config/all-models))})
+  [search-ctx]
+  {:text         [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
+   :view-count   (view-count-expr search.config/view-count-scaling-percentile)
+   :pinned       (truthy :pinned)
+   :bookmarked   bookmark-score-expr
+   :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
+   :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
+   :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
+   :model        (idx-rank :model_rank (count search.config/all-models))})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
   metabase-enterprise.search.scoring
-  []
-  (base-scorers))
+  [search-ctx]
+  (base-scorers search-ctx))
 
-(defn- scorer-select-items [] (select-items (scorers)))
+(defn- scorer-select-items [search-ctx] (select-items (scorers search-ctx)))
 
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)
         table-name (str model-name "_bookmark")]
     [(keyword table-name)
      [:and
-      [:= :model [:inline model-name]]
+      [:= :search_index.model [:inline model-name]]
       [:= (keyword (str table-name ".user_id")) user-id]
       [:= :search_index.model_id (keyword (str table-name "." model-name "_id"))]]]))
 
@@ -142,7 +157,7 @@
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
-  [search-ctx qry]
-  (-> (apply sql.helpers/select qry (scorer-select-items))
-      (join-bookmarks (:current-user-id search-ctx))
+  [{:keys [current-user-id] :as search-ctx} qry]
+  (-> (apply sql.helpers/select qry (scorer-select-items search-ctx))
+      (join-bookmarks current-user-id)
       (sql.helpers/order-by [:total_score :desc])))
