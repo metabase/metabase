@@ -166,9 +166,9 @@
     (with-index-contents
       [{:model "card" :id 1 :name "card no used" :dashboardcard_count 2}
        {:model "card" :id 2 :name "card used" :dashboardcard_count 3}]
-     (is (= [["card" 2 "card used"]
-             ["card" 1 "card no used"]]
-            (search :dashboard "card")))))
+      (is (= [["card" 2 "card used"]
+              ["card" 1 "card no used"]]
+             (search :dashboard "card")))))
 
   (testing "it has a ceiling, more than the ceiling is considered to be equal"
     (with-index-contents
@@ -182,15 +182,37 @@
 ;; These require some related appdb content
 
 (deftest ^:parallel bookmark-test
-  (let [user-id (mt/user->id :crowberto)]
+  (let [crowberto (mt/user->id :crowberto)
+        rasta     (mt/user->id :rasta)]
     (testing "bookmarked items are ranker higher"
       (with-index-contents
         [{:model "card" :id 1 :name "card normal"}
-         {:model "card" :id 2 :name "card loved"}]
-        (mt/with-temp [:model/CardBookmark _ {:card_id 2 :user_id user-id}]
-          (is (= [["card" 2 "card loved"]
+         {:model "card" :id 2 :name "card crowberto loved"}]
+        (mt/with-temp [:model/CardBookmark _ {:card_id 2 :user_id crowberto}
+                       :model/CardBookmark _ {:card_id 1 :user_id rasta}]
+          (is (= [["card" 2 "card crowberto loved"]
                   ["card" 1 "card normal"]]
-                 (search :bookmarked "card" {:current-user-id user-id}))))))))
+                 (search :bookmarked "card" {:current-user-id crowberto}))))))
+
+    (testing "bookmarked dashboard"
+      (with-index-contents
+        [{:model "dashboard" :id 1 :name "dashboard normal"}
+         {:model "dashboard" :id 2 :name "dashboard crowberto loved"}]
+        (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id 2 :user_id crowberto}
+                       :model/DashboardBookmark _ {:dashboard_id 1 :user_id rasta}]
+          (is (= [["dashboard" 2 "dashboard crowberto loved"]
+                  ["dashboard" 1 "dashboard normal"]]
+                 (search :bookmarked "dashboard" {:current-user-id crowberto}))))))
+
+    (testing "bookmarked collection"
+      (with-index-contents
+        [{:model "collection" :id 1 :name "collection normal"}
+         {:model "collection" :id 2 :name "collection crowberto loved"}]
+        (mt/with-temp [:model/CollectionBookmark _ {:collection_id 2 :user_id crowberto}
+                       :model/CollectionBookmark _ {:collection_id 1 :user_id rasta}]
+          (is (= [["collection" 2 "collection crowberto loved"]
+                  ["collection" 1 "collection normal"]]
+                 (search :bookmarked "collection" {:current-user-id crowberto}))))))))
 
 (deftest ^:parallel user-recency-test
   (let [user-id     (mt/user->id :crowberto)
