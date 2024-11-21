@@ -8,6 +8,7 @@ import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import {
   EmbedApi,
   PublicApi,
@@ -27,7 +28,7 @@ import type {
   ParameterValuesMap,
 } from "metabase-types/api";
 
-import { PublicOrEmbeddedQuestionView } from "./PublicOrEmbeddedQuestionView";
+import { PublicOrEmbeddedQuestionView } from "../PublicOrEmbeddedQuestionView";
 
 export const PublicOrEmbeddedQuestion = ({
   params: { uuid, token },
@@ -49,6 +50,8 @@ export const PublicOrEmbeddedQuestion = ({
   );
   const { bordered, hide_parameters, theme, titled, downloadsEnabled, locale } =
     useEmbedFrameOptions({ location });
+
+  const canWhitelabel = useSelector(getCanWhitelabel);
 
   useMount(async () => {
     if (uuid) {
@@ -170,7 +173,7 @@ export const PublicOrEmbeddedQuestion = ({
   };
 
   return (
-    <LocaleProvider locale={locale}>
+    <LocaleProvider locale={canWhitelabel ? locale : undefined}>
       <PublicOrEmbeddedQuestionView
         initialized={initialized}
         card={card}
