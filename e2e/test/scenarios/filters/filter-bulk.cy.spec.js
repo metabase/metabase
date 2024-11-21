@@ -137,7 +137,7 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing 4 rows").should("be.visible");
   });
 
-  it.only("should have an info icon on the filter modal filters", () => {
+  it("should have an info icon on the filter modal filters", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     filter();
 
