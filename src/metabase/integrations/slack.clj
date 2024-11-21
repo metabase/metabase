@@ -300,7 +300,7 @@
 (defn files-channel
   "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
   [[slack-files-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
-  throws an error that advices an admin to create it."
+  throws an error that advises an admin to create it."
   []
   (let [channel-name (slack-files-channel)]
     (if (channel-exists? channel-name)
@@ -433,26 +433,25 @@
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
-   Can accept either `attachments` (as serialized JSON) or `blocks` (as an array)."
+   Takes a map of options that can include :blocks and/or :attachments."
   [channel-id  :- ms/NonBlankString
    text-or-nil :- [:maybe :string]
-   & [attachments-or-blocks]]
-  ;; TODO: it would be nice to have an emoji or icon image to use here
+   {:keys [blocks attachments]} :- [:maybe [:map
+                                            [:blocks {:optional true} [:maybe [:or vector? :map]]]
+                                            [:attachments {:optional true} [:maybe :map]]]]]
   (let [params (cond-> {:channel     channel-id
                         :username    "MetaBot"
                         :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
                         :text        text-or-nil}
-                ;; If it's a vector of blocks, convert to JSON string
-                 (vector? attachments-or-blocks)
-                 (assoc :blocks (json/generate-string attachments-or-blocks))
+                ;; If blocks is a vector, convert to JSON string
+                 (vector? blocks)
+                 (assoc :blocks (json/generate-string blocks))
 
-                ;; If it's a map with blocks, extract and convert blocks to JSON string
-                 (:blocks attachments-or-blocks)
-                 (assoc :blocks (json/generate-string (:blocks attachments-or-blocks)))
+                ;; If blocks is a map, extract and convert to JSON string
+                 (and (map? blocks) (:blocks blocks))
+                 (assoc :blocks (json/generate-string (:blocks blocks)))
 
-                ;; If it's attachments, convert to JSON string
-                 (and (seq attachments-or-blocks)
-                      (not (vector? attachments-or-blocks))
-                      (not (:blocks attachments-or-blocks)))
-                 (assoc :attachments (json/generate-string attachments-or-blocks)))]
+                ;; If attachments exist, convert to JSON string
+                 attachments
+                 (assoc :attachments (json/generate-string attachments)))]
     (POST "chat.postMessage" {:form-params params})))

@@ -15,7 +15,9 @@
 (set! *warn-on-reflection* true)
 
 ;; Create blocks for the Slack message with diagnostic information
-(defn- create-slack-message-blocks [diagnostic-info file-info]
+(defn- create-slack-message-blocks
+  "Create blocks for the Slack message with diagnostic information"
+  [diagnostic-info file-info]
   (let [metabase-info (get-in diagnostic-info [:bugReportDetails :metabase-info])
         system-info (get-in diagnostic-info [:bugReportDetails :system-info])
         version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
@@ -73,7 +75,7 @@
   [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel, slack-bug-report-channel :slack-bug-report-channel} :body}]
   {slack-app-token     [:maybe ms/NonBlankString]
    slack-files-channel    [:maybe ms/NonBlankString]
-   slack-bug-report-channel [:maybe [:or nil? :string]]}
+   slack-bug-report-channel [:maybe :string]}
   (validation/check-has-application-permission :setting)
   (try
     ;; Clear settings if no values are provided
@@ -102,7 +104,7 @@
 
     (when slack-files-channel
       (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
-        (when (not (slack/channel-exists? processed-files-channel))
+        (when-not (slack/channel-exists? processed-files-channel)
           ;; Files channel could not be found; clear the token we had previously set since the integration should not be
           ;; enabled.
           (slack/slack-token-valid?! false)
@@ -150,7 +152,7 @@
         (slack/post-chat-message!
          bug-report-channel
          nil
-         blocks)
+         {:blocks blocks})
 
         {:success true
          :file-url (get file-info :permalink_public)}))
