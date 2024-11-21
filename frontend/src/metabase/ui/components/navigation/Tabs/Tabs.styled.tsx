@@ -28,6 +28,9 @@ export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
           color: theme.fn.themeColor("text-light"),
           opacity: 1,
         },
+        "&:focus": {
+          outlineOffset: 0,
+        },
       },
       tabLabel: {
         fontSize: theme.fontSizes.md,
