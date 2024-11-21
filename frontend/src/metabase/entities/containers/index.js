@@ -8,7 +8,9 @@ import { entityObjectLoaderRtkQuery } from "./rtk-query";
 export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
 
-  // Entity.load higher-order component
+  /**
+   * @deprecated HOCs are deprecated
+   */
   entity.load = ({ id, query, ...props } = {}) => {
     // TODO: https://github.com/metabase/metabase/issues/50323
     if (!entity.rtk) {
@@ -23,6 +25,9 @@ export function addEntityContainers(entity) {
     });
   };
 
+  /**
+   * @deprecated HOCs are deprecated
+   */
   entity.loadLegacy = ({ id, query, ...props } = {}) =>
     entityObjectLoader({
       entityType: entity.name,
@@ -31,29 +36,39 @@ export function addEntityContainers(entity) {
       ...props,
     });
 
-  // Entity.Loader component
+  /**
+   * @deprecated HOCs are deprecated
+   */
   entity.Loader = ({ id, ...props }) => (
     <EntityObjectLoader entityType={entity.name} entityId={id} {...props} />
   );
   entity.Loader.displayName = `${ObjectName}.Loader`;
 
-  // Entity.loadList higher-order component
+  /**
+   * @deprecated HOCs are deprecated
+   */
   entity.loadList = ({ query, ...props } = {}) =>
     entityListLoader({ entityType: entity.name, entityQuery: query, ...props });
 
-  // Entity.ListLoader component
+  /**
+   * @deprecated HOCs are deprecated
+   */
   entity.ListLoader = ({ query, ...props }) => (
     <EntityListLoader entityType={entity.name} entityQuery={query} {...props} />
   );
   entity.ListLoader.displayName = `${ObjectName}.ListLoader`;
 
-  // Entity.Name component
+  /**
+   * @deprecated HOCs are deprecated
+   */
   entity.Name = ({ id, ...props }) => (
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
   entity.Name.displayName = `${ObjectName}.Name`;
 
-  // Entity.Link component
+  /**
+   * @deprecated HOCs are deprecated
+   */
   entity.Link = ({ id, ...props }) => (
     <EntityLink entityType={entity.name} entityId={id} {...props} />
   );
