@@ -104,12 +104,41 @@
   [m k v]
   (update m k conj v))
 
-(defn- default-agg-fn
-  [agg v]
-  (when v
-    (if (number? v)
-      (+ agg v)
-      v)))
+(defn- measure->agg-fn
+  "Aggregators for the column totals"
+  [k]
+  (case k
+
+    (:sum :count :total)
+    (fn [prev v]
+      (if (number? v)
+        (-> (merge {:result 0} prev)
+            (update :result #(+ % v)))
+        v))
+
+    :avg
+    (fn [prev v]
+      (if (number? v)
+        (-> (merge {:total 0
+                    :count 0}
+                   prev)
+            (update :total #(+ % v))
+            (update :count inc))
+        v))
+
+    :min
+    (fn [prev v]
+      (if (number? v)
+        (-> (merge {:min 0} prev)
+            (update :min #(min % v)))
+        v))
+
+    :max
+    (fn [prev v]
+      (if (number? v)
+        (-> (merge {:min 0} prev)
+            (update :min #(max % v)))
+        v))))
 
 (defn- update-aggregate
   "Update the given `measure-aggregations` with `new-values` using the appropriate function in the `agg-fns` map.
@@ -124,8 +153,9 @@
   (into {}
         (map
          (fn [[measure-key agg]]
-           (let [agg-fn (get agg-fns measure-key default-agg-fn)
-                 new-v  (get new-values measure-key)]
+           (let [agg-fn-key (get agg-fns measure-key :total)
+                 agg-fn     (measure->agg-fn agg-fn-key )
+                 new-v      (get new-values measure-key)]
              [measure-key (if new-v
                             (agg-fn agg new-v)
                             agg)])))
@@ -144,14 +174,14 @@
         total-fn*          (fn [m path]
                              (if (seq path)
                                (update-in m path
-                                          #(update-aggregate (or % (zipmap pivot-measures (repeat 0))) measure-vals measures))
+                                          #(update-aggregate (or % (zipmap pivot-measures (repeat {}))) measure-vals measures))
                                m))
         total-fn           (fn [m paths]
                              (reduce total-fn* m paths))]
     (-> pivot
         (update :row-count (fn [v] (if v (inc v) 0)))
         (update :data update-in (concat row-path col-path)
-                #(update-aggregate (or % (zipmap pivot-measures (repeat 0))) measure-vals measures))
+                #(update-aggregate (or % (zipmap pivot-measures (repeat {}))) measure-vals measures))
         (update :totals (fn [totals]
                           (-> totals
                               (total-fn [[:grand-total]])
@@ -160,15 +190,23 @@
                               (total-fn [[:section-totals (first row-path)]])
                               #_(total-fn [(concat [:column-totals (first row-path)] col-path)])
                               (total-fn (map (fn [part]
-                                               (concat [:column-totals] part col-path))
+                                               (concat [:column-totals :rows-part] part [:cols-part] col-path))
                                              (rest (reductions conj [] row-path)))))))
         (update :row-values #(reduce-kv update-set % (select-keys row pivot-rows)))
         (update :column-values #(reduce-kv update-set % (select-keys row pivot-cols))))))
 
 (defn- fmt
   "Format a value using the provided formatter or identity function."
-  [formatter value]
-  ((or formatter identity) (common/format-value value)))
+  [formatter v-map]
+  (let [value (if (map? v-map)
+                (or (:result v-map)
+                    (when (contains? v-map :total)
+                      (/ (double (:total v-map)) (:count v-map)))
+                    (:min v-map)
+                    (:max v-map)
+                    (seq v-map))
+                v-map)]
+    ((or formatter identity) (common/format-value value))))
 
 (defn- build-column-headers
   "Build multi-level column headers."
@@ -220,6 +258,7 @@
                     (for [measure-key pivot-measures]
                       (fmt (get ordered-formatters measure-key)
                            (get-in totals (concat row-path [measure-key]))))))))))
+
 (defn- build-column-totals
   "Build column totals for a section."
   [section-path col-combos pivot-measures totals row-totals? ordered-formatters pivot-rows]
@@ -227,8 +266,9 @@
                          measure-key pivot-measures]
                      (fmt (get ordered-formatters measure-key)
                           (get-in totals (concat
-                                          [:column-totals]
+                                          [:column-totals :rows-part]
                                           section-path
+                                          [:cols-part]
                                           col-combo
                                           [measure-key]))))]
     (when (some #(and (some? %) (not= "" %)) totals-row)
