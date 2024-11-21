@@ -10,7 +10,7 @@
                   <img class="icon" style="padding-top: 4px; padding-right: 16px; width: 100%; height: auto; max-width: 20px" src="cid:{{computed.icon_cid}}"/>
                 </td>
                 <td>
-                  <a class="title" href="{{{computed.card_url}}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
+                  <a class="title" href="{{{card-url payload.card.id}}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
                     {{payload.card.name}}
                   </a>
                 </td>
@@ -34,7 +34,17 @@
             </table>
             {{{computed.alert_content}}}
             <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
-            {{computed.alert_condition}}
+              {{#with payload.alert}}
+                {{#if (equals alert_condition "goal")}}
+                  {{#if alert_above_goal}}
+                    when this question meets its goal
+                  {{else}}
+                    when this question goes below its goal
+                  {{/if}}
+                {{else}}
+                  whenever this question has any results
+                {{/if}}
+              {{/with}}
             </p>
             {{#if payload.alert.alert_first_only}}
               <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
