@@ -77,9 +77,7 @@ export interface Props<Entity, EntityWrapper> {
 const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
 
 /**
- * Replacement for EntityObjectLoader for better compatibility with RTK Query.
- *
- * For example, generic types for the Database entity would be:
+ * Difference between the 2 generic types, using Database entity as an example:
  *   Entity        -> Database from metabase-types/api/database.ts
  *   EntityWrapper -> Database from metabase-lib/v1/metadata/Database.ts
  *
