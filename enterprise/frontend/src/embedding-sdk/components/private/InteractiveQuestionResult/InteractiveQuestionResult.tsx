@@ -90,7 +90,7 @@ export const InteractiveQuestionResult = ({
         <Group spacing="xs">
           {withResetButton && <InteractiveQuestion.ResetButton />}
           <InteractiveQuestion.ChartTypeDropdown />
-          <InteractiveQuestion.Filter />
+          <InteractiveQuestion.FilterDropdown />
           <InteractiveQuestion.SummarizeDropdown />
           <InteractiveQuestion.BreakoutDropdown />
           <InteractiveQuestion.EditorButton
