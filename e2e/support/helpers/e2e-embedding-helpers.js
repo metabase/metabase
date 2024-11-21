@@ -45,7 +45,35 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  *   hideFilters: ["id", "source"]
  * });
  */
-export function visitEmbeddedPage(
+export function visitEmbeddedPage(payload, options) {
+  getEmbeddedPageUrl(payload, options).then(urlOptions => {
+    // Always visit embedded page logged out
+    cy.signOut();
+
+    cy.visit(urlOptions);
+  });
+}
+
+/**
+ * Programmatically generate token for the embedded page for a question or a dashboard
+ *
+ * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
+ * @param {object} options
+ * @param {object} [options.setFilters]
+ * @param {PageStyle} options.pageStyle
+ * @param {object} options.additionalHashOptions
+ * @param {string} [options.additionalHashOptions.locale]
+ * @param {string[]} [options.additionalHashOptions.hideFilters]
+ * @param {object} [options.qs]
+ *
+ * @example
+ * getEmbeddedPageUrl(payload, {
+ *   setFilters: {id: 92, source: "Organic"},
+ *   pageStyle: {titled: true},
+ *   hideFilters: ["id", "source"]
+ * });
+ */
+export function getEmbeddedPageUrl(
   payload,
   {
     setFilters = {},
@@ -65,7 +93,7 @@ export function visitEmbeddedPage(
   const stringifiedPayload = JSON.stringify(payloadWithExpiration);
   const signTransaction = `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`;
 
-  cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
+  return cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
     const embeddableObject = getEmbeddableObject(payload);
     const hiddenFilters = getHiddenFilters(hideFilters);
     const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
@@ -77,10 +105,7 @@ export function visitEmbeddedPage(
       hiddenFilters,
     );
 
-    // Always visit embedded page logged out
-    cy.signOut();
-
-    cy.visit({
+    return {
       url: urlRoot,
       qs: { ...setFilters, ...qs },
       onBeforeLoad: window => {
@@ -89,7 +114,7 @@ export function visitEmbeddedPage(
           window.location.hash = urlHash;
         }
       },
-    });
+    };
   });
 
   /**
@@ -126,16 +151,6 @@ export function visitEmbeddedPage(
   }
 }
 
-export function getIframeUrl() {
-  modal().findByText("Preview").click();
-
-  return cy.document().then(doc => {
-    const iframe = doc.querySelector("iframe");
-
-    return iframe.src;
-  });
-}
-
 /**
  * Grab an iframe `src` via UI and open it,
  * but make sure user is signed out.
@@ -144,6 +159,16 @@ export function visitIframe() {
   getIframeUrl().then(iframeUrl => {
     cy.signOut();
     cy.visit(iframeUrl);
+  });
+}
+
+function getIframeUrl() {
+  modal().findByText("Preview").click();
+
+  return cy.document().then(doc => {
+    const iframe = doc.querySelector("iframe");
+
+    return iframe.src;
   });
 }
 

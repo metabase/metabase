@@ -148,6 +148,12 @@ export const Onboarding = () => {
     utm_content: "getting-started",
   };
 
+  const docsLink = useSelector(state =>
+    getDocsUrl(state, {
+      utm: utmTags,
+    }),
+  );
+
   const sqlParamsDocsLink = useSelector(state =>
     getDocsUrl(state, {
       page: "questions/native-editor/sql-parameters",
@@ -409,7 +415,7 @@ export const Onboarding = () => {
                   <Text>
                     {t`You can:`}
                     <ul className={S.list}>
-                      <li>{jt`organize questions into a ${
+                      <li>{jt`Organize questions into a ${
                         showMetabaseLinks ? (
                           <ExternalLink href={dashboardTabsDocsLink} key="tabs">
                             {t`dashboard with tabs`}
@@ -417,9 +423,9 @@ export const Onboarding = () => {
                         ) : (
                           t`dashboard with tabs`
                         )
-                      } and add text cards.`}</li>
-                      <li>{jt`add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
-                      <li>{t`drill-through your dashboard and charts to see more detailed data underneath.`}</li>
+                      } and add text, link, and iframe cards.`}</li>
+                      <li>{jt`Add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
+                      <li>{t`Drill-through charts on your dashboard to see different groupings or individual records.`}</li>
                     </ul>
                   </Text>
 
@@ -431,7 +437,7 @@ export const Onboarding = () => {
                           trackChecklistItemCTAClicked("dashboard")
                         }
                       >
-                        <Button variant="outline">{t`Edit a sample dashboard`}</Button>
+                        <Button variant="outline">{t`See a sample dashboard`}</Button>
                       </Link>
                     </Box>
                   )}
@@ -446,7 +452,7 @@ export const Onboarding = () => {
               data-testid="subscription-item"
             >
               <Accordion.Control icon={<Icon name="subscription" />}>
-                {t`Get dashboard updates by email`}
+                {t`Subscribe to a dashboard by email or Slack`}
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
@@ -468,7 +474,7 @@ export const Onboarding = () => {
                           key="subscription-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
-                      )} first.`}
+                      )}.`}
                     </Text>
                   )}
                   <Text>
@@ -479,16 +485,14 @@ export const Onboarding = () => {
                         className={S.inlineIcon}
                       />
                     )} ${(
-                      <i key="sharing">{t`sharing`}</i>
+                      <b key="sharing">{t`Sharing`}</b>
                     )} icon on the top bar, then click on ${(
                       <Icon
                         key="subscription-icon"
                         name="subscription"
                         className={S.inlineIcon}
                       />
-                    )} ${(
-                      <b key="subscriptions">{t`Subscriptions`}</b>
-                    )}. On a sidebar on the right set up a dashboard subscription via email or Slack.`}
+                    )} ${(<b key="subscriptions">{t`Subscriptions`}</b>)}.`}
                   </Text>
                   {exampleDashboardId && (
                     <Box data-testid="subscription-cta">
@@ -529,7 +533,7 @@ export const Onboarding = () => {
                           key="alert-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
-                      )} first.`}
+                      )}.`}
                     </Text>
                   )}
                   <Text>
@@ -612,14 +616,11 @@ export const Onboarding = () => {
                   mb={12}
                 >{t`Get the most out of ${applicationName}`}</Title>
                 <Text>
-                  {t`There are more tutorials and guides to explore.`}
-                  <br />
-                  {jt`${(
-                    <ExternalLink
-                      href="https://www.youtube.com/playlist?list=PLzmftu0Z5MYGY0aA3rgIGwSCifECMeuG6"
-                      key="playlist"
-                    >{t`Click here to continue learning`}</ExternalLink>
-                  )} about data visualization, modeling, and other advanced topics.`}
+                  {t`${applicationName} can do a lot. To learn more—about ${applicationName}, data visualization, modeling, and other data topics—check out our `}
+                  <ExternalLink href={docsLink}>{t`Docs`}</ExternalLink>
+                  {t` and `}
+                  <ExternalLink href="https://www.metabase.com/learn">{t`Learn`}</ExternalLink>
+                  {t` sites.`}
                 </Text>
               </Box>
             )}

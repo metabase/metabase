@@ -542,6 +542,7 @@ function DatasetEditor(props) {
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
                 renderTableHeaderWrapper={renderTableHeaderWrapper}
                 scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
+                renderEmptyMessage={isEditingMetadata}
               />
             </DebouncedFrame>
             <TabHintToastContainer
