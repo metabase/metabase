@@ -130,12 +130,13 @@
                         1))
     #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
 
-;; TODO make this context dependent + dynamic + non-linear
-(def ^:private model-rank-exp
+(defn- model-rank-exp []
   (let [search-order search.config/models-search-order
         n            (double (count search-order))
         cases        (map-indexed (fn [i sm]
-                                    [[:= :search_index.model sm] [:inline (/ (- n i) n)]])
+                                    [[:= :search_index.model sm]
+                                     (or (search.config/scorer-param :model sm)
+                                         [:inline (/ (- n i) n)])])
                                   search-order)]
     (-> (into [:case] cat (concat cases))
         ;; if you're not listed, get a very poor score
@@ -151,7 +152,7 @@
    :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
    :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
    :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model        model-rank-exp})
+   :model        (model-rank-exp)})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
