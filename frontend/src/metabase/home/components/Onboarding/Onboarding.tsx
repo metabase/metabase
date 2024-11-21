@@ -197,7 +197,7 @@ export const Onboarding = () => {
       pt="xl"
       pb={212}
     >
-      <Box maw={592}>
+      <Box maw={592} m="0 auto">
         <Accordion
           defaultValue={lastItemOpened || DEFAULT_ITEM}
           classNames={{
