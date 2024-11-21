@@ -358,6 +358,7 @@ x.com")
   (deferred-tru "Enable pivoted exports and pivoted subscriptions")
   :type       :boolean
   :default    true
+  :export?    true
   :visibility :authenticated
   :audit      :getter)
 
