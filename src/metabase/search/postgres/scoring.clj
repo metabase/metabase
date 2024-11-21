@@ -23,9 +23,12 @@
    [:inline 1]
    [:/
     [:coalesce column [:inline 0]]
-    (if (number? ceiling)
-      [:inline (double ceiling)]
-      [:cast ceiling :float])]])
+    ;; protect against div / 0
+    [:greatest
+     [:inline 1]
+     (if (number? ceiling)
+       [:inline (double ceiling)]
+       [:cast ceiling :float])]]])
 
 (defn atan-size
   "Prefer items whose value is larger, with diminishing gains."
@@ -121,7 +124,7 @@
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
-                [[:= :search_index.model [:inline (name sm)]] v])]
+                [[:= :search_index.model [:inline (name sm)]] (max v 1)])]
     (size :view_count (if (seq cases)
                         (into [:case] cat cases)
                         1))
