@@ -1,3 +1,5 @@
+import { P, isMatching } from "ts-pattern";
+
 import {
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
@@ -8,14 +10,18 @@ import {
   createNativeQuestion as _createNativeQuestion,
   createQuestion as _createQuestion,
   archiveQuestion,
+  describeWithSnowplow,
   entityPickerModal,
   entityPickerModalTab,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   main,
   modal,
   modifyPermission,
   navigationSidebar,
   openNavigationSidebar,
   popover,
+  resetSnowplow,
   restore,
   selectSidebarItem,
   sharingMenuButton,
@@ -118,100 +124,188 @@ describe("scenarios > collections > trash", () => {
     sidebar().findByText("Trash").should("not.exist");
   });
 
-  it("should be able to trash & restore dashboards/collections/questions on entity page and from parent collection", () => {
-    cy.log("create test resources");
-    cy.log("Bookmark the resources to test metabase#44224");
-    createCollection({ name: "Collection A" }).then(collection => {
-      cy.request("POST", `/api/bookmark/collection/${collection.id}`);
-    });
-    createDashboard({ name: "Dashboard A" }).then(dashboard => {
-      cy.request("POST", `/api/bookmark/dashboard/${dashboard.id}`);
-    });
-    createNativeQuestion({
-      name: "Question A",
-      native: { query: "select 1;" },
-    }).then(question => {
-      cy.request("POST", `/api/bookmark/card/${question.id}`);
+  describeWithSnowplow("", () => {
+    beforeEach(() => {
+      resetSnowplow();
     });
 
-    visitRootCollection();
-
-    cy.log("should be able to move to trash from collection view");
-    toggleEllipsisMenuFor(/Collection A/);
-    popover().findByText("Move to trash").click();
-
-    toggleEllipsisMenuFor("Dashboard A");
-    popover().findByText("Move to trash").click();
-
-    toggleEllipsisMenuFor("Question A");
-    popover().findByText("Move to trash").click();
-
-    cy.log(
-      "should be able to move to restore items from trash collection view",
-    );
-    navigationSidebar().findByText("Trash").click();
-
-    toggleEllipsisMenuFor(/Collection A/);
-    popover().findByText("Restore").click();
-    ensureBookmarkVisible(/Collection A/);
-
-    toggleEllipsisMenuFor("Dashboard A");
-    popover().findByText("Restore").click();
-    ensureBookmarkVisible("Dashboard A");
-
-    toggleEllipsisMenuFor("Question A");
-    popover().findByText("Restore").click();
-    ensureBookmarkVisible("Question A");
-
-    cy.log("should be able to archive entities from their own views");
-    visitRootCollection();
-
-    // collection
-    collectionTable().within(() => {
-      cy.findByText("Collection A").click();
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
     });
-    cy.findByTestId("collection-menu").find(".Icon-ellipsis").click();
-    popover().findByText("Move to trash").click();
-    modal().within(() => {
-      cy.findByText("Move this collection to trash?");
-      cy.findByText("Move to trash").click();
-    });
-    ensureCanRestoreFromPage("Collection A");
-    ensureBookmarkVisible("Collection A");
 
-    // dashboard
-    collectionTable().within(() => {
-      cy.findByText("Dashboard A").click();
-    });
-    cy.findByTestId("dashboard-header").icon("ellipsis").click();
-    popover().findByText("Move to trash").click();
-    modal().within(() => {
-      cy.findByText("Move this dashboard to trash?");
-      cy.findByText("Move to trash").click();
-    });
-    visitRootCollection();
-    collectionTable().within(() => {
-      cy.findByText("Dashboard A").should("not.exist");
-    });
-    ensureCanRestoreFromPage("Dashboard A");
-    ensureBookmarkVisible("Dashboard A");
+    it("should be able to trash & restore dashboards/collections/questions on entity page and from parent collection", () => {
+      cy.log("create test resources");
+      cy.log("Bookmark the resources to test metabase#44224");
+      createCollection({ name: "Collection A" }).then(collection => {
+        cy.request("POST", `/api/bookmark/collection/${collection.id}`);
+      });
+      createDashboard({ name: "Dashboard A" }).then(dashboard => {
+        cy.request("POST", `/api/bookmark/dashboard/${dashboard.id}`);
+      });
+      createNativeQuestion({
+        name: "Question A",
+        native: { query: "select 1;" },
+      }).then(question => {
+        cy.request("POST", `/api/bookmark/card/${question.id}`);
+      });
 
-    // question
-    collectionTable().within(() => {
-      cy.findByText("Question A").click();
+      visitRootCollection();
+
+      cy.log("should be able to move to trash from collection view");
+      toggleEllipsisMenuFor(/Collection A/);
+      popover().findByText("Move to trash").click();
+      expectGoodSnowplowEvent(event =>
+        isMatching(
+          {
+            event: "moved-to-trash",
+            event_detail: "collection",
+            target_id: P.number,
+            triggered_from: "collection",
+            duration_ms: P.number,
+            result: "success",
+          },
+          event,
+        ),
+      );
+
+      toggleEllipsisMenuFor("Dashboard A");
+      popover().findByText("Move to trash").click();
+      expectGoodSnowplowEvent(event =>
+        isMatching(
+          {
+            event: "moved-to-trash",
+            event_detail: "dashboard",
+            target_id: P.number,
+            triggered_from: "collection",
+            duration_ms: P.number,
+            result: "success",
+          },
+          event,
+        ),
+      );
+
+      toggleEllipsisMenuFor("Question A");
+      popover().findByText("Move to trash").click();
+      expectGoodSnowplowEvent(event =>
+        isMatching(
+          {
+            event: "moved-to-trash",
+            event_detail: "question",
+            target_id: P.number,
+            triggered_from: "collection",
+            duration_ms: P.number,
+            result: "success",
+          },
+          event,
+        ),
+      );
+
+      cy.log(
+        "should be able to move to restore items from trash collection view",
+      );
+      navigationSidebar().findByText("Trash").click();
+
+      toggleEllipsisMenuFor(/Collection A/);
+      popover().findByText("Restore").click();
+      ensureBookmarkVisible(/Collection A/);
+
+      toggleEllipsisMenuFor("Dashboard A");
+      popover().findByText("Restore").click();
+      ensureBookmarkVisible("Dashboard A");
+
+      toggleEllipsisMenuFor("Question A");
+      popover().findByText("Restore").click();
+      ensureBookmarkVisible("Question A");
+
+      cy.log("should be able to archive entities from their own views");
+      visitRootCollection();
+
+      // collection
+      collectionTable().within(() => {
+        cy.findByText("Collection A").click();
+      });
+      cy.findByTestId("collection-menu").find(".Icon-ellipsis").click();
+      popover().findByText("Move to trash").click();
+      modal().within(() => {
+        cy.findByText("Move this collection to trash?");
+        cy.findByText("Move to trash").click();
+      });
+      expectGoodSnowplowEvent(event =>
+        isMatching(
+          {
+            event: "moved-to-trash",
+            event_detail: "collection",
+            target_id: P.number,
+            triggered_from: "detail_page",
+            duration_ms: P.number,
+            result: "success",
+          },
+          event,
+        ),
+      );
+      ensureCanRestoreFromPage("Collection A");
+      ensureBookmarkVisible("Collection A");
+
+      // dashboard
+      collectionTable().within(() => {
+        cy.findByText("Dashboard A").click();
+      });
+      cy.findByTestId("dashboard-header").icon("ellipsis").click();
+      popover().findByText("Move to trash").click();
+      modal().within(() => {
+        cy.findByText("Move this dashboard to trash?");
+        cy.findByText("Move to trash").click();
+      });
+      expectGoodSnowplowEvent(event =>
+        isMatching(
+          {
+            event: "moved-to-trash",
+            event_detail: "dashboard",
+            target_id: P.number,
+            triggered_from: "detail_page",
+            duration_ms: P.number,
+            result: "success",
+          },
+          event,
+        ),
+      );
+      visitRootCollection();
+      collectionTable().within(() => {
+        cy.findByText("Dashboard A").should("not.exist");
+      });
+      ensureCanRestoreFromPage("Dashboard A");
+      ensureBookmarkVisible("Dashboard A");
+
+      // question
+      collectionTable().within(() => {
+        cy.findByText("Question A").click();
+      });
+      cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
+      popover().findByText("Move to trash").click();
+      modal().within(() => {
+        cy.findByText("Move this question to trash?");
+        cy.findByText("Move to trash").click();
+      });
+      expectGoodSnowplowEvent(event =>
+        isMatching(
+          {
+            event: "moved-to-trash",
+            event_detail: "question",
+            target_id: P.number,
+            triggered_from: "detail_page",
+            duration_ms: P.number,
+            result: "success",
+          },
+          event,
+        ),
+      );
+      visitRootCollection();
+      collectionTable().within(() => {
+        cy.findByText("Question A").should("not.exist");
+      });
+      ensureCanRestoreFromPage("Question A");
+      ensureBookmarkVisible("Question A");
     });
-    cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
-    popover().findByText("Move to trash").click();
-    modal().within(() => {
-      cy.findByText("Move this question to trash?");
-      cy.findByText("Move to trash").click();
-    });
-    visitRootCollection();
-    collectionTable().within(() => {
-      cy.findByText("Question A").should("not.exist");
-    });
-    ensureCanRestoreFromPage("Question A");
-    ensureBookmarkVisible("Question A");
   });
 
   it("should not show restore option if entity is within nested in an archived collection list", () => {
