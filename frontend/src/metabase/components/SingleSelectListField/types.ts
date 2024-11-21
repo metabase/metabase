@@ -12,4 +12,5 @@ export interface SingleSelectListFieldProps {
   isDashboardFilter?: boolean;
   isLoading?: boolean;
   checkedColor?: string;
+  alwaysShowOptions?: boolean;
 }

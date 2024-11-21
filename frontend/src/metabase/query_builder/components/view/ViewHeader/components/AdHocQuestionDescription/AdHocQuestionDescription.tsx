@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import * as Lib from "metabase-lib";
@@ -5,16 +6,27 @@ import type Question from "metabase-lib/v1/Question";
 
 import { AggregationAndBreakoutDescription } from "./AdHocQuestionDescription.styled";
 
-interface AdHocQuestionDescriptionProps {
-  question: Question;
+type AdHocQuestionDescriptionProps = {
   onClick?: () => void;
-}
+} & GetAdhocQuestionDescriptionProps;
 
-const STAGE_INDEX = -1;
-export const AdHocQuestionDescription = ({
+type GetAdhocQuestionDescriptionProps = {
+  question: Question;
+};
+
+export const shouldRenderAdhocDescription = ({
   question,
-  onClick,
-}: AdHocQuestionDescriptionProps) => {
+}: GetAdhocQuestionDescriptionProps) => {
+  const query = question.query();
+  const aggregations = Lib.aggregations(query, STAGE_INDEX);
+  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+
+  return aggregations.length > 0 || breakouts.length > 0;
+};
+
+export const getAdHocQuestionDescription = ({
+  question,
+}: GetAdhocQuestionDescriptionProps) => {
   const query = question.query();
   const aggregations = Lib.aggregations(query, STAGE_INDEX);
   const breakouts = Lib.breakouts(query, STAGE_INDEX);
@@ -50,21 +62,31 @@ export const AdHocQuestionDescription = ({
             )
             .join(t` and `);
 
-  if (aggregationDescription || breakoutDescription) {
-    return (
-      <AggregationAndBreakoutDescription onClick={onClick}>
-        {[aggregationDescription, breakoutDescription]
-          .filter(Boolean)
-          .join(t` by `)}
-      </AggregationAndBreakoutDescription>
-    );
+  if (!aggregationDescription && !breakoutDescription) {
+    return null;
   }
+
+  return [aggregationDescription, breakoutDescription]
+    .filter(Boolean)
+    .join(t` by `);
 };
 
-AdHocQuestionDescription.shouldRender = (question: Question): boolean => {
-  const query = question.query();
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+const STAGE_INDEX = -1;
+export const AdHocQuestionDescription = ({
+  question,
+  onClick,
+}: AdHocQuestionDescriptionProps) => {
+  const adHocDescription = useMemo(() => {
+    return getAdHocQuestionDescription({ question });
+  }, [question]);
 
-  return aggregations.length > 0 || breakouts.length > 0;
+  if (!adHocDescription) {
+    return null;
+  }
+
+  return (
+    <AggregationAndBreakoutDescription onClick={onClick}>
+      {adHocDescription}
+    </AggregationAndBreakoutDescription>
+  );
 };

@@ -55,7 +55,7 @@
 
 (defn- normalize* [xs]
   (into #{}
-        (map (comp #(dissoc % :bookmark :pinned :total_score)
+        (map (comp #(dissoc % :bookmark :pinned :total_score :scores)
                    u/strip-nils
                    #(update % :archived boolean)))
         xs))

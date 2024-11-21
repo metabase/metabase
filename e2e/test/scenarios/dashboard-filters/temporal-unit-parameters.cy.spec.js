@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   appBar,
-  changeSynchronousBatchUpdateSetting,
   clearFilterWidget,
   createNativeQuestion,
   createQuestion,
@@ -238,14 +237,7 @@ const getParameterMapping = card => ({
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true);
     cy.signInAsNormalUser();
-  });
-
-  afterEach(() => {
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   describe("mapping targets", () => {
@@ -310,10 +302,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       filterWidget().click();
       popover().findByText("Quarter").click();
       getDashboardCard().within(() => {
-        cy.findByText("Created At: Quarter").should("be.visible");
+        cy.findByText("Created At: Month: Quarter").should("be.visible");
         cy.findByText(multiStageQuestionDetails.name).click();
       });
-      queryBuilderMain().findByText("Created At: Quarter").should("be.visible");
+      queryBuilderMain()
+        .findByText("Created At: Month: Quarter")
+        .should("be.visible");
       backToDashboard();
       editDashboard();
       removeQuestion();
@@ -528,7 +522,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .click({ force: true });
       sidebar().within(() => {
         cy.log("datetime columns cannot be mapped");
-        cy.findByText("Created At").click();
+        cy.findByText("Created At: Month").click();
         cy.findByText("Update a dashboard filter").click();
         cy.findByText("No available targets").should("be.visible");
         cy.icon("chevronleft").click();

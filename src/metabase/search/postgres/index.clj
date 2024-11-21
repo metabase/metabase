@@ -17,7 +17,7 @@
 
 (defonce ^:private reindexing? (atom false))
 
-(def ^:private tsv-language "simple")
+(def ^:private tsv-language "english")
 
 (defn- exists? [table-name]
   (t2/exists? :information_schema.tables :table_name (name table-name)))

@@ -87,12 +87,12 @@ describe("command palette", () => {
       // Check that we are not filtering search results by action name
       commandPaletteInput().clear().type("Company");
       cy.findByRole("option", { name: /View and filter/ }).should("exist");
-      cy.findByRole("option", { name: "PEOPLE" }).should(
+      cy.findByRole("option", { name: "REVIEWS" }).should(
         "have.attr",
         "aria-selected",
         "true",
       );
-      cy.findByRole("option", { name: "REVIEWS" }).should("exist");
+      cy.findByRole("option", { name: "PEOPLE" }).should("exist");
       cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
       commandPaletteInput().clear();
 
@@ -137,6 +137,29 @@ describe("command palette", () => {
     commandPalette()
       .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
+  });
+
+  it("should display search results in the order returned by the API", () => {
+    cy.visit("/");
+
+    cy.findByRole("button", { name: /Search/ }).click();
+    cy.intercept("/api/search?*").as("searchData");
+
+    commandPalette().within(() => {
+      commandPaletteInput().type("Cou");
+      cy.wait("@searchData");
+      cy.findByText("Loading...").should("not.exist");
+
+      cy.get("@searchData").then(({ response }) => {
+        const results = response.body.data;
+
+        results.forEach((result, index) => {
+          cy.findAllByRole("option")
+            .eq(index + 2)
+            .should("contain.text", result.name);
+        });
+      });
+    });
   });
 
   it("should render links to site settings in settings pages", () => {

@@ -40,6 +40,7 @@ const SingleSelectListField = ({
   optionRenderer,
   placeholder = t`Find...`,
   onSearchChange,
+  alwaysShowOptions = false,
   isDashboardFilter,
   isLoading,
   checkedColor,
@@ -70,10 +71,17 @@ const SingleSelectListField = ({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
+  const isFilterInValues = value[0] === filter;
+
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
     if (formattedFilter.length === 0) {
       return sortedOptions;
+    }
+
+    // Allow picking of different values in the list
+    if (isFilterInValues) {
+      return augmentedOptions;
     }
 
     return augmentedOptions.filter(option => {
@@ -93,7 +101,7 @@ const SingleSelectListField = ({
       // option as: [id]
       return isValidOptionItem(option[0], formattedFilter);
     });
-  }, [augmentedOptions, debouncedFilter, sortedOptions]);
+  }, [augmentedOptions, debouncedFilter, sortedOptions, isFilterInValues]);
 
   const shouldShowEmptyState =
     filter.length > 0 && !isLoading && filteredOptions.length === 0;
@@ -158,23 +166,24 @@ const SingleSelectListField = ({
 
       {!isLoading && (
         <OptionsList isDashboardFilter={isDashboardFilter}>
-          {filteredOptions.map(option => (
-            <OptionContainer key={option[0]}>
-              <OptionItem
-                data-testid={`${option[0]}-filter-value`}
-                selectedColor={
-                  (checkedColor ?? isDashboardFilter)
-                    ? "var(--mb-color-background-selected)"
-                    : "var(--mb-color-filter)"
-                }
-                selected={selectedValue === option[0]}
-                onClick={() => onClickOption(option[0])}
-                onMouseDown={e => e.preventDefault()}
-              >
-                {optionRenderer(option)}
-              </OptionItem>
-            </OptionContainer>
-          ))}
+          {(alwaysShowOptions || debouncedFilter.length > 0) &&
+            filteredOptions.map(option => (
+              <OptionContainer key={option[0]}>
+                <OptionItem
+                  data-testid={`${option[0]}-filter-value`}
+                  selectedColor={
+                    (checkedColor ?? isDashboardFilter)
+                      ? "var(--mb-color-background-selected)"
+                      : "var(--mb-color-filter)"
+                  }
+                  selected={selectedValue === option[0]}
+                  onClick={() => onClickOption(option[0])}
+                  onMouseDown={e => e.preventDefault()}
+                >
+                  {optionRenderer(option)}
+                </OptionItem>
+              </OptionContainer>
+            ))}
         </OptionsList>
       )}
     </>

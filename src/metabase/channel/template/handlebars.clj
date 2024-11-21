@@ -14,17 +14,16 @@
 
 (defn registry
   "Create a new Handlebars instance with a template loader."
-  ^Handlebars [loader]
-  (doto (Handlebars. loader)
-    (.with (ConcurrentMapTemplateCache.))))
+  ^Handlebars [loader & {:keys [reload?]}]
+  (u/prog1 (doto (Handlebars. loader)
+             (.with (ConcurrentMapTemplateCache.)))
+    (when reload?
+      (.setReload (.getCache <>) true))))
 
 (defn classpath-loader
   "Create a ClassPathTemplateLoader with a prefix and postfix."
   [prefix postfix]
   (ClassPathTemplateLoader. prefix postfix))
-
-(def ^:private default-hbs
-  (registry (classpath-loader "/" "")))
 
 (defn- wrap-context
   [context]
@@ -32,6 +31,9 @@
    #(if (keyword? %)
       (u/qualified-name %)
       %) context))
+
+(def ^:private default-hbs
+  (registry (classpath-loader "/" "") :reload? true))
 
 (defn render
   "Render a template with a context."

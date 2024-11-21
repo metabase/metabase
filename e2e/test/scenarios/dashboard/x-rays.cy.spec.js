@@ -295,11 +295,6 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.url().should("contain", "/question");
 
-    cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("chartsettings-field-picker")
-      .contains("User → Source")
-      .should("be.visible");
-
     // Bars
     chartPathWithFillColor("#509EE3").should("have.length", 5);
     chartPathWithFillColor("#509EE3").eq(0).realHover();
@@ -314,6 +309,11 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         },
       ],
     });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findAllByTestId("chartsettings-field-picker")
+      .contains("User → Source")
+      .should("be.visible");
   });
 
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
@@ -381,13 +381,13 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .should("exist"); // not asserting a value as it's dynamic
     getDashcardByTitle("Average quantity per month").within(() => {
       cy.findByText("Average of Quantity").should("exist");
-      cy.findByText("Created At").should("exist");
+      cy.findByText("Created At: Month").should("exist");
     });
     getDashcardByTitle("Sales per source").within(() => {
       cy.findByText("Organic").should("exist");
       cy.findByText("Affiliate").should("exist");
       cy.findByText("Count").should("exist");
-      cy.findByText("Created At").should("exist");
+      cy.findByText("Created At: Month").should("exist");
     });
     getDashcardByTitle("Sales per product").within(() => {
       cy.findByText("Product → Title").should("exist");

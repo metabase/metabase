@@ -423,9 +423,9 @@ describe("issue 18502", () => {
     selectSavedQuestionsToJoin("18502#1", "18502#2");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click();
+    cy.findByText("Created At: Month").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Birth Date").click();
+    cy.findByText("Birth Date: Month").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
@@ -490,15 +490,15 @@ describe("issue 18512", () => {
     startNewQuestion();
     selectSavedQuestionsToJoin("18512#1", "18512#2");
 
-    popover().findByText("Products → Created At").click();
-    popover().findByText("Products → Created At").click();
+    popover().findByText("Products → Created At: Month").click();
+    popover().findByText("Products → Created At: Month").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Products → Created At");
+    cy.contains("Products → Created At: Month");
   });
 });
 

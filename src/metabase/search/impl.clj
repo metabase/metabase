@@ -11,6 +11,7 @@
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.api :as search.api]
    [metabase.search.config
@@ -155,12 +156,16 @@
                       archived_directly model]}]
   (let [matching-columns    (into #{} (keep :column relevant-scores))
         match-context-thunk (some :match-context-thunk relevant-scores)
-        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))]
+        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))
+        use-display-name?   (and display_name
+                                 ;; This collection will be empty unless we used in-place matching.
+                                 ;; For now, for simplicity and performance reasons, we are not bothering to check
+                                 ;; *where* the matches in the tsvector came from.
+                                 (or (empty? matching-columns)
+                                     (contains? matching-columns :display_name)))]
     (-> result
         (assoc
-         :name           (if (and (contains? matching-columns :display_name) display_name)
-                           display_name
-                           name)
+         :name           (if use-display-name? display_name name)
          :context        (when (and match-context-thunk
                                     (empty?
                                      (remove matching-columns displayed-columns)))
@@ -206,7 +211,10 @@
 (defmethod supported-engine? :search.engine/in-place [_] true)
 (defmethod supported-engine? :search.engine/fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
 
-(def ^:private default-engine :search.engine/in-place)
+(defn- default-engine []
+  (if (public-settings/experimental-fulltext-search-enabled)
+    :search.engine/fulltext
+    :search.engine/in-place))
 
 (defn- known-engine? [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
@@ -224,15 +232,16 @@
 
             :else
             engine)))
-      default-engine))
+      (default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
 (defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
-  (when (= default-engine search-engine)
-    (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
-  (log/debugf "Missing implementation for %s so instead using %s" search-engine default-engine)
-  (assoc search-ctx :search-engine default-engine))
+  (let [default (default-engine)]
+    (when (= default search-engine)
+      (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
+    (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
+    (assoc search-ctx :search-engine default)))
 
 (defmethod search.api/results :default [search-ctx]
   (search.api/results (apply-default-engine search-ctx)))
@@ -246,6 +255,7 @@
 (mr/def ::search-context.input
   [:map {:closed true}
    [:search-string                                        [:maybe ms/NonBlankString]]
+   [:context                             {:optional true} [:maybe :keyword]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
    [:is-impersonated-user?               {:optional true} :boolean]
@@ -255,7 +265,7 @@
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "only" "exclude"]]]
+   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
    [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
    [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:limit                               {:optional true} [:maybe ms/Int]]
@@ -271,6 +281,7 @@
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           context
            calculate-available-models?
            created-at
            created-by
@@ -299,17 +310,24 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:archived?                   (boolean archived)
-                        :calculate-available-models? (boolean calculate-available-models?)
-                        :current-user-id             current-user-id
-                        :current-user-perms          current-user-perms
-                        :is-impersonated-user?       is-impersonated-user?
-                        :is-sandboxed-user?          is-sandboxed-user?
-                        :is-superuser?               is-superuser?
-                        :models                      models
-                        :model-ancestors?            (boolean model-ancestors?)
-                        :search-engine               (parse-engine search-engine)
-                        :search-string               search-string}
+        engine (parse-engine search-engine)
+        ctx    (cond-> {:archived?                           (boolean archived)
+                        :context                             (or context :unknown)
+                        :calculate-available-models?         (boolean calculate-available-models?)
+                        :current-user-id                     current-user-id
+                        :current-user-perms                  current-user-perms
+                        :filter-items-in-personal-collection (or filter-items-in-personal-collection
+                                                                 (if (and (not= engine :search.engine/in-place)
+                                                                          (#{:search-app :command-palette} context))
+                                                                   "exclude-others"
+                                                                   "all"))
+                        :is-impersonated-user?               is-impersonated-user?
+                        :is-sandboxed-user?                  is-sandboxed-user?
+                        :is-superuser?                       is-superuser?
+                        :models                              models
+                        :model-ancestors?                    (boolean model-ancestors?)
+                        :search-engine                       engine
+                        :search-string                       search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)

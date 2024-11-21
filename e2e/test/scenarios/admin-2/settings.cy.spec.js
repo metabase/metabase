@@ -1230,8 +1230,13 @@ describe("notifications", { tags: "@external" }, () => {
 
           auth.populateFields();
 
+          cy.button("Send a test").click();
+
+          cy.button("Success").should("exist");
           cy.button("Create destination").click();
         });
+
+        cy.findByRole("heading", { name: "Awesome Hook" }).should("exist");
 
         cy.visit(WEBHOOK_TEST_DASHBOARD);
         cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
@@ -1251,12 +1256,8 @@ describe("notifications", { tags: "@external" }, () => {
         "exist",
       );
 
-      cy.findByLabelText("Webhook URL").type(`${WEBHOOK_TEST_URL}/404`);
       cy.findByLabelText("Give it a name").type("Awesome Hook");
       cy.findByLabelText("Description").type("The best hook ever");
-      cy.button("Create destination").click();
-
-      cy.findByText("Unable to connect channel").should("exist");
       cy.findByLabelText("Webhook URL").clear().type(WEBHOOK_TEST_URL);
       cy.button("Create destination").click();
     });

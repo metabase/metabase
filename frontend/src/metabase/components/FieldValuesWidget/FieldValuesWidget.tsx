@@ -28,7 +28,8 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import { Box, Flex } from "metabase/ui";
+import type { SelectItemProps } from "metabase/ui";
+import { Box, Flex, MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -464,6 +465,13 @@ export function FieldValuesWidgetInner({
     valuesMode,
   });
 
+  // The component does not know ahead of time how it will render.
+  // To determine how to render we need to fetch data first.
+  // We want to avoid switching between different versions of the
+  // component when the data loads, so we show a loading spinner before the
+  // initial data load finishes.
+  // For subsequent loads we can rely on the normal loading states
+  // of the individual components.
   const [isInitiliazing, setIsInitiliazing] = useState(isListMode);
   const isLoading = loadingState !== "LOADED";
 
@@ -575,6 +583,7 @@ export function FieldValuesWidgetInner({
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
             isLoading={isLoading}
+            alwaysShowOptions={valuesMode !== "search"}
           />
         ) : !isSimpleInput ? (
           <SearchField
