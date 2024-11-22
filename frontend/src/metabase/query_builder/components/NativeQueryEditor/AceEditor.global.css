@@ -3,9 +3,11 @@
   width: 100%;
   flex-shrink: 1;
   flex-grow: 1;
+  display: flex;
 
   .ace_editor {
     height: 100%;
+    width: 100%;
     background-color: var(--mb-color-bg-light);
     color: var(--mb-color-text-dark);
   }
