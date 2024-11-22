@@ -44,10 +44,10 @@ describeSDK("scenarios > embedding-sdk > create-question", () => {
       // The question title's header should be "New question" by default.
       cy.contains("New question");
 
-      cy.findByRole("button", { name: "Visualize" }).click();
+      cy.findByLabelText("Switch to visualization").click();
 
       // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
+      cy.findByLabelText("Switch to editor").click();
 
       // Should be able to visualize the question again
       cy.findByLabelText("Switch to visualization").click();
