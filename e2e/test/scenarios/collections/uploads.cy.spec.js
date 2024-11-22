@@ -101,8 +101,6 @@ describeWithSnowplow(
 
       popover().findByText("Writable Postgres12").click();
 
-      cy.findByRole("complementary").findByText("public").click();
-
       cy.findByTestId("admin-metadata-table-list").within(() => {
         cy.findByText("1 Queryable Table").should("exist");
         cy.findByText("Dog Breeds").should("exist");
