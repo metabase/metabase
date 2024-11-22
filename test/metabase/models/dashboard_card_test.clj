@@ -300,6 +300,18 @@
            ((:out mi/transform-parameters-list)
             (json/generate-string []))))))
 
+(deftest ^:parallel normalize-card-parameter-mappings-test
+  (doseq [parameters [[]
+                      [{:name "Time grouping"
+                        :slug "time_grouping"
+                        :id "8e366c15"
+                        :type :temporal-unit
+                        :sectionId "temporal-unit"
+                        :temporal_units [:minute :quarter-of-year]}]]]
+    (is (= parameters
+           ((:out mi/transform-card-parameters-list)
+            (json/generate-string parameters))))))
+
 (deftest ^:parallel identity-hash-test
   (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
