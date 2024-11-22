@@ -31,9 +31,9 @@ export const QuestionVisualization = ({
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
-  const isQueryResultEmpty = question && !queryResults;
+  const isQueryResultLoading = question && !queryResults;
 
-  if (isQuestionLoading || isQueryResultEmpty) {
+  if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
