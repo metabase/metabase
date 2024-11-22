@@ -16,6 +16,7 @@ import { AppBanner } from "./AppBanner";
 
 interface SetupOpts {
   isAdmin: boolean;
+  isHosted?: boolean;
   isReadOnly?: boolean;
   tokenStatusStatus?: TokenStatusStatus;
   tokenError?: string;
@@ -26,6 +27,7 @@ const DATA_WAREHOUSE_DB = createMockDatabase({ id: 2 });
 
 function setup({
   isAdmin,
+  isHosted = false,
   tokenStatusStatus,
   tokenError,
   isReadOnly = false,
@@ -35,6 +37,7 @@ function setup({
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
+      "is-hosted?": isHosted,
       "read-only-mode": isReadOnly,
       "token-status": createMockTokenStatus({
         status: tokenStatusStatus,
@@ -111,6 +114,28 @@ describe("AppBanner", () => {
 
       expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
     });
+
+    it("should not render when token status is missing", () => {
+      setup({
+        isAdmin: true,
+        tokenStatusStatus: undefined,
+      });
+
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
+
+    it.each(["past-due", "unpaid", "invalid"])(
+      "should not render for hosted instances for %s token status (metabase#50335)",
+      status => {
+        setup({
+          isAdmin: true,
+          isHosted: true,
+          tokenStatusStatus: status,
+        });
+
+        expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+      },
+    );
   });
 
   describe("ReadOnlyBanner", () => {
