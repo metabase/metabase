@@ -39,7 +39,7 @@ export const TabsView = <
       }}
       data-testid="tabs-view"
     >
-      <Tabs.List px="1rem">
+      <Tabs.List px="2.5rem">
         {tabs.map(tab => {
           const { id, icon, displayName } = tab;
 
