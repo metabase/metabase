@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,

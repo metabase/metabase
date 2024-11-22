@@ -10,11 +10,9 @@ import * as Lib from "metabase-lib";
 import type { Dimension } from "metabase-lib/v1/Dimension";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 import DimensionOptions from "metabase-lib/v1/DimensionOptions";
-import * as Q from "metabase-lib/v1/queries/utils/query";
 import type {
   DatabaseId,
   DatasetQuery,
-  Filter,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
   TableId,
@@ -27,7 +25,6 @@ import type Field from "../metadata/Field";
 import type Table from "../metadata/Table";
 
 import AtomicQuery from "./AtomicQuery";
-import FilterWrapper from "./structured/Filter";
 
 type DimensionFilterFn = (dimension: Dimension) => boolean;
 export type FieldFilterFn = (filter: Field) => boolean;
@@ -152,54 +149,6 @@ class StructuredQuery extends AtomicQuery {
     const metadata = question.metadata();
     return metadata.table(this._sourceTableId());
   });
-
-  // ALIASES: allows
-
-  /**
-   * @returns alias for addFilter
-   */
-  filter(filter: Filter | FilterWrapper) {
-    return this.addFilter(filter);
-  }
-
-  // FILTERS
-
-  /**
-   * @returns An array of MBQL @type {Filter}s.
-   */
-  filters = _.once((): FilterWrapper[] => {
-    return Q.getFilters(this.legacyQuery({ useStructuredQuery: true })).map(
-      (filter, index) => new FilterWrapper(filter, index, this),
-    );
-  });
-
-  /**
-   * @returns @type {DimensionOptions} that can be used in filters.
-   */
-  filterDimensionOptions(): DimensionOptions {
-    return this.dimensionOptions();
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the provided MBQL @type {Filter} added.
-   */
-  addFilter(_filter: Filter | FilterWrapper) {
-    return this._updateQuery(Q.addFilter, arguments);
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the MBQL @type {Filter} updated at the provided index.
-   */
-  updateFilter(_index: number, _filter: Filter | FilterWrapper) {
-    return this._updateQuery(Q.updateFilter, arguments);
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the filter at the provided index removed.
-   */
-  removeFilter(_index: number) {
-    return this._updateQuery(Q.removeFilter, arguments);
-  }
 
   // DIMENSION OPTIONS
   dimensionOptions(

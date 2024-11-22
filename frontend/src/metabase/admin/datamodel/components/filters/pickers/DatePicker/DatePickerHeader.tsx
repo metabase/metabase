@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 
 import type { DateOperator } from "./DatePicker";
 import { DATE_OPERATORS } from "./DatePicker";

@@ -6,7 +6,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { isValidTimeInterval } from "metabase/lib/time";
 import { Popover } from "metabase/ui";
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   formatStartingFrom,
   getRelativeDatetimeInterval,

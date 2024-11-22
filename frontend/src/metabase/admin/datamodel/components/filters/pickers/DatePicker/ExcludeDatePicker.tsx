@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   getInitialDayOfWeekFilter,
   getInitialHourOfDayFilter,

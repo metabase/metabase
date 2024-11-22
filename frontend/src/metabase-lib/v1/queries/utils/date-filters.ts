@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import Dimension, { FieldDimension } from "metabase-lib/v1/Dimension";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   getRelativeDatetimeField,
   getRelativeDatetimeInterval,

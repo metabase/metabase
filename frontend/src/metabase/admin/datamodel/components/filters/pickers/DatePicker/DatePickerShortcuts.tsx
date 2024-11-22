@@ -3,8 +3,7 @@ import { useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
-import type { Filter as FilterExpression } from "metabase-types/api";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 
 import type { DateShortcutOptions } from "./DatePickerShortcutOptions";
 import { DATE_SHORTCUT_OPTIONS } from "./DatePickerShortcutOptions";
@@ -15,8 +14,8 @@ type Props = {
   dateShortcutOptions?: DateShortcutOptions;
 
   filter: FilterMBQL;
-  onCommit: (value: FilterExpression[]) => void;
-  onFilterChange: (filter: FilterMBQLExpression[]) => void;
+  onCommit: (value: FilterMBQL[]) => void;
+  onFilterChange: (filter: FilterMBQL[]) => void;
   onBack?: () => void;
 };
 

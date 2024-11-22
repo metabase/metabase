@@ -1,6 +1,6 @@
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import * as Lib from "metabase-lib";
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 
 import { DATE_PERIODS } from "../RelativeDatePicker";
 

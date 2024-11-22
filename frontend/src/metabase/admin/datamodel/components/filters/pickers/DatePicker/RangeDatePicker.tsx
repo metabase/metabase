@@ -3,7 +3,7 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { useCallback, useState } from "react";
 
 import Calendar from "metabase/components/Calendar";
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   clearDateRangeFilterTime,
   getDateRangeFilterValue,

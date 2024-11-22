@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import type { FilterMBQL } from "metabase-lib/v1/queries/structured/FilterMBQL";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
 import DatePicker from "./DatePicker";
