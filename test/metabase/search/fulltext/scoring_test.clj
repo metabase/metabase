@@ -31,19 +31,17 @@
   (mapv (juxt :model :id :name)
         (search.tu/search-results search-string (assoc raw-ctx :search-engine "fulltext"))))
 
-(defn search-no-weights
-  "Like search but with weight for [[ranker-key]] set to 0."
-  [ranker-key search-string raw-ctx]
-  (let [orig-weights (or (mt/dynamic-value search.config/weights) search.config/weights)]
-    (mt/with-dynamic-redefs [search.config/weights #(assoc (orig-weights %) ranker-key 0)]
-      (search-results* search-string raw-ctx))))
+(defmacro with-weights [weight-map & body]
+  `(mt/with-dynamic-redefs [search.config/weights (constantly ~weight-map)]
+    ~@body))
 
 (defn search-results
   "Like search-results* but with a sanity check that search without weights returns a different result."
   [ranker-key search-string & {:as raw-ctx}]
-  (let [result (search-results* search-string raw-ctx)]
-    (is (not= (search-no-weights ranker-key search-string raw-ctx)
-              result)
+  (let [result   (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
+        inverted (with-weights {ranker-key -1} (search-results* search-string raw-ctx))]
+    ;; note that this may not be a strict reversal, due to ties.
+    (is (not= inverted result)
         "sanity check: search-no-weights should be different")
     result))
 
@@ -85,8 +83,8 @@
       (is (= [["dataset" 1 "card ancient"]
               ["metric"  3 "card old"]
               ["card"    2 "card recent"]]
-             (mt/with-dynamic-redefs [search.config/weights (constantly {:model 1.0 :model/dataset 1.0})]
-               (search-results :model "card")))))))
+             (with-weights {:model 1.0 :model/dataset 1.0}
+               (search-results* "card")))))))
 
 (deftest ^:parallel recency-test
   (let [right-now   (Instant/now)
@@ -128,7 +126,7 @@
     (when (search/supports-index?)
       (let [table-name (search.index/random-table-name)]
         (binding [search.index/*active-table* table-name]
-          (search.index/create-table! table-name)
+          (search.index/ensure-ready! table-name)
           (mt/with-model-cleanup [:model/Card]
             (let [search-term    "view-count-edge-case"
                   card-with-view #(merge (mt/with-temp-defaults :model/Card)
