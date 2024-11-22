@@ -5,6 +5,8 @@ import type { FilterItem } from "metabase/querying/filters/components/FilterPane
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import * as Lib from "metabase-lib";
 
+import { useFilterHandlers } from "./use-filter-handlers";
+
 type FilterItemWithDisplay = FilterItem & Lib.ClauseDisplayInfo;
 
 export interface SDKFilterItem extends FilterItemWithDisplay {
@@ -17,7 +19,7 @@ export const useFilterData = (): SDKFilterItem[] => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   const query = question?.query();
-
+  const stageIndex = -1;
   const onQueryChange = useCallback(
     (newQuery: Lib.Query) => {
       if (question) {
@@ -27,6 +29,15 @@ export const useFilterData = (): SDKFilterItem[] => {
     [question, updateQuestion],
   );
 
+  const {
+    onRemoveFilter: handleRemoveFilter,
+    onUpdateFilter: handleUpdateFilter,
+  } = useFilterHandlers({
+    query,
+    stageIndex,
+    onQueryChange,
+  });
+
   const filters = useMemo(
     () =>
       query
@@ -35,32 +46,15 @@ export const useFilterData = (): SDKFilterItem[] => {
             ...Lib.displayInfo(query, filterItem.stageIndex, filterItem.filter),
           }))
         : [],
+
     [query],
   );
 
   return filters.map((filterItem, filterIndex) => {
-    const onRemoveFilter = () => {
-      if (query) {
-        const nextQuery = Lib.removeClause(
-          query,
-          filterItem.stageIndex,
-          filterItem.filter,
-        );
-        onQueryChange(nextQuery);
-      }
-    };
+    const onRemoveFilter = () => handleRemoveFilter(filterItem.filter);
 
-    const onUpdateFilter = (nextFilterClause: Lib.Filterable) => {
-      if (query) {
-        const nextQuery = Lib.replaceClause(
-          query,
-          filterItem.stageIndex,
-          filterItem.filter,
-          nextFilterClause,
-        );
-        onQueryChange(nextQuery);
-      }
-    };
+    const onUpdateFilter = (nextFilterClause: Lib.Filterable) =>
+      handleUpdateFilter(filterItem.filter, nextFilterClause);
 
     return {
       ...filterItem,
