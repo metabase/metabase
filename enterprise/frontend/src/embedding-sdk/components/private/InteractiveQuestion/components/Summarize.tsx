@@ -38,9 +38,6 @@ const SummarizeInner = ({
 
   const [currentQuery, setCurrentQuery] = useState<Lib.Query>(question.query());
 
-  // yeah we need to change this
-  const stageIndex = Lib.stageCount(currentQuery);
-
   const onApplyFilter = () => {
     if (currentQuery) {
       onQueryChange(currentQuery);
@@ -63,14 +60,14 @@ const SummarizeInner = ({
         <SummarizeAggregationItemList
           query={currentQuery}
           onQueryChange={setCurrentQuery}
-          stageIndex={stageIndex}
+          stageIndex={-1}
         />
         <Divider my="lg" />
         {hasAggregations && (
           <SummarizeBreakoutColumnList
             query={currentQuery}
             onQueryChange={setCurrentQuery}
-            stageIndex={stageIndex}
+            stageIndex={-1}
           />
         )}
       </Stack>
