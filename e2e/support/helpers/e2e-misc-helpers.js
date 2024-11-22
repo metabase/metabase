@@ -355,6 +355,7 @@ export function visitPublicQuestion(id, { params = {}, hash = {} } = {}) {
   const searchSection = searchParams ? `?${searchParams}` : "";
   const hashParams = new URLSearchParams(hash).toString();
   const hashSection = hashParams ? `#${hashParams}` : "";
+
   cy.request("POST", `/api/card/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
