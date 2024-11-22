@@ -61,7 +61,7 @@
          [:legacy_input :text :not-null]
          ;; scoring related
          [:dashboardcard_count :int]
-         [:last_viewed_at :timestamp]
+         [:last_viewed_at :timestamp-with-time-zone]
          [:official_collection :boolean]
          [:pinned :boolean]
          [:verified :boolean]
@@ -72,15 +72,15 @@
          ;; filter related
          [:archived :boolean :not-null [:default false]]
          [:creator_id :int]
-         [:last_edited_at :timestamp]
+         [:last_edited_at :timestamp-with-time-zone]
          [:last_editor_id :int]
-         [:model_created_at :timestamp]
-         [:model_updated_at :timestamp]
+         [:model_created_at :timestamp-with-time-zone]
+         [:model_updated_at :timestamp-with-time-zone]
          ;; useful for tracking the speed and age of the index
-         [:created_at :timestamp
+         [:created_at :timestamp-with-time-zone
           [:default [:raw "CURRENT_TIMESTAMP"]]
           :not-null]
-         [:updated_at :timestamp :not-null]])
+         [:updated_at :timestamp-with-time-zone :not-null]])
       t2/query)
   ;; TODO I strongly suspect that there are more indexes that would help performance, we should examine EXPLAIN.
 

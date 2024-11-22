@@ -1,7 +1,7 @@
 (ns metabase.search.postgres.index-test
   (:require
-   ;[cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
@@ -220,22 +220,75 @@
                       [:= :name entity-name]
                       [:= :model model]]}))
 
-(deftest card-ingestion-test
+(deftest card-complext-ingestion-test
   (search.tu/with-temp-index-table
-    (testing "dashboard card count"
-      (let [search-id (mt/random-name)]
+    (testing "simple card"
+      (mt/with-temp [:model/Card _ {:name "My card"}]
+        (is (=? {:official_collection      nil
+                 :database_id              (mt/id)
+                 :pinned                   false
+                 :view_count               0
+                 :collection_id            nil
+                 :dashboardcard_count      0
+                 :last_edited_at           nil
+                 :last_editor_id           nil
+                 :verified                 nil}
+                (first (ingest-then-fetch! "card" "My card"))))))
+
+    (testing "everything card"
+      (let [search-term  (mt/random-name)
+            yesterday    (t/- (t/offset-date-time) (t/days 1))
+            two-days-ago (t/- yesterday (t/days 1))]
         (mt/with-temp
-          [:model/Card          {card-id :id}      {:name search-id}
+          [:model/Collection    {coll-id :id}      {:name            "My collection"
+                                                    ;; :official_collection = true
+                                                    :authority_level "official"}
+           :model/Card          {card-id :id}      {:name        search-term
+                                                    :query_type  "query"
+                                                    ;; :database_id = (mt/id)
+                                                    :database_id (mt/id)
+                                                    ;; :pinned = true
+                                                    :collection_position 1
+                                                    ;; :view_count = 42
+                                                    :view_count 42
+                                                    ;; :collection_id = coll-id
+                                                    :collection_id coll-id
+                                                    ;; :last_viewed_at = yesterday
+                                                    :last_used_at yesterday
+                                                    ;; :model_created_at = two-days-ago
+                                                    :created_at two-days-ago
+                                                    ;; :model_updated_at = two-days-ago
+                                                    :updated_at two-days-ago}
+
+           ;; :dashboardcard_count = 2
            :model/Dashboard     {dashboard-id :id} {}
            :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}
-           :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}]
-          (is (=? [{:dashboardcard_count 2}]
-                  (ingest-then-fetch! "card" search-id))))))
-    (testing "native query"
-      (let [search-id (mt/random-name)]
-        (mt/with-temp
-          [:model/Card _ {:name        search-id
-                          :query_type "native"}]
+           :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}
 
-          (is (=? [{:with_native_query_vector (mt/malli=? some?)}]
-                  (ingest-then-fetch! "card" search-id))))))))
+           ;; :last_edited_at = yesterday
+           ;; :last_editor_id = rasta-id
+           :model/Revision      _                 {:model_id    card-id
+                                                   :model       "Card"
+                                                   :user_id     (mt/user->id :rasta)
+                                                   :most_recent true
+                                                   :timestamp   yesterday
+                                                   :object      {}}
+           ;; :verified = true
+           :model/ModerationReview _              {:moderated_item_type "card"
+                                                   :moderated_item_id   card-id
+                                                   :most_recent         true
+                                                   :status              "verified"
+                                                   :moderator_id        (mt/user->id :crowberto)}]
+          (is (=? {:official_collection      true
+                   :database_id              (mt/id)
+                   :pinned                   true
+                   :view_count               42
+                   :collection_id            coll-id
+                   :last_viewed_at           yesterday
+                   :model_created_at         two-days-ago
+                   :model_updated_at         two-days-ago
+                   :dashboardcard_count      2
+                   :last_edited_at           yesterday
+                   :last_editor_id           (mt/user->id :rasta)
+                   :verified                 true}
+                  (first (ingest-then-fetch! "card" search-term)))))))))

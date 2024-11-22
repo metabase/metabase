@@ -1329,7 +1329,7 @@
                   ["card" native-card-in-query]
                   ["dataset" native-model-in-query]
                   ["action" query-action]}
-                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
+                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true :search_engine "fulltext")
                      :data
                      (map (juxt :model :id))
                      set))))))))
