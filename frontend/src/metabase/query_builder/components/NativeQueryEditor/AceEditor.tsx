@@ -328,10 +328,39 @@ export class AceEditorInner extends Component<AceEditorProps> {
       } else if (this.getCardTagNameAtCursor(pos)) {
         return [{ getCompletions: this.getCardTagCompletions }];
       } else {
-        return standardCompleters;
+        return [...standardCompleters];
       }
     };
+
+    this.HACK_initializeCompletionsPopup();
   }
+
+  HACK_initializeCompletionsPopup = () => {
+    if (!this._editor) {
+      return;
+    }
+
+    // Trigger empty completion to initialize editor.completer
+    this._editor.completers = [
+      {
+        getCompletions(_, __, ___, ____, callback) {
+          callback(null, []);
+        },
+      },
+    ];
+    this._editor?.execCommand("startAutocomplete");
+    this._editor.completers =
+      this.nextCompleters?.(this._editor?.getCursorPosition()) ?? [];
+
+    if (!this._editor.completer) {
+      // this should never happen
+      return;
+    }
+
+    const popup = this._editor.completer.getPopup();
+    // Add the container class to the popup
+    popup?.container.classList.add(S.editor);
+  };
 
   // Ace sometimes fires multiple "change" events in rapid succession
   // e.x. https://github.com/metabase/metabase/issues/2801
@@ -344,7 +373,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
   }, 1);
 
   _retriggerAutocomplete = _.debounce(() => {
-    if (this._editor?.completer?.popup?.isOpen) {
+    if (this._editor?.completer?.getPopup().isOpen) {
       this._editor.execCommand("startAutocomplete");
     }
   }, AUTOCOMPLETE_DEBOUNCE_DURATION);
