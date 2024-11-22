@@ -1129,27 +1129,27 @@ jobs:
     strategy:
       matrix:
         job:
-          - name: "Test Postgres 12.x (App DB Tests)"
-          - name: "Test Postgres 12.x (Driver Tests)"
-          - name: "Test Postgres Latest (App DB Tests)"
-          - name: "Test Postgres Latest (Driver Tests)"
-          - name: "be-tests-mariadb-10-2-ee (0)"
-          - name: "be-tests-mariadb-10-2-ee (1)"
-          - name: "be-tests-mariadb-10-2-ee (2)"
-          - name: "be-tests-mariadb-10-2-ee (3)"
-          - name: "be-tests-mariadb-latest-ee (0)"
-          - name: "be-tests-mariadb-latest-ee (1)"
-          - name: "be-tests-mariadb-latest-ee (2)"
-          - name: "be-tests-mariadb-latest-ee (3)"
-          - name: "be-tests-mysql-8-0-ee (0)"
-          - name: "be-tests-mysql-8-0-ee (1)"
-          - name: "be-tests-mysql-8-0-ee (2)"
-          - name: "be-tests-mysql-8-0-ee (3)"
-          - name: "be-tests-mysql-latest-ee (0)"
-          - name: "be-tests-mysql-latest-ee (1)"
-          - name: "be-tests-mysql-latest-ee (2)"
-          - name: "be-tests-mysql-latest-ee (3)"
-    name: ${{ matrix.job.name }}
+          -  "Test Postgres 12.x (App DB Tests)"
+          -  "Test Postgres 12.x (Driver Tests)"
+          -  "Test Postgres Latest (App DB Tests)"
+          -  "Test Postgres Latest (Driver Tests)"
+          -  "be-tests-mariadb-10-2-ee (0)"
+          -  "be-tests-mariadb-10-2-ee (1)"
+          -  "be-tests-mariadb-10-2-ee (2)"
+          -  "be-tests-mariadb-10-2-ee (3)"
+          -  "be-tests-mariadb-latest-ee (0)"
+          -  "be-tests-mariadb-latest-ee (1)"
+          -  "be-tests-mariadb-latest-ee (2)"
+          -  "be-tests-mariadb-latest-ee (3)"
+          -  "be-tests-mysql-8-0-ee (0)"
+          -  "be-tests-mysql-8-0-ee (1)"
+          -  "be-tests-mysql-8-0-ee (2)"
+          -  "be-tests-mysql-8-0-ee (3)"
+          -  "be-tests-mysql-latest-ee (0)"
+          -  "be-tests-mysql-latest-ee (1)"
+          -  "be-tests-mysql-latest-ee (2)"
+          -  "be-tests-mysql-latest-ee (3)"
+    name: ${{ matrix.job }}
     runs-on: ubuntu-22.04
     steps:
       - run: >-
