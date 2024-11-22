@@ -32,7 +32,7 @@ export function tooltip() {
 }
 
 export function selectDropdown() {
-  return cy.findByRole("listbox");
+  return cy.get('[role="listbox"],[data-testid="select-dropdown"]');
 }
 
 export function entityPickerModal() {

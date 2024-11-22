@@ -12,6 +12,7 @@ import {
   restore,
   resyncDatabase,
   saveDashboard,
+  selectDropdown,
   setFilter,
   showDashboardCardActions,
   sidebar,
@@ -56,7 +57,7 @@ describe("scenarios > dashboard > chained filter", () => {
       popover().findByText("Location").click();
 
       sidebar().findByText("Filter operator").next().click();
-      popover().findByText("Is").click();
+      selectDropdown().findByText("Is").click();
 
       // connect that to person.city
       getDashboardCard().within(() => {

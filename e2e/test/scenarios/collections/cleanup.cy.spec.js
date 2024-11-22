@@ -19,6 +19,7 @@ import {
   popover,
   resetSnowplow,
   restore,
+  selectDropdown,
   setTokenFeatures,
   undo,
   visitCollection,
@@ -311,9 +312,7 @@ const selectCleanThingsUpCollectionAction = () => {
 };
 const setDateFilter = timeSpan => {
   dateFilter().click();
-  popover().within(() => {
-    cy.findByText(timeSpan).click();
-  });
+  selectDropdown().findByText(timeSpan).click();
 };
 
 const selectAllItems = () => {
