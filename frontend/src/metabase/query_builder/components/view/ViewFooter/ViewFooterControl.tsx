@@ -105,13 +105,7 @@ const ViewFooterControl = ({
           disabled: !isResultLoaded,
           label: isResultLoaded ? (
             <Tooltip label={t`Results`}>
-              <Icon
-                aria-label={t`Switch to data`}
-                name="table2"
-                onClick={() => {
-                  dispatch(setUIControls({ isShowingRawTable: true }));
-                }}
-              />
+              <Icon aria-label={t`Switch to data`} name="table2" />
             </Tooltip>
           ) : (
             <Loader
@@ -127,13 +121,7 @@ const ViewFooterControl = ({
           disabled: !isResultLoaded,
           label: isResultLoaded ? (
             <Tooltip label={t`Visualization`}>
-              <Icon
-                aria-label={t`Switch to visualization`}
-                name={vizIcon}
-                onClick={() => {
-                  dispatch(setUIControls({ isShowingRawTable: false }));
-                }}
-              />
+              <Icon aria-label={t`Switch to visualization`} name={vizIcon} />
             </Tooltip>
           ) : (
             <Loader
@@ -147,7 +135,7 @@ const ViewFooterControl = ({
           ),
         },
       ].filter(isNotNull),
-    [dispatch, isResultLoaded, shouldShowEditorButton, value, vizIcon],
+    [isResultLoaded, shouldShowEditorButton, value, vizIcon],
   );
 
   return (
