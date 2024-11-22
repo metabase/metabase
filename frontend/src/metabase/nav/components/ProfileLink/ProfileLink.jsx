@@ -8,6 +8,7 @@ import _ from "underscore";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
+import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
@@ -168,6 +169,10 @@ function ProfileLink({ adminItems, onLogout, openDiagnostics }) {
           )}
         </Modal>
       ) : null}
+
+      {modalOpen === "diagnostic" && (
+        <ErrorDiagnosticModalWrapper isModalOpen={true} onClose={closeModal} />
+      )}
     </div>
   );
 }
