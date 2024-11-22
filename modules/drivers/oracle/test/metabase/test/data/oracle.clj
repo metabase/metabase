@@ -315,8 +315,8 @@
       ;; If exists does not exist in oracle
       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
                      (sql/format
-                       (cond->
-                         {:drop-view [[[:raw qualified-view]]]}
-                         materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
-                       :dialect (sql.qp/quote-style driver))
+                      (cond->
+                       {:drop-view [[[:raw qualified-view]]]}
+                        materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
+                      :dialect (sql.qp/quote-style driver))
                      {:transaction? false}))))
