@@ -475,7 +475,7 @@ describe("issue 21597", { tags: "@external" }, () => {
     });
 
     cy.findByTestId("variable-type-select").click();
-    popover().within(() => {
+    cy.findByTestId("select-dropdown").within(() => {
       cy.findByText("Field Filter").click();
     });
     popover().within(() => {
