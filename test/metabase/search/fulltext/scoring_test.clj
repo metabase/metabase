@@ -21,9 +21,9 @@
   [entities & body]
   `(search.tu/with-temp-index-table
      (#'search.index/batch-upsert! search.index/*active-table*
-      (map (comp #'search.index/entity->entry
-                 #'search.ingestion/->entry)
-           ~entities))
+                                   (map (comp #'search.index/entity->entry
+                                              #'search.ingestion/->entry)
+                                        ~entities))
      ~@body))
 
 (defn search-results*

@@ -209,7 +209,7 @@
 (defn ingest!
   [model where-clause]
   (#'search.ingestion/batch-update!
-    (#'search.ingestion/spec-index-reducible model where-clause)))
+   (#'search.ingestion/spec-index-reducible model where-clause)))
 
 (defn ingest-then-fetch!
   [model entity-name]

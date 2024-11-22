@@ -592,7 +592,7 @@
       (cond-> #_changes
        (or (empty? (:result_metadata card))
            (not verified-result-metadata?))
-       card.metadata/populate-result-metadata)
+        card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
@@ -1059,8 +1059,7 @@
                   ;;       and could cause a large increase in the query count for dashboard updates.
                   ;;       (see the test failures when this hook is added back)
                   ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
-                 #_:end})
-
+   #_:end})
 
 (search/define-spec "card"
   (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))
