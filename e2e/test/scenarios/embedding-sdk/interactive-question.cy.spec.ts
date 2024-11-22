@@ -174,7 +174,7 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().contains("question saved as Sample Orders 4");
   });
 
-  it("should not crash when clicking on Summarize", () => {
+  it("should not crash when clicking on Summarize (metabase#50398)", () => {
     visitInteractiveQuestionStory();
 
     cy.wait("@cardQuery").then(({ response }) => {
