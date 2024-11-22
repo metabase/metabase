@@ -2,7 +2,7 @@ import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Flex } from "metabase/ui";
 
-import { Filter } from "../Filter";
+import { Filter } from "./Filter";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
