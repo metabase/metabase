@@ -33,7 +33,7 @@ import type { Card, CardId, NativeQuerySnippet } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import S from "./AceEditor.global.css";
-import type { EditorProps } from "./Editor";
+import type { EditorHandle, EditorProps } from "./Editor";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
 import {
   getAutocompleteResultsFn,
@@ -76,7 +76,11 @@ type DispatchProps = {
   fetchQuestion: (cardId: CardId) => Promise<Card>;
 };
 
-type AceEditorProps = EditorProps & SizeProps & StateProps & DispatchProps;
+type AceEditorProps = EditorProps &
+  SizeProps &
+  StateProps &
+  DispatchProps &
+  SnippetProps;
 
 export class AceEditorInner extends Component<AceEditorProps> {
   editor = createRef<HTMLDivElement>();
@@ -550,9 +554,9 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
 });
 
 function withSnippets(
-  WrappedComponent: ComponentType<SnippetProps & RefAttributes<unknown>>,
+  WrappedComponent: ComponentType<SnippetProps & RefAttributes<EditorHandle>>,
 ) {
-  return forwardRef(function WithSnippets(props, ref) {
+  return forwardRef<EditorHandle>(function WithSnippets(props, ref) {
     const { data } = useListSnippetsQuery();
     return <WrappedComponent {...props} ref={ref} snippets={data} />;
   });
@@ -562,4 +566,4 @@ export const AceEditor = _.compose(
   ExplicitSize(),
   withSnippets,
   connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
-)(AceEditorInner);
+)(AceEditorInner) as ComponentType<EditorProps & RefAttributes<EditorHandle>>;

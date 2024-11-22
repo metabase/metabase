@@ -1,4 +1,4 @@
-import { type Component, type LegacyRef, forwardRef } from "react";
+import { type Component, forwardRef } from "react";
 
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { CardId } from "metabase-types/api";
@@ -23,6 +23,6 @@ export interface EditorHandle extends Component<EditorProps> {
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(
   function Editor(props, ref) {
-    return <AceEditor {...props} ref={ref as LegacyRef<typeof AceEditor>} />;
+    return <AceEditor {...props} ref={ref} />;
   },
 );
