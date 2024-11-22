@@ -13883,7 +13883,7 @@ msgstr "Fehler beim Planen der Aufgaben für Datenbank {0}"
 msgid "All elements must be distinct."
 msgstr "Jedes Element muss eindeutig sein."
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Wähle die Spalten aus, die Du einbeziehen möchtest."
@@ -18355,12 +18355,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#:
+#: 
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulses werden ausgemustert"
 
-#:
+#: 
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Sie können jetzt stattdessen {0} einrichten. Wir werden Pulse in einer zukünftigen Version entfernen und Ihnen bei der Migration von Pulsen helfen, die Sie noch haben."
@@ -18369,7 +18369,7 @@ msgstr "Sie können jetzt stattdessen {0} einrichten. Wir werden Pulse in einer 
 msgid "dashboard subscriptions"
 msgstr "dashboard abonnements"
 
-#:
+#: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} Diagramme in deinem Abonnement sehen nicht so aus wie in deinem Dashboard. {1}"
 
@@ -18517,7 +18517,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Quelldatenbank {0} einrichten und Migrationen ausführen..."
 
 #. make sure the dest DB is up-to-date
-#.
+#. 
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:396
 msgid "Set up {0} target database and run migrations..."
@@ -26481,12 +26481,12 @@ msgstr "Die Beispieldatenbank konnte nicht in das Plugins-Verzeichnis extrahiert
 msgid "Metabase config files require a Premium token with the :advanced-config feature."
 msgstr "Metabase-Konfigurationsdateien erfordern ein Premium-Token mit der Funktion :advanced-config."
 
-#:
+#: 
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "Diagramme in Abonnements können etwas anders aussehen als Diagramme in Dashboards."
 
-#:
+#: 
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "Die Empfänger sehen diese Daten genauso wie Sie, unabhängig von deren Berechtigungen."
