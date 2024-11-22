@@ -143,6 +143,7 @@
     :native-query   {:type :native-query, :context-key :search-native-query}
     :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
 
+;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   [context]
@@ -150,7 +151,9 @@
         overrides (public-settings/experimental-search-weight-overrides)]
     (if (= :all context)
       (merge-with merge static-weights overrides)
-      (merge {}
+      (merge (get static-weights :default)
+             ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
+             (get overrides :default)
              (get static-weights context)
              (get overrides context)))))
 
