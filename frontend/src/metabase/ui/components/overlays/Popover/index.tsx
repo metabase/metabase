@@ -1,4 +1,4 @@
-import type { PopoverDropdownProps, PopoverProps } from "@mantine/core";
+import type { PopoverDropdownProps } from "@mantine/core";
 import { Popover as MantinePopover } from "@mantine/core";
 import cx from "classnames";
 import { useEffect } from "react";
@@ -17,8 +17,6 @@ type ExtendedPopoverDropdownProps = PopoverDropdownProps & {
   // TODO: remove when TippyPopover is no longer used
   setupSequencedCloseHandler?: boolean;
 };
-
-const Popover = (props: PopoverProps) => <MantinePopover {...props} />;
 
 const PopoverDropdown = function PopoverDropdown(
   props: ExtendedPopoverDropdownProps,
@@ -45,7 +43,10 @@ const PopoverDropdown = function PopoverDropdown(
   );
 };
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
-Popover.Dropdown = PopoverDropdown;
-Popover.Target = MantinePopover.Target;
+MantinePopover.Dropdown = PopoverDropdown;
+
+const Popover: typeof MantinePopover & {
+  Dropdown: typeof PopoverDropdown;
+} = MantinePopover;
 
 export { Popover };
