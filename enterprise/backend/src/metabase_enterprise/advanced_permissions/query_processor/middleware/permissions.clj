@@ -1,13 +1,16 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
 
 (def ^:private max-rows-in-limited-downloads 10000)
@@ -29,19 +32,24 @@
 
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]
-  ;; Remove the :native key (containing the transpiled MBQL) so that this helper function doesn't think the query is
-  ;; a native query. Actual native queries are dispatched to a different method by the :type key.
-  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids (dissoc query :native))
-        table-perms (if (or native? (seq card-ids))
+  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids query)
+        table-perms (if native?
                       ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                       ;; download perms
                       #{(data-perms/native-download-permission-for-user api/*current-user-id* db-id)}
-                      (set (map (fn [table-id]
+                      (set (map (fn table-perms-lookup [table-id]
                                   (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
-                                table-ids)))]
-    ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
-    (or (table-perms :no)
-        (table-perms :ten-thousand-rows)
+                                table-ids)))
+        card-perms  (set
+                     ;; If we have any card references in the query, check perms recursively
+                     (map (fn card-perms-lookup [card-id]
+                            (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
+                              (current-user-download-perms-level query)))
+                          card-ids))
+        perms       (set/union table-perms card-perms)]
+     ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
+    (or (perms :no)
+        (perms :ten-thousand-rows)
         :one-million-rows)))
 
 (defenterprise apply-download-limit
