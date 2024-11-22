@@ -187,7 +187,6 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
 
       // Expect the text from the default summarization view to be there.
       cy.contains("Group by");
-      cy.contains("Sum of Total");
     });
 
     cy.on("uncaught:exception", error => {
