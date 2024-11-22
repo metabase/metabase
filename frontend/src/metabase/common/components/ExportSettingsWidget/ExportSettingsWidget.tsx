@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -28,6 +29,7 @@ export const ExportSettingsWidget = ({
   onToggleFormatting,
   onTogglePivoting,
 }: ExportSettingsWidgetProps) => {
+  const arePivotedExportsEnabled = useSetting("enable-pivoted-exports") ?? true;
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack>
@@ -65,7 +67,7 @@ export const ExportSettingsWidget = ({
           </Text>
         </Stack>
       ) : null}
-      {canConfigurePivoting ? (
+      {arePivotedExportsEnabled && canConfigurePivoting ? (
         <Checkbox
           data-testid="keep-data-pivoted"
           label={t`Keep data pivoted`}

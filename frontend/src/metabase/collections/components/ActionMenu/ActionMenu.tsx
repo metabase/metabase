@@ -117,7 +117,7 @@ function ActionMenu({
   }, [item, onMove]);
 
   const handleArchive = useCallback(() => {
-    item.setArchived?.(true);
+    return item.setArchived ? item.setArchived(true) : Promise.resolve();
   }, [item]);
 
   const handleToggleBookmark = useMemo(() => {

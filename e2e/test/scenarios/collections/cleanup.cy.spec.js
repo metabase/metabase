@@ -1,3 +1,5 @@
+import { P, isMatching } from "ts-pattern";
+
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 import {
@@ -188,6 +190,22 @@ describe("scenarios > collections > clean up", () => {
         selectAllItems();
         moveToTrash();
         assertNoPagination();
+
+        expectGoodSnowplowEvent(
+          event =>
+            isMatching(
+              {
+                event: "moved-to-trash",
+                event_detail: P.union("dashboard", "question"),
+                target_id: P.number,
+                triggered_from: "cleanup_modal",
+                duration_ms: P.number,
+                result: "success",
+              },
+              event,
+            ),
+          10,
+        );
 
         // Because cutoff_date will be relative to the current date, we simply check
         // that it exists and is a string. Snowplow will assert that it is in the correct
