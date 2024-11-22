@@ -293,7 +293,7 @@ const FilterButton = ({
         <Checkbox.Group value={value} onChange={onChange} px="1rem" py="0.5rem">
           {options.map(option => (
             <Checkbox
-              key={`filter-${value}`}
+              key={`filter-${option.value}`}
               label={option.label}
               value={option.value}
               my="1rem"
