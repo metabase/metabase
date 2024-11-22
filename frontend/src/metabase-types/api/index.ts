@@ -4,6 +4,7 @@ export * from "./admin";
 export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
+export * from "./bug-report";
 export * from "./card";
 export * from "./click-behavior";
 export * from "./collection";

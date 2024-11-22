@@ -10,8 +10,8 @@ import type {
 export type ReportableEntityName =
   | "question"
   | "model"
-  | "metric"
   | "dashboard"
+  | "metric"
   | "collection";
 
 export type ErrorPayload = Partial<{

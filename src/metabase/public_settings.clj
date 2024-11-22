@@ -354,6 +354,14 @@ x.com")
                     (throw (ex-info (tru "This field must be a relative URL.") {:status-code 400}))))
                 (setting/set-value-of-type! :string :landing-page (coerce-to-relative-url new-landing-page))))
 
+(defsetting enable-pivoted-exports
+  (deferred-tru "Enable pivoted exports and pivoted subscriptions")
+  :type       :boolean
+  :default    true
+  :export?    true
+  :visibility :authenticated
+  :audit      :getter)
+
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type       :boolean
@@ -1056,6 +1064,15 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    nil
   :type       :json)
+
+(defsetting bug-reporting-enabled
+  (deferred-tru "Enable bug report submissions.")
+  :visibility :public
+  :export?    false
+  :type       :boolean
+  :default    false
+  :setter     :none
+  :audit      :getter)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

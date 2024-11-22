@@ -1,3 +1,5 @@
+import { P, isMatching } from "ts-pattern";
+
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 import {
@@ -37,6 +39,7 @@ describe("scenarios > collections > clean up", () => {
 
     it("feature should not be available in OSS", () => {
       visitCollection(FIRST_COLLECTION_ID);
+      cleanUpAlert().should("not.exist");
       collectionMenu().click();
       popover().within(() => {
         cy.findByText("Clean things up").should("not.exist");
@@ -188,6 +191,22 @@ describe("scenarios > collections > clean up", () => {
         moveToTrash();
         assertNoPagination();
 
+        expectGoodSnowplowEvent(
+          event =>
+            isMatching(
+              {
+                event: "moved-to-trash",
+                event_detail: P.union("dashboard", "question"),
+                target_id: P.number,
+                triggered_from: "cleanup_modal",
+                duration_ms: P.number,
+                result: "success",
+              },
+              event,
+            ),
+          10,
+        );
+
         // Because cutoff_date will be relative to the current date, we simply check
         // that it exists and is a string. Snowplow will assert that it is in the correct
         // format
@@ -285,6 +304,40 @@ describe("scenarios > collections > clean up", () => {
       errorState().should("exist");
     });
   });
+
+  describeEE("clean up collection alert", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+    });
+
+    it("should show admins clean up alert if there's something to clean up in a collection", () => {
+      cy.log("should not show alert if there's nothing stale");
+      cy.intercept("GET", "/api/ee/stale/*").as("staleItems");
+      visitCollection(FIRST_COLLECTION_ID);
+      cy.wait("@staleItems");
+      cleanUpAlert().should("not.exist");
+
+      seedMainTestData().then(seedData => {
+        visitCollection(seedData.collection.id);
+
+        cy.log("should be shown alert to clean up collection");
+        cleanUpAlert()
+          .should("exist")
+          .findByText(/Get rid of unused content/)
+          .click();
+        cy.url().should("include", "cleanup");
+        closeCleanUpModal();
+
+        cy.log("should not show alert if user is not admin");
+        cy.signOut();
+        cy.signInAsNormalUser();
+        cy.reload();
+        cy.wait("@staleItems");
+        cleanUpAlert().should("not.exist");
+      });
+    });
+  });
 });
 
 // elements
@@ -292,6 +345,7 @@ const collectionMenu = () => getCollectionActions().icon("ellipsis");
 const cleanUpModal = () => cy.findAllByTestId("cleanup-collection-modal");
 const closeCleanUpModal = () =>
   cy.findAllByTestId("cleanup-collection-modal-close-btn").click();
+const cleanUpAlert = () => cy.findByTestId("cleanup-alert");
 const recursiveFilter = () =>
   cy.findByText(/Include items in sub-collections/).should("exist");
 const dateFilter = () => cy.findByTestId("cleanup-date-filter");

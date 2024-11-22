@@ -197,7 +197,7 @@ export const Onboarding = () => {
       pt="xl"
       pb={212}
     >
-      <Box maw={592}>
+      <Box maw={592} m="0 auto">
         <Accordion
           defaultValue={lastItemOpened || DEFAULT_ITEM}
           classNames={{
@@ -457,9 +457,9 @@ export const Onboarding = () => {
               <Accordion.Panel>
                 <Stack spacing="lg">
                   <VideoTutorial
-                    id="8zjKBpDTEzI"
+                    id="IustSQH6bfQ"
                     ref={iframeRefs["subscription"]}
-                    si="9fgftfrqN67Wm7rB"
+                    si="GYTUdFsXfpc2QL8S"
                     title="How to create a dashboard email subscription?"
                   />
                   {shouldConfigureCommunicationChannels && (
@@ -516,9 +516,9 @@ export const Onboarding = () => {
               <Accordion.Panel>
                 <Stack spacing="lg">
                   <VideoTutorial
-                    id="MIUH3BsvIeA"
+                    id="pbkECx-1Cos"
                     ref={iframeRefs["alert"]}
-                    si="tbnZoSLJ7eZNOeXx"
+                    si="r1KRkR0CJ3BmHOOE"
                     title="How to create an alert?"
                   />
                   {shouldConfigureCommunicationChannels && (
