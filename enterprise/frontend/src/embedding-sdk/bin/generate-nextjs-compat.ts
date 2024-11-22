@@ -15,7 +15,10 @@ type ComponentDefinition = {
 
 const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
   // eslint-disable-next-line no-literal-metabase-strings -- cli tool
-  { mainComponent: "MetabaseProvider", subComponents: [] },
+
+  // MetabaseProvider is added manually because it needs to render children while loading
+  // we may have other components that need to render children while loading, in that case we can add a flag here
+  // { mainComponent: "MetabaseProvider", subComponents: [] },
   { mainComponent: "StaticQuestion", subComponents: [] },
   {
     mainComponent: "InteractiveQuestion",
@@ -50,6 +53,29 @@ const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
 ];
 
 // END OF CONFIGURATION
+
+// eslint-disable-next-line no-literal-metabase-strings -- it's code
+const MetabaseProviderCode = `
+const MetabaseProvider = ({
+  config,
+  children,
+}) => {
+  const Provider = dynamic(
+    () =>
+      import("@metabase/embedding-sdk-react").then((m) => {
+        return { default: m.MetabaseProvider };
+      }),
+    {
+      ssr: false,
+      loading: () => {
+        return React.createElement("div", { id: "metabase-sdk-root" }, children);
+      },
+    }
+  );
+
+  return React.createElement(Provider, { config }, children);
+};
+`;
 
 const destinationDir = path.resolve(
   __dirname,
@@ -142,17 +168,29 @@ export const defineEmbeddingSdkTheme = ${defineEmbeddingSdkTheme};
 export * from "./next-no-ssr.js";
 `;
 
+// eslint-disable-next-line no-literal-metabase-strings -- it's code
 const next_no_ssr_cjs = `"use client";
 
+const React = require("react");
+
 const dynamic = require("next/dynamic").default;
+
+${MetabaseProviderCode}
+module.exports.MetabaseProvider = MetabaseProvider;
 
 
 ${generateAllComponents("cjs")}
 `;
 
+// eslint-disable-next-line no-literal-metabase-strings -- it's code
 const next_no_ssr_js = `"use client";
 
 import dynamic from "next/dynamic";
+
+const React = require("react");
+
+${MetabaseProviderCode}
+export { MetabaseProvider };
 
 ${generateAllComponents("js")}
 `;
