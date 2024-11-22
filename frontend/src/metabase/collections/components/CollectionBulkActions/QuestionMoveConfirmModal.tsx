@@ -52,7 +52,7 @@ export const QuestionMoveConfirmModal = ({
         </Flex>
       ) : (
         <>
-          <Text my="0.5rem">{t`Moving a question into a dashboard removes it from all otehr dashboards it appears in`}</Text>
+          <Text my="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
           <List>
             {cardDashboards.map(cd => {
               const card = selectedItems.find(
