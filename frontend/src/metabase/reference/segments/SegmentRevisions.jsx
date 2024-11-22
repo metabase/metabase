@@ -98,7 +98,7 @@ class SegmentRevisions extends Component {
                           <Revision
                             key={revision.id}
                             revision={revision || {}}
-                            tableMetadata={tables[entity.table_id] || {}}
+                            tableId={entity.table_id}
                             objectName={entity.name}
                             currentUser={user || {}}
                             userColor={

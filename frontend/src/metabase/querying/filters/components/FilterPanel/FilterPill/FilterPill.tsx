@@ -32,14 +32,16 @@ export const FilterPill = forwardRef(function FilterPill(
       data-testid="filter-pill"
     >
       {children}
-      <Icon
-        className={S.icon}
-        name="close"
-        size={12}
-        role="button"
-        aria-label={t`Remove`}
-        onClick={handleRemoveClick}
-      />
+      {onRemoveClick && (
+        <Icon
+          className={S.icon}
+          name="close"
+          size={12}
+          role="button"
+          aria-label={t`Remove`}
+          onClick={handleRemoveClick}
+        />
+      )}
     </Flex>
   );
 });
