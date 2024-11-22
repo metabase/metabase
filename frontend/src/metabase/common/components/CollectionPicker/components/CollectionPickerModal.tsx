@@ -24,7 +24,7 @@ export interface CollectionPickerModalProps {
   onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
-  value: Pick<CollectionPickerValueItem, "id" | "model">;
+  value: Pick<CollectionPickerValueItem, "id" | "model" | "collection_id">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
@@ -165,16 +165,11 @@ export const CollectionPickerModal = ({
 
   const parentCollectionId = useMemo(() => {
     if (canSelectItem(selectedItem)) {
-      if (
-        selectedItem.model === "dashboard" &&
-        selectedItem.collection_id !== undefined //Needed to keep type checking happy... in theory it shouldn't be undefined for model === dashboard.
-      ) {
-        return selectedItem.collection_id;
-      } else {
-        return selectedItem.id;
-      }
+      return selectedItem.model === "dashboard"
+        ? selectedItem.collection_id
+        : selectedItem.id;
     } else if (canSelectItem(value)) {
-      return value.id;
+      return value.model === "dashboard" ? value.collection_id : value.id;
     } else {
       return "root";
     }
