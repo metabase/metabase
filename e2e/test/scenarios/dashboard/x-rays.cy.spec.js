@@ -299,7 +299,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.findAllByTestId("chartsettings-field-picker")
       .contains("User → Source")
       .should("be.visible");
-    
+
     // Bars
     chartPathWithFillColor("#509EE3").should("have.length", 5);
     chartPathWithFillColor("#509EE3").eq(0).realHover();
@@ -315,8 +315,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       ],
     });
 
-    cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("chartsettings-field-picker")
+    cy.findAllByTestId("chartsettings-sidebar")
       .contains("User → Source")
       .should("be.visible");
   });
