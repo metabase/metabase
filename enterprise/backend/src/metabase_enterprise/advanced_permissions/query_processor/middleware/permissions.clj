@@ -50,9 +50,9 @@
                           card-ids))
         perms       (set/union table-perms card-perms)]
      ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
-     (or (perms :no)
-         (perms :ten-thousand-rows)
-         :one-million-rows)))
+    (or (perms :no)
+        (perms :ten-thousand-rows)
+        :one-million-rows)))
 
 (defenterprise apply-download-limit
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `ten-thousand-rows` download
