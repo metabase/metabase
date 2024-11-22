@@ -173,7 +173,7 @@
   [allow-iframes? nonce]
   (update (content-security-policy-header nonce)
           "Content-Security-Policy"
-          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
+          #(format "%s frame-ancestors %s;" % (if allow-iframes? "* ionic:"
                                                   (if-let [eao (and (embed.settings/enable-embedding-interactive)
                                                                     (embed.settings/embedding-app-origins-interactive))]
                                                     eao
