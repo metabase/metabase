@@ -1,6 +1,6 @@
 import { IndexRedirect } from "react-router";
 
-import { Route } from "metabase/hoc/Route";
+import { Route } from "metabase/hoc/Title";
 
 import MetadataEditor from "./components/MetadataEditor/MetadataEditor";
 import MetadataFieldSettings from "./components/MetadataFieldSettings";

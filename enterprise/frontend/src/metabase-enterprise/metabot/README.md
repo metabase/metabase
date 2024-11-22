@@ -19,10 +19,8 @@ These functions return partial context objects which are then shallow merged to 
 The functions may pick values off the redux state or pull in values available within their defined scope.
 Default chat context required for all requests, like the current time, can be set in base context defined in `context.tsx`.
 In OSS,`registerChatContextProvider` and `getChatContext` are no-ops, so any registered context functions will not be consumed.
-
-Some helper utils have been provided to make registering context easier in React.
-First the `useRegisterMetabotContextProvider(providerFn, providerFnDeps)` hook will automatically register/deregister a provider function from a component as it is mounted and unmounted.
-This hook is also leveraged by our custom react router `Route` component, so that you can provide a `name` and `description` prop to a `Route` definition to have that context automatically reported to the chat context.
+A helper util has been provided to make registering context easier in React. The `useRegisterMetabotContextProvider(providerFn, providerFnDeps)`
+hook will automatically register/deregister a provider function from a component as it is mounted and unmounted.
 
 ## Handling responses from Metabot
 

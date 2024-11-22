@@ -1,7 +1,7 @@
 import { IndexRedirect } from "react-router";
 import { t } from "ttag";
 
-import { Route } from "metabase/hoc/Route";
+import { Route } from "metabase/hoc/Title";
 
 import AccountApp from "./app/containers/AccountApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";

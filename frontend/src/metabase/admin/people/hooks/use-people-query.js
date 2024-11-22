@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
@@ -15,20 +15,28 @@ export const usePeopleQuery = pageSize => {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
 
   const [status, setStatus] = useState(USER_STATUS.active);
-  const [searchInputValue, setSearchInputValue] = useState("");
+  const [searchInputValue, _setSearchInputValue] = useState("");
+  const dirtyRef = useRef(false);
+  const setSearchInputValue = useCallback(setter => {
+    _setSearchInputValue(setter);
+    dirtyRef.current = true;
+  }, []);
 
   const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
-    const timerId = setTimeout(() => {
-      const searchText =
-        searchInputValue.length >= MIN_SEARCH_LENGTH ? searchInputValue : "";
+    // skip running if the user has not changed any input
+    if (dirtyRef.current === true) {
+      const timerId = setTimeout(() => {
+        const searchText =
+          searchInputValue.length >= MIN_SEARCH_LENGTH ? searchInputValue : "";
 
-      setPage(0);
-      setSearchText(searchText);
-    }, SEARCH_DEBOUNCE_DURATION);
+        setPage(0);
+        setSearchText(searchText);
+      }, SEARCH_DEBOUNCE_DURATION);
 
-    return () => clearTimeout(timerId);
+      return () => clearTimeout(timerId);
+    }
   }, [searchInputValue, setPage]);
 
   const updateStatus = status => {
