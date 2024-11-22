@@ -2,8 +2,9 @@ import type { UserId } from "metabase-types/api/user";
 
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
-import type { DashboardId } from "./dashboard";
+import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { ModerationReviewStatus } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
@@ -73,6 +74,11 @@ export interface SearchResult<
   collection: CollectionEssentials;
   table_id: TableId;
   bookmark: boolean | null;
+  dashboard:
+    | (Pick<Dashboard, "id" | "name"> & {
+        moderation_status: ModerationReviewStatus;
+      })
+    | null;
   database_id: DatabaseId;
   database_name: string | null;
   display: CardDisplayType | null;

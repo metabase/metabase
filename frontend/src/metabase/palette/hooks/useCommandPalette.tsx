@@ -308,14 +308,28 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
         }}
       />
     )} ${wrappedSearchResult.model_name}`;
+  } else if (wrappedSearchResult.model === "table") {
+    return wrappedSearchResult.table_schema
+      ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
+      : wrappedSearchResult.database_name;
+  } else if (
+    wrappedSearchResult.model === "card" &&
+    wrappedSearchResult.dashboard
+  ) {
+    return (
+      <>
+        <Icon
+          name="dashboard"
+          style={{
+            verticalAlign: "bottom",
+            marginInline: "0.25rem",
+          }}
+        />
+        {wrappedSearchResult.dashboard.name}
+      </>
+    );
   } else {
-    if (wrappedSearchResult.model === "table") {
-      return wrappedSearchResult.table_schema
-        ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
-        : wrappedSearchResult.database_name;
-    } else {
-      return wrappedSearchResult.getCollection().name;
-    }
+    return wrappedSearchResult.getCollection().name;
   }
 };
 
