@@ -400,8 +400,8 @@
 (defmethod tx/create-view-of-table! :bigquery-cloud-sdk
   [driver database view-name table-name materialized?]
   (let [database-name (get-in database [:settings :database-source-dataset-name])
-        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))
-        qualified-table (sql.tx/qualify-and-quote driver database-name (name table-name))]
+        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)
+        qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
     (apply execute! (sql/format
                      (cond->
                       {:create-view [[[:raw qualified-view]]]
@@ -413,7 +413,7 @@
 (defmethod tx/drop-view! :bigquery-cloud-sdk
   [driver database view-name materialized?]
   (let [database-name (get-in database [:settings :database-source-dataset-name])
-        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
+        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)]
     (apply execute! (sql/format
                      (cond->
                       {:drop-view [[:if-exists [:raw qualified-view]]]}

@@ -50,8 +50,8 @@
 (defmethod tx/create-view-of-table! :sql-jdbc/test-extensions
   [driver database view-name table-name materialized?]
   (let [database-name (get-in database [:settings :database-source-dataset-name])
-        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))
-        qualified-table (sql.tx/qualify-and-quote driver database-name (name table-name))]
+        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)
+        qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
                    (sql/format
                     (cond->
@@ -65,7 +65,7 @@
 (defmethod tx/drop-view! :sql-jdbc/test-extensions
   [driver database view-name materialized?]
   (let [database-name (get-in database [:settings :database-source-dataset-name])
-        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
+        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)]
     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
                    (sql/format
                     (cond->

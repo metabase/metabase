@@ -149,11 +149,11 @@
   (when materialized?
     (throw (Exception. "Material Views not supported.")))
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
-    (.createView db (name view-name) (name table-name) [])))
+    (.createView db view-name table-name [])))
 
 (defmethod tx/drop-view! :mongo
   [_driver database view-name materialized?]
   (when materialized?
     (throw (Exception. "Material Views not supported.")))
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
-    (some-> db (mongo.util/collection (name view-name)) .drop)))
+    (some-> db (mongo.util/collection view-name) .drop)))
