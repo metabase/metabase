@@ -315,8 +315,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       ],
     });
 
-    cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("chartsettings-field-picker")
+    cy.findAllByTestId("chartsettings-sidebar")
       .contains("User → Source")
       .should("be.visible");
   });

@@ -27,6 +27,7 @@ type ViewFooterProps = {
   hasVisualizeButton?: boolean;
   isNotebook: boolean;
   updateQuestion: (question: Question) => Promise<void>;
+  isNative: boolean;
 };
 
 export const ViewFooter = ({
@@ -38,10 +39,11 @@ export const ViewFooter = ({
   updateQuestion,
   isNotebook,
   hasVisualizeButton = true,
+  isNative,
 }: ViewFooterProps) => {
   const question = useSelector(getQuestion);
   const result = useSelector(getFirstQueryResult);
-  const shouldHideFooterForNativeQuestionWithoutResult = !isNotebook && !result;
+  const shouldHideFooterForNativeQuestionWithoutResult = isNative && !result;
 
   const { isShowingNotebookNativePreview } = useSelector(getUiControls);
   if (!question || shouldHideFooterForNativeQuestionWithoutResult) {
@@ -102,6 +104,7 @@ export const ViewFooter = ({
           <LeftViewFooterButtonGroup
             question={question}
             hideChartSettings={hideChartSettings}
+            isResultLoaded={!!result}
             isNotebook={isNotebook}
           />
         )}

@@ -13,7 +13,7 @@ import {
   getIsShowingRawTable,
   getIsVisualized,
 } from "metabase/query_builder/selectors";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Loader, Tooltip } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -21,11 +21,13 @@ import type Question from "metabase-lib/v1/Question";
 interface ViewFooterControlProps {
   question: Question;
   isNotebook?: boolean;
+  isResultLoaded: boolean;
 }
 
 const ViewFooterControl = ({
   question,
   isNotebook = false,
+  isResultLoaded,
 }: ViewFooterControlProps) => {
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const isActionListVisible = useSelector(getIsActionListVisible);
@@ -100,23 +102,40 @@ const ViewFooterControl = ({
           : null,
         {
           value: "table",
-          label: (
+          disabled: !isResultLoaded,
+          label: isResultLoaded ? (
             <Tooltip label={t`Results`}>
               <Icon aria-label={t`Switch to data`} name="table2" />
             </Tooltip>
+          ) : (
+            <Loader
+              color={
+                value === "table" ? "var(--mb-color-text-selected)" : undefined
+              }
+              size="xs"
+            />
           ),
         },
         {
           value: "visualization",
-          // TODO: also we need to add a spinner :boom:
-          label: (
+          disabled: !isResultLoaded,
+          label: isResultLoaded ? (
             <Tooltip label={t`Visualization`}>
               <Icon aria-label={t`Switch to visualization`} name={vizIcon} />
             </Tooltip>
+          ) : (
+            <Loader
+              color={
+                value === "visualization"
+                  ? "var(--mb-color-text-selected)"
+                  : undefined
+              }
+              size="xs"
+            />
           ),
         },
       ].filter(isNotNull),
-    [shouldShowEditorButton, vizIcon],
+    [isResultLoaded, shouldShowEditorButton, value, vizIcon],
   );
 
   return (

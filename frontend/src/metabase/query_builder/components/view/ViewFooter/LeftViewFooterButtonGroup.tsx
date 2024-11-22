@@ -19,12 +19,14 @@ import { ViewFooterControl } from "./ViewFooterControl";
 interface LeftViewFooterButtonGroupProps {
   question: Question;
   hideChartSettings?: boolean;
+  isResultLoaded: boolean;
   isNotebook: boolean;
 }
 
 export const LeftViewFooterButtonGroup = ({
   question,
   hideChartSettings = false,
+  isResultLoaded,
   isNotebook,
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
@@ -35,11 +37,18 @@ export const LeftViewFooterButtonGroup = ({
 
   const isVisualized = useSelector(getIsVisualized);
   const shouldShowChartSettingsButton =
-    !isNotebook && !hideChartSettings && (!isShowingRawTable || isVisualized);
+    !isNotebook &&
+    !hideChartSettings &&
+    (!isShowingRawTable || isVisualized) &&
+    isResultLoaded;
 
   return (
     <Flex gap="0.75rem">
-      <ViewFooterControl question={question} isNotebook={isNotebook} />
+      <ViewFooterControl
+        question={question}
+        isNotebook={isNotebook}
+        isResultLoaded={isResultLoaded}
+      />
       {shouldShowChartSettingsButton && (
         <Button
           variant={isShowingChartSettingsSidebar ? "filled" : "default"}

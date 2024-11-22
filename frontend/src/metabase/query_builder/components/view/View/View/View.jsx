@@ -248,6 +248,7 @@ const ViewInner = props => {
           updateQuestion={updateQuestion}
           className={CS.flexNoShrink}
           isNotebook={queryBuilderMode === "notebook"}
+          isNative={isNative}
         />
       </QueryBuilderViewRoot>
 
