@@ -44,7 +44,7 @@ export const BreakoutDropdownInner = ({
   }
 
   return (
-    <MultiStepPopover currentStep={step}>
+    <MultiStepPopover currentStep={step} onClose={() => setStep(null)}>
       <MultiStepPopover.Target>
         <ToolbarButton
           label={label}

@@ -271,13 +271,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "is-metabot-enabled")
-   */
-  isMetabotEnabled() {
-    return this.get("is-metabot-enabled");
-  }
-
-  /**
    * @deprecated use getSetting(state, "password-complexity")
    */
   passwordComplexityRequirements(): PasswordComplexity {

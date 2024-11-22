@@ -24,7 +24,7 @@ export const BreakoutBadgeListInner = ({
 
   return (
     <BadgeList
-      items={breakoutItems.map(item => ({ item, name: item.displayName }))}
+      items={breakoutItems.map(item => ({ item, name: item.longDisplayName }))}
       addButtonLabel={t`Add another grouping`}
       onSelectItem={onSelectItem}
       onAddItem={onAddItem}
