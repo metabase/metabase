@@ -563,7 +563,7 @@ describe("dashboard filters auto-wiring", () => {
       });
     });
 
-    it.only("should auto-wire and filter cards with foreign keys when added to the dashboard via the query builder", () => {
+    it("should auto-wire and filter cards with foreign keys when added to the dashboard via the query builder", () => {
       visitDashboard("@dashboardId");
       editDashboard();
       setFilter("ID");

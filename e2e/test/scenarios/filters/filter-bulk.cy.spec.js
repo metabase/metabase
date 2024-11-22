@@ -521,7 +521,7 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Showing 506 rows").should("be.visible");
     });
 
-    it.only("should show value picker for state", () => {
+    it("should show value picker for state", () => {
       filterFieldPopover("State").within(() => {
         cy.findByText("AZ").click();
       });

@@ -14,7 +14,6 @@ import {
   popover,
   queryWritableDB,
   resetSnowplow,
-  resetTestTable,
   restore,
   setTokenFeatures,
   uploadFile,
@@ -32,7 +31,7 @@ describeWithSnowplow(
       cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
     });
 
-    it.only("Can upload a CSV file to an empty postgres schema", () => {
+    it("Can upload a CSV file to an empty postgres schema", () => {
       const testFile = VALID_CSV_FILES[0];
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
@@ -104,12 +103,9 @@ describeWithSnowplow(
 
       cy.findByRole("complementary").findByText("public").click();
 
-      // FIXME: Perhaps revert this change since it works in CI even if not very well locally
       cy.findByTestId("admin-metadata-table-list").within(() => {
-        cy.findByText(/Queryable Table/).should("exist");
-        cy.findAllByText(/Dog Breeds/)
-          .first()
-          .should("exist");
+        cy.findByText("1 Queryable Table").should("exist");
+        cy.findByText("Dog Breeds").should("exist");
       });
     });
 
