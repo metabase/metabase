@@ -32,9 +32,7 @@
 
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]
-  ;; Remove the :native key (containing the transpiled MBQL) so that this helper function doesn't think the query is
-  ;; a native query. Actual native queries are dispatched to a different method by the :type key.
-  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids (dissoc query :native))
+  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids query)
         table-perms (if native?
                       ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                       ;; download perms
