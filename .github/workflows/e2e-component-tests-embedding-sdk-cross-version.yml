@@ -109,7 +109,7 @@ jobs:
           sparse-checkout: release
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && yarn && yarn build
-      - name: Get build dependencies
+      - name: Get latest SDK release for this branch
         uses: actions/github-script@v7
         id: dependencies
         with:

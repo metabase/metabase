@@ -101,6 +101,14 @@ export const getSdkVersionFromBranchName = (branch: string) => {
     majorVersion = 52; // TODO: automate resolving next release major version;
   }
 
+  console.log(
+    `Resolved latest major release version - ${Number(majorVersion)}`,
+  );
+
+  console.log(
+    `Looking for git tag - "embedding-sdk-0.${Number(majorVersion)}.*"`,
+  );
+
   const latestSdkTag = execSync(
     `git tag --sort taggerdate | grep -o 'embedding-sdk-0.${Number(majorVersion)}.*' | sort -r | head -1`,
   ).toString("utf8");
