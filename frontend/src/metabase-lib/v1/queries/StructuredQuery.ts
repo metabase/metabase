@@ -3,7 +3,7 @@
 /**
  * Represents a structured MBQL query.
  */
-import { chain, updateIn } from "icepick";
+import { updateIn } from "icepick";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
@@ -102,10 +102,6 @@ class StructuredQuery extends AtomicQuery {
     return this._structuredDatasetQuery.query;
   }
 
-  setQuery(query: StructuredQueryObject): StructuredQuery {
-    return this._updateQuery(() => query, []);
-  }
-
   updateQuery(
     fn: (q: StructuredQueryObject) => StructuredQueryObject,
   ): StructuredQuery {
@@ -120,25 +116,6 @@ class StructuredQuery extends AtomicQuery {
     const query = this.getMLv2Query();
     const sourceTableId = Lib.sourceTableOrCardId(query);
     return sourceTableId;
-  }
-
-  /**
-   * @returns a new query with the provided Table ID set.
-   */
-  setSourceTableId(tableId: TableId): StructuredQuery {
-    if (tableId !== this._sourceTableId()) {
-      return new StructuredQuery(
-        this._originalQuestion,
-        chain(this.datasetQuery())
-          .assoc("database", this.metadata().table(tableId).database.id)
-          .assoc("query", {
-            "source-table": tableId,
-          })
-          .value(),
-      );
-    } else {
-      return this;
-    }
   }
 
   /**
