@@ -131,13 +131,15 @@ function ActionMenu({
     );
     await dispatch(BookmarkEntity.actions.invalidateLists());
     const parent = HACK_getParentCollectionFromEntityUpdateAction(item, result);
+
+    // FIXME: doesn't work for dashboard questions
     const redirect = parent ? Urls.collection(parent) : `/collection/root`;
 
     dispatch(
       addUndo({
         icon: "check",
         message: t`${item.name} has been restored.`,
-        actionLabel: t`View in collection`,
+        actionLabel: t`View`, // could be collection or dashboard
         action: () => dispatch(push(redirect)),
         undo: false,
       }),

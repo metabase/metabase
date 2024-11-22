@@ -394,26 +394,107 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "deletedCardId" },
       );
 
+      // there has to be a card already in the trash from this dashboard for this to reproduce
       cy.get("@deletedCardId").then(deletedCardId => {
         cy.request("PUT", `/api/card/${deletedCardId}`, { archived: true });
       });
-      cy.visit("/");
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
 
+      // check that the 2 cards are there
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Total Orders");
       H.dashboardCards().findByText("Orders");
 
+      // remove the card saved inside the dashboard
       H.editDashboard();
-
       H.dashboardCards().findByText("Total Orders").realHover();
       cy.icon("close").last().click();
-
       H.undoToast().findByText("Removed card");
       H.saveDashboard();
 
+      // check that we didn't accidentally delete everything
       H.dashboardCards().findByText("Total Orders").should("not.exist");
       H.dashboardCards().findByText("Orders").should("be.visible");
-      // oops we deleted all the cards in the instance
+
+      // FIXME: oops we deleted all the cards in the instance
+    });
+
+    it("can archive and unarchive a dashboard with cards saved inside it", () => {
+      H.createQuestion({
+        name: "Total Orders",
+        database_id: SAMPLE_DATABASE.id,
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      H.createQuestion({
+        name: "More Total Orders",
+        database_id: SAMPLE_DATABASE.id,
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      // archive it
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.openDashboardMenu("Move to trash");
+      H.modal().button("Move to trash").click();
+      cy.findByTestId("archive-banner").findByText(/is in the trash/);
+      cy.findByTestId("sidebar-toggle").click();
+
+      // restore it
+      H.navigationSidebar().findByText("Trash").click();
+      H.collectionTable().findByText("Orders in a dashboard");
+      H.openCollectionItemMenu("Orders in a dashboard");
+      H.popover().findByText("Restore").click();
+
+      // it's back
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      cy.findByTestId("archive-banner").should("not.exist");
+
+      // all the cards are there too
+      H.dashboardCards().findByText("Total Orders");
+      H.dashboardCards().findByText("More Total Orders");
+      H.dashboardCards().findByText("Orders");
+    });
+
+    it("can archive and unarchive a card within a dashboard", () => {
+      H.createQuestion({
+        name: "Total Orders",
+        database_id: SAMPLE_DATABASE.id,
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      H.createQuestion({
+        name: "More Total Orders",
+        database_id: SAMPLE_DATABASE.id,
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      // archive it
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Total Orders").click();
+      H.openQuestionActions("Move to trash");
+      H.modal().button("Move to trash").click();
+
+      cy.visit("/trash");
+      H.collectionTable().findByText("Total Orders");
     });
   });
 
