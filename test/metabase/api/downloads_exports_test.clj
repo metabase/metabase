@@ -491,6 +491,68 @@
                    "" ""]]
                  (take 2 result))))))))
 
+(deftest ^:parallel pivot-export-aggregations-test
+  (testing "Row and Column Values that collide with indices don't break (#50207)"
+    (testing "Other aggregations will produce the correct values in Totals rows."
+      (let [pivot-rows-query "SELECT *
+         FROM (SELECT    4 AS A UNION ALL SELECT    3 UNION ALL SELECT    2 UNION ALL SELECT    1)
+   CROSS JOIN (SELECT 'BA' AS B UNION ALL SELECT 'BB' UNION ALL SELECT 'BC' UNION ALL SELECT 'BD')
+   CROSS JOIN (SELECT    1 AS C UNION ALL SELECT    2 UNION ALL SELECT    3 UNION ALL SELECT    4)
+   CROSS JOIN (SELECT 1 AS MEASURE)"]
+        (mt/dataset test-data
+          (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                         {:dataset_query {:database (mt/id)
+                                          :type     :native
+                                          :native
+                                          {:template-tags {}
+                                           :query         pivot-rows-query}}
+                          :result_metadata
+                          (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                     {:name         field-name
+                                      :display_name field-name
+                                      :field_ref    [:field field-name {:base-type base-type}]
+                                      :base_type    base-type}))}
+                         :model/Card pivot-card
+                         {:display                :pivot
+                          :visualization_settings {:pivot_table.column_split
+                                                   {:rows    ["B" "C"]
+                                                    :columns ["A"]
+                                                    :values  ["MEASURE"]}}
+                          :dataset_query          {:database (mt/id)
+                                                   :type     :query
+                                                   :query
+                                                   {:aggregation  [[:avg [:field "MEASURE" {:base-type :type/Integer}]]]
+                                                    :breakout
+                                                    [[:field "A" {:base-type :type/Integer}]
+                                                     [:field "B" {:base-type :type/Text}]
+                                                     [:field "C" {:base-type :type/Integer}]]
+                                                    :source-table (format "card__%s" pivot-data-card-id)}}}]
+            (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+              (is
+               (= [["B" "C" "1" "2" "3" "4" "Row totals"]
+                   ["BA" "1" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BA" "2" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BA" "3" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BA" "4" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["Totals for BA" "" "1.0" "1.0" "1.0" "1.0"]
+                   ["BB" "1" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BB" "2" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BB" "3" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BB" "4" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["Totals for BB" "" "1.0" "1.0" "1.0" "1.0"]
+                   ["BC" "1" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BC" "2" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BC" "3" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BC" "4" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["Totals for BC" "" "1.0" "1.0" "1.0" "1.0"]
+                   ["BD" "1" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BD" "2" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BD" "3" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["BD" "4" "1.0" "1.0" "1.0" "1.0" "1.0"]
+                   ["Totals for BD" "" "1.0" "1.0" "1.0" "1.0"]
+                   ["Grand totals" "" "1.0" "1.0" "1.0" "1.0" "1.0"]]
+                  result)))))))))
+
 (deftest ^:parallel zero-column-pivot-tables-test
   (testing "Pivot tables with zero columns download correctly."
     (mt/dataset test-data

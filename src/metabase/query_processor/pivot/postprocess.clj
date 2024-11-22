@@ -154,7 +154,7 @@
         (map
          (fn [[measure-key agg]]
            (let [agg-fn-key (get agg-fns measure-key :total)
-                 agg-fn     (measure->agg-fn agg-fn-key )
+                 agg-fn     (measure->agg-fn agg-fn-key)
                  new-v      (get new-values measure-key)]
              [measure-key (if new-v
                             (agg-fn agg new-v)
@@ -243,8 +243,8 @@
         row-data       (get-in data row-path)
         measure-values (vec
                         (for [measure-key pivot-measures
-                              :let [formatter (get ordered-formatters measure-key)]
-                              col-combo col-combos]
+                              :let        [formatter (get ordered-formatters measure-key)]
+                              col-combo   col-combos]
                           (fmt formatter
                                (as-> row-data m
                                  (reduce get m col-combo)
