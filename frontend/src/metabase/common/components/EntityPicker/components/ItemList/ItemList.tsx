@@ -5,7 +5,14 @@ import { t } from "ttag";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
-import { Box, Center, Flex, Icon, NavLink } from "metabase/ui";
+import {
+  Box,
+  Center,
+  Flex,
+  Icon,
+  NavLink,
+  type NavLinkProps,
+} from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
 import { getEntityPickerIcon, isSelectedItem } from "../../utils";
@@ -27,6 +34,7 @@ interface ItemListProps<
   isCurrentLevel: boolean;
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
+  navLinkProps?: (isSelected?: boolean) => NavLinkProps;
 }
 
 export const ItemList = <
@@ -43,6 +51,7 @@ export const ItemList = <
   isCurrentLevel,
   shouldDisableItem,
   shouldShowItem,
+  navLinkProps,
 }: ItemListProps<Id, Model, Item>) => {
   const filteredItems =
     items && shouldShowItem ? items.filter(shouldShowItem) : items;
@@ -105,6 +114,7 @@ export const ItemList = <
               }}
               variant={isCurrentLevel ? "default" : "mb-light"}
               mb="xs"
+              {...navLinkProps?.(isSelected)}
             />
           </div>
         );
