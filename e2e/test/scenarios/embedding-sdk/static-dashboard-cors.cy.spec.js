@@ -16,7 +16,7 @@ import {
 } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   JWT_SHARED_SECRET,
-  setupJwt,
+  enableJwtAuth,
 } from "e2e/support/helpers/e2e-jwt-helpers";
 
 const STORYBOOK_ID = "embeddingsdk-cypressstaticdashboardwithcors--default";
@@ -26,7 +26,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
-    setupJwt();
+    enableJwtAuth();
 
     const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {

@@ -7,18 +7,18 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { describeEE, updateSetting } from "e2e/support/helpers";
 import {
   DEFAULT_SDK_PROVIDER_CONFIG,
-  mockAuthProvider,
-  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+  mockAuthProviderAndJwtSignIn,
+  signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describeEE("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
+    signInAsAdminAndEnableEmbeddingSdk();
 
     cy.signOut();
 
-    mockAuthProvider();
+    mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/user/current").as("getUser");
   });

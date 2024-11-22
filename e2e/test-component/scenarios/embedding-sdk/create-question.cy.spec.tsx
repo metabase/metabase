@@ -2,19 +2,19 @@ import { CreateQuestion } from "@metabase/embedding-sdk-react";
 
 import { describeEE, entityPickerModal, modal } from "e2e/support/helpers";
 import {
-  mockAuthProvider,
+  mockAuthProviderAndJwtSignIn,
   mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdkForComponentTests,
+  signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
 describeEE("scenarios > embedding-sdk > create-question", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkForComponentTests();
+    signInAsAdminAndEnableEmbeddingSdk();
 
     cy.signOut();
-    mockAuthProvider();
+    mockAuthProviderAndJwtSignIn();
   });
 
   it("can create questions via the CreateQuestion component", () => {

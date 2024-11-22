@@ -18,7 +18,7 @@ export const DEFAULT_SDK_PROVIDER_CONFIG = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
 };
 
-export const mockAuthProvider = (user = USERS.admin) => {
+export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
   cy.intercept("GET", AUTH_PROVIDER_URL, async req => {
     try {
       const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
@@ -70,7 +70,7 @@ export function mountSdkContent(
   });
 }
 
-export function signInAsAdminAndEnableEmbeddingSdkForComponentTests() {
+export function signInAsAdminAndEnableEmbeddingSdk() {
   Cypress.config("baseUrl", METABASE_INSTANCE_URL);
 
   signInAsAdminAndEnableEmbeddingSdkForE2e();

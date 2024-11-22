@@ -1,5 +1,5 @@
 import { setTokenFeatures } from "e2e/support/helpers/e2e-enterprise-helpers";
-import { setupJwt } from "e2e/support/helpers/e2e-jwt-helpers";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 import { restore } from "e2e/support/helpers/e2e-setup-helpers";
 
 export const EMBEDDING_SDK_STORY_HOST = "http://localhost:6006/iframe.html";
@@ -9,7 +9,7 @@ export function signInAsAdminAndEnableEmbeddingSdkForE2e() {
 
   cy.signInAsAdmin();
   setTokenFeatures("all");
-  setupJwt();
+  enableJwtAuth();
   cy.request("PUT", "/api/setting", {
     "enable-embedding-sdk": true,
   });

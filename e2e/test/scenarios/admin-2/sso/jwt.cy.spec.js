@@ -6,7 +6,7 @@ import {
   setTokenFeatures,
   typeAndBlurUsingLabel,
 } from "e2e/support/helpers";
-import { setupJwt } from "e2e/support/helpers/e2e-jwt-helpers";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
   checkGroupConsistencyAfterDeletingMappings,
@@ -35,7 +35,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   });
 
   it("should allow to disable and enable jwt", () => {
-    setupJwt();
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
@@ -50,7 +50,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   });
 
   it("should allow the user to enable/disable user provisioning", () => {
-    setupJwt();
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
     getUserProvisioningInput().label.click();
@@ -61,7 +61,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   });
 
   it("should allow to reset jwt settings", () => {
-    setupJwt();
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
@@ -73,7 +73,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   });
 
   it("should allow to regenerate the jwt key and save the settings", () => {
-    setupJwt();
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.button("Regenerate key").click();
