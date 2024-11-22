@@ -200,10 +200,8 @@ For global appearance settings, such as the colors and fonts used across your en
 
 Making an embed transparent depends on the type of embed:
 
-- Dashboards: set `background=false`.
-- Questions: set `theme=transparent`.
-
-The `theme=transparent` option is still supported, but deprecated. We'll provide another (improved) option before removing this option.
+- Dashboards: set `background=false`. The `background` parameter can be combined with the `theme` parameter (e.g., `background=false&theme=night`).
+- Questions: set `theme=transparent` (deprecated, but still supported).
 
 ## Disable downloads for an embedded question or dashboard
 
