@@ -15,10 +15,7 @@ import { useInteractiveQuestionContext } from "../../../context";
 import { ToolbarButton } from "../../util/ToolbarButton";
 import { FilterPicker } from "../FilterPicker/FilterPicker";
 
-type FilterProps = Pick<
-  FilterColumnPickerProps,
-  "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
->;
+type FilterProps = Pick<FilterColumnPickerProps, "withColumnItemIcon">;
 
 const FilterDropdownInner = ({
   query,
@@ -85,11 +82,7 @@ const FilterDropdownInner = ({
   );
 };
 
-export const FilterDropdown = ({
-  withColumnItemIcon,
-  withColumnGroupIcon,
-  withCustomExpression,
-}: FilterProps) => {
+export const FilterDropdown = ({ withColumnItemIcon }: FilterProps) => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   if (!question) {
@@ -106,8 +99,6 @@ export const FilterDropdown = ({
       stageIndex={-1}
       onQueryChange={onQueryChange}
       withColumnItemIcon={withColumnItemIcon}
-      withColumnGroupIcon={withColumnGroupIcon}
-      withCustomExpression={withCustomExpression}
     />
   );
 };
