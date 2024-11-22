@@ -530,13 +530,12 @@ export class AceEditorInner extends Component<AceEditorProps> {
 
   render() {
     return (
-      <div className={S.editor}>
-        <div
-          id={ACE_ELEMENT_ID}
-          data-testid="native-query-editor"
-          ref={this.editor}
-        />
-      </div>
+      <div
+        className={S.editor}
+        id={ACE_ELEMENT_ID}
+        data-testid="native-query-editor"
+        ref={this.editor}
+      />
     );
   }
 }
