@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { Button, Checkbox, Icon, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   CollectionItemModel,
@@ -28,8 +29,8 @@ import type {
 import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
-  isMetricItem,
-  isModelItem,
+  // isMetricItem,
+  // isModelItem,
   isQuestionItem,
   isTableItem,
   isValueItem,
@@ -49,11 +50,26 @@ interface Props {
   onClose: () => void;
 }
 
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card", "dashboard"];
+const QUESTION_PICKER_MODELS: CollectionItemModel[] = [
+  "card",
+  "dataset",
+  "metric",
+];
 
-const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
-
-const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
+const QUESITON_PICKER_MODEL_FILTER_OPTIONS = [
+  {
+    label: t`Metrics`,
+    value: "metric" as const,
+  },
+  {
+    label: t`Models`,
+    value: "dataset" as const,
+  },
+  {
+    label: t`Saved questions`,
+    value: "card" as const,
+  },
+];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
@@ -73,6 +89,9 @@ export const DataPickerModal = ({
   onChange,
   onClose,
 }: Props) => {
+  const [modelFilter, setModelFilter] = useState<CollectionItemModel[]>(
+    QUESTION_PICKER_MODELS,
+  );
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const {
     hasQuestions,
@@ -85,17 +104,9 @@ export const DataPickerModal = ({
 
   const { tryLogRecentItem } = useLogRecentItem();
 
-  const modelsShouldShowItem = useMemo(() => {
-    return createShouldShowItem(["dataset"], databaseId);
-  }, [databaseId]);
-
-  const metricsShouldShowItem = useMemo(() => {
-    return createShouldShowItem(["metric"], databaseId);
-  }, [databaseId]);
-
-  const questionsShouldShowItem = useMemo(() => {
-    return createShouldShowItem(["card"], databaseId);
-  }, [databaseId]);
+  const shouldShowItem = useMemo(() => {
+    return createShouldShowItem(modelFilter, databaseId);
+  }, [databaseId, modelFilter]);
 
   const recentFilter = useCallback(
     (recentItems: RecentItem[]) => {
@@ -129,10 +140,18 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
-  const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
-  const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
+  // const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
+  // const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
+
+  const filterButton = (
+    <FilterButton
+      value={modelFilter}
+      onChange={setModelFilter}
+      options={QUESITON_PICKER_MODEL_FILTER_OPTIONS}
+    />
+  );
 
   const tabs = (function getTabs() {
     const computedTabs: EntityPickerTab<
@@ -141,49 +160,49 @@ export const DataPickerModal = ({
       DataPickerItem
     >[] = [];
 
-    if (hasModels && hasNestedQueriesEnabled && models.includes("dataset")) {
-      computedTabs.push({
-        id: "models-tab",
-        displayName: t`Models`,
-        models: ["dataset" as const],
-        folderModels: ["collection" as const],
-        icon: "model",
-        render: ({ onItemSelect }) => (
-          <QuestionPicker
-            initialValue={isModelItem(value) ? value : undefined}
-            models={MODEL_PICKER_MODELS}
-            options={options}
-            path={modelsPath}
-            shouldShowItem={modelsShouldShowItem}
-            onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
-            onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
-            onPathChange={setModelsPath}
-          />
-        ),
-      });
-    }
+    // if (hasModels && hasNestedQueriesEnabled && models.includes("dataset")) {
+    //   computedTabs.push({
+    //     id: "models-tab",
+    //     displayName: t`Models`,
+    //     model: "dataset" as const,
+    //     folderModels: ["collection" as const],
+    //     icon: "model",
+    //     render: ({ onItemSelect }) => (
+    //       <QuestionPicker
+    //         initialValue={isModelItem(value) ? value : undefined}
+    //         models={MODEL_PICKER_MODELS}
+    //         options={options}
+    //         path={modelsPath}
+    //         shouldShowItem={modelsShouldShowItem}
+    //         onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
+    //         onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
+    //         onPathChange={setModelsPath}
+    //       />
+    //     ),
+    //   });
+    // }
 
-    if (hasMetrics && hasNestedQueriesEnabled && models.includes("metric")) {
-      computedTabs.push({
-        id: "metrics-tab",
-        displayName: t`Metrics`,
-        models: ["metric" as const],
-        folderModels: ["collection" as const],
-        icon: "metric",
-        render: ({ onItemSelect }) => (
-          <QuestionPicker
-            initialValue={isMetricItem(value) ? value : undefined}
-            models={METRIC_PICKER_MODELS}
-            options={options}
-            path={metricsPath}
-            shouldShowItem={metricsShouldShowItem}
-            onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
-            onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
-            onPathChange={setMetricsPath}
-          />
-        ),
-      });
-    }
+    // if (hasMetrics && hasNestedQueriesEnabled && models.includes("metric")) {
+    //   computedTabs.push({
+    //     id: "metrics-tab",
+    //     displayName: t`Metrics`,
+    //     model: "metric" as const,
+    //     folderModels: ["collection" as const],
+    //     icon: "metric",
+    //     render: ({ onItemSelect }) => (
+    //       <QuestionPicker
+    //         initialValue={isMetricItem(value) ? value : undefined}
+    //         models={METRIC_PICKER_MODELS}
+    //         options={options}
+    //         path={metricsPath}
+    //         shouldShowItem={metricsShouldShowItem}
+    //         onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
+    //         onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
+    //         onPathChange={setMetricsPath}
+    //       />
+    //     ),
+    //   });
+    // }
 
     if (models.includes("table")) {
       computedTabs.push({
@@ -204,20 +223,25 @@ export const DataPickerModal = ({
       });
     }
 
-    if (hasQuestions && hasNestedQueriesEnabled && models.includes("card")) {
+    if (
+      (hasQuestions || hasMetrics || hasModels) &&
+      hasNestedQueriesEnabled &&
+      models.includes("card")
+    ) {
       computedTabs.push({
         id: "questions-tab",
-        displayName: t`Saved questions`,
+        displayName: t`Collections`,
         models: ["card" as const],
         folderModels: ["collection" as const],
         icon: "folder",
+        extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={isQuestionItem(value) ? value : undefined}
-            models={QUESTION_PICKER_MODELS}
+            models={modelFilter}
             options={options}
             path={questionsPath}
-            shouldShowItem={questionsShouldShowItem}
+            shouldShowItem={shouldShowItem}
             onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
             onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setQuestionsPath}
@@ -245,5 +269,38 @@ export const DataPickerModal = ({
       onItemSelect={handleItemSelect}
       isLoadingTabs={isLoadingAvailableData}
     />
+  );
+};
+
+const FilterButton = ({
+  value,
+  onChange,
+  options,
+}: {
+  value: CollectionItemModel[];
+  onChange: (value: CollectionItemModel[]) => void;
+  options: { label: string; value: CollectionItemModel }[];
+}) => {
+  return (
+    <Popover zIndex={1000}>
+      <Popover.Target>
+        <Button
+          leftIcon={<Icon name="filter" />}
+          variant="subtle"
+        >{t`Filter`}</Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Checkbox.Group value={value} onChange={onChange} px="1rem" py="0.5rem">
+          {options.map(option => (
+            <Checkbox
+              key={`filter-${value}`}
+              label={option.label}
+              value={option.value}
+              my="1rem"
+            />
+          ))}
+        </Checkbox.Group>
+      </Popover.Dropdown>
+    </Popover>
   );
 };
