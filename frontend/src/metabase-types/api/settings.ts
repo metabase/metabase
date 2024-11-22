@@ -366,11 +366,11 @@ export type UserSettings = {
  *
  * Further longer explanation:
  *
- * `null` is a backend way of deleting a value, which can backfire on frontend if we are not
- * aware of this distinction!
+ * Clojure doesn't have `undefined`. It uses `nil` to set (the default) value to (JS) `null`.
+ * This can backfire on frontend if we are not aware of this distinction!
  *
  * Do not use `undefined` when checking for a setting value! Use `null` instead.
- * Use `undefined` only when checking does the setting exist in a certain context.
+ * Use `undefined` only when checking does the setting (key) exist in a certain context.
  *
  * Contexts / Scopes:
  * Settings types are divided into contexts to make this more explicit:
