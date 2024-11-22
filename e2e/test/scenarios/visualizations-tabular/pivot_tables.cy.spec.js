@@ -1375,7 +1375,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       .and("contain", "Sum of Total");
 
     // Close the notebook editor
-    cy.button("Visualize").click();
+    cy.findByLabelText("Switch to visualization").click();
 
     cy.findByTestId("pivot-table")
       .should("contain", "User → Source")

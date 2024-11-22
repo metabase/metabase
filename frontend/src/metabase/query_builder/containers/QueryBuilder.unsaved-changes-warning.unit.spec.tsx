@@ -438,7 +438,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByLabelText("Switch to editor"));
 
       await waitFor(() => {
-        expect(screen.getByText("Visualize")).toBeInTheDocument();
+        expect(screen.getByText("View the SQL")).toBeInTheDocument();
       });
 
       expect(
@@ -785,7 +785,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByLabelText("Switch to editor"));
 
       await waitFor(() => {
-        expect(screen.getByText("Visualize")).toBeInTheDocument();
+        expect(screen.getByText("View the SQL")).toBeInTheDocument();
       });
 
       expect(

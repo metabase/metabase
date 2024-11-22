@@ -1,12 +1,7 @@
-import { t } from "ttag";
 import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
-import {
-  onOpenChartSettings,
-  setUIControls,
-  updateQuestion,
-} from "metabase/query_builder/actions";
+import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,
@@ -52,12 +47,6 @@ export const ChartTypeSidebar = ({
   });
 
   const handleSelectVisualization = (display: CardDisplayType) => {
-    // set initial chart settings to Chart section
-    dispatch(
-      onOpenChartSettings({
-        initialChartSettings: { section: t`Chart` },
-      }),
-    );
     updateQuestionVisualization(display);
   };
 
