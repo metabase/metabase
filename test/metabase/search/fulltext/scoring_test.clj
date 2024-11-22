@@ -77,7 +77,7 @@
 (defn- search-no-weights
   "Like search but with all weights set to 0."
   [ranker-key & args]
-  (mt/with-dynamic-redefs [search.config/weights #(assoc @#'search.config/default-weights ranker-key 0)]
+  (mt/with-dynamic-redefs [search.config/weights #(assoc (:default @#'search.config/static-weights) ranker-key 0)]
     (apply search* args)))
 
 (defn search [ranker-key search-string & {:as raw-ctx}]

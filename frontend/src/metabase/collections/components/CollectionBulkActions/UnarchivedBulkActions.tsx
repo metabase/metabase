@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { archiveAndTrack } from "metabase/archive/analytics";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import { BulkActionButton } from "metabase/components/BulkActionBar";
 import type { Collection, CollectionItem } from "metabase-types/api";
@@ -26,7 +27,18 @@ export const UnarchivedBulkActions = ({
   }, [selected, collection]);
 
   const handleBulkArchive = async () => {
-    const actions = selected.map(item => item.setArchived(true));
+    const actions = selected.map(item => {
+      return archiveAndTrack({
+        archive: () =>
+          item.setArchived
+            ? item.setArchived(true, { notify: false })
+            : Promise.resolve(),
+        model: item.model,
+        modelId: item.id,
+        triggeredFrom: "collection",
+      });
+    });
+
     Promise.all(actions).finally(() => clearSelected());
   };
 
