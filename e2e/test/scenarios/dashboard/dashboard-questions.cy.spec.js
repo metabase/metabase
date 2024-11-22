@@ -294,10 +294,14 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.log("Search page should show the dashboard question in the dashboard");
       H.commandPaletteSearch("Total Orders");
-      H.commandPalette()
-        .findByText("Total Orders Dashboard Question")
-        .parent()
-        .findByText(/Orders in a dashboard/)
+      H.commandPalette().should("not.exist");
+
+      cy.findAllByTestId("search-result-item")
+        .contains(
+          "[data-testid=search-result-item]",
+          "Total Orders Dashboard Question",
+        )
+        .findByRole("link", { name: /Orders in a dashboard/ })
         .should("be.visible");
     });
 
