@@ -129,7 +129,7 @@ export function assertSameBeforeAndAfterSave(assertionCallback) {
 export function assertDatasetReqIsSandboxed(options = {}) {
   const { requestAlias = "@dataset", columnId, columnAssertion } = options;
 
-  cy.wait(requestAlias).then(({ response }) => {
+  cy.get(requestAlias).then(({ response }) => {
     // check if data is reporting itself as sandboxed
     const { data } = response.body;
     expect(data.is_sandboxed).to.equal(true);
