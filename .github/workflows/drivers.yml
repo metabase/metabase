@@ -1116,3 +1116,40 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  # Dummy job generator to spit out fake runs for matrix jobs we skipped. See
+  # https://github.com/orgs/community/discussions/9141 and
+  # https://metaboat.slack.com/archives/C0669P4AF9N/p1732315370301059
+  be-driver-tests-skipped-stub:
+    needs: files-changed
+    if: |
+      !cancelled() &&
+      (github.event.pull_request.draft == true ||
+      needs.files-changed.outputs.backend_all == 'false')
+    strategy:
+      matrix:
+        job:
+          - name: "Test Postgres 12.x (App DB Tests)"
+          - name: "Test Postgres 12.x (Driver Tests)"
+          - name: "Test Postgres Latest (App DB Tests)"
+          - name: "Test Postgres Latest (Driver Tests)"
+          - name: "be-tests-mariadb-10-2-ee (0)"
+          - name: "be-tests-mariadb-10-2-ee (1)"
+          - name: "be-tests-mariadb-10-2-ee (2)"
+          - name: "be-tests-mariadb-10-2-ee (3)"
+          - name: "be-tests-mariadb-latest-ee (0)"
+          - name: "be-tests-mariadb-latest-ee (1)"
+          - name: "be-tests-mariadb-latest-ee (2)"
+          - name: "be-tests-mariadb-latest-ee (3)"
+          - name: "be-tests-mysql-8-0-ee (0)"
+          - name: "be-tests-mysql-8-0-ee (1)"
+          - name: "be-tests-mysql-8-0-ee (2)"
+          - name: "be-tests-mysql-8-0-ee (3)"
+          - name: "be-tests-mysql-latest-ee (0)"
+          - name: "be-tests-mysql-latest-ee (1)"
+          - name: "be-tests-mysql-latest-ee (2)"
+          - name: "be-tests-mysql-latest-ee (3)"
+    name: ${{ matrix.job.name }}
+    steps:
+      - run: >-
+          echo 'Skipping job due to conditional filtering'
