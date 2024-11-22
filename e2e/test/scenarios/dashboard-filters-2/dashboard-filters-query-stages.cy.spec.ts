@@ -1,6 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createQuestion,
   editDashboard,
@@ -125,7 +124,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
     createBaseQuestions();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -140,12 +138,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
     cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
       "embeddedDashboardData",
     );
-  });
-
-  afterEach(() => {
-    // changeSynchronousBatchUpdateSetting needs admin privileges and tests using public dashboards log us out
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   describe("1-stage queries", () => {
@@ -2049,7 +2041,6 @@ describe("pivot tables", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
     createBaseQuestions();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -2093,10 +2084,6 @@ describe("pivot tables", () => {
         ],
       };
     }
-  });
-
-  afterEach(() => {
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("does not use extra filtering stage for pivot tables", () => {
