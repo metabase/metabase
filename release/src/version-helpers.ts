@@ -103,9 +103,11 @@ export const getSdkVersionFromBranchName = (branch: string) => {
 
   const latestSdkTag = execSync(
     `git tag --sort taggerdate | grep -o 'embedding-sdk-0.${Number(majorVersion)}.*' | sort -r | head -1`,
-  ) as string;
+  ).toString("utf8");
 
-  console.log("latestSdkTag", latestSdkTag);
+  console.log(
+    `Resolved SDK latest release tag for v${majorVersion} - ${latestSdkTag}`,
+  );
 
   const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(latestSdkTag);
   if (match) {
