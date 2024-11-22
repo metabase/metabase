@@ -798,8 +798,8 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.findByLabelText("Font").click();
     });
 
-    // Since the select popover is rendered outside of the modal, we need to exit the modal context first.
-    popover().findByText("Oswald").click();
+    // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
+    selectDropdown().findByText("Oswald").click();
     modal().within(() => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
@@ -924,8 +924,8 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.findByLabelText("Font").click();
     });
 
-    // Since the select popover is rendered outside of the modal, we need to exit the modal context first.
-    popover().findByText("Oswald").click();
+    // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
+    selectDropdown().findByText("Oswald").click();
     modal().within(() => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
