@@ -37,7 +37,8 @@
    [metabase.xrays :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (def Dashboard
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model
@@ -45,6 +46,10 @@
   :model/Dashboard)
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
+
+(methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :dashboard]
+  [_original-model _k]
+  :model/Dashboard)
 
 (doto :model/Dashboard
   (derive :metabase/model)

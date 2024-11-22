@@ -1319,7 +1319,7 @@
 
 (deftest ^:parallel updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
-         (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE)))))
+         (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE) {}))))
 
 (deftest test-that-we-can-edit-a-card
   (t2.with-temp/with-temp [:model/Card card {:name "Original Name"}]
@@ -4094,3 +4094,24 @@
                    :model/DashboardCard _ {:card_id card-id :dashboard_id forbidden-dash-id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
       (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 (str "card/" card-id "/dashboards")))))))
+
+(deftest dashboard-questions-have-hydrated-dashboard-details
+  (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
+                 :model/Card {card-id :id} {:dashboard_id dash-id}
+                 :model/ModerationReview {mr-id :id} {:moderated_item_id   dash-id
+                                            :moderated_item_type "dashboard"
+                                            :moderator_id        (mt/user->id :rasta)
+                                            :most_recent         true
+                                            :status              "verified"
+                                            :text                "lookin good"}]
+    (is (= {:name "My Dashboard"
+            :id dash-id
+            :moderation_status "verified"}
+           (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
+               :dashboard)))
+    (t2/delete! :model/ModerationReview mr-id)
+    (is (= {:name "My Dashboard"
+            :id dash-id
+            :moderation_status nil}
+           (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
+               :dashboard)))))

@@ -394,6 +394,7 @@
 (defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions?]}]
   (-> {:select    (cond->
                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                    :dashboard_id
                     :last_used_at
                     :c.collection_id
                     :c.archived_directly
@@ -523,8 +524,9 @@
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete :dashboard_count)
+      (t2/hydrate :can_write :can_restore :can_delete :dashboard_count [:dashboard :moderation_status])
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
+      (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
@@ -797,6 +799,7 @@
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :collection_id
+   [:dashboard_id :integer]
    [:archived_directly :boolean]
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon

@@ -182,9 +182,10 @@
     (-> card
         (t2/hydrate :based_on_upload
                     :creator
-                    :dashboard_count
                     :can_write
                     :can_run_adhoc_query
+                    :dashboard_count
+                    [:dashboard :moderation_status]
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
@@ -193,10 +194,12 @@
                     :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
+        (update :dashboard #(when % (select-keys % [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
                                         ;; can_manage_db determines whether we should enable model persistence settings
                                         :can_manage_db)))))
+
 
 (defn get-card
   "Get `Card` with ID."
@@ -543,36 +546,36 @@
     (check-perms-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
-(api/defendpoint PUT "/:id"
-  "Update a `Card`."
-  [id delete_old_dashcards
-   :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                collection_position enable_embedding embedding_params result_metadata parameters
-                cache_ttl collection_preview type dashboard_id]
-         :as   card-updates} :body}]
-  {id                     ms/PositiveInt
-   name                   [:maybe ms/NonBlankString]
-   parameters             [:maybe [:sequential ms/Parameter]]
-   dataset_query          [:maybe ms/Map]
-   type                   [:maybe ::card-type]
-   display                [:maybe ms/NonBlankString]
-   description            [:maybe :string]
-   visualization_settings [:maybe ms/Map]
-   archived               [:maybe :boolean]
-   enable_embedding       [:maybe :boolean]
-   embedding_params       [:maybe ms/EmbeddingParams]
-   collection_id          [:maybe ms/PositiveInt]
-   collection_position    [:maybe ms/PositiveInt]
-   result_metadata        [:maybe analyze/ResultsMetadata]
-   cache_ttl              [:maybe ms/PositiveInt]
-   collection_preview     [:maybe :boolean]
-   dashboard_id           [:maybe ms/PositiveInt]
-   delete_old_dashcards   [:maybe :boolean]}
+(def ^:private CardUpdateSchema
+  [:map
+   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
+   [:dataset_query          {:optional true} [:maybe ms/Map]]
+   [:type                   {:optional true} [:maybe ::card-type]]
+   [:display                {:optional true} [:maybe ms/NonBlankString]]
+   [:description            {:optional true} [:maybe :string]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:archived               {:optional true} [:maybe :boolean]]
+   [:enable_embedding       {:optional true} [:maybe :boolean]]
+   [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
+   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
+   [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_preview     {:optional true} [:maybe :boolean]]
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]])
+
+(mu/defn update-card!
+  "Updates a card - impl"
+  [id :- ms/PositiveInt
+   {:keys [dataset_query
+           result_metadata
+           type] :as card-updates} :- CardUpdateSchema
+   delete-old-dashcards? :- :boolean]
   (check-if-card-can-be-saved dataset_query type)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (dissoc (api/updates-with-archived-directly card-before-update card-updates)
-                                       :delete_old_dashcards)
+        card-updates           (api/updates-with-archived-directly card-before-update card-updates)
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
@@ -598,13 +601,21 @@
           card                               (-> (card/update-card! {:card-before-update    card-before-update
                                                                      :card-updates          card-updates
                                                                      :actor                 @api/*current-user*
-                                                                     :delete-old-dashcards? delete_old_dashcards})
+                                                                     :delete-old-dashcards? delete-old-dashcards?})
                                                  hydrate-card-details
                                                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
       (when metadata-future
         (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
         (card.metadata/save-metadata-async! metadata-future card))
       card)))
+
+(api/defendpoint PUT "/:id"
+  "Update a `Card`."
+  [id delete_old_dashcards :as {body :body}]
+  {id ms/PositiveInt
+   delete_old_dashcards [:maybe :boolean]
+   body CardUpdateSchema}
+  (update-card! id body (boolean delete_old_dashcards)))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for a card."

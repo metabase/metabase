@@ -339,11 +339,13 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id :dashboard_id
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
+        [:dashboard.name :dashboard_name]
+        :dashboard_id
         bookmark-col dashboardcard-count-col))
 
 (defmethod columns-for-model "indexed-entity" [_]
