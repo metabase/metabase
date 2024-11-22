@@ -2,7 +2,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import {
   getFirstQueryResult,
   getQuestion,
@@ -21,7 +22,7 @@ import { RightViewFooterButtonGroup } from "./RightViewFooterButtonGroup";
 type ViewFooterProps = {
   className?: string;
   isResultDirty: boolean;
-  setQueryBuilderMode?: (mode: string) => void;
+  setQueryBuilderMode?: (mode: string) => Promise<void>;
   isDirty: boolean;
   runQuestionQuery: () => Promise<void>;
   hasVisualizeButton?: boolean;
@@ -41,6 +42,7 @@ export const ViewFooter = ({
   hasVisualizeButton = true,
   isNative,
 }: ViewFooterProps) => {
+  const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const result = useSelector(getFirstQueryResult);
   const shouldHideFooterForNativeQuestionWithoutResult = isNative && !result;
@@ -77,6 +79,9 @@ export const ViewFooter = ({
     if (isResultDirty) {
       await runQuestionQuery();
     }
+
+    // tell segment control in the footer to switch to visualization
+    dispatch(setUIControls({ isShowingRawTable: false }));
   }
 
   const { isEditable } = Lib.queryDisplayInfo(question.query());
