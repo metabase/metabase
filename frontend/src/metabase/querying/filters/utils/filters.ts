@@ -3,16 +3,7 @@ import * as Lib from "metabase-lib";
 
 import type { GroupItem } from "../types";
 
-export function appendStageIfAggregated(query: Lib.Query) {
-  const aggregations = Lib.aggregations(query, -1);
-  const breakouts = Lib.breakouts(query, -1);
-
-  return aggregations.length > 0 && breakouts.length > 0
-    ? Lib.appendStage(query)
-    : query;
-}
-
-function getGroupName(
+export function getGroupName(
   groupInfo: Lib.ColumnGroupDisplayInfo,
   stageIndex: number,
 ) {
