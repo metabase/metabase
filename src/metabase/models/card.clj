@@ -70,7 +70,7 @@
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
-   :parameters             mi/transform-parameters-list
+   :parameters             mi/transform-card-parameters-list
    :parameter_mappings     mi/transform-parameters-list
    :type                   mi/transform-keyword})
 
