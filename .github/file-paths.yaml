@@ -56,7 +56,6 @@ backend_ci: &backend_ci
   - ".github/actions/prepare-backend/**"
   - ".github/actions/test-driver/**"
   - ".github/workflows/backend.yml"
-  - ".github/workflows/drivers.yml"
 
 backend_presto_kerberos:
   - "**/presto_jdbc/**"
