@@ -132,12 +132,7 @@ function TippyPopover({
 
   return (
     <TippyComponent
-      className={cx(
-        "popover",
-        // FIXME: Is the theme popover zindex respected here?
-        ZIndex.FloatingElement,
-        className,
-      )}
+      className={cx("popover", ZIndex.FloatingElement, className)}
       theme="popover"
       zIndex={zIndex}
       arrow={false}
