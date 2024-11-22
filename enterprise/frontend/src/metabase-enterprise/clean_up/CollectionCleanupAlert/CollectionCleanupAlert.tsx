@@ -10,6 +10,8 @@ import { Alert, Box, Icon } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import type { Collection } from "metabase-types/api";
 
+import { getDateFilterValue } from "../CleanupCollectionModal/utils";
+
 const TEXT = {
   CLEAN_THINGS_UP: c(
     "This is the heading of a banner that invites the user to clean up a collection.",
@@ -35,6 +37,7 @@ export const CollectionCleanupAlert = ({
       ? {
           id: collection.id,
           limit: 0, // only fetch pagination info
+          before_date: getDateFilterValue("three-months"), // set to 3 months ago
         }
       : skipToken,
   );
