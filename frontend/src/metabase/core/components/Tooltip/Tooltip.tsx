@@ -99,13 +99,13 @@ function Tooltip({
   // Tippy theming API: https://atomiks.github.io/tippyjs/v6/themes/
   const theme = `tooltip ${isPadded ? "" : "no-padding"}`;
 
-  const zIndex = "var(--mb-floating-element-z-index)" as unknown as number;
+  const zIndex = "var(--mb-overlay-z-index)" as unknown as number;
 
   if (tooltip && targetProps) {
     return (
       <TippyComponent
         theme={theme}
-        className={cx("popover", ZIndex.FloatingElement, className)}
+        className={cx("popover", ZIndex.Overlay, className)}
         zIndex={zIndex}
         appendTo={appendTo}
         content={tooltip}

@@ -6,8 +6,8 @@ import {
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
 } from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
+import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import type { MantineThemeOverride } from "metabase/ui";
-import { FLOATING_ELEMENT_Z_INDEX } from "metabase/css/core/floating-elements/constants";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 
@@ -90,7 +90,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   popover: {
-    zIndex: FLOATING_ELEMENT_Z_INDEX,
+    zIndex: OVERLAY_Z_INDEX,
   },
 };
 

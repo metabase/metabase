@@ -12,7 +12,7 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
       middlewares: { shift: true, flip: true, size: true },
       transitionProps: { duration: 0 },
     },
-    classNames: { dropdown: ZIndex.FloatingElement },
+    classNames: { dropdown: ZIndex.Overlay },
     styles: () => ({
       dropdown: {
         padding: 0,

@@ -10,8 +10,8 @@ const DEFAULT_MODAL_SPACING = "lg";
 export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
     classNames: {
-      overlay: cx(ZIndex.FloatingElement, Animation.fadeIn),
-      content: cx(ZIndex.FloatingElement, Animation.popInFromBottom),
+      overlay: cx(ZIndex.Overlay, Animation.fadeIn),
+      content: cx(ZIndex.Overlay, Animation.popInFromBottom),
     },
     defaultProps: {
       padding: DEFAULT_MODAL_SPACING,

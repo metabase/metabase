@@ -128,11 +128,11 @@ function TippyPopover({
 
   const zIndex =
     theme.other.popover?.zIndex ||
-    ("var(--mb-floating-element-z-index)" as unknown as number);
+    ("var(--mb-overlay-z-index)" as unknown as number);
 
   return (
     <TippyComponent
-      className={cx("popover", ZIndex.FloatingElement, className)}
+      className={cx("popover", ZIndex.Overlay, className)}
       theme="popover"
       zIndex={zIndex}
       arrow={false}

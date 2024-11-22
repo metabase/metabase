@@ -5,7 +5,7 @@ import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Toaster from "metabase/components/Toaster";
-import { FloatingUndoList, UndoToast } from "metabase/containers/UndoListing";
+import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
 import TippyTooltip from "metabase/core/components/Tooltip";
 import { PaletteCard } from "metabase/palette/components/Palette";
 import {
@@ -69,7 +69,7 @@ const _Launchers = ({
   const note = nested ? " (nested)" : "";
   return (
     <Group>
-      <LauncherGroup title="Small floating elements">
+      <LauncherGroup title="Small overlays">
         <MantineTooltip label={"Tooltip content" + note}>
           <Button w="20rem">Mantine Tooltip {note}</Button>
         </MantineTooltip>
@@ -151,11 +151,7 @@ const _Launchers = ({
   );
 };
 
-export const FloatingElementsDemo = ({
-  enableNesting,
-}: {
-  enableNesting: boolean;
-}) => {
+export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
   const [legacyModalCount, setLegacyModalCount] = useState(0);
   const [mantineModalCount, setMantineModalCount] = useState(0);
   const [toastCount, setToastCount] = useState(0);
@@ -182,9 +178,9 @@ export const FloatingElementsDemo = ({
     <Stack p="lg">
       <Launchers />
       {undoCount > 0 && (
-        <FloatingUndoList>
+        <UndoListOverlay>
           <UndoToasts undoCount={undoCount} setUndoCount={setUndoCount} />
-        </FloatingUndoList>
+        </UndoListOverlay>
       )}
       {Array.from({ length: actionToastCount }).map((_, index) => (
         <BulkActionBarPortal

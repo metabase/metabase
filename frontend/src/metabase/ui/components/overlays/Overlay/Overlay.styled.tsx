@@ -7,6 +7,6 @@ export const getOverlayOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       withinPortal: true,
     },
-    classNames: { root: ZIndex.FloatingElement },
+    classNames: { root: ZIndex.Overlay },
   },
 });

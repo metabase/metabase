@@ -100,7 +100,7 @@ export default class Popover extends Component {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = cx(
         PopoverS.PopoverContainer,
-        ZIndex.FloatingElement,
+        ZIndex.Overlay,
         this.props.containerClassName,
       );
       this._popoverElement.dataset.testid = "popover";

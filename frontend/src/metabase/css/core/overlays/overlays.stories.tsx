@@ -16,7 +16,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { FloatingElementsDemo } from "./common";
+import { OverlaysDemo } from "./common";
 
 const mockCard = createMockCard();
 const storeInitialState = createMockState({
@@ -48,9 +48,9 @@ const ReduxDecorator = (Story: StoryFn) => {
 };
 
 export default {
-  title: "Design System/Floating items",
+  title: "Design System/Overlays",
   component: (...args: any) => {
-    return <FloatingElementsDemo {...args} />;
+    return <OverlaysDemo {...args} />;
   },
   decorators: [ReduxDecorator],
   parameters: {
@@ -63,7 +63,7 @@ type StoryProps = {
 };
 
 const Template: StoryFn<StoryProps> = args => {
-  return <FloatingElementsDemo {...args} />;
+  return <OverlaysDemo {...args} />;
 };
 
 export const Default = {

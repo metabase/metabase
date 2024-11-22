@@ -1,8 +1,8 @@
-/** @see floating-elements.stories.tsx */
-.FloatingElement {
+/** @see overlays.stories.tsx */
+.Overlay {
   /* !important is needed to override the z-index that Mantine applies. The
    * specificity hack doesn't work. */
-  z-index: var(--mb-floating-element-z-index) !important;
+  z-index: var(--mb-overlay-z-index) !important;
 }
 
 .z1 {

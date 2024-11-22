@@ -11,7 +11,7 @@ export const getHoverCardOverrides =
         withinPortal: true,
         middlewares: { shift: true, flip: true, size: true },
       },
-      classNames: { root: ZIndex.FloatingElement },
+      classNames: { root: ZIndex.Overlay },
       styles: theme => ({
         dropdown: {
           padding: 0,

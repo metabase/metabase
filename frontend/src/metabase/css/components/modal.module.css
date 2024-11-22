@@ -1,6 +1,6 @@
 .ModalContainer {
   position: absolute;
-  z-index: var(--mb-floating-element-z-index);
+  z-index: var(--mb-overlay-z-index);
 }
 
 .Modal {

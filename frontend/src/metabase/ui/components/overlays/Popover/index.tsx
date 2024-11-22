@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
-import { Guard } from "metabase/ui";
+import { PreventEagerPortal } from "metabase/ui";
 
 export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
 export { getPopoverOverrides } from "./Popover.styled";
@@ -35,13 +35,13 @@ const PopoverDropdown = function PopoverDropdown(
   }, [setupCloseHandler, removeCloseHandler, props.setupSequencedCloseHandler]);
 
   return (
-    <Guard {...props}>
+    <PreventEagerPortal {...props}>
       <MantinePopoverDropdown
         {...props}
-        className={cx(props.className, ZIndex.FloatingElement)}
+        className={cx(props.className, ZIndex.Overlay)}
         data-element-id="mantine-popover"
       />
-    </Guard>
+    </PreventEagerPortal>
   );
 };
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;

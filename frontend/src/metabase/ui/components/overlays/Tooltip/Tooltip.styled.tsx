@@ -18,7 +18,7 @@ export const getTooltipOverrides = (): MantineThemeOverride["components"] => ({
         touch: true,
       },
     },
-    classNames: { tooltip: ZIndex.FloatingElement },
+    classNames: { tooltip: ZIndex.Overlay },
     styles: theme => ({
       tooltip: {
         backgroundColor: theme.fn.themeColor("bg-black"),

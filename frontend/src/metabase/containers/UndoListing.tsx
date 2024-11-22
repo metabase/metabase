@@ -166,7 +166,7 @@ export function UndoListing() {
   }, [undos]);
 
   return (
-    <FloatingUndoList
+    <UndoListOverlay
       key={
         // Remount the list when an undo is added so that the
         // listing appears on top
@@ -181,17 +181,17 @@ export function UndoListing() {
           onDismiss={() => dispatch(dismissUndo({ undoId: undo.id }))}
         />
       ))}
-    </FloatingUndoList>
+    </UndoListOverlay>
   );
 }
 
-export const FloatingUndoList = ({ children }: { children: ReactNode }) => {
+export const UndoListOverlay = ({ children }: { children: ReactNode }) => {
   return (
     <Portal>
       <UndoList
         data-testid="undo-list"
         aria-label="undo-list"
-        className={ZIndex.FloatingElement}
+        className={ZIndex.Overlay}
       >
         {children}
       </UndoList>
