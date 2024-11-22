@@ -211,18 +211,14 @@
   (#'search.ingestion/batch-update!
     (#'search.ingestion/spec-index-reducible model where-clause)))
 
-(defn fulltext-search
-  [search-term]
-  (search.tu/search-results search-term {:search-engine "fulltext"}))
-
 (defn ingest-then-fetch!
   [model entity-name]
   (ingest! model [:= :this.name entity-name])
   (t2/query {:select [:*]
-             :from [search.index/*active-table*]
-             :where [:and
-                     [:= :name entity-name]
-                     [:= :model model]]}))
+             :from   [search.index/*active-table*]
+             :where  [:and
+                      [:= :name entity-name]
+                      [:= :model model]]}))
 
 (deftest card-ingestion-test
   (search.tu/with-temp-index-table
