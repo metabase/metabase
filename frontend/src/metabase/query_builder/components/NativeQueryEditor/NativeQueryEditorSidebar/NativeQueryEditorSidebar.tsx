@@ -40,7 +40,6 @@ interface NativeQueryEditorSidebarProps {
   isShowingTemplateTagsEditor: boolean;
   isShowingSnippetSidebar: boolean;
   isPromptInputVisible?: boolean;
-  canUsePromptInput?: boolean;
   runQuery?: () => void;
   cancelQuery?: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
@@ -60,14 +59,11 @@ export const NativeQueryEditorSidebar = (
     isResultDirty,
     isRunnable,
     isRunning,
-    isPromptInputVisible,
     nativeEditorSelectedText,
     runQuery,
     snippetCollections,
     snippets,
     features,
-    onShowPromptInput,
-    canUsePromptInput,
     onFormatQuery,
   } = props;
 
@@ -107,17 +103,6 @@ export const NativeQueryEditorSidebar = (
           />
         </Tooltip>
       )}
-      {canUsePromptInput && features.promptInput && !isPromptInputVisible ? (
-        <Tooltip tooltip={t`Ask a question`}>
-          <SidebarButton
-            aria-label={t`Ask a question`}
-            onClick={onShowPromptInput}
-            icon="insight"
-            iconSize={20}
-            onlyIcon
-          />
-        </Tooltip>
-      ) : null}
       {features.dataReference ? (
         <DataReferenceButton {...props} size={ICON_SIZE} className={CS.mt3} />
       ) : null}
