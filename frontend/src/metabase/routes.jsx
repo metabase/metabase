@@ -34,8 +34,6 @@ import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
-import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
-import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { PLUGIN_COLLECTIONS, PLUGIN_LANDING_PAGE } from "metabase/plugins";
@@ -59,7 +57,6 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
-  CanAccessMetabot,
   CanAccessSettings,
   IsAdmin,
   IsAuthenticated,
@@ -181,11 +178,6 @@ export const getRoutes = store => {
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
-          </Route>
-
-          <Route path="/metabot" component={CanAccessMetabot}>
-            <Route path="database/:databaseId" component={DatabaseMetabotApp} />
-            <Route path="model/:slug" component={ModelMetabotApp} />
           </Route>
 
           {/* MODELS */}

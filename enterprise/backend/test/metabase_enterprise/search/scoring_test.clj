@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
+   [metabase.search.fulltext.scoring-test :as fulltext.scoring-test]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]))
 
@@ -149,3 +150,33 @@
     (testing "includes both if has both features"
       (mt/with-premium-features #{:official-collections :content-verification}
         (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))
+
+(deftest fulltext-official-collection-test
+  (fulltext.scoring-test/with-index-contents
+    [{:model "collection" :id 1 :name "collection normal" :official_collection false}
+     {:model "collection" :id 2 :name "collection official" :official_collection true}]
+    (testing "official collections has higher rank"
+      (mt/with-premium-features #{:official-collections}
+        (is (= [["collection" 2 "collection official"]
+                ["collection" 1 "collection normal"]]
+               (fulltext.scoring-test/search-results :official-collection "collection")))))
+    (testing "only if feature is enabled"
+      (mt/with-premium-features #{}
+        (is (= [["collection" 1 "collection normal"]
+                ["collection" 2 "collection official"]]
+               (fulltext.scoring-test/search-results* "collection")))))))
+
+(deftest fulltext-verified-test
+  (fulltext.scoring-test/with-index-contents
+    [{:model "card" :id 1 :name "card normal" :verified false}
+     {:model "card" :id 2 :name "card verified" :verified true}]
+    (testing "verified items have higher rank"
+      (mt/with-premium-features #{:content-verification}
+        (is (= [["card" 2 "card verified"]
+                ["card" 1 "card normal"]]
+               (fulltext.scoring-test/search-results :verified "card")))))
+    (testing "only if feature is enabled"
+      (mt/with-premium-features #{}
+        (is (= [["card" 1 "card normal"]
+                ["card" 2 "card verified"]]
+               (fulltext.scoring-test/search-results* "card")))))))

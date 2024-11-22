@@ -121,7 +121,6 @@ function EntityItemMenu({
   item,
   isBookmarked,
   isXrayEnabled,
-  canUseMetabot,
   onPin,
   onMove,
   onCopy,
@@ -135,7 +134,6 @@ function EntityItemMenu({
   item: CollectionItem;
   isBookmarked?: boolean;
   isXrayEnabled?: boolean;
-  canUseMetabot?: boolean;
   onPin?: OnPin;
   onMove?: OnMove;
   onCopy?: OnCopy;
@@ -151,7 +149,6 @@ function EntityItemMenu({
   const isParameterized = isFullyParameterized(item);
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
-  const isMetabotShown = isModel && canUseMetabot;
 
   const actions = useMemo(() => {
     const result = [];
@@ -169,14 +166,6 @@ function EntityItemMenu({
         title: isBookmarked ? t`Remove from bookmarks` : c("Verb").t`Bookmark`,
         icon: "bookmark",
         action: onToggleBookmark,
-      });
-    }
-
-    if (isMetabotShown) {
-      result.push({
-        title: t`Ask Metabot`,
-        link: Urls.modelMetabot(item.id),
-        icon: "insight",
       });
     }
 
@@ -257,7 +246,6 @@ function EntityItemMenu({
     item.model,
     isPinned,
     isXrayShown,
-    isMetabotShown,
     isPreviewed,
     isParameterized,
     isBookmarked,

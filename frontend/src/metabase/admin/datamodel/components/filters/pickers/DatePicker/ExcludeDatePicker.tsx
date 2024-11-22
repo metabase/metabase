@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   getInitialDayOfWeekFilter,
   getInitialHourOfDayFilter,
@@ -36,8 +36,8 @@ type Option = {
 type Group = {
   name: string;
   displayName: string;
-  init: (filter: Filter) => any[];
-  test: (filter: Filter) => boolean;
+  init: (filter: FilterMBQL) => any[];
+  test: (filter: FilterMBQL) => boolean;
   getOptionGroups: () => Option[][];
 };
 
@@ -72,17 +72,17 @@ export const EXCLUDE_OPERATORS: Group[] = [
   },
 ];
 
-export function getHeaderText(filter: Filter) {
+export function getHeaderText(filter: FilterMBQL) {
   return getExcludeOperator(filter)?.displayName || t`Exclude...`;
 }
 
-export function getExcludeOperator(filter: Filter) {
+export function getExcludeOperator(filter: FilterMBQL) {
   return _.find(EXCLUDE_OPERATORS, ({ test }) => test(filter));
 }
 
 type Props = {
   primaryColor?: string;
-  filter: Filter;
+  filter: FilterMBQL;
   onFilterChange: (filter: any[]) => void;
   className?: string;
   onCommit: (filter: any[]) => void;

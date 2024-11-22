@@ -38,9 +38,6 @@ const SummarizeInner = ({
 
   const [currentQuery, setCurrentQuery] = useState<Lib.Query>(question.query());
 
-  // yeah we need to change this
-  const stageIndex = Lib.stageCount(currentQuery);
-
   const onApplyFilter = () => {
     if (currentQuery) {
       onQueryChange(currentQuery);
@@ -55,6 +52,7 @@ const SummarizeInner = ({
     onClose();
   };
 
+  const stageIndex = -1;
   const hasAggregations = Lib.aggregations(currentQuery, stageIndex).length > 0;
 
   return (
