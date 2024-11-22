@@ -1150,6 +1150,7 @@ jobs:
           - name: "be-tests-mysql-latest-ee (2)"
           - name: "be-tests-mysql-latest-ee (3)"
     name: ${{ matrix.job.name }}
+    runs-on: ubuntu-22.04
     steps:
       - run: >-
           echo 'Skipping job due to conditional filtering'
