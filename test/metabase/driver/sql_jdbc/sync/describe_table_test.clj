@@ -764,7 +764,7 @@
 (doseq [driver [:postgres
                 :databricks
                 :bigquery-cloud-sdk
-                #_:snowflake ;; TODO
+                :snowflake
                 #_:oracle ;; Insufficient privileges
                 :redshift]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
@@ -778,7 +778,7 @@
 (doseq [driver [:postgres
                 :mysql
                 :bigquery-cloud-sdk
-                #_:snowflake ;; TODO
+                :snowflake
                 :sql-server
                 :mongo
                 :athena
