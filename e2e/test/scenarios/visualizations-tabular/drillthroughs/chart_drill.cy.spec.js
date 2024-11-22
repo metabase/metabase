@@ -19,6 +19,7 @@ import {
   startNewQuestion,
   summarize,
   tableHeaderClick,
+  tooltip,
   visitDashboard,
   visitQuestion,
   visitQuestionAdhoc,
@@ -822,7 +823,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     cy.findAllByTestId("choropleth-feature").first().click();
 
-    popover().within(() => {
+    tooltip().within(() => {
       cy.findByText("See these People").should("be.visible");
       cy.findByText("Zoom in").should("be.visible");
 
