@@ -85,7 +85,7 @@
     box-shadow: 0 2px 3px 2px rgba(0, 0, 0, 0.08);
     border-radius: 4px;
     background-color: white;
-    color: #4c5773;
+    color: var(--mb-color-text-dark);
     width: 520px;
 
     .ace_marker-layer .ace_active-line,
@@ -102,7 +102,7 @@
   }
 
   .ace_completion-meta {
-    font-weight: 400;
+    font-weight: normal;
   }
 
   .ace_completion-highlight {
