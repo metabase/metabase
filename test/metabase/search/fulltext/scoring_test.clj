@@ -33,7 +33,7 @@
 
 (defmacro with-weights [weight-map & body]
   `(mt/with-dynamic-redefs [search.config/weights (constantly ~weight-map)]
-    ~@body))
+     ~@body))
 
 (defn search-results
   "Like search-results* but with a sanity check that search without weights returns a different result."
