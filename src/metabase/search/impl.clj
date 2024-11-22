@@ -399,8 +399,8 @@
       :engine           (:search-engine search-ctx)
       :total            (count total-results)}
 
-      (:calculate-available-models? search-ctx)
-      (assoc :available_models (model-set-fn search-ctx)))))
+     (:calculate-available-models? search-ctx)
+     (assoc :available_models (model-set-fn search-ctx)))))
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."

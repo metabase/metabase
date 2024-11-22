@@ -6,6 +6,7 @@
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -204,3 +205,41 @@
   (testing "single quotes"
     (is (= "'you''re':*"
            (search-expr "you're")))))
+
+(defn ingest!
+  [model where-clause]
+  (#'search.ingestion/batch-update!
+    (#'search.ingestion/spec-index-reducible model where-clause)))
+
+(defn fulltext-search
+  [search-term]
+  (search.tu/search-results search-term {:search-engine "fulltext"}))
+
+(defn ingest-then-fetch!
+  [model entity-name]
+  (ingest! model [:= :this.name entity-name])
+  (t2/query {:select [:*]
+             :from [search.index/*active-table*]
+             :where [:and
+                     [:= :name entity-name]
+                     [:= :model model]]}))
+
+(deftest card-ingestion-test
+  (search.tu/with-temp-index-table
+    (testing "dashboard card count"
+      (let [search-id (mt/random-name)]
+        (mt/with-temp
+          [:model/Card          {card-id :id}      {:name search-id}
+           :model/Dashboard     {dashboard-id :id} {}
+           :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}
+           :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}]
+          (is (=? [{:dashboardcard_count 2}]
+                  (ingest-then-fetch! "card" search-id))))))
+    (testing "native query"
+      (let [search-id (mt/random-name)]
+        (mt/with-temp
+          [:model/Card _ {:name        search-id
+                          :query_type "native"}]
+
+          (is (=? [{:with_native_query_vector (mt/malli=? some?)}]
+                  (ingest-then-fetch! "card" search-id))))))))
