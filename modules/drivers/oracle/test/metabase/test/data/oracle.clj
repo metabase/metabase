@@ -311,11 +311,12 @@
   [driver database view-name materialized?]
   (let [database-name (get-in database [:settings :database-source-dataset-name])
         qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
-    (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
-                   (sql/format
-                    (cond->
-                     ;; Oracle behaves as though if exists is implied
-                     {:drop-view [[[:raw qualified-view]]]}
-                      materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
-                    :dialect (sql.qp/quote-style driver))
-                   {:transaction? false})))
+    (u/ignore-exceptions
+      ;; If exists does not exist in oracle
+      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                     (sql/format
+                       (cond->
+                         {:drop-view [[[:raw qualified-view]]]}
+                         materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
+                       :dialect (sql.qp/quote-style driver))
+                     {:transaction? false}))))

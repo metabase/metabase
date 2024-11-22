@@ -764,10 +764,8 @@
 (doseq [driver [:postgres
                 :databricks
                 :bigquery-cloud-sdk
-                :h2
                 #_:snowflake ;; TODO
-                ;; system user needs priviliges
-                #_:oracle
+                :oracle
                 :redshift]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
@@ -780,7 +778,7 @@
 (doseq [driver [:postgres
                 :mysql
                 :bigquery-cloud-sdk
-                #_:snowflake
+                #_:snowflake ;; TODO
                 :sql-server
                 :mongo
                 :athena
@@ -788,8 +786,8 @@
                 :spark-sql
                 :sqlite
                 :redshift
+                :oracle
                 ;; not syncing view fields
-                #_:oracle
                 #_:vertica]]
   (defmethod driver/database-supports? [driver ::describe-view-fields]
     [_driver _feature _database]
