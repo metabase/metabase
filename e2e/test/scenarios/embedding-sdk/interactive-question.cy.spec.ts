@@ -185,8 +185,8 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
       // Open the default summarization view in the sdk
       cy.findByText("Summarize").click();
 
-      // Expect the text from the default summarization view to be there.
-      cy.contains("Group by");
+      // Expect the default summarization view to be there.
+      cy.findByTestId("summarize-aggregation-item-list").should("be.visible");
     });
 
     cy.on("uncaught:exception", error => {
