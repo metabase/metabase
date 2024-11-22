@@ -138,13 +138,13 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it("can add a filter via the FilterPicker component", () => {
+  it("can add a filter via the Filter component", () => {
     visitInteractiveQuestionStory({
       storyId:
         "embeddingsdk-interactivequestion-filterpicker--picker-in-popover",
     });
 
-    getSdkRoot().findByText("Filter").click();
+    getSdkRoot().findByText("Add another filter").click();
 
     popover().within(() => {
       cy.findByText("User ID").click();
