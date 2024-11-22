@@ -1,6 +1,12 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import { Component, createRef } from "react";
+import {
+  Component,
+  type ComponentType,
+  type RefAttributes,
+  createRef,
+  forwardRef,
+} from "react";
 import { connect } from "react-redux";
 import slugg from "slugg";
 import { t } from "ttag";
@@ -15,9 +21,9 @@ import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/json";
 
+import { useListSnippetsQuery } from "metabase/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Questions from "metabase/entities/questions";
-import Snippets from "metabase/entities/snippets";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
@@ -60,6 +66,9 @@ type SizeProps = {
 type StateProps = {
   autocompleteResultsFn?: (prefix: string) => Promise<AutocompleteItem[]>;
   cardAutocompleteResultsFn?: (prefix: string) => Promise<CardCompletionItem[]>;
+};
+
+type SnippetProps = {
   snippets?: NativeQuerySnippet[];
 };
 
@@ -511,8 +520,17 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
   },
 });
 
+function withSnippets(
+  WrappedComponent: ComponentType<SnippetProps & RefAttributes<unknown>>,
+) {
+  return forwardRef(function WithSnippets(props, ref) {
+    const { data } = useListSnippetsQuery();
+    return <WrappedComponent {...props} ref={ref} snippets={data} />;
+  });
+}
+
 export const AceEditor = _.compose(
   ExplicitSize(),
-  Snippets.loadList({ loadingAndErrorWrapper: false }),
+  withSnippets,
   connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
 )(AceEditorInner);
