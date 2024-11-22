@@ -476,7 +476,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When no objects can be found",
           }).click();
-          popover().findByText("No illustration").click();
+          selectDropdown().findByText("No illustration").click();
 
           cy.findByRole("navigation").findByText("Exit admin").click();
           appBar().findByText("New").click();
