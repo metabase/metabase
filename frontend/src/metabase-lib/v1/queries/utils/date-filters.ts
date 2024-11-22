@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import Dimension, { FieldDimension } from "metabase-lib/v1/Dimension";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   getRelativeDatetimeField,
   getRelativeDatetimeInterval,
@@ -13,7 +13,7 @@ import {
   updateRelativeDatetimeFilter,
 } from "metabase-lib/v1/queries/utils/query-time";
 
-const testTemporalUnit = (unit: string) => (filter: Filter) => {
+const testTemporalUnit = (unit: string) => (filter: FilterMBQL) => {
   const dimension = FieldDimension.parseMBQLOrWarn(filter[1]);
   if (dimension) {
     return dimension.temporalUnit() === unit;
@@ -21,18 +21,18 @@ const testTemporalUnit = (unit: string) => (filter: Filter) => {
   return filter[1]?.[2]?.["temporal-unit"] === unit;
 };
 
-function getIntervals([op, _field, value, _unit]: Filter) {
+function getIntervals([op, _field, value, _unit]: FilterMBQL) {
   return op === "time-interval" && typeof value === "number"
     ? Math.abs(value)
     : 30;
 }
 
-function getUnit([op, _field, _value, unit]: Filter) {
+function getUnit([op, _field, _value, unit]: FilterMBQL) {
   const result = op === "time-interval" && unit ? unit : "day";
   return result;
 }
 
-function getOptions([op, _field, _value, _unit, options]: Filter) {
+function getOptions([op, _field, _value, _unit, options]: FilterMBQL) {
   return (op === "time-interval" && options) || {};
 }
 
@@ -97,7 +97,7 @@ function getDateTimeFieldRef(field: Field, bucketing?: string) {
 }
 
 // add temporal-unit to fields if any of them have a time component
-function getDateTimeDimensionFromFilterAndValues(filter: Filter) {
+function getDateTimeDimensionFromFilterAndValues(filter: FilterMBQL) {
   let values = filter.slice(2).map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const dimension = getDateTimeDimensionFromFilter(filter, bucketing);
@@ -120,7 +120,7 @@ function getDateTimeDimensionFromFilterAndValues(filter: Filter) {
   return [dimension, ...values.filter(value => value !== undefined)];
 }
 
-function getOnFilterDimensionAndValues(filter: Filter) {
+function getOnFilterDimensionAndValues(filter: FilterMBQL) {
   const [op] = filter;
   const [dimension, ...values] =
     getDateTimeDimensionFromFilterAndValues(filter);
@@ -132,7 +132,7 @@ function getOnFilterDimensionAndValues(filter: Filter) {
   }
 }
 
-function getBeforeFilterDimensionAndValues(filter: Filter) {
+function getBeforeFilterDimensionAndValues(filter: FilterMBQL) {
   const [op] = filter;
   const [dimension, ...values] =
     getDateTimeDimensionFromFilterAndValues(filter);
@@ -144,12 +144,12 @@ function getBeforeFilterDimensionAndValues(filter: Filter) {
   }
 }
 
-function getAfterFilterDimensionAndValues(filter: Filter) {
+function getAfterFilterDimensionAndValues(filter: FilterMBQL) {
   const [field, ...values] = getDateTimeDimensionFromFilterAndValues(filter);
   return [field, values[0]];
 }
 
-function getBetweenFilterDimensionAndValues(filter: Filter) {
+function getBetweenFilterDimensionAndValues(filter: FilterMBQL) {
   const [op] = filter;
   const [dimension, ...values] =
     getDateTimeDimensionFromFilterAndValues(filter);
@@ -167,7 +167,7 @@ function getBetweenFilterDimensionAndValues(filter: Filter) {
   }
 }
 
-export function getPreviousDateFilter(filter: Filter) {
+export function getPreviousDateFilter(filter: FilterMBQL) {
   return (
     updateRelativeDatetimeFilter(filter, false) || [
       "time-interval",
@@ -179,7 +179,7 @@ export function getPreviousDateFilter(filter: Filter) {
   );
 }
 
-export function isPreviousDateFilter(filter: Filter) {
+export function isPreviousDateFilter(filter: FilterMBQL) {
   const [op, _field, left] = filter;
   if (op === "time-interval" && typeof left === "number" && left <= 0) {
     return true;
@@ -188,16 +188,16 @@ export function isPreviousDateFilter(filter: Filter) {
   return typeof value === "number" && value <= 0;
 }
 
-export function getCurrentDateFilter(filter: Filter) {
+export function getCurrentDateFilter(filter: FilterMBQL) {
   return ["time-interval", getDateTimeDimensionFromFilter(filter), "current"];
 }
 
-export function isCurrentDateFilter(filter: Filter) {
+export function isCurrentDateFilter(filter: FilterMBQL) {
   const [op, , value] = filter;
   return op === "time-interval" && (value === "current" || value === null);
 }
 
-export function getNextDateFilter(filter: Filter) {
+export function getNextDateFilter(filter: FilterMBQL) {
   return (
     updateRelativeDatetimeFilter(filter, true) || [
       "time-interval",
@@ -209,7 +209,7 @@ export function getNextDateFilter(filter: Filter) {
   );
 }
 
-export function isNextDateFilter(filter: Filter) {
+export function isNextDateFilter(filter: FilterMBQL) {
   const [op, _field, left] = filter;
   if (op === "time-interval" && left > 0) {
     return true;
@@ -218,55 +218,55 @@ export function isNextDateFilter(filter: Filter) {
   return typeof value === "number" && value > 0;
 }
 
-export function getBetweenDateFilter(filter: Filter) {
+export function getBetweenDateFilter(filter: FilterMBQL) {
   return ["between", ...getBetweenFilterDimensionAndValues(filter)];
 }
 
-export function isBetweenFilter(filter: Filter) {
+export function isBetweenFilter(filter: FilterMBQL) {
   const [op, , left, right] = filter;
   return (
     op === "between" && !isRelativeDatetime(left) && !isRelativeDatetime(right)
   );
 }
 
-export function getBeforeDateFilter(filter: Filter) {
+export function getBeforeDateFilter(filter: FilterMBQL) {
   return ["<", ...getBeforeFilterDimensionAndValues(filter)];
 }
 
-export function isBeforeDateFilter(filter: Filter) {
+export function isBeforeDateFilter(filter: FilterMBQL) {
   const [op] = filter;
   return op === "<";
 }
 
-export function getOnDateFilter(filter: Filter) {
+export function getOnDateFilter(filter: FilterMBQL) {
   return ["=", ...getOnFilterDimensionAndValues(filter)];
 }
 
-export function isOnDateFilter(filter: Filter) {
+export function isOnDateFilter(filter: FilterMBQL) {
   const [op] = filter;
   return op === "=";
 }
 
-export function getAfterDateFilter(filter: Filter) {
+export function getAfterDateFilter(filter: FilterMBQL) {
   return [">", ...getAfterFilterDimensionAndValues(filter)];
 }
 
-export function isAfterDateFilter(filter: Filter) {
+export function isAfterDateFilter(filter: FilterMBQL) {
   const [op] = filter;
   return op === ">";
 }
 
-export function getExcludeDateFilter(filter: Filter) {
+export function getExcludeDateFilter(filter: FilterMBQL) {
   const [op, field, ...values] = filter;
   return op === "!=" ? [op, field, ...values] : [op, field];
 }
 
-export function isExcludeDateFilter(filter: Filter) {
+export function isExcludeDateFilter(filter: FilterMBQL) {
   const [op] = filter;
   return ["!=", "is-null", "not-null"].indexOf(op) > -1;
 }
 
-export function getTodayDateFilter(filter: Filter) {
+export function getTodayDateFilter(filter: FilterMBQL) {
   return [
     "time-interval",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -276,7 +276,7 @@ export function getTodayDateFilter(filter: Filter) {
   ];
 }
 
-export function getYesterdayDateFilter(filter: Filter) {
+export function getYesterdayDateFilter(filter: FilterMBQL) {
   return [
     "time-interval",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -286,7 +286,7 @@ export function getYesterdayDateFilter(filter: Filter) {
   ];
 }
 
-export function getLastWeekDateFilter(filter: Filter) {
+export function getLastWeekDateFilter(filter: FilterMBQL) {
   return [
     "time-interval",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -296,7 +296,7 @@ export function getLastWeekDateFilter(filter: Filter) {
   ];
 }
 
-export function getLast7DaysDateFilter(filter: Filter) {
+export function getLast7DaysDateFilter(filter: FilterMBQL) {
   return [
     "time-interval",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -306,7 +306,7 @@ export function getLast7DaysDateFilter(filter: Filter) {
   ];
 }
 
-export function getLast30DaysDateFilter(filter: Filter) {
+export function getLast30DaysDateFilter(filter: FilterMBQL) {
   return [
     "time-interval",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -316,7 +316,7 @@ export function getLast30DaysDateFilter(filter: Filter) {
   ];
 }
 
-export function getLastMonthDateFilter(filter: Filter) {
+export function getLastMonthDateFilter(filter: FilterMBQL) {
   return [
     "time-interval",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -326,7 +326,7 @@ export function getLastMonthDateFilter(filter: Filter) {
   ];
 }
 
-export function getLast3MonthsDateFilter(filter: Filter) {
+export function getLast3MonthsDateFilter(filter: FilterMBQL) {
   return [
     "time-interval",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -336,7 +336,7 @@ export function getLast3MonthsDateFilter(filter: Filter) {
   ];
 }
 
-export function getLast12MonthsDateFilter(filter: Filter) {
+export function getLast12MonthsDateFilter(filter: FilterMBQL) {
   return [
     "time-interval",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -346,15 +346,15 @@ export function getLast12MonthsDateFilter(filter: Filter) {
   ];
 }
 
-export function getNotNullDateFilter(filter: Filter) {
+export function getNotNullDateFilter(filter: FilterMBQL) {
   return ["not-null", getDateTimeFieldRef(filter[1])];
 }
 
-export function getIsNullDateFilter(filter: Filter) {
+export function getIsNullDateFilter(filter: FilterMBQL) {
   return ["is-null", getDateTimeFieldRef(filter[1])];
 }
 
-export function getInitialSpecificDatesShortcut(filter: Filter) {
+export function getInitialSpecificDatesShortcut(filter: FilterMBQL) {
   return [
     "between",
     getDateTimeDimensionFromMbql(filter[1]),
@@ -363,27 +363,27 @@ export function getInitialSpecificDatesShortcut(filter: Filter) {
   ];
 }
 
-export function getInitialRelativeDatesShortcut(filter: Filter) {
+export function getInitialRelativeDatesShortcut(filter: FilterMBQL) {
   return ["time-interval", getDateTimeDimensionFromMbql(filter[1]), -30, "day"];
 }
 
-export function getInitialExcludeShortcut(filter: Filter) {
+export function getInitialExcludeShortcut(filter: FilterMBQL) {
   return ["!=", getDateTimeDimensionFromMbql(filter[1])];
 }
 
-export function getInitialDayOfWeekFilter(filter: Filter) {
+export function getInitialDayOfWeekFilter(filter: FilterMBQL) {
   return ["!=", getDateTimeFieldRef(filter[1], "day-of-week")];
 }
 
-export function getInitialMonthOfYearFilter(filter: Filter) {
+export function getInitialMonthOfYearFilter(filter: FilterMBQL) {
   return ["!=", getDateTimeFieldRef(filter[1], "month-of-year")];
 }
 
-export function getInitialQuarterOfYearFilter(filter: Filter) {
+export function getInitialQuarterOfYearFilter(filter: FilterMBQL) {
   return ["!=", getDateTimeFieldRef(filter[1], "quarter-of-year")];
 }
 
-export function getInitialHourOfDayFilter(filter: Filter) {
+export function getInitialHourOfDayFilter(filter: FilterMBQL) {
   return ["!=", getDateTimeFieldRef(filter[1], "hour-of-day")];
 }
 
