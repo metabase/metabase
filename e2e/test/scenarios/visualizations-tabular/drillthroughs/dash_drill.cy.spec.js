@@ -183,6 +183,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                       PRODUCTS.CATEGORY,
                       { "source-field": ORDERS.PRODUCT_ID },
                     ],
+                    { "stage-number": 0 },
                   ],
                 },
               ],

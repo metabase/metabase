@@ -8,6 +8,7 @@ import type {
   DatasetColumn,
   DatasetQuery,
   RowValue,
+  TableId,
 } from "metabase-types/api";
 import {
   ORDERS_ID,
@@ -55,12 +56,15 @@ export function createQuery({
 
 export const columnFinder =
   (query: Lib.Query, columns: Lib.ColumnMetadata[]) =>
-  (tableName: string, columnName: string): Lib.ColumnMetadata => {
+  (
+    tableName: string | undefined | null,
+    columnName: string,
+  ): Lib.ColumnMetadata => {
     const column = columns.find(column => {
       const displayInfo = Lib.displayInfo(query, 0, column);
 
       // for non-table columns - aggregations, custom columns
-      if (!displayInfo.table) {
+      if (!displayInfo.table || tableName == null) {
         return displayInfo.name === columnName;
       }
 
@@ -169,7 +173,7 @@ type AggregationClauseOpts =
 
 interface BreakoutClauseOpts {
   columnName: string;
-  tableName: string;
+  tableName?: string;
   temporalBucketName?: string;
   binningStrategyName?: string;
 }
@@ -298,6 +302,47 @@ export const findDrillThru = (
 interface ColumnClickObjectOpts {
   column: DatasetColumn;
 }
+
+export const getJoinQueryHelpers = (
+  query: Lib.Query,
+  stageIndex: number,
+  tableId: TableId,
+) => {
+  const table = Lib.tableOrCardMetadata(query, tableId);
+
+  const findLHSColumn = columnFinder(
+    query,
+    Lib.joinConditionLHSColumns(query, stageIndex),
+  );
+  const findRHSColumn = columnFinder(
+    query,
+    Lib.joinConditionRHSColumns(query, stageIndex, table),
+  );
+
+  const defaultStrategy = Lib.availableJoinStrategies(query, stageIndex).find(
+    strategy => Lib.displayInfo(query, stageIndex, strategy).default,
+  );
+
+  if (!defaultStrategy) {
+    throw new Error("No default strategy found");
+  }
+
+  const defaultOperator = Lib.joinConditionOperators(query, stageIndex).find(
+    operator => Lib.displayInfo(query, stageIndex, operator).default,
+  );
+
+  if (!defaultOperator) {
+    throw new Error("No default operator found");
+  }
+
+  return {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  };
+};
 
 export function createColumnClickObject({
   column,
