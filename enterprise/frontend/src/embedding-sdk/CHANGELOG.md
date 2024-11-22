@@ -1,3 +1,17 @@
+## [0.51.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.8...embedding-sdk-0.51.9) (2024-11-22)
+
+
+### Bug Fixes
+
+* **sdk:** summarize sdk component crashes with stage index errors ([#50407](https://github.com/metabase/metabase/issues/50407)) ([a679201](https://github.com/metabase/metabase/commit/a679201bdb5be3cd2593cd8f0361a5f1377b84a7)), closes [#50400](https://github.com/metabase/metabase/issues/50400)
+
+
+### Features
+
+* **sdk:** Run e2e tests using published SDK package related to target release ([#49196](https://github.com/metabase/metabase/issues/49196)) ([ad2b6cd](https://github.com/metabase/metabase/commit/ad2b6cd6921eba6fd1beb17a64a649b160715c9c))
+
+
+
 ## [0.51.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.7...embedding-sdk-0.51.8) (2024-11-21)
 
 
