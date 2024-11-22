@@ -233,10 +233,9 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     dispatch,
     dispatchApiErrorEvent,
     error,
-    object: wrappedObject,
     fetched,
     loading,
-    // alias the entities name:
+    object: wrappedObject,
     [entityAlias || entityDefinition.nameOne]: wrappedObject,
     reload: refetch,
   });
