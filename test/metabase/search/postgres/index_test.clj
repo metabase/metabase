@@ -3,8 +3,9 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.db :as mdb]
-   [metabase.search.postgres.index :as search.index]
-   [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.appdb.index :as search.index]
+   [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -35,14 +36,14 @@
                         :model/Database {db-id# :id} {:name "Indexed Database"}
                         :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
            (search.index/reset-index!)
-           (search.ingestion/populate-index!)
+           (search.ingestion/populate-index! :search.engine/fulltext)
            ~@body)))))
 
 (deftest idempotent-test
   (with-index
     (let [count-rows  (fn [] (t2/count @#'search.index/*active-table*))
           rows-before (count-rows)]
-      (search.ingestion/populate-index!)
+      (search.ingestion/populate-index! :search.engine/fulltext)
       (is (= rows-before (count-rows))))))
 
 ;; Disabled due to CI issue
@@ -129,55 +130,10 @@
     (testing "only sometimes do these occur sequentially in a phrase"
       (is (= 1 (index-hits "\"projected revenue\""))))))
 
-;; lower level search expression tests
-
-(def search-expr #'search.index/to-tsquery-expr)
-
-(deftest to-tsquery-expr-test
-  (is (= "'a' & 'b' & 'c':*"
-         (search-expr "a b c")))
-
-  (is (= "'a' & 'b' & 'c':*"
-         (search-expr "a AND b AND c")))
-
-  (is (= "'a' & 'b' & 'c'"
-         (search-expr "a b \"c\"")))
-
-  (is (= "'a' & 'b' | 'c':*"
-         (search-expr "a b or c")))
-
-  (is (= "'this' & !'that':*"
-         (search-expr "this -that")))
-
-  (is (= "'a' & 'b' & 'c' <-> 'd' & 'e' | 'b' & 'e':*"
-         (search-expr "a b \" c d\" e or b e")))
-
-  (is  (= "'ab' <-> 'and' <-> 'cde' <-> 'f' | !'abc' & 'def' & 'ghi' | 'jkl' <-> 'mno' <-> 'or' <-> 'pqr'"
-          (search-expr "\"ab and cde f\" or -abc def AND ghi OR \"jkl mno OR pqr\"")))
-
-  (is (= "'big' & 'data' | 'business' <-> 'intelligence' | 'data' & 'wrangling':*"
-         (search-expr "Big Data oR \"Business Intelligence\" OR data and wrangling")))
-
-  (testing "unbalanced quotes"
-    (is (= "'big' <-> 'data' & 'big' <-> 'mistake':*"
-           (search-expr "\"Big Data\" \"Big Mistake")))
-    (is (= "'something'"
-           (search-expr "something \""))))
-
-  (is (= "'partial' <-> 'quoted' <-> 'and' <-> 'or' <-> '-split':*"
-         (search-expr "\"partial quoted AND OR -split")))
-
-  (testing "dangerous characters"
-    (is (= "'you' & '<-' & 'pointing':*"
-           (search-expr "you <- pointing"))))
-
-  (testing "single quotes"
-    (is (= "'you''re':*"
-           (search-expr "you're")))))
-
 (defn ingest!
   [model where-clause]
-  (#'search.ingestion/batch-update!
+  (#'search.engine/consume!
+   :search.engine/fulltext
    (#'search.ingestion/spec-index-reducible model where-clause)))
 
 (defn ingest-then-fetch!

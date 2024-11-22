@@ -343,6 +343,8 @@
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search
+                                     ;; deprecating naked metabase.search namespace in favor of this.
+                                     metabase.search.core
                                      metabase.search.spec}
     metabase.server                #{metabase.server
                                      metabase.server.handler

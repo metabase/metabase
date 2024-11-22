@@ -21,9 +21,9 @@
    [metabase.models.revision :as revision]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search :as search]
+   [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
-   [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.core :as search]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.search.postgres.index :as search.index]
    [metabase.test :as mt]
@@ -33,7 +33,7 @@
 
 (comment
   ;; We need this to ensure the engine hierarchy is registered
-  search.fulltext/keep-me)
+  search.engines.appdb/keep-me)
 
 (set! *warn-on-reflection* true)
 
