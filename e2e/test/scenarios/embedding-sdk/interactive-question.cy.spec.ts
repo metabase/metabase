@@ -173,4 +173,25 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().contains("onBeforeSave is called");
     getSdkRoot().contains("question saved as Sample Orders 4");
   });
+
+  it("should not crash when clicking on Summarize", () => {
+    visitInteractiveQuestionStory();
+
+    cy.wait("@cardQuery").then(({ response }) => {
+      expect(response?.statusCode).to.equal(202);
+    });
+
+    getSdkRoot().within(() => {
+      // Open the default summarization view in the sdk
+      cy.findByText("Summarize").click();
+
+      // Expect the text from the default summarization view to be there.
+      cy.contains("Group by");
+      cy.contains("Sum of Total");
+    });
+
+    cy.on("uncaught:exception", error => {
+      expect(error.message.includes("Stage 1 does not exist")).to.be.false;
+    });
+  });
 });
