@@ -40,6 +40,7 @@ import {
   rightSidebar,
   saveDashboard,
   saveQuestion,
+  selectDropdown,
   setModelMetadata,
   showDashboardCardActions,
   sidebar,
@@ -1850,8 +1851,11 @@ describe("issue 45063", () => {
     popover()
       .findByPlaceholderText(`Search by ${fieldDisplayName}`)
       .type(fieldValueLabel);
-    popover().last().findByText(fieldValueLabel).click();
-    popover().first().click().button("Add filter").click();
+    selectDropdown().findByText(fieldValueLabel).click();
+    cy.findByTestId("number-filter-picker")
+      .click()
+      .button("Add filter")
+      .click();
     cy.findByTestId("qb-filters-panel")
       .findByText(`${fieldDisplayName} is ${fieldValue}`)
       .should("be.visible");
