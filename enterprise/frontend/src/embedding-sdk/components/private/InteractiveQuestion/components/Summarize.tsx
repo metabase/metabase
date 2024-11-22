@@ -52,7 +52,8 @@ const SummarizeInner = ({
     onClose();
   };
 
-  const hasAggregations = Lib.aggregations(currentQuery, -1).length > 0;
+  const stageIndex = -1;
+  const hasAggregations = Lib.aggregations(currentQuery, stageIndex).length > 0;
 
   return (
     <Stack className={CS.overflowHidden} h="100%" w="100%">
@@ -60,14 +61,14 @@ const SummarizeInner = ({
         <SummarizeAggregationItemList
           query={currentQuery}
           onQueryChange={setCurrentQuery}
-          stageIndex={-1}
+          stageIndex={stageIndex}
         />
         <Divider my="lg" />
         {hasAggregations && (
           <SummarizeBreakoutColumnList
             query={currentQuery}
             onQueryChange={setCurrentQuery}
-            stageIndex={-1}
+            stageIndex={stageIndex}
           />
         )}
       </Stack>
