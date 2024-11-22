@@ -183,29 +183,11 @@ function getAvailableDimensions({
   return results;
 }
 
-export function formatLegacyDimensionName(
-  dimension: Dimension,
-  options: object,
-) {
-  return formatIdentifier(getDimensionName(dimension), options);
-}
-
 export function formatDimensionName(
   dimensionName: string,
   options: Record<string, any>,
 ) {
   return formatIdentifier(getDisplayNameWithSeparator(dimensionName), options);
-}
-
-/**
- * TODO -- this doesn't really return the dimension *name*, does it? It returns the 'rendered' dimension description
- * with the FK symbol (→) replaced with a different character.
- */
-function getDimensionName(
-  dimension: Dimension,
-  separator = EDITOR_FK_SYMBOLS.default,
-) {
-  return dimension.render().replace(` ${FK_SYMBOL} `, separator);
 }
 
 export function getDisplayNameWithSeparator(
