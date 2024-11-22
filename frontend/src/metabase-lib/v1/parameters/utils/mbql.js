@@ -56,6 +56,16 @@ const timeParameterValueDeserializers = [
       ];
       return setStartingFrom(base, parseInt(matches[2]), matches[3]);
     },
+    deserializeMBQL: (matches, fieldRef) => {
+      return [
+        "relative-time-interval",
+        fieldRef,
+        -parseInt(matches[0]),
+        matches[1],
+        -parseInt(matches[2]),
+        matches[3],
+      ];
+    },
   },
   {
     testRegex: /^past([0-9]+)([a-z]+)s(~)?$/,
@@ -74,6 +84,16 @@ const timeParameterValueDeserializers = [
         matches[1],
       ];
       return setStartingFrom(base, -parseInt(matches[2]), matches[3]);
+    },
+    deserializeMBQL: (matches, fieldRef) => {
+      return [
+        "relative-time-interval",
+        fieldRef,
+        parseInt(matches[0]),
+        matches[1],
+        parseInt(matches[2]),
+        matches[3],
+      ];
     },
   },
   {
@@ -131,7 +151,14 @@ const timeParameterValueDeserializers = [
   },
 ];
 
-export function dateParameterValueToMBQL(parameterValue, fieldRef) {
+// legacy `DatePicker` relies on the broken MBQL produced by `deserialize`
+// we fix relative date filters with a new `deserializeMBQL` function and
+// `isDatePicker` flag
+export function dateParameterValueToMBQL(
+  parameterValue,
+  fieldRef,
+  isDatePicker = true,
+) {
   const deserializer = timeParameterValueDeserializers.find(des =>
     des.testRegex.test(parameterValue),
   );
@@ -140,7 +167,10 @@ export function dateParameterValueToMBQL(parameterValue, fieldRef) {
     const substringMatches = deserializer.testRegex
       .exec(parameterValue)
       .splice(1);
-    return deserializer.deserialize(substringMatches, fieldRef);
+    const deserialize = isDatePicker
+      ? deserializer.deserialize
+      : (deserializer.deserializeMBQL ?? deserializer.deserialize);
+    return deserialize(substringMatches, fieldRef);
   } else {
     return null;
   }
@@ -207,7 +237,7 @@ function filterParameterToMBQL(query, stageIndex, parameter) {
   const fieldRef = Lib.legacyRef(query, stageIndex, column);
 
   if (isDateParameter(parameter)) {
-    return dateParameterValueToMBQL(parameter.value, fieldRef);
+    return dateParameterValueToMBQL(parameter.value, fieldRef, false);
   } else if (Lib.isNumeric(column)) {
     return numberParameterValueToMBQL(parameter, fieldRef);
   } else {
