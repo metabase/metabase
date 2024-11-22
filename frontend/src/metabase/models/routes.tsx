@@ -2,7 +2,7 @@ import { IndexRedirect, Redirect } from "react-router";
 
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Route";
+import { Route } from "metabase/hoc/Title";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage/ModelDetailPage";
 
 export const getRoutes = () => (

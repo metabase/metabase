@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Route } from "metabase/hoc/Route";
+import { Route } from "metabase/hoc/Title";
 import { PLUGIN_ADMIN_TOOLS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
