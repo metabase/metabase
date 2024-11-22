@@ -160,7 +160,7 @@ export const QuestionPicker = ({
         onPathChange(newPath);
       }
     },
-    [currentCollection, userPersonalCollectionId, onPathChange],
+    [currentCollection, userPersonalCollectionId, onPathChange, models],
   );
 
   useEnsureCollectionSelected({
