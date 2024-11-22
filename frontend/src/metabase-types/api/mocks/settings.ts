@@ -201,7 +201,6 @@ export const createMockSettings = (
   "google-auth-configured": false,
   "google-auth-enabled": false,
   "is-hosted?": false,
-  "is-metabot-enabled": false,
   "jwt-enabled": false,
   "jwt-configured": false,
   "ldap-configured?": false,

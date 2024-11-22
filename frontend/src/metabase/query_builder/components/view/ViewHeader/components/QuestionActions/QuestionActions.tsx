@@ -2,7 +2,6 @@ import type { ChangeEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
@@ -10,8 +9,6 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import {
   PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
@@ -76,7 +73,6 @@ export const QuestionActions = ({
   onInfoClick,
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
 
   const dispatch = useDispatch();
 
@@ -92,7 +88,6 @@ export const QuestionActions = ({
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
   const hasCollectionPermissions = question.canWrite();
-  const database = question.database();
   const canAppend =
     hasCollectionPermissions && !!question._card.based_on_upload;
   const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
@@ -128,19 +123,6 @@ export const QuestionActions = ({
       icon: "add_to_dash",
       action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
       testId: ADD_TO_DASH_TESTID,
-    });
-  }
-
-  if (
-    isMetabotEnabled &&
-    isModel &&
-    database &&
-    canUseMetabotOnDatabase(database)
-  ) {
-    extraButtons.push({
-      title: t`Ask Metabot`,
-      icon: "insight",
-      link: Urls.modelMetabot(question.id()),
     });
   }
 

@@ -315,7 +315,6 @@ interface PublicSettings {
   "help-link-custom-destination": string;
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
-  "is-metabot-enabled": boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "ldap-port": number;

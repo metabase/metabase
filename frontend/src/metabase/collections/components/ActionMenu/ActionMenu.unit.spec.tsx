@@ -13,7 +13,6 @@ import type {
 import {
   createMockCollection,
   createMockCollectionItem,
-  createMockDatabase,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -27,7 +26,6 @@ interface SetupOpts {
   collection?: Collection;
   databases?: Database[];
   isXrayEnabled?: boolean;
-  isMetabotEnabled?: boolean;
 }
 
 const setup = ({
@@ -35,7 +33,6 @@ const setup = ({
   collection = createMockCollection({ can_write: true }),
   databases = [],
   isXrayEnabled = false,
-  isMetabotEnabled = false,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -43,7 +40,6 @@ const setup = ({
     }),
     settings: createMockSettingsState({
       "enable-xrays": isXrayEnabled,
-      "is-metabot-enabled": isMetabotEnabled,
     }),
   });
 
@@ -228,94 +224,6 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("metabot", () => {
-    const setupMetabot = (
-      isEnabled: boolean,
-      databaseOpts: Partial<Database>,
-    ) => {
-      const database = createMockDatabase({
-        id: 1,
-        ...databaseOpts,
-      });
-
-      const item = createMockCollectionItem({
-        id: 1,
-        model: "dataset",
-        database_id: database.id,
-      });
-
-      setup({
-        item,
-        databases: [database],
-        isMetabotEnabled: isEnabled,
-      });
-    };
-
-    it("should allow to ask metabot when it is enabled and there is native write access", async () => {
-      setupMetabot(true, {
-        native_permissions: "write",
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot when it is not enabled but there is native write access", async () => {
-      setupMetabot(false, {
-        native_permissions: "write",
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot when it is enabled but there is no native write access", async () => {
-      setupMetabot(true, {
-        native_permissions: "none",
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot for non-sql databases", async () => {
-      setupMetabot(true, {
-        engine: "mongo",
-        native_permissions: "write",
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot for sql databases without nested-queries support", async () => {
-      setupMetabot(true, {
-        native_permissions: "write",
-        features: [],
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-    });
-
-    it("should not allow to ask metabot when it is enabled but there is no data access", async () => {
-      const item = createMockCollectionItem({
-        id: 1,
-        model: "dataset",
-        database_id: 1,
-      });
-
-      setup({
-        item,
-        databases: [],
-        isMetabotEnabled: true,
-      });
-
-      await userEvent.click(getIcon("ellipsis"));
-      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
     });
   });
 });

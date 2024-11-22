@@ -24,7 +24,6 @@ import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { addUndo } from "metabase/redux/undo";
 import { getSetting } from "metabase/selectors/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -47,7 +46,6 @@ export interface ActionMenuProps {
 
 interface ActionMenuStateProps {
   isXrayEnabled: boolean;
-  isMetabotEnabled: boolean;
 }
 
 function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
@@ -70,18 +68,15 @@ function normalizeItemModel(item: CollectionItem) {
 function mapStateToProps(state: State): ActionMenuStateProps {
   return {
     isXrayEnabled: getSetting(state, "enable-xrays"),
-    isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
   };
 }
 
 function ActionMenu({
   className,
   item,
-  databases,
   bookmarks,
   collection,
   isXrayEnabled,
-  isMetabotEnabled,
   onCopy,
   onMove,
   createBookmark,
@@ -89,11 +84,7 @@ function ActionMenu({
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  const database = databases?.find(({ id }) => id === item.database_id);
-
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
@@ -101,8 +92,6 @@ function ActionMenu({
   const canRestore = item.can_restore;
   const canDelete = item.can_delete;
   const canCopy = onCopy && canCopyItem(item);
-  const canUseMetabot =
-    database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
@@ -172,7 +161,6 @@ function ActionMenu({
         item={item}
         isBookmarked={isBookmarked}
         isXrayEnabled={!item.archived && isXrayEnabled}
-        canUseMetabot={canUseMetabot}
         onPin={canPin ? handlePin : undefined}
         onMove={canMove ? handleMove : undefined}
         onCopy={canCopy ? handleCopy : undefined}
