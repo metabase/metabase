@@ -2362,3 +2362,36 @@
                (:here
                 (first
                  (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show_dashboard_questions=true")))))))))))
+
+(deftest dashboard-questions-have-dashboard-hydrated
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id
+                                   dash-name :name} {:collection_id coll-id}
+                 :model/Card _ {:dashboard_id dash-id}]
+    (testing "The card's dashboard details are hydrated"
+      (is (= {:name dash-name
+              :id dash-id
+              :moderation_reviews []}
+             (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+                  :data
+                  (filter #(= (:model %) "card"))
+                  first
+                  :dashboard))))
+    (testing "If there are moderation reviews they're included too"
+      (mt/with-temp [:model/ModerationReview _ {:moderated_item_type "dashboard"
+                                                :moderated_item_id   dash-id
+                                                :status              "verified"
+                                                :moderator_id        (mt/user->id :rasta)
+                                                :most_recent         true}]
+        (is (= [{:moderated_item_type "dashboard"
+                 :moderated_item_id   dash-id
+                 :status              "verified"
+                 :moderator_id        (mt/user->id :rasta)
+                 :most_recent         true}]
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+                    :data
+                    (filter #(= (:model %) "card"))
+                    first
+                    :dashboard
+                    :moderation_reviews
+                    (map #(select-keys % [:moderated_item_type :moderated_item_id :status :moderator_id :most_recent])))))))))
