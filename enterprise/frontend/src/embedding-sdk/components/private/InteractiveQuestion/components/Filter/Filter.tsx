@@ -6,7 +6,7 @@ import { Group, Popover } from "metabase/ui";
 
 import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
 
-import { FilterBar } from "./FilterBar";
+import { DropdownFilterBadgeList } from "./DropdownFilterBadgeList";
 import { FilterPicker } from "./FilterPicker";
 
 export type FilterProps = Pick<
@@ -31,7 +31,7 @@ const AddFilterPopover = () => {
 
 export const Filter = ({ withColumnItemIcon }: FilterProps) => (
   <Group>
-    <FilterBar withColumnGroupIcon={withColumnItemIcon} />
+    <DropdownFilterBadgeList withColumnGroupIcon={withColumnItemIcon} />
     <AddFilterPopover />
   </Group>
 );

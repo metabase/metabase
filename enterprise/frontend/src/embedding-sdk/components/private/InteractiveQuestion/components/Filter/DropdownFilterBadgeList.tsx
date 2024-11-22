@@ -6,7 +6,9 @@ import type { FilterProps } from "./Filter";
 import { FilterPicker } from "./FilterPicker";
 import { useFilterData } from "./hooks/use-filter-data";
 
-export const FilterBar = ({ withColumnItemIcon }: FilterProps) => {
+export const DropdownFilterBadgeList = ({
+  withColumnItemIcon,
+}: FilterProps) => {
   const filterItems = useFilterData();
 
   return (
