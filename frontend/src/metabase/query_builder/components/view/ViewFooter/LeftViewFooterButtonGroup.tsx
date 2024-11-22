@@ -37,6 +37,7 @@ export const LeftViewFooterButtonGroup = ({
 
   const isVisualized = useSelector(getIsVisualized);
   const shouldShowChartSettingsButton =
+    !isNotebook &&
     !hideChartSettings &&
     (!isShowingRawTable || isVisualized) &&
     isResultLoaded;
