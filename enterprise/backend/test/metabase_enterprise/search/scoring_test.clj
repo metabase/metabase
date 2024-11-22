@@ -159,12 +159,12 @@
       (mt/with-premium-features #{:official-collections}
         (is (= [["collection" 2 "collection official"]
                 ["collection" 1 "collection normal"]]
-               (fulltext.scoring-test/search :official-collection "collection")))))
+               (fulltext.scoring-test/search-results* "collection")))))
     (testing "only if feature is enabled"
       (mt/with-premium-features #{}
         (is (= [["collection" 1 "collection normal"]
                 ["collection" 2 "collection official"]]
-               (fulltext.scoring-test/search* "collection")))))))
+               (fulltext.scoring-test/search-results* "collection")))))))
 
 (deftest fulltext-verified-test
   (fulltext.scoring-test/with-index-contents
@@ -174,9 +174,9 @@
       (mt/with-premium-features #{:content-verification}
         (is (= [["card" 2 "card verified"]
                 ["card" 1 "card normal"]]
-               (fulltext.scoring-test/search :verified "card")))))
+               (fulltext.scoring-test/search-results* "card")))))
     (testing "only if feature is enabled"
       (mt/with-premium-features #{}
         (is (= [["card" 1 "card normal"]
                 ["card" 2 "card verified"]]
-               (fulltext.scoring-test/search* "card")))))))
+               (fulltext.scoring-test/search-results* "card")))))))
