@@ -273,7 +273,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should not crash when clicking on Summarize (metabase#50398)", () => {
-    visitInteractiveQuestionStory();
+    mountInteractiveQuestion();
 
     cy.wait("@cardQuery").then(({ response }) => {
       expect(response?.statusCode).to.equal(202);
