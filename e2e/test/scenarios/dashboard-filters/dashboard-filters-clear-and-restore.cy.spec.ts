@@ -7,7 +7,6 @@ import {
   popover,
   restore,
   saveDashboard,
-  selectDropdown,
   setFilter,
   setFilterListSource,
   sidebar,
@@ -81,8 +80,8 @@ function editFilter(name: string) {
 
 function editFilterType(type: string, subType: string) {
   sidebar().findByText("Filter or parameter type").next().click();
-  selectDropdown().findByText(type).click();
+  popover().findByText(type).click();
 
   sidebar().findByText("Filter operator").next().click();
-  selectDropdown().findByText(subType).click();
+  popover().findByText(subType).click();
 }

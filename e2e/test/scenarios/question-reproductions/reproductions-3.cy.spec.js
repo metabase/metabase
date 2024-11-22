@@ -40,7 +40,6 @@ import {
   rightSidebar,
   saveDashboard,
   saveQuestion,
-  selectDropdown,
   setModelMetadata,
   showDashboardCardActions,
   sidebar,
@@ -1851,7 +1850,7 @@ describe("issue 45063", () => {
     popover()
       .findByPlaceholderText(`Search by ${fieldDisplayName}`)
       .type(fieldValueLabel);
-    selectDropdown().findByText(fieldValueLabel).click();
+    popover().findByText(fieldValueLabel).click();
     cy.findByTestId("number-filter-picker")
       .click()
       .button("Add filter")

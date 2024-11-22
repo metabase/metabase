@@ -20,7 +20,6 @@ import {
   restore,
   resyncDatabase,
   saveQuestion,
-  selectDropdown,
   startNewQuestion,
   summarize,
   visitAlias,
@@ -843,7 +842,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         .contains(/Total\s+is less than/)
         .click();
       popover().findByTestId("operator-select").click();
-      selectDropdown().contains("Greater than").click();
+      popover().contains("Greater than").click();
       popover()
         .findByTestId("field-values-widget")
         .find("input")

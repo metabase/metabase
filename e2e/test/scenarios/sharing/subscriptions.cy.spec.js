@@ -18,7 +18,6 @@ import {
   popover,
   removeMultiAutocompleteValue,
   restore,
-  selectDropdown,
   sendEmailAndAssert,
   sendEmailAndVisitIt,
   setFilter,
@@ -788,7 +787,7 @@ function addParametersToDashboard() {
     multiAutocompleteInput().type("Corbin");
   });
 
-  selectDropdown().findByText("Corbin Mertz").click();
+  popover().findByText("Corbin Mertz").click();
 
   popover().contains("Add filter").click({ force: true });
 

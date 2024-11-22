@@ -2,8 +2,8 @@ import _ from "underscore";
 
 import {
   describeEE,
+  popover,
   restore,
-  selectDropdown,
   setTokenFeatures,
 } from "e2e/support/helpers";
 import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
@@ -104,7 +104,7 @@ describeEE("scenarios > admin > performance > schedule strategy", () => {
           } else {
             getScheduleComponent(componentType).click();
 
-            selectDropdown().within(() => {
+            popover().within(() => {
               cy.findByText(optionToClick).click();
             });
           }

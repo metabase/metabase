@@ -1,5 +1,4 @@
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
-const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 import {
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
@@ -19,11 +18,11 @@ import {
   popover,
   resetSnowplow,
   restore,
-  selectDropdown,
   setTokenFeatures,
   undo,
   visitCollection,
 } from "e2e/support/helpers";
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > collections > clean up", () => {
   beforeEach(() => {
@@ -312,7 +311,7 @@ const selectCleanThingsUpCollectionAction = () => {
 };
 const setDateFilter = timeSpan => {
   dateFilter().click();
-  selectDropdown().findByText(timeSpan).click();
+  popover().findByText(timeSpan).click();
 };
 
 const selectAllItems = () => {

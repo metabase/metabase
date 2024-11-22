@@ -5,9 +5,9 @@ import {
   createNativeQuestion,
   filterWidget,
   openStaticEmbeddingModal,
+  popover,
   publishChanges,
   restore,
-  selectDropdown,
   setEmbeddingParameter,
   visitEmbeddedPage,
   visitIframe,
@@ -104,7 +104,7 @@ describe("scenarios > embedding > native questions", () => {
       // Created At: Q2 2023
       filterWidget().contains("Created At").click();
       cy.findByTestId("select-year-picker").click();
-      selectDropdown().contains("2023").click();
+      popover().contains("2023").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
 

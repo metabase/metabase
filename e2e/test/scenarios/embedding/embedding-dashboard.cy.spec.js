@@ -25,7 +25,6 @@ import {
   publishChanges,
   restore,
   saveDashboard,
-  selectDropdown,
   setEmbeddingParameter,
   setTokenFeatures,
   sidebar,
@@ -145,7 +144,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      selectDropdown().findByText("Lina Heaney").click();
+      popover().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -334,7 +333,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         multiAutocompleteInput().type("Aly");
       });
 
-      selectDropdown().contains("Alycia McCullough - 2016");
+      popover().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       popover()
@@ -350,7 +349,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         multiAutocompleteInput().type("{backspace}Aly");
       });
 
-      selectDropdown().contains("Alycia McCullough");
+      popover().contains("Alycia McCullough");
 
       // close the suggestions popover
       popover()
@@ -371,7 +370,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         multiAutocompleteInput().type("Aly");
       });
 
-      selectDropdown().contains("Alycia McCullough - 2016");
+      popover().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       popover()
@@ -799,7 +798,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     });
 
     // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
-    selectDropdown().findByText("Oswald").click();
+    popover().findByText("Oswald").click();
     modal().within(() => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
@@ -925,7 +924,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     });
 
     // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
-    selectDropdown().findByText("Oswald").click();
+    popover().findByText("Oswald").click();
     modal().within(() => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
