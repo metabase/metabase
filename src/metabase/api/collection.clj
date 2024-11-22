@@ -526,9 +526,9 @@
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete :dashboard_count [:dashboard [:moderation_reviews :moderator_details]])
+      (t2/hydrate :can_write :can_restore :can_delete :dashboard_count [:dashboard :moderation_status])
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
-      (update :dashboard #(select-keys % [:id :name :moderation_reviews]))
+      (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card

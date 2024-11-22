@@ -4102,7 +4102,7 @@
 (deftest dashboard-questions-have-hydrated-dashboard-details
   (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                  :model/Card {card-id :id} {:dashboard_id dash-id}
-                 :model/ModerationReview _ {:moderated_item_id   dash-id
+                 :model/ModerationReview {mr-id :id} {:moderated_item_id   dash-id
                                             :moderated_item_type "dashboard"
                                             :moderator_id        (mt/user->id :rasta)
                                             :most_recent         true
@@ -4110,20 +4110,12 @@
                                             :text                "lookin good"}]
     (is (= {:name "My Dashboard"
             :id dash-id
-            :moderation_reviews [{:most_recent true
-                                  :moderator_id (mt/user->id :rasta)
-                                  :moderated_item_type "dashboard"
-                                  :moderated_item_id dash-id
-                                  :status "verified"
-                                  :text "lookin good"}]}
+            :moderation_status "verified"}
            (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
-               :dashboard
-               (update :moderation_reviews (fn [mrs]
-                                             (map #(select-keys %
-                                                                [:most_recent
-                                                                 :moderator_id
-                                                                 :moderated_item_type
-                                                                 :moderated_item_id
-                                                                 :status
-                                                                 :text])
-                                                  mrs))))))))
+               :dashboard)))
+    (t2/delete! :model/ModerationReview mr-id)
+    (is (= {:name "My Dashboard"
+            :id dash-id
+            :moderation_status nil}
+           (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
+               :dashboard)))))
