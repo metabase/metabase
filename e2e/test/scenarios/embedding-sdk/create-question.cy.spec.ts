@@ -24,10 +24,10 @@ describeSDK("scenarios > embedding-sdk > create-question", () => {
     cy.intercept("POST", "/api/card").as("createCard");
 
     cy.intercept("POST", "/api/dataset", req => {
-      // throttling makes the loading indicator shows up
-      // reliably when we click on visualize.
+      // throttling to 500 Kbps (slow 3G) makes the loading indicator
+      // shows up reliably when we click on visualize.
       req.on("response", res => {
-        res.setThrottle(1000);
+        res.setThrottle(500);
       });
     });
 
