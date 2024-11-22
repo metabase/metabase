@@ -323,8 +323,12 @@ export const closeDashboardSettingsSidebar = () => {
   sidesheet().findByLabelText("Close").click();
 };
 
-export function openDashboardMenu() {
+export function openDashboardMenu(option?: string) {
   dashboardHeader().findByLabelText("Move, trash, and more…").click();
+
+  if (option) {
+    popover().findByText(option).click();
+  }
 }
 
 export const dashboardHeader = () => {
