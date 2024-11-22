@@ -50,7 +50,7 @@ describeSDK("scenarios > embedding-sdk > create-question", () => {
       cy.findByRole("button", { name: "Show editor" }).click();
 
       // Should be able to visualize the question again
-      cy.findByRole("button", { name: "Visualize" }).click();
+      cy.findByLabelText("Switch to visualization").click();
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();

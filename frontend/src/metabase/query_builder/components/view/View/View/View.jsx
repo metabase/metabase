@@ -239,9 +239,17 @@ const ViewInner = props => {
             <ViewRightSidebarContainer {...props} />
           </ViewSidebar>
         </QueryBuilderContentContainer>
-        {queryBuilderMode !== "notebook" ? (
-          <ViewFooter className={CS.flexNoShrink} />
-        ) : null}
+        <ViewFooter
+          hasVisualizeButton={hasVisualizeButton}
+          isResultDirty={isResultDirty}
+          setQueryBuilderMode={setQueryBuilderMode}
+          isDirty={isDirty}
+          runQuestionQuery={runQuestionQuery}
+          updateQuestion={updateQuestion}
+          className={CS.flexNoShrink}
+          isNotebook={queryBuilderMode === "notebook"}
+          isNative={isNative}
+        />
       </QueryBuilderViewRoot>
 
       {isShowingNewbModal && (

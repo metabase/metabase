@@ -567,7 +567,7 @@ describe("issue 40435", () => {
     queryBuilderHeader().findByText("Save").click();
     modal().last().findByText("Save").click();
     cy.wait("@updateCard");
-    visualize();
+    cy.findByLabelText("Switch to visualization").click();
 
     cy.findByRole("columnheader", { name: "ID" }).should("be.visible");
     cy.findByRole("columnheader", { name: "User ID" }).should("be.visible");
