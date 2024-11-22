@@ -472,7 +472,7 @@ x.com")
                                 (throw (ex-info "Loading message set to an unsupported value"
                                                 {:value   new-value
                                                  :options (seq loading-message-values)})))]
-                  (setting/set-value-of-type! value)))
+                  (setting/set-value-of-type! :keyword :loading-message value)))
   :getter     (fn []
                 (let [value (setting/get-value-of-type :keyword :loading-message)]
                   (or (loading-message-values value)
