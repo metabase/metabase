@@ -1608,11 +1608,12 @@
   ([context params]
    (weights-url (assoc params :context (name context)))))
 
-(deftest weights-test
+(deftest ^:synchronized weights-test
   (let [base-url           (weights-url)
         original-weights   (search.config/weights :default)
         original-overrides (public-settings/experimental-search-weight-overrides)]
     (try
+      (public-settings/experimental-search-weight-overrides! nil)
       (testing "default weights"
         (is (= original-weights (mt/user-http-request :crowberto :get 200 base-url)))
         (is (mt/user-http-request :rasta :get 403 (weights-url {:recency 4})))
@@ -1627,6 +1628,8 @@
         (let [context          :none-given
               context-url      (weights-url context {})
               original-weights (search.config/weights context)]
+          ;; overrides from before will cascade
+          (is (= 30.0 (:text (mt/user-http-request :crowberto :get 200 context-url))))
           (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
           (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
           (is (= (assoc original-weights :recency 5.0)
@@ -1643,6 +1646,10 @@
           (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))
           (is (= (mt/user-http-request :crowberto :get 200 base-url)
                  (:default (mt/user-http-request :crowberto :get 200 context-url))))
+          (is (= (mt/user-http-request :crowberto :get 200 (weights-url :none-given {}))
+                 (merge
+                  (:default (mt/user-http-request :crowberto :get 200 context-url))
+                  (:none-given (mt/user-http-request :crowberto :get 200 context-url)))))
           (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 4})))
           (is (mt/user-http-request :crowberto :get 400 (weights-url context {:recency 4})))
           (is (mt/user-http-request :crowberto :get 400 (weights-url context {:text 30})))
