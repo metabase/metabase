@@ -9,6 +9,7 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import type { MantineThemeOverride } from "metabase/ui";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { RawSeries } from "metabase-types/api";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
@@ -69,7 +70,7 @@ export const SdkVisualizationWrapper = ({
 );
 export interface IsomorphicVisualizationStoryProps {
   // Use `any` on purpose to avoid type casting of imported json snapshots of raw series
-  rawSeries: any;
+  rawSeries: RawSeries | any;
 }
 
 export const IsomorphicVisualizationStory = ({
