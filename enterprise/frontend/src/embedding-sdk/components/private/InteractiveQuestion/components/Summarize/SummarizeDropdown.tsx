@@ -1,10 +1,12 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { SummarizePicker } from "embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizePicker";
-import { MultiStepPopover } from "embedding-sdk/components/private/util/MultiStepPopover";
+import {
+  MultiStepPopover,
+  type MultiStepState,
+} from "embedding-sdk/components/private/util/MultiStepPopover";
 
 import { ToolbarButton } from "../util/ToolbarButton";
 
@@ -25,10 +27,7 @@ export const SummarizeDropdown = () => {
   const [selectedAggregationItem, setSelectedAggregationItem] =
     useState<SDKAggregationItem>();
 
-  const [step, setStep] = useState<"picker" | "list">("picker");
-  const [opened, { close, toggle }] = useDisclosure(false, {
-    onOpen: () => setStep(aggregationItems.length === 0 ? "picker" : "list"),
-  });
+  const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
 
   const onSelectBadge = (item?: SDKAggregationItem) => {
     setSelectedAggregationItem(item);
@@ -39,18 +38,26 @@ export const SummarizeDropdown = () => {
     item.onRemoveAggregation();
 
     if (aggregationItems.length === 1) {
-      close();
+      setStep(null);
     }
   };
 
   return (
-    <MultiStepPopover currentStep={step} opened={opened} onClose={close}>
+    <MultiStepPopover currentStep={step}>
       <MultiStepPopover.Target>
         <ToolbarButton
           label={label}
           icon="sum"
           isHighlighted={aggregationItems.length > 0}
-          onClick={toggle}
+          onClick={() =>
+            setStep(
+              step === null
+                ? aggregationItems.length === 0
+                  ? "picker"
+                  : "list"
+                : null,
+            )
+          }
         />
       </MultiStepPopover.Target>
       <MultiStepPopover.Step value="picker">
