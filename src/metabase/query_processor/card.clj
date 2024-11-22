@@ -68,10 +68,7 @@
 
 (defn- last-stage-number
   [outer-query]
-  (loop [query (:query outer-query), i 0]
-    (if-let [source-query (:source-query query)]
-      (recur source-query (inc i))
-      i)))
+  (mbql.u/legacy-last-stage-number (:query outer-query)))
 
 (defn- nest-query
   [query]
