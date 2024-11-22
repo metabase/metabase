@@ -1,8 +1,10 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { match } from "ts-pattern";
 
-import { MultiStepPopover } from "embedding-sdk/components/private/util/MultiStepPopover";
+import {
+  MultiStepPopover,
+  type MultiStepState,
+} from "embedding-sdk/components/private/util/MultiStepPopover";
 import type { QuestionStateParams } from "embedding-sdk/types/question";
 import { Button, Stack } from "metabase/ui";
 
@@ -18,13 +20,9 @@ export const BreakoutDropdownInner = ({
 }: QuestionStateParams) => {
   const items = useBreakoutData({ question, updateQuestion });
 
-  const [step, setStep] = useState<"picker" | "list">("list");
+  const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
 
   const [selectedBreakout, setSelectedBreakout] = useState<SDKBreakoutItem>();
-
-  const [opened, { close, toggle }] = useDisclosure(false, {
-    onOpen: () => setStep(items.length === 0 ? "picker" : "list"),
-  });
 
   const label = match(items.length)
     .with(0, () => "Group")
@@ -41,18 +39,22 @@ export const BreakoutDropdownInner = ({
       item.removeBreakout();
     }
     if (items.length === 1) {
-      close();
+      setStep(null);
     }
   }
 
   return (
-    <MultiStepPopover currentStep={step} opened={opened} onClose={close}>
+    <MultiStepPopover currentStep={step}>
       <MultiStepPopover.Target>
         <ToolbarButton
           label={label}
           icon="arrow_split"
           isHighlighted={items.length > 0}
-          onClick={toggle}
+          onClick={
+            step === null
+              ? () => setStep(items.length === 0 ? "picker" : "list")
+              : () => setStep(null)
+          }
         />
       </MultiStepPopover.Target>
       <MultiStepPopover.Step value="picker">

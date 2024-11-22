@@ -1,11 +1,12 @@
 (ns metabase.search.postgres.index-test
   (:require
-   ;[cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -204,3 +205,98 @@
   (testing "single quotes"
     (is (= "'you''re':*"
            (search-expr "you're")))))
+
+(defn ingest!
+  [model where-clause]
+  (#'search.ingestion/batch-update!
+   (#'search.ingestion/spec-index-reducible model where-clause)))
+
+(defn ingest-then-fetch!
+  [model entity-name]
+  (ingest! model [:= :this.name entity-name])
+  (t2/query-one {:select [:*]
+                 :from   [search.index/*active-table*]
+                 :where  [:and
+                          [:= :name entity-name]
+                          [:= :model model]]}))
+
+(deftest card-complex-ingestion-test
+  (search.tu/with-temp-index-table
+    (doseq [[model-type card-type] [["card" "question"] ["dataset" "model"] ["metric" "metric"]]]
+      (testing (format "simple %s" model-type)
+        (let [card-name (mt/random-name)]
+          (mt/with-temp [:model/Card {card-id :id} {:name card-name
+                                                    :type card-type}]
+            (is (=? {:model                    model-type
+                     :model_id                 card-id
+                     :official_collection      nil
+                     :database_id              (mt/id)
+                     :pinned                   false
+                     :view_count               0
+                     :collection_id            nil
+                     :dashboardcard_count      0
+                     :last_edited_at           nil
+                     :last_editor_id           nil
+                     :verified                 nil}
+                    (ingest-then-fetch! model-type card-name))))))
+
+      (testing (format "everything %s" model-type)
+        (let [search-term  (mt/random-name)
+              yesterday    (t/- (t/offset-date-time) (t/days 1))
+              two-days-ago (t/- yesterday (t/days 1))]
+          (mt/with-temp
+            [:model/Collection    {coll-id :id}      {:name            "My collection"
+                                                      ;; :official_collection = true
+                                                      :authority_level "official"}
+             :model/Card          {card-id :id}      {:name                search-term
+                                                      :type                card-type
+                                                      :query_type          "query"
+                                                      ;; :database_id = (mt/id)
+                                                      :database_id         (mt/id)
+                                                      ;; :pinned = true
+                                                      :collection_position 1
+                                                      ;; :view_count = 42
+                                                      :view_count          42
+                                                      ;; :collection_id = coll-id
+                                                      :collection_id       coll-id
+                                                      ;; :last_viewed_at = yesterday
+                                                      :last_used_at        yesterday
+                                                      ;; :model_created_at = two-days-ago
+                                                      :created_at          two-days-ago
+                                                      ;; :model_updated_at = two-days-ago
+                                                      :updated_at          two-days-ago}
+
+             ;; :dashboardcard_count = 2
+             :model/Dashboard     {dashboard-id :id} {}
+             :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}
+             :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}
+
+             ;; :last_edited_at = yesterday
+             ;; :last_editor_id = rasta-id
+             :model/Revision      _                 {:model_id    card-id
+                                                     :model       "Card"
+                                                     :user_id     (mt/user->id :rasta)
+                                                     :most_recent true
+                                                     :timestamp   yesterday
+                                                     :object      {}}
+             ;; :verified = true
+             :model/ModerationReview _              {:moderated_item_type "card"
+                                                     :moderated_item_id   card-id
+                                                     :most_recent         true
+                                                     :status              "verified"
+                                                     :moderator_id        (mt/user->id :crowberto)}]
+            (is (=? {:model                    model-type
+                     :model_id                 card-id
+                     :official_collection      true
+                     :database_id              (mt/id)
+                     :pinned                   true
+                     :view_count               42
+                     :collection_id            coll-id
+                     :last_viewed_at           yesterday
+                     :model_created_at         two-days-ago
+                     :model_updated_at         two-days-ago
+                     :dashboardcard_count      2
+                     :last_edited_at           yesterday
+                     :last_editor_id           (mt/user->id :rasta)
+                     :verified                 true}
+                    (ingest-then-fetch! model-type search-term)))))))))
