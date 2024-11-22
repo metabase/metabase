@@ -765,7 +765,7 @@
                 :databricks
                 :bigquery-cloud-sdk
                 #_:snowflake ;; TODO
-                :oracle
+                #_:oracle ;; Insufficient privileges
                 :redshift]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
@@ -825,6 +825,7 @@
             (is (= 9 (count view-fields)))
             (is (= non-view-fields view-fields))))
         (catch Exception e
+          (is (nil? e) "This should not happen")
           (log/error e "Exception occurred."))
         (finally
           (tx/drop-view! driver/*driver* (mt/db) view-name materialized?))))))

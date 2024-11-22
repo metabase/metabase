@@ -57,7 +57,7 @@
                     (cond->
                      {:create-view [[[:raw qualified-view]]]
                       :select [:*]
-                      :from [[[:raw qualified-table] :t]]}
+                      :from [[[:raw qualified-table]]]}
                       materialized? (set/rename-keys {:create-view :create-materialized-view}))
                     :dialect (sql.qp/quote-style driver))
                    {:transaction? false})))
