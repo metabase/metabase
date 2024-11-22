@@ -26,7 +26,7 @@ export interface InteractiveQuestionResultProps {
   customTitle?: ReactNode;
 }
 
-type QuestionView = "editor" | "filter" | "visualization";
+type QuestionView = "editor" | "visualization";
 
 const ContentView = ({
   questionView,
@@ -36,9 +36,6 @@ const ContentView = ({
   onReturnToVisualization: () => void;
 }) =>
   match<QuestionView>(questionView)
-    .with("filter", () => (
-      <InteractiveQuestion.Filter onClose={onReturnToVisualization} />
-    ))
     .with("editor", () => (
       <InteractiveQuestion.Editor onApply={onReturnToVisualization} />
     ))
@@ -93,13 +90,7 @@ export const InteractiveQuestionResult = ({
         <Group spacing="xs">
           {withResetButton && <InteractiveQuestion.ResetButton />}
           <InteractiveQuestion.ChartTypeDropdown />
-          <InteractiveQuestion.FilterButton
-            onClick={() =>
-              setQuestionView(
-                questionView === "filter" ? "visualization" : "filter",
-              )
-            }
-          />
+          <InteractiveQuestion.FilterDropdown />
           <InteractiveQuestion.SummarizeDropdown />
           <InteractiveQuestion.BreakoutDropdown />
           <InteractiveQuestion.EditorButton
@@ -117,11 +108,6 @@ export const InteractiveQuestionResult = ({
         </Group>
       </Group>
 
-      <Group className={InteractiveQuestionS.MidBar} py={0} px="md">
-        <Box style={{ flex: 1 }}>
-          <InteractiveQuestion.FilterBar />
-        </Box>
-      </Group>
       <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>
           <ContentView

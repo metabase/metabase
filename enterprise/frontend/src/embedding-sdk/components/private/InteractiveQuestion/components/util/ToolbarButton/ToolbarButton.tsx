@@ -12,8 +12,8 @@ function _ToolbarButton(
     ...buttonProps
   }: {
     label: ReactNode;
-    icon: IconName;
-    isHighlighted: boolean;
+    icon?: IconName;
+    isHighlighted?: boolean;
   } & ButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -21,7 +21,7 @@ function _ToolbarButton(
     <Button
       ref={ref}
       variant={isHighlighted ? "filled" : "subtle"}
-      leftIcon={<Icon name={icon} />}
+      leftIcon={icon ? <Icon name={icon} /> : undefined}
       py="sm"
       px="md"
       {...buttonProps}
