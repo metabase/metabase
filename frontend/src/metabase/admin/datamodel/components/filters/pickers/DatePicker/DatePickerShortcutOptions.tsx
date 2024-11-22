@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   getInitialExcludeShortcut,
   getInitialRelativeDatesShortcut,
@@ -17,7 +17,7 @@ import {
 
 type Option = {
   displayName: string;
-  init: (filter: Filter) => any;
+  init: (filter: FilterMBQL) => any;
 };
 
 const DAY_OPTIONS: Option[] = [

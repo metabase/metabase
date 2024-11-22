@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
 import { formatField, stripId } from "metabase/lib/formatting";
-import { getFilterOperators } from "metabase-lib/v1/operators/utils";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
@@ -34,7 +33,6 @@ import {
   isTypeFK,
   isa,
 } from "metabase-lib/v1/types/utils/isa";
-import { createLookupByProperty, memoizeClass } from "metabase-lib/v1/utils";
 import type {
   DatasetColumn,
   FieldFingerprint,
@@ -63,7 +61,8 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
 /**
  * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
  */
-class FieldInner extends Base {
+// eslint-disable-next-line import/no-default-export
+export default class Field extends Base {
   id: FieldId | FieldReference;
   name: string;
   display_name: string;
@@ -306,40 +305,6 @@ class FieldInner extends Base {
     return fieldDimension;
   }
 
-  // FILTERS
-  filterOperators(selected) {
-    return getFilterOperators(this, this.table, selected);
-  }
-
-  filterOperatorsLookup = _.once(() => {
-    return createLookupByProperty(this.filterOperators(), "name");
-  });
-
-  filterOperator(operatorName) {
-    return this.filterOperatorsLookup()[operatorName];
-  }
-
-  // AGGREGATIONS
-  aggregationOperators = _.once(() => {
-    return this.table
-      ? this.table
-          .aggregationOperators()
-          .filter(
-            aggregation =>
-              aggregation.validFieldsFilters[0] &&
-              aggregation.validFieldsFilters[0]([this]).length === 1,
-          )
-      : null;
-  });
-
-  aggregationOperatorsLookup = _.once(() => {
-    return createLookupByProperty(this.aggregationOperators(), "short");
-  });
-
-  aggregationOperator(short) {
-    return this.aggregationOperatorsLookup()[short];
-  }
-
   // BREAKOUTS
 
   /**
@@ -544,8 +509,3 @@ class FieldInner extends Base {
     this.metadata = metadata;
   }
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Field extends memoizeClass<FieldInner>("filterOperators")(
-  FieldInner,
-) {}

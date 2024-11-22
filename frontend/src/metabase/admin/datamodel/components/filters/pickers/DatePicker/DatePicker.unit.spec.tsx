@@ -2,28 +2,14 @@ import { render, screen } from "@testing-library/react";
 import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
-import Filter from "metabase-lib/v1/queries/structured/Filter";
-import {
-  ORDERS,
-  ORDERS_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
+import { ORDERS } from "metabase-types/api/mocks/presets";
 
 import DatePicker from "./DatePicker";
 
 const userEvent = _userEvent.setup({
   advanceTimers: jest.advanceTimersByTime,
 });
-
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
-});
-
-const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
-// eslint-disable-next-line no-restricted-syntax
-const ordersQuery = ordersTable.legacyQuery({ useStructuredQuery: true });
 
 // this component does not manage its own filter state, so we need a wrapper to test
 // any state updates because the component's behavior is based on the filter state
@@ -32,7 +18,7 @@ const DatePickerStateWrapper = ({
   onCommit = jest.fn(),
   onChange = jest.fn(),
 }: {
-  filter: Filter;
+  filter: FilterMBQL;
   onCommit?: (arg: any) => void;
   onChange?: (arg: any) => void;
 }) => {
@@ -51,8 +37,11 @@ const DatePickerStateWrapper = ({
 
 const CREATED_AT_FIELD = ["field", ORDERS.CREATED_AT, null];
 
-const createDateFilter = (operator: null | string = null, ...args: any[]) =>
-  new Filter([operator, CREATED_AT_FIELD, ...(args ?? [])], null, ordersQuery);
+const createDateFilter = (operator: null | string = null, ...args: any[]) => [
+  operator,
+  CREATED_AT_FIELD,
+  ...(args ?? []),
+];
 
 describe("DatePicker", () => {
   beforeAll(() => {

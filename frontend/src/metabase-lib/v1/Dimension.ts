@@ -11,11 +11,7 @@ import ValidationError, {
 } from "metabase-lib/v1/ValidationError";
 import { MONOTYPE, infer } from "metabase-lib/v1/expressions/typeinferencer";
 import Field from "metabase-lib/v1/metadata/Field";
-import type {
-  FilterOperator,
-  Metadata,
-  Query,
-} from "metabase-lib/v1/metadata/Metadata";
+import type { Metadata, Query } from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
@@ -296,22 +292,6 @@ export default class Dimension {
    */
   columnName(): string {
     return this.field().name;
-  }
-
-  // FILTERS
-
-  /**
-   * Valid filter operators on this dimension
-   */
-  filterOperators(selected): FilterOperator[] {
-    return this.field().filterOperators(selected);
-  }
-
-  /**
-   * The operator with the provided operator name (e.x. `=`, `<`, etc)
-   */
-  filterOperator(operatorName: string): FilterOperator | null | undefined {
-    return this.field().filterOperator(operatorName);
   }
 
   // BREAKOUTS

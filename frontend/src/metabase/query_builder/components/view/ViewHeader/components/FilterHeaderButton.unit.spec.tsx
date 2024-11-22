@@ -22,21 +22,20 @@ const QUERY_WITH_FILTERS = Question.create({
     database: SAMPLE_DB_ID,
     query: {
       "source-table": ORDERS_ID,
+      filter: [
+        "and",
+        ["time-interval", ["field", ORDERS.CREATED_AT, null], -30, "day"],
+        ["=", ["field", ORDERS.TOTAL, null], 1234],
+        [
+          "contains",
+          ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
+          "asdf",
+        ],
+      ],
       aggregation: [["count"]],
     },
   },
-})
-  // eslint-disable-next-line no-restricted-syntax
-  .legacyQuery({ useStructuredQuery: true })
-  .filter(["time-interval", ["field", ORDERS.CREATED_AT, null], -30, "day"])
-  .filter(["=", ["field", ORDERS.TOTAL, null], 1234])
-  .filter([
-    "contains",
-    ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
-    "asdf",
-  ])
-  .question()
-  .query();
+}).query();
 
 const QUERY_WITHOUT_FILTERS = Question.create({
   metadata,
