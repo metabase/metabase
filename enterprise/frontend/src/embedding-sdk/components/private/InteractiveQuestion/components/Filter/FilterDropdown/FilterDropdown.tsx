@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { FilterBadgeList } from "embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterBadgeList";
 import type { SDKFilterItem } from "embedding-sdk/components/private/InteractiveQuestion/components/Filter/hooks/use-filter-data";
 import { MultiStepPopover } from "embedding-sdk/components/private/util/MultiStepPopover";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
@@ -14,6 +13,8 @@ import type * as Lib from "metabase-lib";
 import { useInteractiveQuestionContext } from "../../../context";
 import { ToolbarButton } from "../../util/ToolbarButton";
 import { FilterPicker } from "../FilterPicker/FilterPicker";
+
+import { FilterBadgeList } from "./FilterBadgeList";
 
 type FilterProps = Pick<FilterColumnPickerProps, "withColumnItemIcon">;
 

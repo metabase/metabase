@@ -10,7 +10,6 @@ import {
   Editor,
   EditorButton,
   Filter,
-  FilterBar,
   FilterButton,
   FilterDropdown,
   QuestionResetButton,
@@ -93,7 +92,6 @@ const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
   BackButton: typeof BackButton;
-  FilterBar: typeof FilterBar;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   FilterButton: typeof FilterButton;
@@ -120,7 +118,6 @@ const InteractiveQuestion = withPublicComponentWrapper(
 };
 
 InteractiveQuestion.BackButton = BackButton;
-InteractiveQuestion.FilterBar = FilterBar;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterDropdown = FilterDropdown;
 InteractiveQuestion.FilterButton = FilterButton;

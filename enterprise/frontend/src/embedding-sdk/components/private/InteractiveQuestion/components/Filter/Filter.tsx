@@ -1,18 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import type { FilterColumnPickerProps } from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
 import { Group, Popover } from "metabase/ui";
 
 import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
 
-import { FilterBar } from "./FilterBar";
+import { DropdownFilterBadgeList } from "./DropdownFilterBadgeList";
 import { FilterPicker } from "./FilterPicker";
-
-export type FilterProps = Pick<
-  FilterColumnPickerProps,
-  "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
->;
+import type { FilterProps } from "./types";
 
 const AddFilterPopover = () => {
   const [opened, { close, toggle }] = useDisclosure();
@@ -31,7 +26,7 @@ const AddFilterPopover = () => {
 
 export const Filter = ({ withColumnItemIcon }: FilterProps) => (
   <Group>
-    <FilterBar withColumnGroupIcon={withColumnItemIcon} />
+    <DropdownFilterBadgeList withColumnItemIcon={withColumnItemIcon} />
     <AddFilterPopover />
   </Group>
 );

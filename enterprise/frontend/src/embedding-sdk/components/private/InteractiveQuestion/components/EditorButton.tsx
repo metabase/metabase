@@ -18,6 +18,7 @@ export const EditorButton = ({
       isActionListVisible: true,
     }) && (
       <ActionIcon
+        data-testid="notebook-button"
         size="lg"
         c={isOpen ? "text-white" : "text-dark"}
         color="brand"
