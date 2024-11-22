@@ -40,7 +40,7 @@
   [ranker-key search-string & {:as raw-ctx}]
   (let [result   (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
         inverted (with-weights {ranker-key -1} (search-results* search-string raw-ctx))]
-    ;; note that this may not be a strict reversal, due to tries.
+    ;; note that this may not be a strict reversal, due to ties.
     (is (not= inverted result)
         "sanity check: search-no-weights should be different")
     result))
