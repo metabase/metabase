@@ -37,11 +37,13 @@ export const SaveQuestionModal = ({
       question={question}
       originalQuestion={originalQuestion}
       onCreate={async question => {
-        await onCreate(question);
+        const newQuestion = await onCreate(question);
 
         if (closeOnSuccess) {
           modalProps.onClose();
         }
+
+        return newQuestion;
       }}
       onSave={onSave}
       multiStep={multiStep}

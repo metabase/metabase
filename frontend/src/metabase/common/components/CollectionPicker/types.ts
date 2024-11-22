@@ -42,10 +42,16 @@ export type CollectionPickerItem = TypeWithModel<
     below?: CollectionItemModel[];
   };
 
-export type CollectionPickerValueItem = Omit<CollectionPickerItem, "model"> & {
-  id: CollectionId;
-  model: CollectionPickerValueModel;
-};
+export type CollectionPickerValueItem =
+  | (Omit<CollectionPickerItem, "model" | "id"> & {
+      id: CollectionId;
+      model: "collection";
+    })
+  | (Omit<CollectionPickerItem, "model" | "id"> & {
+      id: DashboardId;
+      model: "dashboard";
+      collection_id: CollectionId | null;
+    });
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
   allowCreateNew?: boolean;
