@@ -222,10 +222,12 @@
 ;;; But for some entities, it can be deeper. For example, Fields belong to Tables, which are in Schemas, which are in
 ;;; Databases. (Schemas don't exist separately in the appdb, but they're used here to keep Table names unique.)
 ;;; For example:
-;;; <pre><code>[{:model "Database" :id "my_db"}
+;;; <pre><code>
+;;; [{:model "Database" :id "my_db"}
 ;;;  {:model "Schema"   :id "PUBLIC"}
 ;;;  {:model "Table"    :id "Users"}
-;;;  {:model "Field"    :id "email"}]</code></pre>
+;;;  {:model "Field"    :id "email"}]
+;;; </code></pre>
 ;;;
 ;;; Many of the serdes multimethods are keyed on the `:model` field of the leaf entry (the last).
 ;;;
@@ -1673,3 +1675,25 @@
                              :let [fq-sym (symbol (name ns*) (name var-sym))]]
                          [fq-sym `(memoize ~fq-sym)]))
        ~@body)))
+
+
+(defn add-entity-id-to-table [table]
+  (str   "
+  - changeSet:
+      id: v52.00.00.fixme
+      author: escherize
+      comment: add entity_id to " table "
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: " table "
+"))
+
+(println (add-entity-id-to-table "permissions_group_membership"))

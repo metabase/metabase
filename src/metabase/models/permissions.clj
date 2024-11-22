@@ -173,6 +173,7 @@
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.serialization :as serdes]
    [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
@@ -530,3 +531,12 @@
   metabase-enterprise.advanced-permissions.common
   [_instance]
   false)
+
+(defmethod serdes/generate-path "Permissions" [_ perms]
+  ;; TODO this needs an entity id
+  (serdes/maybe-labeled "Permissions" perms :object))
+
+(defmethod serdes/make-spec "Permissions" [_model-name opts]
+  {:copy [:collection_id :group_id :object :perm_type :perm_value]
+   :skip []
+   :transform {:collection_id (serdes/fk :model/Collection)}})

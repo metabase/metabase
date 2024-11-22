@@ -160,3 +160,44 @@
                 (u/traverse colls #(serdes/descendants (first %) (second %))))))
   (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
   (log-escape-report! escaped))
+
+
+(defn upstream*
+  "Finds 'upstream' entities for a given model.
+   This is used to flow healthyness through the system.
+   If any entities upstream of the model are unhealthy, the then the "
+  [model-type id]
+  (case model-type
+    :model/Database []
+    :model/Table (mapv (fn [db-id] [:model/Database db-id])
+                       (distinct (map :db_id (t2/select [:model/Table :db_id] id))))
+    ;; TODO: needs to follow parent cards as well, now it just grabs the table
+    :model/Card (mapv (fn [db-id] [:model/Table db-id])
+                      (distinct (map :table_id (t2/select [:model/Card :table_id] id))))
+    :model/Dashboard (mapv
+                      (fn [db-id] [:model/Card db-id])
+                      (map :card_id
+                           (t2/query {:select [:dashcard.card_id :dashcard.dashboard_id]
+                                      :from   [[:report_dashboardcard :dashcard]]
+                                      :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
+                                      :where [:= :dashcard.dashboard_id 10]})))))
+
+(defn upstream
+  "Finds upstream models, used to flow health warnings forward through the entity system"
+  ([model-type id] (upstream model-type id #{}))
+  ([model-type id seen] (loop [queue (upstream* model-type id)
+                               seen seen]
+                          (if (empty? queue)
+                            seen
+                            (let [[m id] (first queue)]
+                              (if (contains? seen [m id])
+                                (recur (rest queue) seen)
+                                (recur (into (rest queue) (upstream* m id ))
+                                       (conj seen [m id]))))))))
+
+(comment
+
+
+  (upstream :model/Database 1)
+
+  )

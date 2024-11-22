@@ -170,3 +170,11 @@
   []
   (t2/select PermissionsGroup {:where [:and [:not= :name admin-group-name]
                                        [:not= :name all-users-group-name]]}))
+
+(defmethod serdes/generate-path "PermissionsGroup" [_ group]
+  (serdes/maybe-labeled "PermissionsGroup" group :entity_id))
+
+(defmethod serdes/make-spec "PermissionsGroup" [_model-name opts]
+  {:copy [:entity_id :id :name]
+   :skip []
+   :transform {}})

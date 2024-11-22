@@ -202,6 +202,8 @@
   [user]
   (add-common-name user))
 
+(t2/select :model/User)
+
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
   [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
@@ -542,3 +544,12 @@
     :password-reset-initiated  (select-keys entity [:token])
     :password-reset-successful (select-keys entity [:token])
     {}))
+
+(defmethod serdes/generate-path "User" [_ user]
+  (serdes/maybe-labeled "User" user :email))
+
+(defmethod serdes/make-spec "User" [_model-name opts]
+  {:copy [:common_name :date_joined :email :first_name :is_qbnewb :is_superuser :last_login :last_name]
+   :skip []
+   :transform {:date_joined (serdes/date)
+               :last_login (serdes/date)}})

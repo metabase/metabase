@@ -31,7 +31,8 @@
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.models.permissions-group-membership :as perms-group-membership])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -317,3 +318,210 @@
 
 
 ;;   )
+
+
+(defn- distinct-keep [k coll] (distinct (keep k coll)))
+
+(defn dependencies*
+  "Finds 'upstream' entities for a given model. This is used to determine what other entities need to be dumped to recreate the state of a given entity."
+  [model-type id]
+  (case model-type
+    :model/Database []
+    :model/Permissions []
+    :model/Dimension []
+
+    ;; TODO
+    ;; :model/DashboardTab
+
+
+    :model/Table
+    (concat
+     (mapv (fn [db-id] [:model/Database db-id])
+           (distinct-keep :db_id (t2/select [:model/Table :db_id] id)))
+     (mapv (fn [field-id] [:model/Field field-id])
+           (distinct-keep :id (t2/select [:model/Field :id] :table_id id))))
+
+    ;; we grab more fields than we may need, but that's fine
+    :model/Field
+    (concat
+     (mapv (fn [table-id] [:model/Table table-id])
+           (distinct-keep :table_id (t2/select [:model/Field :table_id] id)))
+     (mapv (fn [dimension-id] [:model/Dimension dimension-id])
+           (distinct-keep :dimension_id (t2/select [:model/Dimension :id] :field_id id))))
+
+    :model/User
+    (mapv (fn [perm-group-id] [:model/PermissionsGroup perm-group-id])
+          (distinct-keep :group_id (t2/select [:model/PermissionsGroupMembership :group_id])))
+
+    :model/PermissionsGroup
+    (let [perms-group-membership (t2/select [:model/PermissionsGroupMembership :group_id] :id id)]
+      (concat
+       (mapv (fn [perm-id] [:model/Permissions perm-id])
+             (distinct-keep :group_id perms-group-membership))
+       (mapv (fn [perm-membership-id] [:model/PermissionsGroupMembership perm-membership-id])
+             (distinct-keep :id perms-group-membership))))
+
+    :model/PermissionsGroupMembership
+    (let [perms-group-membership (t2/select [:model/PermissionsGroupMembership :group_id] :id id)]
+      (concat
+       (mapv (fn [perm-id] [:model/Permissions perm-id])
+             (distinct-keep :group_id perms-group-membership))
+       (mapv (fn [perm-membership-id] [:model/PermissionsGroupMembership perm-membership-id])
+             (distinct-keep :id perms-group-membership))))
+
+
+    :model/Card
+    (let [cards (t2/select [:model/Card :table_id :source_card_id :collection_id :creator_id] id)]
+      (concat
+       (mapv (fn [db-id] [:model/Table db-id]) (distinct-keep :table_id cards))
+       (mapv (fn [card-id] [:model/Card card-id]) (distinct-keep :source_card_id cards))
+       (mapv (fn [coll-id] [:model/Collection coll-id]) (distinct-keep :collection_id cards))
+       (mapv (fn [user-id] [:model/User user-id]) (distinct-keep :creator_id cards))))
+
+    :model/Dashboard
+    (let [dashboard-cards
+          (t2/query {:select [:dashcard.id :dashcard.card_id :dashcard.dashboard_id]
+                     :from   [[:report_dashboardcard :dashcard]]
+                     :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
+                     :where [:= :dashcard.dashboard_id id]})]
+      (concat
+       (mapv (fn [card-id] [:model/Card card-id]) (distinct-keep :card_id dashboard-cards))
+       (mapv (fn [dc-id] [:model/DashboardCard dc-id]) (distinct-keep :id dashboard-cards))))
+
+    :model/DashboardCard
+    (let [dc (t2/select-one [:model/DashboardCard :card_id :dashboard_id] :id id)]
+      [[:model/Dashboard (:dashboard_id dc)] [:model/Card (:card_id dc)]])
+
+    :model/Collection
+    (concat
+     ;; contained dashboards
+     (mapv
+      (fn [db-id] [:model/Dashboard db-id])
+      (distinct-keep :id (t2/select [:model/Dashboard :id] :collection_id id)))
+     ;; contained cards
+     (mapv
+      (fn [card-id] [:model/Card card-id])
+      (distinct-keep :id (t2/select [:model/Card :id] :collection_id id)))
+     ;; contained collections
+     (mapv
+      (fn [collection-id] [:model/Collection collection-id])
+      (distinct-keep :id (t2/select [:model/Collection :id] {:where [:like :location (str "%" id "%")]}))))))
+
+(comment
+
+  (t2/select-one :model/Permissions)
+  (t2/select-one :model/PermissionsGroup)
+  (t2/select-one :model/PermissionsGroupMembership)
+
+  (dependencies* :model/User 1)
+;; => [[:model/PermissionsGroup 1] [:model/PermissionsGroup 2]]
+
+  (dependencies :model/Card 113)
+
+  (dependencies :model/Permissions 1)
+
+  (let [model :model/PermissionsGroup
+        id 1]
+    (let [perms-group-membership (t2/select [:model/PermissionsGroupMembership :group_id] :id id)]
+      (concat
+       (mapv (fn [perm-id] [:model/Permissions perm-id])
+             (distinct-keep :group_id perms-group-membership))
+       (mapv (fn [perm-membership-id] [:model/PermissionsGroupMembership perm-membership-id])
+               (distinct-keep :id (t2/select [:model/PermissionsGroupMembership :id] :group_id id))))))
+
+  (dependencies :model/Card 113)
+
+  )
+
+(defn dependencies
+  "Finds upstream models, used to flow health warnings forward through the entity system"
+  ([model-type id]
+   (cond-> (dependencies model-type id #{})
+     (t2/exists? model-type id) (conj [model-type id])
+     true                       sort
+     true                       vec))
+  ([model-type id seen]
+   (loop [queue (dependencies* model-type id) seen seen]
+     (if (empty? queue)
+       seen
+       (let [[m id] (first queue)]
+         (if (contains? seen [m id])
+           ;; skip if we've already seen this entity
+           (recur (rest queue) seen)
+           ;; otherwise, add the dependencies of this entity to the queue
+           (recur (into (rest queue)
+                        (dependencies* m id))
+                  (conj seen [m id]))))))))
+
+(comment
+  (require '[metabase.models.serialization :as serdes])
+  (dependencies :model/Card 108)
+  #{[:model/Database 1] [:model/Card 108] [:model/Table 6]}
+  (serdes/extract-one "Card" {} (t2/select-one :model/Card :id 108))
+
+  (dependencies :model/Collection 2)
+
+  ;; => #{[:model/Collection 6] [:model/Card 112] [:model/Database 8] [:model/Table 31]}
+
+  )
+
+
+(defn- add-entity-id [instance]
+  (assoc instance :entity_id (t2/select-one-fn :entity_id [:model/User :entity_id] :id (:id instance))))
+
+(defn- extract-one-preprocess [model-type instance]
+  (case model-type
+    :model/Field (t2/hydrate instance :dimensions)
+    :model/User (add-entity-id instance)
+    :model/PermissionsGroup (add-entity-id instance)
+    instance))
+
+(defn extract-one [[model id]]
+  (serdes/extract-one (name model) {}
+                      (->> (t2/select-one model :id id)
+                           (extract-one-preprocess model)
+                           (into {}))))
+
+(defn extract-upstream [model-type id]
+  (mapv (fn [[model id]]
+          (extract-one [model id])) (dependencies model-type id)))
+(comment
+
+  (dependencies :model/Card 113)
+  (map :serdes/meta [(extract-one [:model/Card 113])
+                     (extract-one [:model/Database 8])
+                     (extract-one [:model/Field 303])
+                     (extract-one [:model/Field 304])
+                     (extract-one [:model/Field 305])
+                     (extract-one [:model/Field 306])
+                     (extract-one [:model/Field 307])
+                     (extract-one [:model/Field 308])
+                     (extract-one [:model/Field 309])
+                     (extract-one [:model/Field 310])
+                     (extract-one [:model/Field 311])
+                     (extract-one [:model/Permissions 1])
+                     (extract-one [:model/PermissionsGroup 1])
+                     (extract-one [:model/PermissionsGroup 2])
+                     (extract-one [:model/Table 31])
+                     (extract-one [:model/User 1])])
+  (extract-one [:model/Card 113])
+
+  (def to-extract (dependencies :model/Card 113))
+
+  (extract-upstream :model/Card 113)
+
+  (def extracted-things (extract-upstream :model/Card 113))
+
+  (map :serdes/meta extracted-things)
+  ;; ([{:model "Collection", :id "u8TF1p7cZzamfiYdRoSWX", :label "sqlite_db_coll"}]
+  ;;  [{:model "Card", :id "Lyj_5AKS3aUUYFGwt0k4N", :label "namespace_definitions"}]
+  ;;  [{:model "Database", :id "my_sqlite_db"}]
+  ;;  [{:model "Database", :id "my_sqlite_db"} {:model "Table", :id "namespace_definitions"}])
+
+
+  (mapv (fn [x] (serdes/load-one! x nil)) extracted-things)
+
+
+
+
+  )
