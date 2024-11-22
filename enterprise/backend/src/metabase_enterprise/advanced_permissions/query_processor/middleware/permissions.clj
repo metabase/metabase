@@ -37,12 +37,12 @@
                       ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                       ;; download perms
                       #{(data-perms/native-download-permission-for-user api/*current-user-id* db-id)}
-                      (set (map (fn [table-id]
+                      (set (map (fn table-perms-lookup [table-id]
                                   (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
                                 table-ids)))
         card-perms  (set
                      ;; If we have any card references in the query, check perms recursively
-                     (map (fn [card-id]
+                     (map (fn card-perms-lookup [card-id]
                             (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
                               (current-user-download-perms-level query)))
                           card-ids))
