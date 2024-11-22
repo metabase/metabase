@@ -1706,13 +1706,28 @@
                       (filter #(= card-id (:id %)))
                       first
                       :dashboard_id))))
+        (testing "The card data also include `dashboard` info"
+          (is (= {:id dash-id
+                  :name (named "dashboard")
+                  :moderation_status nil}
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard))))
         (testing "Regular cards don't have it"
           (is (nil?
                (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                     :data
                     (filter #(= reg-card-id (:id %)))
                     first
-                    :dashboard_id))))
+                    :dashboard_id)))
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard))))
         (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
           (is (= []
                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")

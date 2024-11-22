@@ -185,7 +185,7 @@
                     :can_write
                     :can_run_adhoc_query
                     :dashboard_count
-                    [:dashboard [:moderation_reviews :moderator_details]]
+                    [:dashboard :moderation_status]
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
@@ -194,11 +194,12 @@
                     :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
-        (update :dashboard #(select-keys % [:name :id :moderation_reviews]))
+        (update :dashboard #(when % (select-keys % [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
                                         ;; can_manage_db determines whether we should enable model persistence settings
                                         :can_manage_db)))))
+
 
 (defn get-card
   "Get `Card` with ID."
