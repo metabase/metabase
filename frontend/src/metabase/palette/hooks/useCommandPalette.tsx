@@ -18,6 +18,7 @@ import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { openDiagnostics } from "metabase/redux/app";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -289,9 +290,26 @@ export const useCommandPalette = ({
       }));
   }, [settingsSections, settingValues, dispatch]);
 
+  const bugReportAction = useMemo<PaletteAction[]>(() => {
+    return [
+      {
+        id: "report-bug",
+        name: t`File a bug`,
+        icon: "bug",
+        section: "basic",
+        keywords: "bug issue problem error diagnostic",
+        perform: () => {
+          dispatch(openDiagnostics());
+        },
+      },
+    ];
+  }, [dispatch]);
+
   useRegisterActions(
-    hasQuery ? [...adminActions, ...adminSettingsActions] : [],
-    [adminActions, adminSettingsActions, hasQuery],
+    hasQuery
+      ? [...adminActions, ...adminSettingsActions, ...bugReportAction]
+      : [],
+    [adminActions, adminSettingsActions, hasQuery, bugReportAction],
   );
 };
 
