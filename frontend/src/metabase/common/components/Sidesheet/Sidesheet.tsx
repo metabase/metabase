@@ -1,6 +1,8 @@
 import cx from "classnames";
 import type React from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
+import { uniqueId } from "underscore";
 
 import Animation from "metabase/css/core/animation.module.css";
 import { Modal, Stack } from "metabase/ui";
@@ -38,6 +40,7 @@ export function Sidesheet({
   removeBodyPadding,
   withOverlay = true,
 }: SidesheetProps) {
+  const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
   return (
     <Modal.Root opened={isOpen} onClose={onClose} h="100dvh">
       {withOverlay && <Modal.Overlay data-testid="modal-overlay" />}
@@ -48,10 +51,11 @@ export function Sidesheet({
         bg="bg-light"
         data-testid="sidesheet"
         className={cx(Styles.SidesheetContent, Animation.slideLeft)}
+        aria-labelledby={titleId}
       >
         <Modal.Header bg="bg-light" px="xl">
           {title && (
-            <Modal.Title py="md" pr="sm">
+            <Modal.Title py="md" pr="sm" id={titleId}>
               {title}
             </Modal.Title>
           )}

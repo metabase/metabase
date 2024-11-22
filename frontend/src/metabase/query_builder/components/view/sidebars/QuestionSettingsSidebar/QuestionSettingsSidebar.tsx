@@ -65,6 +65,7 @@ export const QuestionSettingsSidebar = ({
                 model="question"
                 item={question}
                 setPage={setPage}
+                key={page}
               />
             </Stack>
           </SidesheetCard>
