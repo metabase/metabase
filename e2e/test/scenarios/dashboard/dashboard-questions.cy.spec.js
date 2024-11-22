@@ -364,27 +364,52 @@ describe("Dashboard > Dashboard Questions", () => {
       H.navigationSidebar().findByText("Orders").should("not.exist");
     });
 
-    it("can add and delete a question to a dashboard when the question already appears in that dashboard", () => {
-      cy.intercept("PUT", "/api/card/*").as("updateCard");
+    it("can delete a question from a dashboard without deleting all of the questions in metabase", () => {
+      H.createQuestion({
+        name: "Total Orders",
+        database_id: SAMPLE_DATABASE.id,
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      H.createQuestion(
+        {
+          name: "Total Orders deleted",
+          database_id: SAMPLE_DATABASE.id,
+          dashboard_id: S.ORDERS_DASHBOARD_ID,
+          query: {
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: "scalar",
+        },
+        { wrapId: true, idAlias: "deletedCardId" },
+      );
+
+      cy.get("@deletedCardId").then(deletedCardId => {
+        cy.request("PUT", `/api/card/${deletedCardId}`, { archived: true });
+      });
+      cy.visit("/");
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-      H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
-      H.sidebar().findByText("Orders, Count").click();
-      H.dashboardCards().findByText("Orders, Count");
+
+      H.dashboardCards().findByText("Total Orders");
       H.dashboardCards().findByText("Orders");
+
+      H.editDashboard();
+
+      H.dashboardCards().findByText("Total Orders").realHover();
+      cy.icon("close").last().click();
+
+      H.undoToast().findByText("Removed card");
       H.saveDashboard();
 
-      H.dashboardCards().findByText("Orders, Count");
-      H.dashboardCards().findByText("Orders").click();
-      H.openQuestionActions("Move");
-      H.entityPickerModal().findByText("Orders in a dashboard").click();
-      H.entityPickerModal().button("Move").click();
-
-      cy.wait("@updateCard");
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-
-      H.dashboardCards().findByText("Orders, Count");
-      H.dashboardCards().findByText("Orders");
+      H.dashboardCards().findByText("Total Orders").should("not.exist");
+      H.dashboardCards().findByText("Orders").should("be.visible");
+      // oops we deleted all the cards in the instance
     });
   });
 
