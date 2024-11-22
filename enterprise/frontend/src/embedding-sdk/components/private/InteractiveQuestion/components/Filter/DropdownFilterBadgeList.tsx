@@ -2,9 +2,9 @@ import { Group, Popover } from "@mantine/core";
 
 import { BadgeListItem } from "../util/BadgeList/BadgeListItem";
 
-import type { FilterProps } from "./Filter";
 import { FilterPicker } from "./FilterPicker";
 import { useFilterData } from "./hooks/use-filter-data";
+import type { FilterProps } from "./types";
 
 export const DropdownFilterBadgeList = ({
   withColumnItemIcon,
