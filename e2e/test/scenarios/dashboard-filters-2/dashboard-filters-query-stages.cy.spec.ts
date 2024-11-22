@@ -383,10 +383,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["Summaries", ["Created At: Month", "Created At: Year"]],
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-            [NAMELESS_SECTION, ["Created At", "User → Created At"]],
+            [
+              NAMELESS_SECTION,
+              ["Created At: Month", "User → Created At: Year"],
+            ],
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-            [NAMELESS_SECTION, ["Created At", "User → Created At"]],
+            [
+              NAMELESS_SECTION,
+              ["Created At: Month", "User → Created At: Year"],
+            ],
           ]);
         }
 
@@ -472,10 +478,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["Summaries", ["Created At: Month", "Created At: Year"]],
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-            [NAMELESS_SECTION, ["Created At", "User → Created At"]],
+            [
+              NAMELESS_SECTION,
+              ["Created At: Month", "User → Created At: Year"],
+            ],
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-            [NAMELESS_SECTION, ["Created At", "User → Created At"]],
+            [
+              NAMELESS_SECTION,
+              ["Created At: Month", "User → Created At: Year"],
+            ],
           ]);
         }
 
@@ -569,10 +581,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["Summaries", ["Created At: Month", "Created At: Year"]],
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-            [NAMELESS_SECTION, [...ORDERS_DATE_COLUMNS, "User → Created At"]],
+            [
+              NAMELESS_SECTION,
+              ["Created At: Month", "User → Created At: Year"],
+            ],
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-            [NAMELESS_SECTION, [...ORDERS_DATE_COLUMNS, "User → Created At"]],
+            [
+              NAMELESS_SECTION,
+              ["Created At: Month", "User → Created At: Year"],
+            ],
           ]);
         }
 
