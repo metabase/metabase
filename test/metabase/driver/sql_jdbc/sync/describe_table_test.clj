@@ -758,40 +758,33 @@
 
 (defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
   [_driver _feature _database]
-  false)
-
-;; TODO Make all drivers that support materialized-views pass this test
-(doseq [driver [:postgres
-                :databricks
-                :bigquery-cloud-sdk
-                :snowflake
-                #_:oracle ;; Insufficient privileges
-                :redshift]]
-  (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
-    [_driver _feature _database]
-    true))
+  true)
 
 (defmethod driver/database-supports? [::driver/driver ::describe-view-fields]
   [_driver _feature _database]
-  false)
+  true)
 
-(doseq [driver [:postgres
-                :mysql
-                :bigquery-cloud-sdk
-                :snowflake
-                :sql-server
-                :mongo
-                :athena
-                :databricks
-                :spark-sql
-                :sqlite
-                :redshift
-                :oracle
-                ;; not syncing view fields
-                #_:vertica]]
+(doseq [driver [:presto-jdbc
+                :druid
+                :druid-jdbc]]
   (defmethod driver/database-supports? [driver ::describe-view-fields]
     [_driver _feature _database]
-    true))
+    false))
+
+(doseq [driver [:oracle ;; TODO Insufficient privileges
+                :snowflake ;; Requires enterprise account
+                :presto-jdbc
+                :druid
+                :druid-jdbc
+                :mysql
+                :sqlserver
+                :mongo
+                :sparksql
+                :sqlite
+                :athena]]
+  (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
+    [_driver _feature _database]
+    false))
 
 (deftest describe-view-fields
   (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
