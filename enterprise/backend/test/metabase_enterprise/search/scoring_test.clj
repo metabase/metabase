@@ -159,7 +159,7 @@
       (mt/with-premium-features #{:official-collections}
         (is (= [["collection" 2 "collection official"]
                 ["collection" 1 "collection normal"]]
-               (fulltext.scoring-test/search-results* "collection")))))
+               (fulltext.scoring-test/search-results :official-collection "collection")))))
     (testing "only if feature is enabled"
       (mt/with-premium-features #{}
         (is (= [["collection" 1 "collection normal"]
@@ -174,7 +174,7 @@
       (mt/with-premium-features #{:content-verification}
         (is (= [["card" 2 "card verified"]
                 ["card" 1 "card normal"]]
-               (fulltext.scoring-test/search-results* "card")))))
+               (fulltext.scoring-test/search-results :verified "card")))))
     (testing "only if feature is enabled"
       (mt/with-premium-features #{}
         (is (= [["card" 1 "card normal"]
