@@ -15,6 +15,7 @@ import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { openDiagnostics } from "metabase/redux/app";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -28,9 +29,13 @@ const mapStateToProps = state => ({
   adminItems: getAdminPaths(state),
 });
 
-export default connect(mapStateToProps)(ProfileLink);
+const mapDispatchToProps = {
+  openDiagnostics,
+};
 
-function ProfileLink({ adminItems, onLogout }) {
+export default connect(mapStateToProps, mapDispatchToProps)(ProfileLink);
+
+function ProfileLink({ adminItems, onLogout, openDiagnostics }) {
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSetting("version");
   const applicationName = useSelector(getApplicationName);
@@ -67,6 +72,12 @@ function ProfileLink({ adminItems, onLogout }) {
         link: helpLink.href,
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
+      },
+      {
+        title: t`File a bug`,
+        icon: null,
+        action: () => openDiagnostics(),
+        event: `Navbar;Profile Dropdown;Report Bug`,
       },
       {
         title: t`About ${applicationName}`,
@@ -164,4 +175,5 @@ function ProfileLink({ adminItems, onLogout }) {
 ProfileLink.propTypes = {
   adminItems: PropTypes.array,
   onLogout: PropTypes.func.isRequired,
+  openDiagnostics: PropTypes.func.isRequired,
 };
