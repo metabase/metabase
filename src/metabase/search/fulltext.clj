@@ -1,6 +1,5 @@
 (ns metabase.search.fulltext
   (:require
-   [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.search.api :as search.api]
    [metabase.search.postgres.core :as search.postgres]))
@@ -14,7 +13,7 @@
 (defmethod supported-db? :default [_] false)
 
 (defmethod supported-db? :postgres [_]
-  (or (public-settings/experimental-fulltext-search-enabled) config/is-test?))
+  (public-settings/experimental-fulltext-search-enabled))
 
 ;; For now, we know that the app db is postgres. We can extract multimethods if this changes.
 
