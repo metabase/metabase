@@ -9,10 +9,7 @@ import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
 import { DropdownFilterBadgeList } from "./DropdownFilterBadgeList";
 import { FilterPicker } from "./FilterPicker";
 
-export type FilterProps = Pick<
-  FilterColumnPickerProps,
-  "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
->;
+export type FilterProps = Pick<FilterColumnPickerProps, "withColumnItemIcon">;
 
 const AddFilterPopover = () => {
   const [opened, { close, toggle }] = useDisclosure();
