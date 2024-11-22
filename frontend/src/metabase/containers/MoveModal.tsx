@@ -2,7 +2,11 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { OnMoveWithOneItem } from "metabase/collections/types";
+import type {
+  MoveCollectionDestination,
+  MoveDestination,
+  OnMoveWithOneItem,
+} from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
   type CollectionPickerItem,
@@ -17,14 +21,22 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-interface MoveModalProps<DestinationType> {
+interface BaseMoveModalProps {
   title: string;
   onClose: () => void;
-  onMove: OnMoveWithOneItem<DestinationType>;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
-  canMoveToDashboard?: boolean;
 }
+
+type MoveModalProps =
+  | (BaseMoveModalProps & {
+      canMoveToDashboard?: true | undefined;
+      onMove: OnMoveWithOneItem;
+    })
+  | (BaseMoveModalProps & {
+      canMoveToDashboard?: false;
+      onMove: OnMoveWithOneItem<MoveCollectionDestination>;
+    });
 
 const makeRecentFilter = (
   disableFn: ((item: CollectionPickerItem) => boolean) | undefined,
@@ -44,14 +56,14 @@ const makeSearchResultFilter = (
     );
 };
 
-export const MoveModal = <DestinationType,>({
+export const MoveModal = ({
   title,
   onClose,
   onMove,
   initialCollectionId,
   movingCollectionId,
-  canMoveToDashboard = true,
-}: MoveModalProps<DestinationType>) => {
+  canMoveToDashboard,
+}: MoveModalProps) => {
   // if we are moving a collection, we can't move it into itself or any of its children
   const shouldDisableItem = movingCollectionId
     ? (item: CollectionPickerItem) =>
@@ -67,9 +79,34 @@ export const MoveModal = <DestinationType,>({
   const recentFilter = makeRecentFilter(shouldDisableItem);
 
   const handleMove = useCallback(
-    (destination: CollectionPickerValueItem) =>
-      onMove({ id: destination.id, model: destination.model }),
-    [onMove],
+    (destination: CollectionPickerValueItem) => {
+      // GROSS:
+      // - CollectionPicker's `onChange` prop isn't generic to its `models` prop, so
+      //   `onChange`'s destination arg isn't narrowed based on the `models` passed in. This
+      //   requires we do additional type gauarding / unneeded error handling below.
+      // - To keep this same issue from bubbling up to consumers of MoveModal, we need
+      //   do some extra type casting so it has an external API where `canMoveToDashboard`
+      //   narrows the `destination` arg for its `onMove` prop.
+      // - Making CollectionPicker properly generic is hard due to some internal typing
+      //   being used by components other than the CollectionPicker. One type
+      //   cast here avoids a large headache-inducing refactor there.
+
+      if (!canMoveToDashboard) {
+        if (destination.model === "dashboard") {
+          throw new Error(
+            "MoveModal can't move to a dashboard with canMoveToDashboard=false",
+          );
+        }
+
+        onMove({ id: destination.id, model: destination.model });
+      } else {
+        onMove({
+          id: destination.id,
+          model: destination.model,
+        } as MoveDestination);
+      }
+    },
+    [onMove, canMoveToDashboard],
   );
 
   const models: CollectionPickerModel[] = canMoveToDashboard
@@ -103,7 +140,7 @@ export const MoveModal = <DestinationType,>({
 
 interface BulkMoveModalProps {
   onClose: () => void;
-  onMove: OnMoveWithOneItem;
+  onMove: OnMoveWithOneItem<MoveDestination>;
   selectedItems: CollectionItem[];
   initialCollectionId: CollectionId;
 }
@@ -153,12 +190,12 @@ export const BulkMoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={destination =>
+      onChange={destination => {
         onMove({
           id: destination.id,
           model: destination.model,
-        })
-      }
+        } as MoveDestination);
+      }}
       options={{
         showSearch: true,
         allowCreateNew: true,
