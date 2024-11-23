@@ -2,12 +2,9 @@
   "Common test extension functionality for SQL-JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
-   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
@@ -49,27 +46,12 @@
 
 (defmethod tx/create-view-of-table! :sql-jdbc/test-extensions
   [driver database view-name table-name materialized?]
-  (let [database-name (get-in database [:settings :database-source-dataset-name])
-        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)
-        qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
-    (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
-                   (sql/format
-                    (cond->
-                     {:create-view [[[:raw qualified-view]]]
-                      :select [:*]
-                      :from [[[:raw qualified-table]]]}
-                      materialized? (set/rename-keys {:create-view :create-materialized-view}))
-                    :dialect (sql.qp/quote-style driver))
-                   {:transaction? false})))
+  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                 (sql.tx/create-view-of-table-sql driver database view-name table-name materialized?)
+                 {:transaction? false}))
 
 (defmethod tx/drop-view! :sql-jdbc/test-extensions
   [driver database view-name materialized?]
-  (let [database-name (get-in database [:settings :database-source-dataset-name])
-        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)]
-    (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
-                   (sql/format
-                    (cond->
-                     {:drop-view [[:if-exists [:raw qualified-view]]]}
-                      materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
-                    :dialect (sql.qp/quote-style driver))
-                   {:transaction? false})))
+  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                 (sql.tx/drop-view-sql driver database view-name materialized?)
+                 {:transaction? false}))

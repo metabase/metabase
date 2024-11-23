@@ -1,6 +1,9 @@
 (ns metabase.test.data.sqlserver
   "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
   (:require
+   [clojure.set :as set]
+   [honey.sql :as sql]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]))
@@ -67,3 +70,25 @@
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Integer}))))
+
+(defmethod sql.tx/create-view-of-table-sql :sqlserver
+  [driver database view-name table-name materialized?]
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (sql.tx/qualify-and-quote driver view-name)
+        qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
+    (sql/format
+     (cond->
+      {:create-view [[[:raw qualified-view]]]
+       :select [:*]
+       :from [[[:raw qualified-table]]]}
+       materialized? (set/rename-keys {:create-view :create-materialized-view}))
+     :dialect (sql.qp/quote-style driver))))
+
+(defmethod sql.tx/drop-view-sql :sqlserver
+  [driver _database view-name materialized?]
+  (let [qualified-view (sql.tx/qualify-and-quote driver view-name)]
+    (sql/format
+     (cond->
+      {:drop-view [[:if-exists [:raw qualified-view]]]}
+       materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
+     :dialect (sql.qp/quote-style driver))))

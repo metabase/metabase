@@ -1,14 +1,11 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -399,23 +396,8 @@
 
 (defmethod tx/create-view-of-table! :bigquery-cloud-sdk
   [driver database view-name table-name materialized?]
-  (let [database-name (get-in database [:settings :database-source-dataset-name])
-        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)
-        qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
-    (apply execute! (sql/format
-                     (cond->
-                      {:create-view [[[:raw qualified-view]]]
-                       :select [:*]
-                       :from [[[:raw qualified-table] :t]]}
-                       materialized? (set/rename-keys {:create-view :create-materialized-view}))
-                     :dialect (sql.qp/quote-style driver)))))
+  (apply execute! (sql.tx/create-view-of-table-sql driver database view-name table-name materialized?)))
 
 (defmethod tx/drop-view! :bigquery-cloud-sdk
   [driver database view-name materialized?]
-  (let [database-name (get-in database [:settings :database-source-dataset-name])
-        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)]
-    (apply execute! (sql/format
-                     (cond->
-                      {:drop-view [[:if-exists [:raw qualified-view]]]}
-                       materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
-                     :dialect (sql.qp/quote-style driver)))))
+  (apply execute! (sql.tx/drop-view-sql driver database view-name materialized?)))

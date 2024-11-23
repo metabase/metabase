@@ -1,10 +1,13 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
@@ -347,3 +350,44 @@
   [_driver card-template-tag-name]
   (let [source-table-name (u/lower-case-en (u.random/random-name))]
     (format "SELECT * FROM {{%s}} %s" card-template-tag-name source-table-name)))
+
+(defmulti create-view-of-table-sql
+  "Generate the sql for creating a view of a table.
+   The view should be a simple view of the table, like `select * from table`
+   `view-name` is the name of the new view
+   `table-name` is the name of the table.
+   `materialized?` will be true if it should create a materialized view."
+  {:arglists '([driver database view-name table-name materialized?])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-view-of-table-sql :sql/test-extensions
+  [driver database view-name table-name materialized?]
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (qualify-and-quote driver database-name view-name)
+        qualified-table (qualify-and-quote driver database-name table-name)]
+    (sql/format
+     (cond->
+      {:create-view [[[:raw qualified-view]]]
+       :select [:*]
+       :from [[[:raw qualified-table]]]}
+       materialized? (set/rename-keys {:create-view :create-materialized-view}))
+     :dialect (sql.qp/quote-style driver))))
+
+(defmulti drop-view-sql
+  "Generate sql to drop a view in database if it exists.
+   `view-name` is the name of the new view
+   `materialized?` will be true if it should drop a materialized view."
+  {:arglists '([driver database view-name materialized?])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-view-sql :sql/test-extensions
+  [driver database view-name materialized?]
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (qualify-and-quote driver database-name view-name)]
+    (sql/format
+     (cond->
+      {:drop-view [[:if-exists [:raw qualified-view]]]}
+       materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
+     :dialect (sql.qp/quote-style driver))))
