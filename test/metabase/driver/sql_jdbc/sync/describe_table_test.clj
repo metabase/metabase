@@ -765,6 +765,7 @@
   true)
 
 (doseq [driver [:presto-jdbc
+                :h2 ;; TODO
                 :druid
                 :druid-jdbc]]
   (defmethod driver/database-supports? [driver ::describe-view-fields]
@@ -772,6 +773,7 @@
     false))
 
 (doseq [driver [:oracle ;; TODO Insufficient privileges
+                :h2 ;; TODO
                 :snowflake ;; Requires enterprise account
                 :presto-jdbc
                 :druid
