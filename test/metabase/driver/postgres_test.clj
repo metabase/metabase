@@ -902,7 +902,7 @@
   (mt/test-driver :postgres
     (do-with-enums-db!
      (fn [db]
-       (tx/create-view-of-table! driver/*driver* db :birds_m :birds true)
+       (tx/create-view-of-table! driver/*driver* db "birds_m" "birds" true)
        (sync/sync-database! db)
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
