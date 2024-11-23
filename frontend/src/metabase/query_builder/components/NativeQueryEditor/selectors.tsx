@@ -9,7 +9,7 @@ export const getCardAutocompleteResultsFn = (state: State) => {
     prefix: string,
   ): Promise<CardCompletionItem[]> {
     const dbId = state.qb.card?.dataset_query?.database;
-    if (!dbId) {
+    if (!dbId || prefix.length === 0) {
       return Promise.resolve([]);
     }
 
@@ -31,7 +31,7 @@ export const getAutocompleteResultsFn = (state: State) => {
     prefix: string,
   ): Promise<AutocompleteItem[]> {
     const dbId = state.qb.card?.dataset_query?.database;
-    if (!dbId) {
+    if (!dbId || prefix.length === 0) {
       return Promise.resolve([]);
     }
 
