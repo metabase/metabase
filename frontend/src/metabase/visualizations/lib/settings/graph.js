@@ -169,10 +169,10 @@ export const GRAPH_DATA_SETTINGS = {
         truncateAfter: 10,
       };
     },
-    getHidden: (series, settings, { transformedSeries }) => {
+    getHidden: (_series, settings, extra) => {
+      const seriesCount = extra.transformedSeries?.length ?? 0;
       return (
-        settings["graph.dimensions"]?.length < 2 ||
-        transformedSeries.length > MAX_SERIES
+        settings["graph.dimensions"]?.length < 2 || seriesCount > MAX_SERIES
       );
     },
     dashboard: false,
