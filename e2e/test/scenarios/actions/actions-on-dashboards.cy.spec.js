@@ -17,6 +17,7 @@ import {
   getActionCardDetails,
   modal,
   multiAutocompleteInput,
+  nativeEditor,
   openStaticEmbeddingModal,
   popover,
   queryWritableDB,
@@ -1013,9 +1014,9 @@ const MODEL_NAME = "Test Action Model";
           });
 
           actionEditorModal().within(() => {
-            cy.get(".ace_content").click().type("{home}{shift+end}{backspace}");
+            nativeEditor().type("{home}{shift+end}{backspace}");
             const TEST_COLUMNS_QUERY = `UPDATE ${TEST_COLUMNS_TABLE} SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}`;
-            cy.get(".ace_content").type(TEST_COLUMNS_QUERY, {
+            nativeEditor().type(TEST_COLUMNS_QUERY, {
               delay: 0,
               parseSpecialCharSequences: false,
             });

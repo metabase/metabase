@@ -7,6 +7,7 @@ import {
   createQuestion,
   focusNativeEditor,
   modal,
+  nativeEditor,
   openNativeEditor,
   popover,
   restore,
@@ -245,7 +246,7 @@ describe("issue 18148", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(dbName).click();
 
-    cy.get(".ace_content").should("be.visible").type("select foo");
+    nativeEditor().type("select foo");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -400,7 +401,7 @@ describe("issue 21034", () => {
   });
 
   it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    cy.get(".ace_content").should("be.visible").type("p");
+    nativeEditor().type("p");
 
     // Wait until another explicit autocomplete is triggered
     // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)

@@ -4,6 +4,7 @@ import {
   describeEE,
   entityPickerModal,
   modal,
+  nativeEditor,
   onlyOnOSS,
   openNativeEditor,
   popover,
@@ -137,11 +138,11 @@ describe("scenarios > question > snippets", () => {
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1
-    cy.get(".ace_content")
-      .as("editor")
-      .contains(/^select \* from {{snippet: Table: Orders}} limit 1$/);
+    nativeEditor().contains(
+      /^select \* from {{snippet: Table: Orders}} limit 1$/,
+    );
     // Replace "Orders" with "Reviews"
-    cy.get("@editor")
+    nativeEditor()
       .click()
       .type(
         "{end}" +
@@ -150,7 +151,7 @@ describe("scenarios > question > snippets", () => {
           "Reviews",
       );
     // Check 2
-    cy.get("@editor").contains(
+    nativeEditor().contains(
       /^select \* from {{snippet: Table: Reviews}} limit 1$/,
     );
     // Rerun the query

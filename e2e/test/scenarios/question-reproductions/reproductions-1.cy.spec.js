@@ -5,6 +5,7 @@ import {
   POPOVER_ELEMENT,
   adhocQuestionHash,
   appBar,
+  blurNativeEditor,
   commandPalette,
   commandPaletteSearch,
   createQuestion,
@@ -18,6 +19,7 @@ import {
   leftSidebar,
   mockSessionProperty,
   modal,
+  nativeEditor,
   navigationSidebar,
   openNativeEditor,
   openNavigationSidebar,
@@ -175,7 +177,7 @@ describe("issue 9027", () => {
 
     openNativeEditor({ fromCurrentPage: true });
 
-    cy.get(".ace_content").type("select 0");
+    nativeEditor().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     saveQuestion(QUESTION_NAME);
@@ -745,7 +747,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
       { string: "> quan", field: "Quantity" },
     ]);
 
-    cy.get(".ace_text-input").blur();
+    blurNativeEditor();
     cy.button("Done").click();
 
     getNotebookStep("filter").findByText("Discount is greater than Quantity");
