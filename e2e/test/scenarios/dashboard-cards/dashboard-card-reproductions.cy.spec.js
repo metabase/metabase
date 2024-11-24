@@ -11,9 +11,9 @@ import {
   cypressWaitAll,
   echartsContainer,
   editDashboard,
-  focusNativeEditor,
   getDashboardCard,
   modal,
+  nativeEditor,
   openNavigationSidebar,
   pieSlices,
   popover,
@@ -1812,7 +1812,7 @@ describe("issue 48878", () => {
     cy.findByTestId("model-actions-header").findByText("New action").click();
 
     modal().within(() => {
-      focusNativeEditor().type("UPDATE orders SET plan = {{ plan ", {
+      nativeEditor().type("UPDATE orders SET plan = {{ plan ", {
         parseSpecialCharSequences: false,
       });
       cy.button("Save").click();
@@ -1858,7 +1858,7 @@ describe("issue 48878", () => {
       .findByText("Use a native query")
       .click();
 
-    focusNativeEditor().type(query);
+    nativeEditor().type(query);
     cy.findByTestId("native-query-editor-sidebar")
       .findByTestId("run-button")
       .click();

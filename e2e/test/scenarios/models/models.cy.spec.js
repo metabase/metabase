@@ -12,11 +12,11 @@ import {
   entityPickerModalTab,
   filter,
   filterField,
-  focusNativeEditor,
   getDashboardCard,
   getNotebookStep,
   mockSessionProperty,
   modal,
+  nativeEditor,
   openNativeEditor,
   openQuestionActions,
   openQuestionsSidebar,
@@ -584,7 +584,7 @@ describe("scenarios > models", () => {
     // Check card tags are supported by models
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
-    focusNativeEditor().type(
+    nativeEditor().type(
       "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

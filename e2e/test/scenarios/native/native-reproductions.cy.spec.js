@@ -5,7 +5,6 @@ import {
   addPostgresDatabase,
   cartesianChartCircle,
   createQuestion,
-  focusNativeEditor,
   modal,
   nativeEditor,
   openNativeEditor,
@@ -652,15 +651,15 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    focusNativeEditor().type("--");
-    expect(focusNativeEditor().findByText("--")).to.exist;
+    nativeEditor().type("--");
+    expect(nativeEditor().findByText("--")).to.exist;
 
-    focusNativeEditor().type("{meta}z");
-    focusNativeEditor().findByText("--").should("not.exist");
+    nativeEditor().type("{meta}z");
+    nativeEditor().findByText("--").should("not.exist");
 
     // more undoing does not change to empty editor
-    focusNativeEditor().type("{meta}z");
-    expect(focusNativeEditor().findByText("select")).to.exist;
+    nativeEditor().type("{meta}z");
+    expect(nativeEditor().findByText("select")).to.exist;
   });
 });
 
