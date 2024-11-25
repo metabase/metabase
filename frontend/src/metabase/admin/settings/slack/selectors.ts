@@ -6,6 +6,7 @@ export const getSlackSettings = (state: State): SlackSettings => {
   return {
     "slack-app-token": getSetting(state, "slack-app-token"),
     "slack-files-channel": getSetting(state, "slack-files-channel"),
+    "slack-bug-report-channel": getSetting(state, "slack-bug-report-channel"),
   };
 };
 

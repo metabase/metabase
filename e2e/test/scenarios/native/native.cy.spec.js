@@ -17,7 +17,6 @@ import {
   restore,
   rightSidebar,
   summarize,
-  updateSetting,
   visitCollection,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
@@ -307,85 +306,6 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/missing required parameters/).should("be.visible");
   });
-
-  describe("prompts", () => {
-    const PROMPT = "orders count";
-    const PROMPT_RESPONSE = { sql: "select count(*) from orders" };
-
-    beforeEach(() => {
-      cy.signInAsAdmin();
-      updateSetting("is-metabot-enabled", true);
-      cy.intercept(
-        "POST",
-        "/api/metabot/database/**/query",
-        PROMPT_RESPONSE,
-      ).as("databasePrompt");
-    });
-
-    it.skip("allows generate sql queries from natural language prompts", () => {
-      cy.intercept(
-        "POST",
-        "/api/metabot/database/**/query",
-        PROMPT_RESPONSE,
-      ).as("databasePrompt");
-
-      openNativeEditor();
-      ensureDatabasePickerIsHidden();
-
-      cy.findByLabelText("Ask a question").click();
-
-      cy.findByPlaceholderText("Ask anything...")
-        .focus()
-        .type(`${PROMPT}{enter}`);
-
-      runQuery();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("18,760");
-
-      cy.findByLabelText("Close").click();
-      cy.findByDisplayValue(PROMPT).should("not.exist");
-    });
-
-    it.skip("shows an error when an sql query cannot be generated", () => {
-      const errorMessage = "Could not generate a query for a given prompt";
-      cy.intercept("POST", "/api/metabot/database/**/query", {
-        body: {
-          message: errorMessage,
-        },
-        statusCode: 400,
-      }).as("databasePrompt");
-
-      openNativeEditor();
-      ensureDatabasePickerIsHidden();
-
-      cy.findByLabelText("Ask a question").click();
-
-      cy.findByPlaceholderText("Ask anything...")
-        .focus()
-        .type(`${PROMPT}{enter}`);
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(errorMessage);
-      cy.button("Try again").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(errorMessage);
-      cy.button("Rephrase").click();
-
-      cy.intercept(
-        "POST",
-        "/api/metabot/database/**/query",
-        PROMPT_RESPONSE,
-      ).as("databasePrompt");
-
-      cy.findByDisplayValue(PROMPT).type(" fixed{enter}");
-      cy.wait("@databasePrompt");
-
-      runQuery();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("18,760");
-    });
-  });
 });
 
 // causes error in cypress 13
@@ -617,7 +537,3 @@ const runQuery = () => {
   });
   cy.wait("@dataset");
 };
-
-function ensureDatabasePickerIsHidden() {
-  cy.get("#DatabasePicker").should("not.exist");
-}

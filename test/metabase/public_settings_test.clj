@@ -449,3 +449,18 @@
       (is (thrown?
            IllegalArgumentException
            (public-settings/update-channel! "millennially"))))))
+
+(deftest loading-message-test
+  (mt/with-premium-features #{:whitelabel}
+    (testing "Loading message can be set by env var"
+      (mt/with-temp-env-var-value! [mb-loading-message "running-query"]
+        (is (= :running-query (public-settings/loading-message)))))
+
+    (testing "Default value is returned if loading message set via env var to an unsupported keyword value"
+      (mt/with-temp-env-var-value! [mb-loading-message "unsupported enum value"]
+        (is (= :doing-science (public-settings/loading-message)))))
+
+    (testing "Setter blocks unsupported values set at runtime"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Loading message set to an unsupported value"
+                            (public-settings/loading-message! :unsupported-value))))))

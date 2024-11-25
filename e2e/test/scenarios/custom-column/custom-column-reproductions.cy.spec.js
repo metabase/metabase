@@ -418,7 +418,7 @@ describe("issue 18814", () => {
   });
 });
 
-describe.skip("issue 19744", () => {
+describe("issue 19744", () => {
   const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
   const questionDetails = {
