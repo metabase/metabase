@@ -10,6 +10,7 @@ import {
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalTab,
+  focusNativeEditor,
   getNotebookStep,
   modal,
   newButton,
@@ -683,7 +684,7 @@ describe("issue 43216", () => {
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
-    cy.get(".ace_editor").should("be.visible").type(" , 4 as D");
+    focusNativeEditor().should("be.visible").type(" , 4 as D");
     saveSavedQuestion();
 
     cy.log("Assert updated metadata in target question");
