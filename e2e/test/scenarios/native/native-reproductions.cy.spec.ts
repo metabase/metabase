@@ -3,6 +3,7 @@ import {
   adhocQuestionHash,
   createNativeQuestion,
   createQuestion,
+  nativeEditorCompletions,
   openNativeEditor,
   restore,
   runNativeQuery,
@@ -185,11 +186,9 @@ describe("issue 49454", () => {
   it("should be possible to use metrics in native queries (metabase#49454)", () => {
     openNativeEditor().type("select * from {{ #test");
 
-    cy.get(".ace_autocomplete")
-      .should("be.visible")
-      .within(() => {
-        cy.findByText("-question-49454").should("be.visible");
-        cy.findByText("-metric-49454").should("be.visible");
-      });
+    nativeEditorCompletions().within(() => {
+      cy.findByText("-question-49454").should("be.visible");
+      cy.findByText("-metric-49454").should("be.visible");
+    });
   });
 });
