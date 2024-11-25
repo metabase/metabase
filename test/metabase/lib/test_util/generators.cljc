@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
@@ -156,8 +156,8 @@
 (add-step {:kind :breakout})
 
 (defn- breakout-exists? [query stage-number column]
-  (boolean (lib.breakout/breakout-column? query stage-number column {:same-binning-strategy? true
-                                                                     :same-temporal-bucket?  true})))
+  (boolean (lib.breakout.metadata/breakout-column? query stage-number column {:same-binning-strategy? true
+                                                                              :same-temporal-bucket?  true})))
 
 (defmethod next-steps* :breakout [query _breakout]
   (let [stage-number (choose-stage query)

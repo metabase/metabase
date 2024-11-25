@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.join
   "Schemas for things related to joins."
   (:require
+   [metabase.lib.schema.columns :as columns]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.util.i18n :as i18n]
@@ -65,7 +66,8 @@
    [:alias       ::alias]
    [:ident    {:optional true} ::common/non-blank-string]
    [:fields   {:optional true} ::fields]
-   [:strategy {:optional true} ::strategy]])
+   [:strategy {:optional true} ::strategy]
+   [:lib.columns/joined {:optional true} [:ref ::columns/columns-map]]])
 
 (mr/def ::joins
   [:and

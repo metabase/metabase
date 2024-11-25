@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -202,6 +203,38 @@
   [metadata-providerable query]
   (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
 
+(defn- add-types-to-expression-refs [stage query stage-number]
+  (lib.util.match/replace stage
+    [:expression
+     (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+     expression-name]
+    (let [found-ref (try
+                      (m/remove-vals
+                        #(= :type/* %)
+                        (-> (lib.expression/expression-ref query stage-number expression-name)
+                            second
+                            (select-keys [:base-type :effective-type])))
+                      (catch #?(:clj Exception :cljs :default) _
+                        ;; This currently does not find expressions defined in join stages
+                        nil))]
+      ;; Fallback if metadata is missing
+      [:expression (merge found-ref opts) expression-name])))
+
+(defn- populate-breakout-columns [stage query stage-number]
+  (assoc stage :lib.columns/breakout (lib.breakout/breakout-columns-map query stage-number)))
+
+(defn- prep-mbql-stage [query metadata-provider stage-number stage]
+  (-> stage
+      (add-types-to-fields metadata-provider)
+      (add-types-to-expression-refs query stage-number)
+      (populate-breakout-columns query stage-number)))
+
+(defn- prep-mbql-stages [query metadata-provider]
+  (->> (:stages query)
+       (map-indexed #(prep-mbql-stage query metadata-provider %1 %2))
+       vec
+       (assoc query :stages)))
+
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
 ;; - fill in field refs with metadata (#33680)
@@ -212,31 +245,9 @@
         query (-> query
                   (assoc :lib/metadata metadata-provider)
                   (dissoc :lib.convert/converted?)
-                  lib.normalize/normalize)
-        stages (:stages query)]
+                  lib.normalize/normalize)]
     (cond-> query
-      converted?
-      (assoc
-       :stages
-       (mapv (fn [[stage-number stage]]
-               (-> stage
-                   (add-types-to-fields metadata-provider)
-                   (lib.util.match/replace
-                     [:expression
-                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                      expression-name]
-                     (let [found-ref (try
-                                       (m/remove-vals
-                                        #(= :type/* %)
-                                        (-> (lib.expression/expression-ref query stage-number expression-name)
-                                            second
-                                            (select-keys [:base-type :effective-type])))
-                                       (catch #?(:clj Exception :cljs :default) _
-                                        ;; This currently does not find expressions defined in join stages
-                                         nil))]
-                      ;; Fallback if metadata is missing
-                       [:expression (merge found-ref opts) expression-name]))))
-             (m/indexed stages))))))
+      converted? (prep-mbql-stages metadata-provider))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]

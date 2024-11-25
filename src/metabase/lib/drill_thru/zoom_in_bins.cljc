@@ -71,6 +71,7 @@
   (:require
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
@@ -93,9 +94,10 @@
    _stage-number                         :- :int
    {:keys [column value], :as _context}  :- ::lib.schema.drill-thru/context]
   (when (and column value)
-    (when-let [existing-breakout (first (lib.breakout/existing-breakouts query
-                                                                         (lib.underlying/top-level-stage-number query)
-                                                                         column))]
+    (when-let [existing-breakout (first (lib.breakout.metadata/existing-breakouts
+                                         query
+                                         (lib.underlying/top-level-stage-number query)
+                                         column))]
       (when-let [binning (lib.binning/binning existing-breakout)]
         (when-let [{:keys [min-value max-value bin-width]}
                    ;; If the column has binning options, use those; otherwise, check the top-level-column.
@@ -131,7 +133,7 @@
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
    new-binning  :- ::lib.schema.binning/binning]
-  (if-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
+  (if-let [existing-breakout (first (lib.breakout.metadata/existing-breakouts query stage-number column))]
     (lib.remove-replace/replace-clause query stage-number existing-breakout (lib.binning/with-binning column new-binning))
     (lib.breakout/breakout query stage-number (lib.binning/with-binning column new-binning))))
 

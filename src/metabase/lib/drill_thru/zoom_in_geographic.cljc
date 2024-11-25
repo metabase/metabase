@@ -78,6 +78,7 @@
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -213,7 +214,7 @@
    bin-width    :- pos?]
   (let [binning {:strategy  :bin-width
                  :bin-width bin-width}]
-    (if-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
+    (if-let [existing-breakout (first (lib.breakout.metadata/existing-breakouts query stage-number column))]
       (let [new-breakout (lib.binning/with-binning existing-breakout binning)]
         (lib.remove-replace/replace-clause query stage-number existing-breakout new-breakout))
       (lib.breakout/breakout query stage-number (lib.binning/with-binning column binning)))))
@@ -232,7 +233,7 @@
    stage-number                      :- :int
    {:keys [column value], :as drill} :- ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
   (-> query
-      (lib.breakout/remove-existing-breakouts-for-column stage-number column)
+      (lib.breakout.metadata/remove-existing-breakouts-for-column stage-number column)
       ;; TODO -- remove/update existing filter?
       (lib.filter/filter stage-number (lib.filter/= column value))
       (add-or-update-lat-lon-binning stage-number drill)))

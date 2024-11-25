@@ -44,6 +44,7 @@
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -65,7 +66,7 @@
              column
              (some? value)
              (= (:lib/source column) :source/aggregations))
-    (->> (lib.breakout/breakoutable-columns query stage-number)
+    (->> (lib.breakout.metadata/breakoutable-columns query stage-number)
          (filter field-pred))))
 
 (def ^:private pivot-type-predicates
@@ -162,7 +163,7 @@
 
 (defn- breakouts->filters [query stage-number {:keys [column value] :as _dimension}]
   (-> query
-      (lib.breakout/remove-existing-breakouts-for-column stage-number column)
+      (lib.breakout.metadata/remove-existing-breakouts-for-column stage-number column)
       (lib.filter/filter stage-number (lib.filter/= column value))))
 
 ;; Pivot drills are in play when clicking an aggregation cell. Pivoting is applied by:

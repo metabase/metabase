@@ -28,6 +28,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -53,7 +54,7 @@
     ;; There must be a date dimension available.
     (let [stage-number (lib.underlying/top-level-stage-number query)]
       (when-let [breakout-column (m/find-first lib.types.isa/temporal?
-                                               (lib.breakout/breakoutable-columns query stage-number))]
+                                               (lib.breakout.metadata/breakoutable-columns query stage-number))]
         (when-let [bucketing-unit (m/find-first :default
                                                 (lib.temporal-bucket/available-temporal-buckets query stage-number breakout-column))]
           ;; only suggest this drill thru if the breakout it would apply does not already exist.
