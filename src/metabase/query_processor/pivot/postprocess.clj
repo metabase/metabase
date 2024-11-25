@@ -242,9 +242,13 @@
   (let [row-path       (vec row-combo)
         row-data       (get-in data row-path)
         measure-values (vec
-                        (for [measure-key pivot-measures
-                              :let        [formatter (get ordered-formatters measure-key)]
-                              col-combo   col-combos]
+                        ;; we need to lead with col-combo here so that each row will alternate
+                        ;; between all of the measures, rather than have all measures of one kind
+                        ;; bunched together. That is, if you have a table with `count` and `avg`
+                        ;; the row must show count-val, avg-val, count-val, avg-val ... etc
+                        (for [col-combo   col-combos
+                              measure-key pivot-measures
+                              :let        [formatter (get ordered-formatters measure-key)]]
                           (fmt formatter
                                (as-> row-data m
                                  (reduce get m col-combo)
