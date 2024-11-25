@@ -10,8 +10,6 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import {
   PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
