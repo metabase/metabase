@@ -32,7 +32,7 @@ import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, CardId, NativeQuerySnippet } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
-import S from "./AceEditor.global.css";
+import S from "./AceEditor.module.css";
 import type { EditorHandle, EditorProps } from "./Editor";
 import { ACE_ELEMENT_ID, SCROLL_MARGIN } from "./constants";
 import {

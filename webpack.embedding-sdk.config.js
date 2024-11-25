@@ -41,12 +41,6 @@ const CSS_CONFIG = {
   modules: {
     auto: filename =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
-    mode: filename => {
-      if (filename.endsWith(".global.css")) {
-        return "global";
-      }
-      return "local";
-    },
     localIdentName: isDevMode
       ? "[name]__[local]___[hash:base64:5]"
       : "[hash:base64:5]",
