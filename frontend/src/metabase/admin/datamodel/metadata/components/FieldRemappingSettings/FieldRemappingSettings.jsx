@@ -59,8 +59,10 @@ class FieldRemappingSettings extends Component {
     throw new Error(t`Unrecognized mapping type`);
   };
 
-  hasForeignKeys = () => {
-    return isFK(this.props.field) && this.getForeignKeys().length > 0;
+  hasForeignKeyTargetFields = () => {
+    return (
+      isFK(this.props.field) && this.getForeignKeyTargetFields().length > 0
+    );
   };
 
   hasMappableNumeralValues = () => {
@@ -80,7 +82,7 @@ class FieldRemappingSettings extends Component {
   getAvailableMappingTypes = () => {
     const mappingTypes = [
       MAP_OPTIONS.original,
-      ...(this.hasForeignKeys() ? [MAP_OPTIONS.foreign] : []),
+      ...(this.hasForeignKeyTargetFields() ? [MAP_OPTIONS.foreign] : []),
       ...(this.hasMappableNumeralValues() > 0 ? [MAP_OPTIONS.custom] : []),
     ];
 
@@ -94,17 +96,9 @@ class FieldRemappingSettings extends Component {
   };
 
   getFKTargetTableEntityNameOrNull = () => {
-    const fks = this.getForeignKeys();
-    const fkTargetFields = fks[0] && fks[0].dimensions.map(dim => dim.field());
-
-    if (fkTargetFields) {
-      const nameField = fkTargetFields.find(field => isEntityName(field));
-      return nameField ? nameField.id : null;
-    } else {
-      throw new Error(
-        t`Current field isn't a foreign key or FK target table metadata is missing`,
-      );
-    }
+    const fkTargetFields = this.getForeignKeyTargetFields();
+    const nameField = fkTargetFields.find(field => isEntityName(field));
+    return nameField ? nameField.id : null;
   };
 
   clearEditingStates = () => {
@@ -178,22 +172,14 @@ class FieldRemappingSettings extends Component {
     return updateFieldValues({ id: field.id }, Array.from(remappings));
   };
 
-  getForeignKeys = () => {
-    const { field, metadata } = this.props;
-    return metadata.field(field.id).remappingOptions();
-  };
-
-  onFkPopoverDismiss = () => {
-    const { isChoosingInitialFkTarget } = this.state;
-
-    if (isChoosingInitialFkTarget) {
-      this.setState({ dismissedInitialFkTargetPopover: true });
-    }
+  getForeignKeyTargetFields = () => {
+    const { fkTargetTable } = this.props;
+    return fkTargetTable?.fields ?? [];
   };
 
   render() {
-    const { field, table, metadata, fieldsError } = this.props;
-    const { hasChanged } = this.state;
+    const { field, table, metadata, fieldsError, fkTargetTable } = this.props;
+    const { hasChanged, isChoosingInitialFkTarget } = this.state;
 
     const remapping = new Map(field.remappedValues());
     const isFieldsAccessRestricted = fieldsError?.status === 403;
@@ -219,38 +205,28 @@ class FieldRemappingSettings extends Component {
           {mappingType === MAP_OPTIONS.foreign && (
             <>
               <FieldSeparator />
-              <Fields.Loader id={field.fk_target_field_id}>
-                {({ field: fkTargetField }) => (
-                  <Tables.Loader id={fkTargetField.table_id}>
-                    {({ table: fkTargetTable }) => (
-                      <FieldDataSelector
-                        isInitiallyOpen={!fkMappingField}
-                        selectedDatabase={table?.database}
-                        selectedDatabaseId={table?.database?.id}
-                        selectedTable={fkTargetTable}
-                        selectedTableId={fkTargetTable?.id}
-                        selectedField={fkMappingField}
-                        selectedFieldId={fkMappingField?.id}
-                        triggerElement={
-                          <FieldSelectButton
-                            hasValue={hasFKMappingValue}
-                            hasError={!fkMappingField}
-                          >
-                            {fkMappingField ? (
-                              fkMappingField.display_name
-                            ) : (
-                              <span className={CS.textMedium}>
-                                {t`Choose a field`}
-                              </span>
-                            )}
-                          </FieldSelectButton>
-                        }
-                        setFieldFn={this.onForeignKeyFieldChange}
-                      />
+              <FieldDataSelector
+                isInitiallyOpen={isChoosingInitialFkTarget}
+                selectedDatabase={table?.database}
+                selectedDatabaseId={table?.database?.id}
+                selectedTable={fkTargetTable}
+                selectedTableId={fkTargetTable?.id}
+                selectedField={fkMappingField}
+                selectedFieldId={fkMappingField?.id}
+                triggerElement={
+                  <FieldSelectButton
+                    hasValue={hasFKMappingValue}
+                    hasError={!fkMappingField}
+                  >
+                    {fkMappingField ? (
+                      fkMappingField.display_name
+                    ) : (
+                      <span className={CS.textMedium}>{t`Choose a field`}</span>
                     )}
-                  </Tables.Loader>
-                )}
-              </Fields.Loader>
+                  </FieldSelectButton>
+                }
+                setFieldFn={this.onForeignKeyFieldChange}
+              />
             </>
           )}
         </FieldMappingContainer>
@@ -447,7 +423,16 @@ const mapDispatchToProps = {
   deleteFieldDimension: Fields.actions.deleteFieldDimension,
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
+export default _.compose(
+  Fields.load({
+    id: (_state, { field }) => field.fk_target_field_id,
+    entityAlias: "fkTargetField",
+    loadingAndErrorWrapper: false,
+  }),
+  Tables.load({
+    id: (_state, { fkTargetField }) => fkTargetField?.table_id,
+    entityAlias: "fkTargetTable",
+    loadingAndErrorWrapper: false,
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
 )(FieldRemappingSettings);

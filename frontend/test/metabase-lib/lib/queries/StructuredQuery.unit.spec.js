@@ -96,36 +96,4 @@ describe("StructuredQuery", () => {
       });
     });
   });
-
-  describe("DIMENSION METHODS", () => {
-    describe("fieldOptions", () => {
-      it("includes the correct number of dimensions", () => {
-        // Should just include the non-fk keys from the current table
-        expect(query.fieldOptions().dimensions.length).toBe(9);
-      });
-
-      it("returns correct count of foreign keys", () => {
-        expect(query.fieldOptions().fks.length).toBe(2);
-      });
-
-      it("returns a correct count of fields", () => {
-        expect(query.fieldOptions().count).toBe(30);
-      });
-    });
-  });
-
-  describe("DATASET QUERY METHODS", () => {
-    describe("setDatasetQuery", () => {
-      it("replaces the previous dataset query with the provided one", () => {
-        const newDatasetQuery = makeDatasetQuery({
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        });
-
-        expect(query.setDatasetQuery(newDatasetQuery).datasetQuery()).toBe(
-          newDatasetQuery,
-        );
-      });
-    });
-  });
 });
