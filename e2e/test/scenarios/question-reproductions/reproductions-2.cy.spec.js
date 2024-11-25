@@ -509,7 +509,7 @@ describe("issue 30165", () => {
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
     openNativeEditor();
-    cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
+    focusNativeEditor().type("SELECT * FROM ORDERS");
     queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").clear().type("Q1");
@@ -518,14 +518,14 @@ describe("issue 30165", () => {
     cy.wait("@createQuestion");
     cy.button("Not now").click();
 
-    cy.findByTestId("native-query-editor").type(" WHERE TOTAL < 20");
+    focusNativeEditor().type(" WHERE TOTAL < 20");
     queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
 
-    cy.findByTestId("native-query-editor").type(" LIMIT 10");
+    focusNativeEditor().type(" LIMIT 10");
     queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();

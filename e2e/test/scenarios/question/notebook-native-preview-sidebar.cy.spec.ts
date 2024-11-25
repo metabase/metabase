@@ -432,7 +432,7 @@ function convertToSql() {
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.button("Convert this question to SQL").click();
   cy.wait("@dataset");
-  cy.findByTestId("native-query-editor").should("be.visible");
+  nativeEditor().should("be.visible");
 }
 
 type ResizeSidebarCallback = (

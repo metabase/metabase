@@ -704,7 +704,7 @@ describe("issue 35785", () => {
     cy.findByTestId("native-query-editor-container")
       .findByTestId("visibility-toggler")
       .click();
-    cy.findByTestId("native-query-editor").type("{backspace}4");
+    focusNativeEditor().type("{backspace}4");
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
 
