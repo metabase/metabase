@@ -235,3 +235,10 @@ export function tableOrCardDependentMetadata(
 export function columnKey(column: ColumnMetadata): string {
   return ML.column_key(column);
 }
+
+export function topLevelColumnSource(
+  query: Query,
+  column: ColumnMetadata,
+): string {
+  return ML.top_level_column_source(query, column);
+}

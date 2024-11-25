@@ -1,6 +1,7 @@
 (ns metabase.lib.js.metadata
   (:require
    [clojure.core.protocols]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [goog]
@@ -275,6 +276,32 @@
          :internal
          {:lib/type :metadata.column.remapping/internal})))))
 
+;;; Duplicate values are not allowed or it will break column-source-keyword->string.
+(def ^:private column-source-string->keyword
+  {"aggregation" :source/aggregations
+   "breakout"    :source/breakouts})
+
+(def ^:private column-source-keyword->string
+  (set/map-invert column-source-string->keyword))
+
+(defn parse-column-source
+  "Parse a `source` column string into a :lib/source keyword.
+
+    (parse-column-source \"breakout\") -> :source/breakouts"
+  [source]
+  (assert (not= "" source))
+  (column-source-string->keyword source (keyword "source" source)))
+
+(defn unparse-column-source
+  "Turn a :lib/source keyword back into a legacy source string.
+
+  This function is the inverse of [[parse-column-source]].
+
+    (unparse-column-source :lib/breakout) -> \"breakout\""
+  [source]
+  (assert (= "source" (namespace source)))
+  (column-source-keyword->string source (name source)))
+
 (defmethod parse-field-fn :field
   [_object-type]
   (fn [k v]
@@ -297,10 +324,7 @@
       ;; If the array has been frozen, that mutation will throw. So we clone the `:field-ref` array on its way into CLJS
       ;; land, and avoid the issue.
       :field-ref                        (to-array v)
-      :lib/source                       (case v
-                                          "aggregation" :source/aggregations
-                                          "breakout"    :source/breakouts
-                                          (keyword "source" v))
+      :lib/source                       (parse-column-source v)
       :metabase.lib.field/temporal-unit (keyword v)
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)

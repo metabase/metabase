@@ -466,10 +466,32 @@ class TableInteractive extends Component {
     }
   }
 
+  resolveTopLevelColumnSources(question, data) {
+    const query = question?.query();
+    const stageIndex = -1;
+
+    if (!query) {
+      return data;
+    }
+
+    const colsWithTopLevelSources = data.cols.map(col => {
+      const topLevelColumnSource = Lib.topLevelColumnSource(
+        query,
+        Lib.fromLegacyColumn(query, stageIndex, col),
+      );
+      if (topLevelColumnSource && topLevelColumnSource !== col.source) {
+        return { ...col, source: topLevelColumnSource };
+      }
+      return col;
+    });
+
+    return { ...data, cols: colsWithTopLevelSources };
+  }
+
   getCellClickedObject(rowIndex, columnIndex) {
     try {
       return this._getCellClickedObjectCached(
-        this.props.data,
+        this.resolveTopLevelColumnSources(this.props.question, this.props.data),
         this.props.settings,
         rowIndex,
         columnIndex,

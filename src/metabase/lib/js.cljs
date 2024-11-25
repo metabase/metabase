@@ -79,6 +79,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -2358,3 +2359,16 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export top-level-column-source
+  "Return the legacy-formatted source of the top-level column corresponding to `column` in `a-query`.
+
+  For example, if `column` originally came from an aggregation, but the `query` then had filter stages added after the
+  aggregation stage, then the `column` source might be `:source/fields`, but the source of the top-level column would
+  be `:source/aggregations`, and this function will return the legacy equivalent \"aggregation\".
+
+  > **Code health:** Legacy, Single use. Used to enable underlying_records drill thru in Table visualizations."
+  [a-query column]
+  (some-> (lib.underlying/top-level-column a-query column)
+          :lib/source
+          (js.metadata/unparse-column-source)))
