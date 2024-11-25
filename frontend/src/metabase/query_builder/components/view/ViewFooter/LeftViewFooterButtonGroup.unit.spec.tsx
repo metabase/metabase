@@ -56,6 +56,7 @@ const setup = ({
   isResultLoaded = true,
   isNotebook = false,
   hideChartSettings = false,
+  isRunning = false,
 } = {}) => {
   const qbState = createMockQueryBuilderState({
     uiControls: createMockQueryBuilderUIControlsState({
@@ -77,6 +78,7 @@ const setup = ({
       isResultLoaded={isResultLoaded}
       isNotebook={isNotebook}
       hideChartSettings={hideChartSettings}
+      isRunning={isRunning}
     />,
     { storeInitialState: state },
   );
