@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import {
   MetabaseProvider,
@@ -11,10 +11,6 @@ import { Box } from "metabase/ui";
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
-
-type InteractiveQuestionComponentProps = ComponentProps<
-  typeof InteractiveQuestion
->;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/Themed",
@@ -96,61 +92,39 @@ const Wrapper = ({
   </MetabaseProvider>
 );
 
-export const DarkTheme = {
-  render(args: InteractiveQuestionComponentProps) {
-    return (
-      <Wrapper theme={darkTheme}>
-        <InteractiveQuestion {...args} />;
-      </Wrapper>
-    );
-  },
+const DefaultTemplate = (theme: MetabaseTheme) => (
+  <Wrapper theme={theme}>
+    <InteractiveQuestion questionId={QUESTION_ID} isSaveEnabled />
+  </Wrapper>
+);
 
-  args: {
-    questionId: QUESTION_ID,
-    isSaveEnabled: true,
-    saveToCollectionId: undefined,
-  },
+export const DarkTheme = {
+  render: DefaultTemplate,
+  args: darkTheme,
 };
 
 export const DarkThemeEditor = {
-  render(args: InteractiveQuestionComponentProps) {
-    return (
-      <Wrapper theme={darkTheme}>
-        <InteractiveQuestion {...args}>
-          <InteractiveQuestion.Editor />
-        </InteractiveQuestion>
-      </Wrapper>
-    );
-  },
-
-  args: {
-    questionId: QUESTION_ID,
-    isSaveEnabled: true,
-    saveToCollectionId: undefined,
-  },
+  render: (theme: MetabaseTheme) => (
+    <Wrapper theme={theme}>
+      <InteractiveQuestion questionId={QUESTION_ID} isSaveEnabled>
+        <InteractiveQuestion.Editor />
+      </InteractiveQuestion>
+    </Wrapper>
+  ),
+  args: darkTheme,
 };
 
 export const WithWhiteTooltip = {
-  render(args: InteractiveQuestionComponentProps) {
-    const theme = defineEmbeddingSdkTheme({
-      components: {
-        tooltip: {
-          textColor: "#000",
-          backgroundColor: "#fff",
-        },
+  render: DefaultTemplate,
+
+  args: defineEmbeddingSdkTheme({
+    components: {
+      tooltip: {
+        textColor: "#2f3542",
+        secondaryTextColor: "#57606f",
+        backgroundColor: "#ffffff",
+        focusedBackgroundColor: "#f1f2f6",
       },
-    });
-
-    return (
-      <Wrapper theme={theme}>
-        <InteractiveQuestion {...args} />
-      </Wrapper>
-    );
-  },
-
-  args: {
-    questionId: QUESTION_ID,
-    isSaveEnabled: true,
-    saveToCollectionId: undefined,
-  },
+    },
+  }),
 };

@@ -188,8 +188,14 @@ export type MetabaseComponentTheme = {
     /** Tooltip text color. */
     textColor?: string;
 
+    /** Tooltip text color for muted rows. */
+    secondaryTextColor?: string;
+
     /** Tooltip background color. */
     backgroundColor?: string;
+
+    /** Tooltip background color for focused rows. */
+    focusedBackgroundColor?: string;
   };
 
   /** Popover */
