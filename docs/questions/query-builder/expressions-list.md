@@ -52,7 +52,9 @@ For an introduction to expressions, check out the [overview of custom expression
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [doesNotContain](#doesnotcontain)
+    - [domain](#domain)
     - [endsWith](#endswith)
+    - [host](#host)
     - [isempty](./expressions/isempty.md)
     - [ltrim](#ltrim)
     - [length](#length)
@@ -62,6 +64,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [replace](#replace)
     - [rtrim](#rtrim)
     - [startsWith](#startswith)
+    - [subdomain](#subdomain)
     - [substring](./expressions/substring.md)
     - [trim](#trim)
     - [upper](#upper)
@@ -399,6 +402,16 @@ Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the
 
 Related: [contains](#contains), [regexextract](#regexextract).
 
+### domain
+
+Extracts the domain name from a URL or email.
+
+Syntax: `domain(urlOrEmail)`.
+
+Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
+
+Related: [host](#host), [subdomain](#subdomain).
+
 ### endsWith
 
 Returns true if the end of the text matches the comparison text.
@@ -413,6 +426,16 @@ Syntax: `endsWith(text, comparison)` for case-sensitive match.
 Example: `endsWith([Appetite], "hungry")`
 
 Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
+
+### host
+
+Extracts the host, which is the domain and the TLD, from a URL or email.
+
+Syntax: `host(urlOrEmail)`.
+
+Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
+
+Related: [domain](#domain), [subdomain](#subdomain).
 
 ### [isempty](./expressions/isempty.md)
 
@@ -510,6 +533,16 @@ It would return false for "Computer **s**cience 201: Data structures" because th
 `startsWith([Course Name], "Computer Science", "case-insensitive")` would return true for both "Computer Science 101: An introduction" and "Computer science 201: Data structures".
 
 Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnotcontain).
+
+### subdomain
+
+Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
+
+Syntax: `subdomain(url)`.
+
+Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `https://status.metabase.com`, `subdomain([Page URL])` would return `status`.
+
+Related: [host](#host), [domain](#domain).
 
 ### [substring](./expressions/substring.md)
 
