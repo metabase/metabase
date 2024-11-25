@@ -305,6 +305,8 @@ import rocket_component from "./rocket.svg?component";
 import rocket_source from "./rocket.svg?source";
 import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
+import sankey_component from "./sankey.svg?component";
+import sankey_source from "./sankey.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
 import section_component from "./section.svg?component";
@@ -976,6 +978,10 @@ export const Icons = {
   revert: {
     component: revert_component,
     source: revert_source,
+  },
+  sankey: {
+    component: sankey_component,
+    source: sankey_source,
   },
   share: {
     component: share_component,

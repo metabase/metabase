@@ -7,7 +7,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -46,30 +45,78 @@
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
-(defn- filter-stage-used?
+(defn- explict-stage-references
   [parameters]
-  (boolean
-   (some (fn [{:keys [target]}]
-           (and (mbql.u/is-clause? :dimension target)
-                (contains? (get target 2) :stage-number)))
-         parameters)))
+  (into #{}
+        (keep (fn [{:keys [target]}]
+                (when (mbql.u/is-clause? :dimension target)
+                  (get-in target [2 :stage-number]))))
+        parameters))
+
+(defn- point-parameters-to-last-stage
+  "Points temporal-unit parameters to the last stage.
+  This function is normally called for models or metrics, where the first and the last
+  stages are the same. By using -1 as stage number we make sure that the expansion of
+  models/metrics doesn't cause the filter to be added at the wrong stage."
+  [parameters]
+  (mapv (fn [{:keys [target], :as parameter}]
+          (cond-> parameter
+            (and (mbql.u/is-clause? :dimension target)
+                 (some? (get-in target [2 :stage-number])))
+            (assoc-in [:target 2 :stage-number] -1)))
+        parameters))
+
+(defn- last-stage-number
+  [outer-query]
+  (mbql.u/legacy-last-stage-number (:query outer-query)))
+
+(defn- nest-query
+  [query]
+  (assoc query :query {:source-query (:query query)}))
+
+(defn- add-stage-to-temporal-unit-parameters
+  "Points temporal-unit parameters to the penultimate stage unless the stage is specified."
+  [parameters]
+  (mapv (fn [{param-type :type, :keys [target], :as parameter}]
+          (cond-> parameter
+            (and (= param-type :temporal-unit)
+                 (mbql.u/is-clause? :dimension target)
+                 (nil? (get-in target [2 :stage-number])))
+            (assoc-in [:target 2 :stage-number] -2)))
+        parameters))
 
 (defn query-for-card
   "Generate a query for a saved Card"
-  [{query :dataset_query
-    :as   card} parameters constraints middleware & [ids]]
-  (let [query (-> query
+  [{dataset-query :dataset_query
+    card-type     :type
+    :as           card} parameters constraints middleware & [ids]]
+  (let [stage-numbers (explict-stage-references parameters)
+        explicit-stage-numbers? (boolean (seq stage-numbers))
+        parameters (cond-> parameters
+                     ;; models are not transparent (questions and metrics are)
+                     (and explicit-stage-numbers? (= card-type :model))
+                     point-parameters-to-last-stage)
+        ;; The FE might have "added" a stage so that a question with breakouts
+        ;; at the last stage can be filtered on the summary results. We know
+        ;; this happened if we get a reference to one above the last stage.
+        filter-stage-added? (and explicit-stage-numbers?
+                                 (= (inc (last-stage-number dataset-query))
+                                    (apply max stage-numbers)))
+        query (cond-> dataset-query
+                (and explicit-stage-numbers?
+                     (or
+                      ;; stage-number 0 means filtering the results of models and metrics
+                      (not= card-type :question)
+                      ;; the FE assumed an extra stage, so we add it
+                      filter-stage-added?))
+                nest-query)
+        query (-> query
                   ;; don't want default constraints overridding anything that's already there
                   (m/dissoc-in [:middleware :add-default-userland-constraints?])
                   (assoc :constraints constraints
-                         :parameters  parameters
+                         :parameters  (cond-> parameters
+                                        filter-stage-added? add-stage-to-temporal-unit-parameters)
                          :middleware  middleware))
-        query (cond-> query
-                ;; If query has aggregation and breakout at the top level,
-                ;; parameters refer to stages as if a new stage was appended.
-                ;; This is so that we can distinguish if a filter should be applied
-                ;; before of after summarizing.
-                (filter-stage-used? parameters) lib/ensure-filter-stage)
         cs    (-> (cache-strategy card (:dashboard-id ids))
                   (enrich-strategy query))]
     (assoc query :cache-strategy cs)))

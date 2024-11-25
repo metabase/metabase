@@ -73,7 +73,7 @@
    (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       mi/transform-parameters-list
+  {:parameters       mi/transform-card-parameters-list
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
