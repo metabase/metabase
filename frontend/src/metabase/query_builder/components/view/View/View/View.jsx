@@ -227,6 +227,7 @@ const ViewInner = props => {
             />
           </ViewSidebar>
           <ViewMainContainer
+            /* TODO: pass props explicitly */
             showLeftSidebar={showLeftSidebar}
             showRightSidebar={showRightSidebar}
             {...props}
@@ -249,6 +250,7 @@ const ViewInner = props => {
           className={CS.flexNoShrink}
           isNotebook={queryBuilderMode === "notebook"}
           isNative={isNative}
+          isRunning={isRunning}
         />
       </QueryBuilderViewRoot>
 
