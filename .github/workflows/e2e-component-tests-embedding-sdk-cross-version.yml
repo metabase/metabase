@@ -30,8 +30,7 @@ jobs:
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
     if: |
-      !cancelled() &&
-      contains(github.ref, 'release-x')
+      !cancelled()
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
@@ -52,7 +51,8 @@ jobs:
               getBuildRequirements,
               getVersionFromReleaseBranch,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const targetBranchName = '${{ github.base_ref || github.ref }}';
+            // const targetBranchName = '${{ github.base_ref || github.ref }}';
+            const branchName = 'release-x.51.x';
 
             const version = getVersionFromReleaseBranch(targetBranchName);
             const requirements = getBuildRequirements(version);
@@ -114,7 +114,8 @@ jobs:
         with:
           script: | # js
             const { getSdkVersionFromBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const branchName = '${{ github.base_ref || github.ref }}';
+            // const branchName = '${{ github.base_ref || github.ref }}';
+            const branchName = 'release-x.51.x';
 
             const sdk_version = await getSdkVersionFromBranchName({
               github,
