@@ -1,13 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import Filter from "metabase-lib/v1/queries/structured/Filter";
-
 import { NextPicker, PastPicker } from "./RelativeDatePicker";
 
 describe("PastPicker", () => {
   it("should change a filter", async () => {
-    const filter = new Filter(["time-interval", null, -10, "month"]);
+    const filter = ["time-interval", null, -10, "month"];
     const onFilterChange = jest.fn();
 
     render(<PastPicker filter={filter} onFilterChange={onFilterChange} />);
@@ -18,7 +16,7 @@ describe("PastPicker", () => {
   });
 
   it("should not allow to enter an empty time interval", async () => {
-    const filter = new Filter(["time-interval", null, -10, "month"]);
+    const filter = ["time-interval", null, -10, "month"];
     const onFilterChange = jest.fn();
 
     render(<PastPicker filter={filter} onFilterChange={onFilterChange} />);
@@ -30,7 +28,7 @@ describe("PastPicker", () => {
 
 describe("NextPicker", () => {
   it("should change a filter", async () => {
-    const filter = new Filter(["time-interval", null, 10, "month"]);
+    const filter = ["time-interval", null, 10, "month"];
     const onFilterChange = jest.fn();
 
     render(<NextPicker filter={filter} onFilterChange={onFilterChange} />);
@@ -41,7 +39,7 @@ describe("NextPicker", () => {
   });
 
   it("should not allow to enter an empty time interval", async () => {
-    const filter = new Filter(["time-interval", null, 10, "month"]);
+    const filter = ["time-interval", null, 10, "month"];
     const onFilterChange = jest.fn();
 
     render(<NextPicker filter={filter} onFilterChange={onFilterChange} />);

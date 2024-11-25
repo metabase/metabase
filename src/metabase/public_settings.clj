@@ -455,14 +455,28 @@ x.com")
   :doc        false
   :audit      :never)
 
+(def ^:private loading-message-values
+  #{:doing-science :running-query :loading-results})
+
 (defsetting loading-message
-  (deferred-tru "Choose the message to show while a query is running.")
+  (deferred-tru (str "Choose the message to show while a query is running. Possible values are \"doing-science\", "
+                     "\"running-query\", or \"loading-results\""))
   :encryption :no
   :visibility :public
   :export?    true
   :feature    :whitelabel
   :type       :keyword
   :default    :doing-science
+  :setter     (fn [new-value]
+                (let [value (or (loading-message-values (keyword new-value))
+                                (throw (ex-info "Loading message set to an unsupported value"
+                                                {:value   new-value
+                                                 :options (seq loading-message-values)})))]
+                  (setting/set-value-of-type! :keyword :loading-message value)))
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :keyword :loading-message)]
+                  (or (loading-message-values value)
+                      :doing-science)))
   :audit      :getter)
 
 (defsetting application-colors
@@ -1064,6 +1078,15 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    nil
   :type       :json)
+
+(defsetting bug-reporting-enabled
+  (deferred-tru "Enable bug report submissions.")
+  :visibility :public
+  :export?    false
+  :type       :boolean
+  :default    false
+  :setter     :none
+  :audit      :getter)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

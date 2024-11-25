@@ -197,8 +197,8 @@ export type Breakout = ConcreteFieldReference;
 type FilterClause = Filter;
 export type Filter = FieldFilter | CompoundFilter | NotFilter | SegmentFilter;
 
-type AndFilter = ["and", Filter, Filter];
-type OrFilter = ["or", Filter, Filter];
+type AndFilter = ["and", ...Filter[]];
+type OrFilter = ["or", ...Filter[]];
 type CompoundFilter = AndFilter | OrFilter;
 
 export type FieldFilter =

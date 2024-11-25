@@ -687,13 +687,19 @@ describe("SaveQuestionModal", () => {
 
   describe("Cache TTL field", () => {
     const query = Question.create({
-      databaseId: SAMPLE_DB_ID,
-      tableId: ORDERS_ID,
       metadata,
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
       // eslint-disable-next-line no-restricted-syntax
     }).legacyQuery({ useStructuredQuery: true }) as StructuredQuery;
 
-    const question = query.aggregate(["count"]).question();
+    const question = query.question();
 
     describe("OSS", () => {
       it("is not shown", async () => {

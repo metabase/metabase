@@ -2,16 +2,11 @@
   (:require
    [clojure.test :refer :all]
    ;; For now, this is specialized to postgres, but we should be able to abstract it to all index-based engines.
-   [metabase.api.common :as api]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search :as search]
    [metabase.search.config :as search.config]
-   [metabase.search.impl :as search.impl]
-   [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
-   [metabase.search.postgres.scoring :as search.scoring]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import (java.time Instant)
@@ -19,73 +14,34 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^:dynamic *user-ctx* nil)
-
 ;; We act on a random localized table, making this thread-safe.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-index-contents
   "Populate the index with the given appdb agnostic entity shapes."
   [entities & body]
-  `(when (search/supports-index?)
-     (let [table-name# (search.index/random-table-name)]
-       (try
-         (binding [search.index/*active-table* table-name#]
-           (search.index/create-table! table-name#)
-           (#'search.index/batch-upsert! table-name#
-                                         ;; yup, we have two different shapes called "entry" at the moment
-                                         (map (comp #'search.index/entity->entry
-                                                    #'search.ingestion/->entry)
-                                              ~entities))
-           ~@body)
-         (finally
-           (#'search.index/drop-table! table-name#))))))
+  `(search.tu/with-temp-index-table
+     (#'search.index/batch-upsert! search.index/*active-table*
+                                   (map (comp #'search.index/entity->entry
+                                              #'search.ingestion/->entry)
+                                        ~entities))
+     ~@body))
 
-(defmacro with-api-user [raw-ctx & body]
-  `(let [raw-ctx# ~raw-ctx]
-     (if-let [user-id# (:current-user-id raw-ctx#)]
-       ;; for brevity in some tests, we don't require that the user really exists
-       (if (t2/exists? :model/User user-id#)
-         (mw.session/with-current-user user-id# ~@body)
-         (binding [*user-ctx* (merge {:current-user-id       user-id#
-                                      :current-user-perms    #{"/"}
-                                      :is-superuser?         true
-                                      :is-sandboxed-user?    false
-                                      :is-impersonated-user? false}
-                                     (select-keys raw-ctx# [:current-user-perms
-                                                            :is-superuser?
-                                                            :is-sandboxed-user?
-                                                            :is-impersonated-user?]))]
-           ~@body))
-       (mt/with-test-user :crowberto ~@body))))
+(defn search-results*
+  [search-string & {:as raw-ctx}]
+  (mapv (juxt :model :id :name)
+        (search.tu/search-results search-string (assoc raw-ctx :search-engine "fulltext"))))
 
-(defn- search* [ranker-key search-string & {:as raw-ctx}]
-  (with-api-user raw-ctx
-    (let [search-ctx (search.impl/search-context
-                      (merge
-                       (or *user-ctx*
-                           {:current-user-id       api/*current-user-id*
-                            :current-user-perms    @api/*current-user-permissions-set*
-                            :is-superuser?         api/*is-superuser?*
-                            :is-impersonated-user? (premium-features/impersonated-user?)
-                            :is-sandboxed-user?    (premium-features/impersonated-user?)})
-                       {:archived         false
-                        :search-string    search-string
-                        :models           search.config/all-models
-                        :model-ancestors? false}
-                       raw-ctx))]
-      (is (get (search.scoring/scorers search-ctx) ranker-key) "The ranker is enabled")
-      (map (juxt :model :id :name) (#'search.postgres/fulltext search-string search-ctx)))))
+(defmacro with-weights [weight-map & body]
+  `(mt/with-dynamic-redefs [search.config/weights (constantly ~weight-map)]
+     ~@body))
 
-(defn- search-no-weights
-  "Like search but with all weights set to 0."
-  [ranker-key & args]
-  (mt/with-dynamic-redefs [search.config/weights #(assoc (:default @#'search.config/static-weights) ranker-key 0)]
-    (apply search* ranker-key args)))
-
-(defn- search [& args]
-  (let [result (apply search* args)]
-    (is (not= (apply search-no-weights args)
-              result)
+(defn search-results
+  "Like search-results* but with a sanity check that search without weights returns a different result."
+  [ranker-key search-string & {:as raw-ctx}]
+  (let [result   (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
+        inverted (with-weights {ranker-key -1} (search-results* search-string raw-ctx))]
+    ;; note that this may not be a strict reversal, due to ties.
+    (is (not= inverted result)
         "sanity check: search-no-weights should be different")
     result))
 
@@ -111,7 +67,7 @@
               ["card" 6 "ordering"]
               ;; If the match is only in a secondary field, it is less preferred.
               ["card" 3 "classified"]]
-             (search :text "order"))))))
+             (search-results :text "order"))))))
 
 (deftest ^:parallel model-test
   (with-index-contents
@@ -122,13 +78,13 @@
       (is (= [["metric"  3 "card old"]
               ["card"    2 "card recent"]
               ["dataset" 1 "card ancient"]]
-             (search :model "card"))))
+             (search-results :model "card"))))
     (testing "We can override this order with weights"
       (is (= [["dataset" 1 "card ancient"]
               ["metric"  3 "card old"]
               ["card"    2 "card recent"]]
-             (mt/with-dynamic-redefs [search.config/weights (constantly {:model 1.0 :model/dataset 1.0})]
-               (search :model "card")))))))
+             (with-weights {:model 1.0 :model/dataset 1.0}
+               (search-results* "card")))))))
 
 (deftest ^:parallel recency-test
   (let [right-now   (Instant/now)
@@ -142,7 +98,7 @@
         (is (= [["card" 2 "card recent"]
                 ["card" 3 "card old"]
                 ["card" 1 "card ancient"]]
-               (search :recency "card")))))))
+               (search-results :recency "card")))))))
 
 (deftest ^:parallel view-count-test
   (testing "the more view count the better"
@@ -153,7 +109,7 @@
       (is (= [["card" 2 "card famous"]
               ["card" 3 "card popular"]
               ["card" 1 "card well known"]]
-             (search :view-count "card")))))
+             (search-results :view-count "card")))))
 
   (testing "don't error on fresh instances with no view count"
     (with-index-contents
@@ -163,14 +119,14 @@
       (is (= [["dashboard" 2 "view dashboard"]
               ["card"      1 "view card"]
               ["dataset"   3 "view dataset"]]
-             (search* :view-count "view"))))))
+             (search-results* "view"))))))
 
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
     (when (search/supports-index?)
       (let [table-name (search.index/random-table-name)]
         (binding [search.index/*active-table* table-name]
-          (search.index/create-table! table-name)
+          (search.index/ensure-ready! table-name)
           (mt/with-model-cleanup [:model/Card]
             (let [search-term    "view-count-edge-case"
                   card-with-view #(merge (mt/with-temp-defaults :model/Card)
@@ -182,7 +138,7 @@
                   outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 100000))
                   _               (#'search.ingestion/batch-update!
                                    (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term]))
-                  first-result-id (-> (search* :view-count search-term) first)]
+                  first-result-id (-> (search-results* search-term) first)]
               (is (some? first-result-id))
               ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
               ;; but we can solve this later if it actually becomes a flake
@@ -195,7 +151,7 @@
        {:model "card" :id 2 :name "card used" :dashboardcard_count 3}]
       (is (= [["card" 2 "card used"]
               ["card" 1 "card no used"]]
-             (search :dashboard "card")))))
+             (search-results :dashboard "card")))))
 
   (testing "it has a ceiling, more than the ceiling is considered to be equal"
     (with-index-contents
@@ -203,7 +159,7 @@
        {:model "card" :id 2 :name "card" :dashboardcard_count 11}]
       (is (= [["card" 1 "card popular"]
               ["card" 2 "card"]]
-             (search* :dashboard "card"))))))
+             (search-results* "card"))))))
 
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
@@ -211,35 +167,41 @@
 (deftest ^:parallel bookmark-test
   (let [crowberto (mt/user->id :crowberto)
         rasta     (mt/user->id :rasta)]
-    (testing "bookmarked items are ranker higher"
-      (with-index-contents
-        [{:model "card" :id 1 :name "card normal"}
-         {:model "card" :id 2 :name "card crowberto loved"}]
-        (mt/with-temp [:model/CardBookmark _ {:card_id 2 :user_id crowberto}
-                       :model/CardBookmark _ {:card_id 1 :user_id rasta}]
-          (is (= [["card" 2 "card crowberto loved"]
-                  ["card" 1 "card normal"]]
-                 (search :bookmarked "card" {:current-user-id crowberto}))))))
+    (mt/with-temp [:model/Card {c1 :id} {}
+                   :model/Card {c2 :id} {}]
+      (testing "bookmarked items are ranker higher"
+        (with-index-contents
+          [{:model "card" :id c1 :name "card normal"}
+           {:model "card" :id c2 :name "card crowberto loved"}]
+          (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
+                         :model/CardBookmark _ {:card_id c1 :user_id rasta}]
+            (is (= [["card" c2 "card crowberto loved"]
+                    ["card" c1 "card normal"]]
+                   (search-results :bookmarked "card" {:current-user-id crowberto})))))))
 
-    (testing "bookmarked dashboard"
-      (with-index-contents
-        [{:model "dashboard" :id 1 :name "dashboard normal"}
-         {:model "dashboard" :id 2 :name "dashboard crowberto loved"}]
-        (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id 2 :user_id crowberto}
-                       :model/DashboardBookmark _ {:dashboard_id 1 :user_id rasta}]
-          (is (= [["dashboard" 2 "dashboard crowberto loved"]
-                  ["dashboard" 1 "dashboard normal"]]
-                 (search :bookmarked "dashboard" {:current-user-id crowberto}))))))
+    (mt/with-temp [:model/Dashboard {d1 :id} {}
+                   :model/Dashboard {d2 :id} {}]
+      (testing "bookmarked dashboard"
+        (with-index-contents
+          [{:model "dashboard" :id d1 :name "dashboard normal"}
+           {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
+          (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
+                         :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
+            (is (= [["dashboard" d2 "dashboard crowberto loved"]
+                    ["dashboard" d1 "dashboard normal"]]
+                   (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
 
-    (testing "bookmarked collection"
-      (with-index-contents
-        [{:model "collection" :id 1 :name "collection normal"}
-         {:model "collection" :id 2 :name "collection crowberto loved"}]
-        (mt/with-temp [:model/CollectionBookmark _ {:collection_id 2 :user_id crowberto}
-                       :model/CollectionBookmark _ {:collection_id 1 :user_id rasta}]
-          (is (= [["collection" 2 "collection crowberto loved"]
-                  ["collection" 1 "collection normal"]]
-                 (search :bookmarked "collection" {:current-user-id crowberto}))))))))
+    (mt/with-temp [:model/Collection {c1 :id} {}
+                   :model/Collection {c2 :id} {}]
+      (testing "bookmarked collection"
+        (with-index-contents
+          [{:model "collection" :id c1 :name "collection normal"}
+           {:model "collection" :id c2 :name "collection crowberto loved"}]
+          (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
+                         :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
+            (is (= [["collection" c2 "collection crowberto loved"]
+                    ["collection" c1 "collection normal"]]
+                   (search-results :bookmarked "collection" {:current-user-id crowberto})))))))))
 
 (deftest ^:parallel user-recency-test
   (let [user-id     (mt/user->id :crowberto)
@@ -251,19 +213,23 @@
                        :model_id  model-id
                        :user_id   user-id
                        :timestamp timestamp})]
-    (with-index-contents
-      [{:model "card"    :id 1 :name "card ancient"}
-       {:model "metric"  :id 2 :name "card recent"}
-       {:model "dataset" :id 3 :name "card unseen"}
-       {:model "dataset" :id 4 :name "card old"}]
-      (mt/with-temp [:model/RecentViews _ (recent-view 1 forever-ago)
-                     :model/RecentViews _ (recent-view 2 right-now)
-                     :model/RecentViews _ (recent-view 2 forever-ago)
-                     :model/RecentViews _ (recent-view 4 forever-ago)
-                     :model/RecentViews _ (recent-view 4 long-ago)]
+    (mt/with-temp [:model/Card        {c1 :id} {}
+                   :model/Card        {c2 :id} {}
+                   :model/Card        {c3 :id} {}
+                   :model/Card        {c4 :id} {}
+                   :model/RecentViews _ (recent-view c1 forever-ago)
+                   :model/RecentViews _ (recent-view c2 right-now)
+                   :model/RecentViews _ (recent-view c2 forever-ago)
+                   :model/RecentViews _ (recent-view c4 forever-ago)
+                   :model/RecentViews _ (recent-view c4 long-ago)]
+      (with-index-contents
+        [{:model "card"    :id c1 :name "card ancient"}
+         {:model "metric"  :id c2 :name "card recent"}
+         {:model "dataset" :id c3 :name "card unseen"}
+         {:model "dataset" :id c4 :name "card old"}]
         (testing "We prefer results more recently viewed by the current user"
-          (is (= [["metric"  2 "card recent"]
-                  ["dataset" 4 "card old"]
-                  ["card"    1 "card ancient"]
-                  ["dataset" 3 "card unseen"]]
-                 (search :user-recency "card" {:current-user-id user-id}))))))))
+          (is (= [["metric"  c2 "card recent"]
+                  ["dataset" c4 "card old"]
+                  ["card"    c1 "card ancient"]
+                  ["dataset" c3 "card unseen"]]
+                 (search-results :user-recency "card" {:current-user-id user-id}))))))))
