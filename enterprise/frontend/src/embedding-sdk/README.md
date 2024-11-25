@@ -1,14 +1,24 @@
 # Metabase embedded analytics SDK
 
+![Metabase logo](../../../../docs/images/metabase-logo.svg)
+
 > This SDK is in public beta and actively being developed. You can expect some changes to the API, especially during the beta. The SDK currently only works with a Metabase 1.51 or higher.
 
 With Metabase's Embedded analytics SDK, you can embed individual [Metabase](https://www.metabase.com/) components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
 [Learn more](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
-## Installing Metabase Enterprise Edition
+## Docs for the Embedded analytics SDK
 
-You can run Metabase Pro on a Cloud plan (with a free trial)](https://www.metabase.com/pricing).
+For how to use the SDK with your app, check out our [docs for the Embedded analytics SDK](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
+
+## Quickstart
+
+Just some commands to get you started. For more on how to set up the SDK with your app, see the [SDK docs](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
+
+### Installing Metabase
+
+Start a free trial of [Metabase Pro](https://www.metabase.com/pricing).
 
 Or run it locally. Here's a docker one-liner:
 
@@ -19,14 +29,14 @@ docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
 You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
 
 ```sh
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+java -jar metabase.jar
 ```
 
 By default, Metabase will run at `http://localhost:3000`.
 
 If you get stuck, check out our [installation docs](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase).
 
-## Installing the SDK
+### Installing the SDK
 
 You can install Metabase Embedded analytics SDK for React via npm:
 
@@ -40,72 +50,8 @@ or using yarn:
 yarn add @metabase/embedding-sdk-react
 ```
 
-## Which SDK version to use
+For more on the SDK, check out the [SDK docs](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
-The SDK version tracks with the Metabase version.
+## Development docs
 
-So, for example, if you're on Metabase version `1.51.x`, you should use the SDK with the tag `51-stable`.
-
-See [Versioning](https://www.metabase.com/docs/latest/embedding/sdk/version).
-
-## Docs
-
-For how to use the SDK, check out our [docs for the Embedded analytics SDK](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
-
-## Development
-
-### Storybook
-
-You can use storybook to run SDK components during local development.
-
-When you have Metabase instance running:
-
-```bash
-yarn storybook-embedding-sdk
-```
-
-### Initial configuration
-
-1. Set JWT secret to be "`0000000000000000000000000000000000000000000000000000000000000000`" in Admin > Authentication >
-   JWT > String used by the JWT signing key
-1. Make sure "User Provisioning" setting is set to "`on`".
-1. Set Authorized Origins to "`*`" in Admin > Embedding > Interactive embedding
-
-### Building locally
-
-First you need to build the Metabase Embedding SDK for React locally:
-
-```bash
-yarn build-release:cljs
-```
-
-And then run:
-
-```bash
-yarn build-embedding-sdk:watch
-```
-
-### Using the local build
-
-After that you need to add this built SDK package location to your package.json. In this example we assume that your
-application is located in the same directory as Metabase directory:
-
-```json
-"dependencies": {
-"@metabase/embedding-sdk-react": "file:../metabase/resources/embedding-sdk"
-}
-```
-
-And then you can install the package using npm or yarn:
-
-```bash
-npm install
-# or
-yarn
-```
-
-## Releases
-
-Embedding SDK package build happens with Github actions if `embedding-sdk-build` label has been set on the PR.
-
-Published package will use a version from `package.template.json` + current date and commit short hash.
+For developing the SDK, see the [dev docs](https://www.metabase.com/docs/latest/developers-guide/sdk).

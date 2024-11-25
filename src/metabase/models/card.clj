@@ -70,7 +70,7 @@
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
-   :parameters             mi/transform-parameters-list
+   :parameters             mi/transform-card-parameters-list
    :parameter_mappings     mi/transform-parameters-list
    :type                   mi/transform-keyword})
 
@@ -1053,13 +1053,13 @@
                   :mr         [:model/ModerationReview [:and
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]
-                                                        [:= :mr.most_recent true]]]
+                                                        [:= :mr.most_recent true]]]}
                   ;; Workaround for dataflow :((((((
                   ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
                   ;;       and could cause a large increase in the query count for dashboard updates.
                   ;;       (see the test failures when this hook is added back)
                   ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
-                  }})
+   #_:end})
 
 (search/define-spec "card"
   (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))

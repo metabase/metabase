@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { isEE, updateSetting } from "e2e/support/helpers";
 
 const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
@@ -24,31 +26,30 @@ export const blockSnowplow = () => {
 /**
  * Check for the existence of specific snowplow events.
  *
- * @param {object} eventData - object of key / value pairs you expect to see in the event
+ * @param {Object|Function} eventData - object of key / value pairs you expect to see in the event or a function that will be passed in the real event for you to do your own comparison with
  * @param {number} count - number of matching events you expect to find. defaults to 1
  */
 export const expectGoodSnowplowEvent = (eventData, count = 1) => {
   let lastReceivedEvent = null;
+  let lastFoundEventCount = 0;
   retrySnowplowRequest(
     "micro/good",
     ({ body }) => {
       lastReceivedEvent = body?.[0].event?.unstruct_event?.data?.data;
-
-      return (
-        body.filter(snowplowEvent =>
-          isDeepMatch(
-            snowplowEvent?.event?.unstruct_event?.data?.data,
-            eventData,
-          ),
-        ).length === count
-      );
+      lastFoundEventCount = body.filter(snowplowEvent =>
+        isDeepMatch(
+          snowplowEvent?.event?.unstruct_event?.data?.data,
+          eventData,
+        ),
+      ).length;
+      return lastFoundEventCount === count;
     },
     () =>
-      `Expected ${count} good Snowplow events with data: ${JSON.stringify(
-        eventData,
-        null,
-        2,
-      )}\n Last event found was ${JSON.stringify(lastReceivedEvent, null, 2)}`,
+      `Expected ${count} good Snowplow events to match: ${
+        _.isFunction(eventData)
+          ? eventData.toString()
+          : JSON.stringify(eventData, null, 2)
+      }\n\nLast event found was ${JSON.stringify(lastReceivedEvent, null, 2)}\n\nLast matching event count was ${lastFoundEventCount}`,
   ).should("be.ok");
 };
 

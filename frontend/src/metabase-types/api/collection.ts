@@ -124,7 +124,10 @@ export interface CollectionItem {
   authority_level?: CollectionAuthorityLevel;
   getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
-  setArchived?: (isArchived: boolean, opts?: Record<string, unknown>) => void;
+  setArchived?: (
+    isArchived: boolean,
+    opts?: Record<string, unknown>,
+  ) => Promise<void>;
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;

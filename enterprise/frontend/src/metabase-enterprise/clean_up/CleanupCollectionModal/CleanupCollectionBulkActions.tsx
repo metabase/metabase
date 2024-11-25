@@ -2,6 +2,7 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { archiveAndTrack } from "metabase/archive/analytics";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -10,10 +11,12 @@ import { UndoToast } from "metabase/containers/UndoListing";
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 
+import type { StaleCollectionItem } from "../types";
+
 import CS from "./CleanupCollectionBulkActions.module.css";
 
 interface CleanupCollectionBulkActionsProps {
-  selected: CollectionItem[];
+  selected: StaleCollectionItem[];
   clearSelectedItem: () => void;
   resetPagination: () => void;
   onArchive: ({ totalArchivedItems }: { totalArchivedItems: number }) => void;
@@ -36,14 +39,30 @@ export const CleanupCollectionBulkActions = ({
   };
 
   const handleBulkArchive = async () => {
-    const actions = selected.map(item =>
-      item?.setArchived?.(true, { notify: false }),
-    );
+    const actions = selected.map(item => {
+      return archiveAndTrack({
+        archive: () =>
+          item.setArchived
+            ? item.setArchived(true, { notify: false })
+            : Promise.resolve(),
+        model: item.model,
+        modelId: item.id,
+        triggeredFrom: "cleanup_modal",
+      });
+    });
 
-    Promise.all(actions)
-      .then(() => {
+    Promise.allSettled(actions)
+      .then(results => {
         resetPagination();
-        onArchive({ totalArchivedItems: selected.length });
+
+        const successfullyArchivedItems = results
+          .map((result, index) =>
+            result.status === "fulfilled" ? selected[index] : undefined,
+          )
+          .filter((x): x is StaleCollectionItem => !!x);
+        const totalArchivedItems = successfullyArchivedItems.length;
+
+        onArchive({ totalArchivedItems });
 
         const id = Date.now();
         const timeoutId = setTimeout(() => {
@@ -51,14 +70,14 @@ export const CleanupCollectionBulkActions = ({
         }, 5000) as unknown as number;
 
         const message = ngettext(
-          msgid`${selected.length} item has been moved to the trash.`,
-          `${selected.length} items have been moved to the trash.`,
-          selected.length,
+          msgid`${totalArchivedItems} item has been moved to the trash.`,
+          `${totalArchivedItems} items have been moved to the trash.`,
+          totalArchivedItems,
         );
 
         setUndo({
           id,
-          actions: [() => handleUndo(selected)],
+          actions: [() => handleUndo(successfullyArchivedItems)],
           icon: "check",
           canDismiss: true,
           message,

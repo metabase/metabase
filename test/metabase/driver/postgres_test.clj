@@ -1329,7 +1329,7 @@
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
-    (if (System/getenv "MB_POSTGRES_SSL_TEST_SSL")
+    (if (config/config-bool :mb-postgres-ssl-test-ssl)
       (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
         (mt/with-env-keys-renamed-by #(str/replace-first % "mb-postgres-ssl-test" "mb-postgres-test")
           (id-field-parameter-test)))

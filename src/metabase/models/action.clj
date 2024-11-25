@@ -55,7 +55,7 @@
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
    :parameter_mappings     mi/transform-parameters-list
-   :parameters             mi/transform-parameters-list
+   :parameters             mi/transform-card-parameters-list
    :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction
