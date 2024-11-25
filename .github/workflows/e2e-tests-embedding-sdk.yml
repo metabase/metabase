@@ -5,7 +5,6 @@ on:
     branches:
       - "master"
       - "release-**"
-      - "sdk-e2e-tests-fix-release-ci"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -51,7 +50,7 @@ jobs:
         with:
           script: | # js
             const { getBuildRequirements, getMajorVersionNumberFromReleaseBranch, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const targetBranchName = '${{ github.base_ref || github.ref_name }}'; // base_ref for PRs, ref_name for branch itself
+            const targetBranchName = '${{ github.base_ref || github.ref }}'; // base_ref for PRs, ref_name for branch itself
 
             if (targetBranchName === 'master' || !targetBranchName.startsWith('release-x.')) {
               return {
