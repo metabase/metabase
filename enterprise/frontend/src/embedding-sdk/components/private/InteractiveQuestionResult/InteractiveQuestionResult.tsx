@@ -78,11 +78,14 @@ export const InteractiveQuestionResult = ({
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
-  if (isQuestionLoading) {
+  // When visualizing a question for the first time, there is no query result yet.
+  const isQueryResultLoading = question && !queryResults;
+
+  if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
-  if (!question || !queryResults) {
+  if (!question) {
     return <SdkError message={t`Question not found`} />;
   }
 
