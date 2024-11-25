@@ -582,7 +582,7 @@ export function FieldValuesWidgetInner({
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
             isLoading={isLoading}
-            alwaysShowOptions={valuesMode !== "search"}
+            alwaysShowOptions={parameter?.values_query_type !== "search"}
           />
         ) : !isSimpleInput ? (
           <SearchField
@@ -599,6 +599,7 @@ export function FieldValuesWidgetInner({
             itemRenderer={renderItem}
             isDashboardFilter={!!parameter}
             isLoading={loadingState === "LOADING"}
+            alwaysShowOptions={parameter?.values_query_type !== "search"}
           />
         ) : (
           <TokenField

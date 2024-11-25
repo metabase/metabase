@@ -61,11 +61,13 @@ export const SearchField = ({
   const rootRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleSearchChange = (query: string) => {
     setQuery(query);
     if (query !== "") {
       onInputChange(query);
+      setHasSearched(true);
     }
   };
 
@@ -170,7 +172,7 @@ export const SearchField = ({
             isDashboardFilter && S.dashboardFilter,
           )}
         >
-          {(alwaysShowOptions || debouncedFilter.length > 0) &&
+          {(alwaysShowOptions || hasSearched || debouncedFilter.length > 0) &&
             filteredOptions.map(function (option, index) {
               const isSelected = value.includes(option[0]);
 
