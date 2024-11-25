@@ -33,6 +33,10 @@ const FONT_SIZES = {
  * such as charts, data tables and popovers.
  */
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
+  tooltip: {
+    textColor: "var(--mb-color-text-white)",
+    backgroundColor: "var(--mb-color-bg-dark)",
+  },
   collectionBrowser: {
     breadcrumbs: {
       expandButton: {

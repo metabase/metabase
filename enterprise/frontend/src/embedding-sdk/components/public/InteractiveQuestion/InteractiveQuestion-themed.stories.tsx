@@ -130,12 +130,14 @@ export const DarkThemeEditor = {
   },
 };
 
-export const WithLightTooltip = {
+export const WithWhiteTooltip = {
   render(args: InteractiveQuestionComponentProps) {
     const theme = defineEmbeddingSdkTheme({
-      colors: {
-        "background-inverse": "#fff",
-        "text-inverse": "#2d2d30",
+      components: {
+        tooltip: {
+          textColor: "#000",
+          backgroundColor: "#fff",
+        },
       },
     });
 
