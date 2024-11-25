@@ -81,7 +81,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [interval](#interval)
     - [minute](#minute)
     - [month](#month)
-    - [monthName](#monthName)
+    - [monthName](#monthname)
     - [now](./expressions/now.md)
     - [quarter](#quarter)
     - [quarterName](#quartername)
