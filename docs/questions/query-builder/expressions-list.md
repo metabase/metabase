@@ -76,12 +76,15 @@ For an introduction to expressions, check out the [overview of custom expression
     - [datetimeDiff](./expressions/datetimediff.md)
     - [datetimeSubtract](./expressions/datetimesubtract.md)
     - [day](#day)
+    - [dayName](#dayname)
     - [hour](#hour)
     - [interval](#interval)
     - [minute](#minute)
     - [month](#month)
+    - [monthName](#monthName)
     - [now](./expressions/now.md)
     - [quarter](#quarter)
+    - [quarter](#quartername)
     - [relativeDateTime](#relativedatetime)
     - [second](#second)
     - [week](#week)
@@ -626,6 +629,14 @@ Syntax: `day([datetime column])`.
 
 Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
+### dayName
+
+Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+
+Syntax: `dayName(dayNumber)`.
+
+Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+
 ### hour
 
 Takes a datetime and returns the hour as an integer (0-23).
@@ -662,6 +673,14 @@ Syntax: `month([datetime column])`.
 
 Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
 
+### monthName
+
+Returns the localized short name for the given month.
+
+Syntax: `monthName([Birthday Month])`
+
+Example: `monthName(10)` would return `Oct` for October.
+
 ### [now](./expressions/now.md)
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
@@ -675,6 +694,14 @@ Takes a datetime and returns the number of the quarter in a year (1-4) as an int
 Syntax: `quarter([datetime column])`.
 
 Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
+
+### quarterName
+
+Given the quarter number (1-4), returns a string like `Q1`.
+
+Syntax: `quarterName([Fiscal Quarter])`.
+
+Example: `quarterName(3)` would return `Q3`.
 
 ### relativeDateTime
 
