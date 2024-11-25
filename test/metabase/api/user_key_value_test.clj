@@ -13,4 +13,5 @@
     (mt/user-http-request :rasta :put 200 "/user-key-value" {:key "meow" :context "meow"})
     (is (= {:key1 "foo" :key2 123} (mt/user-http-request :rasta :put 200 "/user-key-value" {:key "meow" :context "meow" :value {:key1 "foo" :key2 123}})))
     (is (= {:key1 "foo" :key2 123} (mt/user-http-request :rasta :get 200 "/user-key-value?key=meow&context=meow")))
-    (mt/user-http-request :rasta :put 400 "/user-key-value" {:key "meow" :context "meow" :value {}})))
+    (mt/user-http-request :rasta :put 400 "/user-key-value" {:key "meow" :context "meow" :value {}})
+    (mt/user-http-request :rasta :put 200 "/user-key-value" {:key "other" :context "other" :value "true"})))
