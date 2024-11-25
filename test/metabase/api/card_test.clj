@@ -1319,7 +1319,7 @@
 
 (deftest ^:parallel updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
-         (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE)))))
+         (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE) {}))))
 
 (deftest test-that-we-can-edit-a-card
   (t2.with-temp/with-temp [:model/Card card {:name "Original Name"}]
