@@ -1,4 +1,4 @@
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { DashboardBackButton } from "metabase/query_builder/components/view/ViewHeader/components";
 
 import { useInteractiveQuestionContext } from "../context";
 
@@ -9,11 +9,5 @@ export const BackButton = () => {
     return null;
   }
 
-  return (
-    <Tooltip label="Back">
-      <ActionIcon radius="xl" size="lg" onClick={onNavigateBack}>
-        <Icon name="arrow_left" />
-      </ActionIcon>
-    </Tooltip>
-  );
+  return <DashboardBackButton noLink={true} onClick={onNavigateBack} />;
 };
