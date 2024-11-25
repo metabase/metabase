@@ -13,7 +13,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   DatabaseId,
@@ -706,10 +705,7 @@ describe("QB Actions > initializeQB", () => {
       });
 
       const question = new Question(result.card, metadata);
-      const query = question.legacyQuery({
-        // eslint-disable-next-line no-restricted-syntax
-        useStructuredQuery: true,
-      }) as StructuredQuery;
+      const query = question.query();
 
       return {
         question,
@@ -744,9 +740,11 @@ describe("QB Actions > initializeQB", () => {
 
     it("applies 'segment' param correctly", async () => {
       const { query } = await setupOrdersTable({ segment: SEGMENT.id });
-      const [filter] = query.filters();
+      const stageIndex = -1;
+      const [filter] = Lib.filters(query, stageIndex);
+      const filterInfo = Lib.displayInfo(query, stageIndex, filter);
 
-      expect(filter.raw()).toEqual(["segment", SEGMENT.id]);
+      expect(filterInfo.displayName).toEqual(SEGMENT.name);
     });
 
     it("fetches question metadata", async () => {
