@@ -9,5 +9,5 @@ export const BackButton = () => {
     return null;
   }
 
-  return <DashboardBackButton noLink={true} onClick={onNavigateBack} />;
+  return <DashboardBackButton noLink onClick={onNavigateBack} />;
 };
