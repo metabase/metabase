@@ -22,7 +22,7 @@
   margin: 1rem 1rem 0.25rem 1rem;
   font-weight: 400;
   font-size: 13px;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-tooltip-text-secondary);
 }
 
 .Row {
@@ -30,12 +30,12 @@
 }
 
 .SecondaryRow {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-tooltip-text-secondary);
   font-size: 12px;
 }
 
 .RowFocused {
-  background-color: color-mix(in srgb, var(--mb-color-bg-black) 50%, #000);
+  background: var(--mb-color-tooltip-background-focused);
 }
 
 .Cell {
@@ -74,7 +74,7 @@
 .SecondaryValueCell {
   width: 1px;
   font-weight: 600;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-tooltip-text-secondary);
 }
 
 .IndicatorCell {
@@ -95,5 +95,5 @@
 }
 
 .SecondaryRow .NameCell {
-  color: color-mix(in srgb, #fff 90%, var(--mb-color-bg-black));
+  color: color-mix(in srgb, #fff 90%, var(--mb-color-tooltip-background));
 }

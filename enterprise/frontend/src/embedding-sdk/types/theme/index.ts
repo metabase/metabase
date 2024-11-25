@@ -184,12 +184,12 @@ export type MetabaseComponentTheme = {
   };
 
   /** Tooltip */
-  tooltip: {
+  tooltip?: {
     /** Tooltip text color. */
-    textColor: string;
+    textColor?: string;
 
     /** Tooltip background color. */
-    backgroundColor: string;
+    backgroundColor?: string;
   };
 
   /** Popover */
