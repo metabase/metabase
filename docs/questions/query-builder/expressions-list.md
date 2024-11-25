@@ -637,6 +637,8 @@ Syntax: `dayName(dayNumber)`.
 
 Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
 
+Related: [quarterName](#quartername), [monthName](#monthname).
+
 ### hour
 
 Takes a datetime and returns the hour as an integer (0-23).
@@ -681,6 +683,8 @@ Syntax: `monthName([Birthday Month])`
 
 Example: `monthName(10)` would return `Oct` for October.
 
+Related: [dayName](#dayname), [quarterName](#quartername).
+
 ### [now](./expressions/now.md)
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
@@ -702,6 +706,8 @@ Given the quarter number (1-4), returns a string like `Q1`.
 Syntax: `quarterName([Fiscal Quarter])`.
 
 Example: `quarterName(3)` would return `Q3`.
+
+Related: [dayName](#dayname), [monthName](#monthname).
 
 ### relativeDateTime
 
