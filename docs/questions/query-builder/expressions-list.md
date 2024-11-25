@@ -233,11 +233,11 @@ Logical functions determine if a condition is satisfied or determine what value 
 
 ### between
 
-Checks a date or number column's values to see if they're within the specified range.
+Returns true if the value of a date or number column falls within a specified range. Otherwise returns false.
 
 Syntax: `between(column, start, end)`
 
-Example: `between([Created At], "2019-01-01", "2020-12-31")` would return rows where `Created At` date fell within the range of January 1, 2019 and December 31, 2020.
+Example: If you filtered with the expression `between([Created At], "2019-01-01", "2020-12-31")`, Metabase would return rows that returned true for that expression, in this case where the `Created At` date fell _within_ the range of January 1, 2019 and December 31, 2020, including the start (`2019-01-01`) and end (`2020-12-31`) dates.
 
 Related: [interval](#interval).
 
