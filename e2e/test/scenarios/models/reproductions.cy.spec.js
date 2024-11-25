@@ -24,6 +24,7 @@ import {
   filterField,
   filterFieldPopover,
   filterWidget,
+  focusNativeEditor,
   getDashboardCard,
   getNotebookStep,
   leftSidebar,
@@ -1642,7 +1643,7 @@ describe("issues 35039 and 37009", () => {
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
     // The repro requires that we update the query in a minor, non-impactful way.
     cy.log("Update the query and save");
-    nativeEditor().type("{backspace}");
+    focusNativeEditor().type("{backspace}");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -1713,7 +1714,7 @@ describe("issue 37009", () => {
 
     openQuestionActions();
     popover().findByText("Edit query definition").click();
-    nativeEditor().type(" WHERE CATEGORY = 'Gadget'");
+    focusNativeEditor().type(" WHERE CATEGORY = 'Gadget'");
     cy.findByTestId("dataset-edit-bar")
       .button("Save changes")
       .should("be.disabled")

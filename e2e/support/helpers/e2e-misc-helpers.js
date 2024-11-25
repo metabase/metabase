@@ -1,5 +1,3 @@
-import { nativeEditor } from "e2e/support/helpers/e2e-native-editor-helpers";
-
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
@@ -41,7 +39,18 @@ export function openNativeEditor({
   // database selector or simply display the previously selected database
   cy.findAllByTestId("loading-indicator").should("not.exist");
 
-  return nativeEditor().as(alias);
+  return focusNativeEditor().as(alias);
+}
+
+export function focusNativeEditor() {
+  cy.findByTestId("native-query-editor")
+    .should("be.visible")
+    .should("have.class", "ace_editor")
+    .click();
+
+  return cy
+    .findByTestId("native-query-editor")
+    .should("have.class", "ace_focus");
 }
 
 /**

@@ -3,6 +3,7 @@ import {
   createNativeQuestion,
   createQuestion,
   entityPickerModal,
+  focusNativeEditor,
   nativeEditor,
   nativeEditorCompletions,
   openNativeEditor,
@@ -283,7 +284,7 @@ describe("scenarios > question > native subquery", () => {
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         startNewNativeQuestion();
-        nativeEditor().type(`SELECT * FROM {{${tagID}`);
+        focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
@@ -307,7 +308,7 @@ describe("scenarios > question > native subquery", () => {
         const tagID = `#${baseQuestionId}`;
 
         startNewNativeQuestion();
-        nativeEditor().type(`SELECT * FROM {{${tagID}`);
+        focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
 
         runNativeQuery();
         cy.findAllByTestId("cell-data").should("contain", "1");
