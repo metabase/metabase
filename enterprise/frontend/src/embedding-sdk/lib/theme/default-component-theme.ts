@@ -35,7 +35,7 @@ const FONT_SIZES = {
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   tooltip: {
     textColor: "var(--mb-color-text-white)",
-    backgroundColor: "var(--mb-color-bg-dark)",
+    backgroundColor: "var(--mb-color-background-inverse)",
   },
   collectionBrowser: {
     breadcrumbs: {
