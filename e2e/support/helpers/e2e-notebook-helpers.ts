@@ -5,7 +5,7 @@ import {
   entityPickerModalTab,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
-import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
+import type { NotebookStepType } from "metabase/querying/notebook/types";
 import type { IconName } from "metabase/ui";
 
 export function notebookButton() {

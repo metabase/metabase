@@ -48,6 +48,7 @@ import type {
   DatasetQuery,
   Field,
   LastEditInfo,
+  ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
   ParameterValuesMap,
@@ -55,6 +56,7 @@ import type {
   UserInfo,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 
 import type { Query } from "../types";
 
@@ -745,9 +747,8 @@ class Question {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  _convertParametersToMbql(): Question {
+  _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
     const query = this.query();
-    const stageIndex = -1;
     const { isNative } = Lib.queryDisplayInfo(query);
 
     if (isNative) {
@@ -756,8 +757,17 @@ class Question {
 
     const newQuery = this.parameters().reduce((query, parameter) => {
       if (isFilterParameter(parameter)) {
+        const stageIndex =
+          isDimensionTarget(parameter.target) && !isComposed
+            ? getParameterDimensionTargetStageIndex(parameter.target)
+            : -1;
         return applyFilterParameter(query, stageIndex, parameter);
       } else if (isTemporalUnitParameter(parameter)) {
+        const stageIndex =
+          isDimensionTarget(parameter.target) && !isComposed
+            ? getParameterDimensionTargetStageIndex(parameter.target)
+            : -1;
+
         return applyTemporalUnitParameter(query, stageIndex, parameter);
       } else {
         return query;
@@ -769,6 +779,13 @@ class Question {
 
     const hasQueryBeenAltered = query !== newQuery;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
+
+    function getParameterDimensionTargetStageIndex(
+      target: ParameterDimensionTarget,
+    ) {
+      const [_type, _variableTarget, options] = target;
+      return options?.["stage-number"] ?? -1;
+    }
   }
 
   query(): Query {
