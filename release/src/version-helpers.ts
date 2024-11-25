@@ -92,13 +92,18 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
-export const getSdkVersionFromBranchName = (branch: string) => {
-  let majorVersion;
+export const getSdkVersionFromBranchName = ({
+  github,
+  owner,
+  repo,
+  branchName,
+}: GithubProps & { branchName: string }) => {
+  let majorVersion: string;
 
-  if (isReleaseBranch(branch)) {
-    majorVersion = getMajorVersionNumberFromReleaseBranch(branch);
+  if (isReleaseBranch(branchName)) {
+    majorVersion = getMajorVersionNumberFromReleaseBranch(branchName);
   } else {
-    majorVersion = 52; // TODO: automate resolving next release major version;
+    majorVersion = "52"; // TODO: automate resolving next release major version;
   }
 
   console.log(
@@ -109,17 +114,19 @@ export const getSdkVersionFromBranchName = (branch: string) => {
     `Looking for git tag - "embedding-sdk-0.${Number(majorVersion)}.*"`,
   );
 
-  const latestSdkTag = execSync(
-    `git tag --sort taggerdate | grep -o 'embedding-sdk-0.${Number(majorVersion)}.*' | sort -r | head -1`,
-  ).toString("utf8");
+  const latestSdkTag = getLastEmbeddingSdkReleaseTag({
+    github,
+    owner,
+    repo,
+    majorVersion,
+  });
 
   console.log(
     `Resolved SDK latest release tag for v${majorVersion} - ${latestSdkTag}`,
   );
 
-  const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(latestSdkTag);
-  if (match) {
-    return match[1];
+  if (latestSdkTag) {
+    return latestSdkTag;
   }
 
   console.warn(
@@ -128,6 +135,30 @@ export const getSdkVersionFromBranchName = (branch: string) => {
 
   return "latest";
 };
+
+/**
+ * queries the github api to get all embedding sdk version tags
+ */
+export async function getLastEmbeddingSdkReleaseTag({
+  github,
+  owner,
+  repo,
+  majorVersion = "",
+}: GithubProps & {
+  majorVersion?: string;
+}) {
+  const tags = await github.paginate(github.rest.git.listMatchingRefs, {
+    owner,
+    repo,
+    ref: `tags/embedding-sdk-${majorVersion}`,
+  });
+
+  const lastRelease = getLastReleaseFromTags({
+    tags,
+  });
+
+  return lastRelease;
+}
 
 const isReleaseBranch = (branch: string): boolean => {
   return !!/release-x\.(\d+)\.x$/.exec(branch);
