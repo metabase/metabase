@@ -92,7 +92,7 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
-export const getSdkVersionFromBranchName = ({
+export const getSdkVersionFromBranchName = async ({
   github,
   owner,
   repo,
@@ -114,7 +114,7 @@ export const getSdkVersionFromBranchName = ({
     `Looking for git tag - "embedding-sdk-0.${Number(majorVersion)}.*"`,
   );
 
-  const latestSdkTag = getLastEmbeddingSdkReleaseTag({
+  const latestSdkTag = await getLastEmbeddingSdkReleaseTag({
     github,
     owner,
     repo,
