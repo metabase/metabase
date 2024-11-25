@@ -8,7 +8,7 @@
         <tr><td colspan="3"><img src="http://static.metabase.com/email_graph_top.png" width="296" height="73" style="display:block" /></td></tr>
         <tr>
           <td height="15" width="60"><img src="http://static.metabase.com/email_graph_left.png" width="60" height="15" style="display:block" /></td>
-          <td height="15" width="68" valign="middle" align="center" style="font-weight: bold; font-size: 0.6rem; line-height:15px;color: #fff; background-color:#333">{{{payload.custom.user_invited_today}}}</td>
+          <td height="15" width="68" valign="middle" align="center" style="font-weight: bold; font-size: 0.6rem; line-height:15px;color: #fff; background-color:#333">{{format-date (now) "MMM dd, YYYY"}}</td>
           <td height="15" width="168"><img src="http://static.metabase.com/email_graph_right.png" width="168" height="15" style="display:block" /></td></tr>
         <tr><td colspan="3" height="46"><img src="http://static.metabase.com/email_graph_bottom.png" width="296" height="56" style="display:block" /></td></tr>
       </table>

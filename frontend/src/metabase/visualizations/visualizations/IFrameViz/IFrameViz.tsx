@@ -22,7 +22,7 @@ import {
   StyledInput,
 } from "./IFrameViz.styled";
 import { settings } from "./IFrameVizSettings";
-import { getIframeUrl, isAllowedIframeUrl } from "./utils";
+import { getAllowedIframeAttributes, isAllowedIframeUrl } from "./utils";
 
 export interface IFrameVizProps {
   dashcard: VirtualDashboardCard;
@@ -56,7 +56,10 @@ export function IFrameViz({
   const isNew = !!dashcard?.justAdded;
 
   const allowedHosts = useSetting("allowed-iframe-hosts");
-  const iframeUrl = useMemo(() => getIframeUrl(iframeOrUrl), [iframeOrUrl]);
+  const allowedIframeAttributes = useMemo(
+    () => getAllowedIframeAttributes(iframeOrUrl),
+    [iframeOrUrl],
+  );
 
   const handleIFrameChange = useCallback(
     (newIFrame: string) => {
@@ -105,15 +108,14 @@ export function IFrameViz({
       </IFrameEditWrapper>
     );
   }
+  const src = allowedIframeAttributes?.src;
 
-  const hasAllowedIFrameUrl =
-    iframeUrl && isAllowedIframeUrl(iframeUrl, allowedHosts);
-  const hasForbiddenIFrameUrl =
-    iframeUrl && !isAllowedIframeUrl(iframeUrl, allowedHosts);
+  const hasAllowedIFrameUrl = src && isAllowedIframeUrl(src, allowedHosts);
+  const hasForbiddenIFrameUrl = src && !isAllowedIframeUrl(src, allowedHosts);
 
   const renderError = () => {
     if (hasForbiddenIFrameUrl && isEditing) {
-      return <ForbiddenDomainError url={iframeUrl} />;
+      return <ForbiddenDomainError url={src} />;
     }
     return <GenericError />;
   };
@@ -123,11 +125,12 @@ export function IFrameViz({
       {hasAllowedIFrameUrl ? (
         <iframe
           data-testid="iframe-visualization"
-          src={iframeUrl}
           width={width}
           height={height}
           frameBorder={0}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts"
+          referrerPolicy="strict-origin-when-cross-origin"
+          {...allowedIframeAttributes}
         />
       ) : (
         renderError()

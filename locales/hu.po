@@ -569,7 +569,7 @@ msgstr "Technikai Adat"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
 msgid "Irrelevant/Cruft"
-msgstr "Nem lényeges/"
+msgstr "Nem lényeges / Elavult"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
 msgid "Queryable"
@@ -4637,7 +4637,7 @@ msgstr "Elmúlt 30 nap"
 msgid "Week"
 msgid_plural "Weeks"
 msgstr[0] "Hét"
-msgstr[1] ""
+msgstr[1] "Hetek"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1750
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:100
@@ -4648,7 +4648,7 @@ msgstr[1] ""
 msgid "Month"
 msgid_plural "Months"
 msgstr[0] "Hónap"
-msgstr[1] ""
+msgstr[1] "Hónapok"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1762
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:56
@@ -4658,7 +4658,7 @@ msgstr[1] ""
 msgid "Year"
 msgid_plural "Years"
 msgstr[0] "Év"
-msgstr[1] ""
+msgstr[1] "Évek"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:180
 msgid "Past 7 Days"
@@ -8142,7 +8142,7 @@ msgstr "Ne kuk"
 msgid "Day"
 msgid_plural "Days"
 msgstr[0] "Nap"
-msgstr[1] ""
+msgstr[1] "Napok"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
 #: frontend/src/metabase-lib/v1/Dimension.ts:1726
@@ -8152,7 +8152,7 @@ msgstr[1] ""
 msgid "Minute"
 msgid_plural "Minutes"
 msgstr[0] "Perc"
-msgstr[1] ""
+msgstr[1] "Percek"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1732
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:26
@@ -8161,14 +8161,14 @@ msgstr[1] ""
 msgid "Hour"
 msgid_plural "Hours"
 msgstr[0] "Óra"
-msgstr[1] ""
+msgstr[1] "Órák"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1756 metabase/api/table.clj:155
 #: metabase/lib/temporal_bucket.cljc:39 metabase/models/params/shared.cljc:74
 msgid "Quarter"
 msgid_plural "Quarters"
 msgstr[0] "Negyedév"
-msgstr[1] ""
+msgstr[1] "Negyedévek"
 
 #: frontend/src/metabase-lib/Dimension.ts:1739 metabase/api/table.clj:149
 #: metabase/api/table.clj:163
@@ -12267,14 +12267,14 @@ msgstr[1] "Alapértelmezett időszakok"
 msgid "Minute of hour"
 msgid_plural "Minutes of hour"
 msgstr[0] "Óra perce"
-msgstr[1] ""
+msgstr[1] "Óra percei"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1774 metabase/api/table.clj:158
 #: metabase/lib/temporal_bucket.cljc:42
 msgid "Hour of day"
 msgid_plural "Hours of day"
 msgstr[0] "A nap órája"
-msgstr[1] ""
+msgstr[1] "A nap órái"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1780
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:101
@@ -12282,7 +12282,7 @@ msgstr[1] ""
 msgid "Day of week"
 msgid_plural "Days of week"
 msgstr[0] "A hét napja"
-msgstr[1] ""
+msgstr[1] "A hét napjai"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1786
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:99
@@ -12290,35 +12290,35 @@ msgstr[1] ""
 msgid "Day of month"
 msgid_plural "Days of month"
 msgstr[0] "A hónap napja"
-msgstr[1] ""
+msgstr[1] "A hónap napjai"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1792 metabase/api/table.clj:161
 #: metabase/lib/temporal_bucket.cljc:45
 msgid "Day of year"
 msgid_plural "Days of year"
 msgstr[0] "Az év napja"
-msgstr[1] ""
+msgstr[1] "Az év napjai"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1798 metabase/api/table.clj:162
 #: metabase/lib/temporal_bucket.cljc:46
 msgid "Week of year"
 msgid_plural "Weeks of year"
 msgstr[0] "Az év hete"
-msgstr[1] ""
+msgstr[1] "Az év hetei"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1804 metabase/api/table.clj:163
 #: metabase/lib/temporal_bucket.cljc:47
 msgid "Month of year"
 msgid_plural "Months of year"
 msgstr[0] "Az év hónapja"
-msgstr[1] ""
+msgstr[1] "Az év hónapjai"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:1810 metabase/api/table.clj:164
 #: metabase/lib/temporal_bucket.cljc:48
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
 msgstr[0] "Negyedév"
-msgstr[1] ""
+msgstr[1] "Negyedévek"
 
 #: frontend/src/metabase-lib/v1/queries/structured/Filter.ts:364
 #: frontend/src/metabase/admin/datamodel/components/Filter/Filter.jsx:56
@@ -35943,1543 +35943,1544 @@ msgstr "Alap URL a SCIM végpontokhoz"
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingSdkOptionCard/EmbeddingSdkOptionCard.tsx:31
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/InteractiveEmbeddingOptionCard/InteractiveEmbeddingOptionCard.tsx:52
 msgid "Pro and Enterprise"
-msgstr ""
+msgstr "Pro és Enterprise"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/StaticEmbeddingOptionCard/StaticEmbeddingOptionCard.tsx:26
 msgid "A \"powered by Metabase\" banner appears on static embeds. You can {0} which removes it."
-msgstr ""
+msgstr "Egy \"Powered by Metabase\" banner jelenik meg a statikus beágyazásokon. Ezt {0} eltávolíthatja."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/StaticEmbeddingOptionCard/StaticEmbeddingOptionCard.tsx:28
 msgid "upgrade to a specific paid plan"
-msgstr ""
+msgstr "frissítsen egy adott fizetős csomagra"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/SavedQuestionLeftSide/ViewOnly.tsx:26
 msgid "View-only"
-msgstr ""
+msgstr "Csak megtekintés"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/SavedQuestionLeftSide/ViewOnly.tsx:34
 msgid "One of the administrators hid the source table “{0}”, making this question view-only."
-msgstr ""
+msgstr "Az egyik adminisztrátor elrejtette a(z) „{0}” forrástáblát, így ez a kérdés csak megtekinthető."
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/AddAggregationButton/AddAggregationButton.tsx:28
 #: frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/AddAggregationButton/AddAggregationButton.tsx:45
 msgid "Add a function or metric"
-msgstr ""
+msgstr "Adjon hozzá egy függvényt vagy metrikát"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.tsx:66
 msgid "You're running Metabase {0}"
-msgstr ""
+msgstr "A Metabase {0}-t használja"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingSdkOptionCard/EmbeddingSdkOptionCard.tsx:22
 #: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:20
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:137
 msgid "Embedded analytics SDK"
-msgstr ""
+msgstr "Beágyazott analitika SDK"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingSdkOptionCard/EmbeddingSdkOptionCard.tsx:38
 #: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:140
 msgid "Beta"
-msgstr ""
+msgstr "Beta"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingSdkOptionCard/EmbeddingSdkOptionCard.tsx:41
 msgid "Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT."
-msgstr ""
+msgstr "Interaktív beágyazás teljes, részletes vezérléssel. Egyedi Metabase-komponensek beágyazása és formázása az alkalmazásában, az élmény személyre szabása minden felhasználó számára. Támogatja a CSS-stílusokat, egyedi felhasználói folyamatokat, eseményekre való feliratkozást és még sok mást. Csak SSO JWT-n keresztül érhető el."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingSdkOptionCard/EmbeddingSdkOptionCard.tsx:45
 msgid "Try it out"
-msgstr ""
+msgstr "Próbálja ki"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/SwitchWithSetByEnvVar/SwitchWithSetByEnvVar.tsx:24
 msgid "Set via environment variable"
-msgstr ""
+msgstr "Környezeti változón keresztül beállítva"
 
 #: frontend/src/metabase/common/components/EntityPicker/components/SearchTab/SearchTab.tsx:49
 msgid "Search:"
-msgstr ""
+msgstr "Keresés:"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ViewTitleHeaderRightSide/ViewTitleHeaderRightSide.tsx:141
 msgid "Clear cache and refresh"
-msgstr ""
+msgstr "Gyorsítótár törlése és frissítés"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx:104
 msgid "See more about this model"
-msgstr ""
+msgstr "Tudjon meg többet erről a modellről"
 
 #: frontend/src/metabase/components/ListField/ListField.tsx:184
 #: frontend/src/metabase/querying/filters/components/FilterValuePicker/ListValuePicker/ListValuePicker.tsx:127
 msgid "Select these"
-msgstr ""
+msgstr "Ezeket válassza ki"
 
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorBody/MetricEditorSidebar/MetricEditorSidebar.tsx:27
 msgid "Docs"
-msgstr ""
+msgstr "Dokumentáció"
 
 #: frontend/src/metabase/browse/metrics/BrowseMetrics.tsx:122
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorFooter/MetricEmptyState/MetricEmptyState.tsx:23
 msgid "Create Metrics to define the official way to calculate important numbers for your team"
-msgstr ""
+msgstr "Hozzon létre metrikákat, hogy meghatározza a hivatalos módot csapata számára fontos számok kiszámítására"
 
 #: frontend/src/metabase/browse/metrics/BrowseMetrics.tsx:126
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorFooter/MetricEmptyState/MetricEmptyState.tsx:26
 msgid "Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data."
-msgstr ""
+msgstr "A metrikák előre definiált számítások: egyszer hozzon létre aggregációkat, mentse el őket metrikaként, és használja őket bármikor az adatok elemzéséhez."
 
 #: frontend/src/metabase-lib/moving-average.ts:144
 #: frontend/src/metabase-lib/moving-average.ts:156
 msgid "{0} ({1}{2}-period moving average)"
-msgstr ""
+msgstr "{0} ({1}{2} idősoros mozgóátlag)"
 
 #: frontend/src/metabase-lib/moving-average.ts:150
 msgid "{0} ({1}{2}-row moving average)"
-msgstr ""
+msgstr "{0} ({1}{2}-soros mozgóátlag)"
 
 #: frontend/src/metabase-lib/moving-average.ts:162
 msgid "{0} ({1}{2}-{3} moving average)"
-msgstr ""
+msgstr "{0} ({1}{2}-{3} mozgóátlag)"
 
 #: frontend/src/metabase/sharing/components/EmailAttachmentPicker.jsx:239
 msgid "Attach results as files"
-msgstr ""
+msgstr "Eredmények csatolása fájlként"
 
 #: frontend/src/metabase/visualizations/lib/warnings.js:33
 msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
-msgstr ""
+msgstr "A(z) „{0}” egy nem aggregált mező: ha több sora van ugyanazzal az értékkel, azok mérési értékei összeadódnak."
 
 #: enterprise/frontend/src/embedding-sdk/components/private/EditorViewControl/EditorViewControl.tsx:26
 #: enterprise/frontend/src/embedding-sdk/components/private/QuestionEditor/QuestionEditor.tsx:52
 msgid "Editor"
-msgstr ""
+msgstr "Szerkesztő"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:63
 msgid "Clear cache for this dashboard"
-msgstr ""
+msgstr "Gyorsítótár törlése ehhez a dashboardhoz"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:64
 msgid "Clear cache for this question"
-msgstr ""
+msgstr "Gyorsítótár törlése ehhez a kérdéshez"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:65
 msgid "Clear cache for this database"
-msgstr ""
+msgstr "Gyorsítótár törlése ehhez az adatbázishoz"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx:60
 msgid "Caching settings"
-msgstr ""
+msgstr "Gyorsítótár-beállítások"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheSection.tsx:41
 msgid "When to get new results"
-msgstr ""
+msgstr "Mikor szerezzen be új eredményeket"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx:256
 #: enterprise/frontend/src/metabase-enterprise/caching/constants.ts:58
 msgid "Dashboard and question caching"
-msgstr ""
+msgstr "Dashboard- és kérdésgyorsítótár"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx:278
 msgid "Here are the dashboards and questions that have their own caching policies, which override any default or database policies you’ve set."
-msgstr ""
+msgstr "Itt találhatók azok a dashboardok és kérdések, amelyek saját gyorsítótár-beállításokkal rendelkeznek, felülírva az alapértelmezett vagy adatbázis-beállításokat."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx:370
 msgid "No dashboards or questions have their own caching policies yet."
-msgstr ""
+msgstr "Egyetlen dashboard vagy kérdés sem rendelkezik még saját gyorsítótár-beállítással."
 
 #: enterprise/frontend/src/metabase-enterprise/collections/components/CollectionInstanceAnalyticsIcon.tsx:37
 msgid "This is a read-only Usage Analytics {0}."
-msgstr ""
+msgstr "Ez egy csak olvasható Használati Analitika {0}."
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:67
 msgid "Enable Interactive embedding"
-msgstr ""
+msgstr "Engedélyezze az interaktív beágyazást"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx:136
 msgid "Restrict access to this table"
-msgstr ""
+msgstr "Hozzáférés korlátozása ehhez a táblához"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx:141
 msgid "When the following rules are applied, this group will see a customized version of the table."
-msgstr ""
+msgstr "Az alábbi szabályok alkalmazásakor ez a csoport a táblázat egy testreszabott verzióját fogja látni."
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx:144
 msgid "These rules don’t apply to native queries."
-msgstr ""
+msgstr "Ezek a szabályok nem vonatkoznak a natív lekérdezésekre."
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx:146
 msgid "How do you want to filter this table?"
-msgstr ""
+msgstr "Hogyan szeretné szűrni ezt a táblát?"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/InsightsLink.tsx:77
 #: frontend/src/metabase/common/components/Sidesheet/components/InsightsTab/InsightsTab.tsx:8
 msgid "Insights"
-msgstr ""
+msgstr "Elemzések"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx:172
 msgid "This database cannot be modified."
-msgstr ""
+msgstr "Ez az adatbázis nem módosítható."
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:125
 msgid "Lets you specify row and column-level permissions. Can be set up via user attributes and SSO."
-msgstr ""
+msgstr "Lehetővé teszi a sor- és oszlopszintű engedélyek meghatározását. Felhasználói attribútumok és SSO segítségével állítható be."
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:135
 msgid "The group can’t view:"
-msgstr ""
+msgstr "A csoport nem láthatja:"
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:138
 msgid "The schema/table when browsing data."
-msgstr ""
+msgstr "Az adatbázis sémáját/tábláit az adatok böngészésekor."
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:142
 msgid "Query-builder questions using that schema/table."
-msgstr ""
+msgstr "Lekérdezéskészítő kérdéseket, amelyek ezt a sémát/táblát használják."
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:147
 msgid "ANY native questions querying the database, regardless of schema/table."
-msgstr ""
+msgstr "SEMMILYEN natív kérdést, amely ezt az adatbázist lekérdezi, függetlenül a sémától/táblától."
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx:106
 msgid "Groups with a database, schema, or table set to Blocked can't view native queries on this database."
-msgstr ""
+msgstr "Azok a csoportok, amelyekhez egy adatbázis, séma vagy tábla „Letiltott” állapotra van állítva, nem tekinthetik meg a natív lekérdezéseket ebben az adatbázisban."
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx:218
 msgid "This will also change this group's data access to “Can view” for this database."
-msgstr ""
+msgstr "Ez a változtatás a csoport adat-hozzáférési jogait is „Megtekinthet”-re módosítja ehhez az adatbázishoz."
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx:246
 msgid "This schema contains one or more tables with “Blocked” permissions, which prevents access to the query builder. To grant Create query permissions for this schema, Metabase will also change the View data permissions on this schema to “Can view”."
-msgstr ""
+msgstr "Ez a séma egy vagy több „Letiltott” engedéllyel rendelkező táblát tartalmaz, ami megakadályozza a lekérdezéskészítőt. Ahhoz, hogy a séma lekérdezési jogosultságot kapjon, a Metabase a séma adat-megtekintési jogosultságait is „Megtekinthet”-re változtatja."
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx:247
 msgid "This database contains one or more schemas and tables with “Blocked” permissions, which prevents access to the query builder. To grant Create query permissions for this database, Metabase will also change the View data permissions on this database to “Can view”."
-msgstr ""
+msgstr "Ez az adatbázis egy vagy több „Letiltott” engedéllyel rendelkező sémát és táblát tartalmaz, ami megakadályozza a lekérdezéskészítőt. Ahhoz, hogy az adatbázis lekérdezési jogosultságot kapjon, a Metabase az adatbázis adat-megtekintési jogosultságait is „Megtekinthet”-re változtatja."
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx:249
 msgid "Updating access will reset your granular settings for this {0}. To keep those settings, you’ll need to manually change the View data permissions for the schemas or tables that are set to “Blocked”."
-msgstr ""
+msgstr "A hozzáférés frissítése visszaállítja az egyedi beállításokat ehhez a(z) {0}-hoz. Ha meg szeretné tartani ezeket a beállításokat, manuálisan kell módosítania a sémák vagy táblák adat-megtekintési engedélyeit, amelyek \"Letiltott\" állapotra vannak beállítva."
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx:252
 msgid "This will also set the View Data permission to “Can View” to allow this group to create queries. Okay?"
-msgstr ""
+msgstr "Ez azt is beállítja, hogy az Adatok megtekintése engedély \"Megtekinthet\" legyen, hogy ez a csoport lekérdezéseket hozhasson létre. Rendben?"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:52
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:62
 msgid "Cross-Origin Resource Sharing (CORS)"
-msgstr ""
+msgstr "Cross-Origin Resource Sharing (CORS)"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:53
 msgid "Try out the SDK on localhost. To enable other sites, {0} and Enter the origins for the websites or apps where you want to allow SDK embedding."
-msgstr ""
+msgstr "Próbálja ki az SDK-t localhoston. Más oldalak engedélyezéséhez {0} és adja meg azoknak a weboldalaknak vagy alkalmazásoknak az eredetét, ahol engedélyezni szeretné az SDK beágyazását."
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:55
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:108
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:121
 msgid "upgrade to Metabase Pro"
-msgstr ""
+msgstr "Frissítsen a Metabase Pro verzióra"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:63
 msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
-msgstr ""
+msgstr "Adja meg azoknak a weboldalaknak vagy alkalmazásoknak az eredetét, ahol engedélyezni szeretné az SDK beágyazását, szóközzel elválasztva. A localhost automatikusan hozzáadásra kerül."
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:99
 msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0}, {1} and {2}."
-msgstr ""
+msgstr "Az Embedded analytics SDK-t gyorsan tesztelheti localhoston API-kulcsok használatával. Az SDK más oldalakon való használatához {0}, {1} és {2}."
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:112
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:125
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:134
 msgid "implement JWT SSO"
-msgstr ""
+msgstr "JWT SSO megvalósítása"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:119
 msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0} and {1}."
-msgstr ""
+msgstr "Az Embedded analytics SDK-t gyorsan tesztelheti localhoston API-kulcsok használatával. Az SDK más oldalakon való használatához {0} és {1}."
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:132
 msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0}."
-msgstr ""
+msgstr "Az Embedded analytics SDK-t gyorsan tesztelheti localhoston API-kulcsok használatával. Az SDK más oldalakon való használatához {0}."
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:147
 msgid "Embedding SDK for React"
-msgstr ""
+msgstr "Beágyazási SDK React-hez"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:151
 msgid "Enable Embedded analytics SDK"
-msgstr ""
+msgstr "Engedélyezze az Embedded analytics SDK-t"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:178
 msgid "Try Embedded analytics SDK"
-msgstr ""
+msgstr "Próbálja ki az Embedded analytics SDK-t"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:179
 msgid "Use the SDK with API keys for development."
-msgstr ""
+msgstr "Használja az SDK-t API-kulcsokkal a fejlesztéshez"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:190
 #: frontend/src/metabase/home/components/EmbedHomepage/InteractiveContent.tsx:28
 #: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:35
 msgid "Check out the Quick Start"
-msgstr ""
+msgstr "Tekintse meg a gyors kezdést"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:214
 msgid "Version pinning"
-msgstr ""
+msgstr "Verziók rögzítése"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:215
 msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
-msgstr ""
+msgstr "A Metabase Cloud példányokat automatikusan frissítik az új kiadásokra. Az SDK-csomagok szigorúan kompatibilisek a Metabase adott verziójával. Kérheti a Metabase egy fő verzióhoz való rögzítését, és koordinált módon frissítheti a Metabase-t és az SDK-függőséget."
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings.tsx:225
 msgid "Request version pinning"
-msgstr ""
+msgstr "Kérje a verzió rögzítését"
 
 #: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
 msgid "Claim your swag"
-msgstr ""
+msgstr "Igényelje az ajándéktárgyait"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:40
 msgid "Connect to Slack"
-msgstr ""
+msgstr "Csatlakozás a Slackhez"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
 msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr ""
+msgstr "Ha csapata Slacket használ, küldhet oda dashboard előfizetéseket és riasztásokat"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
 msgid "Webhooks for Alerts"
-msgstr ""
+msgstr "Webhookok riasztásokhoz"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:77
 msgid "Add a webhook"
-msgstr ""
+msgstr "Webhook hozzáadása"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:78
 msgid "Specify a webhook URL where you can send the content of Alerts"
-msgstr ""
+msgstr "Adjon meg egy webhook URL-t, ahová a riasztások tartalmát küldheti"
 
 #: frontend/src/metabase/admin/settings/notifications/EditWebhookModal.tsx:77
 msgid "Edit this webhook"
-msgstr ""
+msgstr "Szerkessze ezt a webhookot"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:28
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:29
 msgid "Please enter a correctly formatted URL"
-msgstr ""
+msgstr "Adjon meg egy helyesen formázott URL-t"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:30
 msgid "Please add a name"
-msgstr ""
+msgstr "Adjon hozzá egy nevet"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:31
 msgid "Please add a description"
-msgstr ""
+msgstr "Adjon hozzá egy leírást"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:105
 msgid "Bearer token"
-msgstr ""
+msgstr "Bearer token"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:106
 msgid "Secret Token"
-msgstr ""
+msgstr "Titkos kulcs"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:116
 msgid "Add to"
-msgstr ""
+msgstr "Hozzáadás"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:120
 msgid "Header"
-msgstr ""
+msgstr "Fejléc"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:123
 msgid "Query param"
-msgstr ""
+msgstr "Lekérdezési paraméter"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:130
 msgid "X-API-KEY"
-msgstr ""
+msgstr "X-API-KEY"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:137
 msgid "API Key Value"
-msgstr ""
+msgstr "API-kulcs értéke"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:153
 msgid "Create destination"
-msgstr ""
+msgstr "Cél létrehozása"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:162
 #: frontend/src/metabase/pulse/components/WebhookChannelEdit.tsx:34
 msgid "Send a test"
-msgstr ""
+msgstr "Küldjön egy tesztet"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:187
 msgid "Test failed"
-msgstr ""
+msgstr "Teszt sikertelen"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:212
 msgid "You can send the payload of any Alert to this destination whenever the Alert is triggered. {0}"
-msgstr ""
+msgstr "A riasztások tartalmát bármikor elküldheti erre a célra, amikor egy riasztás aktiválódik. {0}"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:214
 msgid "Learn about Alerts"
-msgstr ""
+msgstr "Tudjon meg többet a riasztásokról"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:221
 msgid "Webhook URL"
-msgstr ""
+msgstr "Webhook URL"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:237
 msgid "Something descriptive"
-msgstr ""
+msgstr "Valami leíró jellegű"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:245
 msgid "Where is this going and what does it send?"
-msgstr ""
+msgstr "Hová megy ez, és mit küld?"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:252
 msgid "Authentication method"
-msgstr ""
+msgstr "Hitelesítési módszer"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:269
 msgid "Bearer"
-msgstr ""
+msgstr "Bearer"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:291
 msgid "Delete this destination"
-msgstr ""
+msgstr "Törölje ezt a célt"
 
 #: frontend/src/metabase/common/components/AggregationPicker/AggregationPicker.tsx:148
 msgid "Basic functions"
-msgstr ""
+msgstr "Alapfunkciók"
 
 #: frontend/src/metabase/common/components/AggregationPicker/AggregationPicker.tsx:172
 #: frontend/src/metabase/querying/drills/utils/compare-aggregations-drill.tsx:59
 #: frontend/src/metabase/visualizations/click-actions/actions/CompareAggregationsAction/CompareAggregationsAction.tsx:34
 msgid "Compare to the past"
-msgstr ""
+msgstr "Összehasonlítás a múltbéli adatokkal"
 
 #: frontend/src/metabase/common/components/EntityPicker/utils.ts:152
 msgid "Search this collection or everywhere…"
-msgstr ""
+msgstr "Keresés ebben a gyűjteményben vagy mindenhol…"
 
 #: frontend/src/metabase/common/components/EntityPicker/utils.ts:156
 #: frontend/src/metabase/common/components/EntityPicker/utils.ts:162
 msgid "Search this database or everywhere…"
-msgstr ""
+msgstr "Keresés ebben az adatbázisban vagy mindenhol…"
 
 #: frontend/src/metabase/common/components/EntityPicker/utils.ts:165
 msgid "Search this schema or everywhere…"
-msgstr ""
+msgstr "Keresés ebben a sémában vagy mindenhol…"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx:160
 msgid "Iframe Card"
-msgstr ""
+msgstr "Iframe kártya"
 
 #: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:39
 msgid "Specific tab IDs"
-msgstr ""
+msgstr "Specifikus fülazonosítók"
 
 #: frontend/src/metabase/home/components/EmbedHomepage/EmbedHomepageView.tsx:54
 msgid "Give your customers secure, multi-tenant access to their data with as much (or as little) interactivity and tools to explore data as you want, with as much customization as you need. Embed dashboards, charts—even Metabase's query editor—with iframes or as individual React components."
-msgstr ""
+msgstr "Adjon ügyfeleinek biztonságos, több-bérlős hozzáférést adataikhoz annyi (vagy olyan kevés) interaktivitással és eszközzel, amennyire szükség van az adatok feltárásához, és olyan szintű testreszabással, amennyit szeretne. Ágyazzon be dashboardokat, diagramokat—akár a Metabase lekérdezésszerkesztőjét—iframe-ekkel vagy egyedi React-komponensekkel."
 
 #: frontend/src/metabase/home/components/EmbedHomepage/InteractiveContent.tsx:24
 msgid "Interactive embedding allows you to embed the full Metabase app with iframes. It offers settings to customize appearance and includes the query builder with row-level access."
-msgstr ""
+msgstr "Az interaktív beágyazás lehetővé teszi a teljes Metabase alkalmazás beágyazását iframe-ekkel. Testreszabási lehetőségeket kínál a megjelenéshez, és tartalmazza a lekérdezésszerkesztőt sor-szintű hozzáféréssel."
 
 #: frontend/src/metabase/browse/metrics/BrowseMetrics.tsx:134
 #: frontend/src/metabase/home/components/EmbedHomepage/InteractiveContent.tsx:31
 #: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:38
 #: frontend/src/metabase/home/components/EmbedHomepage/StaticEmbedContent.tsx:44
 msgid "Read the docs"
-msgstr ""
+msgstr "Dokumentáció megtekintése"
 
 #: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:31
 msgid "Embed individual components like charts, dashboards, the query builder, and more with React. Get advanced customization with CSS styling and manage granular access and interactivity per component."
-msgstr ""
+msgstr "Egyedi komponensek, például diagramok, dashboardok, a lekérdezésszerkesztő és még sok más beágyazása React segítségével. Haladó testreszabás CSS-stílusokkal, valamint részletes hozzáférés és interaktivitás kezelése komponensenként."
 
 #: frontend/src/metabase/home/components/EmbedHomepage/StaticEmbedContent.tsx:28
 msgid "Embed a dashboard in a 'Powered by Metabase' iframe with interactivity limited to filters and tooltips, and a few customization options. The iframe loads a Metabase URL secured with a signed JSON Web Token (JWT). Appears with \"Powered by Metabase\", on Open Source and Starter plans, with the option to remove on Pro and Enterprise. As the simplest form of embedding, you can add a dashboard into your app in a few minutes with just a snippet."
-msgstr ""
+msgstr "Egy dashboard beágyazása egy „Powered by Metabase” iframe-be, ahol az interaktivitás szűrőkre és eszköztippek megjelenítésére korlátozódik, néhány testreszabási lehetőséggel. Az iframe egy JSON Web Token (JWT) segítségével biztonságosított Metabase URL-t tölt be. A \"Powered by Metabase\" felirat megjelenik az Open Source és Starter csomagokban, amely eltávolítható a Pro és Enterprise csomagokban. Ez a legegyszerűbb beágyazási forma, amely lehetővé teszi egy dashboard gyors hozzáadását az alkalmazásához néhány perc alatt, egy rövid kódrészlet használatával."
 
 #: frontend/src/metabase/home/components/EmbedHomepage/StaticEmbedContent.tsx:40
 msgid "Embed an example dashboard"
-msgstr ""
+msgstr "Példa dashboard beágyazása"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:173
 msgid "Filter or parameter type"
-msgstr ""
+msgstr "Szűrő vagy paraméter típusa"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:194
 msgid "Time grouping options"
-msgstr ""
+msgstr "Időcsoportosítási lehetőségek"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr ""
+msgstr "Használja a(z) {0}-t egy nyilvánosan látható iframe beágyazásához a weboldalán vagy blogbejegyzésében."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
 msgid "public embedding"
-msgstr ""
+msgstr "Nyilvános beágyazás"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:57
 msgid "Get embedding code"
-msgstr ""
+msgstr "Beágyazási kód lekérése"
 
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent/AlertListItem.tsx:102
 msgid "Number of email recipients"
-msgstr ""
+msgstr "E-mail címzettek száma"
 
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent/AlertListItem.tsx:111
 msgid "Number of Slack channels"
-msgstr ""
+msgstr "Slack csatornák száma"
 
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent/AlertListItem.tsx:120
 msgid "Number of HTTP channels"
-msgstr ""
+msgstr "HTTP csatornák száma"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/utils.ts:49
 msgid "Compare one of these to the past"
-msgstr ""
+msgstr "Ezek egyikének összehasonlítása a múltbéli adatokkal"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/utils.ts:53
 msgid "Compare “{0}” to the past"
-msgstr ""
+msgstr "Hasonlítsa össze „{0}”-t a múltbéli adatokkal"
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor/utils.ts:132
 msgid "Metric in {0}"
-msgstr ""
+msgstr "Metrika {0}-ban"
 
 #: frontend/src/metabase/querying/notebook/components/BreakoutStep/BreakoutStep.tsx:74
 msgid "No datetime columns available"
-msgstr ""
+msgstr "Nincsenek dátum-idő oszlopok"
 
 #: frontend/src/metabase/querying/notebook/components/NotebookDataPicker/NotebookDataPicker.tsx:114
 msgid "{0}+click to open in new tab"
-msgstr ""
+msgstr "{0}+kattintás az új fülön való megnyitáshoz."
 
 #: frontend/src/metabase/querying/notebook/components/SummarizeStep/SummarizeStep.tsx:33
 #: frontend/src/metabase/querying/notebook/components/SummarizeStep/SummarizeStepHeader/SummarizeStepHeader.tsx:32
 msgid "Default time dimension"
-msgstr ""
+msgstr "Alapértelmezett idődimenzió"
 
 #: frontend/src/metabase/sharing/components/SharingMenu/MenuItems/AlertMenuItem.tsx:43
 msgid "Edit alerts"
-msgstr ""
+msgstr "Riasztások szerkesztése"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:548
 #: frontend/src/metabase/sharing/components/SharingMenu/MenuItems/AlertMenuItem.tsx:43
 msgid "Create alert"
-msgstr ""
+msgstr "Riasztás létrehozása"
 
 #: frontend/src/metabase/sharing/components/SharingMenu/QuestionSharingMenu.tsx:50
 msgid "You must save this question before sharing"
-msgstr ""
+msgstr "Először mentse el ezt a kérdést a megosztás előtt"
 
 #: frontend/src/metabase/nav/components/AppBar/AppBarLarge.tsx:80
 msgid "Settings menu"
-msgstr ""
+msgstr "Beállítások menü"
 
 #: frontend/src/metabase/visualizations/components/legend/LegendItemDot.tsx:24
 msgid "Hide series"
-msgstr ""
+msgstr "Sorozatok elrejtése"
 
 #: frontend/src/metabase/visualizations/components/legend/LegendItemDot.tsx:24
 msgid "Show series"
-msgstr ""
+msgstr "Sorozatok megjelenítése"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx:50
 msgid "Enforce maximum number of series"
-msgstr ""
+msgstr "Maximális sorozatszám betartatása"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx:57
 msgid "Series after this number will be grouped into \"Other\""
-msgstr ""
+msgstr "Az ezen szám feletti sorozatok \"Egyéb\" csoportba kerülnek."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx:65
 msgid "Aggregation method for Other group"
-msgstr ""
+msgstr "„Egyéb” csoport aggregációs módszere"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx:64
 msgid "Select a series"
-msgstr ""
+msgstr "Sorozat kiválasztása"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx:200
 msgid "Other series settings"
-msgstr ""
+msgstr "Egyéb sorozatok beállításai"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx:238
 msgid "{0} more series"
-msgstr ""
+msgstr "{0} további sorozat"
 
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameViz.tsx:74
 msgid "Paste your snippet here"
-msgstr ""
+msgstr "Illessze ide a kódrészletét"
 
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameViz.tsx:157
 msgid "If you’re sure you trust this domain, you can add it to your {0} in admin settings."
-msgstr ""
+msgstr "Ha biztos benne, hogy megbízik ebben a domainben, hozzáadhatja a(z) {0}-hoz az admin beállításokban."
 
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameViz.tsx:157
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameViz.tsx:160
 msgid "allowed domains list"
-msgstr ""
+msgstr "Engedélyezett domainek listája"
 
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameViz.tsx:160
 msgid "If you’re sure you trust this domain, you can ask an admin to add it to the {0}."
-msgstr ""
+msgstr "Ha biztos benne, hogy megbízik ebben a domainben, kérheti egy admintól, hogy adja hozzá a(z) {0}-hoz."
 
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameViz.tsx:161
 msgid "If you’re sure you trust this domain, you can ask an admin to add it to the allowed domains list."
-msgstr ""
+msgstr "Ha biztos benne, hogy megbízik ebben a domainben, kérheti egy admintól, hogy adja hozzá az engedélyezett domainek listájához."
 
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameViz.tsx:168
 msgid "{0} can not be embedded in iframe cards."
-msgstr ""
+msgstr "A(z) {0} nem ágyazható be iframe kártyákba."
 
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameViz.tsx:186
 msgid "There was a problem rendering this content."
-msgstr ""
+msgstr "Probléma merült fel ennek a tartalomnak a megjelenítése során."
 
 #: frontend/src/metabase/visualizations/visualizations/IFrameViz/IFrameVizSettings.ts:24
 msgid "Iframe card"
-msgstr ""
+msgstr "Iframe kártya"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/chart-definition.ts:236
 msgid "Show labels"
-msgstr ""
+msgstr "Címkék megjelenítése"
 
 #: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:48
 #: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:48
 msgid "Filters"
-msgstr ""
+msgstr "Szűrők"
 
 #: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:60
 msgid "Show verified metrics only"
-msgstr ""
+msgstr "Csak a hitelesített metrikák megjelenítése"
 
 #: enterprise/frontend/src/metabase-enterprise/moderation/hooks/useMenuItems.tsx:49
 msgid "Verify this dashboard"
-msgstr ""
+msgstr "Ellenőrizze ezt a dashboardot"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:26
 msgid "Query Validator"
-msgstr ""
+msgstr "Lekérdezés érvényesítő"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:36
 msgid "Enable query analysis"
-msgstr ""
+msgstr "Engedélyezze a lekérdezés elemzését"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
 msgid "is inactive"
-msgstr ""
+msgstr "inaktív"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
 msgid "is unknown"
-msgstr ""
+msgstr "ismeretlen"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
 msgid "Unknown data reference"
-msgstr ""
+msgstr "Ismeretlen adat hivatkozás"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:4
 msgid "ISO 8601"
-msgstr ""
+msgstr "ISO 8601"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:5
 msgid "UNIX seconds"
-msgstr ""
+msgstr "UNIX másodpercek"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:6
 msgid "UNIX milliseconds"
-msgstr ""
+msgstr "UNIX milliszekundumok"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:7
 msgid "UNIX microseconds"
-msgstr ""
+msgstr "UNIX mikroszekundumok"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:8
 msgid "UNIX nanoseconds"
-msgstr ""
+msgstr "UNIX nanoszekundumok"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:9
 msgid "YYYYMMDDHHMMSS string"
-msgstr ""
+msgstr "YYYYMMDDHHMMSS karakterlánc"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:10
 msgid "YYYYMMDDHHMMSS bytes"
-msgstr ""
+msgstr "YYYYMMDDHHMMSS bájtok"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:14
 msgid "Datetime"
-msgstr ""
+msgstr "Dátum-idő"
 
 #: frontend/src/metabase/admin/performance/constants/complex.ts:106
 msgid "Database caching"
-msgstr ""
+msgstr "Adatbázis-gyorsítótár"
 
 #: frontend/src/metabase/admin/settings/notifications/CreateWebhookModal.tsx:58
 msgid "New webhook destination"
-msgstr ""
+msgstr "Új webhook cél"
 
 #: frontend/src/metabase/admin/upsells/UpsellMetabaseBanner.tsx:10
 msgid "Upgrade plan"
-msgstr ""
+msgstr "Frissítési csomag"
 
 #: frontend/src/metabase/admin/upsells/UpsellMetabaseBanner.tsx:15
 msgid "The “Powered by Metabase” banner appears on all static embeds created with your current version. Upgrade to remove it (and customize a lot more)"
-msgstr ""
+msgstr "A \"Powered by Metabase\" banner megjelenik minden statikus beágyazáson, amelyet az aktuális verziójával hozott létre. Frissítsen, hogy eltávolítsa (és sok más dolgot testre szabhasson)"
 
 #: frontend/src/metabase/admin/upsells/UpsellUsageAnalytics.tsx:28
 msgid "See who’s doing what, when"
-msgstr ""
+msgstr "Nézze meg, ki mit csinál és mikor"
 
 #: frontend/src/metabase/admin/upsells/UpsellUsageAnalytics.tsx:29
 msgid "Try for free"
-msgstr ""
+msgstr "Próbálja ki ingyen"
 
 #: frontend/src/metabase/admin/upsells/UpsellUsageAnalytics.tsx:37
 msgid "Get detailed reports for tracking Metabase content usage, performance, and configuration changes."
-msgstr ""
+msgstr "Szerezzen részletes jelentéseket a Metabase tartalomhasználat, teljesítmény és konfigurációs változások nyomon követéséhez."
 
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx:106
 msgid "Table of metrics"
-msgstr ""
+msgstr "Metrikák táblázata"
 
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx:375
 msgid "Open collection"
-msgstr ""
+msgstr "Gyűjtemény megnyitása"
 
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx:410
 msgid "Metric options"
-msgstr ""
+msgstr "Metrika opciók"
 
 #: frontend/src/metabase/browse/metrics/utils.tsx:123
 msgid "Overall"
-msgstr ""
+msgstr "Összesített"
 
 #: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:52
 msgid "Formatted"
-msgstr ""
+msgstr "Formázott"
 
 #: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:63
 msgid "E.g. September 6, 2024 or $187.50, like in {0}"
-msgstr ""
+msgstr "Pl. 2024. szeptember 6. vagy $187.50, mint a(z) {0}-ban"
 
 #: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:64
 msgid "E.g. 2024-09-06 or 187.50, like in the database"
-msgstr ""
+msgstr "Pl. 2024-09-06 vagy 187.50, mint az adatbázisban"
 
 #: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:71
 msgid "Keep data pivoted"
-msgstr ""
+msgstr "Adatok pivotolva tartása"
 
 #: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardDetails.tsx:27
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx:27
 msgid "Creator and last editor"
-msgstr ""
+msgstr "Létrehozó és utolsó szerkesztő"
 
 #: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardDetails.tsx:99
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx:93
 msgid "Shared publicly"
-msgstr ""
+msgstr "Nyilvánosan megosztva"
 
 #: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardDetails.tsx:124
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx:118
 msgid "Embedded"
-msgstr ""
+msgstr "Beágyazva"
 
 #: frontend/src/metabase/dashboard/components/DashboardSettingsSidebar/DashboardSettingsSidebar.tsx:52
 msgid "Dashboard settings"
-msgstr ""
+msgstr "Dashboard beállításai"
 
 #: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx:28
 msgid "{0} this question to drill-thru."
-msgstr ""
+msgstr "{0} ezt a kérdést a drill-thru-hoz."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:210
 msgid "Set up your {0}"
-msgstr ""
+msgstr "Állítsa be a(z) {0}-t"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:213
 msgid "Connect to your database"
-msgstr ""
+msgstr "Csatlakozás az adatbázisához"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:227
 msgid "You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. {0} connects to more than 15 popular databases."
-msgstr ""
+msgstr "Csatlakoztathat több adatbázist, és közvetlenül lekérdezheti őket a lekérdezésszerkesztővel vagy a natív/SQL szerkesztővel. A(z) {0} több mint 15 népszerű adatbázishoz csatlakozik."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:242
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:269
 msgid "Invite people"
-msgstr ""
+msgstr "Hívjon meg embereket"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:256
 msgid "Don't be shy with invites. Metabase makes self-service analytics easy."
-msgstr ""
+msgstr "Ne féljen a meghívásoktól. A Metabase egyszerűvé teszi az önkiszolgáló elemzést."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:259
 msgid "Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally."
-msgstr ""
+msgstr "Ne féljen a meghívásoktól. A Metabase Starter csomag 5 felhasználót tartalmaz, a Pro pedig 10 felhasználót, további fizetési kötelezettség nélkül."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:277
 msgid "Set up Single Sign-on"
-msgstr ""
+msgstr "Egyszeri bejelentkezés beállítása"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:286
 msgid "Start visualizing your data"
-msgstr ""
+msgstr "Kezdje el vizualizálni az adatait"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:289
 msgid "Create automatic dashboards"
-msgstr ""
+msgstr "Automatikus dashboardok létrehozása"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:302
 msgid "Hover over a table and click the yellow lightning bolt {0}. {1} will create a bunch of charts based on that data and arrange them on a dashboard."
-msgstr ""
+msgstr "Vigye az egérmutatót egy táblázat fölé, és kattintson a sárga villámcsapásra {0}. A(z) {1} létrehoz egy csomó diagramot az adatok alapján, és elrendezi őket egy dashboardon."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:322
 msgid "You need to enable this feature first."
-msgstr ""
+msgstr "Először engedélyeznie kell ezt a funkciót."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:329
 msgid "Make an interactive chart with the query builder"
-msgstr ""
+msgstr "Készítsen interaktív diagramot a lekérdezésszerkesztővel"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:340
 msgid "Filter and summarize data, add custom columns, join data from other tables, and more - {0}. And when you build a chart with the query builder, people will be able to {1} to explore the data further."
-msgstr ""
+msgstr "Szűrje és foglalja össze az adatokat, adjon hozzá egyedi oszlopokat, csatlakoztassa más táblák adatait és még sok mást - {0}. És amikor diagramot készít a lekérdezésszerkesztővel, mások {1}-vel tovább vizsgálhatják az adatokat."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:341
 msgid "all without SQL"
-msgstr ""
+msgstr "mindezt SQL nélkül"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:343
 msgid "drill-through the chart"
-msgstr ""
+msgstr "a diagram drill-through lehetőségével"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:360
 msgid "Query with SQL"
-msgstr ""
+msgstr "Lekérdezés SQL-lel"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:371
 msgid "Use the {0} to query data with SQL or the query language native to your database. You can insert variables in your code to create {1}, and reference the results of models or other saved question in your code."
-msgstr ""
+msgstr "Használja a(z) {0}-t az adatok SQL-lel vagy az adatbázis natív lekérdezési nyelvével való lekérdezéséhez. Kódjába változókat illeszthet be, hogy {1}-t hozzon létre, és hivatkozhat modellek vagy más mentett kérdések eredményeire a kódjában."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:372
 msgid "native query editor"
-msgstr ""
+msgstr "natív lekérdezésszerkesztő"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:379
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:382
 msgid "SQL templates"
-msgstr ""
+msgstr "SQL sablonok"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:391
 msgid "New native query"
-msgstr ""
+msgstr "Új natív lekérdezés"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:399
 msgid "Create and filter a dashboard"
-msgstr ""
+msgstr "Készítsen és szűrjön egy dashboardot"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:410
 msgid "You can:"
-msgstr ""
+msgstr "A következőket teheti:"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:412
 msgid "organize questions into a {0} and add text cards."
-msgstr ""
+msgstr "rendezheti a kérdéseket egy {0}-ba, és szöveges kártyákat adhat hozzá."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:415
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:418
 msgid "dashboard with tabs"
-msgstr ""
+msgstr "dashboard fülekkel"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:421
 msgid "add {0} to dashboards and connect them to fields on questions to narrow the results."
-msgstr ""
+msgstr "{0}-t adhat hozzá a dashboardokhoz, és mezőkhöz kapcsolhatja őket a kérdésekben, hogy szűkítse az eredményeket."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:421
 msgid "filters"
-msgstr ""
+msgstr "szűrők"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:422
 msgid "drill-through your dashboard and charts to see more detailed data underneath."
-msgstr ""
+msgstr "átnézheti a dashboardját és a diagramokat, hogy részletesebb adatokat láthasson."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:434
 msgid "Edit a sample dashboard"
-msgstr ""
+msgstr "Egy példa dashboard szerkesztése"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:443
 msgid "Get email updates and alerts"
-msgstr ""
+msgstr "Kapjon e-mail értesítéseket és riasztásokat"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:449
 msgid "Get dashboard updates by email"
-msgstr ""
+msgstr "Kapjon dashboard frissítéseket e-mailben"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:461
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:522
 msgid "{0} or {1} first."
-msgstr ""
+msgstr "{0} vagy {1} először."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:475
 msgid "To set up a subscription to a dashboard, click on the {0} {1} icon on the top bar, then click on {2} {3}. On a sidebar on the right set up a dashboard subscription via email or Slack."
-msgstr ""
+msgstr "Egy dashboardra vonatkozó előfizetés beállításához kattintson a felső sávon a {0} {1} ikonra, majd kattintson a(z) {2} {3} elemre. A jobb oldali oldalsávon állítsa be a dashboard előfizetését e-mailben vagy Slack-en keresztül."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:482
 msgid "sharing"
-msgstr ""
+msgstr "megosztás"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:501
 msgid "Set up subscriptions for a sample dashboard"
-msgstr ""
+msgstr "Állítson be előfizetéseket egy példa dashboardra"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:510
 msgid "Get alerts when metrics behave unexpectedly"
-msgstr ""
+msgstr "Kapjon riasztásokat, amikor a metrikák váratlanul viselkednek"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:536
 msgid "Go to a question and click on the {0} icon on the top bar, then {1} {2}."
-msgstr ""
+msgstr "Lépjen egy kérdéshez, és kattintson a felső sávon a {0} ikonra, majd a(z) {1} {2} lehetőségre."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:551
 msgid "There are three kinds of things you can get alerted about in {0}:"
-msgstr ""
+msgstr "Háromféle riasztást kaphat a(z) {0}-ban:"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:553
 msgid "{0}: when a time series crosses a goal line."
-msgstr ""
+msgstr "{0}: amikor egy idősor átlépi a célt vonalát."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:558
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:560
 msgid "Goal line alerts"
-msgstr ""
+msgstr "Célvonal riasztások"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:563
 msgid "{0}: when a progress bar reaches or goes below its goal."
-msgstr ""
+msgstr "{0}: amikor egy folyamatjelző sáv eléri vagy nem éri el a célját."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:569
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:572
 msgid "Progress bar alerts"
-msgstr ""
+msgstr "Folyamatjelző sáv riasztások"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:575
 msgid "{0}: when a question returns any result."
-msgstr ""
+msgstr "{0}: amikor egy kérdés bármilyen eredményt ad vissza."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:580
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:582
 msgid "Results alerts"
-msgstr ""
+msgstr "Eredmény riasztások"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:597
 msgid "Set up alert for a sample question"
-msgstr ""
+msgstr "Állítson be riasztást egy példa kérdéshez"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:613
 msgid "Get the most out of {0}"
-msgstr ""
+msgstr "Hozza ki a legtöbbet a(z) {0}-ból"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:615
 msgid "There are more tutorials and guides to explore."
-msgstr ""
+msgstr "További oktatóanyagokat és útmutatókat találhat."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:617
 msgid "{0} about data visualization, modeling, and other advanced topics."
-msgstr ""
+msgstr "{0} az adatvizualizációról, modellezésről és más haladó témákról."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:621
 msgid "Click here to continue learning"
-msgstr ""
+msgstr "Kattintson ide a tanulás folytatásához"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:629
 msgid "Need to talk with someone?"
-msgstr ""
+msgstr "Szüksége van valakire, akivel beszélhet?"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:630
 msgid "Reach out to engineers who can help with technical troubleshooting. Not your typical support agents."
-msgstr ""
+msgstr "Keressen fel mérnököket, akik segíthetnek a technikai problémák megoldásában. Nem szokványos ügyfélszolgálati ügynökök"
 
 #: frontend/src/metabase/nav/components/PaymentBanner/PaymentBanner.tsx:31
 msgid "⚠️ Pro features won't work right now due to lack of payment. {0} to restore Pro functionality."
-msgstr ""
+msgstr "⚠️ A Pro funkciók jelenleg nem működnek a fizetés hiánya miatt. {0} a Pro funkciók visszaállításához."
 
 #: frontend/src/metabase/nav/components/ReadOnlyBanner/ReadOnlyBanner.tsx:19
 msgid "Metabase is under maintenance and is operating in read-only mode. It should only take up to 30 minutes."
-msgstr ""
+msgstr "A Metabase karbantartás alatt áll, és csak olvasható módban működik. Ez legfeljebb 30 percig tarthat."
 
 #: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:192
 msgid "Open error diagnostic modal"
-msgstr ""
+msgstr "Hiba diagnosztikai ablak megnyitása"
 
 #: frontend/src/metabase/parameters/components/ParameterSidebar/ParameterSidebar.tsx:271
 msgid "Parameter settings"
-msgstr ""
+msgstr "Paraméterbeállítások"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.tsx:115
 msgid "Http"
-msgstr ""
+msgstr "Http"
 
 #: frontend/src/metabase/pulse/components/WebhookChannelEdit.tsx:57
 msgid "Success!"
-msgstr ""
+msgstr "Siker!"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/CompareAggregations.tsx:158
 msgid "Compare to"
-msgstr ""
+msgstr "Összehasonlítás"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/CompareAggregations.tsx:186
 msgid "ago"
-msgstr ""
+msgstr "ezelőtt"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/CompareAggregations.tsx:187
 msgid "moving average"
-msgstr ""
+msgstr "mozgóátlag"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/DimensionsWidget.tsx:64
 msgid "Inner Ring"
-msgstr ""
+msgstr "Belső gyűrű"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/DimensionsWidget.tsx:65
 msgid "Middle Ring"
-msgstr ""
+msgstr "Középső gyűrű"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/DimensionsWidget.tsx:66
 msgid "Outer Ring"
-msgstr ""
+msgstr "Külső gyűrű"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/DimensionsWidget.tsx:220
 msgid "Add Ring"
-msgstr ""
+msgstr "Gyűrű hozzáadása"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/EditorViewControl/EditorViewControl.tsx:30
 msgid "Result"
-msgstr ""
+msgstr "Eredmény"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:130
 msgid "Questions with invalid references"
-msgstr ""
+msgstr "Kérdések érvénytelen hivatkozásokkal"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:147
 msgid "All Collections"
-msgstr ""
+msgstr "Összes gyűjtemény"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:189
 msgid "Query Validation is currently disabled. {0}"
-msgstr ""
+msgstr "A lekérdezés érvényesítés jelenleg le van tiltva. {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:197
 msgid "Please enable query analysis here."
-msgstr ""
+msgstr "Engedélyezze itt a lekérdezéselemzést."
 
 #: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:210
 msgid "No questions, models, or metrics with invalid references"
-msgstr ""
+msgstr "Nincsenek kérdések, modellek vagy metrikák érvénytelen hivatkozásokkal"
 
 #: frontend/src/metabase/browse/databases/BrowseDatabases.tsx:105
 msgid "20+ data connectors. Start exploring in minutes."
-msgstr ""
+msgstr "20+ adatcsatlakozó. Kezdje a felfedezést perceken belül."
 
 #: frontend/src/metabase/browse/databases/BrowseDatabases.tsx:129
 msgid "{0} database logo"
-msgstr ""
+msgstr "{0} adatbázis logó"
 
 #: frontend/src/metabase/browse/metrics/BrowseMetrics.tsx:141
 msgid "Create metric"
-msgstr ""
+msgstr "Metrika létrehozása"
 
 #: frontend/src/metabase/components/EntityIdCard/EntityIdCard.tsx:33
 msgid "Entity ID"
-msgstr ""
+msgstr "Entitásazonosító"
 
 #: frontend/src/metabase/components/EntityIdCard/EntityIdCard.tsx:41
 msgid "When using serialization, replace the sequential ID with this global entity ID to have stable URLs across environments. Also useful when troubleshooting serialization."
-msgstr ""
+msgstr "Sorosítás használatakor cserélje le a soros ID-t erre a globális entitásazonosítóra, hogy stabil URL-eket használjon a környezetek között. Ez a hibakeresés során is hasznos a sorosítással kapcsolatban."
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:19
 msgid "Date picker"
-msgstr ""
+msgstr "Dátumválasztó"
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:20
 msgid "Date range, specific date…"
-msgstr ""
+msgstr "Dátumtartomány, adott dátum…"
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:25
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:29
 msgid "Time grouping"
-msgstr ""
+msgstr "Időcsoportosítás"
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:26
 msgid "Day, week, month, year…"
-msgstr ""
+msgstr "Nap, hét, hónap, év…"
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:38
 msgid "Country, State, Postal Code…"
-msgstr ""
+msgstr "Ország, állam, irányítószám…"
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:44
 msgid "Contains, is, starts with…"
-msgstr ""
+msgstr "Tartalmazza, egyenlő, ezzel kezdődik…"
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:50
 msgid "Between, greater than…"
-msgstr ""
+msgstr "Között, nagyobb mint…"
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.ts:56
 msgid "Primary key, User ID…"
-msgstr ""
+msgstr "Elsődleges kulcs, felhasználói azonosító…"
 
 #: frontend/src/metabase/querying/notebook/components/AggregateStep/AggregateStep.tsx:52
 msgid "Pick a function or metric"
-msgstr ""
+msgstr "Válasszon egy függvényt vagy metrikát"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentActionSelect.jsx:46
 msgid "Edit Segment"
-msgstr ""
+msgstr "Szegmens szerkesztése"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentActionSelect.jsx:59
 msgid "Retire Segment"
-msgstr ""
+msgstr "Szegmens visszavonása"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.jsx:35
 msgid "Retire this segment?"
-msgstr ""
+msgstr "Visszavonja ezt a szegmenst?"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.jsx:42
 msgid "Saved questions and other things that depend on this segment will continue to work, but it will no longer be selectable from the query builder."
-msgstr ""
+msgstr "A mentett kérdések és más elemek, amelyek ettől a szegmenstől függnek, továbbra is működni fognak, de többé nem lesz kiválasztható a lekérdezésszerkesztőben."
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.jsx:44
 msgid "If you're sure you want to retire this segment, please write a quick explanation of why it's being retired"
-msgstr ""
+msgstr "Ha biztosan vissza szeretné vonni ezt a szegmenst, kérjük, írjon egy rövid magyarázatot arra, miért kerül visszavonásra"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.jsx:50
 msgid "This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this segment."
-msgstr ""
+msgstr "Ez megjelenik az aktivitási hírcsatornában, és e-mailben elküldésre kerül a csapat bármely tagjának, aki valamit létrehozott, amely ezt a szegmenst használja."
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:178
 msgid "Allowed domains for iframes in dashboards"
-msgstr ""
+msgstr "Engedélyezett domainek az iframe-ekhez a dashboardokon"
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:179
 msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
-msgstr ""
+msgstr "Győződjön meg arról, hogy megbízik azokban a forrásokban, amelyeket a felhasználók számára engedélyez a dashboardokon való beágyazáshoz. {0}"
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:229
 msgid "Control the visibility of alerts and subscriptions recipients."
-msgstr ""
+msgstr "Értesítések és előfizetés-címzettek láthatóságának szabályozása."
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:298
 #: frontend/src/metabase/admin/settings/slack/components/SlackSettings/SlackSettings.tsx:13
 msgid "Notification channels"
-msgstr ""
+msgstr "Értesítési csatornák"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:325
 msgid "Additional tooltip metrics"
-msgstr ""
+msgstr "További tooltip metrikák"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:326
 msgid "Enter metric names"
-msgstr ""
+msgstr "Adja meg a metrika neveit"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/constants.tsx:12
 msgid "Policy"
-msgstr ""
+msgstr "Szabályzat"
 
 #: enterprise/frontend/src/metabase-enterprise/model_persistence/components/ModelCacheControl/ModelCacheControl.tsx:44
 msgid "Model persistence is disabled for this database"
-msgstr ""
+msgstr "A modell perzisztálása le van tiltva ennél az adatbázisnál"
 
 #: enterprise/frontend/src/metabase-enterprise/model_persistence/components/ModelCacheControl/ModelCacheControl.tsx:45
 msgid "You don't have permission to modify model persistence"
-msgstr ""
+msgstr "Nincs engedélye a modell perzisztálásának módosítására"
 
 #: enterprise/frontend/src/metabase-enterprise/model_persistence/components/ModelCacheControl/ModelCacheControl.tsx:52
 #: enterprise/frontend/src/metabase-enterprise/model_persistence/components/ModelCacheControl/ModelCacheControl.tsx:68
 msgid "Persist model data"
-msgstr ""
+msgstr "Modelladatok perzisztálása"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:53
 msgid "Enable Static embedding"
-msgstr ""
+msgstr "Statikus beágyazás engedélyezése"
 
 #: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
 msgid "A little something from us to you"
-msgstr ""
+msgstr "Egy kis ajándék tőlünk önnek"
 
 #: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
 msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
-msgstr ""
+msgstr "Köszönetképpen, hogy kipróbálta ezt a bétát, szeretnénk ajándékot küldeni, amíg a készlet tart. Kattintson a gombra, hogy megadja adatait, és küldünk egy e-mailt az utasításokkal."
 
 #: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
 msgid "Get my swag"
-msgstr ""
+msgstr "Az ajándékom kérem"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenuItems.tsx:72
 msgid "Edit metric"
-msgstr ""
+msgstr "Metrika szerkesztése"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx:106
 msgid "You cannot connect variables to iframe cards."
-msgstr ""
+msgstr "Nem kapcsolhat változókat iframe kártyákhoz."
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddFilterParameterButton/AddFilterParameterButton.tsx:55
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddFilterParameterButton/AddFilterParameterButton.tsx:56
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddFilterParameterButton/AddFilterParameterButton.tsx:60
 msgid "Add a filter or parameter"
-msgstr ""
+msgstr "Adjon hozzá szűrőt vagy paramétert"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddLinkOrEmbedButton.tsx:43
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddLinkOrEmbedButton.tsx:45
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddLinkOrEmbedButton.tsx:46
 msgid "Add a link or iframe"
-msgstr ""
+msgstr "Adjon hozzá egy linket vagy iframe-et"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddLinkOrEmbedButton.tsx:62
 msgid "Iframe"
-msgstr ""
+msgstr "Iframe"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:66
 msgid "Browse metrics"
-msgstr ""
+msgstr "Böngésszen a metrikák között"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:194
 msgid "How to use Metabase"
-msgstr ""
+msgstr "Hogyan használja a Metabase-t"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:108
 msgid "Embedded, signed charts in iframes."
-msgstr ""
+msgstr "Beágyazott, aláírt diagramok iframe-ekben."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:109
 msgid "No query builder or row-level data access."
-msgstr ""
+msgstr "Nincs lekérdezésszerkesztő vagy sor-szintű adathozzáférés."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:110
 msgid "Data restriction with locked parameters."
-msgstr ""
+msgstr "Adatrestrikció zárolt paraméterekkel."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:127
 msgid "Embed all of Metabase in an iframe."
-msgstr ""
+msgstr "A teljes Metabase iframe-be ágyazása."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:128
 msgid "Let people can click on to explore."
-msgstr ""
+msgstr "Engedélyezze a kattintást az emberek számára az adatok felfedezéséhez."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:129
 msgid "Customize appearance with your logo, font, and colors."
-msgstr ""
+msgstr "Testreszabás saját logóval, betűtípussal és színekkel."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:149
 msgid "Embed Metabase components with React (like standalone charts, dashboards, the Query Builder, and more)"
-msgstr ""
+msgstr "A Metabase komponensek beágyazása React segítségével (például önálló diagramok, dashboardok, a Lekérdezésszerkesztő és még sok más)"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:150
 msgid "Manage access and interactivity per component"
-msgstr ""
+msgstr "Hozzáférés és interaktivitás kezelése komponensenként."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:151
 msgid "Advanced customization options for styling"
-msgstr ""
+msgstr "Haladó testreszabási lehetőségek stílushoz"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:179
 msgid "Compare options"
-msgstr ""
+msgstr "Lehetőségek összehasonlítása"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/ColumnPicker/ColumnPicker.tsx:105
 msgid "Moving average value"
-msgstr ""
+msgstr "Mozgóátlag érték"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/ColumnPicker/ColumnPicker.tsx:110
 msgid "Percentage difference with moving average"
-msgstr ""
+msgstr "Százalékos különbség a mozgóátlaggal"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/ColumnPicker/ColumnPicker.tsx:115
 msgid "Value difference with moving average"
-msgstr ""
+msgstr "Értékkülönbség a mozgóátlaggal"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/CurrentPeriodInput/CurrentPeriodInput.tsx:29
 msgid "Include this {0}"
-msgstr ""
+msgstr "Tartalmazza ezt: {0}"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/ComparisonTypePicker/ComparisonTypePicker.tsx:15
 msgid "How to compare"
-msgstr ""
+msgstr "Hogyan hasonlítsa össze"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/ComparisonTypePicker/ComparisonTypePicker.tsx:22
 msgid "Compare values"
-msgstr ""
+msgstr "Értékek összehasonlítása"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/ComparisonTypePicker/ComparisonTypePicker.tsx:28
 msgid "Moving average"
-msgstr ""
+msgstr "Mozgóátlag"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/OffsetInput/OffsetInput.tsx:40
 msgid "Offset"
-msgstr ""
+msgstr "Eltolás"
 
 #: frontend/src/metabase/query_builder/components/CompareAggregations/components/OffsetPresets/OffsetPresets.tsx:52
 msgid "Custom..."
-msgstr ""
+msgstr "Egyedi..."
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx:58
 msgid "Create now"
-msgstr ""
+msgstr "Hozzon létre most"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx:56
 msgid "Saved in"
-msgstr ""
+msgstr "Elmentve a "
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar/QuestionSettingsSidebar.tsx:18
 msgid "Model settings"
-msgstr ""
+msgstr "Modellbeállítások"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar/QuestionSettingsSidebar.tsx:19
 msgid "Metric settings"
-msgstr ""
+msgstr "Metrikabeállítások"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar/QuestionSettingsSidebar.tsx:20
 msgid "Question settings"
-msgstr ""
+msgstr "Kérdésbeállítások"
 
 #: frontend/src/metabase/querying/filters/components/FilterPicker/FilterOperatorPicker/FilterOperatorPicker.tsx:31
 msgid "Select operator"
-msgstr ""
+msgstr "Művelet kiválasztása"
 
 #: frontend/src/metabase/querying/notebook/components/SummarizeStep/SummarizeStepHeader/SummarizeStepHeader.tsx:30
 msgid "Formula"
-msgstr ""
+msgstr "Képlet"
 
 #: frontend/src/metabase/sharing/components/SharingMenu/MenuItems/DashboardSubscriptionMenuItem.tsx:46
 msgid "Can't send subscriptions"
-msgstr ""
+msgstr "Nem lehet előfizetéseket küldeni"
 
 #: frontend/src/metabase/sharing/components/SharingMenu/MenuItems/DashboardSubscriptionMenuItem.tsx:50
 msgid "Ask your admin to set up email"
-msgstr ""
+msgstr "Kérje meg az adminisztrátort, hogy állítsa be az e-mail küldést"
 
 #: frontend/src/metabase/alert/alert.js:157
 msgid "Okay, you're unsubscribed."
-msgstr ""
+msgstr "Rendben, leiratkozott."
 
 #: frontend/src/metabase/routes.jsx:136
 msgid "Getting Started"
-msgstr ""
+msgstr "Első lépések"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/QuestionSources.tsx:38
 msgctxt "This is a heading that appears above the names of the database, table, and/or question that a question is based on -- the 'sources' for the question. Feel free to translate this heading as though it said 'Based on these sources', if you think that would make more sense in your language."
 msgid "Based on"
-msgstr ""
+msgstr "Alapján"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/SettingsUpdatesForm.tsx:23
 msgctxt "describes a set of software version releases"
 msgid "Stable releases"
-msgstr ""
+msgstr "Stabil kiadások"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/SettingsUpdatesForm.tsx:28
 msgctxt "describes a set of software version releases"
 msgid "Beta releases"
-msgstr ""
+msgstr "Béta kiadások"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/SettingsUpdatesForm.tsx:32
 msgctxt "describes a set of software version releases"
 msgid "Nightly builds"
-msgstr ""
+msgstr "Éjszakai build-ek"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
 msgctxt "Short for 'Add another Webhook'"
 msgid "Add another"
-msgstr ""
+msgstr "Újabb hozzáadása"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
 msgctxt "Text for a button that lets you add a new database"
 msgid "Add database"
-msgstr ""
+msgstr "Adatbázis hozzáadása"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:37
 msgctxt "arrow denoting a conversion. eg: string → date"
 msgid " → "
-msgstr ""
+msgstr " → "
 
 #: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardDetails.tsx:32
 msgctxt "Describes when a dashboard was created. {0} is a date/time and {1} is a person's name"
 msgid "{0} by {1}"
-msgstr ""
+msgstr "{0} - {1} által"
 
 #: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardDetails.tsx:45
 msgctxt "Describes when a dashboard was last edited. {0} is a date/time and {1} is a person's name"
 msgid "{0} by {1}"
-msgstr ""
+msgstr "{0} - {1} által"
 
 #: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardDetails.tsx:60
 msgctxt "This is a heading that appears above the name of a collection - a collection that a dashboard is saved in. Feel free to translate this heading as though it said 'Saved in collection', if you think that would make more sense in your language."
 msgid "Saved in"
-msgstr ""
+msgstr "Elmentve itt "
 
 #: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUploadCSV/DwhUploadCSV.tsx:79
 msgctxt "Text for a button that lets you upload a CSV file"
 msgid "Upload CSV"
-msgstr ""
+msgstr "CSV feltöltése"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx:31
 msgctxt "Describes when a question was created. {0} is a date/time and {1} is a person's name"
 msgid "{0} by {1}"
-msgstr ""
+msgstr "{0} - {1} által"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx:43
 msgctxt "Describes when a question was last edited. {0} is a date/time and {1} is a person's name"
 msgid "{0} by {1}"
-msgstr ""
+msgstr "{0} - {1} által"
 
 #: metabase/api/channel.clj:47
 msgid "Must be a namespaced channel. E.g: channel/http"
-msgstr ""
+msgstr "Csatornának nevekkel tagolt kell lennie. Pl.: channel/http"
 
 #: metabase/api/embed/common.clj:332
 msgid "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations."
-msgstr ""
+msgstr "Egy számláló az entitás_azonosító -> azonosító átalakítások számának nyomon követésére. Valahányszor meghívjuk a [[model->entity-ids->ids]]-t, növeljük ezt a számlálót az átalakítások számával."
 
 #: metabase/channel/impl/http.clj:65
 msgid "Failed to connect to channel"
-msgstr ""
+msgstr "Nem sikerült csatlakozni a csatornához"
 
 #: metabase/channel/shared.clj:14
 msgid "Invalid channel details"
-msgstr ""
+msgstr "Érvénytelen csatornaadatok"
 
 #: metabase/db/liquibase.clj:236
 msgid "You can force-release these locks by running `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks`."
-msgstr ""
+msgstr "Ezeket a zárakat kényszerítve feloldhatja a következő parancs futtatásával: java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks."
 
 #: metabase/db/setup.clj:137
 msgid "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}."
-msgstr ""
+msgstr "Ezt kell futtatnia: java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down a(z) {0} verzióból."
 
 #: metabase/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr ""
+msgstr "Az egy másodperc alatt küldhető címzettek maximális száma, az e-mailek között összesítve.\n"
+"Megjegyzés: Az utolsó e-mail, amely a határ elérése előtt kerül elküldésre, túllépheti azt, ha több címzettet tartalmaz."
 
 #: metabase/embed/settings.clj:118
 msgid "Allow these space delimited origins to embed Metabase interactive."
-msgstr ""
+msgstr "Engedélyezze, hogy ezek a szóközökkel elválasztott eredetek beágyazhassák az interaktív Metabase-t."
 
 #: metabase/embed/settings.clj:51
 msgid "Allow this origin to embed the full Metabase application."
-msgstr ""
+msgstr "Engedélyezze, hogy ez az eredet beágyazza a teljes Metabase alkalmazást."
 
 #: metabase/embed/settings.clj:62
 msgid "Allow admins to embed Metabase via the SDK?"
-msgstr ""
+msgstr "Engedélyezze az adminisztrátorok számára a Metabase beágyazását az SDK-n keresztül?"
 
 #: metabase/embed/settings.clj:109
 msgid "Allow admins to embed Metabase via interactive embedding?"
-msgstr ""
+msgstr "Engedélyezze az adminisztrátorok számára a Metabase interaktív beágyazását?"
 
 #: metabase/embed/settings.clj:96
 msgid "Allow Metabase SDK access to these space delimited origins."
-msgstr ""
+msgstr "Engedélyezze a Metabase SDK hozzáférését ezekhez a szóközökkel elválasztott eredetekhez."
 
 #: metabase/embed/settings.clj:127
 msgid "Allow admins to embed Metabase via static embedding?"
-msgstr ""
+msgstr "Engedélyezze az adminisztrátorok számára a Metabase statikus beágyazását?"
 
 #: metabase/lib/temporal_bucket.cljc:33
 msgid "Second"
 msgid_plural "Seconds"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Másodperc"
+msgstr[1] "Másodpercek"
 
 #: metabase/lib/temporal_bucket.cljc:32
 msgid "Millisecond"
 msgid_plural "Milliseconds"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Milliszekundum"
+msgstr[1] "Milliszekundumok"
 
 #: metabase/models/query/permissions.clj:268
 msgid "Invalid permissions format"
-msgstr ""
+msgstr "Érvénytelen jogosultságformátum"
 
 #: metabase/models/setting.clj:990
 msgid "`:encryption` is a required option for setting {0}"
-msgstr ""
+msgstr "`:encryption` egy kötelező opció a(z) {0} beállításához"
 
 #: metabase/models/user.clj:522
 msgid "User preference for whether the 'Browse metrics' page should be filtered to show only verified metrics."
-msgstr ""
+msgstr "A felhasználó preferenciája arról, hogy a „Metrikák böngészése” oldal csak a hitelesített metrikákat mutassa-e."
 
 #: metabase/public_settings.clj:796
 msgid "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming requests. Defaults to false, but can be set to true via environment variable."
-msgstr ""
+msgstr "Jelzi, hogy a Metabase egy proxy mögött fut-e, amely beállítja a beérkező kérések forrás-cím fejlécét. Alapértelmezett értéke: hamis, de környezeti változón keresztül igazra állítható."
 
 #: metabase/public_settings.clj:203
 msgid "Allowed iframe hosts"
-msgstr ""
+msgstr "Engedélyezett iframe gazdagépek"
 
 #: metabase/public_settings.clj:80
 msgid "Invalid update channel ''{0}''. Valid channels are: {1}"
-msgstr ""
+msgstr "Érvénytelen frissítési csatorna: „{0}”. Érvényes csatornák: {1}."
 
 #: metabase/public_settings.clj:1040
 msgid "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher."
-msgstr ""
+msgstr "Az exportált sorok korlátozása a fejléc nélkül. Az xlsx letöltések maximális korlátja 1048575 sor, még akkor is, ha ez a határ magasabb."
 
 #: metabase/public_settings.clj:1053
 msgid "Used to override weights used for search ranking"
-msgstr ""
+msgstr "A keresési rangsoroláshoz használt súlyok felülírására használható."
 
 #: metabase/public_settings.clj:85
 msgid "We'll notify you here when there's a new version of this type of release."
-msgstr ""
+msgstr "Itt értesítjük önt, ha egy új verzió jelenik meg ebből a kiadástípusból."
 
 #: metabase/public_settings.clj:1046
 msgid "Enables search engines which are still in the experimental stage"
-msgstr ""
+msgstr "Kísérleti szakaszban lévő keresőmotorok engedélyezése."
 
 #: metabase/public_settings.clj:104
 msgid "Threshold (value in 0-100) indicating at which treshold it should offer an upgrade to the latest major version."
-msgstr ""
+msgstr "Küszöbérték (0-100 közötti érték), amely jelzi, milyen értéknél ajánlja fel a legújabb fő verzióra történő frissítést."
 
 #: metabase/public_settings/premium_features.clj:184
 msgid "Token validation is currently unavailable."
-msgstr ""
+msgstr "A token érvényesítése jelenleg nem elérhető."
 
 #: metabase/query_processor/middleware/parameters/mbql.clj:113
 msgid "This chart can not be broken out by the selected unit of time: {0}."
-msgstr ""
+msgstr "Ez a diagram nem bontató le a kiválasztott időegység szerint: {0}."
 
 #: metabase/query_processor/middleware/permissions.clj:53
 msgid "Table {0} is inactive."
-msgstr ""
+msgstr "A(z) {0} tábla inaktív."
 
 #: metabase/util/malli/schema.clj:213
 msgid "value must be a valid URL."
-msgstr ""
+msgstr "az értéknek érvényes URL-nek kell lennie."
 
 #: metabase_enterprise/advanced_permissions/driver/impersonation.clj:93
 msgid "Connection impersonation attribute is invalid: role must be a single non-empty string."
-msgstr ""
+msgstr "A kapcsolat megszemélyesítési attribútuma érvénytelen: a szerepnek egyetlen, nem üres karakterláncnak kell lennie."
 
 #: metabase_enterprise/sso/integrations/jwt.clj:161
 msgid "POST not valid for JWT SSO requests"
-msgstr ""
+msgstr "A POST nem érvényes JWT SSO kérésekhez"
 
 #: metabase_enterprise/sso/integrations/jwt.clj:127
 msgid "SDK Embedding is disabled. Enable it in the Embedding settings."
-msgstr ""
+msgstr "Az SDK beágyazás le van tiltva. Engedélyezze az „Embedding” beállításokban."
 
 #: metabase_enterprise/sso/integrations/jwt.clj:118
 msgid "JWT SSO has not been enabled"
-msgstr ""
+msgstr "A JWT SSO nincs engedélyezve"
 
 #: metabase_enterprise/sso/integrations/jwt.clj:113
 msgid "JWT SSO has not been configured"
-msgstr ""
+msgstr "A JWT SSO nincs konfigurálva"
 

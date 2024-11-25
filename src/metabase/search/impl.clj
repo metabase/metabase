@@ -156,12 +156,16 @@
                       archived_directly model]}]
   (let [matching-columns    (into #{} (keep :column relevant-scores))
         match-context-thunk (some :match-context-thunk relevant-scores)
-        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))]
+        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))
+        use-display-name?   (and display_name
+                                 ;; This collection will be empty unless we used in-place matching.
+                                 ;; For now, for simplicity and performance reasons, we are not bothering to check
+                                 ;; *where* the matches in the tsvector came from.
+                                 (or (empty? matching-columns)
+                                     (contains? matching-columns :display_name)))]
     (-> result
         (assoc
-         :name           (if (and (contains? matching-columns :display_name) display_name)
-                           display_name
-                           name)
+         :name           (if use-display-name? display_name name)
          :context        (when (and match-context-thunk
                                     (empty?
                                      (remove matching-columns displayed-columns)))
@@ -307,16 +311,14 @@
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
         engine (parse-engine search-engine)
-        ctx    (cond-> {:archived?                           (boolean archived)
+        fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
+        ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))
                         :context                             (or context :unknown)
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
-                                                                 (if (and (not= engine :search.engine/in-place)
-                                                                          (#{:search-app :command-palette} context))
-                                                                   "exclude-others"
-                                                                   "all"))
+                                                                 (fvalue :personal-collection-id))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?

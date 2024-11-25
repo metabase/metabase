@@ -3,15 +3,19 @@ import { useSelector } from "metabase/lib/redux";
 import { PaymentBanner } from "metabase/nav/components/PaymentBanner/PaymentBanner";
 import { ReadOnlyBanner } from "metabase/nav/components/ReadOnlyBanner";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getIsHosted } from "metabase/setup/selectors";
 
 export const AppBanner = () => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const isHosted = useSelector(getIsHosted);
   const tokenStatus = useSetting("token-status");
   const readOnly = useSetting("read-only-mode");
 
   const paymentStatuses = ["past-due", "unpaid", "invalid"];
   const shouldRenderPaymentBanner =
-    tokenStatus && paymentStatuses.includes(tokenStatus?.status ?? "");
+    !isHosted &&
+    tokenStatus &&
+    paymentStatuses.includes(tokenStatus?.status ?? "");
 
   // Even though both the `tokenStatus` and `readOnly` settings
   // are visible only to admins (and will be `undefined` otherwise),

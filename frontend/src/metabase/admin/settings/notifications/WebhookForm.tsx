@@ -15,7 +15,18 @@ import { useActionButtonLabel } from "metabase/hooks/use-action-button-label";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { Alert, Button, Chip, Flex, Group, Icon, Text } from "metabase/ui";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Flex,
+  Group,
+  Icon,
+  ScrollArea,
+  Text,
+  Title,
+} from "metabase/ui";
 import type {
   NotificationAuthMethods,
   NotificationAuthType,
@@ -160,7 +171,7 @@ export const WebhookForm = ({
 }) => {
   const { label: testButtonLabel, setLabel: setTestButtonLabel } =
     useActionButtonLabel({ defaultLabel: t`Send a test` });
-  const [testChannel] = useTestChannelMutation();
+  const [testChannel, { data: testData }] = useTestChannelMutation();
 
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "questions/sharing/alerts" }),
@@ -231,6 +242,23 @@ export const WebhookForm = ({
               {testButtonLabel}
             </Button>
           </Flex>
+          {testData && (
+            //@ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. It seems to want every single style prop for Box
+            <ScrollArea.Autosize
+              mah={300}
+              pt="0.75rem"
+              px="0.5rem"
+              bg="bg-light"
+              mb="0.75rem"
+            >
+              <Title order={5}>Test Response</Title>
+              <Box py="1rem">
+                <pre style={{ margin: 0 }}>
+                  {JSON.stringify(testData, null, 2)}
+                </pre>
+              </Box>
+            </ScrollArea.Autosize>
+          )}
           <FormTextInput
             name="name"
             label={t`Give it a name`}

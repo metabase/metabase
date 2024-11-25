@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
 import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { DatasetQuery } from "metabase-types/api";
@@ -107,8 +106,5 @@ export const metadata = createMockMetadata({
   databases: [database],
 });
 
-export const legacyQuery = checkNotNull(metadata.table(TABLE_ID)).legacyQuery({
-  useStructuredQuery: true,
-});
-export const expressionOpts = { legacyQuery, startRule: "expression" };
-export const aggregationOpts = { legacyQuery, startRule: "aggregation" };
+export const expressionOpts = { startRule: "expression" };
+export const aggregationOpts = { startRule: "aggregation" };

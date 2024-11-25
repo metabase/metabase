@@ -146,14 +146,16 @@ const Tables = createEntity({
       FETCH_TABLE_METADATA,
       ({ id }, options = {}) =>
         async (dispatch, getState) => {
-          await dispatch(Tables.actions.fetchMetadata({ id }, options));
+          await dispatch(
+            Tables.actions.fetchMetadataDeprecated({ id }, options),
+          );
           // fetch foreign key linked table's metadata as well
           const table = Tables.selectors[
             options.selectorName || "getObjectUnfiltered"
           ](getState(), { entityId: id });
           await Promise.all([
             ...getTableForeignKeyTableIds(table).map(id =>
-              dispatch(Tables.actions.fetchMetadata({ id }, options)),
+              dispatch(Tables.actions.fetchMetadataDeprecated({ id }, options)),
             ),
             ...getTableForeignKeyFieldIds(table).map(id =>
               dispatch(Fields.actions.fetch({ id }, options)),
