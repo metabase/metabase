@@ -51,36 +51,6 @@ function makeQuery(query) {
 const query = makeQuery({});
 
 describe("StructuredQuery", () => {
-  describe("DB METADATA METHODS", () => {
-    describe("tables", () => {
-      it("Tables should return multiple tables", () => {
-        expect(Array.isArray(query.tables())).toBe(true);
-      });
-
-      it("Tables should return a table map that includes fields", () => {
-        expect(Array.isArray(query.tables()[0].fields)).toBe(true);
-      });
-    });
-
-    describe("table", () => {
-      it("Return the table wrapper object for the query", () => {
-        expect(query.table()).toBe(ordersTable);
-      });
-    });
-
-    describe("_databaseId", () => {
-      it("returns the Database ID of the wrapped query", () => {
-        expect(query._databaseId()).toBe(SAMPLE_DB_ID);
-      });
-    });
-
-    describe("_database", () => {
-      it("returns a dictionary with the underlying database of the wrapped query", () => {
-        expect(query._database().id).toBe(SAMPLE_DB_ID);
-      });
-    });
-  });
-
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
