@@ -81,10 +81,10 @@
 
     ;; no longer works without using the english dictionary
     (testing "Unless their lexemes are matching"
-        (doseq [[a b] [["revenue" "revenues"]
-                       ["collect" "collection"]]]
-          (is (= (search.index/search a)
-                 (search.index/search b)))))
+      (doseq [[a b] [["revenue" "revenues"]
+                     ["collect" "collection"]]]
+        (is (= (search.index/search a)
+               (search.index/search b)))))
 
     (testing "Or we match a completion of the final word"
       (is (seq (search.index/search "sat")))
