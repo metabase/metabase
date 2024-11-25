@@ -9,7 +9,6 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
-import Tables from "metabase/entities/tables";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
@@ -174,12 +173,12 @@ class FieldRemappingSettings extends Component {
   };
 
   getForeignKeyTargetFields = () => {
-    const { fkTargetTable } = this.props;
-    return fkTargetTable?.fields ?? [];
+    const { fkTargetField } = this.props;
+    return fkTargetField?.table?.fields ?? [];
   };
 
   render() {
-    const { field, table, metadata, fieldsError, fkTargetTable } = this.props;
+    const { field, table, metadata, fieldsError, fkTargetField } = this.props;
     const { hasChanged, isChoosingInitialFkTarget } = this.state;
 
     const remapping = new Map(field.remappedValues());
@@ -208,10 +207,11 @@ class FieldRemappingSettings extends Component {
               <FieldSeparator />
               <FieldDataSelector
                 isInitiallyOpen={isChoosingInitialFkTarget}
+                databases={table?.database ? [table.database] : []}
                 selectedDatabase={table?.database}
                 selectedDatabaseId={table?.database?.id}
-                selectedTable={fkTargetTable}
-                selectedTableId={fkTargetTable?.id}
+                selectedTable={fkTargetField?.table}
+                selectedTableId={fkTargetField?.table?.id}
                 selectedField={fkMappingField}
                 selectedFieldId={fkMappingField?.id}
                 triggerElement={
@@ -428,13 +428,6 @@ export default _.compose(
   Fields.load({
     id: (_state, { field }) => field.fk_target_field_id,
     entityAlias: "fkTargetField",
-    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    selectorName: "getObjectUnfiltered",
-    loadingAndErrorWrapper: false,
-  }),
-  Tables.load({
-    id: (_state, { fkTargetField }) => fkTargetField?.table_id,
-    entityAlias: "fkTargetTable",
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     selectorName: "getObjectUnfiltered",
     loadingAndErrorWrapper: false,
