@@ -16,7 +16,7 @@
 
 (defn fulltext-search
   [search-string]
-  (map (juxt :model :id :name #_:total_score #_:scores) (search.tu/search-results search-string {:search-engine "fulltext"})))
+  (map (juxt :model :id :name) (search.tu/search-results search-string {:search-engine "fulltext"})))
 
 (deftest e2e-accounts-test
   ;; https://metaboat.slack.com/archives/C072YM78NGK/p1731616354121189
