@@ -1568,3 +1568,218 @@
 (define-reversible-migration MigrateLegacyColumnKeysInDashboardCardVizSettings
   (update-legacy-column-keys-in-dashboard-card-viz-settings "ref" migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-dashboard-card-viz-settings "name" rollback-legacy-column-keys-in-viz-settings))
+
+(defn- last-stage-number
+  [outer-query]
+  (loop [query (:query outer-query), i 0]
+    (if-let [source-query (:source-query query)]
+      (recur source-query (inc i))
+      i)))
+
+(defn- set-target-stage-number
+  [mapping last-stage]
+  (if-let [target (:target mapping)]
+    (cond-> mapping
+      (and (vector? target) (= (get target 0) "dimension"))
+      (assoc-in [:target 2 :stage-number] last-stage))
+    mapping))
+
+(defn- set-parameter-stage-numbers
+  [record last-stage]
+  (when-let [orig-pmappings (some-> record :parameter_mappings (json/parse-string true))]
+    (let [pmappings (map #(set-target-stage-number % last-stage) orig-pmappings)]
+      (when (not= pmappings orig-pmappings)
+        pmappings))))
+
+(defn- card->last-stage
+  [record]
+  (if (= (:c_type record) "model")
+    ;; models are not transparent
+    0
+    ;; questions and metrics are
+    (-> record
+        :dataset_query
+        (json/parse-string true)
+        last-stage-number)))
+
+(defn- add-stage-numbers-to-parameter-mapping-targets
+  []
+  (let [prev-card-last-stage (volatile! nil)]
+    (run!
+     (fn [record]
+       (let [card-id (:c_id record)
+             [prev-card-id prev-last-stage] @prev-card-last-stage
+             last-stage (if (= card-id prev-card-id)
+                          prev-last-stage
+                          (let [ls (card->last-stage record)]
+                            (vreset! prev-card-last-stage [card-id ls])
+                            ls))]
+         (when-let [new-mappings (set-parameter-stage-numbers record last-stage)]
+           (t2/query {:update :report_dashboardcard
+                      :set    {:parameter_mappings (json/generate-string new-mappings)}
+                      :where  [:= :id (:dc_id record)]}))))
+     (t2/reducible-query {:select     [[:c.id :c_id] [:c.type :c_type] :c.dataset_query
+                                       [:dc.id :dc_id] :dc.parameter_mappings]
+                          :from       [[:report_card :c]]
+                          :inner-join [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
+                          :where      [:!= :dc.parameter_mappings "[]"]
+                          :order-by   [:c.id]}))))
+
+(defn- remove-target-stage-number
+  [mapping]
+  (if-let [target (:target mapping)]
+    (cond-> mapping
+      (and (vector? target) (= (get target 0) "dimension"))
+      (update :target subvec 0 2))
+    mapping))
+
+(defn- remove-parameter-stage-numbers
+  [record]
+  (when-let [orig-pmappings (some-> record :parameter_mappings (json/parse-string true))]
+    (let [pmappings (map remove-target-stage-number orig-pmappings)]
+      (when (not= pmappings orig-pmappings)
+        pmappings))))
+
+(defn- remove-stage-numbers-from-parameter-mapping-targets
+  []
+  (run!
+   (fn [record]
+     (when-let [new-mappings (remove-parameter-stage-numbers record)]
+       (t2/query {:update :report_dashboardcard
+                  :set    {:parameter_mappings (json/generate-string new-mappings)}
+                  :where  [:= :id (:id record)]})))
+   (t2/reducible-query {:select [:id :parameter_mappings]
+                        :from   [:report_dashboardcard]
+                        :where  [:!= :parameter_mappings "[]"]})))
+
+(define-reversible-migration AddStageNumberToParameterMappingTargets
+  (add-stage-numbers-to-parameter-mapping-targets)
+  (remove-stage-numbers-from-parameter-mapping-targets))
+
+(defn- dimension?
+  [x]
+  (and (vector? x)
+       (< 1 (count x) 4)
+       (= (get x 0) "dimension")))
+
+(defn- update-parameter-mapping-target-dimension
+  [parameter-mapping-entry update-fn]
+  (let [parameter-mapping (val parameter-mapping-entry)
+        target (:target parameter-mapping)
+        dimension (:dimension target)
+        new-dimension (cond-> dimension
+                        (and (= (:type target) "dimension")
+                             (dimension? dimension))
+                        update-fn)]
+    (if (not= new-dimension dimension)
+      (let [new-dimension-str (json/generate-string new-dimension)
+            new-dimension-key (keyword new-dimension-str)]
+        [new-dimension-key (-> parameter-mapping
+                               (assoc :id new-dimension-str)
+                               (update :target assoc :id new-dimension-str :dimension new-dimension))])
+      parameter-mapping-entry)))
+
+(defn- update-column-settings-target-dimensions
+  "This can update any map containing :click_behavior and is called with visualization_settings too."
+  [column-settings click-behavior->update-fn]
+  (let [click-behavior (:click_behavior column-settings)
+        update-fn (click-behavior->update-fn click-behavior)]
+    (cond-> column-settings
+      (and update-fn
+           (= (:linkType click-behavior) "question")
+           (-> click-behavior :parameterMapping map?))
+      (update-in [:click_behavior :parameterMapping]
+                 (fn [mappings]
+                   (into {}
+                         (map #(update-parameter-mapping-target-dimension % update-fn))
+                         mappings))))))
+
+(defn- update-viz-settings-target-dimensions
+  [viz-settings click-behavior->update-fn]
+  (cond-> viz-settings
+    (-> viz-settings :column_settings map?)
+    (update :column_settings
+            update-vals
+            #(update-column-settings-target-dimensions % click-behavior->update-fn))))
+
+(defn- set-viz-settings-parameter-stage-numbers
+  [orig-viz-settings card-id->last-stage]
+  (let [add-stage-number (fn [click-behavior]
+                           (when-let [last-stage (-> click-behavior :targetId card-id->last-stage)]
+                             #(assoc % 2 {:stage-number last-stage})))
+        viz-settings (-> orig-viz-settings
+                         (update-viz-settings-target-dimensions add-stage-number)
+                         (update-column-settings-target-dimensions add-stage-number))]
+    (when (not= viz-settings orig-viz-settings)
+      viz-settings)))
+
+(defn- question-target-card-ids
+  [viz-settings]
+  (keep (fn [viz-or-column-settings]
+          (let [click-behavior (:click_behavior viz-or-column-settings)]
+            (when (= (:linkType click-behavior) "question")
+              (:targetId click-behavior))))
+        (cons viz-settings
+              (-> viz-settings :column_settings vals))))
+
+(defn- add-stage-numbers-to-viz-settings-parameter-mapping-targets
+  []
+  (let [id-viz-settings                 ; based on Hosting Insights, a few hundred records are expected
+        (into []
+              (map (juxt :id (comp #(json/parse-string % true) :visualization_settings)))
+              (t2/reducible-query {:select [:id :visualization_settings]
+                                   :from   [:report_dashboardcard]
+                                   :where  [:and
+                                            [:like :visualization_settings "%\"click_behavior\"%"]
+                                            [:like :visualization_settings "%[\"dimension\"%"]]}))
+
+        target-card-ids                 ; this is not expected much more either
+        (into #{}
+              (comp (map second)
+                    (mapcat question-target-card-ids))
+              id-viz-settings)
+
+        card-query-batch-size 1000
+        card-id->last-stage             ; this is expected to make just a few queries (one in known cases)
+        (into {}
+              (comp (partition-all card-query-batch-size)
+                    (mapcat #(t2/reducible-query {:select [:id :dataset_query [:type :c_type]]
+                                                  :from   [:report_card]
+                                                  :where  [:in :id %]}))
+                    (map (juxt :id card->last-stage)))
+              target-card-ids)]
+    (run!
+     (fn [[id viz-settings]]
+       (when-let [new-viz-settings (set-viz-settings-parameter-stage-numbers viz-settings card-id->last-stage)]
+         (t2/query {:update :report_dashboardcard
+                    :set    {:visualization_settings (json/generate-string new-viz-settings)}
+                    :where  [:= :id id]})))
+     id-viz-settings)))
+
+(defn- remove-viz-settings-parameter-stage-numbers
+  [record]
+  (let [orig-viz-settings (some-> record :visualization_settings (json/parse-string true))
+        remove-stage-numbers (constantly #(subvec % 0 2))
+        viz-settings (-> orig-viz-settings
+                         (update-viz-settings-target-dimensions remove-stage-numbers)
+                         (update-column-settings-target-dimensions remove-stage-numbers))]
+    (when (not= viz-settings orig-viz-settings)
+      viz-settings)))
+
+(defn- remove-stage-numbers-from-viz-settings-parameter-mapping-targets
+  []
+  (run!
+   (fn [record]
+     (when-let [new-mappings (remove-viz-settings-parameter-stage-numbers record)]
+       (t2/query {:update :report_dashboardcard
+                  :set    {:visualization_settings (json/generate-string new-mappings)}
+                  :where  [:= :id (:id record)]})))
+   (t2/reducible-query {:select [:id :visualization_settings]
+                        :from   [:report_dashboardcard]
+                        :where  [:and
+                                 [:like :visualization_settings "%\"click_behavior\"%"]
+                                 [:like :visualization_settings "%[\"dimension\"%"]]})))
+
+(define-reversible-migration AddStageNumberToVizSettingsParameterMappingTargets
+  (add-stage-numbers-to-viz-settings-parameter-mapping-targets)
+  (remove-stage-numbers-from-viz-settings-parameter-mapping-targets))

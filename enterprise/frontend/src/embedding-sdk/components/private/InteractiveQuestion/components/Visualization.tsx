@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { FlexibleSizeComponent } from "embedding-sdk";
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/util/FlexibleSizeComponent";
+import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
+import { FlexibleSizeComponent } from "embedding-sdk/components/public/FlexibleSizeComponent";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
