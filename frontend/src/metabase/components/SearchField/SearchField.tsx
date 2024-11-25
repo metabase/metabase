@@ -39,6 +39,7 @@ type SearchFieldProps = {
   optionRenderer: (option: FieldValue) => ReactElement;
   itemRenderer: (option: FieldValue) => SelectItem;
   isLoading?: boolean;
+  alwaysShowOptions?: boolean;
 };
 
 export const SearchField = ({
@@ -54,6 +55,7 @@ export const SearchField = ({
   optionRenderer,
   itemRenderer,
   isLoading = false,
+  alwaysShowOptions = false,
 }: SearchFieldProps) => {
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -168,30 +170,31 @@ export const SearchField = ({
             isDashboardFilter && S.dashboardFilter,
           )}
         >
-          {filteredOptions.map(function (option, index) {
-            const isSelected = value.includes(option[0]);
+          {(alwaysShowOptions || debouncedFilter.length > 0) &&
+            filteredOptions.map(function (option, index) {
+              const isSelected = value.includes(option[0]);
 
-            const handleClick = () => {
-              if (isSelected) {
-                setQuery("");
-                onChange(value.filter(value => value !== option[0]));
-              } else {
-                setQuery("");
-                onChange([...value, option[0]]);
-              }
-            };
+              const handleClick = () => {
+                if (isSelected) {
+                  setQuery("");
+                  onChange(value.filter(value => value !== option[0]));
+                } else {
+                  setQuery("");
+                  onChange([...value, option[0]]);
+                }
+              };
 
-            return (
-              <li key={index}>
-                <button
-                  onClick={handleClick}
-                  className={classNames(S.option, isSelected && S.selected)}
-                >
-                  {optionRenderer(option)}
-                </button>
-              </li>
-            );
-          })}
+              return (
+                <li key={index}>
+                  <button
+                    onClick={handleClick}
+                    className={classNames(S.option, isSelected && S.selected)}
+                  >
+                    {optionRenderer(option)}
+                  </button>
+                </li>
+              );
+            })}
         </ul>
       )}
     </div>
