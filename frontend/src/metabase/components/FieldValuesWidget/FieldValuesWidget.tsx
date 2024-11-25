@@ -561,7 +561,7 @@ export function FieldValuesWidgetInner({
           <Flex p="md" align="center" justify="center">
             <LoadingSpinner size={24} />
           </Flex>
-        ) : isListMode && hasListValues && multi ? (
+        ) : isListMode && hasListValues && multi && valuesMode !== "search" ? (
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
