@@ -88,14 +88,20 @@ export const getReleaseBranch = (versionString: string) => {
 };
 
 export const getVersionFromReleaseBranch = (branch: string) => {
+  const majorVersion = getMajorVersionNumberFromReleaseBranch(branch);
+
+  return `v0.${majorVersion}.0`;
+};
+
+export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
   const match = /release-x\.(\d+)\.x$/.exec(branch);
 
   if (!match) {
     throw new Error(`Invalid release branch: ${branch}`);
   }
-  const majorVersion = match[1];
-  return `v0.${majorVersion}.0`;
-}
+
+  return match[1];
+};
 
 export const versionRequirements: Record<
   number,

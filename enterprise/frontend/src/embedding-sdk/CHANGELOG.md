@@ -1,3 +1,45 @@
+## [0.51.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.8...embedding-sdk-0.51.9) (2024-11-22)
+
+
+### Bug Fixes
+
+* **sdk:** summarize sdk component crashes with stage index errors ([#50407](https://github.com/metabase/metabase/issues/50407)) ([a679201](https://github.com/metabase/metabase/commit/a679201bdb5be3cd2593cd8f0361a5f1377b84a7)), closes [#50400](https://github.com/metabase/metabase/issues/50400)
+
+
+### Features
+
+* **sdk:** Run e2e tests using published SDK package related to target release ([#49196](https://github.com/metabase/metabase/issues/49196)) ([ad2b6cd](https://github.com/metabase/metabase/commit/ad2b6cd6921eba6fd1beb17a64a649b160715c9c))
+
+
+
+## [0.51.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.7...embedding-sdk-0.51.8) (2024-11-21)
+
+
+### Bug Fixes
+
+* **sdk:** emit typescript files in the embedding cli when in a typescript project ([#50278](https://github.com/metabase/metabase/issues/50278)) ([#50316](https://github.com/metabase/metabase/issues/50316)) ([7d28753](https://github.com/metabase/metabase/commit/7d287538be97787d52c8327c212ce7deb018a11b))
+* **sdk:** entity picker's hover and accent colors are not mappable via sdk theming ([#50299](https://github.com/metabase/metabase/issues/50299)) ([#50331](https://github.com/metabase/metabase/issues/50331)) ([47807ef](https://github.com/metabase/metabase/commit/47807efe1427c9a1245a10860c195b5b3a5dc5b2))
+
+
+
+## [0.51.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.6...embedding-sdk-0.51.7) (2024-11-21)
+
+
+### Bug Fixes
+
+* **sdk:** cli suggests a relative import path with reminder message ([#50276](https://github.com/metabase/metabase/issues/50276)) ([#50298](https://github.com/metabase/metabase/issues/50298)) ([785ef5f](https://github.com/metabase/metabase/commit/785ef5f2bf8f0c3e6fe08108a7079ab96b1e40af))
+
+
+### Features
+
+* **sdk:** revamp CreateQuestion and create question behaviour ([#50290](https://github.com/metabase/metabase/issues/50290)) ([b5d95fb](https://github.com/metabase/metabase/commit/b5d95fb446384642fb218b8b735be448e3d8550c)), closes [#50088](https://github.com/metabase/metabase/issues/50088)
+
+
+
+## [0.51.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.5...embedding-sdk-0.51.6) (2024-11-20)
+
+
+
 ## [0.51.5](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.4...embedding-sdk-0.51.5) (2024-11-20)
 
 
