@@ -113,6 +113,21 @@ const theme = defineEmbeddingSdkTheme({
       backgroundColor: "#2D2D30",
     },
 
+    // Tooltips
+    tooltip: {
+      // Tooltip text color.
+      textColor: "#FFFFFF",
+
+      // Tooltip text color for muted rows.
+      secondaryTextColor: "#949AAB",
+
+      // Tooltip background color.
+      backgroundColor: "#2E353B",
+
+      // Tooltip background color for focused rows.
+      focusedBackgroundColor: "#0A0E10",
+    },
+
     // Data table
     table: {
       cell: {
