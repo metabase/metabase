@@ -29,6 +29,7 @@ type ViewFooterProps = {
   isNotebook: boolean;
   updateQuestion: (question: Question) => Promise<void>;
   isNative: boolean;
+  isRunning: boolean;
 };
 
 export const ViewFooter = ({
@@ -41,6 +42,7 @@ export const ViewFooter = ({
   isNotebook,
   hasVisualizeButton = true,
   isNative,
+  isRunning,
 }: ViewFooterProps) => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
@@ -110,6 +112,7 @@ export const ViewFooter = ({
             question={question}
             hideChartSettings={hideChartSettings}
             isResultLoaded={!!result}
+            isRunning={isRunning}
             isNotebook={isNotebook}
           />
         )}

@@ -20,6 +20,7 @@ interface LeftViewFooterButtonGroupProps {
   hideChartSettings?: boolean;
   isResultLoaded: boolean;
   isNotebook: boolean;
+  isRunning: boolean;
 }
 
 export const LeftViewFooterButtonGroup = ({
@@ -27,6 +28,7 @@ export const LeftViewFooterButtonGroup = ({
   hideChartSettings = false,
   isResultLoaded,
   isNotebook,
+  isRunning,
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
@@ -45,7 +47,7 @@ export const LeftViewFooterButtonGroup = ({
       <ViewFooterControl
         question={question}
         isNotebook={isNotebook}
-        isResultLoaded={isResultLoaded}
+        isRunning={isRunning}
       />
       {shouldShowChartSettingsButton && (
         <Button
