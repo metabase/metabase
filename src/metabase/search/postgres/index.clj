@@ -278,8 +278,8 @@
 (defn search
   "Use the index table to search for records."
   [search-term & [search-ctx]]
-  (map (juxt :model_id :model)
-       (t2/query (search-query search-term search-ctx))))
+  (map (juxt :model :name)
+       (t2/query (search-query search-term search-ctx [:model :name]))))
 
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
