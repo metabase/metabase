@@ -5,6 +5,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
+import { CollectionCleanupAlert } from "./CollectionCleanupAlert";
 
 if (hasPremiumFeature("collection_cleanup")) {
   PLUGIN_COLLECTIONS.canCleanUp = true;
@@ -35,4 +36,6 @@ if (hasPremiumFeature("collection_cleanup")) {
   PLUGIN_COLLECTIONS.cleanUpRoute = (
     <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
   );
+
+  PLUGIN_COLLECTIONS.cleanUpAlert = CollectionCleanupAlert;
 }

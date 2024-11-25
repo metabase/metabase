@@ -72,11 +72,19 @@ For example, you could calculate revenue and set a default time dimension of `Cr
 
 ## Editing a metric
 
-To edit a metric, click on the three dot menu (**...**) and select **Edit metric definition**.
+To edit a metric, click on the three dot menu (**...**) and select **Edit metric definition**. Editing a metric requires curate access to the metric's collection.
 
 Do your thing, and save your changes.
 
 When you click on a metric, Metabase will assume that you're using that metric as the starting point for a new question. You can save any changes you make as a new question, but these changes won't affect the metric's definition.
+
+## Metric permissions
+
+Like questions, models, and dashboards, whether a group can view or edit a metric depends on [collection permissions](../permissions/collections.md). By "view" we mean the ability to see the metric in a collection, or see the metric as an option when building a query with the metric's data source. If a metric is used in another question, whether a group can view the question depends on the question's collection, not the metric's collection.
+
+By "editing" a metric, we mean [editing the metric's query definition](#editing-a-metric).
+
+These collection permissions also interact with the group's [data permissions](../permissions/data.md), which define whether the group can view or query the metric's source data.
 
 ## Further reading
 

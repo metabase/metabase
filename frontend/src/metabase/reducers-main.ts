@@ -4,7 +4,6 @@ import { combineReducers } from "@reduxjs/toolkit";
 
 import admin from "metabase/admin/admin";
 import alert from "metabase/alert/alert";
-import * as metabot from "metabase/metabot/reducers";
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as pulse from "metabase/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
@@ -19,7 +18,6 @@ export const mainReducers = {
 
   // main app reducers
   alert,
-  metabot: combineReducers(metabot),
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),
   reference,

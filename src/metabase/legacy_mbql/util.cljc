@@ -102,24 +102,27 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
-(defn- legacy-last-stage-number
+(defn legacy-last-stage-number
   "Returns the canonical stage number of the last stage of the legacy `inner-query`."
   [inner-query]
-  (loop [{:keys [source-query]} inner-query, n 0]
-    (if-not source-query
+  (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
+    (if (or (nil? source-query)
+            stage-had-source-card)
       n
       (recur source-query (inc n)))))
 
-(defn- stage-path
+(defn stage-path
   "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
   specified by `stage-number`.
 
   Stage numbers are used as described in [[add-filter-clause]]."
   [inner-query stage-number]
-  (let [elements (if (neg? stage-number)
-                   (dec (- stage-number))
-                   (- (legacy-last-stage-number inner-query) stage-number))]
-    (into [] (repeat elements :source-query))))
+  (if-not stage-number
+    []
+    (let [elements (if (neg? stage-number)
+                     (dec (- stage-number))
+                     (- (legacy-last-stage-number inner-query) stage-number))]
+      (into [] (repeat elements :source-query)))))
 
 (mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
@@ -131,9 +134,7 @@
    new-clause   :- [:maybe mbql.s/Filter]]
   (if (not new-clause)
     inner-query
-    (let [path (if-not stage-number
-                 []
-                 (stage-path inner-query stage-number))]
+    (let [path (stage-path inner-query stage-number)]
       (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
 (mu/defn add-filter-clause :- mbql.s/Query

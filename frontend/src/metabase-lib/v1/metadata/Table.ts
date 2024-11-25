@@ -132,10 +132,6 @@ class Table {
     );
   }
 
-  aggregationOperator(short: string) {
-    return this.aggregationOperatorsLookup()[short];
-  }
-
   // FIELDS
   fieldsLookup() {
     return Object.fromEntries(this.getFields().map(field => [field.id, field]));

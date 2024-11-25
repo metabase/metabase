@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.search.config :as search.config]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.spec :as search.spec]
    [metabase.task :as task]
@@ -22,17 +21,12 @@
 
 (def ^:private insert-batch-size 150)
 
-(def ^:private model-rankings
-  (zipmap search.config/models-search-order (range)))
-
-(defn- model-rank [model]
-  ;; Give unknown models the lowest priority
-  (model-rankings model (count model-rankings)))
-
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
   (->> (:search-terms (search.spec/spec (:model m)))
-       (map m)
+       (keep m)
+       (map str/trim)
+       (remove str/blank?)
        (str/join " ")))
 
 (defn- display-data [m]
@@ -41,13 +35,12 @@
 (defn- ->entry [m]
   (-> m
       (select-keys
-       (into [:id :model] search.spec/attr-columns))
+       (into [:model] search.spec/attr-columns))
       (update :archived boolean)
       (assoc
        :display_data (display-data m)
        :legacy_input m
-       :searchable_text (searchable-text m)
-       :model_rank (model-rank (:model m)))))
+       :searchable_text (searchable-text m))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs :when v]
@@ -97,7 +90,7 @@
          (m/distinct-by (juxt :id :model))
          (map ->entry)
          (partition-all insert-batch-size)))
-       (transduce (map search.index/batch-update!) + 0)))
+       (transduce (map search.index/batch-update!) (partial merge-with +))))
 
 (defn populate-index!
   "Go over all searchable items and populate the index with them."
@@ -119,9 +112,8 @@
   "Wait up to 'delay-ms' for a queued batch to become ready, and process the batch if we get one.
   Returns the number of search index entries that get updated as a result."
   [first-delay-ms next-delay-ms]
-  (if-let [queued-updates (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)]
-    (bulk-ingest! queued-updates)
-    0))
+  (when-let [queued-updates (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)]
+    (bulk-ingest! queued-updates)))
 
 (defn- index-worker-exists? []
   (task/job-exists? @(requiring-resolve 'metabase.task.search-index/reindex-job-key))

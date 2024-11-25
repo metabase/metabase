@@ -7,7 +7,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ArchiveModal from "metabase/components/ArchiveModal";
+import { ArchiveModal } from "metabase/components/ArchiveModal";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import Collection from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -30,6 +30,7 @@ class ArchiveDashboardModal extends Component {
 
   render() {
     const { dashboard } = this.props;
+
     return (
       <ArchiveModal
         title={
@@ -38,6 +39,8 @@ class ArchiveDashboardModal extends Component {
             : t`Move this dashboard to trash?`
         }
         message={t`Are you sure you want to do this?`}
+        model="dashboard"
+        modelId={dashboard?.id}
         onClose={this.props.onClose}
         onArchive={this.archive}
       />

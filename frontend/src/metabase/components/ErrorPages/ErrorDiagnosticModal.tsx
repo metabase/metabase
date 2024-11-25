@@ -3,6 +3,9 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { getSlackSettings } from "metabase/admin/settings/slack/selectors";
+import { useSendBugReportMutation } from "metabase/api/bug-report";
+import { useSetting } from "metabase/common/hooks";
 import Alert from "metabase/core/components/Alert";
 import {
   Form,
@@ -14,6 +17,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { capitalize } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
+import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
@@ -35,6 +39,18 @@ export const ErrorDiagnosticModal = ({
   loading,
   onClose,
 }: ErrorDiagnosticModalProps) => {
+  const dispatch = useDispatch();
+  const [isSlackSending, setIsSlackSending] = useState(false);
+  const [sendBugReport] = useSendBugReportMutation();
+  const isBugReportingEnabled = useSetting("bug-reporting-enabled");
+
+  const slackSettings = useSelector(getSlackSettings);
+  const enableBugReportField = Boolean(
+    slackSettings["slack-bug-report-channel"] &&
+      slackSettings["slack-app-token"] &&
+      isBugReportingEnabled,
+  );
+
   if (loading || !errorInfo) {
     return (
       <Modal opened onClose={onClose}>
@@ -70,6 +86,48 @@ export const ErrorDiagnosticModal = ({
     onClose();
   };
 
+  const handleSlackSubmit = async (values: PayloadSelection) => {
+    setIsSlackSending(true);
+    const selectedKeys = Object.keys(values).filter(
+      key => values[key as keyof PayloadSelection],
+    );
+    const selectedInfo: ErrorPayload = _.pick(errorInfo, ...selectedKeys);
+
+    try {
+      const response = await sendBugReport({
+        diagnosticInfo: selectedInfo,
+      }).unwrap();
+
+      if (response.success) {
+        dispatch(
+          addUndo({
+            message: t`Diagnostic information sent to Slack successfully`,
+          }),
+        );
+      } else {
+        dispatch(
+          addUndo({
+            message: t`Failed to send diagnostic information to Slack`,
+            icon: "warning",
+            variant: "error",
+          }),
+        );
+      }
+    } catch (error) {
+      console.error("Error sending to Slack:", error);
+      dispatch(
+        addUndo({
+          message: t`Error sending diagnostic information to Slack`,
+          icon: "warning",
+          variant: "error",
+        }),
+      );
+    } finally {
+      setIsSlackSending(false);
+      onClose();
+    }
+  };
+
   return (
     <Modal
       opened
@@ -90,58 +148,76 @@ export const ErrorDiagnosticModal = ({
         }}
         onSubmit={handleSubmit}
       >
-        <Form>
-          <Text>
-            {t`Select the info you want to include in the diagnostic JSON file.`}
-          </Text>
-          <Stack spacing="md" my="lg">
-            {canIncludeQueryData && (
-              <FormCheckbox name="queryResults" label={t`Query results`} />
-            )}
-            {!!errorInfo.localizedEntityName && (
+        {formik => (
+          <Form>
+            <Text>
+              {t`Select the info you want to include in the diagnostic JSON file.`}
+            </Text>
+            <Stack spacing="md" my="lg">
+              {canIncludeQueryData && (
+                <FormCheckbox name="queryResults" label={t`Query results`} />
+              )}
+              {!!errorInfo.localizedEntityName && (
+                <FormCheckbox
+                  name="entityInfo"
+                  label={t`${capitalize(
+                    errorInfo.localizedEntityName,
+                  )} definition`}
+                />
+              )}
               <FormCheckbox
-                name="entityInfo"
-                label={t`${capitalize(
-                  errorInfo.localizedEntityName,
-                )} definition`}
+                name="frontendErrors"
+                label={t`Browser error messages`}
               />
-            )}
-            <FormCheckbox
-              name="frontendErrors"
-              label={t`Browser error messages`}
-            />
-            {!!errorInfo?.logs && (
-              <>
-                <FormCheckbox
-                  name="backendErrors"
-                  label={t`All server error messages`}
-                />
-                <FormCheckbox name="logs" label={t`All server logs`} />
-                <FormCheckbox
-                  name="userLogs"
-                  label={t`Server logs from the current user only`}
-                />
-              </>
-            )}
-            <FormCheckbox
-              name="bugReportDetails"
-              // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
-              label={t`Metabase instance version information`}
-            />
-          </Stack>
-          <Alert variant="warning">
-            {t`Review the downloaded file before sharing it, as the diagnostic info may contain sensitive data.`}
-          </Alert>
-          <Flex gap="sm" justify="flex-end" mt="lg">
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              variant="filled"
-              leftIcon={<Icon name="download" />}
-              label={t`Download`}
-              color="brand"
-            />
-          </Flex>
-        </Form>
+              {!!errorInfo?.logs && (
+                <>
+                  <FormCheckbox
+                    name="backendErrors"
+                    label={t`All server error messages`}
+                  />
+                  <FormCheckbox name="logs" label={t`All server logs`} />
+                  <FormCheckbox
+                    name="userLogs"
+                    label={t`Server logs from the current user only`}
+                  />
+                </>
+              )}
+              <FormCheckbox
+                name="bugReportDetails"
+                // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
+                label={t`Metabase instance version information`}
+              />
+            </Stack>
+            <Alert variant="warning">
+              {t`Review the downloaded file before sharing it, as the diagnostic info may contain sensitive data.`}
+            </Alert>
+            <Flex gap="sm" justify="flex-end" mt="lg">
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton
+                variant="filled"
+                leftIcon={<Icon name="download" />}
+                label={t`Download`}
+                color="brand"
+              />
+              {enableBugReportField && (
+                <Button
+                  variant="filled"
+                  leftIcon={
+                    isSlackSending ? (
+                      <Loader size="xs" />
+                    ) : (
+                      <Icon name="slack" />
+                    )
+                  }
+                  onClick={() => handleSlackSubmit(formik.values)}
+                  disabled={isSlackSending}
+                >
+                  {isSlackSending ? t`Sending...` : t`Send to Slack`}
+                </Button>
+              )}
+            </Flex>
+          </Form>
+        )}
       </FormProvider>
     </Modal>
   );

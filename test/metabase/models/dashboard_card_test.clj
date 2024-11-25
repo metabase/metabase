@@ -34,7 +34,7 @@
                              (= :updated_at k))
                  [k (f v)])))))
 
-(deftest retrieve-dashboard-card-test
+(deftest ^:parallel retrieve-dashboard-card-test
   (testing "retrieve-dashboard-card basic dashcard (no additional series)"
     (mt/with-temp [Dashboard     {dashboard-id :id} {}
                    Card          {card-id :id}      {}
@@ -48,7 +48,7 @@
               :series                 []}
              (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
 
-(deftest retrieve-dashboard-card-with-additional-series-test
+(deftest ^:parallel retrieve-dashboard-card-with-additional-series-test
   (testing "retrieve-dashboard-card dashcard w/ additional series"
     (mt/with-temp [Dashboard           {dashboard-id :id} {}
                    Card                {card-id :id} {}
@@ -77,7 +77,7 @@
                                         :visualization_settings {}}]}
              (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
 
-(deftest dashcard->multi-card-test
+(deftest ^:parallel dashcard->multi-card-test
   (testing "Check that the multi-cards are returned"
     (mt/with-temp [Card                card1 {}
                    Card                card2 {}
@@ -251,7 +251,7 @@
             ;; this is usually 10, but it can be 11 sometimes in CI for some reason
             (is (contains? #{10 11} (call-count)))))))))
 
-(deftest normalize-parameter-mappings-test
+(deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
     (mt/with-temp [Dashboard     dashboard {:parameters [{:name "Venue ID"
                                                           :slug "venue_id"
@@ -268,7 +268,7 @@
                :target       [:dimension [:field (mt/id :venues :id) nil]]}]
              (t2/select-one-fn :parameter_mappings DashboardCard :id (u/the-id dashcard)))))))
 
-(deftest normalize-visualization-settings-test
+(deftest ^:parallel normalize-visualization-settings-test
   (testing "DashboardCard visualization settings should get normalized to use modern MBQL syntax"
     (mt/with-temp [Card      card      {}
                    Dashboard dashboard {}]
@@ -280,7 +280,7 @@
            (is (= expected
                   (t2/select-one-fn :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))
 
-(deftest normalize-parameter-mappings-test-2
+(deftest ^:parallel normalize-parameter-mappings-test-2
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
     (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
            ((:out mi/transform-parameters-list)
@@ -293,14 +293,26 @@
               (json/generate-string
                [{:card-id 123, :hash "abc", :target "foo"}])))))))
 
-(deftest keep-empty-parameter-mappings-empty-test
+(deftest ^:parallel keep-empty-parameter-mappings-empty-test
   (testing (str "we should keep empty parameter mappings as empty instead of making them nil (if `normalize` removes "
                 "them because they are empty) (I think this is to prevent NPEs on the FE? Not sure why we do this)")
     (is (= []
            ((:out mi/transform-parameters-list)
             (json/generate-string []))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel normalize-card-parameter-mappings-test
+  (doseq [parameters [[]
+                      [{:name "Time grouping"
+                        :slug "time_grouping"
+                        :id "8e366c15"
+                        :type :temporal-unit
+                        :sectionId "temporal-unit"
+                        :temporal_units [:minute :quarter-of-year]}]]]
+    (is (= parameters
+           ((:out mi/transform-card-parameters-list)
+            (json/generate-string parameters))))))
+
+(deftest ^:parallel identity-hash-test
   (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
       (mt/with-temp [Collection    c1       {:name "top level" :location "/" :created_at now}
@@ -316,7 +328,7 @@
                (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
                (serdes/identity-hash dashcard)))))))
 
-(deftest from-decoded-json-test
+(deftest ^:parallel from-decoded-json-test
   (testing "Dashboard Cards should remain the same if they are serialized to JSON,
             deserialized, and finally transformed with `from-parsed-json`."
     (mt/with-temp [Dashboard     dash     {:name "my dashboard"}

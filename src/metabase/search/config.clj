@@ -81,17 +81,18 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(def ^:private default-weights
-  {:pinned              0
-   :bookmarked          2
-   :recency             1.5
-   :user-recency        1.5
-   :dashboard           0.5
-   :model               2
-   :official-collection 2
-   :verified            2
-   :view-count          2
-   :text                10})
+(def ^:private static-weights
+  {:default
+   {:pinned              0
+    :bookmarked          2
+    :recency             1.5
+    :user-recency        1.5
+    :dashboard           0.5
+    :model               2
+    :official-collection 2
+    :verified            2
+    :view-count          2
+    :text                10}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
@@ -142,15 +143,45 @@
     :native-query   {:type :native-query, :context-key :search-native-query}
     :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
 
+(def ^:private filter-defaults-by-context
+  {:default         {:archived               false
+                     ;; keys will typically those in [[filters]], but this is an atypical filter.
+                     ;; we plan to generify it, by precalculating it on the index.
+                     :personal-collection-id "all"}
+   :command-palette {:personal-collection-id "exclude-others"}})
+
+(defn filter-default
+  "Get the default value for the given filter in the given context. Is non-contextual for legacy search."
+  [engine context filter-key]
+  (let [fetch (fn [ctx] (when ctx (-> filter-defaults-by-context (get ctx) (get filter-key))))]
+    (if (= engine :search.engine/in-place)
+      (fetch :default)
+      (or (fetch context) (fetch :default)))))
+
+;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
-  []
-  (merge default-weights (public-settings/experimental-search-weight-overrides)))
+  [context]
+  (let [context   (or context :default)
+        overrides (public-settings/experimental-search-weight-overrides)]
+    (if (= :all context)
+      (merge-with merge static-weights overrides)
+      (merge (get static-weights :default)
+             ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
+             (get overrides :default)
+             (get static-weights context)
+             (get overrides context)))))
 
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."
-  [scorer-key]
-  (get (weights) scorer-key 0))
+  [context scorer-key]
+  (get (weights context) scorer-key (when-not (namespace scorer-key) 0)))
+
+(defn scorer-param
+  "Get a nested parameter scoped to the given scorer"
+  [context scorer-key param-key]
+  (let [flat-key (keyword (name scorer-key) (name param-key))]
+    (weight context flat-key)))
 
 (defn model->alias
   "Given a model string returns the model alias"
