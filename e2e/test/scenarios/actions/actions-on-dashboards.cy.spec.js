@@ -14,10 +14,10 @@ import {
   expectNoBadSnowplowEvents,
   fillActionQuery,
   filterWidget,
+  focusNativeEditor,
   getActionCardDetails,
   modal,
   multiAutocompleteInput,
-  nativeEditor,
   openStaticEmbeddingModal,
   popover,
   queryWritableDB,
@@ -1014,9 +1014,9 @@ const MODEL_NAME = "Test Action Model";
           });
 
           actionEditorModal().within(() => {
-            nativeEditor().type("{home}{shift+end}{backspace}");
+            focusNativeEditor().type("{home}{shift+end}{backspace}");
             const TEST_COLUMNS_QUERY = `UPDATE ${TEST_COLUMNS_TABLE} SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}`;
-            nativeEditor().type(TEST_COLUMNS_QUERY, {
+            focusNativeEditor().type(TEST_COLUMNS_QUERY, {
               delay: 0,
               parseSpecialCharSequences: false,
             });

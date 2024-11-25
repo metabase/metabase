@@ -15,11 +15,11 @@ import {
   entityPickerModalTab,
   expressionEditorWidget,
   filterWidget,
+  focusNativeEditor,
   getNotebookStep,
   leftSidebar,
   mockSessionProperty,
   modal,
-  nativeEditor,
   navigationSidebar,
   openNativeEditor,
   openNavigationSidebar,
@@ -177,7 +177,7 @@ describe("issue 9027", () => {
 
     openNativeEditor({ fromCurrentPage: true });
 
-    nativeEditor().type("select 0");
+    focusNativeEditor().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     saveQuestion(QUESTION_NAME);

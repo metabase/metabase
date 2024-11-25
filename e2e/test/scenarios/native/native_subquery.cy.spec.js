@@ -45,13 +45,13 @@ describe("scenarios > question > native subquery", () => {
           cy.reload();
           cy.findByText("Open Editor").click();
           // placing the cursor inside an existing template tag should open the data reference
-          nativeEditor().type("{leftarrow}");
+          focusNativeEditor().type("{leftarrow}");
           cy.findByText("A People Question");
           // subsequently moving the cursor out from the tag should keep the data reference open
-          nativeEditor().type("{rightarrow}");
+          focusNativeEditor().type("{rightarrow}");
           cy.findByText("A People Question");
           // typing a template tag id should open the editor
-          nativeEditor()
+          focusNativeEditor()
             .type(" ")
             .type("{{#")
             .type(`{leftarrow}{leftarrow}${questionId2}`);
@@ -143,7 +143,7 @@ describe("scenarios > question > native subquery", () => {
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
           cy.findByText("Open Editor").click();
-          nativeEditor().type(" ").type("a_unique");
+          focusNativeEditor().type(" ").type("a_unique");
 
           // Wait until another explicit autocomplete is triggered
           // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -154,7 +154,7 @@ describe("scenarios > question > native subquery", () => {
 
           // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
           // so type it in two parts
-          nativeEditor()
+          focusNativeEditor()
             .type(" {{#")
             .type(`{leftarrow}{leftarrow}${questionId2}`);
 
@@ -163,7 +163,7 @@ describe("scenarios > question > native subquery", () => {
 
           // Again, typing in in one go doesn't always work
           // so type it in two parts
-          nativeEditor().type(" ").type("another");
+          focusNativeEditor().type(" ").type("another");
 
           nativeEditorCompletions().findByText("ANOTHER");
         });
@@ -199,7 +199,10 @@ describe("scenarios > question > native subquery", () => {
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
         cy.get("@questionId").then(questionId => {
-          nativeEditor().contains(`{{#${questionId}-a-people-question-1}}`);
+          nativeEditor().should(
+            "contain",
+            `{{#${questionId}-a-people-question-1}}`,
+          );
         });
 
         // change the name
@@ -212,7 +215,8 @@ describe("scenarios > question > native subquery", () => {
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
         cy.get("@questionId").then(questionId => {
-          nativeEditor().contains(
+          nativeEditor().should(
+            "contain",
             `{{#${questionId}-a-people-question-1-changed}}`,
           );
         });

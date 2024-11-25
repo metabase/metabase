@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   filterWidget,
+  focusNativeEditor,
   getDashboardCard,
   modal,
   moveDnDKitElement,
@@ -209,7 +210,7 @@ describe("issue 12581", () => {
 
     // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
     // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
-    nativeEditor()
+    focusNativeEditor()
       .as("editor")
       .click()
       .type("{selectall}{backspace}", { delay: 50 })
@@ -246,7 +247,7 @@ describe("issue 12581", () => {
       .click();
 
     cy.log("Reported failing on v0.35.3");
-    nativeEditor().should("be.visible").and("contain", ORIGINAL_QUERY);
+    focusNativeEditor().should("be.visible").and("contain", ORIGINAL_QUERY);
 
     tableInteractive().findByText("37.65");
 
