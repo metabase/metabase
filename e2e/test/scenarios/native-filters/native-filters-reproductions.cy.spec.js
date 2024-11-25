@@ -453,7 +453,6 @@ describe("issue 14302", () => {
       });
 
       nativeEditor({ visible: false }).should("not.be.visible");
-      nativeEditor().should("not.be.visible");
       cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
