@@ -59,7 +59,6 @@ export const ResultTitle = ({
 
   const originalName = originalQuestion?.displayName();
 
-  // Get text content
   const titleText =
     !customTitle && question ? getQuestionTitle({ question }) : customTitle;
 
