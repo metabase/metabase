@@ -52,7 +52,7 @@ jobs:
               getVersionFromReleaseBranch,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
             // const targetBranchName = '${{ github.base_ref || github.ref }}';
-            const branchName = 'release-x.51.x';
+            const targetBranchName = 'release-x.51.x';
 
             const version = getVersionFromReleaseBranch(targetBranchName);
             const requirements = getBuildRequirements(version);
