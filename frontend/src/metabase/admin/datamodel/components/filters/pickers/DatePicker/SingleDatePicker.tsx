@@ -1,5 +1,5 @@
 import type { SelectAll } from "metabase/components/Calendar";
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   clearDateFilterTime,
   getDateFilterValue,
@@ -10,7 +10,7 @@ import SpecificDatePicker from "./SpecificDatePicker";
 
 export type SingleDatePickerProps = {
   className?: string;
-  filter: Filter;
+  filter: FilterMBQL;
   selectAll?: SelectAll;
   hideTimeSelectors?: boolean;
   onFilterChange: (filter: any[]) => void;

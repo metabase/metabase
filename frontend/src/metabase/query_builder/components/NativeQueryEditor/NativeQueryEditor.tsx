@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { Component, createRef } from "react";
-import { connect } from "react-redux";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
@@ -9,10 +8,8 @@ import Modal from "metabase/components/Modal";
 import Databases from "metabase/entities/databases";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
-import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
-import { getSetting } from "metabase/selectors/settings";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -25,14 +22,12 @@ import type {
   ParameterId,
   TableId,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
 import DataSourceSelectors from "./DataSourceSelectors";
 import { Editor, type EditorHandle, type EditorProps } from "./Editor";
 import S from "./NativeQueryEditor.module.css";
-import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { RightClickPopover } from "./RightClickPopover";
@@ -99,10 +94,6 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   onSetDatabaseId?: (id: DatabaseId) => void;
 };
 
-interface StateProps {
-  canUsePromptInput: boolean;
-}
-
 interface ExplicitSizeProps {
   width: number;
   height: number;
@@ -113,11 +104,7 @@ interface EntityLoaderProps {
   snippetCollections?: Collection[];
 }
 
-type Props = OwnProps &
-  StateProps &
-  ExplicitSizeProps &
-  EntityLoaderProps &
-  EditorProps;
+type Props = OwnProps & ExplicitSizeProps & EntityLoaderProps & EditorProps;
 
 interface NativeQueryEditorState {
   initialHeight: number;
@@ -311,20 +298,6 @@ export class NativeQueryEditor extends Component<
     this.focus();
   };
 
-  isPromptInputVisible = () => {
-    const { canUsePromptInput, isNativeEditorOpen, question } = this.props;
-    const database = question.database();
-    const isSupported =
-      database != null && canGenerateQueriesForDatabase(database);
-
-    return (
-      isNativeEditorOpen &&
-      isSupported &&
-      canUsePromptInput &&
-      this.state.isPromptInputVisible
-    );
-  };
-
   formatQuery = async () => {
     const { question } = this.props;
     const query = question.query();
@@ -358,8 +331,6 @@ export class NativeQueryEditor extends Component<
       canChangeDatabase,
       setParameterValueToDefault,
     } = this.props;
-
-    const isPromptInputVisible = this.isPromptInputVisible();
 
     const parameters = query.question().parameters();
 
@@ -412,13 +383,6 @@ export class NativeQueryEditor extends Component<
               )}
           </Flex>
         )}
-        {isPromptInputVisible && (
-          <NativeQueryEditorPrompt
-            databaseId={question.databaseId()}
-            onQueryGenerated={this.handleQueryGenerated}
-            onClose={this.togglePromptVisibility}
-          />
-        )}
         <ResizableBox
           ref={this.resizeBox}
           height={this.state.initialHeight}
@@ -452,7 +416,6 @@ export class NativeQueryEditor extends Component<
                 runQuery={this.runQuery}
                 features={sidebarFeatures}
                 onShowPromptInput={this.togglePromptVisibility}
-                isPromptInputVisible={isPromptInputVisible}
                 onFormatQuery={this.formatQuery}
                 {...this.props}
               />
@@ -487,15 +450,10 @@ export class NativeQueryEditor extends Component<
   }
 }
 
-const mapStateToProps = (state: State) => ({
-  canUsePromptInput: getSetting(state, "is-metabot-enabled"),
-});
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   ExplicitSize(),
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  connect(mapStateToProps),
 )(NativeQueryEditor);

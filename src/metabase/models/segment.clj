@@ -192,7 +192,7 @@
 (search/define-spec "segment"
   {:model        :model/Segment
    :attrs        {:archived      true
-                  :collection-id :id
+                  :collection-id false
                   :creator-id    false
                   :database-id   :table.db_id
                   ;; Matching legacy behavior, where this cannot be filtered on.

@@ -311,16 +311,14 @@
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
         engine (parse-engine search-engine)
-        ctx    (cond-> {:archived?                           (boolean archived)
+        fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
+        ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))
                         :context                             (or context :unknown)
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
-                                                                 (if (and (not= engine :search.engine/in-place)
-                                                                          (#{:search-app :command-palette} context))
-                                                                   "exclude-others"
-                                                                   "all"))
+                                                                 (fvalue :personal-collection-id))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?

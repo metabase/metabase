@@ -8,6 +8,7 @@ import {
   assertIsNotEllipsified,
   createNativeQuestionAndDashboard,
   createQuestion,
+  createQuestionAndDashboard,
   cypressWaitAll,
   echartsContainer,
   editDashboard,
@@ -157,6 +158,10 @@ describe("issue 16334", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
   });
 
   it("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
@@ -167,7 +172,7 @@ describe("issue 16334", () => {
       },
     };
 
-    cy.createQuestion({
+    createQuestion({
       name: "16334",
       query: {
         "source-table": PRODUCTS_ID,
@@ -176,7 +181,7 @@ describe("issue 16334", () => {
       },
       display: "pie",
     }).then(({ body: { id: question1Id } }) => {
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           addOrUpdateDashboardCard({
             dashboard_id,
@@ -188,19 +193,22 @@ describe("issue 16334", () => {
           });
 
           visitDashboard(dashboard_id);
+          cy.wait("@dashcardQuery");
         },
       );
     });
 
     cy.findAllByTestId("cell-data").contains("5").first().click();
+    cy.wait("@dataset");
 
     // Make sure filter is set
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating is equal to 5");
+    cy.findByTestId("qb-filters-panel").should(
+      "contain.text",
+      "Rating is equal to 5",
+    );
 
     // Make sure it's connected to the original question
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Started from 16334");
+    cy.findByTestId("app-bar").should("contain.text", "Started from 16334");
 
     // Make sure the original visualization didn't change
     pieSlices().should("have.length", 2);
@@ -211,19 +219,28 @@ describe("issue 16334", () => {
           click_behavior: {
             targetId,
             parameterMapping: {
-              [`["dimension",["field",${PRODUCTS.RATING},null]]`]: {
-                source: {
-                  type: "column",
-                  id: "RATING",
-                  name: "Rating",
+              [`["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`]:
+                {
+                  source: {
+                    type: "column",
+                    id: "RATING",
+                    name: "Rating",
+                  },
+                  target: {
+                    type: "dimension",
+                    id: [
+                      `["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`,
+                    ],
+                    dimension: [
+                      "dimension",
+                      ["field", PRODUCTS.RATING, null],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                  id: [
+                    `["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`,
+                  ],
                 },
-                target: {
-                  type: "dimension",
-                  id: [`["dimension",["field",${PRODUCTS.RATING},null]]`],
-                  dimension: ["dimension", ["field", PRODUCTS.RATING, null]],
-                },
-                id: [`["dimension",["field",${PRODUCTS.RATING},null]]`],
-              },
             },
             linkType: "question",
             type: "link",
