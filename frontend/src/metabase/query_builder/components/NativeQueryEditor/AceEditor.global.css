@@ -10,7 +10,7 @@
   }
 
   & .ace_search {
-    font-family: Lato;
+    font-family: var(--mb-default-font-family);
     background-color: var(--mb-color-bg-light);
     color: var(--mb-color-text-dark);
     border-color: var(--mb-color-border);
