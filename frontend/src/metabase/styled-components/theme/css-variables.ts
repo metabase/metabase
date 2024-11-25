@@ -104,6 +104,9 @@ export function getThemeSpecificCssVariables(theme: MantineTheme) {
     --mb-color-bg-dashboard-card: ${getValue("dashboard.card.backgroundColor")};
     --mb-color-bg-question: ${getValue("question.backgroundColor")};
 
+    --mb-color-tooltip-text: ${getValue("tooltip.textColor")};
+    --mb-color-tooltip-background: ${getValue("tooltip.backgroundColor")};
+
     --mb-color-text-collection-browser-expand-button: ${getValue(
       "collectionBrowser.breadcrumbs.expandButton.textColor",
     )};

@@ -92,6 +92,8 @@
   --mb-color-icon-primary-disabled: var(--mb-base-color-gray-30);
   --mb-color-icon-secondary: var(--mb-base-color-brand-20);
   --mb-color-icon-secondary-disabled: var(--mb-base-color-gray-10);
+  --mb-color-tooltip-background: var(--mb-color-bg-dark);
+  --mb-color-tooltip-text: var(--mb-color-text-white);
 
   /**
     * Base colors

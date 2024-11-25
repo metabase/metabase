@@ -183,6 +183,15 @@ export type MetabaseComponentTheme = {
     };
   };
 
+  /** Tooltip */
+  tooltip: {
+    /** Tooltip text color. */
+    textColor: string;
+
+    /** Tooltip background color. */
+    backgroundColor: string;
+  };
+
   /** Popover */
   popover?: {
     /** z-index of the popover. Useful for embedding components in a modal. Defaults to 4. */

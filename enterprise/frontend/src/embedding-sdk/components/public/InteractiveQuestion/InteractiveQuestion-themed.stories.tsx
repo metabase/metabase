@@ -1,6 +1,10 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
-import { MetabaseProvider, defineEmbeddingSdkTheme } from "embedding-sdk";
+import {
+  MetabaseProvider,
+  type MetabaseTheme,
+  defineEmbeddingSdkTheme,
+} from "embedding-sdk";
 import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box } from "metabase/ui";
 
@@ -20,7 +24,7 @@ export default {
   },
 };
 
-const colors = {
+const darkColors = {
   primary: "#DF75E9",
   filter: "#7ABBF9",
   lighterGrey: "#E3E7E4",
@@ -30,25 +34,25 @@ const colors = {
 };
 
 const darkTheme = defineEmbeddingSdkTheme({
-  fontFamily: "Inter",
+  fontFamily: "Lato",
   fontSize: "14px",
   colors: {
-    brand: colors.primary,
-    "brand-hover": colors.darkGrey,
-    "brand-hover-light": colors.darkGrey,
-    filter: colors.filter,
-    "text-primary": colors.lighterGrey,
-    "text-secondary": colors.lighterGrey,
-    "text-tertiary": colors.lighterGrey,
-    border: colors.darkGrey,
-    background: colors.background,
-    "background-secondary": colors.darkGrey,
-    "background-hover": colors.background,
-    "background-disabled": colors.darkGrey,
-    "background-inverse": colors.background,
+    brand: darkColors.primary,
+    "brand-hover": darkColors.darkGrey,
+    "brand-hover-light": darkColors.darkGrey,
+    filter: darkColors.filter,
+    "text-primary": darkColors.lighterGrey,
+    "text-secondary": darkColors.lighterGrey,
+    "text-tertiary": darkColors.lighterGrey,
+    border: darkColors.darkGrey,
+    background: darkColors.background,
+    "background-secondary": darkColors.darkGrey,
+    "background-hover": darkColors.background,
+    "background-disabled": darkColors.darkGrey,
+    "background-inverse": darkColors.background,
     charts: [
-      colors.primary,
-      colors.filter,
+      darkColors.primary,
+      darkColors.filter,
       "#ED6A5A",
       "#FED18C",
       "#82A74B",
@@ -65,7 +69,7 @@ const darkTheme = defineEmbeddingSdkTheme({
     },
     dashboard: {
       card: {
-        border: `"1px solid ${colors.darkGrey}"`,
+        border: `"1px solid ${darkColors.darkGrey}"`,
         backgroundColor: "#212426",
       },
     },
@@ -78,9 +82,15 @@ const darkTheme = defineEmbeddingSdkTheme({
   },
 });
 
-const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MetabaseProvider config={storybookSdkDefaultConfig} theme={darkTheme}>
-    <Box p="xl" bg={colors.background}>
+const Wrapper = ({
+  children,
+  theme,
+}: {
+  children: ReactNode;
+  theme: MetabaseTheme;
+}) => (
+  <MetabaseProvider config={storybookSdkDefaultConfig} theme={theme}>
+    <Box p="xl" bg={theme.colors?.background}>
       {children}
     </Box>
   </MetabaseProvider>
@@ -89,7 +99,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 export const DarkTheme = {
   render(args: InteractiveQuestionComponentProps) {
     return (
-      <Wrapper>
+      <Wrapper theme={darkTheme}>
         <InteractiveQuestion {...args} />;
       </Wrapper>
     );
@@ -105,10 +115,33 @@ export const DarkTheme = {
 export const DarkThemeEditor = {
   render(args: InteractiveQuestionComponentProps) {
     return (
-      <Wrapper>
+      <Wrapper theme={darkTheme}>
         <InteractiveQuestion {...args}>
           <InteractiveQuestion.Editor />
         </InteractiveQuestion>
+      </Wrapper>
+    );
+  },
+
+  args: {
+    questionId: QUESTION_ID,
+    isSaveEnabled: true,
+    saveToCollectionId: undefined,
+  },
+};
+
+export const WithLightTooltip = {
+  render(args: InteractiveQuestionComponentProps) {
+    const theme = defineEmbeddingSdkTheme({
+      colors: {
+        "background-inverse": "#fff",
+        "text-inverse": "#2d2d30",
+      },
+    });
+
+    return (
+      <Wrapper theme={theme}>
+        <InteractiveQuestion {...args} />
       </Wrapper>
     );
   },
