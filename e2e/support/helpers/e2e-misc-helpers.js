@@ -340,17 +340,17 @@ export function saveQuestion(
     // we don't need to worry about the add to dash modal
     const wasSavedToCollection = !body.dashboard_id;
 
-  if (wasSavedToCollection) {
-    cy.get("#QuestionSavedModal").within(() => {
-    	cy.findByText(/add this to a dashboard/i).should("be.visible");
+    if (wasSavedToCollection) {
+      cy.get("#QuestionSavedModal").within(() => {
+        cy.findByText(/add this to a dashboard/i).should("be.visible");
 
-    	if (addToDashboard) {
-    	  cy.button("Yes please!").click();
-    	} else {
-   	 	  cy.button("Not now").click();
-   		}
-  	});
-  }
+        if (addToDashboard) {
+          cy.button("Yes please!").click();
+        } else {
+          cy.button("Not now").click();
+        }
+      });
+    }
   });
 }
 
