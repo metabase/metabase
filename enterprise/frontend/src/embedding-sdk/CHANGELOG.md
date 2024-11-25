@@ -77,7 +77,7 @@
 
 
 
-# [1.51.0](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.37...embedding-sdk-1.51.0) (2024-10-08)
+# [0.51.0](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.37...embedding-sdk-0.51.0) (2024-10-08)
 
 
 ### Bug Fixes
