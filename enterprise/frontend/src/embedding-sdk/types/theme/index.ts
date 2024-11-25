@@ -63,9 +63,6 @@ export interface MetabaseColors {
   /** Muted background color used for disabled elements, such as disabled buttons and inputs. */
   "background-disabled"?: string;
 
-  /** Inverted background color used for elements e.g. tooltip backgrounds. */
-  "background-inverse"?: string;
-
   /** Color used for borders */
   border?: string;
 
