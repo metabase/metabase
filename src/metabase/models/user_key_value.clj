@@ -1,4 +1,36 @@
 (ns metabase.models.user-key-value
+  "This namespace allows the frontend to store and retrieve arbitrary key-value pairs for individual users in the
+  database.
+
+  Each KVP is stored in a single 'context', which has a schema. You can write a schema in
+  `resources/user_key_value_types/*.edn`. (If the schema will only be used in tests, you can use
+  `test_resources/user_key_value_types/*.edn`.) The content should be a Malli schema. For example, a file
+  `resources/user_key_value_types/foo.edn` with the content
+
+  ```
+  [:map [:value [:maybe :string]]]
+  ```
+
+  would define a new context, `foo`, where keys and values are both arbitrary strings.
+
+  If you want, you can get more creative - for example, if you have a defined set of allowed keys, you could say:
+
+  ```
+  [:map
+   [:key [:enum \"allowed-key-1\" \"allowed-key-2\"]]
+   [:value [:maybe :string]]]
+  ```
+
+  Or you could go even further, and define a `:multi` spec that has a spec for keys in the case of particular values:
+
+  ```
+  [:multi {:dispatch :key}
+   [\"string-key\" [:map [:value [:maybe :string]]]]
+   [\"number-key\" [:map [:value [:maybe :int]]]]]
+  ```
+
+  Note that: `value` must always be `:maybe` - a null value means to delete the KVP.
+  "
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]

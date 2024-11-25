@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.edn :as edn]
+   [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.config :as config]
@@ -25,8 +26,11 @@
 (mr/def ::context
   "A context for the key-value pair"
   [:and
-   {:decode/api-request (partial keyword "context")
+   {;; api request comes in, turn `foo` into `:context/foo`
+    :decode/api-request (partial keyword "context")
+    ;; writing to the DB, turn `:context/foo` into `foo`
     :encode/database name
+    ;; reading from the DB, turn `foo` into `:context/foo`
     :decode/database (partial keyword "context")}
    :keyword])
 
@@ -54,21 +58,32 @@
     [:value {:encode/database json/generate-string
              :decode/database json/parse-string}
      :any]]
-    (into [:multi
-           {:dispatch :context}]
-          (map (fn [context]
-                 [context context]))
-          (known-contexts))])
+   (into [:multi
+          {:dispatch :context}]
+         (map (fn [context]
+                [context context]))
+         (known-contexts))])
 
 (defn- update-user-key-value-schema! []
   (log/debug "Updating user-key-value schema")
   (mr/register! ::user-key-value (user-key-value-schema)))
 
+(update-user-key-value-schema!)
+
 ;; Types live in `resources/user_key_value_types`
 
-(def ^:private ^:constant types-dir
-  "Types live in `resources/user_key_value_types`"
-  (io/file (io/resource "user_key_value_types")))
+(defn- types-dirs
+  "Types live in `user_key_value_types`, in both `test_resources` and `resources`."
+  []
+  (->> (classpath/classpath-directories)
+       (map #(io/file % "user_key_value_types"))
+       (filter #(.exists ^File %))))
+
+(defn- types-files []
+  (->> (types-dirs)
+       (mapcat #(file-seq (io/file %)))
+       (filter #(.isFile ^File %))
+       distinct))
 
 (defn- load-schema
   "Load a schema from an EDN file, using its name as the context."
@@ -81,7 +96,7 @@
 (defn load-all-schemas
   "Load all schemas from the types directory."
   []
-  (doseq [^File file (file-seq (io/file types-dir))]
+  (doseq [^File file (types-files)]
     (when (str/ends-with? (.getName file) ".edn")
       (load-schema file))))
 
@@ -121,11 +136,12 @@
               (defcontext context [:and true? false?]))))
 
 (defn load-and-watch-schemas
-  "Start watching the types directory for changes."
+  "In production, just load the schemas. In development, watch for changes as well."
   []
   (load-all-schemas)
   (when config/is-dev?
-    (watch-directory types-dir handle-file-change)))
+    (doseq [types-dir (types-dirs)]
+      (watch-directory types-dir handle-file-change))))
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (defonce ^:private watcher (load-and-watch-schemas))
