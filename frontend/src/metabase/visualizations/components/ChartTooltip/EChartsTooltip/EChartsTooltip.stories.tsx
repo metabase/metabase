@@ -1,6 +1,6 @@
 import { SdkVisualizationWrapper } from "__support__/storybook";
 import { type MetabaseTheme, defineEmbeddingSdkTheme } from "embedding-sdk";
-import { Button, Flex, Tooltip } from "metabase/ui";
+import { Flex, Tooltip } from "metabase/ui";
 
 import { EChartsTooltip, type EChartsTooltipProps } from "./EChartsTooltip";
 
@@ -13,9 +13,9 @@ const data: EChartsTooltipProps = {
 };
 
 const DefaultTemplate = () => (
-  <Flex justify="center" p="xl">
+  <Flex align="center" justify="center" p="xl" h="400px">
     <Tooltip label={<EChartsTooltip {...data} />} opened>
-      <Button>Tooltip Target</Button>
+      <div>Tooltip Target</div>
     </Tooltip>
   </Flex>
 );
