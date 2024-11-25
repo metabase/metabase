@@ -40,6 +40,7 @@
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-background);
   text-align: inherit;
+  margin-bottom: 2px;
 
   &:hover {
     color: var(--mb-color-text-hover);
