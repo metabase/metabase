@@ -280,6 +280,7 @@ interface SettingsManagerSettings {
   "openai-organization": string | null;
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
+  "slack-bug-report-channel": string | null;
   "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
@@ -295,6 +296,7 @@ interface PublicSettings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
@@ -316,7 +318,6 @@ interface PublicSettings {
   "help-link-custom-destination": string;
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
-  "is-metabot-enabled": boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "ldap-port": number;
@@ -359,6 +360,35 @@ export type UserSettings = {
   "show-updated-permission-banner": boolean;
 };
 
+/**
+ * Important distinction between `null` and `undefined` settings values.
+ *  - `null` means that the setting actually has a value of `null`.
+ *  - `undefined` means that the setting is not available in a certain context.
+ *
+ * Further longer explanation:
+ *
+ * Clojure doesn't have `undefined`. It uses `nil` to set (the default) value to (JS) `null`.
+ * This can backfire on frontend if we are not aware of this distinction!
+ *
+ * Do not use `undefined` when checking for a setting value! Use `null` instead.
+ * Use `undefined` only when checking does the setting (key) exist in a certain context.
+ *
+ * Contexts / Scopes:
+ * Settings types are divided into contexts to make this more explicit:
+ *  - `PublicSettings` will always be available to everyone.
+ *  - `InstanceSettings` are settings that are available to all **authenticated** users.
+ *  - `AdminSettings` are settings that are available only to **admins**.
+ *  - `SettingsManagerSettings` are settings that are available only to **settings managers**.
+ *  - `UserSettings` are settings that are available only to **regular users**.
+ *
+ * Each new scope is more strict than the previous one.
+ *
+ * To further complicate things, there are two endpoints for fetching settings:
+ *  - `GET /api/setting` that _can only be used by admins!_
+ *  - `GET /api/session/properties` that can be used by any user, but some settings might be omitted (unavailable).
+ *
+ * SettingsApi will return `403` for non-admins, while SessionApi will return `200`!
+ */
 export type Settings = InstanceSettings &
   PublicSettings &
   UserSettings &

@@ -1055,10 +1055,10 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                       (mbql.u/check-clause :dimension))]
-                              :when dimension]
-                          (custom-values/values-from-card card dimension))]
+                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                                            (mbql.u/check-clause :dimension))]
+                              :when field-ref]
+                          (custom-values/values-from-card card field-ref opts))]
     (when-some [values (seq (distinct (mapcat :values results)))]
       (let [has_more_values (boolean (some true? (map :has_more_values results)))]
         {:values          (cond->> values

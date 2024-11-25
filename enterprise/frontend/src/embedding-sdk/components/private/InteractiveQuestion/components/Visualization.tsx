@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { FlexibleSizeComponent } from "embedding-sdk";
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/util/FlexibleSizeComponent";
+import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
+import { FlexibleSizeComponent } from "embedding-sdk/components/public/FlexibleSizeComponent";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
@@ -30,15 +30,18 @@ export const QuestionVisualization = ({
     updateQuestion,
   } = useInteractiveQuestionContext();
 
-  if (isQuestionLoading) {
+  // When visualizing a question for the first time, there is no query result yet.
+  const isQueryResultLoading = question && !queryResults;
+
+  if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
-  if (!question || !queryResults) {
+  if (!question) {
     return <SdkError message={t`Question not found`} />;
   }
 
-  const [result] = queryResults;
+  const [result] = queryResults ?? [];
   const card = question.card();
 
   return (

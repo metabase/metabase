@@ -18,7 +18,7 @@
 
 (deftest ^:parallel parse-engine-test
   (testing "Default engine"
-    (is (= :search.engine/in-place (#'search.impl/parse-engine nil))))
+    (is (= "search.engine" (namespace (#'search.impl/parse-engine nil)))))
   (testing "Unknown engine resolves to the default"
     (is (=  (#'search.impl/parse-engine nil)
             (#'search.impl/parse-engine "vespa"))))

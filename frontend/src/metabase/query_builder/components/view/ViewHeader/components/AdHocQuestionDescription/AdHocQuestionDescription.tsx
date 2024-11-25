@@ -18,8 +18,9 @@ export const shouldRenderAdhocDescription = ({
   question,
 }: GetAdhocQuestionDescriptionProps) => {
   const query = question.query();
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+  const stageIndex = getInfoStageIndex(query);
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const breakouts = Lib.breakouts(query, stageIndex);
 
   return aggregations.length > 0 || breakouts.length > 0;
 };
@@ -28,8 +29,9 @@ export const getAdHocQuestionDescription = ({
   question,
 }: GetAdhocQuestionDescriptionProps) => {
   const query = question.query();
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+  const stageIndex = getInfoStageIndex(query);
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const breakouts = Lib.breakouts(query, stageIndex);
   const aggregationDescription =
     aggregations.length === 0
       ? null
@@ -42,8 +44,7 @@ export const getAdHocQuestionDescription = ({
         : aggregations
             .map(
               aggregation =>
-                Lib.displayInfo(query, STAGE_INDEX, aggregation)
-                  .longDisplayName,
+                Lib.displayInfo(query, stageIndex, aggregation).longDisplayName,
             )
             .join(t` and `);
   const breakoutDescription =
@@ -58,7 +59,7 @@ export const getAdHocQuestionDescription = ({
         : breakouts
             .map(
               breakout =>
-                Lib.displayInfo(query, STAGE_INDEX, breakout).longDisplayName,
+                Lib.displayInfo(query, stageIndex, breakout).longDisplayName,
             )
             .join(t` and `);
 
@@ -71,7 +72,6 @@ export const getAdHocQuestionDescription = ({
     .join(t` by `);
 };
 
-const STAGE_INDEX = -1;
 export const AdHocQuestionDescription = ({
   question,
   onClick,
@@ -89,4 +89,21 @@ export const AdHocQuestionDescription = ({
       {adHocDescription}
     </AggregationAndBreakoutDescription>
   );
+};
+
+const getInfoStageIndex = (query: Lib.Query): number => {
+  const hasExtraEmptyFilterStage =
+    Lib.stageCount(query) > 1 && !Lib.hasClauses(query, -1);
+
+  if (hasExtraEmptyFilterStage) {
+    /**
+     * If query is multi-stage and the last stage is empty (which means it's
+     * an extra filtering stage - see Lib.ensureFilterStage), the last stage won't
+     * provide any useful information to generate question description.
+     * We have to use the previous, non-empty stage.
+     */
+    return -2;
+  }
+
+  return -1;
 };

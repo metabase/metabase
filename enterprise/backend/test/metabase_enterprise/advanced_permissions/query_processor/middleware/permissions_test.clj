@@ -80,8 +80,8 @@
         (testing "Native queries are unmodified"
           (is (= (native-download-query) (ee.qp.perms/apply-download-limit (native-download-query))))))
 
-      (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues) :limited
-                                                         (mt/id 'checkins) :full}}}
+      (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues) :limited
+                                                         (mt/id :checkins) :full}}}
         (mt/with-current-user (mt/user->id :rasta)
           (testing "A limit is added to MBQL queries if the user has limited download permissions for a table which
                      the query references"
@@ -163,7 +163,7 @@
            "A user with limited download perms for a DB has their query results limited"
            {:query      {:database (mt/id)
                          :type     :query
-                         :query    {:source-table (mt/id 'venues)
+                         :query    {:source-table (mt/id :venues)
                                     :limit    10}}
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})
@@ -172,7 +172,7 @@
            "An admin has full download permissions, even if downloads for All Users are limited"
            {:query      {:database (mt/id)
                          :type     :query
-                         :query    {:source-table (mt/id 'venues)
+                         :query    {:source-table (mt/id :venues)
                                     :limit    10}}
             :user       :crowberto
             :endpoints  [:card :dataset]
@@ -183,24 +183,24 @@
            "A user with limited download perms for a schema has their query results limited for queries on that schema"
            {:query      {:database (mt/id)
                          :type     :query
-                         :query    {:source-table (mt/id 'venues)
+                         :query    {:source-table (mt/id :venues)
                                     :limit    10}}
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
 
-        (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id 'users)      :full
-                                                           (mt/id 'categories) :full
-                                                           (mt/id 'venues)     :limited
-                                                           (mt/id 'checkins)   :full
-                                                           (mt/id 'products)   :limited
-                                                           (mt/id 'people)     :limited
-                                                           (mt/id 'reviews)    :limited
-                                                           (mt/id 'orders)     :limited}}}
+        (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
+                                                           (mt/id :categories) :full
+                                                           (mt/id :venues)     :limited
+                                                           (mt/id :checkins)   :full
+                                                           (mt/id :products)   :limited
+                                                           (mt/id :people)     :limited
+                                                           (mt/id :reviews)    :limited
+                                                           (mt/id :orders)     :limited}}}
           (streaming-test/do-test!
            "A user with limited download perms for a table has their query results limited for queries on that table"
            {:query      {:database (mt/id)
                          :type     :query
-                         :query    {:source-table (mt/id 'venues)
+                         :query    {:source-table (mt/id :venues)
                                     :limit        10}}
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})
@@ -209,7 +209,7 @@
            "A user with limited download perms for a table still has full download perms for MBQL queries on other tables"
            {:query      {:database (mt/id)
                          :type     :query
-                         :query    {:source-table (mt/id 'users)
+                         :query    {:source-table (mt/id :users)
                                     :limit        10}}
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})
@@ -228,7 +228,7 @@
          "A user with no download perms for a DB receives an error response"
          {:query      {:database (mt/id)
                        :type     :query
-                       :query    {:source-table (mt/id 'venues)
+                       :query    {:source-table (mt/id :venues)
                                   :limit        10}}
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results]
@@ -240,7 +240,7 @@
          "An admin can always run download queries, even if the All Users group has no download permissions "
          {:query      {:database (mt/id)
                        :type     :query
-                       :query    {:source-table (mt/id 'venues)
+                       :query    {:source-table (mt/id :venues)
                                   :limit        10}}
           :user       :crowberto
           :endpoints  [:card :dataset]
@@ -251,7 +251,7 @@
          "A user with no download perms for a schema receives an error response for download queries on that schema"
          {:query      {:database (mt/id)
                        :type     :query
-                       :query    {:source-table (mt/id 'venues)
+                       :query    {:source-table (mt/id :venues)
                                   :limit        10}}
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results]
@@ -259,15 +259,15 @@
                                    {:error "You do not have permissions to download the results of this query."}
                                    results)))}}))
 
-      (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :none
-                                                         (mt/id 'checkins)   :full
-                                                         (mt/id 'users)      :full
-                                                         (mt/id 'categories) :full}}}
+      (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :none
+                                                         (mt/id :checkins)   :full
+                                                         (mt/id :users)      :full
+                                                         (mt/id :categories) :full}}}
         (streaming-test/do-test!
          "A user with no download perms for a table receives an error response for download queries on that table"
          {:query      {:database (mt/id)
                        :type     :query
-                       :query    {:source-table (mt/id 'venues)
+                       :query    {:source-table (mt/id :venues)
                                   :limit        10}}
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results]
@@ -279,7 +279,7 @@
          "A user with no download perms for a table still has full download perms for MBQL queries on other tables"
          {:query      {:database (mt/id)
                        :type     :query
-                       :query    {:source-table (mt/id 'users)
+                       :query    {:source-table (mt/id :users)
                                   :limit        10}}
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})
@@ -295,10 +295,10 @@
 
 (deftest joins-test
   (mt/with-full-data-perms-for-all-users!
-    (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :full
-                                                       (mt/id 'checkins)   :full
-                                                       (mt/id 'users)      :limited
-                                                       (mt/id 'categories) :none}}}
+    (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
+                                                       (mt/id :checkins)   :full
+                                                       (mt/id :users)      :limited
+                                                       (mt/id :categories) :none}}}
       (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
         (streaming-test/do-test!
          "A user can't download the results of a query with a join if they have no permissions for one of the tables"
@@ -320,3 +320,58 @@
                     :limit 10})
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})))))
+
+(deftest joined-card-test
+  (testing "Do we correctly check download perms for queries that involve a join between a table and a card? (#50304)"
+    (mt/with-full-data-perms-for-all-users!
+      (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :venues)}}}]
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
+                                                             (mt/id :checkins)   :full}}}
+            (streaming-test/do-test!
+             "A table joined to a card, both with full download perms"
+             {:query (mt/mbql-query checkins
+                       {:joins    [{:fields       [$id]
+                                    :source-table (format "card__%d" card-id)
+                                    :alias        "card"
+                                    :condition    [:= $checkins.venue_id &card.venues.id]
+                                    :strategy     :left-join}]
+                        :order-by [[:asc $id]]
+                        :limit    10})
+              :endpoints  [:card :dataset]
+              :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
+
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :limited
+                                                             (mt/id :checkins)   :full}}}
+            (streaming-test/do-test!
+             "A table joined to a card, with limited download perms for the card, results in a limited download"
+             {:query (mt/mbql-query checkins
+                       {:joins    [{:fields       [$id]
+                                    :source-table (format "card__%d" card-id)
+                                    :alias        "card"
+                                    :condition    [:= $checkins.venue_id &card.venues.id]
+                                    :strategy     :left-join}]
+                        :order-by [[:asc $id]]
+                        :limit    10})
+              :endpoints  [:card :dataset]
+              :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
+
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :none
+                                                             (mt/id :checkins)   :full}}}
+            (streaming-test/do-test!
+             "A table joined to a card, with no download perms for the card, results in blocked download"
+             {:query (mt/mbql-query checkins
+                       {:joins    [{:fields       [$id]
+                                    :source-table (format "card__%d" card-id)
+                                    :alias        "card"
+                                    :condition    [:= $checkins.venue_id &card.venues.id]
+                                    :strategy     :left-join}]
+                        :order-by [[:asc $id]]
+                        :limit    10})
+              :endpoints  [:card :dataset]
+              :assertions {:csv (fn [results]
+                                  (is (partial=
+                                       {:error "You do not have permissions to download the results of this query."}
+                                       results)))}})))))))

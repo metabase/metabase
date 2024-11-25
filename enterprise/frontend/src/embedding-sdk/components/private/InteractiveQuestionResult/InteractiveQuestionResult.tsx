@@ -11,12 +11,12 @@ import {
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon } from "metabase/ui";
 
-import { InteractiveQuestion } from "../../public/InteractiveQuestion";
-import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
-} from "../util/FlexibleSizeComponent";
+} from "../../public/FlexibleSizeComponent";
+import { InteractiveQuestion } from "../../public/InteractiveQuestion";
+import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
 
@@ -78,11 +78,14 @@ export const InteractiveQuestionResult = ({
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
-  if (isQuestionLoading) {
+  // When visualizing a question for the first time, there is no query result yet.
+  const isQueryResultLoading = question && !queryResults;
+
+  if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
-  if (!question || !queryResults) {
+  if (!question) {
     return <SdkError message={t`Question not found`} />;
   }
 
