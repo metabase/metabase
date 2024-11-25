@@ -78,7 +78,7 @@ export const ItemList = <
         const isSelected = isSelectedItem(item, selectedItem);
         const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
 
-        const folderColor = isSelected
+        const folderChevronColor = isSelected
           ? "var(--mb-color-text-white)"
           : "var(--mb-color-text-primary)";
 
@@ -88,7 +88,11 @@ export const ItemList = <
               disabled={shouldDisableItem?.(item)}
               rightSection={
                 isFolder(item) ? (
-                  <Icon name="chevronright" size={10} fill={folderColor} />
+                  <Icon
+                    name="chevronright"
+                    size={10}
+                    fill={folderChevronColor}
+                  />
                 ) : null
               }
               label={
