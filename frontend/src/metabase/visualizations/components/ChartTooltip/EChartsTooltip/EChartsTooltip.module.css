@@ -1,10 +1,10 @@
 /* This class should be set to the ECharts tooltip root element via option to override ECharts defaults */
 .ChartTooltipRoot {
   font: unset !important;
-  background-color: var(--mb-color-bg-black) !important;
+  background-color: var(--mb-color-tooltip-background) !important;
   border: none !important;
   padding: 0 !important;
-  color: var(--mb-color-text-white) !important;
+  color: var(--mb-color-tooltip-text) !important;
 }
 
 .Table {
