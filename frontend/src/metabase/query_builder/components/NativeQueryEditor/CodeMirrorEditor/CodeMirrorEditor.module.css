@@ -1,0 +1,5 @@
+:global {
+  :local(.editor) {
+    width: 100%;
+  }
+}
