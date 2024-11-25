@@ -84,7 +84,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [monthName](#monthName)
     - [now](./expressions/now.md)
     - [quarter](#quarter)
-    - [quarter](#quartername)
+    - [quarterName](#quartername)
     - [relativeDateTime](#relativedatetime)
     - [second](#second)
     - [week](#week)
