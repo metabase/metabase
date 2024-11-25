@@ -11,27 +11,19 @@ import ValidationError, {
 } from "metabase-lib/v1/ValidationError";
 import { MONOTYPE, infer } from "metabase-lib/v1/expressions/typeinferencer";
 import Field from "metabase-lib/v1/metadata/Field";
-import type {
-  AggregationOperator,
-  FilterOperator,
-  Metadata,
-  Query,
-} from "metabase-lib/v1/metadata/Metadata";
+import type { Metadata, Query } from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
-import type Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { DATETIME_UNITS } from "metabase-lib/v1/queries/utils/query-time";
 import {
   BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
   getBaseDimensionReference,
-  isAggregationReference,
   isExpressionReference,
   isFieldReference,
   isTemplateTagReference,
   normalizeReferenceOptions,
 } from "metabase-lib/v1/references";
-import { TYPE } from "metabase-lib/v1/types/constants";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
   ConcreteFieldReference,
@@ -54,7 +46,6 @@ type DimensionOption = {
  * - Dimension (abstract)
  *   - FieldDimension
  *   - ExpressionDimension
- *   - AggregationDimension
  *   - TemplateTagDimension
  */
 
@@ -301,40 +292,6 @@ export default class Dimension {
    */
   columnName(): string {
     return this.field().name;
-  }
-
-  // FILTERS
-
-  /**
-   * Valid filter operators on this dimension
-   */
-  filterOperators(selected): FilterOperator[] {
-    return this.field().filterOperators(selected);
-  }
-
-  /**
-   * The operator with the provided operator name (e.x. `=`, `<`, etc)
-   */
-  filterOperator(operatorName: string): FilterOperator | null | undefined {
-    return this.field().filterOperator(operatorName);
-  }
-
-  /**
-   * The default filter operator for this dimension
-   */
-  defaultFilterOperator(): FilterOperator | null | undefined {
-    // let the DatePicker choose the default operator, otherwise use the first one
-    // TODO: replace with a defaultFilter()- or similar which includes arguments
-    return this.field().isDate() ? null : this.filterOperators()[0];
-  }
-
-  // AGGREGATIONS
-
-  /**
-   * Valid aggregation operators on this dimension
-   */
-  aggregationOperators(): AggregationOperator[] {
-    return this.field().aggregationOperators();
   }
 
   // BREAKOUTS
@@ -1389,173 +1346,6 @@ export class ExpressionDimension extends Dimension {
 const isExpressionDimension = dimension =>
   dimension instanceof ExpressionDimension;
 
-// These types aren't aggregated. e.g. if you take the distinct count of a FK
-// column, you now have a normal integer and should see relevant filters for
-// that type.
-const UNAGGREGATED_SEMANTIC_TYPES = new Set([TYPE.FK, TYPE.PK]);
-
-/**
- * Aggregation reference, `["aggregation", aggregation-index]`
- */
-export class AggregationDimension extends Dimension {
-  _aggregationIndex: number;
-
-  static parseMBQL(
-    mbql: any,
-    metadata?: Metadata | null | undefined,
-    query?: StructuredQuery | null | undefined,
-  ): Dimension | null | undefined {
-    if (isAggregationReference(mbql)) {
-      const [aggregationIndex, options] = mbql.slice(1);
-      return new AggregationDimension(
-        aggregationIndex,
-        options,
-        metadata,
-        query,
-      );
-    }
-  }
-
-  constructor(
-    aggregationIndex,
-    options = null,
-    metadata = null,
-    query = null,
-    additionalProperties = null,
-  ) {
-    super(
-      null,
-      [aggregationIndex, options],
-      metadata,
-      query,
-      Object.freeze(normalizeReferenceOptions(options)),
-    );
-    this._aggregationIndex = aggregationIndex;
-
-    if (additionalProperties) {
-      Object.keys(additionalProperties).forEach(k => {
-        this[k] = additionalProperties[k];
-      });
-    }
-
-    Object.freeze(this);
-  }
-
-  setQuery(query: StructuredQuery): AggregationDimension {
-    return new AggregationDimension(
-      this._aggregationIndex,
-      this._options,
-      this._metadata,
-      query,
-    );
-  }
-
-  aggregationIndex(): number {
-    return this._aggregationIndex;
-  }
-
-  column(extra = {}) {
-    return { ...super.column(), source: "aggregation", ...extra };
-  }
-
-  field() {
-    try {
-      const aggregation = this.aggregation();
-
-      if (!aggregation) {
-        return super.field();
-      }
-
-      const dimension = aggregation.dimension();
-      const field = dimension && dimension.field();
-      const { semantic_type } = field || {};
-      return new Field({
-        name: aggregation.columnName(),
-        display_name: aggregation.displayName(),
-        base_type: aggregation.baseType(),
-        // don't pass through `semantic_type` when aggregating these types
-        ...(!UNAGGREGATED_SEMANTIC_TYPES.has(semantic_type) && {
-          semantic_type,
-        }),
-        query: this._query,
-        metadata: this._metadata,
-      });
-    } catch (e) {
-      console.warn("AggregationDimension.field()", this.mbql(), e);
-      return null;
-    }
-  }
-
-  getMLv1CompatibleDimension() {
-    return this.withoutOptions("base-type", "effective-type");
-  }
-
-  /**
-   * Raw aggregation
-   */
-  _aggregation(): Aggregation {
-    return (
-      this._query &&
-      this._query.aggregations &&
-      this._query.aggregations()[this.aggregationIndex()]
-    );
-  }
-
-  /**
-   * Underlying aggregation, with aggregation-options removed
-   */
-  aggregation() {
-    const aggregation = this._aggregation();
-
-    if (aggregation) {
-      return aggregation.aggregation();
-    }
-
-    return null;
-  }
-
-  displayName(): string {
-    const aggregation = this._aggregation();
-
-    if (aggregation) {
-      return aggregation.displayName();
-    }
-
-    return null;
-  }
-
-  columnName() {
-    const aggregation = this._aggregation();
-
-    if (aggregation) {
-      return aggregation.columnName();
-    }
-
-    return null;
-  }
-
-  mbql() {
-    return ["aggregation", this._aggregationIndex, this._options];
-  }
-
-  withoutOptions(...options: string[]): AggregationDimension {
-    if (!this._options) {
-      return this;
-    }
-
-    return new AggregationDimension(
-      this._aggregationIndex,
-      _.omit(this._options, ...options),
-      this._metadata,
-      this._query,
-    );
-  }
-
-  icon() {
-    return "int";
-  }
-}
-
 export class TemplateTagDimension extends FieldDimension {
   constructor(tagName: string, metadata: Metadata, query: NativeQuery) {
     super(null, null, metadata, query, {
@@ -1670,7 +1460,6 @@ export class TemplateTagDimension extends FieldDimension {
 const DIMENSION_TYPES: (typeof Dimension)[] = [
   FieldDimension,
   ExpressionDimension,
-  AggregationDimension,
   TemplateTagDimension,
 ];
 

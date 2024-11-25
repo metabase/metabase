@@ -11,15 +11,15 @@ import {
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Divider, Group, Stack, Text } from "metabase/ui";
 
-import { InteractiveQuestion } from "../../public/InteractiveQuestion";
-import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
-import { getQuestionTitle } from "../QuestionTitle";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
-} from "../util/FlexibleSizeComponent";
+} from "../../public/FlexibleSizeComponent";
+import { InteractiveQuestion } from "../../public/InteractiveQuestion";
+import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
+import { getQuestionTitle } from "../QuestionTitle";
 
 export interface InteractiveQuestionResultProps {
   withResetButton?: boolean;

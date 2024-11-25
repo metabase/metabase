@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,
@@ -19,13 +19,13 @@ import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 type Props = {
   hideTimeSelectors?: boolean;
 
-  filter: Filter;
+  filter: FilterMBQL;
   onFilterChange: (filter: any[]) => void;
 };
 
 const HAS_TIME_TOGGLE = ["between", "=", "<", ">"];
 
-const getIntervalString = (filter: Filter) => {
+const getIntervalString = (filter: FilterMBQL) => {
   const [start = moment(), end = moment()] = computeFilterTimeRange(filter);
   const formatString =
     start?.year() === end?.year() && start?.year() === moment().year()
