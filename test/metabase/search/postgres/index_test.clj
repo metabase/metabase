@@ -3,28 +3,14 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.db :as mdb]
-   [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn legacy-results
-  "Use the source tables directly to search for records."
-  [search-term & {:as opts}]
-  (-> (assoc opts :search-engine :search.engine/in-place :search-term search-term)
-      (#'search.postgres/in-place-query)
-      t2/query))
-
-(def legacy-models
-  "Just the identity of the matches"
-  (comp (partial mapv (juxt :id :model)) legacy-results))
-
-(defn- legacy-hits [term]
-  (count (legacy-results term)))
 
 (defn- index-hits [term]
   (count (search.index/search term)))
@@ -87,28 +73,18 @@
           (t2/update! :model/Database db-id {:name alternate-name})
           (is (= alternate-name (db-name-fn)))))))
 
-(deftest consistent-subset-test
-  (with-index
-    (testing "It's consistent with in-place search on various full words"
-      (doseq [term ["e-commerce" "example" "rasta" "new" "collection" "revenue"]]
-        (testing term
-          (is (= (set (legacy-models term))
-                 (set (search.index/search term)))))))))
-
 (deftest partial-word-test
   (with-index
     (testing "It does not match partial words"
       ;; does not include revenue
-      (is (< (index-hits "venue")
-             ;; but this one does
-             (legacy-hits "venue"))))
+      (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
 
-    ;; no longer works without english dictionary
-    #_(testing "Unless their lexemes are matching"
-        (doseq [[a b] [["revenue" "revenues"]
-                       ["collect" "collection"]]]
-          (is (= (search.index/search a)
-                 (search.index/search b)))))
+    ;; no longer works without using the english dictionary
+    (testing "Unless their lexemes are matching"
+      (doseq [[a b] [["revenue" "revenues"]
+                     ["collect" "collection"]]]
+        (is (= (search.index/search a)
+               (search.index/search b)))))
 
     (testing "Or we match a completion of the final word"
       (is (seq (search.index/search "sat")))
@@ -120,14 +96,6 @@
 
 (deftest either-test
   (with-index
-    (testing "legacy search does not understand stop words or logical operators"
-      (is (= 3 (legacy-hits "satisfaction")))
-      ;; Add some slack because things are leaking into this "test" database :-(
-      (is (<= 2 (legacy-hits "or")))
-      (is (<= 4 (legacy-hits "its the satisfaction of it")))
-      (is (<= 1 (legacy-hits "user")))
-      (is (<= 6 (legacy-hits "satisfaction or user"))))
-
     (testing "We get results for both terms"
       (is (= 3 (index-hits "satisfaction")))
       (is (<= 1 (index-hits "user"))))
@@ -155,10 +123,7 @@
     (is (= 2 (index-hits "revenue")))
     (is (= #_1 2 (index-hits "projected revenue")))
     (testing "only sometimes do these occur sequentially in a phrase"
-      (is (= 1 (index-hits "\"projected revenue\""))))
-    (testing "legacy search has a bunch of results"
-      (is (= 3 (legacy-hits "projected revenue")))
-      (is (= 0 (legacy-hits "\"projected revenue\""))))))
+      (is (= 1 (index-hits "\"projected revenue\""))))))
 
 ;; lower level search expression tests
 
