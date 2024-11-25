@@ -8,6 +8,14 @@ export function nativeEditor({ visible = true }: { visible?: boolean } = {}) {
   return res;
 }
 
+export function focusNativeEditor() {
+  nativeEditor().click();
+
+  return cy
+    .findByTestId("native-query-editor")
+    .should("have.class", "ace_focus");
+}
+
 export function blurNativeEditor() {
   cy.get(".ace_text-input").blur();
 }
