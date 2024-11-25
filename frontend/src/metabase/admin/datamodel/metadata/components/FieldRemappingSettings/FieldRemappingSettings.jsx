@@ -6,15 +6,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import Tables from "metabase/entities/tables";
+import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
-import {
-  getFieldTargetId,
-  hasSourceField,
-} from "metabase-lib/v1/queries/utils/field-ref";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 
 import FieldSeparator from "../FieldSeparator";
@@ -24,7 +21,6 @@ import {
   FieldMappingRoot,
   FieldSelectButton,
   FieldValueMappingInput,
-  ForeignKeyList,
 } from "./FieldRemappingSettings.styled";
 
 const MAP_OPTIONS = {
@@ -161,25 +157,20 @@ class FieldRemappingSettings extends Component {
     }
   };
 
-  onForeignKeyFieldChange = async foreignKeyClause => {
+  onForeignKeyFieldChange = async fkFieldId => {
     const { field, updateFieldDimension } = this.props;
 
     this.clearEditingStates();
 
-    if (hasSourceField(foreignKeyClause)) {
-      await updateFieldDimension(
-        { id: field.id },
-        {
-          type: "external",
-          name: field.display_name,
-          human_readable_field_id: getFieldTargetId(foreignKeyClause),
-        },
-      );
-
-      this.fkPopover.current?.close();
-    } else {
-      throw new Error(t`The selected field isn't a foreign key`);
-    }
+    await updateFieldDimension(
+      { id: field.id },
+      {
+        type: "external",
+        name: field.display_name,
+        human_readable_field_id: fkFieldId,
+      },
+    );
+    this.fkPopover.current?.close();
   };
 
   onUpdateRemappings = remappings => {
@@ -202,11 +193,7 @@ class FieldRemappingSettings extends Component {
 
   render() {
     const { field, table, metadata, fieldsError } = this.props;
-    const {
-      isChoosingInitialFkTarget,
-      hasChanged,
-      dismissedInitialFkTargetPopover,
-    } = this.state;
+    const { hasChanged } = this.state;
 
     const remapping = new Map(field.remappedValues());
     const isFieldsAccessRestricted = fieldsError?.status === 403;
@@ -232,41 +219,38 @@ class FieldRemappingSettings extends Component {
           {mappingType === MAP_OPTIONS.foreign && (
             <>
               <FieldSeparator />
-              <PopoverWithTrigger
-                key="foreignKeyName"
-                ref={this.fkPopover}
-                triggerElement={
-                  <FieldSelectButton
-                    hasValue={hasFKMappingValue}
-                    hasError={dismissedInitialFkTargetPopover}
-                  >
-                    {fkMappingField ? (
-                      fkMappingField.display_name
-                    ) : (
-                      <span className={CS.textMedium}>{t`Choose a field`}</span>
+              <Fields.Loader id={field.fk_target_field_id}>
+                {({ field: fkTargetField }) => (
+                  <Tables.Loader id={fkTargetField.table_id}>
+                    {({ table: fkTargetTable }) => (
+                      <FieldDataSelector
+                        isInitiallyOpen={!fkMappingField}
+                        selectedDatabase={table?.database}
+                        selectedDatabaseId={table?.database?.id}
+                        selectedTable={fkTargetTable}
+                        selectedTableId={fkTargetTable?.id}
+                        selectedField={fkMappingField}
+                        selectedFieldId={fkMappingField?.id}
+                        triggerElement={
+                          <FieldSelectButton
+                            hasValue={hasFKMappingValue}
+                            hasError={!fkMappingField}
+                          >
+                            {fkMappingField ? (
+                              fkMappingField.display_name
+                            ) : (
+                              <span className={CS.textMedium}>
+                                {t`Choose a field`}
+                              </span>
+                            )}
+                          </FieldSelectButton>
+                        }
+                        setFieldFn={this.onForeignKeyFieldChange}
+                      />
                     )}
-                  </FieldSelectButton>
-                }
-                isInitiallyOpen={isChoosingInitialFkTarget}
-                onClose={this.onFkPopoverDismiss}
-              >
-                <ForeignKeyList
-                  field={fkMappingField}
-                  fieldOptions={{
-                    count: 0,
-                    dimensions: [],
-                    fks: this.getForeignKeys(),
-                  }}
-                  table={table}
-                  onFieldChange={this.onForeignKeyFieldChange}
-                  hideSingleSectionTitle
-                />
-              </PopoverWithTrigger>
-              {dismissedInitialFkTargetPopover && (
-                <div
-                  className={cx(CS.textError, CS.ml2)}
-                >{t`Please select a column to use for display.`}</div>
-              )}
+                  </Tables.Loader>
+                )}
+              </Fields.Loader>
             </>
           )}
         </FieldMappingContainer>
