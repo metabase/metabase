@@ -45,7 +45,6 @@ const darkTheme = defineEmbeddingSdkTheme({
     "background-secondary": colors.darkGrey,
     "background-hover": colors.background,
     "background-disabled": colors.darkGrey,
-    "background-inverse": colors.background,
     charts: [
       colors.primary,
       colors.filter,
