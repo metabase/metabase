@@ -429,7 +429,6 @@ export default _.compose(
     id: (_state, { field }) => field.fk_target_field_id,
     entityAlias: "fkTargetField",
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    selectorName: "getObjectUnfiltered",
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
