@@ -51,9 +51,9 @@ jobs:
         with:
           script: | # js
             const { getBuildRequirements, getMajorVersionNumberFromReleaseBranch, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const targetBranchName = '${{ github.ref_name }}'; // base_ref for PRs, ref_name for branch itself
+            const targetBranchName = '${{ github.base_ref || github.ref_name }}'; // base_ref for PRs, ref_name for branch itself
 
-            if (targetBranchName === 'master') {
+            if (targetBranchName === 'master' || !targetBranchName.startsWith('release-x.')) {
               return {
                 sdk_version: 'latest'
               };
