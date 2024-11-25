@@ -1,36 +1,30 @@
-import {
-  entityPickerModal,
-  modal,
-  restore,
-  visitFullAppEmbeddingUrl,
-} from "e2e/support/helpers";
-import {
-  EMBEDDING_SDK_STORY_HOST,
-  describeSDK,
-  getSdkRoot,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
+import { CreateQuestion } from "@metabase/embedding-sdk-react";
 
-describeSDK("scenarios > embedding-sdk > create-question", () => {
+import { describeEE, entityPickerModal, modal } from "e2e/support/helpers";
+import {
+  mockAuthProviderAndJwtSignIn,
+  mountSdkContent,
+  signInAsAdminAndEnableEmbeddingSdk,
+} from "e2e/support/helpers/component-testing-sdk";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { Flex } from "metabase/ui";
+
+describeEE("scenarios > embedding-sdk > create-question", () => {
   beforeEach(() => {
-    restore();
     signInAsAdminAndEnableEmbeddingSdk();
 
     cy.signOut();
+    mockAuthProviderAndJwtSignIn();
   });
 
   it("can create questions via the CreateQuestion component", () => {
     cy.intercept("POST", "/api/card").as("createCard");
 
-    visitFullAppEmbeddingUrl({
-      url: EMBEDDING_SDK_STORY_HOST,
-      qs: { id: "embeddingsdk-createquestion--default", viewMode: "story" },
-      onBeforeLoad: (window: any) => {
-        window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
-        window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
-      },
-    });
+    mountSdkContent(
+      <Flex p="xl">
+        <CreateQuestion />
+      </Flex>,
+    );
 
     // Wait until the entity picker modal is visible
     getSdkRoot().contains("Pick your starting data");

@@ -268,6 +268,14 @@ export type VisualizationSettings = {
   "pie.slice_threshold"?: number;
   "pie.colors"?: Record<string, string>;
 
+  // Sankey settings
+  "sankey.source"?: string;
+  "sankey.target"?: string;
+  "sankey.value"?: string;
+  "sankey.node_align"?: "left" | "right" | "justify";
+  "sankey.show_edge_labels"?: boolean;
+  "sankey.label_value_formatting"?: "auto" | "full" | "compact";
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 
