@@ -21,13 +21,13 @@ import type Question from "metabase-lib/v1/Question";
 interface ViewFooterControlProps {
   question: Question;
   isNotebook?: boolean;
-  isResultLoaded: boolean;
+  isRunning: boolean;
 }
 
 const ViewFooterControl = ({
   question,
   isNotebook = false,
-  isResultLoaded,
+  isRunning,
 }: ViewFooterControlProps) => {
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const isActionListVisible = useSelector(getIsActionListVisible);
@@ -102,28 +102,24 @@ const ViewFooterControl = ({
           : null,
         {
           value: "table",
-          disabled: !isResultLoaded,
-          label: isResultLoaded ? (
-            <Tooltip label={t`Results`}>
-              <Icon aria-label={t`Switch to data`} name="table2" />
-            </Tooltip>
-          ) : (
+          disabled: isRunning,
+          label: isRunning ? (
             <Loader
               color={
                 value === "table" ? "var(--mb-color-text-selected)" : undefined
               }
               size="xs"
             />
+          ) : (
+            <Tooltip label={t`Results`}>
+              <Icon aria-label={t`Switch to data`} name="table2" />
+            </Tooltip>
           ),
         },
         {
           value: "visualization",
-          disabled: !isResultLoaded,
-          label: isResultLoaded ? (
-            <Tooltip label={t`Visualization`}>
-              <Icon aria-label={t`Switch to visualization`} name={vizIcon} />
-            </Tooltip>
-          ) : (
+          disabled: isRunning,
+          label: isRunning ? (
             <Loader
               color={
                 value === "visualization"
@@ -132,10 +128,14 @@ const ViewFooterControl = ({
               }
               size="xs"
             />
+          ) : (
+            <Tooltip label={t`Visualization`}>
+              <Icon aria-label={t`Switch to visualization`} name={vizIcon} />
+            </Tooltip>
           ),
         },
       ].filter(isNotNull),
-    [isResultLoaded, shouldShowEditorButton, value, vizIcon],
+    [isRunning, shouldShowEditorButton, value, vizIcon],
   );
 
   return (
