@@ -14,8 +14,6 @@ type ComponentDefinition = {
 // Note: this list needs to be updated when new components are added
 
 const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
-  // eslint-disable-next-line no-literal-metabase-strings -- cli tool
-
   // MetabaseProvider is added manually because it needs to render children while loading
   // we may have other components that need to render children while loading, in that case we can add a flag here
   // { mainComponent: "MetabaseProvider", subComponents: [] },
@@ -34,7 +32,6 @@ const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
       "SummarizeButton",
       "Editor",
       "Notebook",
-      "Editor",
       "NotebookButton",
       "EditorButton",
       "QuestionVisualization",
