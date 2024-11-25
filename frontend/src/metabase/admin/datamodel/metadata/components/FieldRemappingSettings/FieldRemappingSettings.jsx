@@ -10,6 +10,7 @@ import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
@@ -427,11 +428,15 @@ export default _.compose(
   Fields.load({
     id: (_state, { field }) => field.fk_target_field_id,
     entityAlias: "fkTargetField",
+    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    selectorName: "getObjectUnfiltered",
     loadingAndErrorWrapper: false,
   }),
   Tables.load({
     id: (_state, { fkTargetField }) => fkTargetField?.table_id,
     entityAlias: "fkTargetTable",
+    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    selectorName: "getObjectUnfiltered",
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
