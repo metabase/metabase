@@ -1,4 +1,4 @@
-## [0.52.2-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-1.52.1...embedding-sdk-0.52.2-nightly) (2024-11-21)
+## [0.52.2-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.1-nightly...embedding-sdk-0.52.2-nightly) (2024-11-21)
 
 
 ### Bug Fixes
@@ -30,7 +30,7 @@
 
 
 
-## [1.52.1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.38...embedding-sdk-1.52.1) (2024-11-07)
+## [0.52.1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.38...embedding-sdk-0.52.1-nightly) (2024-11-07)
 
 
 ### Bug Fixes
