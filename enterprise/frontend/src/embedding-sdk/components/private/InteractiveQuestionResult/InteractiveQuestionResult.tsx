@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactElement, type ReactNode, isValidElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -9,7 +9,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Divider, Group, Stack, Text } from "metabase/ui";
+import { Box, Divider, Group, Stack } from "metabase/ui";
 
 import {
   FlexibleSizeComponent,
@@ -17,41 +17,15 @@ import {
 } from "../../public/FlexibleSizeComponent";
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
-import { getQuestionTitle } from "../QuestionTitle";
 
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
+import { ResultTitle } from "./ResultTitle";
 
 export interface InteractiveQuestionResultProps {
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: ReactNode;
 }
-
-const ResultTitle = ({ customTitle, withTitle }) => {
-  const { question, originalQuestion } = useInteractiveQuestionContext();
-  const originalName = originalQuestion?.displayName();
-
-  if (!withTitle) {
-    return null;
-  }
-
-  const T = ({ text }: { text: any }) => (
-    <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
-      {text}
-    </Text>
-  );
-
-  if (!customTitle && question) {
-    const questionTitle = getQuestionTitle({ question });
-    return <T text={questionTitle} />;
-  }
-
-  if (isValidElement(customTitle)) {
-    return customTitle;
-  }
-
-  return <T text={customTitle} />;
-};
 
 export const InteractiveQuestionResult = ({
   height,
@@ -95,10 +69,14 @@ export const InteractiveQuestionResult = ({
       style={style}
     >
       <Stack className={InteractiveQuestionS.TopBar} spacing="sm" p="md">
-        <Group position="apart">
+        <Group position="apart" align="flex-end">
           <Group spacing="xs">
             <InteractiveQuestion.BackButton />
-            <ResultTitle customTitle={customTitle} withTitle={withTitle} />
+            <ResultTitle
+              withResetButton={withResetButton}
+              customTitle={customTitle}
+              withTitle={withTitle}
+            />
           </Group>
           {isSaveEnabled && !isSaveModalOpen && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
