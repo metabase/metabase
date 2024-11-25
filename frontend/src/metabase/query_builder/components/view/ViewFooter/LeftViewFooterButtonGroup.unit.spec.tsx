@@ -99,7 +99,12 @@ describe("LeftViewFooterButtonGroup", () => {
     expect(screen.queryByTestId("viz-settings-button")).not.toBeInTheDocument();
   });
 
-  it("should not show chart settings button when showing raw table", () => {
+  it("should show chart settings button when showing raw table and sidebar is open", () => {
+    setup({ isShowingRawTable: true, isShowingChartSettingsSidebar: true });
+    expect(screen.getByTestId("viz-settings-button")).toBeInTheDocument();
+  });
+
+  it("should not show chart settings button when showing raw table and sidebar is closed", () => {
     setup({ isShowingRawTable: true });
     expect(screen.queryByTestId("viz-settings-button")).not.toBeInTheDocument();
   });

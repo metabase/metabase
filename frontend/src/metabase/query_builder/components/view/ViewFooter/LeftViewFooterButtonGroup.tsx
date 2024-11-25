@@ -35,7 +35,10 @@ export const LeftViewFooterButtonGroup = ({
   const dispatch = useDispatch();
 
   const shouldShowChartSettingsButton =
-    !isNotebook && !hideChartSettings && !isShowingRawTable && isResultLoaded;
+    !isNotebook &&
+    !hideChartSettings &&
+    (!isShowingRawTable || isShowingChartSettingsSidebar) &&
+    isResultLoaded;
 
   return (
     <Flex gap="0.75rem">
