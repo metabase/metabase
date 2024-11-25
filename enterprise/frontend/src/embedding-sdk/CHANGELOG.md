@@ -40,7 +40,7 @@
 
 
 
-## [0.51.5](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.4...embedding-sdk-0.51.5) (2024-11-20)
+## [0.51.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.4...embedding-sdk-0.51.5) (2024-11-20)
 
 
 ### Bug Fixes
@@ -62,7 +62,7 @@
 
 
 
-## [1.51.4](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.3...embedding-sdk-1.51.4) (2024-11-12)
+## [0.51.4](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.3...embedding-sdk-0.51.4) (2024-11-12)
 
 
 ### Bug Fixes
@@ -82,7 +82,7 @@
 
 
 
-## [1.51.3](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.2...embedding-sdk-1.51.3) (2024-11-06)
+## [0.51.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.2...embedding-sdk-0.51.3) (2024-11-06)
 
 
 ### Bug Fixes
@@ -104,7 +104,7 @@
 
 
 
-## [1.51.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.40...embedding-sdk-1.51.2) (2024-10-24)
+## [0.51.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.40...embedding-sdk-0.51.2) (2024-10-24)
 
 
 ### Bug Fixes
@@ -130,7 +130,7 @@
 
 
 
-## [0.1.39](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.0...embedding-sdk-0.1.39) (2024-10-16)
+## [0.1.39](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.0...embedding-sdk-0.1.39) (2024-10-16)
 
 
 ### Bug Fixes
