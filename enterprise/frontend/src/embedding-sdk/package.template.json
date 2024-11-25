@@ -14,7 +14,7 @@
       "default": "./dist/main.bundle.js"
     },
     "./next": {
-      "types": "./dist/enterprise/frontend/src/embedding-sdk/next.d.ts",
+      "types": "./dist/next.d.ts",
       "require": "./dist/next.cjs",
       "import": "./dist/next.js"
     }
