@@ -150,7 +150,7 @@ export async function getLastEmbeddingSdkReleaseTag({
   const tags = await github.paginate(github.rest.git.listMatchingRefs, {
     owner,
     repo,
-    ref: `tags/embedding-sdk-${majorVersion}`,
+    ref: `tags/embedding-sdk-0.${majorVersion}`,
   });
 
   const lastRelease = getLastReleaseFromTags({
