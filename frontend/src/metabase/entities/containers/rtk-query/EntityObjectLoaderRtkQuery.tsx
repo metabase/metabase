@@ -179,12 +179,10 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
       dispatch({ type: action, payload: normalized });
 
       // NOTE Atte Keinänen 8/23/17:
-      // Dispatch `setRequestLoaded` after clearing the call stack because we want to the actual data to be updated
+      // Dispatch `setRequestLoaded` after clearing the call stack because we want the actual data to be updated
       // before we notify components via `state.requests.fetches` that fetching the data is completed
-      setTimeout(() => {
-        // @ts-expect-error - invalid typings in redux-actions package
-        dispatch(setRequestLoaded(requestStatePath, queryKey));
-      }, 0);
+      // @ts-expect-error - invalid typings in redux-actions package
+      dispatch(setRequestLoaded(requestStatePath, queryKey));
     }
   }, [
     action,
