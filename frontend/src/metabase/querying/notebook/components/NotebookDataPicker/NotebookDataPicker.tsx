@@ -63,6 +63,7 @@ export function NotebookDataPicker({
 
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const isEmbeddingIframe = useSelector(getIsEmbedded);
+  const isEmbedding = isEmbeddingSdk || isEmbeddingIframe;
 
   const tableInfo = useMemo(
     () => table && Lib.displayInfo(query, stageIndex, table),
@@ -96,7 +97,7 @@ export function NotebookDataPicker({
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isCtrlOrMetaClick =
       (event.ctrlKey || event.metaKey) && event.button === 0;
-    if (isCtrlOrMetaClick) {
+    if (isCtrlOrMetaClick && !isEmbedding) {
       openDataSourceInNewTab();
     } else {
       setIsOpen(true);
@@ -105,27 +106,34 @@ export function NotebookDataPicker({
 
   const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isMiddleClick = event.button === 1;
-    if (isMiddleClick) {
+    if (isMiddleClick && !isEmbedding) {
       openDataSourceInNewTab();
     } else {
       setIsOpen(true);
     }
   };
 
-  if (isEmbeddingSdk || isEmbeddingIframe) {
+  const handleClose = () => {
+    setIsOpen(false);
+  };
+
+  if (isEmbedding) {
     return (
       <DataSourceSelector
         selectedDatabase={metadata.databases}
         selectedDatabaseId={Lib.databaseID(query)}
         selectedTableId={Lib.sourceTableOrCardId(query)}
-        setSourceTableFn={handleChange}
+        isInitiallyOpen={isOpen}
         triggerElement={
           <DataPickerTarget
             tableInfo={tableInfo}
             placeholder={placeholder}
             isDisabled={isDisabled}
+            onClick={handleClick}
+            onAuxClick={handleAuxClick}
           />
         }
+        setSourceTableFn={handleChange}
       />
     );
   }
@@ -156,7 +164,7 @@ export function NotebookDataPicker({
           databaseId={databaseId}
           models={filterList}
           onChange={handleChange}
-          onClose={() => setIsOpen(false)}
+          onClose={handleClose}
         />
       )}
     </>
