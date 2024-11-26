@@ -15,6 +15,10 @@ To create a Sankey chart, you'll need at least three columns in your results:
 - **Target column**: specifies a receiving node.
 - **Count column**: value that determines the thickness of the target node.
 
+If you had raw page views where each row had a source page (like the title of a referrer page) and a target page (like the title for the current page view), you could summarize by count and group by the source, then the target.
+
+![Sankey summarize count and group by source and target](../../images/sankey-summarize-count-source-target.png)
+
 Here's the data shape used to create the chart above.
 
 | Source page  | Target page  | Total Visitors |
