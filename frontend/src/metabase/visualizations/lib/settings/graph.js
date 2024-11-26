@@ -461,19 +461,17 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   },
   "graph.max_categories_enabled": {
     hidden: true,
-    getDefault: () => false,
-    isValid: (series, settings) => {
-      return canHaveMaxCategoriesSetting(series, settings);
-    },
+    // temporarily hiding the setting (metabase#50510)
+    default: false,
+    isValid: () => false,
     readDependencies: ["series_settings"],
   },
   "graph.max_categories": {
     widget: ChartSettingMaxCategories,
     hidden: true,
-    default: 8,
-    isValid: (series, settings) => {
-      return canHaveMaxCategoriesSetting(series, settings);
-    },
+    // temporarily hiding the setting (metabase#50510)
+    default: Number.MAX_SAFE_INTEGER,
+    isValid: () => false,
     getProps: ([{ card }], settings) => {
       return {
         isEnabled: settings["graph.max_categories_enabled"],
