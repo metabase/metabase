@@ -4,6 +4,7 @@ import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
+import { monospaceFontFamily } from "metabase/styled-components/theme";
 
 import type { Location } from "../types";
 
@@ -11,6 +12,7 @@ export function useExtensions(): Extension[] {
   return useMemo(() => {
     return [
       nonce(),
+      fonts(),
       drawSelection({
         cursorBlinkRate: 1000,
         drawRangeCursor: false,
@@ -27,6 +29,15 @@ function nonce() {
     return null;
   }
   return EditorView.cspNonce.of(nonce);
+}
+
+function fonts() {
+  return EditorView.theme({
+    "&": {
+      fontSize: "12px",
+      fontFamily: monospaceFontFamily,
+    },
+  });
 }
 
 export function convertIndexToPosition(value: string, index: number): Location {

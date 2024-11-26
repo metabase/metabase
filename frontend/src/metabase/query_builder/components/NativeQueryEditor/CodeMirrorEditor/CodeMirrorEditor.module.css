@@ -1,7 +1,6 @@
 :global {
   :local(.editor) {
     width: 100%;
-    font-family: var(--mb-default-font-family);
     color: var(--mb-color-text-dark);
 
     .cm-focused {
@@ -14,7 +13,6 @@
 
     .cm-content {
       color: var(--mb-color-text-dark);
-      font-family: var(--mb-default-font-family);
       background: none;
     }
 
@@ -31,7 +29,6 @@
       font-weight: bold;
       font-size: 10px;
       color: var(--mb-color-text-light);
-      font-family: var(--mb-default-font-family);
       vertical-align: baseline;
       display: flex;
       align-items: center;
