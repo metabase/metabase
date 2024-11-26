@@ -66,13 +66,6 @@ function canHaveDataLabels(series, vizSettings) {
   return vizSettings["stackable.stack_type"] !== "normalized" || !areAllAreas;
 }
 
-const areAllBars = (series, settings) =>
-  getSeriesDisplays(series, settings).every(display => display === "bar");
-
-const canHaveMaxCategoriesSetting = (series, settings) => {
-  return Boolean(series && areAllBars(series, settings) && series.length >= 2);
-};
-
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
     getColumns: ([
@@ -103,18 +96,12 @@ export const GRAPH_DATA_SETTINGS = {
     getDefault: (series, vizSettings) =>
       getDefaultDimensions(series, vizSettings),
     persistDefault: true,
-    getProps: ([{ card, data }], vizSettings, _, { transformedSeries }) => {
+    getProps: ([{ card, data }], vizSettings) => {
       const addedDimensions = vizSettings["graph.dimensions"];
       const maxDimensionsSupported = getMaxDimensionsSupported(card.display);
       const options = data.cols
         .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
-      const fieldSettingWidgets = canHaveMaxCategoriesSetting(
-        transformedSeries,
-        vizSettings,
-      )
-        ? [null, "graph.max_categories"] // We want to show "graph.max_categories" setting for the breakout dimension (2nd)
-        : [];
       return {
         options,
         addAnother:
@@ -127,7 +114,7 @@ export const GRAPH_DATA_SETTINGS = {
             ? t`Add series breakout`
             : null,
         columns: data.cols,
-        fieldSettingWidgets,
+        fieldSettingWidgets: [],
       };
     },
     writeDependencies: ["graph.metrics"],

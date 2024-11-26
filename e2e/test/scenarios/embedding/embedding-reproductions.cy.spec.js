@@ -11,7 +11,6 @@ import {
   getIframeBody,
   modal,
   openStaticEmbeddingModal,
-  otherSeriesChartPaths,
   popover,
   queryBuilderMain,
   restore,
@@ -1164,8 +1163,6 @@ describeEE("issue 8490", () => {
         cy.findByText("1월 2024").should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
-        // "Other" bar tooltip
-        otherSeriesChartPaths().first().realHover();
       });
     });
 
