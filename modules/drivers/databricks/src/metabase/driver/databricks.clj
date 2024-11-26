@@ -54,10 +54,9 @@
 
 (defmethod driver/can-connect? :databricks
   [driver details]
-  (let [catalog (:catalog details)]
-    (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-      (and (catalog-present? jdbc-spec catalog)
-           (sql-jdbc.conn/can-connect-with-spec? jdbc-spec)))))
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (and (catalog-present? jdbc-spec (:catalog details))
+         (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
 
 (defn- get-tables-sql
   [catalog]
