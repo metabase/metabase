@@ -48,7 +48,12 @@ export const useNotebookNativePreview = () => {
     const newQuestion = question.setDatasetQuery(newDatasetQuery);
 
     dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
-    dispatch(setUIControls({ isNativeEditorOpen: true }));
+    dispatch(
+      setUIControls({
+        isNativeEditorOpen: true,
+        viewFooterControlState: "visualization",
+      }),
+    );
   }, [question, dispatch, formattedQuery]);
 
   const errorMessage = typeof error === "string" ? error : undefined;

@@ -76,14 +76,20 @@ export const ViewFooter = ({
     if (isDirty) {
       cleanupQuestion();
     }
+
+    // tell segment control in the footer to switch to visualization
+    dispatch(
+      setUIControls({
+        isShowingRawTable: false,
+        viewFooterControlState: "visualization",
+      }),
+    );
+
     // switch mode before running otherwise URL update may cause it to switch back to notebook mode
     await setQueryBuilderMode?.("view");
     if (isResultDirty) {
       await runQuestionQuery();
     }
-
-    // tell segment control in the footer to switch to visualization
-    dispatch(setUIControls({ isShowingRawTable: false }));
   }
 
   const { isEditable } = Lib.queryDisplayInfo(question.query());

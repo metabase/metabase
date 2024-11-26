@@ -59,6 +59,8 @@ export const getIsShowingSnippetSidebar = state =>
   getUiControls(state).isShowingSnippetSidebar;
 export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
+export const getViewFooterControlState = state =>
+  getUiControls(state).viewFooterControlState;
 
 // This selector can be called from public questions / dashboards, which do not
 // have state.qb
