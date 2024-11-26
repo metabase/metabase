@@ -70,7 +70,7 @@
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
-   :parameters             mi/transform-parameters-list
+   :parameters             mi/transform-card-parameters-list
    :parameter_mappings     mi/transform-parameters-list
    :type                   mi/transform-keyword})
 
@@ -595,8 +595,7 @@
         card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
-      maybe-populate-initially-published-at
-      (dissoc :id)))
+      maybe-populate-initially-published-at))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card

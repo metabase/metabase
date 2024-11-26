@@ -9,6 +9,8 @@ import {
   cartesianChartCircle,
   chartPathWithFillColor,
   createDashboardWithTabs,
+  createQuestion,
+  createQuestionAndDashboard,
   dashboardHeader,
   describeEE,
   editDashboard,
@@ -71,7 +73,8 @@ const FIRST_TAB = { id: 900, name: "first" };
 const SECOND_TAB = { id: 901, name: "second" };
 const THIRD_TAB = { id: 902, name: "third" };
 
-const { ORDERS_ID, ORDERS, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 const TARGET_DASHBOARD = {
   name: "Target dashboard",
@@ -931,7 +934,6 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         "contain.text",
         `Started from ${TARGET_QUESTION.name}`,
       );
-
       verifyVizTypeIsLine();
 
       openNotebook();
@@ -1990,6 +1992,265 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 
+  describe("multi-stage questions as target destination", () => {
+    const questionDetails = {
+      name: "Table",
+      query: {
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+          ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+          [
+            "field",
+            PEOPLE.LONGITUDE,
+            {
+              "base-type": "type/Float",
+              binning: {
+                strategy: "default",
+              },
+              "source-field": ORDERS.USER_ID,
+            },
+          ],
+        ],
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
+
+    const targetQuestion = {
+      name: "Target question",
+      query: createMultiStageQuery(),
+    };
+
+    it("should allow navigating to questions with filters applied in every stage", () => {
+      createQuestion(targetQuestion);
+      createQuestionAndDashboard({ questionDetails }).then(({ body: card }) => {
+        visitDashboard(card.dashboard_id);
+      });
+
+      editDashboard();
+      getDashboardCard().realHover().icon("click").click();
+
+      cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+      addSavedQuestionDestination();
+
+      verifyAvailableClickTargetColumns([
+        // 1st stage - Orders
+        "ID",
+        "User ID",
+        "Product ID",
+        "Subtotal",
+        "Tax",
+        "Total",
+        "Discount",
+        "Created At",
+        "Quantity",
+        // 1st stage - Custom columns
+        "Net",
+        // 1st stage - Reviews #1 (explicit join)
+        "Reviews - Product → ID",
+        "Reviews - Product → Product ID",
+        "Reviews - Product → Reviewer",
+        "Reviews - Product → Rating",
+        "Reviews - Product → Body",
+        "Reviews - Product → Created At",
+        // 1st stage - Products (implicit join with Orders)
+        "Product → ID",
+        "Product → Ean",
+        "Product → Title",
+        "Product → Category",
+        "Product → Vendor",
+        "Product → Price",
+        "Product → Rating",
+        "Product → Created At",
+        // 1st stage - People (implicit join with Orders)
+        "User → ID",
+        "User → Address",
+        "User → Email",
+        "User → Password",
+        "User → Name",
+        "User → City",
+        "User → Longitude",
+        "User → State",
+        "User → Source",
+        "User → Birth Date",
+        "User → Zip",
+        "User → Latitude",
+        "User → Created At",
+        // 1st stage - Products (implicit join with Reviews)
+        "Product → ID",
+        "Product → Ean",
+        "Product → Title",
+        "Product → Category",
+        "Product → Vendor",
+        "Product → Price",
+        "Product → Rating",
+        "Product → Created At",
+        // 1st stage - Aggregations & breakouts
+        "Created At: Month",
+        "Category",
+        "Created At: Year",
+        "Count",
+        "Sum of Total",
+        // 2nd stage - Custom columns
+        "5 * Count",
+        // 2nd stage - Reviews #2 (explicit join)
+        "Reviews - Created At: Month → ID",
+        "Reviews - Created At: Month → Product ID",
+        "Reviews - Created At: Month → Reviewer",
+        "Reviews - Created At: Month → Rating",
+        "Reviews - Created At: Month → Body",
+        "Reviews - Created At: Month → Created At",
+        // 2nd stage - Aggregations & breakouts
+        "Category",
+        "Created At",
+        "Count",
+        "Sum of Rating",
+      ]);
+
+      // 1st stage - Orders
+      getClickMapping("ID").click();
+      popover().findByText("ID").click();
+
+      // 1st stage - Custom columns
+      getClickMapping("Net").click();
+      popover().findByText("User → Longitude").click();
+
+      // 1st stage - Reviews #1 (explicit join)
+      getClickMapping("Reviews - Product → Reviewer").click();
+      popover().findByText("Product → Category").click();
+
+      // 1st stage - Products (implicit join with Orders)
+      getClickMapping("Product → Title").first().click();
+      popover().findByText("Product → Category").click();
+
+      // 1st stage - People (implicit join with Orders)
+      getClickMapping("User → Longitude").click();
+      popover().findByText("User → Longitude").click();
+
+      // 1st stage - Products (implicit join with Reviews)
+      getClickMapping("Product → Vendor").last().click();
+      popover().findByText("Product → Category").click();
+
+      // 1st stage - Aggregations & breakouts
+      getClickMapping("Category").first().click();
+      popover().findByText("Product → Category").click();
+
+      // 2nd stage - Custom columns
+      getClickMapping("5 * Count").click();
+      popover().findByText("Count").click();
+
+      // 2nd stage - Reviews #2 (explicit join)
+      getClickMapping("Reviews - Created At: Month → Rating").click();
+      popover().findByText("ID").click();
+
+      // 2nd stage - Aggregations & breakouts
+      getClickMapping("Count").last().click();
+      popover().findByText("User → Longitude").click();
+
+      customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`);
+
+      cy.get("aside").button("Done").click();
+      saveDashboard({ waitMs: 250 });
+
+      getDashboardCard()
+        .findAllByText("Created at: May 2022 - 1")
+        .first()
+        .click();
+
+      cy.wait("@dataset");
+
+      cy.location("pathname").should("equal", "/question");
+      cy.findByTestId("app-bar").should(
+        "contain.text",
+        `Started from ${targetQuestion.name}`,
+      );
+
+      // TODO: https://github.com/metabase/metabase/issues/46774
+      // queryBuilderMain()
+      //   .findByText("There was a problem with your question")
+      //   .should("not.exist");
+      // queryBuilderMain().findByText("No results!").should("be.visible");
+
+      openNotebook();
+      verifyNotebookQuery("Orders", [
+        {
+          joins: [
+            {
+              lhsTable: "Orders",
+              rhsTable: "Reviews",
+              type: "left-join",
+              conditions: [
+                {
+                  operator: "=",
+                  lhsColumn: "Product ID",
+                  rhsColumn: "Product ID",
+                },
+              ],
+            },
+          ],
+          expressions: ["Net"],
+          filters: [
+            "Product → Title is Doohickey",
+            "Product → Vendor is Doohickey",
+            "ID is 7021",
+            "Net is equal to -80",
+            "Reviews - Product → Reviewer is Doohickey",
+            "User → Longitude is equal to -80",
+          ],
+          aggregations: ["Count", "Sum of Total"],
+          breakouts: [
+            "Created At: Month",
+            "Product → Category",
+            "User → Created At: Year",
+          ],
+        },
+        {
+          joins: [
+            {
+              lhsTable: "Previous results",
+              rhsTable: "Reviews",
+              type: "left-join",
+              conditions: [
+                {
+                  operator: "=",
+                  lhsColumn: "Created At: Month",
+                  rhsColumn: "Created At: Month",
+                },
+              ],
+            },
+          ],
+          expressions: ["5 * Count"],
+          filters: [
+            "5 * Count is equal to 1",
+            "Reviews - Created At: Month → Rating is equal to 7021",
+            "Product → Category is Doohickey",
+          ],
+          aggregations: [
+            "Count",
+            "Sum of Reviews - Created At: Month → Rating",
+          ],
+          breakouts: [
+            "Product → Category",
+            "Reviews - Created At: Month → Created At",
+          ],
+        },
+        {
+          filters: ["Count is equal to -80"],
+        },
+      ]);
+    });
+  });
+
   it("should navigate to a different tab on the same dashboard when configured (metabase#39319)", () => {
     const TAB_1 = {
       id: 1,
@@ -2648,4 +2909,192 @@ function verifyVizTypeIsLine() {
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
   cy.findByTestId("viz-type-button").click();
+}
+
+function getClickMapping(columnName) {
+  return cy
+    .get("aside")
+    .findByTestId("unset-click-mappings")
+    .findAllByText(columnName);
+}
+
+function verifyAvailableClickTargetColumns(columns) {
+  cy.get("aside").within(() => {
+    for (let index = 0; index < columns.length; ++index) {
+      cy.findAllByTestId("click-target-column")
+        .eq(index)
+        .should("have.text", columns[index]);
+    }
+
+    cy.findAllByTestId("click-target-column").should(
+      "have.length",
+      columns.length,
+    );
+  });
+}
+
+function createMultiStageQuery() {
+  return {
+    "source-query": {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          strategy: "left-join",
+          alias: "Reviews - Product",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              "PRODUCT_ID",
+              {
+                "base-type": "type/Integer",
+                "join-alias": "Reviews - Product",
+              },
+            ],
+          ],
+          "source-table": REVIEWS_ID,
+        },
+      ],
+      expressions: {
+        Net: [
+          "-",
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TAX,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+        ],
+      },
+      aggregation: [
+        ["count"],
+        [
+          "sum",
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+        ],
+      ],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+        [
+          "field",
+          PRODUCTS.CATEGORY,
+          {
+            "base-type": "type/Text",
+            "source-field": ORDERS.PRODUCT_ID,
+          },
+        ],
+        [
+          "field",
+          PEOPLE.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "year",
+            "source-field": ORDERS.USER_ID,
+            "original-temporal-unit": "month",
+          },
+        ],
+      ],
+    },
+    joins: [
+      {
+        strategy: "left-join",
+        alias: "Reviews - Created At: Month",
+        condition: [
+          "=",
+          [
+            "field",
+            "CREATED_AT",
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+              "original-temporal-unit": "month",
+            },
+          ],
+          [
+            "field",
+            REVIEWS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+              "join-alias": "Reviews - Created At: Month",
+              "original-temporal-unit": "month",
+            },
+          ],
+        ],
+        "source-table": REVIEWS_ID,
+      },
+    ],
+    expressions: {
+      "5 * Count": [
+        "*",
+        5,
+        [
+          "field",
+          "count",
+          {
+            "base-type": "type/Integer",
+          },
+        ],
+      ],
+    },
+    aggregation: [
+      ["count"],
+      [
+        "sum",
+        [
+          "field",
+          REVIEWS.RATING,
+          {
+            "base-type": "type/Integer",
+            "join-alias": "Reviews - Created At: Month",
+          },
+        ],
+      ],
+    ],
+    breakout: [
+      [
+        "field",
+        "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+        {
+          "base-type": "type/Text",
+        },
+      ],
+      [
+        "field",
+        REVIEWS.CREATED_AT,
+        {
+          "base-type": "type/Text",
+          "join-alias": "Reviews - Created At: Month",
+        },
+      ],
+    ],
+  };
 }

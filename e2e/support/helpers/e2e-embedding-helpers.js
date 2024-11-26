@@ -30,7 +30,7 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
- * @param {object} options
+ * @param {object=} options
  * @param {object} [options.setFilters]
  * @param {PageStyle} options.pageStyle
  * @param {object} options.additionalHashOptions

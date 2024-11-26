@@ -10046,6 +10046,22 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v52.2024-10-26T18:42:42
+      author: metamben
+      comment: Add stage-number to dimension targets in parameter_mappings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddStageNumberToParameterMappingTargets"
+
+  - changeSet:
+      id: v52.2024-11-12T15:13:18
+      author: metamben
+      comment: Add stage-number to dimension targets in visualization_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

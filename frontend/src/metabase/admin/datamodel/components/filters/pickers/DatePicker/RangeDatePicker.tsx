@@ -3,7 +3,7 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { useCallback, useState } from "react";
 
 import Calendar from "metabase/components/Calendar";
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   clearDateRangeFilterTime,
   getDateRangeFilterValue,
@@ -17,7 +17,7 @@ import SpecificDatePicker from "./SpecificDatePicker";
 
 export interface BetweenPickerProps {
   className?: string;
-  filter: Filter | any[];
+  filter: FilterMBQL | any[];
   hideTimeSelectors?: boolean;
   onFilterChange: (filter: any[]) => void;
 }

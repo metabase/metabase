@@ -463,42 +463,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: SettingsLicense,
     settings: [],
   },
-  metabot: {
-    name: t`Metabot`,
-    order: 130,
-    getHidden: settings => !settings["is-metabot-enabled"],
-    settings: [
-      {
-        key: "openai-api-key",
-        display_name: t`OpenAI API Key`,
-        description: null,
-        type: "string",
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-      {
-        key: "openai-organization",
-        display_name: t`OpenAI Organization ID`,
-        description: null,
-        type: "string",
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-      {
-        key: "openai-model",
-        display_name: t`OpenAI Model`,
-        description: null,
-        type: "select",
-        getProps: (_, settings) => {
-          const models = settings["openai-available-models"] ?? [];
-
-          return {
-            options: models.map(model => ({ name: model.id, value: model.id })),
-            disabled: !models.length,
-          };
-        },
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-    ],
-  },
   llm: {
     name: t`AI Features`,
     getHidden: settings =>
