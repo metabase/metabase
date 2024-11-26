@@ -1,4 +1,4 @@
-import { type Component, forwardRef } from "react";
+import { forwardRef } from "react";
 
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { CardId } from "metabase-types/api";
@@ -15,7 +15,7 @@ export type EditorProps = {
   onSelectionChange?: (range: SelectionRange) => void;
 };
 
-export interface EditorRef extends Component<EditorProps> {
+export interface EditorRef {
   focus: () => void;
   resize: () => void;
   getSelectionTarget: () => Element | null;
