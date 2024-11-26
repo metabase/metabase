@@ -7,9 +7,16 @@ import {
   sql,
 } from "@codemirror/lang-sql";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { EditorView, drawSelection } from "@codemirror/view";
+import {
+  Decoration,
+  EditorView,
+  MatchDecorator,
+  ViewPlugin,
+  drawSelection,
+} from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
 import type { Extension } from "@uiw/react-codemirror";
+import cx from "classnames";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
@@ -31,6 +38,7 @@ export function useExtensions({ engine }: ExtensionOptions): Extension[] {
       }),
       language(engine),
       highlighting(),
+      tagDecorator(),
     ].filter(isNotNull);
   }, [engine]);
 }
@@ -95,4 +103,41 @@ const metabaseStyle = HighlightStyle.define(
 
 function highlighting() {
   return syntaxHighlighting(metabaseStyle);
+}
+
+function tagDecorator() {
+  const decorator = new MatchDecorator({
+    regexp: /\{\{([^\}]*)\}\}/g,
+    decoration(match) {
+      const content = match[1].trim();
+      const isSnippet = content.toLowerCase().startsWith("snippet:");
+      const isCard = content.startsWith("#");
+
+      return Decoration.mark({
+        tagName: "span",
+        class: cx(
+          "cm-tag",
+          !isSnippet && !isCard && "cm-tag-variable",
+          isSnippet && "cm-tag-snippet",
+          isCard && "cm-tag-card",
+        ),
+        attributes: {
+          "data-snippet": isSnippet.toString(),
+          "data-card": isCard.toString(),
+        },
+      });
+    },
+  });
+
+  return ViewPlugin.define(
+    view => ({
+      tags: decorator.createDeco(view),
+      update(state) {
+        this.tags = decorator.updateDeco(state, this.tags);
+      },
+    }),
+    {
+      decorations: instance => instance.tags,
+    },
+  );
 }

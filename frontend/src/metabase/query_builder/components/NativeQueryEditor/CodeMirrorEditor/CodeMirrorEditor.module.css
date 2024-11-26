@@ -83,5 +83,17 @@
       color: var(--mb-color-text-light);
       font-style: italic;
     }
+
+    .cm-token-squareBracket {
+      color: var(--mb-color-brand);
+    }
+
+    .cm-tag {
+      color: var(--mb-color-brand);
+
+      & * {
+        color: inherit;
+      }
+    }
   }
 }
