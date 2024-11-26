@@ -42,14 +42,19 @@ import {
 import {
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
+  removeColumnFromCartesianChart,
 } from "./visualizations/cartesian";
 import {
   addScalarToFunnel,
   canCombineCardWithFunnel,
   funnelDropHandler,
+  removeColumnFromFunnel,
 } from "./visualizations/funnel";
-import { pieDropHandler } from "./visualizations/pie";
-import { pivotDropHandler } from "./visualizations/pivot";
+import { pieDropHandler, removeColumnFromPieChart } from "./visualizations/pie";
+import {
+  pivotDropHandler,
+  removeColumnFromPivotTable,
+} from "./visualizations/pivot";
 
 const initialCommonState: VisualizerCommonState = {
   cards: [],
@@ -166,6 +171,28 @@ const visualizerHistoryItemSlice = createSlice({
         ...state.settings,
         ...action.payload,
       };
+    },
+    removeColumn: (
+      state,
+      action: PayloadAction<{ name: string; wellId: string }>,
+    ) => {
+      const { name, wellId } = action.payload;
+      if (!state.display) {
+        return;
+      }
+
+      state.columns = state.columns.filter(col => col.name !== name);
+      delete state.columnValuesMapping[name];
+
+      if (isCartesianChart(state.display)) {
+        removeColumnFromCartesianChart(state, name, wellId);
+      } else if (state.display === "funnel") {
+        removeColumnFromFunnel(state, name, wellId);
+      } else if (state.display === "pie") {
+        removeColumnFromPieChart(state, name, wellId);
+      } else if (state.display === "pivot") {
+        removeColumnFromPivotTable(state, name, wellId);
+      }
     },
   },
   extraReducers: builder => {
@@ -402,7 +429,7 @@ function maybeUpdateHistory(state: VisualizerState, action: Action) {
   }
 }
 
-export const { setDisplay, updateSettings } =
+export const { setDisplay, updateSettings, removeColumn } =
   visualizerHistoryItemSlice.actions;
 
 export const {

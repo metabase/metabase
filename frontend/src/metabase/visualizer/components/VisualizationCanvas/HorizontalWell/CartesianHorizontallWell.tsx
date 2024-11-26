@@ -1,7 +1,7 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -9,6 +9,7 @@ import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
+import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
@@ -16,6 +17,7 @@ import { WellItem } from "../WellItem";
 export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
   const settings = useSelector(getVisualizerComputedSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
+  const dispatch = useDispatch();
 
   const { active, setNodeRef, isOver } = useDroppable({
     id: DROPPABLE_ID.X_AXIS_WELL,
@@ -27,6 +29,15 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
       .map(name => columns.find(column => column.name === name))
       .filter(isNotNull);
   }, [columns, settings]);
+
+  const handleRemoveDimension = (dimension: DatasetColumn) => {
+    dispatch(
+      removeColumn({
+        name: dimension.name,
+        wellId: DROPPABLE_ID.X_AXIS_WELL,
+      }),
+    );
+  };
 
   return (
     <Flex
@@ -50,7 +61,11 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
       ref={setNodeRef}
     >
       {dimensions.map(dimension => (
-        <DimensionWellItem key={dimension.name} dimension={dimension} />
+        <DimensionWellItem
+          key={dimension.name}
+          dimension={dimension}
+          onRemove={() => handleRemoveDimension(dimension)}
+        />
       ))}
     </Flex>
   );
@@ -58,9 +73,10 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
 
 interface DimensionWellItemProps {
   dimension: DatasetColumn;
+  onRemove: () => void;
 }
 
-function DimensionWellItem({ dimension }: DimensionWellItemProps) {
+function DimensionWellItem({ dimension, onRemove }: DimensionWellItemProps) {
   const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
     id: `${DROPPABLE_ID.X_AXIS_WELL}:${DRAGGABLE_ID.WELL_ITEM}:${dimension.name}`,
     data: {
@@ -75,6 +91,7 @@ function DimensionWellItem({ dimension }: DimensionWellItemProps) {
       {...attributes}
       {...listeners}
       style={{ visibility: isDragging ? "hidden" : "visible" }}
+      onRemove={onRemove}
       ref={setNodeRef}
     >
       <Text truncate>{dimension.display_name}</Text>

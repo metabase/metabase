@@ -1,4 +1,10 @@
-import { DndContext, type DragEndEvent, useDroppable } from "@dnd-kit/core";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+} from "@dnd-kit/core";
 import {
   restrictToHorizontalAxis,
   restrictToParentElement,
@@ -14,7 +20,10 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { getVisualizerComputedSettings } from "metabase/visualizer/selectors";
-import { updateSettings } from "metabase/visualizer/visualizer.slice";
+import {
+  removeColumn,
+  updateSettings,
+} from "metabase/visualizer/visualizer.slice";
 
 import { WellItem, type WellItemProps } from "../WellItem";
 
@@ -24,6 +33,10 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
 
   const { active, setNodeRef, isOver } = useDroppable({
     id: DROPPABLE_ID.X_AXIS_WELL,
+  });
+
+  const sensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 10 },
   });
 
   const rows = settings?.["funnel.rows"] ?? [];
@@ -42,6 +55,15 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
         "funnel.dimension": dimension,
         "funnel.order_dimension": orderDimension,
         "funnel.rows": nextRows,
+      }),
+    );
+  };
+
+  const handleRemove = () => {
+    dispatch(
+      removeColumn({
+        name: settings["funnel.dimension"],
+        wellId: DROPPABLE_ID.X_AXIS_WELL,
       }),
     );
   };
@@ -70,13 +92,14 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
     >
       <DndContext
         modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+        sensors={[sensor]}
         onDragEnd={handleDragEnd}
       >
-        <FunnelWellItem mr="md" id="dimension">
-          <Text color="text-white" truncate>
-            {settings["funnel.dimension"]}
-          </Text>
-        </FunnelWellItem>
+        {settings["funnel.dimension"] && (
+          <FunnelWellItem mr="md" id="dimension" onRemove={handleRemove}>
+            <Text truncate>{settings["funnel.dimension"]}</Text>
+          </FunnelWellItem>
+        )}
         <SortableContext
           items={rowKeys}
           strategy={horizontalListSortingStrategy}

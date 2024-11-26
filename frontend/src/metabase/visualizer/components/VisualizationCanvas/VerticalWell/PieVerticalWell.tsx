@@ -2,13 +2,15 @@ import { useDroppable } from "@dnd-kit/core";
 import { type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Stack, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
+import { removeColumn } from "metabase/visualizer/visualizer.slice";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 
@@ -24,6 +26,7 @@ export function PieVerticalWell() {
 function PieMetricWell() {
   const columns = useSelector(getVisualizerDatasetColumns);
   const settings = useSelector(getVisualizerComputedSettings);
+  const dispatch = useDispatch();
 
   const { isOver, setNodeRef, active } = useDroppable({
     id: DROPPABLE_ID.PIE_METRIC,
@@ -31,12 +34,20 @@ function PieMetricWell() {
 
   const metric = columns.find(col => col.name === settings["pie.metric"]);
 
+  const handleRemoveMetric = () => {
+    if (metric) {
+      dispatch(
+        removeColumn({ name: metric.name, wellId: DROPPABLE_ID.PIE_METRIC }),
+      );
+    }
+  };
+
   return (
     <Box mt="lg">
       <Text>{t`Pie chart metric`}</Text>
       <WellBox isHighlighted={!!active} isOver={isOver} ref={setNodeRef}>
         <Stack>
-          <WellItem>
+          <WellItem onRemove={metric && handleRemoveMetric}>
             <Text>
               {metric?.display_name ?? t`Drop your chart Metric here`}
             </Text>
@@ -50,6 +61,7 @@ function PieMetricWell() {
 function PieDimensionWell() {
   const columns = useSelector(getVisualizerDatasetColumns);
   const settings = useSelector(getVisualizerComputedSettings);
+  const dispatch = useDispatch();
 
   const { isOver, setNodeRef, active } = useDroppable({
     id: DROPPABLE_ID.PIE_DIMENSION,
@@ -59,6 +71,15 @@ function PieDimensionWell() {
     (settings["pie.dimension"] ?? []).includes(col.name),
   );
 
+  const handleRemoveDimension = (dimension: DatasetColumn) => {
+    dispatch(
+      removeColumn({
+        name: dimension.name,
+        wellId: DROPPABLE_ID.PIE_DIMENSION,
+      }),
+    );
+  };
+
   return (
     <Box mt="lg">
       <Text>{t`Pie chart dimensions`}</Text>
@@ -66,7 +87,12 @@ function PieDimensionWell() {
         {dimensions.length > 0 ? (
           <Stack>
             {dimensions.map(dimension => (
-              <WellItem key={dimension.id}>{dimension.display_name}</WellItem>
+              <WellItem
+                key={dimension.id}
+                onRemove={() => handleRemoveDimension(dimension)}
+              >
+                {dimension.display_name}
+              </WellItem>
             ))}
           </Stack>
         ) : (

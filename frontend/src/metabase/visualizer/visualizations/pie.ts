@@ -67,3 +67,26 @@ export const pieDropHandler = (
     };
   }
 };
+
+export function removeColumnFromPieChart(
+  state: VisualizerHistoryItem,
+  columnName: string,
+  wellId: string,
+) {
+  if (
+    wellId === DROPPABLE_ID.PIE_DIMENSION &&
+    state.settings["pie.dimension"]
+  ) {
+    let dimensions = state.settings["pie.dimension"];
+    if (!Array.isArray(dimensions)) {
+      dimensions = [dimensions];
+    }
+    state.settings["pie.dimension"] = dimensions.filter(
+      dimension => dimension !== columnName,
+    );
+  }
+
+  if (wellId === DROPPABLE_ID.PIE_METRIC) {
+    delete state.settings["pie.metric"];
+  }
+}

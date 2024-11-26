@@ -1,13 +1,18 @@
 import { forwardRef } from "react";
+import { t } from "ttag";
 
-import { Box, type BoxProps } from "metabase/ui";
+import { ActionIcon, Flex, type FlexProps, Icon } from "metabase/ui";
 
-export type WellItemProps = BoxProps;
+export interface WellItemProps extends FlexProps {
+  onRemove?: () => void;
+}
 
 export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
-  function WellItem({ style, ...props }, ref) {
+  function WellItem({ children, style, onRemove, ...props }, ref) {
     return (
-      <Box
+      <Flex
+        direction="row"
+        align="center"
         bg="var(--mb-color-bg-white)"
         px="sm"
         {...props}
@@ -18,7 +23,19 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
           boxShadow: "0 0 1px var(--mb-color-shadow)",
         }}
         ref={ref}
-      />
+      >
+        <div>{children}</div>
+        {!!onRemove && (
+          <ActionIcon
+            aria-label={t`Remove`}
+            size="sm"
+            ml="xs"
+            onClick={onRemove}
+          >
+            <Icon name="close" size="0.8rem" />
+          </ActionIcon>
+        )}
+      </Flex>
     );
   },
 );

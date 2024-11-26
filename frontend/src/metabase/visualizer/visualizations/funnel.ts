@@ -85,3 +85,17 @@ function createDimensionColumn(name: string): DatasetColumn {
     source: "artificial",
   };
 }
+
+export function removeColumnFromFunnel(
+  state: VisualizerHistoryItem,
+  name: string,
+  wellId: string,
+) {
+  if (wellId === DROPPABLE_ID.X_AXIS_WELL) {
+    delete state.settings["funnel.dimension"];
+  }
+
+  if (wellId === DROPPABLE_ID.Y_AXIS_WELL) {
+    delete state.settings["funnel.metric"];
+  }
+}

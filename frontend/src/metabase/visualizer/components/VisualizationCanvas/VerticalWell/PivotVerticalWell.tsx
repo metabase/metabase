@@ -2,7 +2,7 @@ import { type Active, useDraggable, useDroppable } from "@dnd-kit/core";
 import { type ReactNode, forwardRef, useMemo } from "react";
 import _ from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { type BoxProps, Flex, Stack, Text } from "metabase/ui";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -11,6 +11,7 @@ import {
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
 import { isDraggedColumnItem } from "metabase/visualizer/utils";
+import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import type { DatasetColumn, RawSeries } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
@@ -18,6 +19,7 @@ import { WellItem } from "../WellItem";
 export function PivotVerticalWell() {
   const settings = useSelector(getVisualizerComputedSettings);
   const series = useSelector(getVisualizerRawSeries);
+  const dispatch = useDispatch();
 
   const droppableColumnsWell = useDroppable({
     id: DROPPABLE_ID.PIVOT_COLUMNS_WELL,
@@ -37,6 +39,10 @@ export function PivotVerticalWell() {
     };
   }, [series, settings]);
 
+  const handleRemoveColumn = (column: DatasetColumn, wellId: string) => {
+    dispatch(removeColumn({ name: column.name, wellId }));
+  };
+
   if (!series[0]?.data) {
     return null;
   }
@@ -51,9 +57,11 @@ export function PivotVerticalWell() {
         {rows.map(rowCol => (
           <DraggableWellItem
             key={rowCol.name}
-            canDrag={rows.length > 1}
             column={rowCol}
             wellId={DROPPABLE_ID.PIVOT_ROWS_WELL}
+            onRemove={() =>
+              handleRemoveColumn(rowCol, DROPPABLE_ID.PIVOT_ROWS_WELL)
+            }
           >
             <Text truncate>{rowCol.display_name}</Text>
           </DraggableWellItem>
@@ -67,9 +75,11 @@ export function PivotVerticalWell() {
         {cols.map(col => (
           <DraggableWellItem
             key={col.name}
-            canDrag={cols.length > 1}
             column={col}
             wellId={DROPPABLE_ID.PIVOT_COLUMNS_WELL}
+            onRemove={() =>
+              handleRemoveColumn(col, DROPPABLE_ID.PIVOT_COLUMNS_WELL)
+            }
           >
             <Text key={col.name} truncate>
               {col.display_name}
@@ -85,9 +95,11 @@ export function PivotVerticalWell() {
         {values.map(valueCol => (
           <DraggableWellItem
             key={valueCol.name}
-            canDrag={values.length > 1}
             column={valueCol}
             wellId={DROPPABLE_ID.PIVOT_VALUES_WELL}
+            onRemove={() =>
+              handleRemoveColumn(valueCol, DROPPABLE_ID.PIVOT_VALUES_WELL)
+            }
           >
             <Text truncate>{valueCol.display_name}</Text>
           </DraggableWellItem>
@@ -137,13 +149,12 @@ const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(function WellBox(
 });
 
 interface DraggableWellItemProps extends BoxProps {
-  canDrag: boolean;
   column: DatasetColumn;
   wellId: string;
+  onRemove: () => void;
 }
 
 function DraggableWellItem({
-  canDrag,
   column,
   wellId,
   ...props
@@ -155,7 +166,6 @@ function DraggableWellItem({
       wellId,
       column,
     },
-    disabled: !canDrag,
   });
 
   return (
@@ -164,7 +174,7 @@ function DraggableWellItem({
       {...attributes}
       {...listeners}
       style={{
-        cursor: canDrag ? "grab" : "default",
+        cursor: "grab",
         visibility: isDragging ? "hidden" : "visible",
       }}
       ref={setNodeRef}

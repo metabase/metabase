@@ -3,6 +3,8 @@ import {
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
+  PointerSensor,
+  useSensor,
 } from "@dnd-kit/core";
 import { useCallback } from "react";
 import type { WithRouterProps } from "react-router";
@@ -42,6 +44,10 @@ export const VisualizerPage = ({ location }: WithRouterProps) => {
 
   const datasets = useSelector(getDatasets);
   const hasDatasets = Object.values(datasets).length > 0;
+
+  const canvasSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 10 },
+  });
 
   useMount(() => {
     const { dataSource } = location?.query ?? {};
@@ -98,7 +104,11 @@ export const VisualizerPage = ({ location }: WithRouterProps) => {
   );
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={[canvasSensor]}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <Flex direction="column" w="100%" h="100%">
         <Header />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
