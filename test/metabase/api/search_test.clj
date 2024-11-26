@@ -25,6 +25,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.fulltext :as search.fulltext]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.postgres.index :as search.index]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -312,6 +313,7 @@
 (deftest custom-engine-test
   (when (search/supports-index?)
     (testing "It can use an alternate search engine"
+      (is (search.index/ensure-ready! false))
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
@@ -1579,14 +1581,18 @@
 (deftest force-reindex-test
   (when (search/supports-index?)
     (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
-      (let [search-results #(:data (mt/user-http-request :rasta :get 200 "search" :q "boggle" :search_engine "fulltext"))]
-        (try
-          (t2/delete! :search_index)
-          (catch Exception _))
-        (is (empty? (search-results)))
+      (mt/user-http-request :crowberto :post 200 "search/re-init")
+      (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "fulltext"))]
+        (is (try
+              (t2/delete! :search_index)
+              (catch Exception _
+                :already-deleted)))
+        (is (empty? (search-results 200)))
         (mt/user-http-request :crowberto :post 200 "search/force-reindex")
         (is (loop [attempts-left 5]
-              (if (some (comp #{id} :id) (search-results))
+              (if (and (#'search.index/exists? :search_index)
+                       (pos? (t2/count :search_index))
+                       (some (comp #{id} :id) (search-results 200)))
                 ::success
                 (when (pos? attempts-left)
                   (Thread/sleep 200)
