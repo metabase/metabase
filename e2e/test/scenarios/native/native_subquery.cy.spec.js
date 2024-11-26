@@ -96,10 +96,10 @@ describe("scenarios > question > native subquery", () => {
         cy.wait(1000);
 
         nativeEditorCompletions().within(() => {
-          cy.findByText(`${questionId2}-a-`);
-          cy.findByText("Model in Bobby Tables's Personal Collection");
-          cy.findByText(`${questionId1}-a-`);
-          cy.findByText("Question in Our analytics");
+          cy.findByText(`${questionId2}-a-`).should("be.visible");
+          cy.findByText("Model in Bobby Tables's Personal Collection").should("be.visible");
+          cy.findByText(`${questionId1}-a-`).should("be.visible");
+          cy.findByText("Question in Our analytics").should("be.visible");
         });
       });
     });
