@@ -1587,7 +1587,7 @@
               (t2/delete! :search_index)
               (catch Exception _
                 :already-deleted)))
-        (is (empty? (search-results 500)))
+        (is (empty? (search-results 200)))
         (mt/user-http-request :crowberto :post 200 "search/force-reindex")
         (is (loop [attempts-left 5]
               (if (and (#'search.index/exists? :search_index)
