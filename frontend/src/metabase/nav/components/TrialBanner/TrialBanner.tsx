@@ -53,9 +53,7 @@ export const TrialBanner = ({ tokenStatus }: { tokenStatus: TokenStatus }) => {
   return (
     <Banner
       icon="warning_round_filled"
-      // This is --mb-base-color-dubloon-10, which is not allowed to be referenced directly.
-      // FIXME: Update the next line once we switch to semantic colors.
-      bg="hsla(46, 96%, 90%, 1)"
+      bg="warning"
       body={
         <Flex align="center" gap="xs">
           {/* Text and ExternalLink originally have different line-heights that we need to marry. */}
