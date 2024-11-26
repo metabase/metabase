@@ -1,4 +1,4 @@
-(ns metabase.search.legacy
+(ns metabase.search.in-place.legacy
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
@@ -7,10 +7,10 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
-   [metabase.search.api :as search.api]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
+   [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
@@ -27,6 +27,9 @@
   [:or
    :keyword
    [:tuple :any :keyword]])
+
+(defmethod search.engine/supported-engine? :search.engine/in-place [_]
+  true)
 
 (defn search-model->revision-model
   "Return the appropriate revision model given a search model."
@@ -522,7 +525,7 @@
         (add-table-db-id-clause table-db-id)
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
-(defmethod search.api/model-set :search.engine/in-place
+(defmethod search.engine/model-set :search.engine/in-place
   [search-ctx]
   (let [model-queries (for [model (search.in-place.filter/search-context->applicable-models
                                    ;; It's unclear why we don't use the existing :models
@@ -557,7 +560,7 @@
        :limit    search.config/*db-max-results*})))
 
 ;; Return a reducible-query corresponding to searching the entities without an index.
-(defmethod search.api/results
+(defmethod search.engine/results
   :search.engine/in-place
   [search-ctx]
   (let [search-query (full-search-query search-ctx)]
@@ -566,5 +569,5 @@
                 (mdb.query/format-sql (first (mdb.query/compile search-query))))
     (t2/reducible-query search-query)))
 
-(defmethod search.api/score :search.engine/in-place [results search-ctx]
-  (scoring/score-and-result results search-ctx))
+(defmethod search.engine/score :search.engine/in-place [search-ctx result]
+  (scoring/score-and-result result search-ctx))

@@ -1,9 +1,9 @@
-(ns metabase.search.postgres.ingestion
+(ns metabase.search.ingestion
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.search.postgres.index :as search.index]
+   [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -13,13 +13,20 @@
 
 (set! *warn-on-reflection* true)
 
+;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
 (defonce ^:private queue (queue/delay-queue))
 
-(def ^:private delay-ms 100)
+;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
-(def ^:private batch-max 50)
+(def ^:private delay-ms
+  "The minimum time we must wait before updating the index. This delay exists to dedupe and batch changes efficiently."
+  100)
 
-(def ^:private insert-batch-size 150)
+(def ^:private batch-max
+  "The maximum number of update messages to process together.
+  Note that each message can correspond to multiple documents, for example there would be 1 message for updating all
+  the tables within a given database when it is renamed."
+  50)
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
@@ -32,7 +39,7 @@
 (defn- display-data [m]
   (select-keys m [:name :display_name :description :collection_name]))
 
-(defn- ->entry [m]
+(defn- ->document [m]
   (-> m
       (select-keys
        (into [:model] search.spec/attr-columns))
@@ -80,35 +87,49 @@
 (defn- search-items-reducible []
   (reduce u/rconcat [] (map spec-index-reducible (keys (methods search.spec/spec)))))
 
-(defn- batch-update! [search-items-reducible]
-  (->> search-items-reducible
+(defn- query->documents [query-reducible]
+  (->> query-reducible
        (eduction
         (comp
          (map t2.realize/realize)
          ;; It's possible to get redundant entries from the indexed-entities table.
          ;; We remove duplicates to avoid creating invalid insert statements.
          (m/distinct-by (juxt :id :model))
-         (map ->entry)
-         (partition-all insert-batch-size)))
-       (transduce (map search.index/batch-update!) (partial merge-with +))))
+         (map ->document)))))
 
 (defn populate-index!
   "Go over all searchable items and populate the index with them."
-  []
-  (batch-update! (search-items-reducible)))
+  [engine]
+  (search.engine/consume! engine (query->documents (search-items-reducible))))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
   false)
+
+(def ^:dynamic *disable-updates*
+  "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
+  false)
+
+(defn consume!
+  "Update all active engines' indexes with the given documents"
+  [documents-reducible]
+  (when-let [engines (seq (search.engine/active-engines))]
+    (if (= 1 (count engines))
+      (search.engine/consume! (first engines) documents-reducible)
+      ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
+      (doseq [batch (eduction (partition-all 150) documents-reducible)
+              e     engines]
+        (search.engine/consume! e batch)))))
 
 (defn- bulk-ingest! [updates]
   (->> (for [[search-model where-clauses] (u/group-by first second updates)]
          (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
        ;; init collection is only for clj-kondo, as we know that the list is non-empty
        (reduce u/rconcat [])
-       (batch-update!)))
+       query->documents
+       consume!))
 
-(defn process-next-batch
+(defn process-next-batch!
   "Wait up to 'delay-ms' for a queued batch to become ready, and process the batch if we get one.
   Returns the number of search index entries that get updated as a result."
   [first-delay-ms next-delay-ms]
@@ -116,63 +137,17 @@
     (bulk-ingest! queued-updates)))
 
 (defn- index-worker-exists? []
-  (task/job-exists? @(requiring-resolve 'metabase.task.search-index/reindex-job-key))
   (task/job-exists? @(requiring-resolve 'metabase.task.search-index/update-job-key)))
 
-(defn- ^:private ingest-maybe-async!
+(defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
-  Can also be forced to be run synchronous for testing."
+  Can also be forced to run synchronously for testing."
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
-   (if sync?
-     (bulk-ingest! updates)
-     (doseq [update updates]
-       (queue/put-with-delay! queue delay-ms update)))))
-
-(defn- impossible-condition?
-  "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."
-  [where]
-  (when (vector? where)
-    (case (first where)
-      :=   (let [[a b] (rest where)]
-             (and (string? a) (string? b) (not= a b)))
-      :!=  (let [[a b] (rest where)]
-             (and (string? a) (string? b) (= a b)))
-      :and (boolean (some impossible-condition? (rest where)))
-      :or  (every? impossible-condition? (rest where))
-      false)))
-
-(defn update-index!
-  "Given a new or updated instance, create or update all the corresponding search entries if needed."
-  [instance & [always?]]
-  (when-let [updates (->> (search.spec/search-models-to-update instance always?)
-                          (remove (comp impossible-condition? second))
-                          seq)]
-    ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
-    (ingest-maybe-async! updates)
-    nil))
-
-;; TODO think about how we're going to handle cascading deletes.
-;; Ideas:
-;; - Queue full re-index (rather expensive)
-;; - Queue "purge" (empty left join to the model) - needs special case for indexed-entity
-;; - Pre-delete hook using pre-calculated PK-based graph
-(defn delete-model!
-  "Given a deleted instance, delete all the corresponding search entries."
-  [instance]
-  (let [model (t2/model instance)
-        id    (:id instance)
-        ;; TODO this could use some precalculation into a look-up map
-        search-models (->> (methods search.spec/spec)
-                           (map (fn [[search-model spec-fn]] (spec-fn search-model)))
-                           (filter #(= model (:model %)))
-                           (map :name)
-                           seq)]
-    (when search-models
-      (search.index/delete! id search-models))))
-
-(comment
-  (t2/query
-   (spec-index-query-where "table" [:= 1 :this.db_id])))
+   (when-not *disable-updates*
+     (if sync?
+       (bulk-ingest! updates)
+       (doseq [update updates]
+         (queue/put-with-delay! queue delay-ms update))))))

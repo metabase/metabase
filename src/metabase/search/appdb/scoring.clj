@@ -1,12 +1,11 @@
-;; This namespace is *mostly* appdb agnostic, but not committing to it at this stage.
-(ns metabase.search.postgres.scoring
+(ns metabase.search.appdb.scoring
   (:require
    [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
-   [metabase.search.postgres.index :as search.index]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -31,14 +30,6 @@
        [:inline (double ceiling)]
        [:cast ceiling :float])]]])
 
-(defn atan-size
-  "Prefer items whose value is larger, with diminishing gains."
-  [column scaling]
-  ;; 2/PI * tan^-1 (x/N)
-  [:*
-   [:/ [:inline 2] [:pi]]
-   [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] scaling]]])
-
 (defn inverse-duration
   "Score at item based on the duration between two dates, where less is better."
   [from-column to-column ceiling-in-days]
@@ -48,6 +39,7 @@
       [:- ceiling
        [:/
         ;; Use seconds for granularity in the fraction.
+        ;; TODO will probably need to specialize this based on (mdb/db-type)
         [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
         [:inline (double seconds-in-a-day)]]]
       [:inline 0]]
@@ -109,6 +101,7 @@
               [:= :search_index.model [:inline "metric"]] [:inline "card"]
               :else :search_index.model]]]})
 
+;; TODO this will need to be abstracted for other appdbs
 (defn- view-count-percentile-query [p-value]
   (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
     {:select   [:search_index.model [expr :vcp]]
@@ -135,8 +128,7 @@
                 [[:= :search_index.model [:inline (name sm)]] (max v 1)])]
     (size :view_count (if (seq cases)
                         (into [:case] cat cases)
-                        1))
-    #_(atan-size :view_count [:* 0.1 [:greatest 1 (into [:case] cat cases)]])))
+                        1))))
 
 (defn- model-rank-exp [{:keys [context]}]
   (let [search-order search.config/models-search-order
@@ -168,7 +160,7 @@
   [search-ctx]
   (base-scorers search-ctx))
 
-(defn- scorer-select-items [search-ctx] (select-items (:context search-ctx) (scorers search-ctx)))
+(defn- scorer-select-items [search-ctx scorers] (select-items (:context search-ctx) scorers))
 
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)
@@ -184,7 +176,7 @@
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
-  [{:keys [current-user-id] :as search-ctx} qry]
-  (-> (apply sql.helpers/select qry (scorer-select-items search-ctx))
+  [{:keys [current-user-id] :as search-ctx} scorers qry]
+  (-> (apply sql.helpers/select qry (scorer-select-items search-ctx scorers))
       (join-bookmarks current-user-id)
       (sql.helpers/order-by [:total_score :desc])))
