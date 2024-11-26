@@ -29,6 +29,54 @@ export const funnelDropHandler = (
   if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
     addScalarToFunnel(state, dataSource, column);
   }
+
+  const columnRef = createVisualizerColumnReference(
+    dataSource,
+    column,
+    extractReferencedColumns(state.columnValuesMapping),
+  );
+
+  if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
+    let dimensionColumnName = state.settings["funnel.dimension"];
+    if (!dimensionColumnName) {
+      dimensionColumnName = columnRef.name;
+      state.columns.push(copyColumn(dimensionColumnName, column));
+      state.settings["funnel.dimension"] = dimensionColumnName;
+    } else {
+      const index = state.columns.findIndex(
+        col => col.name === dimensionColumnName,
+      );
+      state.columns[index] = copyColumn(dimensionColumnName, column);
+    }
+
+    if (dimensionColumnName) {
+      state.columnValuesMapping[dimensionColumnName] = addColumnMapping(
+        state.columnValuesMapping[dimensionColumnName],
+        columnRef,
+      );
+    }
+  }
+
+  if (over.id === DROPPABLE_ID.Y_AXIS_WELL && isNumeric(column)) {
+    let metricColumnName = state.settings["funnel.metric"];
+    if (!metricColumnName) {
+      metricColumnName = columnRef.name;
+      state.columns.push(copyColumn(metricColumnName, column));
+      state.settings["funnel.metric"] = metricColumnName;
+    } else {
+      const index = state.columns.findIndex(
+        col => col.name === metricColumnName,
+      );
+      state.columns[index] = copyColumn(metricColumnName, column);
+    }
+
+    if (metricColumnName) {
+      state.columnValuesMapping[metricColumnName] = addColumnMapping(
+        state.columnValuesMapping[metricColumnName],
+        columnRef,
+      );
+    }
+  }
 };
 
 export function canCombineCardWithFunnel(card: Card, dataset: Dataset) {
