@@ -393,7 +393,7 @@ export function excludeDateFilterClause({
       ]);
     case "day-of-week":
       return expressionClause("!=", [
-        expressionClause("get-day-of-week", [columnWithoutBucket]),
+        expressionClause("get-day-of-week", [columnWithoutBucket, "iso"]),
         ...values,
       ]);
     case "month-of-year":
@@ -432,7 +432,7 @@ function expressionExcludeDateFilterParts(
 
   if (operator === "is-null" || operator === "not-null") {
     const [column] = args;
-    if (!isColumnMetadata(column)) {
+    if (!isColumnMetadata(column) || !isDateOrDateTime(column)) {
       return null;
     }
 
@@ -444,24 +444,40 @@ function expressionExcludeDateFilterParts(
     }
 
     const { operator: expressionOperator, args: expressionArgs } = expression;
-    if (expressionArgs.length !== 1) {
+    if (expressionArgs.length < 1) {
       return null;
     }
 
     const [column] = expressionArgs;
-    if (!isColumnMetadata(column)) {
+    if (!isColumnMetadata(column) || !isDateOrDateTime(column)) {
       return null;
     }
 
     switch (expressionOperator) {
       case "get-hour":
-        return { operator, column, values, bucket: "hour-of-day" };
+        if (expressionArgs.length === 1) {
+          return { operator, column, values, bucket: "hour-of-day" };
+        } else {
+          return null;
+        }
       case "get-day-of-week":
-        return { operator, column, values, bucket: "day-of-week" };
+        if (expressionArgs.length === 2 && expressionArgs[1] === "iso") {
+          return { operator, column, values, bucket: "day-of-week" };
+        } else {
+          return null;
+        }
       case "get-month":
-        return { operator, column, values, bucket: "month-of-year" };
+        if (expressionArgs.length === 1) {
+          return { operator, column, values, bucket: "month-of-year" };
+        } else {
+          return null;
+        }
       case "get-quarter":
-        return { operator, column, values, bucket: "quarter-of-year" };
+        if (expressionArgs.length === 1) {
+          return { operator, column, values, bucket: "quarter-of-year" };
+        } else {
+          return null;
+        }
       default:
         return null;
     }
