@@ -15,13 +15,13 @@ export type EditorProps = {
   onSelectionChange?: (range: SelectionRange) => void;
 };
 
-export interface EditorHandle extends Component<EditorProps> {
+export interface EditorRef extends Component<EditorProps> {
   focus: () => void;
   resize: () => void;
   getSelectionTarget: () => Element | null;
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(
+export const Editor = forwardRef<EditorRef, EditorProps>(
   function Editor(props, ref) {
     return <AceEditor {...props} ref={ref} />;
   },

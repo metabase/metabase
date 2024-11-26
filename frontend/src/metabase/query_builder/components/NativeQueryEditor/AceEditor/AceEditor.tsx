@@ -32,7 +32,7 @@ import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, CardId, NativeQuerySnippet } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
-import type { EditorHandle, EditorProps } from "../Editor";
+import type { EditorProps, EditorRef } from "../Editor";
 import { SCROLL_MARGIN } from "../constants";
 
 import S from "./AceEditor.module.css";
@@ -555,9 +555,9 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
 });
 
 function withSnippets(
-  WrappedComponent: ComponentType<SnippetProps & RefAttributes<EditorHandle>>,
+  WrappedComponent: ComponentType<SnippetProps & RefAttributes<EditorRef>>,
 ) {
-  return forwardRef<EditorHandle>(function WithSnippets(props, ref) {
+  return forwardRef<EditorRef>(function WithSnippets(props, ref) {
     const { data } = useListSnippetsQuery();
     return <WrappedComponent {...props} ref={ref} snippets={data} />;
   });
@@ -567,4 +567,4 @@ export const AceEditor = _.compose(
   ExplicitSize(),
   withSnippets,
   connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
-)(AceEditorInner) as ComponentType<EditorProps & RefAttributes<EditorHandle>>;
+)(AceEditorInner) as ComponentType<EditorProps & RefAttributes<EditorRef>>;

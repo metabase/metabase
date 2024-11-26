@@ -26,7 +26,7 @@ import type {
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
 import DataSourceSelectors from "./DataSourceSelectors";
-import { Editor, type EditorHandle, type EditorProps } from "./Editor";
+import { Editor, type EditorProps, type EditorRef } from "./Editor";
 import S from "./NativeQueryEditor.module.css";
 import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
@@ -118,7 +118,7 @@ export class NativeQueryEditor extends Component<
   NativeQueryEditorState
 > {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
-  editor = createRef<EditorHandle>();
+  editor = createRef<EditorRef>();
 
   constructor(props: Props) {
     super(props);
