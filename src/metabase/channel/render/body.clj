@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
-   [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
@@ -610,7 +609,7 @@
       [:div {:style (style/style
                      (style/font-style)
                      {:margin-top :8px
-                      :color      channel.render/color-text-light})}
+                      :color      style/color-text-light})}
        (trs "No results")]]
      :render/text (trs "No results")}))
 
