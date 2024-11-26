@@ -12,7 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Table]]
-   [metabase.search.postgres.index :as search.index]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.log :as log]
@@ -70,7 +70,7 @@
   (tx/destroy-db! db-type db-def)
   (tx/create-db! db-type db-def)
   (mdb.setup/setup-db! db-type data-source true false)
-  (search.index/reset-tracking!))
+  (search/reset-tracking!))
 
 (defn- dump-filename
   [h2-filename version]
