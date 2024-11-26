@@ -24,12 +24,18 @@ import cx from "classnames";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 import slugg from "slugg";
+import { t } from "ttag";
 
+import { useListSnippetsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { isNotNull } from "metabase/lib/types";
 import { MetabaseApi } from "metabase/services";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
-import type { CardType, DatabaseId } from "metabase-types/api";
+import type {
+  CardType,
+  DatabaseId,
+  NativeQuerySnippet,
+} from "metabase-types/api";
 
 import { getCardAutocompleteResultMeta } from "./util";
 
@@ -43,6 +49,7 @@ export function useExtensions({
   databaseId,
 }: ExtensionOptions): Extension[] {
   const matchStyle = useSetting("native-query-autocomplete-match-style");
+  const { data: snippets } = useListSnippetsQuery();
 
   return useMemo(() => {
     return [
@@ -52,7 +59,7 @@ export function useExtensions({
         cursorBlinkRate: 1000,
         drawRangeCursor: false,
       }),
-      language({ engine, matchStyle, databaseId }),
+      language({ engine, matchStyle, databaseId, snippets }),
       highlighting(),
       tagDecorator(),
       autocompletion({
@@ -62,7 +69,7 @@ export function useExtensions({
     ]
       .flat()
       .filter(isNotNull);
-  }, [engine, matchStyle, databaseId]);
+  }, [engine, matchStyle, databaseId, snippets]);
 }
 
 function nonce() {
@@ -100,9 +107,15 @@ type LanguageOptions = {
   engine?: string;
   matchStyle?: string;
   databaseId?: DatabaseId;
+  snippets?: NativeQuerySnippet[];
 };
 
-function language({ engine, matchStyle, databaseId }: LanguageOptions) {
+function language({
+  engine,
+  matchStyle,
+  databaseId,
+  snippets = [],
+}: LanguageOptions) {
   switch (engine) {
     case "mongo":
     case "druid":
@@ -117,7 +130,6 @@ function language({ engine, matchStyle, databaseId }: LanguageOptions) {
         dialect,
         upperCaseKeywords: true,
       });
-
       return [
         lang,
         lang.language.data.of({
@@ -126,18 +138,17 @@ function language({ engine, matchStyle, databaseId }: LanguageOptions) {
               return null;
             }
 
-            const match = selectCompleter(context);
-            if (!match) {
-              return null;
-            }
+            const tag = getTagAtCursor(context);
 
-            const { type, word } = match;
+            if (!tag) {
+              // the cursor is not inside in a variable, card or snippet tag
+              // just complete using the database schema
 
-            if (!word || word.text.length === 0 || word.from === word.to) {
-              return null;
-            }
+              const word = context.matchBefore(/\w+/);
+              if (!word) {
+                return null;
+              }
 
-            if (type === "schema") {
               const results: [string, string][] =
                 await MetabaseApi.db_autocomplete_suggestions({
                   dbId: databaseId,
@@ -158,11 +169,53 @@ function language({ engine, matchStyle, databaseId }: LanguageOptions) {
               };
             }
 
-            if (type === "snippet") {
-              // TODO
+            const hasClosingTag = tag.text.endsWith("}}");
+            const content = hasClosingTag
+              ? tag.text.slice(2, -2).trim()
+              : tag.text.slice(2).trim();
+
+            if (content.toLowerCase().startsWith("snippet:")) {
+              const prefix = tag.text.match(/^\{\{\s*snippet:\s*/i)?.[0];
+              if (!prefix) {
+                return null;
+              }
+
+              const query = content.replace(/^snippet:/i, "").trim();
+              if (!query) {
+                return null;
+              }
+
+              const results = snippets.filter(snippet =>
+                snippet.name.toLowerCase().includes(query.toLowerCase()),
+              );
+
+              return {
+                from: tag.from + prefix.length,
+                validFor(text: string) {
+                  return text.startsWith(query);
+                },
+                options: results.map(snippet => ({
+                  label: snippet.name,
+                  apply: hasClosingTag ? snippet.name : `${snippet.name} }}`,
+                  detail: t`Snippet`,
+                  boost: 50,
+                })),
+              };
             }
 
-            if (type === "card") {
+            if (content.startsWith("#")) {
+              // the cursor is inside a card tag
+              const prefix = tag.text.match(/^\{\{\s*#/i)?.[0];
+
+              if (!prefix) {
+                return null;
+              }
+
+              const query = content.trim().replace(/^#/, "").trim();
+              if (!query) {
+                return null;
+              }
+
               const results: {
                 id: number;
                 name: string;
@@ -170,17 +223,20 @@ function language({ engine, matchStyle, databaseId }: LanguageOptions) {
                 collection_name: string;
               }[] = await MetabaseApi.db_card_autocomplete_suggestions({
                 dbId: databaseId,
-                query: word.text.trim(),
+                query,
               });
 
               return {
-                from: word.from,
+                from: tag.from + prefix.length - 1,
                 validFor(text: string) {
-                  return text.startsWith(`#${word.text}`);
+                  return text.startsWith(`#${query}`);
                 },
                 options: results.map(({ id, name, type, collection_name }) => ({
                   label: `#${id}-${slugg(name)}`,
                   detail: getCardAutocompleteResultMeta(type, collection_name),
+                  apply: hasClosingTag
+                    ? `#${id}-${slugg(name)}`
+                    : `#${id}-${slugg(name)} }}`,
                   boost: 50,
                 })),
               };
@@ -194,48 +250,64 @@ function language({ engine, matchStyle, databaseId }: LanguageOptions) {
   }
 }
 
-function selectCompleter(context: CompletionContext) {
-  {
-    const word = context.matchBefore(/\{\{\s*snippet:\s*([^\{\}]*)/i);
-    if (word) {
-      const start = word.text.indexOf(":") + 1;
-      return {
-        type: "snippet",
-        word: {
-          text: word.text.slice(start + 1),
-          from: word.from + start,
-          to: word.to,
-        },
-      };
+type Match = {
+  from: number;
+  to: number;
+  text: string;
+};
+
+// Looks for the tag that the cursor is inside of, or null if the cursor is not inside a tag.
+// Tags are delimited by {{ and }}.
+// This also returns a Match if the tag is opened, but not closed at the end of the line.
+function getTagAtCursor(context: CompletionContext): Match | null {
+  const doc = context.state.doc.toString();
+  let start = null;
+
+  for (let idx = context.pos; idx >= 0; idx--) {
+    const currChar = doc[idx];
+    const prevChar = doc[idx - 1];
+
+    if (currChar === "\n") {
+      // no tag opening found on this line
+      return null;
+    }
+
+    if (currChar === "}" && prevChar === "}") {
+      // closing bracket found before opening bracket
+      return null;
+    }
+
+    if (currChar === "{" && prevChar === "{") {
+      start = idx - 1;
+      break;
     }
   }
 
-  {
-    const word = context.matchBefore(/\{\{\s*#\s*([^\{\}]*)/);
-    if (word) {
-      const start = word.text.indexOf("#");
-      return {
-        type: "card",
-        word: {
-          text: word.text.slice(start + 1),
-          from: word.from + start,
-          to: word.to,
-        },
-      };
+  let end = doc.length;
+
+  for (let idx = context.pos; idx < doc.length; idx++) {
+    const currChar = doc[idx];
+    const nextChar = doc[idx + 1];
+
+    if (currChar === "\n") {
+      end = idx;
+      break;
+    }
+    if (currChar === "}" && nextChar === "}") {
+      end = idx + 2;
+      break;
     }
   }
 
-  {
-    const word = context.matchBefore(/\w+/);
-    if (word) {
-      return {
-        type: "schema",
-        word,
-      };
-    }
+  if (start == null) {
+    return null;
   }
 
-  return null;
+  return {
+    text: doc.slice(start, end),
+    from: start,
+    to: end,
+  };
 }
 
 const metabaseStyle = HighlightStyle.define(
