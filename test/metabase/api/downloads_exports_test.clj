@@ -1236,3 +1236,36 @@
                     :dashcard-download        expected-header
                     :public-dashcard-download expected-header}
                    (update-vals formatted-results first)))))))))
+
+(defn- pivot-card-with-scalar [scalar]
+  {:display                :pivot
+   :visualization_settings {:pivot_table.column_split
+                            {:rows    ["CATEGORY"]
+                             :columns ["CREATED_AT"]
+                             :values  ["sum"]}
+                            :column_settings
+                            {"[\"name\",\"sum\"]" (merge {:number_style       "currency"
+                                                          :currency_in_header false}
+                                                         (when scalar {:scale scalar}))}}
+   :dataset_query          {:database (mt/id)
+                            :type     :query
+                            :query {:source-table (mt/id :products)
+                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                   [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}})
+
+(deftest pivot-with-scale-test
+  (testing "Pivot table exports look pivoted"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card no-scale-card  (pivot-card-with-scalar nil)
+                     :model/Card one-scale-card (pivot-card-with-scalar 1)
+                     :model/Card two-scale-card (pivot-card-with-scalar 2)]
+        (doseq [[c1 c2 export-format expected] [[one-scale-card  no-scale-card  :csv  true]
+                                                [one-scale-card  two-scale-card :csv  false]
+                                                [no-scale-card   two-scale-card :csv  false]
+                                                [one-scale-card  no-scale-card  :xlsx true]
+                                                [one-scale-card  two-scale-card :xlsx false]
+                                                [no-scale-card   two-scale-card :xlsx false]]]
+               (is (= expected
+                      (= (all-outputs! c1 {:export-format export-format :format-rows true :pivot true})
+                         (all-outputs! c2 {:export-format export-format :format-rows true :pivot true})))))))))
