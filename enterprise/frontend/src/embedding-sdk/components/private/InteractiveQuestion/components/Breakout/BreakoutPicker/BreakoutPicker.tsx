@@ -1,4 +1,3 @@
-import S from "embedding-sdk/components/private/InteractiveQuestion/components/Picker.module.css";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
@@ -27,7 +26,6 @@ export const BreakoutPickerInner = ({
 
   return (
     <BreakoutPopover
-      className={S.PickerContainer}
       query={query}
       stageIndex={stageIndex}
       breakout={breakoutItem?.breakout}

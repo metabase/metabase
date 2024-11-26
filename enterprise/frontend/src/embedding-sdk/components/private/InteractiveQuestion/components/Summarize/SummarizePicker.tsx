@@ -1,7 +1,5 @@
-import cx from "classnames";
 import _ from "underscore";
 
-import S from "embedding-sdk/components/private/InteractiveQuestion/components/Picker.module.css";
 import {
   AggregationPicker,
   type AggregationPickerProps,
@@ -37,7 +35,7 @@ export const SummarizePicker = ({
 
   return (
     <AggregationPicker
-      className={cx(S.PickerContainer, className)}
+      className={className}
       query={query}
       stageIndex={stageIndex}
       clause={aggregation?.aggregation}
