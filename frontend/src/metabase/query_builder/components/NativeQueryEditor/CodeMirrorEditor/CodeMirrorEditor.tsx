@@ -2,7 +2,15 @@ import CodeMirror, {
   type ReactCodeMirrorRef,
   type ViewUpdate,
 } from "@uiw/react-codemirror";
-import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
+
+import { isEventOverElement } from "metabase/lib/dom";
 
 import type { EditorProps, EditorRef } from "../Editor";
 
@@ -15,7 +23,13 @@ type CodeMirrorEditorProps = EditorProps;
 export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
   function CodeMirrorEditor(props, ref) {
     const editor = useRef<ReactCodeMirrorRef>(null);
-    const { query, onChange, readOnly, onSelectionChange } = props;
+    const {
+      query,
+      onChange,
+      readOnly,
+      onSelectionChange,
+      onRightClickSelection,
+    } = props;
     const extensions = useExtensions();
 
     useImperativeHandle(ref, () => {
@@ -48,6 +62,26 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
       },
       [onSelectionChange],
     );
+
+    useEffect(() => {
+      function handler(evt: MouseEvent) {
+        const selection = editor.current?.state?.selection.main;
+        if (!selection) {
+          return;
+        }
+
+        const selections = Array.from(
+          document.querySelectorAll(".cm-selectionBackground"),
+        );
+
+        if (selections.some(selection => isEventOverElement(evt, selection))) {
+          evt.preventDefault();
+          onRightClickSelection?.();
+        }
+      }
+      document.addEventListener("contextmenu", handler);
+      return () => document.removeEventListener("contextmenu", handler);
+    }, [onRightClickSelection]);
 
     return (
       <CodeMirror
