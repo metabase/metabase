@@ -288,7 +288,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       { tag: "textarea", jsx: <textarea>textarea tag text</textarea> },
     ];
 
-    it(`no css rule should match affect ${elements.map(e => e.tag).join(", ")} outside of the provider`, () => {
+    it(`no css rule should match ${elements.map(e => e.tag).join(", ")} outside of the provider`, () => {
       cy.mount(
         <div>
           {elements.map(({ jsx }) => jsx)}
