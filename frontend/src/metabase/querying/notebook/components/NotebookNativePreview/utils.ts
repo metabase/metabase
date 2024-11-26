@@ -21,12 +21,12 @@ export function createDatasetQuery(
   };
 }
 
-export function createNativeQuery(question: Question, queryText: string = "") {
+export function createNativeQuery(question: Question, query: string = "") {
   return new NativeQuery(question, {
     type: "native",
     database: question.database()?.id ?? null,
     native: {
-      query: queryText ?? "",
+      query,
     },
   });
 }
