@@ -111,10 +111,10 @@ jobs:
         id: dependencies
         with:
           script: | # js
-            const { getSdkVersionFromBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
             const branchName = '${{ github.base_ref || github.ref }}';
 
-            const sdk_version = await getSdkVersionFromBranchName({
+            const sdk_version = await getSdkVersionFromReleaseBranchName({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,

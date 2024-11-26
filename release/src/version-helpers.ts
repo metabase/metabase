@@ -90,20 +90,15 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
-export const getSdkVersionFromBranchName = async ({
+export const getSdkVersionFromReleaseBranchName = async ({
   github,
   owner,
   repo,
   branchName,
 }: GithubProps & { branchName: string }) => {
-  let majorVersion: string;
-  let sdkVersion: string;
+  const majorVersion = getMajorVersionNumberFromReleaseBranch(branchName);
 
-  if (isReleaseBranch(branchName)) {
-    majorVersion = getMajorVersionNumberFromReleaseBranch(branchName);
-  } else {
-    majorVersion = "52"; // TODO: automate resolving next release major version;
-  }
+  let sdkVersion: string;
 
   console.log(
     `Resolved latest major release version - ${Number(majorVersion)}`,
@@ -183,10 +178,6 @@ export async function getLastEmbeddingSdkReleaseTag({
 
   return lastRelease;
 }
-
-const isReleaseBranch = (branch: string): boolean => {
-  return !!/release-x\.(\d+)\.x$/.exec(branch);
-};
 
 export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
   const match = /release-x\.(\d+)\.x$/.exec(branch);
