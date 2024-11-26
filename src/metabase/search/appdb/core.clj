@@ -86,9 +86,10 @@
          (into #{} (map :model)))))
 
 (defmethod search.engine/init! :search.engine/fulltext
-  [& [force-reset?]]
+  [& {:keys [force-reset? populate?] :or {populate? true}}]
   (search.index/ensure-ready! force-reset?)
-  (search.ingestion/populate-index! :search.engine/fulltext))
+  (when populate?
+    (search.ingestion/populate-index! :search.engine/fulltext)))
 
 (defmethod search.engine/reindex! :search.engine/fulltext
   []

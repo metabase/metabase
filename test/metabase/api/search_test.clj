@@ -25,7 +25,6 @@
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.in-place.scoring :as scoring]
-   [metabase.search.postgres.index :as search.index]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -313,7 +312,7 @@
 (deftest custom-engine-test
   (when (search/supports-index?)
     (testing "It can use an alternate search engine"
-      (is (search.index/ensure-ready! false))
+      (is (search/init-index! {:force-reset? false :populate? false}))
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
@@ -1590,8 +1589,7 @@
         (is (empty? (search-results 200)))
         (mt/user-http-request :crowberto :post 200 "search/force-reindex")
         (is (loop [attempts-left 5]
-              (if (and (#'search.index/exists? :search_index)
-                       (pos? (t2/count :search_index))
+              (if (and (pos? (try (t2/count :search_index) (catch Exception _ 0)))
                        (some (comp #{id} :id) (search-results 200)))
                 ::success
                 (when (pos? attempts-left)

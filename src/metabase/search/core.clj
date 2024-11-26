@@ -23,9 +23,9 @@
 
 (defn init-index!
   "Ensure there is an index ready to be populated."
-  [& {:keys [force-reset?]}]
+  [& {:as opts}]
   (doseq [e (search.engine/active-engines)]
-    (search.engine/init! e force-reset?)))
+    (search.engine/init! e opts)))
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index."
