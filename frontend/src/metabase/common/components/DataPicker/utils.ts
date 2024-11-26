@@ -8,6 +8,8 @@ import type {
   Database,
   DatabaseId,
   SchemaName,
+  SearchModel,
+  SearchResult,
   Table,
   TableId,
 } from "metabase-types/api";
@@ -153,25 +155,29 @@ export const isFolderItem = (
 };
 
 export const createShouldShowItem = (
-  models: CollectionItemModel[],
+  models: (CollectionItemModel | SearchModel)[],
   databaseId?: DatabaseId,
 ) => {
-  return (item: QuestionPickerItem) => {
+  return (item: QuestionPickerItem | SearchResult) => {
     if (item.model === "collection") {
       const below = item.below ?? [];
       const here = item.here ?? [];
       const contents = [...below, ...here];
-      const hasCards = models.some(model => contents.includes(model));
+      const hasCards = models.some(model =>
+        contents.includes(model as CollectionItemModel),
+      );
 
       if (item.id !== "root" && !item.is_personal && !hasCards) {
         return false;
+      } else {
+        return true;
       }
     }
-
     if (
-      isNullOrUndefined(databaseId) ||
-      !hasDatabaseId(item) ||
-      isNullOrUndefined(item.database_id)
+      (isNullOrUndefined(databaseId) ||
+        !hasDatabaseId(item) ||
+        isNullOrUndefined(item.database_id)) &&
+      models.includes(item.model)
     ) {
       return true;
     }
