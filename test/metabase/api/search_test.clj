@@ -21,9 +21,9 @@
    [metabase.models.revision :as revision]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search :as search]
+   [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
-   [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.core :as search]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -32,7 +32,7 @@
 
 (comment
   ;; We need this to ensure the engine hierarchy is registered
-  search.fulltext/keep-me)
+  search.engines.appdb/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -312,6 +312,7 @@
 (deftest custom-engine-test
   (when (search/supports-index?)
     (testing "It can use an alternate search engine"
+      (is (search/init-index! {:force-reset? false :populate? false}))
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
@@ -1579,14 +1580,17 @@
 (deftest force-reindex-test
   (when (search/supports-index?)
     (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
-      (let [search-results #(:data (mt/user-http-request :rasta :get 200 "search" :q "boggle" :search_engine "fulltext"))]
-        (try
-          (t2/delete! :search_index)
-          (catch Exception _))
-        (is (empty? (search-results)))
+      (mt/user-http-request :crowberto :post 200 "search/re-init")
+      (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "fulltext"))]
+        (is (try
+              (t2/delete! :search_index)
+              (catch Exception _
+                :already-deleted)))
+        (is (empty? (search-results 200)))
         (mt/user-http-request :crowberto :post 200 "search/force-reindex")
         (is (loop [attempts-left 5]
-              (if (some (comp #{id} :id) (search-results))
+              (if (and (pos? (try (t2/count :search_index) (catch Exception _ 0)))
+                       (some (comp #{id} :id) (search-results 200)))
                 ::success
                 (when (pos? attempts-left)
                   (Thread/sleep 200)
@@ -1608,11 +1612,12 @@
   ([context params]
    (weights-url (assoc params :context (name context)))))
 
-(deftest weights-test
+(deftest ^:synchronized weights-test
   (let [base-url           (weights-url)
         original-weights   (search.config/weights :default)
         original-overrides (public-settings/experimental-search-weight-overrides)]
     (try
+      (public-settings/experimental-search-weight-overrides! nil)
       (testing "default weights"
         (is (= original-weights (mt/user-http-request :crowberto :get 200 base-url)))
         (is (mt/user-http-request :rasta :get 403 (weights-url {:recency 4})))
@@ -1627,6 +1632,8 @@
         (let [context          :none-given
               context-url      (weights-url context {})
               original-weights (search.config/weights context)]
+          ;; overrides from before will cascade
+          (is (= 30.0 (:text (mt/user-http-request :crowberto :get 200 context-url))))
           (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
           (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
           (is (= (assoc original-weights :recency 5.0)
@@ -1643,6 +1650,10 @@
           (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))
           (is (= (mt/user-http-request :crowberto :get 200 base-url)
                  (:default (mt/user-http-request :crowberto :get 200 context-url))))
+          (is (= (mt/user-http-request :crowberto :get 200 (weights-url :none-given {}))
+                 (merge
+                  (:default (mt/user-http-request :crowberto :get 200 context-url))
+                  (:none-given (mt/user-http-request :crowberto :get 200 context-url)))))
           (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 4})))
           (is (mt/user-http-request :crowberto :get 400 (weights-url context {:recency 4})))
           (is (mt/user-http-request :crowberto :get 400 (weights-url context {:text 30})))

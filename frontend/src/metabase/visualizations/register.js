@@ -20,6 +20,7 @@ import { PieChart } from "./visualizations/PieChart";
 import PivotTable from "./visualizations/PivotTable";
 import Progress from "./visualizations/Progress";
 import RowChart from "./visualizations/RowChart";
+import { SankeyChart } from "./visualizations/SankeyChart";
 import { Scalar } from "./visualizations/Scalar";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
@@ -45,6 +46,7 @@ export default function () {
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
+  registerVisualization(SankeyChart);
 
   registerVisualization(ActionViz);
   registerVisualization(DashCardPlaceholder);

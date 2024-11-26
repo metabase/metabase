@@ -8,7 +8,7 @@ import type { ElementEvent } from "echarts/core";
 import type { BrushAreaParam } from "echarts/types/src/component/brush/BrushModel";
 import type { ZRRawMouseEvent } from "zrender/lib/core/types";
 
-export type EChartsSeriesMouseEvent = ElementEvent & {
+export type EChartsSeriesMouseEvent<TDatum = unknown> = ElementEvent & {
   event: ElementEvent["event"] & {
     event: ZRRawMouseEvent;
   };
@@ -16,7 +16,9 @@ export type EChartsSeriesMouseEvent = ElementEvent & {
   seriesId?: string;
   name?: string;
   value: any;
+  dataType?: string;
   seriesType: string;
+  data: TDatum;
 };
 
 export type EChartsSeriesBrushEndEvent = EChartsSeriesMouseEvent & {

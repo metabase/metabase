@@ -16,31 +16,40 @@ const metadata = createMockMetadata({
 });
 
 const QUERY_WITH_FILTERS = Question.create({
-  databaseId: SAMPLE_DB_ID,
-  tableId: ORDERS_ID,
   metadata,
-})
-  // eslint-disable-next-line no-restricted-syntax
-  .legacyQuery({ useStructuredQuery: true })
-  .aggregate(["count"])
-  .filter(["time-interval", ["field", ORDERS.CREATED_AT, null], -30, "day"])
-  .filter(["=", ["field", ORDERS.TOTAL, null], 1234])
-  .filter([
-    "contains",
-    ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
-    "asdf",
-  ])
-  .question()
-  .query();
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+      filter: [
+        "and",
+        ["time-interval", ["field", ORDERS.CREATED_AT, null], -30, "day"],
+        ["=", ["field", ORDERS.TOTAL, null], 1234],
+        [
+          "contains",
+          ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
+          "asdf",
+        ],
+      ],
+      aggregation: [["count"]],
+    },
+  },
+}).query();
 
 const QUERY_WITHOUT_FILTERS = Question.create({
-  databaseId: SAMPLE_DB_ID,
-  tableId: ORDERS_ID,
   metadata,
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+  },
 })
   // eslint-disable-next-line no-restricted-syntax
   .legacyQuery({ useStructuredQuery: true })
-  .aggregate(["count"])
   .question()
   .query();
 

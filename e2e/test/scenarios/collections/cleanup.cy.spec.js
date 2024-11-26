@@ -1,3 +1,6 @@
+import dayjs from "dayjs";
+import { P, isMatching } from "ts-pattern";
+
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 import {
@@ -189,6 +192,22 @@ describe("scenarios > collections > clean up", () => {
         moveToTrash();
         assertNoPagination();
 
+        expectGoodSnowplowEvent(
+          event =>
+            isMatching(
+              {
+                event: "moved-to-trash",
+                event_detail: P.union("dashboard", "question"),
+                target_id: P.number,
+                triggered_from: "cleanup_modal",
+                duration_ms: P.number,
+                result: "success",
+              },
+              event,
+            ),
+          10,
+        );
+
         // Because cutoff_date will be relative to the current date, we simply check
         // that it exists and is a string. Snowplow will assert that it is in the correct
         // format
@@ -300,24 +319,51 @@ describe("scenarios > collections > clean up", () => {
       cy.wait("@staleItems");
       cleanUpAlert().should("not.exist");
 
-      seedMainTestData().then(seedData => {
-        visitCollection(seedData.collection.id);
+      // seed slightly stale content
+      cy.createQuestion({
+        name: "Not stale enough",
+        collection_id: FIRST_COLLECTION_ID,
+        query: { "source-table": STATIC_ORDERS_ID },
+      }).then(req => {
+        makeItemsStale(
+          [req.body.id],
+          "card",
+          dayjs().startOf("day").subtract(2, "months").format("YYYY-MM-DD"),
+        );
 
-        cy.log("should be shown alert to clean up collection");
+        cy.log("should not be shown with 2 month stale content");
+        cy.reload();
+        cleanUpAlert().should("not.exist");
+      });
+
+      // seed stale enough content
+      cy.createQuestion({
+        name: "Stale enough",
+        collection_id: FIRST_COLLECTION_ID,
+        query: { "source-table": STATIC_ORDERS_ID },
+      }).then(req => {
+        makeItemsStale(
+          [req.body.id],
+          "card",
+          dayjs().startOf("day").subtract(3, "months").format("YYYY-MM-DD"),
+        );
+
+        cy.log("should be shown with 3 month stale content");
+        cy.reload();
         cleanUpAlert()
           .should("exist")
           .findByText(/Get rid of unused content/)
           .click();
         cy.url().should("include", "cleanup");
         closeCleanUpModal();
-
-        cy.log("should not show alert if user is not admin");
-        cy.signOut();
-        cy.signInAsNormalUser();
-        cy.reload();
-        cy.wait("@staleItems");
-        cleanUpAlert().should("not.exist");
       });
+
+      cy.log("should not show alert if user is not admin");
+      cy.signOut();
+      cy.signInAsNormalUser();
+      cy.reload();
+      cy.wait("@staleItems");
+      cleanUpAlert().should("not.exist");
     });
   });
 });

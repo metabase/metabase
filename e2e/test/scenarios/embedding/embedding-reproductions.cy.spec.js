@@ -1138,7 +1138,7 @@ describeEE("issue 8490", () => {
     });
   });
 
-  it("static embeddings should respect `#locale` hash in the URL (metabase#8490)", () => {
+  it("static embeddings should respect `#locale` hash parameter (metabase#8490, metabase#50182)", () => {
     cy.log("test a static embedded dashboard");
     cy.get("@dashboardId").then(dashboardId => {
       visitEmbeddedPage(
