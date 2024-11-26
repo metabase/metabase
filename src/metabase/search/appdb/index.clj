@@ -5,10 +5,12 @@
    [metabase.config :as config]
    [metabase.models.setting :as settings :refer [defsetting]]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -17,6 +19,7 @@
    (org.postgresql.util PSQLException)))
 
 (comment
+  h2/keep-me
   postgres/keep-me)
 
 (def ^:private insert-batch-size 150)
@@ -53,7 +56,8 @@
 
 (defn- exists? [table-name]
   (when table-name
-    (t2/exists? :information_schema.tables :table_name (name table-name))))
+    ;; TODO specialize the case based on the driver
+    (t2/exists? :information_schema.tables :table_name (u/upper-case-en (name table-name)))))
 
 (defn- drop-table! [table-name]
   (boolean
@@ -132,6 +136,7 @@
   (let [table-name (name table-name)]
     (doseq [stmt (specialization/post-create-statements table-name table-name)]
       (t2/query stmt))))
+
 
 (defn maybe-create-pending!
   "Create a search index table."
