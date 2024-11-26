@@ -6,6 +6,7 @@ import {
   setupDatabasesEndpoints,
   setupFieldValuesEndpoints,
   setupSearchEndpoints,
+  setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -114,7 +115,8 @@ interface SetupOpts {
   table?: Table;
   field?: Field;
   fieldValues?: GetFieldValuesResponse;
-  hasDataAccess?: boolean;
+  unauthorizedField?: Field;
+  hasFieldValuesAccess?: boolean;
 }
 
 const setup = async ({
@@ -122,12 +124,16 @@ const setup = async ({
   table = ORDERS_TABLE,
   field = ORDERS_ID_FIELD,
   fieldValues = createMockFieldValues({ field_id: Number(field.id) }),
-  hasDataAccess = true,
+  unauthorizedField,
+  hasFieldValuesAccess = true,
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
 
-  if (hasDataAccess) {
+  if (unauthorizedField) {
+    setupUnauthorizedFieldEndpoint(unauthorizedField);
+  }
+  if (hasFieldValuesAccess) {
     setupFieldValuesEndpoints(fieldValues);
   } else {
     setupUnauthorizedFieldValuesEndpoints(fieldValues);
@@ -247,7 +253,10 @@ describe("MetadataFieldSettings", () => {
     });
 
     it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
-      await setup({ field: ORDERS_USER_ID_FIELD });
+      await setup({
+        field: ORDERS_USER_ID_FIELD,
+        unauthorizedField: PEOPLE_ID_FIELD,
+      });
       expect(screen.getByText("Field access denied")).toBeInTheDocument();
     });
 
@@ -258,7 +267,10 @@ describe("MetadataFieldSettings", () => {
     });
 
     it("should show an access denied error if is custom mapping without data permissions", async () => {
-      await setup({ field: ORDERS_QUANTITY_FIELD, hasDataAccess: false });
+      await setup({
+        field: ORDERS_QUANTITY_FIELD,
+        hasFieldValuesAccess: false,
+      });
       expect(screen.getByText("Custom mapping")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("1 remapped")).not.toBeInTheDocument();
       expect(
