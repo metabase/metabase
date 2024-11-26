@@ -259,8 +259,7 @@
                              (str join-display-name " → " field-display-name)
                              field-display-name)
         temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
-        bin-format         (fn [display-name]
-                             (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
+        bin-format         #(lib.binning/ensure-ends-with-binning % binning (:semantic-type field-metadata))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (cond
       (and (not= style :long) hide-bin-bucket?) display-name
