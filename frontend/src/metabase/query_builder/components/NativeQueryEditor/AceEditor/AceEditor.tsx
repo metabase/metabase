@@ -1,12 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import {
-  Component,
-  type ComponentType,
-  type RefAttributes,
-  createRef,
-  forwardRef,
-} from "react";
+import { Component, createRef, forwardRef } from "react";
 import { connect } from "react-redux";
 import slugg from "slugg";
 import { t } from "ttag";
@@ -554,17 +548,14 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
   },
 });
 
-function withSnippets(
-  WrappedComponent: ComponentType<SnippetProps & RefAttributes<EditorRef>>,
-) {
-  return forwardRef<EditorRef>(function WithSnippets(props, ref) {
-    const { data } = useListSnippetsQuery();
-    return <WrappedComponent {...props} ref={ref} snippets={data} />;
-  });
-}
-
-export const AceEditor = _.compose(
+const ConnectedAceEditor = _.compose(
   ExplicitSize(),
-  withSnippets,
   connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
-)(AceEditorInner) as ComponentType<EditorProps & RefAttributes<EditorRef>>;
+)(AceEditorInner);
+
+export const AceEditor = forwardRef<EditorRef, EditorProps>(
+  function AceEditor(props, ref) {
+    const { data: snippets } = useListSnippetsQuery();
+    return <ConnectedAceEditor {...props} snippets={snippets} ref={ref} />;
+  },
+);
