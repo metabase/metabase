@@ -17,8 +17,16 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("can create questions via the CreateQuestion component", () => {
+  it("can create a question via the CreateQuestion component", () => {
     cy.intercept("POST", "/api/card").as("createCard");
+
+    cy.intercept("POST", "/api/dataset", req => {
+      // throttling to 500 Kbps (slow 3G) makes the loading indicator
+      // shows up reliably when we click on visualize.
+      req.on("response", res => {
+        res.setThrottle(500);
+      });
+    });
 
     mountSdkContent(
       <Flex p="xl">
@@ -40,11 +48,17 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
 
       cy.findByRole("button", { name: "Visualize" }).click();
 
+      // Should show a loading indicator (metabase#47564)
+      cy.findByTestId("loading-indicator").should("exist");
+
       // Should be able to go back to the editor view
       cy.findByRole("button", { name: "Show editor" }).click();
 
       // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
+
+      // Should not show a loading indicator again as the question has not changed (metabase#47564)
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
