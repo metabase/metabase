@@ -1,15 +1,10 @@
-export function nativeEditor({ visible = true }: { visible?: boolean } = {}) {
+export function nativeEditor() {
   cy.findAllByTestId("loading-indicator").should("not.exist");
-
-  const res = cy.get("[data-testid=native-query-editor] .ace_content");
-  if (visible) {
-    return res.should("be.visible");
-  }
-  return res;
+  return cy.get("[data-testid=native-query-editor] .ace_content");
 }
 
 export function focusNativeEditor() {
-  nativeEditor().click();
+  nativeEditor().should("be.visible").click();
 
   return cy
     .findByTestId("native-query-editor")

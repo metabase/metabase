@@ -409,7 +409,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
       cy.wait("@sqlFormatter");
 
-      nativeEditor().get(".ace_line").as("lines");
+      nativeEditor().should("be.visible").get(".ace_line").as("lines");
 
       cy.get("@lines").eq(0).should("have.text", "SELECT");
       cy.get("@lines").eq(1).should("have.text", "  *");

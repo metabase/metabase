@@ -768,7 +768,7 @@ describe("issue 23421", () => {
     openQuestionActions();
     popover().findByText("Edit query definition").click();
 
-    nativeEditor().should("contain", query);
+    nativeEditor().should("be.visible").and("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
     cy.button("Save changes").should("be.visible");
@@ -781,7 +781,7 @@ describe("issue 23421", () => {
     openQuestionActions();
     popover().findByText("Edit query definition").click();
 
-    nativeEditor().should("contain", query);
+    nativeEditor().should("be.visible").and("contain", query);
     cy.findByTestId("visualization-root")
       .findByText("Every field is hidden right now")
       .should("be.visible");

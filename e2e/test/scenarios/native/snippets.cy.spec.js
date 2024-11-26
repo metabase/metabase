@@ -139,10 +139,9 @@ describe("scenarios > question > snippets", () => {
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1
-    nativeEditor().should(
-      "have.text",
-      "select * from {{snippet: Table: Orders}} limit 1",
-    );
+    nativeEditor()
+      .should("be.visible")
+      .and("have.text", "select * from {{snippet: Table: Orders}} limit 1");
     // Replace "Orders" with "Reviews"
     focusNativeEditor().type(
       "{end}" +
@@ -151,10 +150,9 @@ describe("scenarios > question > snippets", () => {
         "Reviews",
     );
     // Check 2
-    nativeEditor().should(
-      "have.text",
-      "select * from {{snippet: Table: Reviews}} limit 1",
-    );
+    nativeEditor()
+      .should("be.visible")
+      .and("have.text", "select * from {{snippet: Table: Reviews}} limit 1");
     // Rerun the query
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.get("@results").contains(/christ/i);

@@ -74,7 +74,7 @@ export function assertIsModel() {
 
   // For native
   cy.findByText("This question is written in SQL.").should("not.exist");
-  nativeEditor({ visible: false }).should("not.exist");
+  nativeEditor().should("not.exist");
 }
 
 // Requires question actions to be open

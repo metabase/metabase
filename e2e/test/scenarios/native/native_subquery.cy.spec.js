@@ -199,10 +199,9 @@ describe("scenarios > question > native subquery", () => {
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
         cy.get("@questionId").then(questionId => {
-          nativeEditor().should(
-            "contain",
-            `{{#${questionId}-a-people-question-1}}`,
-          );
+          nativeEditor()
+            .should("be.visible")
+            .and("contain", `{{#${questionId}-a-people-question-1}}`);
         });
 
         // change the name
@@ -215,10 +214,9 @@ describe("scenarios > question > native subquery", () => {
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
         cy.get("@questionId").then(questionId => {
-          nativeEditor().should(
-            "contain",
-            `{{#${questionId}-a-people-question-1-changed}}`,
-          );
+          nativeEditor()
+            .should("be.visible")
+            .and("contain", `{{#${questionId}-a-people-question-1-changed}}`);
         });
       });
     });

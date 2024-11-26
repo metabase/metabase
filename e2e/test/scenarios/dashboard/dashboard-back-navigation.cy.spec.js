@@ -100,7 +100,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByTestId("native-query-top-bar")
       .findByText("This question is written in SQL.")
       .should("be.visible");
-    nativeEditor({ visible: false }).should("not.be.visible");
+    nativeEditor().should("not.be.visible");
   });
 
   it("should display a back to the dashboard button in table x-ray dashboards", () => {

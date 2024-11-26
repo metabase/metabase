@@ -140,7 +140,7 @@ describe("issue 33327", () => {
     focusNativeEditor().should("contain", query).type("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    nativeEditor().should("contain", "SELECT --1");
+    nativeEditor().should("be.visible").and("contain", "SELECT --1");
     getRunQueryButton().click();
     cy.wait("@dataset");
 
