@@ -3,7 +3,7 @@ title: Sankey charts
 ---
 # Sankey charts
 
-Sankey charts show how data flows through multi-dimensional steps.
+Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow.
 
 ![Left-aligned sankey chart](../../images/sankey-left-aligned.png)
 
@@ -67,9 +67,11 @@ In this case, justified alignment looks the same, as the end nodes move to take 
 
 ### Edge labels
 
-Whether an edge displays its value. Options for displaying labels include auto, compact, or full formatting.
+Whether an edge (a.k.a. link or arrow) displays its value. Options for displaying labels include auto, compact, or full formatting.
 
 ### Edge color
+
+![Sankey gray edges](../../images/sankey-gray-edges.png)
 
 Options for edge colors include:
 
