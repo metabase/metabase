@@ -39,26 +39,28 @@
       padding: 2px 4px;
     }
 
-    .ace_keyword {
-      color: var(--mb-color-saturated-purple);
-    }
+    .ace_line {
+      .ace_keyword {
+        color: var(--mb-color-saturated-purple);
+      }
 
-    .ace_function,
-    .ace_variable {
-      color: var(--mb-color-saturated-blue);
-    }
+      .ace_function,
+      .ace_variable {
+        color: var(--mb-color-saturated-blue);
+      }
 
-    .ace_constant,
-    .ace_type {
-      color: var(--mb-color-saturated-red);
-    }
+      .ace_constant,
+      .ace_type {
+        color: var(--mb-color-saturated-red);
+      }
 
-    .ace_string {
-      color: var(--mb-color-saturated-green);
-    }
+      .ace_string {
+        color: var(--mb-color-saturated-green);
+      }
 
-    .ace_templateTag {
-      color: var(--mb-color-brand);
+      .ace_templateTag {
+        color: var(--mb-color-brand);
+      }
     }
 
     .ace_gutter-cell {
