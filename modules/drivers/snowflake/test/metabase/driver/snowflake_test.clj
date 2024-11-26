@@ -191,6 +191,18 @@
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
 
+(deftest ^:parallel can-set-schema-in-additional-options
+  (mt/test-driver :snowflake
+    (qp.store/with-metadata-provider (mt/id)
+      (let [schema "INFORMATION_SCHEMA"
+            details (-> (mt/db)
+                        (assoc-in [:details :quote-db-name] true)
+                        (assoc-in [:details :additional-options] (format "schema=%s" schema))
+                        :details)]
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [:snowflake details]]
+          (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
+          (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
+
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
