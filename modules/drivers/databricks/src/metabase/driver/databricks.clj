@@ -49,7 +49,7 @@
 
 (defn- catalog-present?
   [jdbc-spec catalog]
-  (let [sql "select * from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
+  (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
     (= 1 (count (jdbc/query jdbc-spec [sql catalog])))))
 
 (defmethod driver/can-connect? :databricks
