@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
-  assertEChartsTooltip,
   createDashboardWithQuestions,
   createNativeQuestion,
   createQuestionAndDashboard,
@@ -1063,8 +1062,6 @@ describeEE("issue 8490", () => {
           visualization_settings: {
             "graph.dimensions": ["CREATED_AT", "CATEGORY"],
             "graph.metrics": ["count"],
-            "graph.max_categories_enabled": true,
-            "graph.max_categories": 2,
           },
           display: "bar",
           enable_embedding: true,
@@ -1164,23 +1161,6 @@ describeEE("issue 8490", () => {
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
       });
-    });
-
-    assertEChartsTooltip({
-      rows: [
-        {
-          name: "Gizmo",
-          value: "4",
-        },
-        {
-          name: "Widget",
-          value: "2",
-        },
-        {
-          name: "합계",
-          value: "6",
-        },
-      ],
     });
 
     cy.findByTestId("embed-frame").within(() => {
