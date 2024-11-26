@@ -54,13 +54,6 @@
     "CREATE INDEX IF NOT EXISTS %s_model_archived_idx ON %s (model, archived)"
     "CREATE INDEX IF NOT EXISTS %s_archived_idx ON %s (archived)"]))
 
-(defmethod specialization/upsert! :postgres [table entry]
-  (t2/query
-   {:insert-into   table
-    :values        [entry]
-    :on-conflict   [:model :model_id]
-    :do-update-set entry}))
-
 (defmethod specialization/batch-upsert! :postgres [table entries]
   (when (seq entries)
     (t2/query
@@ -150,25 +143,30 @@
                  "search_vector")
                " @@ query")])})
 
+(defn- weighted-tsvector [weight text]
+  [:setweight [:to_tsvector [:inline tsv-language] [:cast text :text]] [:inline weight]])
+
 (defmethod specialization/extra-entry-fields :postgres [entity]
   {:search_vector
    [:||
-    [:setweight [:to_tsvector [:inline tsv-language] [:cast (:name entity) :text]]
-     [:inline "A"]]
-    [:setweight [:to_tsvector
-                 [:inline tsv-language]
-                 [:cast
-                  (:searchable_text entity "")
-                  :text]]
-     [:inline "B"]]]
+    (weighted-tsvector "A" (:name entity))
+    (weighted-tsvector "B" (:searchable_text entity ""))]
 
    :with_native_query_vector
    [:||
-    [:setweight [:to_tsvector [:inline tsv-language] [:cast (:name entity) :text]]
-     [:inline "A"]]
-    [:setweight [:to_tsvector
-                 [:inline tsv-language]
-                 [:cast
-                  (str (:searchable_text entity) " " (:native_query entity))
-                  :text]]
-     [:inline "B"]]]})
+    (weighted-tsvector "A" (:name entity))
+    (weighted-tsvector "B" (str/join " " (keep entity [:searchable_text :native_query])))]})
+
+;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
+;;  0 (the default) ignores the document length
+;;  1 divides the rank by 1 + the logarithm of the document length
+;;  2 divides the rank by the document length
+;;  4 divides the rank by the mean harmonic distance between extents (this is implemented only by ts_rank_cd)
+;;  8 divides the rank by the number of unique words in document
+;; 16 divides the rank by 1 + the logarithm of the number of unique words in document
+;; 32 divides the rank by itself + 1
+(def ^:private ts-rank-normalization 0)
+
+(defmethod specialization/text-score :postgres
+  []
+  [:ts_rank :search_vector :query [:inline ts-rank-normalization]])
