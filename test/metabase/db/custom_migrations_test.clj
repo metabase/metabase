@@ -24,6 +24,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.setting :as setting]
+   [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.task.sync-databases-test :as task.sync-databases-test]
@@ -81,8 +82,7 @@
 (defmacro ^:private with-search-indexing-disabled!
   "Old schemas may be incompatible with the ingestion queries, so turn it off."
   [& body]
-  ;; Once search is the default, and we remove this setting, there will need to be another mechanism to turn it off.
-  `(mt/with-temporary-setting-values [experimental-fulltext-search-enabled false]
+  `(binding [search.ingestion/*disable-updates* true]
      ~@body))
 
 (deftest delete-abandonment-email-task-test

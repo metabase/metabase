@@ -15,6 +15,10 @@
 (defn- index-hits [term]
   (count (search.index/search term)))
 
+(defn- now []
+  ;; Truncate to milliseconds as precision may be lost when roundtripping to the database.
+  (t/truncate-to (t/offset-date-time) :millis))
+
 ;; These helpers only mutate the temp local AppDb.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-index
@@ -211,7 +215,7 @@
     (doseq [[model-type card-type] [["card" "question"] ["dataset" "model"] ["metric" "metric"]]]
       (testing (format "simple %s" model-type)
         (let [card-name (mt/random-name)
-              yesterday (t/- (t/offset-date-time) (t/days 1))]
+              yesterday (t/- (now) (t/days 1))]
           (mt/with-temp [:model/Card {card-id :id} {:name         card-name
                                                     :type         card-type
                                                     :created_at   yesterday
@@ -237,7 +241,7 @@
 
       (testing (format "everything %s" model-type)
         (let [card-name    (mt/random-name)
-              yesterday    (t/- (t/offset-date-time) (t/days 1))
+              yesterday    (t/- (now) (t/days 1))
               two-days-ago (t/- yesterday (t/days 1))]
           (mt/with-temp
             [:model/Collection    {coll-id :id}      {:name            "My collection"
@@ -301,7 +305,7 @@
 (deftest database-ingestion-test
   (search.tu/with-temp-index-table
     (let [db-name (mt/random-name)
-          yesterday (t/- (t/offset-date-time) (t/days 1))]
+          yesterday (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database {db-id :id} {:name       db-name
                                                   :created_at yesterday
                                                   :updated_at yesterday}]
@@ -316,7 +320,7 @@
 (deftest table-ingestion-test
   (search.tu/with-temp-index-table
     (let [table-name (mt/random-name)
-          yesterday  (t/- (t/offset-date-time) (t/days 1))]
+          yesterday  (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:name       table-name
                                                   ;; :view_count = 42
@@ -340,7 +344,7 @@
 (deftest collection-ingestion-test
   (search.tu/with-temp-index-table
     (let [collection-name (mt/random-name)
-          yesterday       (t/- (t/offset-date-time) (t/days 1))]
+          yesterday       (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Collection {coll-id :id} {:name collection-name
                                                       ;; :authority_level = "official"
                                                       :authority_level "official"
@@ -362,7 +366,7 @@
 (deftest action-ingestion-test
   (search.tu/with-temp-index-table
     (let [action-name (mt/random-name)
-          yesterday   (t/- (t/offset-date-time) (t/days 1))]
+          yesterday   (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database   {db-id :id}     {}
                      :model/Collection {coll-id :id}   {}
                      :model/Card       {model-id :id}  {:type "model"
@@ -396,7 +400,7 @@
 (deftest dashboard-ingestion-test
   (search.tu/with-temp-index-table
     (let [dashboard-name (mt/random-name)
-          yesterday      (t/- (t/offset-date-time) (t/days 1))
+          yesterday      (t/- (now) (t/days 1))
           two-days-ago   (t/- yesterday (t/days 1))]
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name       dashboard-name
                                                           ;; :model_created_at = yesterday
@@ -434,7 +438,7 @@
 (deftest segment-ingestion-test
   (search.tu/with-temp-index-table
     (let [segment-name (mt/random-name)
-          yesterday    (t/- (t/offset-date-time) (t/days 1))]
+          yesterday    (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database   {db-id :id}      {}
                      :model/Table      {table-id :id}   {:db_id db-id}
                      :model/Segment    {segment-id :id} {:name       segment-name

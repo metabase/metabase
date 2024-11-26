@@ -40,6 +40,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
@@ -348,8 +349,7 @@
 (defmacro ^:private with-search-indexing-disabled!
   "Old schemas may be incompatible with the ingestion queries, so turn it off."
   [& body]
-  ;; Once search is the default, and we remove this setting, there will need to be another mechanism to turn it off.
-  `(mt/with-temporary-setting-values [experimental-fulltext-search-enabled false]
+  `(binding [search.ingestion/*disable-updates* true]
      ~@body))
 
 (deftest migrate-grid-from-18-to-24-test
