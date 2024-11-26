@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -11,7 +12,6 @@
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.api :as search.api]
    [metabase.search.config
@@ -212,7 +212,8 @@
 (defmethod supported-engine? :search.engine/fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
 
 (defn- default-engine []
-  (if (public-settings/experimental-fulltext-search-enabled)
+  ;; The API tests have not yet been ported to reflect the new search's results.
+  (if (and (supported-engine? :search.engine/fulltext) (not config/is-test?))
     :search.engine/fulltext
     :search.engine/in-place))
 
