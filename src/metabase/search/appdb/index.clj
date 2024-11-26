@@ -91,16 +91,6 @@
        :model_updated_at (:updated_at entity))
       (merge (specialization/extra-entry-fields entity))))
 
-(defn update!
-  "Create the given search index entries"
-  [entity]
-  (let [entry (document->entry entity)]
-    (cond
-      @reindexing?
-      (specialization/upsert! pending-table entry)
-      @initialized?
-      (specialization/upsert! *active-table* entry))))
-
 (defn delete!
   "Remove any entries corresponding directly to a given model instance."
   [id search-models]
@@ -130,7 +120,7 @@
     (when (or active-updated? pending-updated?)
       (->> entries (map :model) frequencies))))
 
-(defmethod search.engine/reset-tracking! :search.engine/fulltext []
+(defmethod search.engine/reset-tracking! :search.engine/fulltext [_]
   ;; TODO we'll make this safe when we switch to the metadata table.
   (reset! initialized? false)
   (reset! reindexing? false))
