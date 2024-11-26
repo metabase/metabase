@@ -1823,11 +1823,15 @@
       (testing (action-testing-str action)
         (mt/with-premium-features #{:audit-app}
           (with-upload-table! [table (create-upload-table!)]
-            (let [csv-rows ["name" "Luke Skywalker"]
-                  file     (csv-file-with csv-rows)]
+            (let [csv-rows   ["name" "Luke Skywalker"]
+                  file       (csv-file-with csv-rows)
+                  event-type (case action
+                               ::upload/append  :upload-append
+                               ::upload/replace :upload-replace)]
+
               (update-csv! action {:file file, :table-id (:id table)})
 
-              (is (=? {:topic    :upload-append
+              (is (=? {:topic    event-type
                        :user_id  (:id (mt/fetch-user :crowberto))
                        :model    "Table"
                        :model_id (:id table)
@@ -1839,7 +1843,7 @@
                                                 :generated-columns 0
                                                 :size-mb           1.811981201171875E-5
                                                 :upload-seconds    pos?}}}
-                      (last-audit-event :upload-append)))
+                      (last-audit-event event-type)))
 
               (io/delete-file file))))))))
 
