@@ -1,5 +1,6 @@
 import type { Active } from "@dnd-kit/core";
 
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
@@ -88,6 +89,14 @@ export function createVisualizerColumnReference(
   );
   if (existingRef) {
     return existingRef;
+  }
+
+  if (isPivotGroupColumn(column)) {
+    return {
+      sourceId: dataSource.id,
+      originalName: column.name,
+      name: column.name,
+    };
   }
 
   let nameIndex = otherReferencedColumns.length + 1;

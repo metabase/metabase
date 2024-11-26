@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
@@ -67,16 +68,18 @@ export const DatasetList = () => {
             </Flex>
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
-                {dataset.data.cols.map(column => (
-                  <DraggableColumnListItem
-                    key={column.name}
-                    column={column}
-                    dataSource={source}
-                    isSelected={referencedColumns.some(ref =>
-                      isReferenceToColumn(column, source.id, ref),
-                    )}
-                  />
-                ))}
+                {dataset.data.cols
+                  .filter(column => !isPivotGroupColumn(column))
+                  .map(column => (
+                    <DraggableColumnListItem
+                      key={column.name}
+                      column={column}
+                      dataSource={source}
+                      isSelected={referencedColumns.some(ref =>
+                        isReferenceToColumn(column, source.id, ref),
+                      )}
+                    />
+                  ))}
               </Box>
             )}
           </Box>
