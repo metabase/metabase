@@ -35,6 +35,7 @@
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
+  []
   (doseq [e (search.engine/active-engines)]
     (search.engine/reset-tracking! e)))
 
