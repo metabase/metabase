@@ -78,11 +78,13 @@
 (defn- load-entrypoint-template [entrypoint-name embeddable? {:keys [uri params nonce]}]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
-   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})]
+   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
+         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
+         should-load-locale-params? (not embeddable?)]
      {:bootstrapJS          (load-inline-js "index_bootstrap")
       :bootstrapJSON        (escape-script (json/generate-string public-settings))
       :assetOnErrorJS       (load-inline-js "asset_loading_error")
-      :userLocalizationJSON (escape-script (load-localization (:locale params)))
+      :userLocalizationJSON (escape-script (load-localization (when should-load-locale-params? (:locale params))))
       :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
       :nonceJSON            (escape-script (json/generate-string nonce))
       :language             (hiccup.util/escape-html (public-settings/site-locale))
