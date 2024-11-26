@@ -134,7 +134,8 @@
   [model where-clause]
   (#'search.engine/consume!
    :search.engine/fulltext
-   (#'search.ingestion/spec-index-reducible model where-clause)))
+   (#'search.ingestion/query->documents
+    (#'search.ingestion/spec-index-reducible model where-clause))))
 
 (defn ingest-then-fetch!
   [model entity-name]
