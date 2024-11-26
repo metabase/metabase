@@ -58,7 +58,7 @@ const getLabelValueFormatting = (
 
   const totalNodesWidth = SANKEY_CHART_STYLE.nodeWidth * nodeLevelsCount;
   const widthPerLevel =
-    (boundaryWidth - totalNodesWidth) / Math.min(nodeLevelsCount - 1, 1);
+    (boundaryWidth - totalNodesWidth) / Math.max(nodeLevelsCount - 1, 1);
 
   return maxEdgeLabelWidth >= widthPerLevel ? "compact" : "full";
 };

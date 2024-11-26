@@ -1089,3 +1089,17 @@
     [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}
                               {:target [:dimension [:field 33 {:temporal-unit :month}]]}
                               {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))
+
+(deftest update-does-not-break
+  ;; There's currently a footgun in Toucan2 - if 1) the result of `before-update` doesn't have an ID, 2) part of your
+  ;; `update` would change a subset of selected rows, and 3) part of your `update` would change *every* selected row
+  ;; (in this case, that's the `updated_at` we automatically set), then it emits an update without a `WHERE` clause.
+  ;;
+  ;;This can be removed after https://github.com/camsaul/toucan2/pull/196 is merged.
+  (mt/with-temp [:model/Card {card-1-id :id} {:name "Flippy"}
+                 :model/Card {card-2-id :id} {:name "Dog Man"}
+                 :model/Card {card-3-id :id} {:name "Petey"}]
+    (testing "only the two cards specified get updated"
+      (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
+                  {:name "Flippy"})
+      (is (= "Petey" (t2/select-one-fn :name :model/Card :id card-3-id))))))
