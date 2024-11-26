@@ -48,21 +48,16 @@ const timeParameterValueDeserializers = [
   {
     testRegex: /^past([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$/,
     deserialize: (matches, fieldRef) => {
-      const base = [
-        "time-interval",
-        fieldRef,
-        -parseInt(matches[0]),
-        matches[1],
-      ];
-      return setStartingFrom(base, parseInt(matches[2]), matches[3]);
+      const base = ["time-interval", fieldRef, -Number(matches[0]), matches[1]];
+      return setStartingFrom(base, Number(matches[2]), matches[3]);
     },
     deserializeMBQL: (matches, fieldRef) => {
       return [
         "relative-time-interval",
         fieldRef,
-        -parseInt(matches[0]),
+        -Number(matches[0]),
         matches[1],
-        -parseInt(matches[2]),
+        -Number(matches[2]),
         matches[3],
       ];
     },
@@ -70,28 +65,23 @@ const timeParameterValueDeserializers = [
   {
     testRegex: /^past([0-9]+)([a-z]+)s(~)?$/,
     deserialize: (matches, fieldRef) =>
-      ["time-interval", fieldRef, -parseInt(matches[0]), matches[1]].concat(
+      ["time-interval", fieldRef, -Number(matches[0]), matches[1]].concat(
         matches[2] ? [{ "include-current": true }] : [],
       ),
   },
   {
     testRegex: /^next([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$/,
     deserialize: (matches, fieldRef) => {
-      const base = [
-        "time-interval",
-        fieldRef,
-        parseInt(matches[0]),
-        matches[1],
-      ];
-      return setStartingFrom(base, -parseInt(matches[2]), matches[3]);
+      const base = ["time-interval", fieldRef, Number(matches[0]), matches[1]];
+      return setStartingFrom(base, -Number(matches[2]), matches[3]);
     },
     deserializeMBQL: (matches, fieldRef) => {
       return [
         "relative-time-interval",
         fieldRef,
-        parseInt(matches[0]),
+        Number(matches[0]),
         matches[1],
-        parseInt(matches[2]),
+        Number(matches[2]),
         matches[3],
       ];
     },
@@ -99,7 +89,7 @@ const timeParameterValueDeserializers = [
   {
     testRegex: /^next([0-9]+)([a-z]+)s(~)?$/,
     deserialize: (matches, fieldRef) =>
-      ["time-interval", fieldRef, parseInt(matches[0]), matches[1]].concat(
+      ["time-interval", fieldRef, Number(matches[0]), matches[1]].concat(
         matches[2] ? [{ "include-current": true }] : [],
       ),
   },
