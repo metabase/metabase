@@ -1,7 +1,5 @@
 import type { GithubProps, Tag } from "./types";
 
-const { execSync } = require("child_process");
-
 // https://regexr.com/7l1ip
 export const isValidVersionString = (versionString: string) => {
   return /^(v0|v1)\.(\d|\.){3,}(\-(RC|rc|alpha|beta))*\d*$/.test(versionString);
@@ -99,6 +97,7 @@ export const getSdkVersionFromBranchName = async ({
   branchName,
 }: GithubProps & { branchName: string }) => {
   let majorVersion: string;
+  let sdkVersion: string;
 
   if (isReleaseBranch(branchName)) {
     majorVersion = getMajorVersionNumberFromReleaseBranch(branchName);
@@ -114,7 +113,7 @@ export const getSdkVersionFromBranchName = async ({
     `Looking for git tag - "embedding-sdk-0.${Number(majorVersion)}.*"`,
   );
 
-  const latestSdkTag = await getLastEmbeddingSdkReleaseTag({
+  const latestSdkTagForMajorRelease = await getLastEmbeddingSdkReleaseTag({
     github,
     owner,
     repo,
@@ -122,18 +121,43 @@ export const getSdkVersionFromBranchName = async ({
   });
 
   console.log(
-    `Resolved SDK latest release tag for v${majorVersion} - ${latestSdkTag}`,
+    `Resolved SDK latest release tag for v${majorVersion} - ${latestSdkTagForMajorRelease}`,
   );
 
-  if (latestSdkTag) {
-    return latestSdkTag;
+  if (latestSdkTagForMajorRelease) {
+    const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(
+      latestSdkTagForMajorRelease,
+    );
+
+    if (match) {
+      sdkVersion = match[1];
+
+      console.log(
+        `Resolved SDK latest release version for v${majorVersion} - ${sdkVersion}`,
+      );
+
+      return sdkVersion;
+    }
   }
 
-  console.warn(
-    "Failed to resolve latest SDK package version! Using latest SDK version",
-  );
+  const latestSdkTag = await getLastEmbeddingSdkReleaseTag({
+    github,
+    owner,
+    repo,
+  });
 
-  return "latest";
+  const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(latestSdkTag);
+  if (match) {
+    sdkVersion = match[1];
+
+    console.warn(
+      `Failed to resolve latest SDK package version! Using latest SDK version available - ${sdkVersion}`,
+    );
+
+    return sdkVersion;
+  }
+
+  throw new Error("Failed to resolve SDK version from git tags");
 };
 
 /**
