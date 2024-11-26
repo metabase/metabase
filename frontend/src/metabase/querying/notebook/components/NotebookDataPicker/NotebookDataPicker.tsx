@@ -10,8 +10,9 @@ import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
@@ -55,11 +56,13 @@ export function NotebookDataPicker({
     : modelsFilterList.filter(model => model !== "metric");
 
   const [isOpen, setIsOpen] = useState(!table);
+  const metadata = useSelector(getMetadata);
   const store = useStore();
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
 
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const isEmbeddingIframe = useSelector(getIsEmbedded);
 
   const tableInfo = useMemo(
     () => table && Lib.displayInfo(query, stageIndex, table),
@@ -82,7 +85,6 @@ export function NotebookDataPicker({
 
   const openDataSourceInNewTab = () => {
     const url = getUrl({ query, table, stageIndex });
-
     if (!url) {
       return;
     }
@@ -94,19 +96,39 @@ export function NotebookDataPicker({
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isCtrlOrMetaClick =
       (event.ctrlKey || event.metaKey) && event.button === 0;
-
-    isCtrlOrMetaClick && !isEmbeddingSdk
-      ? openDataSourceInNewTab()
-      : setIsOpen(true);
+    if (isCtrlOrMetaClick) {
+      openDataSourceInNewTab();
+    } else {
+      setIsOpen(true);
+    }
   };
 
   const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isMiddleClick = event.button === 1;
-
-    isMiddleClick && !isEmbeddingSdk
-      ? openDataSourceInNewTab()
-      : setIsOpen(true);
+    if (isMiddleClick) {
+      openDataSourceInNewTab();
+    } else {
+      setIsOpen(true);
+    }
   };
+
+  if (isEmbeddingSdk || isEmbeddingIframe) {
+    return (
+      <DataSourceSelector
+        selectedDatabase={metadata.databases}
+        selectedDatabaseId={Lib.databaseID(query)}
+        selectedTableId={Lib.sourceTableOrCardId(query)}
+        setSourceTableFn={handleChange}
+        triggerElement={
+          <DataPickerTarget
+            tableInfo={tableInfo}
+            placeholder={placeholder}
+            isDisabled={isDisabled}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <>
@@ -119,22 +141,13 @@ export function NotebookDataPicker({
           touch: false,
         }}
       >
-        <UnstyledButton
-          c="inherit"
-          fz="inherit"
-          fw="inherit"
-          p={NotebookCell.CONTAINER_PADDING}
-          disabled={isDisabled}
+        <DataPickerTarget
+          tableInfo={tableInfo}
+          placeholder={placeholder}
+          isDisabled={isDisabled}
           onClick={handleClick}
           onAuxClick={handleAuxClick}
-        >
-          <Flex align="center" gap="xs">
-            {tableInfo && (
-              <Icon name={getTableIcon(tableInfo)} style={{ flexShrink: 0 }} />
-            )}
-            {tableInfo?.displayName ?? placeholder}
-          </Flex>
-        </UnstyledButton>
+        />
       </Tooltip>
       {isOpen && (
         <DataPickerModal
@@ -147,6 +160,41 @@ export function NotebookDataPicker({
         />
       )}
     </>
+  );
+}
+
+type DataPickerTargetProps = {
+  tableInfo?: Lib.TableDisplayInfo;
+  placeholder: string;
+  isDisabled?: boolean;
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onAuxClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+};
+
+function DataPickerTarget({
+  tableInfo,
+  placeholder,
+  isDisabled,
+  onClick,
+  onAuxClick,
+}: DataPickerTargetProps) {
+  return (
+    <UnstyledButton
+      c="inherit"
+      fz="inherit"
+      fw="inherit"
+      p={NotebookCell.CONTAINER_PADDING}
+      disabled={isDisabled}
+      onClick={onClick}
+      onAuxClick={onAuxClick}
+    >
+      <Flex align="center" gap="xs">
+        {tableInfo && (
+          <Icon name={getTableIcon(tableInfo)} style={{ flexShrink: 0 }} />
+        )}
+        {tableInfo?.displayName ?? placeholder}
+      </Flex>
+    </UnstyledButton>
   );
 }
 
