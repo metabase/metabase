@@ -327,6 +327,10 @@
   [_driver _unit expr]
   (extract :dayofweek expr))
 
+(defmethod sql.qp/date [:snowflake :day-of-week-iso]
+  [_driver _unit expr]
+  (extract :dayofweekiso expr))
+
 (defn- time-zoned-datediff
   "Same as snowflake's `datediff` but converts the args to the results time zone
    before calculating date boundaries. This is needed when an argument could be of
