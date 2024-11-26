@@ -82,7 +82,7 @@ const ViewFooterControl = ({
           label: isRunning ? (
             <Loader
               color={
-                initialValue === "results"
+                value === "results"
                   ? "var(--mb-color-text-selected)"
                   : undefined
               }
@@ -100,7 +100,7 @@ const ViewFooterControl = ({
           label: isRunning ? (
             <Loader
               color={
-                initialValue === "visualization"
+                value === "visualization"
                   ? "var(--mb-color-text-selected)"
                   : undefined
               }
@@ -113,7 +113,7 @@ const ViewFooterControl = ({
           ),
         },
       ].filter(isNotNull),
-    [isRunning, shouldShowEditorButton, initialValue, vizIcon],
+    [shouldShowEditorButton, isRunning, value, vizIcon],
   );
 
   return (
