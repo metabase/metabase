@@ -43,11 +43,11 @@ If some of your sources point to targets that point back to the same sources, Me
 
 ## Sankey data options
 
-Your data can include more than three columns, but each row must includes three columns: source node, a target node, and a quantity to scale the size of the target node.
-
-In the viz settings > **Data** tab, you can select which columns Metabase should use as the source, target, and values for the sankey chart.
+To select which columns Metabase should use as the source, target, and values for the sankey chart, click on the **settings** icon in the bottom right to view the **Data** tab.
 
 ![Sankey data options](../../images/sankey-data-options.png)
+
+Your data can include more than three columns, but each row must include the required three columns: source, target, and a value to scale the size of the target node.
 
 ## Sankey display options
 
@@ -67,7 +67,7 @@ In this case, justified alignment looks the same, as the end nodes move to take 
 
 ### Edge labels
 
-Whether an edge displays its value.
+Whether an edge displays its value. Options for displaying labels include auto, compact, or full formatting.
 
 ### Edge color
 
