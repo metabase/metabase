@@ -106,3 +106,56 @@
                                                       ["aB"  2 10 0 1]
                                                       ["aB"  1 11 0 1]])]
       pivot-data)))
+
+(deftest add-rows-and-totals-test
+  (testing "Adding Rows produces the correct entries in :totals without 'collisions' on any indices. (#50207)"
+    (let [build-row           #'process/build-row
+          build-column-totals #'process/build-column-totals
+          pivot-config        {:pivot-rows     [0 1]
+                               :pivot-cols     [2]
+                               :column-titles  ["A" "B" "C" "pivot-grouping" "Sum of MEASURE"]
+                               :row-totals?    true
+                               :col-totals?    true
+                               :pivot-measures [4]
+                               :pivot-grouping 3}
+          pivot               (process/init-pivot pivot-config)
+          rows                [[3 "BA" 3 0 1]
+                               [3 "BA" 4 0 2]
+                               [4 "BA" 3 0 3]
+                               [4 "BA" 4 0 4]]
+          pivot-data          (reduce process/add-row pivot rows)]
+      (is (= {:data {3 {"BA" {3 {4 {:result 1}}}}},
+              :totals
+              {:grand-total    {4 {:result 1}},
+               3               {"BA" {4 {:result 1}}},
+               :section-totals {3 {4 {:result 1}}},
+               :column-totals  {:rows-part {3 {:cols-part {3 {4 {:result 1}}} "BA" {:cols-part {3 {4 {:result 1}}}}}}}}}
+             (select-keys (process/add-row pivot (first rows)) [:data :totals])))
+      (is (= {:data   {3 {"BA" {3 {4 {:result 1}}, 4 {4 {:result 2}}}}},
+              :totals {:grand-total    {4 {:result 3}},
+                       3               {"BA" {4 {:result 3}}},
+                       4               {4 {:result 2}},
+                       :section-totals {3 {4 {:result 3}}},
+                       :column-totals  {:rows-part
+                                        {3 {:cols-part {3 {4 {:result 1}},
+                                                        4 {4 {:result 2}}},
+                                            "BA"       {:cols-part {3 {4 {:result 1}},
+                                                                    4 {4 {:result 2}}}}}}}}}
+             (select-keys (reduce process/add-row pivot (take 2 rows)) [:data :totals])))
+      (is (= [4 "BA" 3 4 7]
+             (build-row [4 "BA"]
+                        [[3] [4]]
+                        [4]
+                        (:data pivot-data)
+                        (:totals pivot-data)
+                        true
+                        (repeat 5 identity)
+                        (repeat 2 identity))))
+      (is (= ["Totals for 4" nil 3 4 7]
+             (build-column-totals [4]
+                                  [[3] [4]]
+                                  [4]
+                                  (:totals pivot-data)
+                                  true
+                                  (repeat 5 identity)
+                                  (repeat 2 identity)))))))
