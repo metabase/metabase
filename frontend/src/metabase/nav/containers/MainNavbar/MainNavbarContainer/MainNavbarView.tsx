@@ -118,7 +118,7 @@ export function MainNavbarView({
   );
 
   const ONBOARDING_URL = "/getting-started";
-  const showOnboardingCheckLink = useSelector(getShouldShowOnboardingLink);
+  const showOnboardingLink = useSelector(getShouldShowOnboardingLink);
 
   // Instances with DWH enabled already have uploads enabled by default.
   // It is not possible to turn the uploads off, nor to delete the attached database.
@@ -160,7 +160,7 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
-            {showOnboardingCheckLink && (
+            {showOnboardingLink && (
               <PaddedSidebarLink
                 icon="learn"
                 url={ONBOARDING_URL}
