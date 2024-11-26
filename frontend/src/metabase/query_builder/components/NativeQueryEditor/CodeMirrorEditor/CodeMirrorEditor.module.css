@@ -8,10 +8,14 @@
       outline: none;
     }
 
-    .cm-content {
+    .cm-scroller {
       background-color: var(--mb-color-bg-light);
+    }
+
+    .cm-content {
       color: var(--mb-color-text-dark);
       font-family: var(--mb-default-font-family);
+      background: none;
     }
 
     .cm-line {
@@ -36,6 +40,19 @@
 
     .cm-activeLineGutter {
       background: none;
+    }
+
+    .cm-selectionBackground {
+      background: var(--mb-color-focus) !important;
+      border-radius: 1px;
+    }
+
+    .cm-selectionMatch {
+      background: none;
+    }
+
+    .cm-cursor {
+      border-left-width: 1.6px;
     }
   }
 }

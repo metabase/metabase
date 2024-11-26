@@ -1,4 +1,4 @@
-import { EditorView } from "@codemirror/view";
+import { EditorView, drawSelection } from "@codemirror/view";
 import type { Extension } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
@@ -9,11 +9,17 @@ import type { Location } from "../types";
 
 export function useExtensions(): Extension[] {
   return useMemo(() => {
-    return [nonceExtension()].filter(isNotNull);
+    return [
+      nonce(),
+      drawSelection({
+        cursorBlinkRate: 1000,
+        drawRangeCursor: false,
+      }),
+    ].filter(isNotNull);
   }, []);
 }
 
-function nonceExtension() {
+function nonce() {
   // CodeMirror injects css into the DOM,
   // to make this work, it needs the have the correct CSP nonce.
   const nonce = getNonce();

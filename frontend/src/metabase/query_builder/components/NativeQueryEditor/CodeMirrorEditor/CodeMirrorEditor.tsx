@@ -26,7 +26,7 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
           // noop
         },
         getSelectionTarget() {
-          return null;
+          return document.querySelector(".cm-selectionBackground");
         },
       };
     }, []);
