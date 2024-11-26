@@ -138,7 +138,10 @@
       (if (number? v)
         (-> (merge {:min 0} prev)
             (update :min #(max % v)))
-        v))))
+        v))
+
+    ;; else
+    (fn [_prev v] v)))
 
 (defn- update-aggregate
   "Update the given `measure-aggregations` with `new-values` using the appropriate function in the `agg-fns` map.
@@ -154,10 +157,10 @@
         (map
          (fn [[measure-key agg]]
            (let [agg-fn-key (get agg-fns measure-key :total)
-                 agg-fn     (measure->agg-fn agg-fn-key)
                  new-v      (get new-values measure-key)]
              [measure-key (if new-v
-                            (agg-fn agg new-v)
+                            (let [agg-fn (measure->agg-fn agg-fn-key)]
+                              (agg-fn agg new-v))
                             agg)])))
         measure-aggregations))
 
@@ -184,12 +187,33 @@
                 #(update-aggregate (or % (zipmap pivot-measures (repeat {}))) measure-vals measures))
         (update :totals (fn [totals]
                           (-> totals
-                              (total-fn [[:grand-total]])
-                              (total-fn [row-path])
-                              (total-fn [col-path])
-                              (total-fn [[:section-totals (first row-path)]])
-                              #_(total-fn [(concat [:column-totals (first row-path)] col-path)])
+                              (total-fn [[:grand-total]
+                                         row-path
+                                         col-path
+                                         [:section-totals (first row-path)]])
                               (total-fn (map (fn [part]
+                                               ;; here, the `:rows-part` and `:cols-part` keys exist to
+                                               ;; force paths into the :totals map to be unique.
+                                               ;; without this, it is possible that a path is already written to
+                                               ;; if a pivot-col value by chance happens to be the same number
+                                               ;; of an idx into the row, such as a product ID of 4 matching
+                                               ;; the pivot-measure idx of 4 if 2 pivot-rows and 1 pivot-col are configured.
+                                               ;; Previously, in such a case, the measure map (the second deepest 'nesting')
+                                               ;; can be erroneously accessed when later aggregating
+                                               ;; to try illustrate, let's say that earlier, these 2 steps occurred:
+
+                                               ;; `(assoc-in totals-map [:column-totals "RowA"] {4 {:result 1}})`
+                                               ;; `(assoc-in totals-map [:column-totals "RowA" 3] {4 {:result 1}})`
+
+                                               ;; the result will look like:
+                                               ;; {:column-totals {"RowA" {4 {:result 1}
+                                               ;;                          3 {4 {:result 1}}}}}
+
+                                               ;; Now, you're attempting to (update-aggregate totals-map [:column-totals "RowA"])
+                                               ;; but, you'll be operating on an unexpected map shape (the key 3 does not correspond to a measure)
+                                               ;; This is why in issue #50207, when switching around the pivot-rows, things broke. It wasn't
+                                               ;; the switching, but rather that the second pivot-row's values were IDs, thus the integer 4
+                                               ;; was part of some totals paths, breaking aggregating in later steps.
                                                (concat [:column-totals :rows-part] part [:cols-part] col-path))
                                              (rest (reductions conj [] row-path)))))))
         (update :row-values #(reduce-kv update-set % (select-keys row pivot-rows)))
@@ -206,7 +230,8 @@
                     (:max v-map)
                     (seq v-map))
                 v-map)]
-    ((or formatter identity) (common/format-value value))))
+    (when value
+      ((or formatter identity) (common/format-value value)))))
 
 (defn- build-column-headers
   "Build multi-level column headers."
@@ -267,14 +292,15 @@
   "Build column totals for a section."
   [section-path col-combos pivot-measures totals row-totals? ordered-formatters pivot-rows]
   (let [totals-row (for [col-combo   col-combos
-                         measure-key pivot-measures]
+                         measure-key pivot-measures
+                         :let        [subtotal-path (concat
+                                                     [:column-totals :rows-part]
+                                                     section-path
+                                                     [:cols-part]
+                                                     col-combo
+                                                     [measure-key])]]
                      (fmt (get ordered-formatters measure-key)
-                          (get-in totals (concat
-                                          [:column-totals :rows-part]
-                                          section-path
-                                          [:cols-part]
-                                          col-combo
-                                          [measure-key]))))]
+                          (get-in totals subtotal-path)))]
     (when (some #(and (some? %) (not= "" %)) totals-row)
       (concat
        (cons (format "Totals for %s" (fmt (get ordered-formatters (first pivot-rows)) (last section-path)))

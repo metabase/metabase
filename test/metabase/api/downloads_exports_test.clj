@@ -266,7 +266,7 @@
                       :visualization_settings {:pivot_table.column_split
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
-                                                :values  ["sum"]}
+                                                :values  ["sum" "avg"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -274,7 +274,8 @@
                                                :type     :query
                                                :query
                                                {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:avg [:field (mt/id :products :price) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
         (testing "formatted"
@@ -307,6 +308,62 @@
                     :alert-attachment :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true})
+                      (group-by second)
+                      ((fn [m] (update-vals m #(into #{} (mapv first %)))))
+                      (apply concat)))))))))
+
+(deftest simple-pivot-with-sum-and-average-export-test
+  (testing "Pivot table exports look pivoted and can have multiple measures aggregated properly."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CATEGORY"]
+                                                :columns ["CREATED_AT"]
+                                                :values  ["sum" "avg"]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                      :currency_in_header false}}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:avg [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+        (testing "formatted"
+          (is (= [["Category" "2016" "2016" "2017" "2017" "2018" "2018" "2019" "2019" "Row totals" "Row totals"]
+                  ["Category"
+                   "Sum of Price"
+                   "Average of Price"
+                   "Sum of Price"
+                   "Average of Price"
+                   "Sum of Price"
+                   "Average of Price"
+                   "Sum of Price"
+                   "Average of Price"
+                   ""
+                   ""]
+                  ["Doohickey" "$632.14" "48.63" "$854.19" "50.25" "$496.43" "62.05" "$203.13" "50.78" "$2,185.89" "52.93"]
+                  ["Gadget" "$679.83" "52.29" "$1,059.11" "55.74" "$844.51" "60.32" "$435.75" "62.25" "$3,019.20" "57.65"]
+                  ["Gizmo" "$529.70" "58.86" "$1,080.18" "51.44" "$997.94" "58.7" "$227.06" "56.77" "$2,834.88" "56.44"]
+                  ["Widget" "$987.39" "51.97" "$1,014.68" "56.37" "$912.20" "65.16" "$195.04" "65.01" "$3,109.31" "59.63"]
+                  ["Grand totals"
+                   "$2,829.06"
+                   "52.94"
+                   "$4,008.16"
+                   "53.45"
+                   "$3,251.08"
+                   "61.56"
+                   "$1,060.98"
+                   "58.7"
+                   "$11,149.28"
+                   "56.66"]
+                  #{:unsaved-card-download :card-download :dashcard-download
+                    :alert-attachment :subscription-attachment
+                    :public-question-download :public-dashcard-download}]
+                 (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                       (apply concat)))))))))
@@ -495,9 +552,9 @@
   (testing "Row and Column Values that collide with indices don't break (#50207)"
     (testing "Other aggregations will produce the correct values in Totals rows."
       (let [pivot-rows-query "SELECT *
-         FROM (SELECT    4 AS A UNION ALL SELECT    3 UNION ALL SELECT    2 UNION ALL SELECT    1)
-   CROSS JOIN (SELECT 'BA' AS B UNION ALL SELECT 'BB' UNION ALL SELECT 'BC' UNION ALL SELECT 'BD')
-   CROSS JOIN (SELECT    1 AS C UNION ALL SELECT    2 UNION ALL SELECT    3 UNION ALL SELECT    4)
+         FROM (SELECT    4 AS A UNION ALL SELECT 3)
+   CROSS JOIN (SELECT 'BA' AS B)
+   CROSS JOIN (SELECT    3 AS C UNION ALL SELECT 4)
    CROSS JOIN (SELECT 1 AS MEASURE)"]
         (mt/dataset test-data
           (mt/with-temp [:model/Card {pivot-data-card-id :id}
@@ -521,7 +578,7 @@
                           :dataset_query          {:database (mt/id)
                                                    :type     :query
                                                    :query
-                                                   {:aggregation  [[:avg [:field "MEASURE" {:base-type :type/Integer}]]]
+                                                   {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
                                                     :breakout
                                                     [[:field "A" {:base-type :type/Integer}]
                                                      [:field "B" {:base-type :type/Text}]
@@ -529,28 +586,13 @@
                                                     :source-table (format "card__%s" pivot-data-card-id)}}}]
             (let [result (card-download pivot-card {:export-format :csv :pivot true})]
               (is
-               (= [["B" "C" "1" "2" "3" "4" "Row totals"]
-                   ["BA" "1" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BA" "2" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BA" "3" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BA" "4" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["Totals for BA" "" "1.0" "1.0" "1.0" "1.0"]
-                   ["BB" "1" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BB" "2" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BB" "3" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BB" "4" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["Totals for BB" "" "1.0" "1.0" "1.0" "1.0"]
-                   ["BC" "1" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BC" "2" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BC" "3" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BC" "4" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["Totals for BC" "" "1.0" "1.0" "1.0" "1.0"]
-                   ["BD" "1" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BD" "2" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BD" "3" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["BD" "4" "1.0" "1.0" "1.0" "1.0" "1.0"]
-                   ["Totals for BD" "" "1.0" "1.0" "1.0" "1.0"]
-                   ["Grand totals" "" "1.0" "1.0" "1.0" "1.0" "1.0"]]
+               (= [[ "B" "C" "3" "4" "Row totals"]
+                   ["BA" "3" "1" "1" "2"]
+                   ["BA" "4" "1" "1" "2"]
+                   ;; Without the fix in pr#50380, this would incorrectly look like:
+                   ;; ["Totals for BA"  "" "2" "[4 {:result 1}]"]
+                   ["Totals for BA"  "" "2" "2"]
+                   ["Grand totals" "" "2" "2" "4"]]
                   result)))))))))
 
 (deftest ^:parallel zero-column-pivot-tables-test

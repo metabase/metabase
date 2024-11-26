@@ -40,13 +40,19 @@
         ;; Every row will contribute to the MEASURE somewhere, determined by
         ;; the values in each pivot-row and pivot-col index. For example,
         ;; given the pivot-config in this test, the row `["X" "Y" 0 1]` will end up adding
-        ;; {"X" {"Y" {3 1}}}
+        ;; {"X" {"Y" {3 {:result 1}}}}
         ;; the operation is essentially an assoc-in done per measure:
 
         ;;   assoc-in    path from rows cols and measures            value from measure idx
         ;; `(assoc-in (concat pivot-rows pivot-cols pivot-measures) (get-in row measure-idx))`
-        (is (= {"aA" {"bA" {3 4} "bB" {3 1} "bC" {3 1} "bD" {3 1}}
-                "aB" {"bA" {3 1} "bB" {3 1} "bC" {3 1} "bD" {3 1}}}
+        (is (= {"aA" {"bA" {3 {:result 4}}
+                      "bB" {3 {:result 1}}
+                      "bC" {3 {:result 1}}
+                      "bD" {3 {:result 1}}}
+                "aB" {"bA" {3 {:result 1}}
+                      "bB" {3 {:result 1}}
+                      "bC" {3 {:result 1}}
+                      "bD" {3 {:result 1}}}}
                (:data pivot-data)))
 
         ;; all distinct values encountered for each row/col index are stored
@@ -59,14 +65,44 @@
         ;; since everything is aggregated as a row is added, we can store all of the
         ;; relevant totals right away and use them to construct the pivot table totals
         ;; if the user has specified them on (they're on by default and likely to be on most of the time)
-        (is (= {:grand-total {3 11}
-                :section-totals {"aA" {3 7} "aB" {3 4}} ;; section refers to the 'row totals' interspersed between each row-wise group
-                :column-totals {"aA" {"bA" {3 4} "bB" {3 1} "bC" {3 1} "bD" {3 1}}
-                                "aB" {"bA" {3 1} "bB" {3 1} "bC" {3 1} "bD" {3 1}}}
-                "aA" {3 7}
-                "aB" {3 4}
-                "bC" {3 2}
-                "bB" {3 2}
-                "bD" {3 2}
-                "bA" {3 5}}
+        (is (= {:grand-total {3 {:result 11}}
+                :section-totals {"aA" {3 {:result 7}} "aB" {3 {:result 4}}} ;; section refers to the 'row totals' interspersed between each row-wise group
+                :column-totals {:rows-part
+                                {"aA" {:cols-part {"bA" {3 {:result 4}}
+                                                   "bB" {3 {:result 1}}
+                                                   "bC" {3 {:result 1}}
+                                                   "bD" {3 {:result 1}}}}
+                                 "aB" {:cols-part {"bA" {3 {:result 1}}
+                                                   "bB" {3 {:result 1}}
+                                                   "bC" {3 {:result 1}}
+                                                   "bD" {3 {:result 1}}}}}}
+                "aA" {3 {:result 7}}
+                "aB" {3 {:result 4}}
+                "bC" {3 {:result 2}}
+                "bB" {3 {:result 2}}
+                "bD" {3 {:result 2}}
+                "bA" {3 {:result 5}}}
                (:totals pivot-data)))))))
+
+(deftest pivot-aggregation-no-collisions-test
+  (testing "The pivot aggregation datastructure stores values as expected"
+    (let [pivot-config {:pivot-rows     [0 1]
+                        :pivot-cols     [2]
+                        :column-titles  ["A" "B" "pivot-grouping" "Count"]
+                        :row-totals?    true
+                        :col-totals?    true
+                        :pivot-measures [4]
+                        :pivot-grouping 3}
+          pivot        (process/init-pivot pivot-config)
+          pivot-data   (reduce process/add-row pivot [["aA" 11 1  0 1]
+                                                      ["aA" 10 2  0 1]
+                                                      ["aA"  9 3  0 1]
+                                                      ["aA"  8 4  0 1]
+                                                      ["aA"  7 5  0 1]
+                                                      ["aA"  6 6  0 1]
+                                                      ["aA"  5 7  0 1]
+                                                      ["aB"  4 8  0 1]
+                                                      ["aB"  3 9  0 1]
+                                                      ["aB"  2 10 0 1]
+                                                      ["aB"  1 11 0 1]])]
+      pivot-data)))
