@@ -1,7 +1,7 @@
 ---
-title: Sankey
+title: Sankey charts
 ---
-# Sankey
+# Sankey charts
 
 Sankey charts show how data flows through multi-dimensional steps.
 
