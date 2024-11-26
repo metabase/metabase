@@ -39,11 +39,11 @@ See [data options](#sankey-data-options).
 
 ### Circular dependencies won't work
 
-If some of your sources point to targets that point back to the same sources, Metabase won't be able to create a sankey chart.
+If some of your sources point to targets that point back to the same sources, Metabase won't be able to create a Sankey chart.
 
 ## Sankey data options
 
-To select which columns Metabase should use as the source, target, and values for the sankey chart, click on the **settings** icon in the bottom right to view the **Data** tab.
+To select which columns Metabase should use as the source, target, and values for the Sankey chart, click on the **settings** icon in the bottom right to view the **Data** tab.
 
 ![Sankey data options](../../images/sankey-data-options.png)
 
@@ -55,7 +55,7 @@ You can change a charts alignment, edge labels, and edge colors.
 
 ### Alignment
 
-You can select left, right, or justified alignment for the sankey chart. Alignment determines how the chart should display the end nodes (a.k.a. leaf nodes or terminal nodes).
+You can select left, right, or justified alignment for the Sankey chart. Alignment determines how the chart should display the end nodes (a.k.a. leaf nodes or terminal nodes).
 
 The chart in the section above is left-aligned. The end nodes, `Exit` and `Purchase`, are aligned to the left.
 
