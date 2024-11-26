@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.pivots :as api.pivots]
+   [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.lib.core :as lib]
@@ -753,3 +754,33 @@
                                                      :dimension    [:field (mt/id :people :id) nil]
                                                      :widget-type  :id
                                                      :default      nil}}}})))))
+
+(deftest dataset-query-metadata-with-archived-and-deleted-source-card-test
+  (testing "Don't throw an error if source card is deleted (#48461)"
+    (mt/with-temp
+      [Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
+       Card {card-id-2 :id} {:dataset_query {:type  :query
+                                             :query {:source-table (str "card__" card-id-1)}}}]
+      (letfn [(query-metadata [expected-status card-id]
+                (-> (mt/user-http-request :crowberto :post expected-status
+                                          "dataset/query_metadata"
+                                          {:type     :query
+                                           :query    {:source-table (str "card__" card-id)}
+                                           :database (mt/id)})
+                    (api.test-util/select-query-metadata-keys-for-debugging)))]
+        (api.test-util/before-and-after-deleted-card
+         card-id-1
+         #(testing "Before delete"
+            (doseq [card-id [card-id-1 card-id-2]]
+              (is (=?
+                   {:fields    empty?
+                    :tables    [{:id (str "card__" card-id)}]
+                    :databases [{:id (mt/id) :engine string?}]}
+                   (query-metadata 200 card-id)))))
+         #(testing "After delete"
+            (doseq [card-id [card-id-1 card-id-2]]
+              (is (=?
+                   {:fields    empty?
+                    :tables    empty?
+                    :databases [{:id (mt/id) :engine string?}]}
+                   (query-metadata 200 card-id))))))))))

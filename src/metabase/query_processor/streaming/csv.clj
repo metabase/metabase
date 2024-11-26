@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -112,7 +113,7 @@
                                          row)
               {:keys [pivot-grouping]} (or (:config @pivot-data) @pivot-data)
               group                    (get ordered-row pivot-grouping)]
-          (if (contains? @pivot-data :config)
+          (if (and (contains? @pivot-data :config) (public-settings/enable-pivoted-exports))
             ;; if we're processing a pivot result, we don't write it out yet, just aggregate it
             ;; so that we can post process the data in finish!
             (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
@@ -134,7 +135,7 @@
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
-        (when (contains? @pivot-data :config)
+        (when (and (contains? @pivot-data :config) (public-settings/enable-pivoted-exports))
           (doseq [xf-row (qp.pivot.postprocess/build-pivot-output @pivot-data @ordered-formatters)]
             (write-csv writer [xf-row])))
         (.flush writer)

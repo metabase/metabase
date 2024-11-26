@@ -324,6 +324,12 @@
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :instance))
 
+(defmethod date
+  [:sql :day-of-week-iso]
+  [driver _ honeysql-expr]
+  (binding [driver.common/*start-of-week* :monday]
+    (date driver :day-of-week honeysql-expr)))
+
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
   `unit` is one of the units listed in [[metabase.util.date-2/add-units]].

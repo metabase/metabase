@@ -712,10 +712,12 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       cy.button("New segment").click();
 
-      cy.findByTestId("gui-builder").findByText("Select a table").click();
-      popover().findByText("Orders").click();
+      cy.findByTestId("segment-editor").findByText("Select a table").click();
+      entityPickerModal().within(() => {
+        cy.findByText("Orders").click();
+      });
 
-      cy.findByTestId("gui-builder")
+      cy.findByTestId("segment-editor")
         .findByText("Add filters to narrow your answer")
         .click();
 
@@ -838,19 +840,16 @@ describe("scenarios > admin > datamodel > segments", () => {
       // update the filter from "< 100" to "> 10"
       cy.url().should("match", /segment\/1$/);
       cy.get("label").contains("Edit Your Segment");
-      cy.findByTestId("filter-widget-target")
+      cy.findByTestId("filter-pill")
         .contains(/Total\s+is less than/)
         .click();
-      popover().findByTestId("operator-select").click();
+      popover().findByLabelText("Filter operator").click();
       popover().contains("Greater than").click();
-      popover()
-        .findByTestId("field-values-widget")
-        .find("input")
-        .type("{SelectAll}10");
+      popover().findByPlaceholderText("Enter a number").type("{SelectAll}10");
       popover().contains("Update filter").click();
 
       // confirm that the preview updated
-      cy.findByTestId("gui-builder").contains("18758 rows");
+      cy.findByTestId("segment-editor").contains("18758 rows");
 
       // update name and description, set a revision note, and save the update
       cy.get('[name="name"]').clear().type("Orders > 10");

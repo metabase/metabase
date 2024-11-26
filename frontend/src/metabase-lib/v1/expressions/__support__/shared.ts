@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -55,9 +56,17 @@ const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
 
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 
-const legacyQuery = checkNotNull(metadata.table(ORDERS_ID)).legacyQuery({
-  foo: 42,
+const query = createQueryWithClauses({
+  query: createQuery({ metadata }),
+  expressions: [
+    {
+      name: "foo",
+      operator: "+",
+      args: [1, 2],
+    },
+  ],
 });
+const stageIndex = -1;
 
 // shared test cases used in compile, formatter, and syntax tests:
 //
@@ -280,9 +289,9 @@ const filter = [
 ];
 
 export const dataForFormatting = [
-  ["expression", expression, { startRule: "expression", legacyQuery }],
-  ["aggregation", aggregation, { startRule: "aggregation", legacyQuery }],
-  ["filter", filter, { startRule: "boolean", legacyQuery }],
+  ["expression", expression, { startRule: "expression", query, stageIndex }],
+  ["aggregation", aggregation, { startRule: "aggregation", query, stageIndex }],
+  ["filter", filter, { startRule: "boolean", query, stageIndex }],
 ];
 
 /**

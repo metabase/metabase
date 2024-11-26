@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.search.filter
+(ns metabase.search.filter
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
@@ -88,10 +88,7 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     (into [:or]
-           (let [your-collection-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:= current-user-id])
-                 child-patterns      (for [id your-collection-ids] (format "/%d/%%" id))]
-             (for [p child-patterns] [:like :collection.location p])))]
+     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id]))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause
@@ -124,13 +121,13 @@
   [search-context qry]
   (as-> qry qry
     (sql.helpers/where qry (when (seq (:models search-context))
-                             [:in :model (:models search-context)]))
+                             [:in :search_index.model (:models search-context)]))
     (sql.helpers/where qry (when-let [ids (:ids search-context)]
                              [:and
-                              [:in :model_id ids]
+                              [:in :search_index.model_id ids]
                               ;; NOTE: we limit id-based search to only a subset of the models
                               ;; TODO this should just become part of the model spec e.g. :search-by-id?
-                              [:in :model ["card" "dataset" "metric" "dashboard" "action"]]]))
+                              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
     (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
               (or (when-some [v (get search-context context-key)]
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))

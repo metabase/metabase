@@ -97,7 +97,7 @@ You can upload data to collections. See [Uploading data](./uploads.md)]
 
 ## Further reading
 
-- [Keeping your analytics organized](hhttps://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page)
+- [Keeping your analytics organized](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page)
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env#one-collection-per-environment)
 
 [dashboards]: ../dashboards/introduction.md

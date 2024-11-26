@@ -1,11 +1,12 @@
 (ns metabase.search.postgres.index-test
   (:require
-   ;[cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -49,7 +50,7 @@
 
 (deftest idempotent-test
   (with-index
-    (let [count-rows  (fn [] (t2/count @#'search.index/active-table))
+    (let [count-rows  (fn [] (t2/count @#'search.index/*active-table*))
           rows-before (count-rows)]
       (search.ingestion/populate-index!)
       (is (= rows-before (count-rows))))))
@@ -74,7 +75,7 @@
 #_(deftest related-update-test
     (with-index
       (testing "The index is updated when model dependencies change"
-        (let [index-table    @#'search.index/active-table
+        (let [index-table    @#'search.index/*active-table*
               table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
               legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
                                   :legacy_input
@@ -204,3 +205,310 @@
   (testing "single quotes"
     (is (= "'you''re':*"
            (search-expr "you're")))))
+
+(defn ingest!
+  [model where-clause]
+  (#'search.ingestion/batch-update!
+   (#'search.ingestion/spec-index-reducible model where-clause)))
+
+(defn ingest-then-fetch!
+  [model entity-name]
+  (ingest! model [:= :this.name entity-name])
+  (t2/query-one {:select [:*]
+                 :from   [search.index/*active-table*]
+                 :where  [:and
+                          [:= :name entity-name]
+                          [:= :model model]]}))
+
+(def default-index-entity
+  {:model               nil
+   :model_id            nil
+   :name                nil
+   :official_collection nil
+   :database_id         nil
+   :pinned              nil
+   :view_count          nil
+   :collection_id       nil
+   :last_viewed_at      nil
+   :model_created_at    nil
+   :model_updated_at    nil
+   :dashboardcard_count nil
+   :last_edited_at      nil
+   :last_editor_id      nil
+   :verified            nil})
+
+(defn- index-entity
+  [entity]
+  (merge default-index-entity entity))
+
+(deftest card-complex-ingestion-test
+  (search.tu/with-temp-index-table
+    (doseq [[model-type card-type] [["card" "question"] ["dataset" "model"] ["metric" "metric"]]]
+      (testing (format "simple %s" model-type)
+        (let [card-name (mt/random-name)
+              yesterday (t/- (t/offset-date-time) (t/days 1))]
+          (mt/with-temp [:model/Card {card-id :id} {:name         card-name
+                                                    :type         card-type
+                                                    :created_at   yesterday
+                                                    :updated_at   yesterday
+                                                    :last_used_at yesterday}]
+            (is (=? (index-entity
+                     {:model                    model-type
+                      :model_id                 card-id
+                      :name                     card-name
+                      :official_collection      nil
+                      :database_id              (mt/id)
+                      :pinned                   false
+                      :view_count               0
+                      :collection_id            nil
+                      :dashboardcard_count      0
+                      :model_created_at         yesterday
+                      :model_updated_at         yesterday
+                      :last_viewed_at           yesterday
+                      :last_edited_at           nil
+                      :last_editor_id           nil
+                      :verified                 nil})
+                    (ingest-then-fetch! model-type card-name))))))
+
+      (testing (format "everything %s" model-type)
+        (let [card-name    (mt/random-name)
+              yesterday    (t/- (t/offset-date-time) (t/days 1))
+              two-days-ago (t/- yesterday (t/days 1))]
+          (mt/with-temp
+            [:model/Collection    {coll-id :id}      {:name            "My collection"
+                                                      ;; :official_collection = true
+                                                      :authority_level "official"}
+             :model/Card          {card-id :id}      {:name                card-name
+                                                      :type                card-type
+                                                      :query_type          "query"
+                                                      ;; :database_id = (mt/id)
+                                                      :database_id         (mt/id)
+                                                      ;; :pinned = true
+                                                      :collection_position 1
+                                                      ;; :view_count = 42
+                                                      :view_count          42
+                                                      ;; :collection_id = coll-id
+                                                      :collection_id       coll-id
+                                                      ;; :last_viewed_at = yesterday
+                                                      :last_used_at        yesterday
+                                                      ;; :model_created_at = two-days-ago
+                                                      :created_at          two-days-ago
+                                                      ;; :model_updated_at = two-days-ago
+                                                      :updated_at          two-days-ago}
+
+             ;; :dashboardcard_count = 2
+             :model/Dashboard     {dashboard-id :id} {}
+             :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}
+             :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}
+
+             ;; :last_edited_at = yesterday
+             ;; :last_editor_id = rasta-id
+             :model/Revision      _                 {:model_id    card-id
+                                                     :model       "Card"
+                                                     :user_id     (mt/user->id :rasta)
+                                                     :most_recent true
+                                                     :timestamp   yesterday
+                                                     :object      {}}
+             ;; :verified = true
+             :model/ModerationReview _              {:moderated_item_type "card"
+                                                     :moderated_item_id   card-id
+                                                     :most_recent         true
+                                                     :status              "verified"
+                                                     :moderator_id        (mt/user->id :crowberto)}]
+            (is (=? (index-entity
+                     {:model                    model-type
+                      :model_id                 card-id
+                      :name                     card-name
+                      :official_collection      true
+                      :database_id              (mt/id)
+                      :pinned                   true
+                      :view_count               42
+                      :collection_id            coll-id
+                      :last_viewed_at           yesterday
+                      :model_created_at         two-days-ago
+                      :model_updated_at         two-days-ago
+                      :dashboardcard_count      2
+                      :last_edited_at           yesterday
+                      :last_editor_id           (mt/user->id :rasta)
+                      :verified                 true})
+                    (ingest-then-fetch! model-type card-name)))))))))
+
+(deftest database-ingestion-test
+  (search.tu/with-temp-index-table
+    (let [db-name (mt/random-name)
+          yesterday (t/- (t/offset-date-time) (t/days 1))]
+      (mt/with-temp [:model/Database {db-id :id} {:name       db-name
+                                                  :created_at yesterday
+                                                  :updated_at yesterday}]
+        (is (=? (index-entity
+                 {:model            "database"
+                  :model_id         db-id
+                  :name             db-name
+                  :model_created_at yesterday
+                  :model_updated_at yesterday})
+                (ingest-then-fetch! "database" db-name)))))))
+
+(deftest table-ingestion-test
+  (search.tu/with-temp-index-table
+    (let [table-name (mt/random-name)
+          yesterday  (t/- (t/offset-date-time) (t/days 1))]
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {table-id :id} {:name       table-name
+                                                  ;; :view_count = 42
+                                                  :view_count 42
+                                                  ;; :database_id = db-id
+                                                  :db_id      db-id
+                                                  ;; :model_created_at = yesterday
+                                                  :created_at yesterday
+                                                  ;; :model_updated_at = yesterday
+                                                  :updated_at yesterday}]
+        (is (=? (index-entity
+                 {:model            "table"
+                  :model_id         table-id
+                  :name             table-name
+                  :view_count       42
+                  :database_id      db-id
+                  :model_created_at yesterday
+                  :model_updated_at yesterday})
+                (ingest-then-fetch! "table" table-name)))))))
+
+(deftest collection-ingestion-test
+  (search.tu/with-temp-index-table
+    (let [collection-name (mt/random-name)
+          yesterday       (t/- (t/offset-date-time) (t/days 1))]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name collection-name
+                                                      ;; :authority_level = "official"
+                                                      :authority_level "official"
+                                                      ;; :archived = true
+                                                      :archived true
+                                                      ;; :type = "collection"
+                                                      :type "collection"
+                                                      ;; :model_created_at = yesterday
+                                                      :created_at yesterday}]
+        (is (=? (index-entity
+                 {:model            "collection"
+                  :model_id         coll-id
+                  :collection_id    coll-id
+                  :name             collection-name
+                  :archived         true
+                  :model_created_at yesterday})
+                (ingest-then-fetch! "collection" collection-name)))))))
+
+(deftest action-ingestion-test
+  (search.tu/with-temp-index-table
+    (let [action-name (mt/random-name)
+          yesterday   (t/- (t/offset-date-time) (t/days 1))]
+      (mt/with-temp [:model/Database   {db-id :id}     {}
+                     :model/Collection {coll-id :id}   {}
+                     :model/Card       {model-id :id}  {:type "model"
+                                                        ;; :collection_id = coll-id
+                                                        :collection_id coll-id}
+                     :model/Action     {action-id :id} {:name       action-name
+                                                        :type       "query"
+                                                        :model_id   model-id
+                                                        ;; :model_created_at = yesterday
+                                                        :created_at yesterday
+                                                        ;; :model_updated_at = yesterday
+                                                        ;; :last_edited_at = yesterday
+                                                        :updated_at yesterday
+                                                        ;; :archived = true
+                                                        :archived true}
+                     :model/QueryAction _               {:dataset_query (mt/native-query "select * from metabase")
+                                                         ;; :database_id = db-id
+                                                         :database_id   db-id
+                                                         :action_id     action-id}]
+        (is (=? (index-entity
+                 {:model            "action"
+                  :model_id         action-id
+                  :name             action-name
+                  :collection_id    coll-id
+                  :model_created_at yesterday
+                  :model_updated_at yesterday
+                  :last_edited_at   yesterday
+                  :database_id      db-id})
+                (ingest-then-fetch! "action" action-name)))))))
+
+(deftest dashboard-ingestion-test
+  (search.tu/with-temp-index-table
+    (let [dashboard-name (mt/random-name)
+          yesterday      (t/- (t/offset-date-time) (t/days 1))
+          two-days-ago   (t/- yesterday (t/days 1))]
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name       dashboard-name
+                                                          ;; :model_created_at = yesterday
+                                                          :created_at yesterday
+                                                          ;; :model_updated_at = yesterday
+                                                          :updated_at yesterday
+                                                          ;; :last_viewed_at = yesterday
+                                                          :last_viewed_at yesterday
+                                                          ;; :view_count = 42
+                                                          :view_count 42
+                                                          ;; :pinned = true
+                                                          :collection_position 2}
+                     :model/Revision  _                 {:model_id    dashboard-id
+                                                         :model       "Dashboard"
+                                                         ;; :last_editor_id = rasta-id
+                                                         :user_id     (mt/user->id :rasta)
+                                                         ;; :last_edited_at = two-days-ago
+                                                         :timestamp   two-days-ago
+                                                         :most_recent true
+                                                         :object      {}}]
+
+        (is (=? (index-entity
+                 {:model            "dashboard"
+                  :model_id         dashboard-id
+                  :name             dashboard-name
+                  :model_created_at yesterday
+                  :model_updated_at yesterday
+                  :last_viewed_at   yesterday
+                  :view_count       42
+                  :pinned           true
+                  :last_editor_id   (mt/user->id :rasta)
+                  :last_edited_at   two-days-ago})
+                (ingest-then-fetch! "dashboard" dashboard-name)))))))
+
+(deftest segment-ingestion-test
+  (search.tu/with-temp-index-table
+    (let [segment-name (mt/random-name)
+          yesterday    (t/- (t/offset-date-time) (t/days 1))]
+      (mt/with-temp [:model/Database   {db-id :id}      {}
+                     :model/Table      {table-id :id}   {:db_id db-id}
+                     :model/Segment    {segment-id :id} {:name       segment-name
+                                                         ;; :table_id = table-id
+                                                         :table_id   table-id
+                                                         ;; :model_updated_at = yesterday
+                                                         :updated_at yesterday}]
+        (is (=? (index-entity
+                 {:model            "segment"
+                  :model_id         segment-id
+                  :name             segment-name
+                  :database_id      db-id
+                  :model_updated_at yesterday})
+                (ingest-then-fetch! "segment" segment-name)))))))
+
+(deftest indexed-entity-ingestion-test
+  (search.tu/with-temp-index-table
+    (let [entity-name (mt/random-name)]
+      (mt/with-temp [:model/Collection      {coll-id :id}        {}
+                     :model/Card            {model-id :id}       {:type        "model"
+                                                                  ;; :database_id = (mt/id)
+                                                                  :database_id (mt/id)
+                                                                  ;; :collection_id = coll-id
+                                                                  :collection_id coll-id}
+                     :model/ModelIndex      {model-index-id :id} {:model_id   model-id
+                                                                  :pk_ref     (mt/$ids :products $id)
+                                                                  :value_ref  (mt/$ids :products $title)
+                                                                  :schedule   "0 0 0 * * *"
+                                                                  :state      "initial"
+                                                                  :creator_id (mt/user->id :rasta)}]
+        ;; :model/ModelIndexValue does not have id column so does not work nicely with with-temp
+        (t2/insert! :model/ModelIndexValue {:name       entity-name
+                                            :model_index_id model-index-id
+                                            ;; :model_id = model-id
+                                            :model_pk   42})
+        (is (=? (index-entity
+                 {:model            "indexed-entity"
+                  :model_id         42
+                  :name             entity-name
+                  :database_id      (mt/id)
+                  :collection_id    coll-id})
+                (ingest-then-fetch! "indexed-entity" entity-name)))))))

@@ -34,7 +34,7 @@ export const useErrorInfo = (
     }
     // https://regexr.com/7ra8o
     const matches = location.match(
-      /(question|model|dashboard|collection)[[\/\#]([\d\w]+)/,
+      /(question|model|dashboard|collection|metric)[[\/\#]([\d\w]+)/,
     );
 
     const entity = (matches?.[1] ?? undefined) as
