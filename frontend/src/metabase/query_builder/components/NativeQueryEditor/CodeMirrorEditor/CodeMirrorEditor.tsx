@@ -7,7 +7,8 @@ import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
 import type { EditorProps, EditorRef } from "../Editor";
 
 import S from "./CodeMirrorEditor.module.css";
-import { convertIndexToPosition, useExtensions } from "./util";
+import { useExtensions } from "./extensions";
+import { convertIndexToPosition } from "./util";
 
 type CodeMirrorEditorProps = EditorProps;
 
