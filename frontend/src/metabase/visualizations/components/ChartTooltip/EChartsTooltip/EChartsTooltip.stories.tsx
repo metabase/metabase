@@ -1,8 +1,9 @@
 import { SdkVisualizationWrapper } from "__support__/storybook";
 import { type MetabaseTheme, defineEmbeddingSdkTheme } from "embedding-sdk";
-import { Flex, Tooltip } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import { EChartsTooltip, type EChartsTooltipProps } from "./EChartsTooltip";
+import S from "./EChartsTooltip.module.css";
 
 const data: EChartsTooltipProps = {
   header: "Header Text",
@@ -14,9 +15,9 @@ const data: EChartsTooltipProps = {
 
 const DefaultTemplate = () => (
   <Flex align="center" justify="center" p="xl" h="400px">
-    <Tooltip label={<EChartsTooltip {...data} />} opened>
-      <div>Tooltip Target</div>
-    </Tooltip>
+    <Box className={S.ChartTooltipRoot}>
+      <EChartsTooltip {...data} />
+    </Box>
   </Flex>
 );
 
