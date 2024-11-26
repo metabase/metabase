@@ -126,6 +126,7 @@ export const AccordionListCell = ({
               data-element-id="list-section-title"
               className={cx(ListS.ListSectionTitle, CS.textWrap)}
               fz="lg"
+              lh="normal"
               fw="bold"
             >
               {name}
@@ -193,6 +194,7 @@ export const AccordionListCell = ({
             data-element-id="list-section-title"
             className={cx(ListS.ListSectionTitle, CS.textWrap)}
             fz="lg"
+            lh="normal"
             fw="bold"
           >
             {name}
@@ -286,12 +288,14 @@ export const AccordionListCell = ({
           )}
           <div>
             {name && (
-              <h4
+              <Text
+                lh="normal"
+                fw="bold"
                 data-element-id="list-item-title"
                 className={cx(ListS.ListItemTitle, CS.ml1, CS.textWrap)}
               >
                 {name}
-              </h4>
+              </Text>
             )}
             {description && (
               <p className={cx(ListS.ListItemDescription, CS.ml1, CS.textWrap)}>
