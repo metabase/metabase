@@ -7,13 +7,13 @@ Sankey charts show how data flows through multi-dimensional steps.
 
 ![Left-aligned sankey chart](../../images/sankey-left-aligned.png)
 
-## Data shape
+## Sankey data shape
 
-To create a Sankey chart, you'll need three columns in your results:
+To create a Sankey chart, you'll need at least three columns in your results:
 
-- **Source**: specifies a node in the sankey flow.
-- **Target**: column that specifies a receiving node.
-- **Count**: value that determines the thickness of the edge from a source to a target.
+- **Source column**: specifies a node in the sankey flow.
+- **Target column**: specifies a receiving node.
+- **Count column**: value that determines the thickness of the target node.
 
 Here's the data shape used to create the chart above.
 
@@ -35,7 +35,19 @@ Here's the data shape used to create the chart above.
 | Checkout     | Purchase     | 2,217          |
 | Homepage     | Exit         | 1,020          |
 
-Each row includes a source node, a target node, and a quantity to scale the size of the target node.
+See [data options](#sankey-data-options).
+
+### Circular dependencies won't work
+
+If some of your sources point to targets that point back to the same sources, Metabase won't be able to create a sankey chart.
+
+## Sankey data options
+
+Your data can include more than three columns, but each row must includes three columns: source node, a target node, and a quantity to scale the size of the target node.
+
+In the viz settings > **Data** tab, you can select which columns Metabase should use as the source, target, and values for the sankey chart.
+
+![Sankey data options](../../images/sankey-data-options.png)
 
 ## Sankey display options
 
@@ -64,7 +76,3 @@ Options for edge colors include:
 - **Gray**: All edges are gray. Nodes retain their color.
 - **Source**: The source node determines the edge colors. The source node is the node to the left of an edge.
 - **Target**: The target node determines the edge colors. The target node is the node to the right of an edge.
-
-## Circular dependencies won't work
-
-If your sources point to targets that point back to the same source, Metabase won't be able to create a sankey chart.
