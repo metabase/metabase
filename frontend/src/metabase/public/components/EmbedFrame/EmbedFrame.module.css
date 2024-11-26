@@ -1,4 +1,4 @@
-body {
+body:where(:global(.mb-wrapper)) {
   background-color: transparent;
 }
 
