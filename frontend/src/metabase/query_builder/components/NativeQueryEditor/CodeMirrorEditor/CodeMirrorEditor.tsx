@@ -30,7 +30,9 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
       onSelectionChange,
       onRightClickSelection,
     } = props;
-    const extensions = useExtensions();
+    const extensions = useExtensions({
+      engine: query.engine() ?? undefined,
+    });
 
     useImperativeHandle(ref, () => {
       return {
