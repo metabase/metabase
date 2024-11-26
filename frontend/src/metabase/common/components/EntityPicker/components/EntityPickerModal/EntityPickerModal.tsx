@@ -1,5 +1,11 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useDebounce, usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
@@ -95,6 +101,7 @@ export interface EntityPickerModalProps<
   onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
   isLoadingTabs?: boolean;
+  searchExtraButtons?: ReactNode[];
 }
 
 export function EntityPickerModal<
@@ -119,6 +126,7 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
+  searchExtraButtons = [],
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchScope, setSearchScope] =
@@ -131,6 +139,7 @@ export function EntityPickerModal<
       },
     );
   const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+
   const folderModels = useMemo(
     () => getSearchFolderModels(passedTabs),
     [passedTabs],
@@ -217,7 +226,7 @@ export function EntityPickerModal<
     if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
       computedTabs.push({
         id: RECENTS_TAB_ID,
-        model: null,
+        models: [],
         folderModels: [],
         displayName: t`Recents`,
         icon: "clock",
@@ -237,10 +246,11 @@ export function EntityPickerModal<
     if (hasSearchTab) {
       computedTabs.push({
         id: SEARCH_TAB_ID,
-        model: null,
+        models: [],
         folderModels: [],
         displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
+        extraButtons: searchExtraButtons,
         render: ({ onItemSelect }) => (
           <SearchTab
             folder={selectedFolder}

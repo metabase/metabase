@@ -208,7 +208,7 @@ export const DataPickerModal = ({
       computedTabs.push({
         id: "tables-tab",
         displayName: t`Tables`,
-        model: "table" as const,
+        models: ["table" as const],
         folderModels: ["database" as const, "schema" as const],
         icon: "table",
         render: ({ onItemSelect }) => (
@@ -231,14 +231,14 @@ export const DataPickerModal = ({
       computedTabs.push({
         id: "questions-tab",
         displayName: t`Collections`,
-        model: "card" as const,
+        models: ["card" as const, "dataset" as const, "metric" as const],
         folderModels: ["collection" as const],
         icon: "folder",
         extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={isQuestionItem(value) ? value : undefined}
-            models={modelFilter}
+            models={QUESTION_PICKER_MODELS}
             options={options}
             path={questionsPath}
             shouldShowItem={shouldShowItem}
@@ -268,6 +268,8 @@ export const DataPickerModal = ({
       onClose={onClose}
       onItemSelect={handleItemSelect}
       isLoadingTabs={isLoadingAvailableData}
+      searchExtraButtons={[filterButton]}
+      searchResultFilter={items => items.filter(shouldShowItem)}
     />
   );
 };
