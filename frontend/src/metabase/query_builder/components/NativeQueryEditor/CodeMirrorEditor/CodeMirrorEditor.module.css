@@ -88,6 +88,12 @@
       color: var(--mb-color-brand);
     }
 
+    .cm-matchingBracket {
+      background: none !important;
+      outline: 0.5px solid var(--mb-color-text-light);
+      border-radius: 2px;
+    }
+
     .cm-tag {
       color: var(--mb-color-brand);
 
