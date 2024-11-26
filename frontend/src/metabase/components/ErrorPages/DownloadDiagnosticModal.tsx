@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { Modal, Text } from "metabase/ui";
 
 import { DiagnosticCheckboxes } from "./DiagnosticCheckboxes";
@@ -57,6 +58,12 @@ export const DownloadDiagnosticModal = ({
           mb="sm"
           px="lg"
           radius="md"
+          onClick={() =>
+            trackSimpleEvent({
+              event: "error_diagnostic_modal_submitted",
+              event_detail: "download-diagnostics",
+            })
+          }
         />
         <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
       </Form>

@@ -9,6 +9,7 @@ import {
   useSearchListQuery,
 } from "metabase/common/hooks";
 import Collections from "metabase/entities/collections/collections";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
@@ -195,6 +196,10 @@ export const useCommandPaletteBasicActions = ({
       keywords: "bug, issue, problem, error, diagnostic",
       shortcut: ["$mod+f1"],
       perform: () => {
+        trackSimpleEvent({
+          event: "error_diagnostic_modal_opened",
+          triggered_from: "f1-key",
+        });
         dispatch(openDiagnostics());
       },
     };

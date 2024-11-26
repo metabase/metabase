@@ -12,6 +12,7 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
@@ -299,6 +300,10 @@ export const useCommandPalette = ({
         section: "basic",
         keywords: "bug issue problem error diagnostic",
         perform: () => {
+          trackSimpleEvent({
+            event: "error_diagnostic_modal_opened",
+            triggered_from: "command-palette",
+          });
           dispatch(openDiagnostics());
         },
       },

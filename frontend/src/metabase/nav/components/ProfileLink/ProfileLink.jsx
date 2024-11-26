@@ -12,6 +12,7 @@ import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/Erro
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
@@ -77,7 +78,13 @@ function ProfileLink({ adminItems, onLogout, openDiagnostics }) {
       {
         title: t`File a bug`,
         icon: null,
-        action: () => openDiagnostics(),
+        action: () => {
+          trackSimpleEvent({
+            event: "error_diagnostic_modal_opened",
+            triggered_from: "profile-menu",
+          });
+          openDiagnostics();
+        },
         event: `Navbar;Profile Dropdown;Report Bug`,
       },
       {

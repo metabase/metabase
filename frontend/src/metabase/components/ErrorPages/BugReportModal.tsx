@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import FormTextArea from "metabase/core/components/FormTextArea";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import {
   Box,
   Button,
@@ -92,7 +93,13 @@ export const BugReportModal = ({
             <Button
               variant="filled"
               leftIcon={isSlackSending ? <Loader size="xs" /> : null}
-              onClick={() => onSlackSubmit(formik.values)}
+              onClick={() => {
+                trackSimpleEvent({
+                  event: "error_diagnostic_modal_submitted",
+                  event_detail: "submit-report",
+                });
+                onSlackSubmit(formik.values);
+              }}
               disabled={isSlackSending}
             >
               {isSlackSending ? t`Sending...` : t`Submit report`}
@@ -110,6 +117,12 @@ export const BugReportModal = ({
                 my="sm"
                 px="lg"
                 radius="md"
+                onClick={() =>
+                  trackSimpleEvent({
+                    event: "error_diagnostic_modal_submitted",
+                    event_detail: "download-diagnostics",
+                  })
+                }
               />
             </Flex>
           </Form>
