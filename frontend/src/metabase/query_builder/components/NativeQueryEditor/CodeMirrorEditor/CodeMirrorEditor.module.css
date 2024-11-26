@@ -1,5 +1,41 @@
 :global {
   :local(.editor) {
     width: 100%;
+    font-family: var(--mb-default-font-family);
+    color: var(--mb-color-text-dark);
+
+    .cm-focused {
+      outline: none;
+    }
+
+    .cm-content {
+      background-color: var(--mb-color-bg-light);
+      color: var(--mb-color-text-dark);
+      font-family: var(--mb-default-font-family);
+    }
+
+    .cm-line {
+      background: none;
+    }
+
+    .cm-gutters {
+      background-color: var(--mb-color-bg-light);
+      border: none;
+    }
+
+    .cm-gutterElement {
+      font-weight: bold;
+      font-size: 10px;
+      color: var(--mb-color-text-light);
+      font-family: var(--mb-default-font-family);
+      vertical-align: baseline;
+      display: flex;
+      align-items: center;
+      justify-content: end;
+    }
+
+    .cm-activeLineGutter {
+      background: none;
+    }
   }
 }
