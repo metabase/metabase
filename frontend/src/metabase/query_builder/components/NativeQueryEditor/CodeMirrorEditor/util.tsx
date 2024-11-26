@@ -1,3 +1,7 @@
+import { t } from "ttag";
+
+import type { CardType } from "metabase-types/api";
+
 import type { Location } from "../types";
 
 export function convertIndexToPosition(value: string, index: number): Location {
@@ -19,3 +23,23 @@ export function convertIndexToPosition(value: string, index: number): Location {
     column,
   };
 }
+
+export const getCardAutocompleteResultMeta = (
+  type: CardType,
+  collectionName: string = t`Our analytics`,
+) => {
+  const collection = collectionName ?? t`Our analytics`;
+  if (type === "question") {
+    return t`Question in ${collection}`;
+  }
+
+  if (type === "model") {
+    return t`Model in ${collection}`;
+  }
+
+  if (type === "metric") {
+    return t`Metric in ${collection}`;
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
+};

@@ -52,6 +52,51 @@
       border-left-width: 1.6px;
     }
 
+    .cm-tooltip-autocomplete {
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
+      border-radius: 4px;
+      background-color: white;
+      color: var(--mb-color-text-dark);
+      border: 1px solid var(--mb-color-border);
+
+      ul {
+        margin: 6px 0;
+      }
+
+      ul li {
+        color: inherit;
+        padding: 0 8px !important;
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      ul li[aria-selected="true"] {
+        color: inherit;
+        background-color: var(--mb-color-focus);
+      }
+
+      .cm-completionIcon {
+        display: none;
+      }
+
+      .cm-completionMatchedText {
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      .cm-completionLabel {
+        display: block;
+        max-width: 18rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .cm-completionDetail {
+        color: var(--mb-color-text-light);
+      }
+    }
+
     /* Syntax highlighting */
 
     .cm-token-keyword {

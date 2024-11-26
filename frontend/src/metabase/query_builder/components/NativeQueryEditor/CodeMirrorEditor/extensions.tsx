@@ -1,3 +1,7 @@
+import {
+  type CompletionContext,
+  autocompletion,
+} from "@codemirror/autocomplete";
 import { json } from "@codemirror/lang-json";
 import {
   MySQL,
@@ -19,15 +23,27 @@ import type { Extension } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
+import slugg from "slugg";
 
+import { useSetting } from "metabase/common/hooks";
 import { isNotNull } from "metabase/lib/types";
+import { MetabaseApi } from "metabase/services";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
+import type { CardType, DatabaseId } from "metabase-types/api";
+
+import { getCardAutocompleteResultMeta } from "./util";
 
 type ExtensionOptions = {
   engine?: string;
+  databaseId?: DatabaseId;
 };
 
-export function useExtensions({ engine }: ExtensionOptions): Extension[] {
+export function useExtensions({
+  engine,
+  databaseId,
+}: ExtensionOptions): Extension[] {
+  const matchStyle = useSetting("native-query-autocomplete-match-style");
+
   return useMemo(() => {
     return [
       nonce(),
@@ -36,11 +52,17 @@ export function useExtensions({ engine }: ExtensionOptions): Extension[] {
         cursorBlinkRate: 1000,
         drawRangeCursor: false,
       }),
-      language(engine),
+      language({ engine, matchStyle, databaseId }),
       highlighting(),
       tagDecorator(),
-    ].filter(isNotNull);
-  }, [engine]);
+      autocompletion({
+        closeOnBlur: false,
+        activateOnTyping: true,
+      }),
+    ]
+      .flat()
+      .filter(isNotNull);
+  }, [engine, matchStyle, databaseId]);
 }
 
 function nonce() {
@@ -74,20 +96,146 @@ const engineToDialect = {
   // sparksql: "spark",
 };
 
-function language(engine?: string) {
+type LanguageOptions = {
+  engine?: string;
+  matchStyle?: string;
+  databaseId?: DatabaseId;
+};
+
+function language({ engine, matchStyle, databaseId }: LanguageOptions) {
   switch (engine) {
     case "mongo":
     case "druid":
-      return json();
+      return [
+        json(),
+        // TODO: custom completions
+      ];
     default: {
       const dialect =
         engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
-      return sql({
+      const lang = sql({
         dialect,
         upperCaseKeywords: true,
       });
+
+      return [
+        lang,
+        lang.language.data.of({
+          async autocomplete(context: CompletionContext) {
+            if (matchStyle === "off" || databaseId == null) {
+              return null;
+            }
+
+            const match = selectCompleter(context);
+            if (!match) {
+              return null;
+            }
+
+            const { type, word } = match;
+
+            if (!word || word.text.length === 0 || word.from === word.to) {
+              return null;
+            }
+
+            if (type === "schema") {
+              const results: [string, string][] =
+                await MetabaseApi.db_autocomplete_suggestions({
+                  dbId: databaseId,
+                  query: word.text.trim(),
+                  matchStyle,
+                });
+
+              return {
+                from: word.from,
+                validFor(text: string) {
+                  return text.startsWith(word.text);
+                },
+                options: results.map(([value, meta]) => ({
+                  label: value,
+                  detail: meta,
+                  boost: 50,
+                })),
+              };
+            }
+
+            if (type === "snippet") {
+              // TODO
+            }
+
+            if (type === "card") {
+              const results: {
+                id: number;
+                name: string;
+                type: CardType;
+                collection_name: string;
+              }[] = await MetabaseApi.db_card_autocomplete_suggestions({
+                dbId: databaseId,
+                query: word.text.trim(),
+              });
+
+              return {
+                from: word.from,
+                validFor(text: string) {
+                  return text.startsWith(`#${word.text}`);
+                },
+                options: results.map(({ id, name, type, collection_name }) => ({
+                  label: `#${id}-${slugg(name)}`,
+                  detail: getCardAutocompleteResultMeta(type, collection_name),
+                  boost: 50,
+                })),
+              };
+            }
+
+            return null;
+          },
+        }),
+      ];
     }
   }
+}
+
+function selectCompleter(context: CompletionContext) {
+  {
+    const word = context.matchBefore(/\{\{\s*snippet:\s*([^\{\}]*)/i);
+    if (word) {
+      const start = word.text.indexOf(":") + 1;
+      return {
+        type: "snippet",
+        word: {
+          text: word.text.slice(start + 1),
+          from: word.from + start,
+          to: word.to,
+        },
+      };
+    }
+  }
+
+  {
+    const word = context.matchBefore(/\{\{\s*#\s*([^\{\}]*)/);
+    if (word) {
+      const start = word.text.indexOf("#");
+      return {
+        type: "card",
+        word: {
+          text: word.text.slice(start + 1),
+          from: word.from + start,
+          to: word.to,
+        },
+      };
+    }
+  }
+
+  {
+    const word = context.matchBefore(/\w+/);
+    if (word) {
+      return {
+        type: "schema",
+        word,
+      };
+    }
+  }
+
+  return null;
 }
 
 const metabaseStyle = HighlightStyle.define(
