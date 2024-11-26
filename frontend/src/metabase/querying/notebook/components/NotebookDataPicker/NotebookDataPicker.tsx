@@ -1,4 +1,4 @@
-import { type MouseEvent, useMemo, useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -19,7 +19,6 @@ import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import { useNotebookContext } from "../Notebook/context";
 import { NotebookCell } from "../NotebookCell";
 
 import { getUrl } from "./utils";
@@ -47,33 +46,15 @@ export function NotebookDataPicker({
   databaseId,
   placeholder = title,
   hasMetrics = false,
-  isDisabled,
+  isDisabled = false,
   onChange,
 }: NotebookDataPickerProps) {
-  const { modelsFilterList } = useNotebookContext();
-  const filterList = hasMetrics
-    ? modelsFilterList
-    : modelsFilterList.filter(model => model !== "metric");
-
-  const [isOpen, setIsOpen] = useState(!table);
-  const metadata = useSelector(getMetadata);
   const store = useStore();
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
-
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const isEmbeddingIframe = useSelector(getIsEmbedded);
   const isEmbedding = isEmbeddingSdk || isEmbeddingIframe;
-
-  const tableInfo = useMemo(
-    () => table && Lib.displayInfo(query, stageIndex, table),
-    [query, stageIndex, table],
-  );
-
-  const tableValue = useMemo(
-    () => table && getDataPickerValue(query, stageIndex, table),
-    [query, stageIndex, table],
-  );
 
   const handleChange = async (tableId: TableId) => {
     await dispatch(loadMetadataForTable(tableId));
@@ -84,70 +65,99 @@ export function NotebookDataPicker({
     onChangeRef.current?.(table, metadataProvider);
   };
 
+  if (isEmbedding) {
+    return (
+      <LegacyDataPicker
+        query={query}
+        stageIndex={stageIndex}
+        table={table}
+        placeholder={placeholder}
+        isDisabled={isDisabled}
+        onChange={handleChange}
+      />
+    );
+  } else {
+    return (
+      <ModernDataPicker
+        query={query}
+        stageIndex={stageIndex}
+        table={table}
+        databaseId={databaseId}
+        title={title}
+        placeholder={placeholder}
+        hasMetrics={hasMetrics}
+        isDisabled={isDisabled}
+        onChange={handleChange}
+      />
+    );
+  }
+}
+
+type ModernDataPickerProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  table: Lib.TableMetadata | Lib.CardMetadata | undefined;
+  databaseId?: DatabaseId;
+  title: string;
+  placeholder: string;
+  hasMetrics: boolean;
+  isDisabled: boolean;
+  onChange: (tableId: TableId) => void;
+};
+
+function ModernDataPicker({
+  query,
+  stageIndex,
+  table,
+  databaseId,
+  title,
+  placeholder,
+  hasMetrics,
+  isDisabled,
+  onChange,
+}: ModernDataPickerProps) {
+  const [isOpened, setIsOpened] = useState(!table);
+
+  const tableInfo = table
+    ? Lib.displayInfo(query, stageIndex, table)
+    : undefined;
+  const tableValue = table
+    ? getDataPickerValue(query, stageIndex, table)
+    : undefined;
+
   const openDataSourceInNewTab = () => {
     const url = getUrl({ query, table, stageIndex });
-    if (!url) {
-      return;
+    if (url) {
+      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+      Urls.openInNewTab(subpathSafeUrl);
     }
-
-    const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
-    Urls.openInNewTab(subpathSafeUrl);
   };
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isCtrlOrMetaClick =
       (event.ctrlKey || event.metaKey) && event.button === 0;
-    if (isCtrlOrMetaClick && !isEmbedding) {
+    if (isCtrlOrMetaClick) {
       openDataSourceInNewTab();
     } else {
-      setIsOpen(true);
+      setIsOpened(true);
     }
   };
 
   const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isMiddleClick = event.button === 1;
-    if (isMiddleClick && !isEmbedding) {
+    if (isMiddleClick) {
       openDataSourceInNewTab();
     } else {
-      setIsOpen(true);
+      setIsOpened(true);
     }
   };
-
-  const handleClose = () => {
-    setIsOpen(false);
-  };
-
-  if (isEmbedding) {
-    return (
-      <DataSourceSelector
-        selectedDatabase={metadata.databases}
-        selectedDatabaseId={Lib.databaseID(query)}
-        selectedTableId={Lib.sourceTableOrCardId(query)}
-        isInitiallyOpen={isOpen}
-        triggerElement={
-          <DataPickerTarget
-            tableInfo={tableInfo}
-            placeholder={placeholder}
-            isDisabled={isDisabled}
-            onClick={handleClick}
-            onAuxClick={handleAuxClick}
-          />
-        }
-        setSourceTableFn={handleChange}
-      />
-    );
-  }
 
   return (
     <>
       <Tooltip
         label={t`${METAKEY}+click to open in new tab`}
-        hidden={!table || isEmbeddingSdk}
-        events={{
-          hover: true,
-          focus: false,
-          touch: false,
-        }}
+        hidden={!table}
+        events={{ hover: true, focus: false, touch: false }}
       >
         <DataPickerTarget
           tableInfo={tableInfo}
@@ -157,17 +167,61 @@ export function NotebookDataPicker({
           onAuxClick={handleAuxClick}
         />
       </Tooltip>
-      {isOpen && (
+      {isOpened && (
         <DataPickerModal
           title={title}
           value={tableValue}
           databaseId={databaseId}
-          models={filterList}
-          onChange={handleChange}
-          onClose={handleClose}
+          models={
+            hasMetrics
+              ? ["table", "card", "dataset", "metric"]
+              : ["table", "card", "dataset"]
+          }
+          onChange={onChange}
+          onClose={() => setIsOpened(false)}
         />
       )}
     </>
+  );
+}
+
+type LegacyDataPickerProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  table: Lib.TableMetadata | Lib.CardMetadata | undefined;
+  placeholder: string;
+  isDisabled: boolean;
+  onChange: (tableId: TableId) => void;
+};
+
+function LegacyDataPicker({
+  query,
+  stageIndex,
+  table,
+  placeholder,
+  isDisabled,
+  onChange,
+}: LegacyDataPickerProps) {
+  const databaseId = Lib.databaseID(query);
+  const tableInfo = table
+    ? Lib.displayInfo(query, stageIndex, table)
+    : undefined;
+  const pickerInfo = table ? Lib.pickerInfo(query, table) : undefined;
+
+  return (
+    <DataSourceSelector
+      isInitiallyOpen={!table}
+      selectedDatabaseId={databaseId}
+      selectedTableId={pickerInfo?.tableId}
+      triggerElement={
+        <DataPickerTarget
+          tableInfo={tableInfo}
+          placeholder={placeholder}
+          isDisabled={isDisabled}
+        />
+      }
+      setSourceTableFn={onChange}
+    />
   );
 }
 
