@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
+   [metabase.db :as mdb]
+   [metabase.search.appdb.core :as search.appdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -29,13 +31,15 @@
   `(search.tu/with-temp-index-table
      (binding [search.ingestion/*force-sync* true]
        (mt/dataset ~(symbol "test-data")
-         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction"          :collection_id 1}
-                        :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
-                        :model/Card     {}           {:name "Projected Revenue"              :collection_id 1}
-                        :model/Card     {}           {:name "Employee Satisfaction"          :collection_id 1}
-                        :model/Card     {}           {:name "Projected Satisfaction"         :collection_id 1}
-                        :model/Database {db-id# :id} {:name "Indexed Database"}
-                        :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
+         (mt/with-temp [:model/User       {} {:id 1}
+                        :model/Collection {col-id# :id} {:name "Collection"}
+                        :model/Card       {}            {:name "Customer Satisfaction"          :collection_id col-id#}
+                        :model/Card       {}            {:name "The Latest Revenue Projections" :collection_id col-id#}
+                        :model/Card       {}            {:name "Projected Revenue"              :collection_id col-id#}
+                        :model/Card       {}            {:name "Employee Satisfaction"          :collection_id col-id#}
+                        :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
+                        :model/Database   {db-id# :id}  {:name "Indexed Database"}
+                        :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
            (search.index/reset-index!)
            (search.ingestion/populate-index! :search.engine/appdb)
            ~@body)))))
