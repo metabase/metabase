@@ -23,17 +23,24 @@ class ArchiveDashboardModal extends Component {
     onClose: PropTypes.func,
   };
 
+  constructor(props) {
+    super(props);
+    this.state = { loading: false };
+  }
+
   archive = async () => {
     const dashboardId = Urls.extractEntityId(this.props.params.slug);
+    this.setState({ loading: true });
     await this.props.setDashboardArchived(dashboardId);
+    this.setState({ loading: false });
   };
 
   render() {
     const { dashboard } = this.props;
 
-    const hasDashboardQuestions = dashboard.dashcards.some(dc =>
-      _.isNumber(dc.card.dashboard_id),
-    );
+    const hasDashboardQuestions = dashboard.dashcards
+      .filter(dc => dc.card) // card might be null for virtual cards
+      .some(dc => _.isNumber(dc.card.dashboard_id));
 
     const message = hasDashboardQuestions
       ? t`This will trash the dashboard and the questions that are saved in it. Are you sure you want to do this?`
@@ -50,6 +57,7 @@ class ArchiveDashboardModal extends Component {
         modelId={dashboard?.id}
         message={message}
         onClose={this.props.onClose}
+        isLoading={this.state.loading}
         onArchive={this.archive}
       />
     );
