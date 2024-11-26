@@ -51,8 +51,7 @@ jobs:
               getBuildRequirements,
               getVersionFromReleaseBranch,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
-            // const targetBranchName = '${{ github.base_ref || github.ref }}';
-            const targetBranchName = 'release-x.51.x';
+            const targetBranchName = '${{ github.base_ref || github.ref }}';
 
             const version = getVersionFromReleaseBranch(targetBranchName);
             const requirements = getBuildRequirements(version);
@@ -113,8 +112,7 @@ jobs:
         with:
           script: | # js
             const { getSdkVersionFromBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
-            // const branchName = '${{ github.base_ref || github.ref }}';
-            const branchName = 'release-x.51.x';
+            const branchName = '${{ github.base_ref || github.ref }}';
 
             const sdk_version = await getSdkVersionFromBranchName({
               github,

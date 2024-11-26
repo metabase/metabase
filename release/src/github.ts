@@ -168,7 +168,7 @@ export async function getIssueWithCache({
       repo,
       issue_number: issueNumber,
     })
-    .catch(err => {
+    .catch((err: Error) => {
       console.log(err);
       return null;
     });
@@ -223,14 +223,14 @@ export async function getLatestGreenCommit({
   github,
   owner,
   repo,
-  branchName,
+  branch,
 }: GithubProps & { branch: string }) {
   const MAX_COMMITS = 10;
 
   const compareResponse = await github.rest.repos.compareCommitsWithBasehead({
     owner,
     repo,
-    basehead: `refs/heads/${branchName}~${MAX_COMMITS}...refs/heads/${branchName}`,
+    basehead: `refs/heads/${branch}~${MAX_COMMITS}...refs/heads/${branch}`,
   });
 
   const commits = compareResponse.data.commits.reverse();
