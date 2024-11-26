@@ -229,33 +229,33 @@ describe("DashboardSharingMenu", () => {
         expect(screen.getByText("Embed")).toBeInTheDocument();
       });
 
-      it("should show an 'embedding is off' menu item if embedding is disabled", async () => {
+      it("should show the 'Embed' menu item if embedding is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: true,
           isEmbeddingEnabled: false,
         });
         await openMenu();
-        expect(screen.getByText("Embedding is off")).toBeInTheDocument();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
       });
     });
 
     describe("non-admins", () => {
-      it("should not show the 'Embed' menu item if embedding is enabled", async () => {
+      it("should show the 'Embed' menu item if embedding is enabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: true,
         });
         await openMenu();
-        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
       });
 
-      it("should not show the 'Embed' menu item if embedding is disabled", async () => {
+      it("should show the 'Embed' menu item if embedding is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: false,
         });
         await openMenu();
-        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
       });
     });
   });
