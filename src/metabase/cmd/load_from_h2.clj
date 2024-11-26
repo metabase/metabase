@@ -17,7 +17,7 @@
     # MySQL
     mysql -u root -e 'DROP DATABASE IF EXISTS metabase; CREATE DATABASE metabase;'
     MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase clojure -M:run load-from-h2"
-  ;; TODO pending a reorganization of the search namespaces, to expose this
+  ;; TODO pending a reorganization of the search namespaces, to expose this properly
   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [metabase.cmd.copy :as copy]
