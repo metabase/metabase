@@ -12,6 +12,7 @@
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [cheshire.core :as json]
+   [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -1339,3 +1340,48 @@
                     :dashcard-download        expected-header
                     :public-dashcard-download expected-header}
                    (update-vals formatted-results first)))))))))
+
+(defn- pivot-card-with-scalar [scalar]
+  {:display                :pivot
+   :visualization_settings {:pivot_table.column_split
+                            {:rows    ["CATEGORY"]
+                             :columns ["CREATED_AT"]
+                             :values  ["sum"]}
+                            :column_settings
+                            {"[\"name\",\"sum\"]" (merge {:number_style       "currency"
+                                                          :currency_in_header false}
+                                                         (when scalar {:scale scalar}))}}
+   :dataset_query          {:database (mt/id)
+                            :type     :query
+                            :query {:source-table (mt/id :products)
+                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                   [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}})
+
+(deftest pivot-with-scale-test
+  (testing "Pivot table exports work with \"Multiply by a number\" (scale)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {:keys [created_at] :as no-scale-card}  (pivot-card-with-scalar nil)
+                     :model/Card one-scale-card (assoc (pivot-card-with-scalar 1) :created_at created_at)
+                     :model/Card zero-scale-card (assoc (pivot-card-with-scalar 0) :created_at created_at)]
+        (let [named-cards {:one-scale-card one-scale-card
+                           :two-scale-card zero-scale-card
+                           :no-scale-card no-scale-card}]
+          (doseq [[c1-name c2-name export-format expected] [[:one-scale-card  :no-scale-card  :csv  true]
+                                                            [:one-scale-card  :two-scale-card :csv  false]
+                                                            [:no-scale-card   :two-scale-card :csv  false]
+                                                            [:one-scale-card  :no-scale-card  :xlsx true]
+                                                            [:one-scale-card  :two-scale-card :xlsx false]
+                                                            [:no-scale-card   :two-scale-card :xlsx false]
+                                                            ;; TODO: We don't support JSON for pivot tables, once we
+                                                            ;; do, we should add them here
+                                                            ]]
+            (testing (str "> " (name c1-name) " and " (name c2-name) " with export-format: '" (name export-format) "' should be " expected)
+              (let [c1 (get named-cards c1-name)
+                    c2 (get named-cards c2-name)
+                    [unique-to-a unique-to-b _both]
+                    (data/diff (all-outputs! c1 {:export-format export-format :format-rows true :pivot true})
+                               (all-outputs! c2 {:export-format export-format :format-rows true :pivot true}))]
+                (if expected
+                  (is (= [nil nil] [unique-to-a unique-to-b]))
+                  (is (or (some? unique-to-a) (some? unique-to-b))))))))))))
