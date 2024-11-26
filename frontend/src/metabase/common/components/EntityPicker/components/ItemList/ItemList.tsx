@@ -79,7 +79,7 @@ export const ItemList = <
         const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
 
         const folderChevronColor = isSelected
-          ? "var(--mb-color-text-white)"
+          ? "currentcolor"
           : "var(--mb-color-text-primary)";
 
         return (
