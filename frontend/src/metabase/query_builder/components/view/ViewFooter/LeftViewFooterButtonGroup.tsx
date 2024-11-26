@@ -7,7 +7,6 @@ import {
 } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
-  getIsVisualized,
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { Button, Flex, rem } from "metabase/ui";
@@ -37,11 +36,10 @@ export const LeftViewFooterButtonGroup = ({
 
   const dispatch = useDispatch();
 
-  const isVisualized = useSelector(getIsVisualized);
   const shouldShowChartSettingsButton =
     !isNotebook &&
     !hideChartSettings &&
-    (!isShowingRawTable || isVisualized) &&
+    (!isShowingRawTable || isShowingChartSettingsSidebar) &&
     isResultLoaded;
 
   return (
