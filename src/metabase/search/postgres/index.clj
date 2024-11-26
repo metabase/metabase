@@ -5,7 +5,8 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (org.postgresql.util PSQLException)))
 
 (def ^:dynamic *active-table*
   "The table against which we should currently make search queries. Dynamic for testing."
@@ -18,6 +19,13 @@
 (defonce ^:private initialized? (atom false))
 
 (defonce ^:private reindexing? (atom false))
+
+(defn reset-tracking!
+  "Remove assumptions about search indexing state. Not particularly safe, but only used in tests."
+  []
+  ;; TODO we'll make this safe when we switch to the metadata table.
+  (reset! initialized? false)
+  (reset! reindexing? false))
 
 (def ^:private tsv-language "english")
 
@@ -244,15 +252,24 @@
             (str/join " | ")
             maybe-complete)))))
 
+(defn- safe-batch-upsert! [table-name entries]
+  (try
+    (batch-upsert! table-name entries)
+    (catch Exception e
+      ;; ignore database errors, the table likely doesn't exist, or has a stale schema.
+      (when-not (instance? PSQLException (ex-cause e))
+        (throw e)))))
+
 (defn batch-update!
   "Create the given search index entries in bulk"
   [entities]
-  (let [entries (map entity->entry entities)]
-    (when @initialized?
-      (batch-upsert! *active-table* entries))
-    (when @reindexing?
-      (batch-upsert! pending-table entries))
-    (->> entries (map :model) frequencies)))
+  (let [entries          (map entity->entry entities)
+        ;; Ideally, we would reset these atoms if the corresponding tables don't exist.
+        ;; We're about to rework this area, so just leaving this as a note for now.
+        active-updated?  (when @initialized? (safe-batch-upsert! *active-table* entries))
+        pending-updated? (when @reindexing?  (safe-batch-upsert! pending-table entries))]
+    (when (or active-updated? pending-updated?)
+      (->> entries (map :model) frequencies))))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."

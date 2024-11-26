@@ -1068,7 +1068,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Enables search engines which are still in the experimental stage")
   :visibility :internal
   :export?    false
-  :default    false
+  :default    (not config/is-prod?)
   :type       :boolean)
 
 (defsetting experimental-search-weight-overrides

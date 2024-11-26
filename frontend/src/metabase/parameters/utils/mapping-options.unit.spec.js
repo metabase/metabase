@@ -357,7 +357,11 @@ describe("parameters/utils/mapping-options", () => {
         {
           name: "Created At",
           icon: "calendar",
-          target: ["dimension", ["template-tag", "created"]],
+          target: [
+            "dimension",
+            ["template-tag", "created"],
+            { "stage-number": 0 },
+          ],
           isForeign: false,
         },
       ]);

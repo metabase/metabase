@@ -277,18 +277,6 @@ describe("scenarios > public > dashboard", () => {
     filterWidget().findByText("002").should("be.visible");
   });
 
-  it("should allow to set locale from the `locale` query parameter", () => {
-    cy.get("@dashboardId").then(id => {
-      visitPublicDashboard(id, {
-        params: { locale: "de" },
-      });
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
-    cy.findByText("Registerkarte als PDF exportieren").should("be.visible");
-    cy.url().should("include", "locale=de");
-  });
-
   it("should respect click behavior", () => {
     createDashboardWithQuestions({
       dashboardName: "test click behavior",
@@ -356,5 +344,17 @@ describeEE("scenarios [EE] > public > dashboard", () => {
 
       cy.title().should("eq", "Test Dashboard · Custom Application Name");
     });
+  });
+
+  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id, {
+        hash: { locale: "de" },
+      });
+    });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
+    cy.findByText("Registerkarte als PDF exportieren").should("be.visible");
+    cy.url().should("include", "locale=de");
   });
 });
