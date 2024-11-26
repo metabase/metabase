@@ -23,3 +23,7 @@ hr {
 .mantine-Header-root {
   border-bottom: 1px solid var(--mb-color-border);
 }
+
+pre {
+  font-family: inherit;
+}

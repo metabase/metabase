@@ -7,6 +7,9 @@ const nextConfig = {
 
 const withMdx = withMDX({
   extension: /\.mdx?$/,
+  processor: {
+    providerImportSource: "@mdx-js/react",
+  },
 });
 
 export default withMdx(nextConfig);
