@@ -4,7 +4,6 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config]
-   [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
@@ -34,17 +33,15 @@
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
   [search-ctx]
-  (if (= :search.engine/in-place (:search-engine search-ctx))
-    (search.in-place.filter/search-context->applicable-models search-ctx)
-    ;; Archived is an eccentric one - we treat it as false for models that don't map it, rather than removing them.
-    ;; TODO move this behavior to the spec somehow
-    (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))]
-      (into #{}
-            (remove nil?)
-            (for [search-model (:models search-ctx)
-                  :let [spec (search.spec/spec search-model)]]
-              (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
-                (:name spec)))))))
+  ;; Archived is an eccentric one - we treat it as false for models that don't map it, rather than removing them.
+  ;; TODO move this behavior to the spec somehow
+  (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))]
+    (into #{}
+          (remove nil?)
+          (for [search-model (:models search-ctx)
+                :let [spec (search.spec/spec search-model)]]
+            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
+              (:name spec))))))
 
 (defn- date-range-filter-clause
   [dt-col dt-val]
