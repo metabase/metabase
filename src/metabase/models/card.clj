@@ -595,8 +595,7 @@
         card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
-      maybe-populate-initially-published-at
-      (dissoc :id)))
+      maybe-populate-initially-published-at))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
