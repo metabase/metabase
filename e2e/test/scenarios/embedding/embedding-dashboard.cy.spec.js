@@ -1009,7 +1009,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     });
   });
 
-  it("should allow to set locale from the `locale` query parameter", () => {
+  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       enable_embedding: true,
     });
@@ -1020,7 +1020,11 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         resource: { dashboard: ORDERS_DASHBOARD_ID },
         params: {},
       },
-      { qs: { locale: "de" } },
+      {
+        additionalHashOptions: {
+          locale: "de",
+        },
+      },
     );
 
     main().findByText("Februar 11, 2025, 9:40 PM");

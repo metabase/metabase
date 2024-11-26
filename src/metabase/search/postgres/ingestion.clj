@@ -101,6 +101,10 @@
   "Force ingestion to happen immediately, on the same thread."
   false)
 
+(def ^:dynamic *disable-updates*
+  "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
+  false)
+
 (defn- bulk-ingest! [updates]
   (->> (for [[search-model where-clauses] (u/group-by first second updates)]
          (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
@@ -126,10 +130,11 @@
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
-   (if sync?
-     (bulk-ingest! updates)
-     (doseq [update updates]
-       (queue/put-with-delay! queue delay-ms update)))))
+   (when-not *disable-updates*
+     (if sync?
+       (bulk-ingest! updates)
+       (doseq [update updates]
+         (queue/put-with-delay! queue delay-ms update))))))
 
 (defn- impossible-condition?
   "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."

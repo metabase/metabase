@@ -64,6 +64,7 @@ function buildStructuredQuerySectionOptions(
 
 function buildNativeQuerySectionOptions(
   section: DimensionOptionsSection,
+  stageIndex: number,
 ): NativeParameterMappingOption[] {
   return section.items
     .flatMap(({ dimension }) =>
@@ -73,7 +74,7 @@ function buildNativeQuerySectionOptions(
       name: dimension.displayName(),
       icon: dimension.icon() ?? "",
       isForeign: false,
-      target: buildDimensionTarget(dimension),
+      target: buildDimensionTarget(dimension, stageIndex),
     }));
 }
 
@@ -184,6 +185,7 @@ export function getParameterMappingOptions(
 
   const legacyQuery = question.legacyQuery();
   const options: NativeParameterMappingOption[] = [];
+  const stageIndex = Lib.stageCount(question.query()) - 1;
 
   options.push(
     ...legacyQuery
@@ -196,7 +198,7 @@ export function getParameterMappingOptions(
         parameter ? dimensionFilterForParameter(parameter) : undefined,
       )
       .sections()
-      .flatMap(section => buildNativeQuerySectionOptions(section)),
+      .flatMap(section => buildNativeQuerySectionOptions(section, stageIndex)),
   );
 
   return options;
