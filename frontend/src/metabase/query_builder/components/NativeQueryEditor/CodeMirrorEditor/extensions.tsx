@@ -6,7 +6,9 @@ import {
   StandardSQL,
   sql,
 } from "@codemirror/lang-sql";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView, drawSelection } from "@codemirror/view";
+import { type Tag, tags } from "@lezer/highlight";
 import type { Extension } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
@@ -28,6 +30,7 @@ export function useExtensions({ engine }: ExtensionOptions): Extension[] {
         drawRangeCursor: false,
       }),
       language(engine),
+      highlighting(),
     ].filter(isNotNull);
   }, [engine]);
 }
@@ -77,4 +80,19 @@ function language(engine?: string) {
       });
     }
   }
+}
+
+const metabaseStyle = HighlightStyle.define(
+  // Map all tags to CSS variables with the same name
+  // See ./CodeMirrorEditor.module.css for the colors
+  Object.entries(tags)
+    .filter((item): item is [string, Tag] => typeof item[1] !== "function")
+    .map(([name, tag]: [string, Tag]) => ({
+      tag,
+      class: `cm-token-${name}`,
+    })),
+);
+
+function highlighting() {
+  return syntaxHighlighting(metabaseStyle);
 }

@@ -51,5 +51,37 @@
     .cm-cursor {
       border-left-width: 1.6px;
     }
+
+    /* Syntax highlighting */
+
+    .cm-token-keyword {
+      color: var(--mb-color-saturated-purple);
+    }
+
+    .cm-token-function,
+    .cm-token-variable {
+      color: var(--mb-color-saturated-blue);
+    }
+
+    .cm-token-constant,
+    .cm-token-typeName {
+      color: var(--mb-color-saturated-red);
+    }
+
+    .cm-token-string {
+      color: var(--mb-color-saturated-green);
+    }
+
+    .cm-token-number,
+    .cm-token-bool {
+      color: var(--mb-color-saturated-red);
+    }
+
+    .cm-token-comment,
+    .cm-token-lineComment,
+    .cm-token-blockComment {
+      color: var(--mb-color-text-light);
+      font-style: italic;
+    }
   }
 }
