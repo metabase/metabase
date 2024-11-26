@@ -12,6 +12,7 @@
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [cheshire.core :as json]
+   [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -1255,17 +1256,30 @@
                                                    [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}})
 
 (deftest pivot-with-scale-test
-  (testing "Pivot table exports look pivoted"
+  (testing "Pivot table exports work with \"Multiply by a number\" (scale)"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card no-scale-card  (pivot-card-with-scalar nil)
-                     :model/Card one-scale-card (pivot-card-with-scalar 1)
-                     :model/Card two-scale-card (pivot-card-with-scalar 2)]
-        (doseq [[c1 c2 export-format expected] [[one-scale-card  no-scale-card  :csv  true]
-                                                [one-scale-card  two-scale-card :csv  false]
-                                                [no-scale-card   two-scale-card :csv  false]
-                                                [one-scale-card  no-scale-card  :xlsx true]
-                                                [one-scale-card  two-scale-card :xlsx false]
-                                                [no-scale-card   two-scale-card :xlsx false]]]
-               (is (= expected
-                      (= (all-outputs! c1 {:export-format export-format :format-rows true :pivot true})
-                         (all-outputs! c2 {:export-format export-format :format-rows true :pivot true})))))))))
+      (mt/with-temp [:model/Card {:keys [created_at] :as no-scale-card}  (pivot-card-with-scalar nil)
+                     :model/Card one-scale-card (assoc (pivot-card-with-scalar 1) :created_at created_at)
+                     :model/Card zero-scale-card (assoc (pivot-card-with-scalar 0) :created_at created_at)]
+        (let [named-cards {:one-scale-card one-scale-card
+                           :two-scale-card zero-scale-card
+                           :no-scale-card no-scale-card}]
+          (doseq [[c1-name c2-name export-format expected] [[:one-scale-card  :no-scale-card  :csv  true]
+                                                            [:one-scale-card  :two-scale-card :csv  false]
+                                                            [:no-scale-card   :two-scale-card :csv  false]
+                                                            [:one-scale-card  :no-scale-card  :xlsx true]
+                                                            [:one-scale-card  :two-scale-card :xlsx false]
+                                                            [:no-scale-card   :two-scale-card :xlsx false]
+                                                            ;; TODO: test scaled pivot exports for json once pivoted json exports are supported
+                                                            #_[:one-scale-card  :no-scale-card  :json true]
+                                                            #_[:one-scale-card  :two-scale-card :json false]
+                                                            #_[:no-scale-card   :two-scale-card :json false]]]
+            (testing (str "> " (name c1-name) " and " (name c2-name) " with export-format: '" (name export-format) "' should be " expected)
+              (let [c1 (get named-cards c1-name)
+                    c2 (get named-cards c2-name)
+                    [unique-to-a unique-to-b _both]
+                    (data/diff (all-outputs! c1 {:export-format export-format :format-rows true :pivot true})
+                               (all-outputs! c2 {:export-format export-format :format-rows true :pivot true}))]
+                (if expected
+                  (is (= [nil nil] [unique-to-a unique-to-b]))
+                  (is (or (some? unique-to-a) (some? unique-to-b))))))))))))
