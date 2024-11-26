@@ -6,6 +6,7 @@ import {
   createQuestion,
   echartsContainer,
   getDraggableElements,
+  leftSidebar,
   modal,
   moveDnDKitElement,
   popover,
@@ -150,6 +151,41 @@ describe("issue 49874", () => {
     echartsContainer().within(() => {
       cy.findByText("Sum of Quantity").should("not.exist");
       cy.findByText("Sum of Total").should("be.visible");
+    });
+  });
+});
+
+describe("issue 49529", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow selecting breakout dimension before metrics", () => {
+    const question = {
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        database: 1,
+      },
+      display: "bar",
+    };
+
+    visitQuestionAdhoc(question);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findAllByTestId("select-button").eq(0).as("dimensionSelect").click();
+    popover().findByText("ID").click();
+
+    leftSidebar().findByText("Add series breakout").click();
+    popover().findByText("Quantity").click();
+
+    leftSidebar().within(() => {
+      cy.findByText("Y-axis");
+      cy.findByText("Nothing to order");
     });
   });
 });

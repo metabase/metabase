@@ -356,22 +356,47 @@ export function saveSavedQuestion() {
   cy.wait("@updateQuestion");
 }
 
-export function visitPublicQuestion(id) {
+/**
+ *
+ * @param {number} id
+ * @param {object} options
+ * @param {Record<string, string>} options.params
+ * @param {Record<string, string>} options.hash
+ */
+export function visitPublicQuestion(id, { params = {}, hash = {} } = {}) {
+  const searchParams = new URLSearchParams(params).toString();
+  const searchSection = searchParams ? `?${searchParams}` : "";
+  const hashParams = new URLSearchParams(hash).toString();
+  const hashSection = hashParams ? `#${hashParams}` : "";
+
   cy.request("POST", `/api/card/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
-      cy.visit(`/public/question/${uuid}`);
+      cy.visit({
+        url: `/public/question/${uuid}` + searchSection + hashSection,
+      });
     },
   );
 }
 
-export function visitPublicDashboard(id, { params = {} } = {}) {
+/**
+ *
+ * @param {number} id
+ * @param {object} options
+ * @param {Record<string, string>} options.params
+ * @param {Record<string, string>} options.hash
+ */
+export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
+  const searchParams = new URLSearchParams(params).toString();
+  const searchSection = searchParams ? `?${searchParams}` : "";
+  const hashParams = new URLSearchParams(hash).toString();
+  const hashSection = hashParams ? `#${hashParams}` : "";
+
   cy.request("POST", `/api/dashboard/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
       cy.visit({
-        url: `/public/dashboard/${uuid}`,
-        qs: params,
+        url: `/public/dashboard/${uuid}` + searchSection + hashSection,
       });
     },
   );
