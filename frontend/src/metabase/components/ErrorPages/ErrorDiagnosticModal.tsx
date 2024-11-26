@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -17,6 +17,10 @@ import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 
 import { BugReportModal } from "./BugReportModal";
 import { DownloadDiagnosticModal } from "./DownloadDiagnosticModal";
+import {
+  trackErrorDiagnosticModalOpened,
+  trackErrorDiagnosticModalSubmitted,
+} from "./analytics";
 import type { ErrorPayload } from "./types";
 import { useErrorInfo } from "./use-error-info";
 import { downloadObjectAsJson, hasQueryData } from "./utils";
@@ -71,6 +75,7 @@ export const ErrorDiagnosticModal = ({
   };
 
   const handleSubmit = (values: PayloadSelection) => {
+    trackErrorDiagnosticModalSubmitted("download-diagnostics");
     const selectedKeys = Object.keys(values).filter(
       key => values[key as keyof PayloadSelection],
     );
@@ -103,6 +108,7 @@ export const ErrorDiagnosticModal = ({
       }).unwrap();
 
       if (response.success) {
+        trackErrorDiagnosticModalSubmitted("submit-report");
         setIsSubmissionComplete(true);
       } else {
         dispatch(
@@ -282,6 +288,12 @@ export const ErrorExplanationModal = ({
 export const KeyboardTriggeredErrorModal = () => {
   const dispatch = useDispatch();
   const isShowingDiagnosticModal = useSelector(getIsErrorDiagnosticModalOpen);
+
+  useEffect(() => {
+    if (isShowingDiagnosticModal) {
+      trackErrorDiagnosticModalOpened("command-palette");
+    }
+  }, [isShowingDiagnosticModal]);
 
   const handleCloseModal = () => {
     dispatch(closeDiagnostics());

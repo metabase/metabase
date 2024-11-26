@@ -9,6 +9,7 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
+import { trackErrorDiagnosticModalOpened } from "metabase/components/ErrorPages/analytics";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
@@ -77,7 +78,10 @@ function ProfileLink({ adminItems, onLogout, openDiagnostics }) {
       {
         title: t`File a bug`,
         icon: null,
-        action: () => openDiagnostics(),
+        action: () => {
+          trackErrorDiagnosticModalOpened("profile-menu");
+          openDiagnostics();
+        },
         event: `Navbar;Profile Dropdown;Report Bug`,
       },
       {
