@@ -56,6 +56,7 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
         value={query.queryText()}
         readOnly={readOnly}
         onChange={onChange}
+        height="100%"
         onUpdate={handleUpdate}
       />
     );
