@@ -53,6 +53,11 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+;; Disable the search index, as older schemas may not be compatible with ingestion.
+(use-fixtures :each (fn [thunk]
+                      (binding [search.ingestion/*disable-updates* true]
+                        (thunk))))
+
 (deftest rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
     ;; using test-migrations to excercise all drivers
@@ -346,69 +351,62 @@
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
 
-(defmacro ^:private with-search-indexing-disabled!
-  "Old schemas may be incompatible with the ingestion queries, so turn it off."
-  [& body]
-  `(binding [search.ingestion/*disable-updates* true]
-     ~@body))
-
 (deftest migrate-grid-from-18-to-24-test
-  (with-search-indexing-disabled!
-    (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
-      (let [user         (create-raw-user! (mt/random-email))
-            dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                            :creator_id (:id user)}))
+  (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
+    (let [user         (create-raw-user! (mt/random-email))
+          dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
+                                                                          :creator_id (:id user)}))
           ;; this layout is from magic dashboard for order table
-            cases        [{:row 15 :col 0  :size_x 12 :size_y 8}
-                          {:row 7  :col 12 :size_x 6  :size_y 8}
-                          {:row 2  :col 5  :size_x 5  :size_y 3}
-                          {:row 25 :col 0  :size_x 7  :size_y 10}
-                          {:row 2  :col 0  :size_x 5  :size_y 3}
-                          {:row 7  :col 6  :size_x 6  :size_y 8}
-                          {:row 25 :col 7  :size_x 11 :size_y 10}
-                          {:row 7  :col 0  :size_x 6  :size_y 4}
-                          {:row 23 :col 0  :size_x 18 :size_y 2}
-                          {:row 5  :col 0  :size_x 18 :size_y 2}
-                          {:row 0  :col 0  :size_x 18 :size_y 2}
+          cases        [{:row 15 :col 0  :size_x 12 :size_y 8}
+                        {:row 7  :col 12 :size_x 6  :size_y 8}
+                        {:row 2  :col 5  :size_x 5  :size_y 3}
+                        {:row 25 :col 0  :size_x 7  :size_y 10}
+                        {:row 2  :col 0  :size_x 5  :size_y 3}
+                        {:row 7  :col 6  :size_x 6  :size_y 8}
+                        {:row 25 :col 7  :size_x 11 :size_y 10}
+                        {:row 7  :col 0  :size_x 6  :size_y 4}
+                        {:row 23 :col 0  :size_x 18 :size_y 2}
+                        {:row 5  :col 0  :size_x 18 :size_y 2}
+                        {:row 0  :col 0  :size_x 18 :size_y 2}
                         ;; these 2 last cases is a specical case where the last card has (width, height) = (1, 1)
                         ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove these cards
-                          {:row 36 :col 0  :size_x 17 :size_y 1}
-                          {:row 36 :col 17 :size_x 1  :size_y 1}]
-            dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
-                                                   (map #(merge % {:dashboard_id dashboard-id
-                                                                   :visualization_settings {}
-                                                                   :parameter_mappings     {}}) cases))]
-        (testing "forward migration migrate correctly"
-          (migrate!)
-          (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
-                                                 :model/DashboardCard :id [:in dashcard-ids]
-                                                 {:order-by [[:id :asc]]})]
-            (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
-                    {:row 7  :col 16 :size_x 8  :size_y 8}
-                    {:row 2  :col 7  :size_x 6  :size_y 3}
-                    {:row 25 :col 0  :size_x 9  :size_y 10}
-                    {:row 2  :col 0  :size_x 7  :size_y 3}
-                    {:row 7  :col 8  :size_x 8  :size_y 8}
-                    {:row 25 :col 9  :size_x 15 :size_y 10}
-                    {:row 7  :col 0  :size_x 8  :size_y 4}
-                    {:row 23 :col 0  :size_x 24 :size_y 2}
-                    {:row 5  :col 0  :size_x 24 :size_y 2}
-                    {:row 0  :col 0  :size_x 24 :size_y 2}
-                    {:row 36 :col 0  :size_x 23 :size_y 1}
-                    {:row 36 :col 23 :size_x 1  :size_y 1}]
-                   migrated-to-24))
-            (is (true? (custom-migrations-test/no-cards-are-overlap? migrated-to-24)))
-            (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? migrated-to-24 24)))))
+                        {:row 36 :col 0  :size_x 17 :size_y 1}
+                        {:row 36 :col 17 :size_x 1  :size_y 1}]
+          dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
+                                                 (map #(merge % {:dashboard_id dashboard-id
+                                                                 :visualization_settings {}
+                                                                 :parameter_mappings     {}}) cases))]
+      (testing "forward migration migrate correctly"
+        (migrate!)
+        (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
+                                               :model/DashboardCard :id [:in dashcard-ids]
+                                               {:order-by [[:id :asc]]})]
+          (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
+                  {:row 7  :col 16 :size_x 8  :size_y 8}
+                  {:row 2  :col 7  :size_x 6  :size_y 3}
+                  {:row 25 :col 0  :size_x 9  :size_y 10}
+                  {:row 2  :col 0  :size_x 7  :size_y 3}
+                  {:row 7  :col 8  :size_x 8  :size_y 8}
+                  {:row 25 :col 9  :size_x 15 :size_y 10}
+                  {:row 7  :col 0  :size_x 8  :size_y 4}
+                  {:row 23 :col 0  :size_x 24 :size_y 2}
+                  {:row 5  :col 0  :size_x 24 :size_y 2}
+                  {:row 0  :col 0  :size_x 24 :size_y 2}
+                  {:row 36 :col 0  :size_x 23 :size_y 1}
+                  {:row 36 :col 23 :size_x 1  :size_y 1}]
+                 migrated-to-24))
+          (is (true? (custom-migrations-test/no-cards-are-overlap? migrated-to-24)))
+          (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? migrated-to-24 24)))))
 
       ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
-        #_(testing "downgrade works correctly"
-            (migrate! :down 46)
-            (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
-                                                     :model/DashboardCard :id [:in dashcard-ids]
-                                                     {:order-by [[:id :asc]]})]
-              (is (= cases rollbacked-to-18))
-              (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
-              (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18)))))))))
+      #_(testing "downgrade works correctly"
+          (migrate! :down 46)
+          (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
+                                                   :model/DashboardCard :id [:in dashcard-ids]
+                                                   {:order-by [[:id :asc]]})]
+            (is (= cases rollbacked-to-18))
+            (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
+            (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
 
 (deftest backfill-permission-id-test
   (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"

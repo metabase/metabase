@@ -41,6 +41,11 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+;; Disable the search index, as older schemas may not be compatible with ingestion.
+(use-fixtures :each (fn [thunk]
+                      (binding [search.ingestion/*disable-updates* true]
+                        (thunk))))
+
 (jobs/defjob AbandonmentEmail [_] :default)
 
 (defn- table-default [table]
@@ -79,41 +84,34 @@
   ([table properties]
    (t2/insert-returning-instance! table (merge (table-default table) properties))))
 
-(defmacro ^:private with-search-indexing-disabled!
-  "Old schemas may be incompatible with the ingestion queries, so turn it off."
-  [& body]
-  `(binding [search.ingestion/*disable-updates* true]
-     ~@body))
-
 (deftest delete-abandonment-email-task-test
   (testing "Migration v46.00-086: Delete the abandonment email task"
-    (with-search-indexing-disabled!
-      (impl/test-migrations ["v46.00-086"] [migrate!]
-        (try (do (task/start-scheduler!)
-                 (let [abandonment-emails-job-key     "metabase.task.abandonment-emails.job"
-                       abandonment-emails-trigger-key "metabase.task.abandonment-emails.trigger"
-                      ;; this corresponds to the job and trigger removed in metabase#27348
-                       job                            (jobs/build
-                                                       (jobs/of-type AbandonmentEmail)
-                                                       (jobs/with-identity (jobs/key abandonment-emails-job-key)))
-                       trigger                        (triggers/build
-                                                       (triggers/with-identity (triggers/key abandonment-emails-trigger-key))
-                                                       (triggers/start-now)
-                                                       (triggers/with-schedule
-                                                        (cron/cron-schedule "0 0 12 * * ? *")))]
-                   (task/schedule-task! job trigger)
-                   (testing "before the migration, the job and trigger exist"
-                     (is (some? (qs/get-job (@#'task/scheduler) (jobs/key abandonment-emails-job-key))))
-                     (is (some? (qs/get-trigger (@#'task/scheduler) (triggers/key abandonment-emails-trigger-key)))))
-                  ;; stop the scheduler because the scheduler won't be started when migrations start
-                   (task/stop-scheduler!)
-                   (migrate!)
-                  ;; check the job and trigger are deleted
-                   (task/start-scheduler!)
-                   (testing "after the migration, the job and trigger are deleted"
-                     (is (nil? (qs/get-job (@#'task/scheduler) (jobs/key abandonment-emails-job-key))))
-                     (is (nil? (qs/get-trigger (@#'task/scheduler) (triggers/key abandonment-emails-trigger-key)))))))
-             (finally (task/stop-scheduler!)))))))
+    (impl/test-migrations ["v46.00-086"] [migrate!]
+      (try (do (task/start-scheduler!)
+               (let [abandonment-emails-job-key     "metabase.task.abandonment-emails.job"
+                     abandonment-emails-trigger-key "metabase.task.abandonment-emails.trigger"
+                     ;; this corresponds to the job and trigger removed in metabase#27348
+                     job     (jobs/build
+                              (jobs/of-type AbandonmentEmail)
+                              (jobs/with-identity (jobs/key abandonment-emails-job-key)))
+                     trigger (triggers/build
+                              (triggers/with-identity (triggers/key abandonment-emails-trigger-key))
+                              (triggers/start-now)
+                              (triggers/with-schedule
+                               (cron/cron-schedule "0 0 12 * * ? *")))]
+                 (task/schedule-task! job trigger)
+                 (testing "before the migration, the job and trigger exist"
+                   (is (some? (qs/get-job (@#'task/scheduler) (jobs/key abandonment-emails-job-key))))
+                   (is (some? (qs/get-trigger (@#'task/scheduler) (triggers/key abandonment-emails-trigger-key)))))
+                 ;; stop the scheduler because the scheduler won't be started when migrations start
+                 (task/stop-scheduler!)
+                 (migrate!)
+                 ;; check the job and trigger are deleted
+                 (task/start-scheduler!)
+                 (testing "after the migration, the job and trigger are deleted"
+                   (is (nil? (qs/get-job (@#'task/scheduler) (jobs/key abandonment-emails-job-key))))
+                   (is (nil? (qs/get-trigger (@#'task/scheduler) (triggers/key abandonment-emails-trigger-key)))))))
+           (finally (task/stop-scheduler!))))))
 
 (deftest migrate-legacy-column-settings-field-refs-test
   (testing "Migrations v47.00-016: update visualization_settings.column_settings legacy field refs"
@@ -325,95 +323,93 @@
     ;; SOMETIMES the rollback of custom migration doesn't get triggered on mysql and this test got flaky.
     (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
-      ;; Search index injection is not compatible with such an old schema.
-      (with-search-indexing-disabled!
-        (let [user-id       (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
-                                                                                          :last_name   "Hughes"
-                                                                                          :email       "howard@aircraft.com"
-                                                                                          :password    "superstrong"
-                                                                                          :date_joined :%now}))
-              dashboard-id  (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                               :creator_id user-id}))
-              tab1-id       (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
-                                                                                  :position     0
-                                                                                  :dashboard_id dashboard-id}))
-              tab2-id       (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 2"
-                                                                                  :position     1
-                                                                                  :dashboard_id dashboard-id}))
-              ;; adds a dummy tab without cards to make sure our migration doesn't fail on such case
-              _             (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
-                                                                                  :position     2
-                                                                                  :dashboard_id dashboard-id}))
-              tab4-id       (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 4"
-                                                                                  :position     3
-                                                                                  :dashboard_id dashboard-id}))
-              default-card  {:dashboard_id           dashboard-id
-                             :visualization_settings {:virtual_card {:display "text"}
-                                                      :text         "A text card"}}
-              tab1-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                   default-card
-                                                                                   {:dashboard_tab_id tab1-id
-                                                                                    :row              0
-                                                                                    :col              0
-                                                                                    :size_x           4
-                                                                                    :size_y           4})))
+      (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                                       :last_name   "Hughes"
+                                                                                       :email       "howard@aircraft.com"
+                                                                                       :password    "superstrong"
+                                                                                       :date_joined :%now}))
+            dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
+                                                                            :creator_id user-id}))
+            tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
+                                                                               :position     0
+                                                                               :dashboard_id dashboard-id}))
+            tab2-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 2"
+                                                                               :position     1
+                                                                               :dashboard_id dashboard-id}))
+            ;; adds a dummy tab without cards to make sure our migration doesn't fail on such case
+            _            (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
+                                                                               :position     2
+                                                                               :dashboard_id dashboard-id}))
+            tab4-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 4"
+                                                                               :position     3
+                                                                               :dashboard_id dashboard-id}))
+            default-card {:dashboard_id           dashboard-id
+                          :visualization_settings {:virtual_card {:display "text"}
+                                                   :text         "A text card"}}
+            tab1-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab1-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
 
-              tab1-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                   default-card
-                                                                                   {:dashboard_tab_id tab1-id
-                                                                                    :row              2
-                                                                                    :col              0
-                                                                                    :size_x           2
-                                                                                    :size_y           6})))
+            tab1-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab1-id
+                                                                                  :row              2
+                                                                                  :col              0
+                                                                                  :size_x           2
+                                                                                  :size_y           6})))
 
-              tab2-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                   default-card
-                                                                                   {:dashboard_tab_id tab2-id
-                                                                                    :row              0
-                                                                                    :col              0
-                                                                                    :size_x           4
-                                                                                    :size_y           4})))
+            tab2-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab2-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
 
-              tab2-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                   default-card
-                                                                                   {:dashboard_tab_id tab2-id
-                                                                                    :row              4
-                                                                                    :col              0
-                                                                                    :size_x           4
-                                                                                    :size_y           2})))
-              tab4-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                   default-card
-                                                                                   {:dashboard_tab_id tab4-id
-                                                                                    :row              0
-                                                                                    :col              0
-                                                                                    :size_x           4
-                                                                                    :size_y           4})))
-              tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                   default-card
-                                                                                   {:dashboard_tab_id tab4-id
-                                                                                    :row              4
-                                                                                    :col              0
-                                                                                    :size_x           4
-                                                                                    :size_y           2})))]
-          (migrate! :down 46)
-          (is (= [;; tab 1
-                  {:id  tab1-card1-id
-                   :row 0}
-                  {:id  tab1-card2-id
-                   :row 2}
+            tab2-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab2-id
+                                                                                  :row              4
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           2})))
+            tab4-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab4-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
+            tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab4-id
+                                                                                  :row              4
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           2})))]
+        (migrate! :down 46)
+        (is (= [;; tab 1
+                {:id  tab1-card1-id
+                 :row 0}
+                {:id  tab1-card2-id
+                 :row 2}
 
-                  ;; tab 2
-                  {:id  tab2-card1-id
-                   :row 8}
-                  {:id  tab2-card2-id
-                   :row 12}
+               ;; tab 2
+                {:id  tab2-card1-id
+                 :row 8}
+                {:id  tab2-card2-id
+                 :row 12}
 
-                  ;; tab 3
-                  {:id  tab4-card1-id
-                   :row 14}
-                  {:id  tab4-card2-id
-                   :row 18}]
-                 (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id))))))))
+               ;; tab 3
+                {:id  tab4-card1-id
+                 :row 14}
+                {:id  tab4-card2-id
+                 :row 18}]
+               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
@@ -715,165 +711,163 @@
 
 (deftest migrate-legacy-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-043: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
-    (with-search-indexing-disabled!
-      (impl/test-migrations ["v47.00-043"] [migrate!]
-        (let [visualization-settings
-              {"column_settings" (-> {["name" "column_name"]                              {"column_title" "ID6"},
-                                      ["ref" ["field-literal" "column_name" "type/Text"]] {"column_title" "ID5"},
-                                      ["ref" ["field-id" 39]]                             {"column_title" "ID1"},
-                                      ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
-                                      ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
-                                      ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
-                                     (update-keys json/generate-string))}
-              expected
-              {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
-                                      ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
-                                      ["ref" ["field" 39 nil]]                                  {"column_title" "ID1"},
-                                      ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
-                                      ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
-                                      ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
-                                     (update-keys json/generate-string))}
-              user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                    {:first_name  "Howard"
-                                                     :last_name   "Hughes"
-                                                     :email       "howard@aircraft.com"
-                                                     :password    "superstrong"
-                                                     :date_joined :%now})
-              database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                    {:name       "DB"
-                                                     :engine     "h2"
-                                                     :created_at :%now
-                                                     :updated_at :%now
-                                                     :details    "{}"})
-              card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                    {:name                   "My Saved Question"
-                                                     :created_at             :%now
-                                                     :updated_at             :%now
-                                                     :creator_id             user-id
-                                                     :display                "table"
-                                                     :dataset_query          "{}"
-                                                     :visualization_settings "{}"
-                                                     :database_id            database-id
-                                                     :collection_id          nil})
-              dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                       :creator_id          user-id
-                                                                       :parameters          []})
-              dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                           :visualization_settings (json/generate-string visualization-settings)
-                                                                           :card_id      card-id
-                                                                           :size_x       4
-                                                                           :size_y       4
-                                                                           :col          1
-                                                                           :row          1})]
-          (migrate!)
-          (testing "legacy column_settings are updated"
-            (is (= expected
-                   (-> (t2/query-one {:select [:visualization_settings]
-                                      :from   [:report_dashboardcard]
-                                      :where  [:= :id dashcard-id]})
-                       :visualization_settings
-                       json/parse-string))))
-          (testing "legacy column_settings are updated to the current format"
-            (is (= (-> visualization-settings
-                       mi/normalize-visualization-settings
-                       (#'mi/migrate-viz-settings)
-                       walk/stringify-keys)
-                   (-> (t2/query-one {:select [:visualization_settings]
-                                      :from   [:report_dashboardcard]
-                                      :where  [:= :id dashcard-id]})
-                       :visualization_settings
-                       json/parse-string))))
-          (testing "visualization_settings are equivalent before and after migration"
-            (is (= (-> visualization-settings
-                       mi/normalize-visualization-settings
-                       (#'mi/migrate-viz-settings))
-                   (-> (t2/query-one {:select [:visualization_settings]
-                                      :from   [:report_dashboardcard]
-                                      :where  [:= :id dashcard-id]})
-                       :visualization_settings
-                       json/parse-string
-                       mi/normalize-visualization-settings
-                       (#'mi/migrate-viz-settings))))))))))
+    (impl/test-migrations ["v47.00-043"] [migrate!]
+      (let [visualization-settings
+            {"column_settings" (-> {["name" "column_name"]                              {"column_title" "ID6"},
+                                    ["ref" ["field-literal" "column_name" "type/Text"]] {"column_title" "ID5"},
+                                    ["ref" ["field-id" 39]]                             {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
+                                    ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
+                                    ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
+                                    ["ref" ["field" 39 nil]]                                  {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
+                                    ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
+                                    ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                         :visualization_settings (json/generate-string visualization-settings)
+                                                                         :card_id      card-id
+                                                                         :size_x       4
+                                                                         :size_y       4
+                                                                         :col          1
+                                                                         :row          1})]
+        (migrate!)
+        (testing "legacy column_settings are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))
+        (testing "legacy column_settings are updated to the current format"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)
+                     walk/stringify-keys)
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))
+        (testing "visualization_settings are equivalent before and after migration"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings))
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)))))))))
 
 (deftest add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
   (testing "Migrations v47.00-044: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
-    (with-search-indexing-disabled!
-      (impl/test-migrations ["v47.00-044"] [migrate!]
-        (let [result_metadata
-              [{:field_ref [:field 1 nil]}
-               {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
-               {:field_ref [:field 2 {:source-field 3}]}
-               {:field_ref [:field 3 {:temporal-unit "default"}]}
-               {:field_ref [:field 4 {:join-alias "Self-joined Table"
-                                      :binning {:strategy "default"}}]}
-               {:field_ref [:field "column_name" {:base-type :type/Text}]}
-               {:field_ref [:name "column_name"]}]
-              visualization-settings
-              {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
-                                      ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
-                                      ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
-                                      ["ref" ["field" 4 nil]]                                   {"column_title" "4"}
-                                      ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
-                                      ["name" "column_name"]                                    {"column_title" "6"}}
-                                     (update-keys json/generate-string))}
-              expected
-              {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
-                                      ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
-                                      ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
-                                      ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
-                                      ["ref" ["field" 4 {"join-alias" "Self-joined Table"}]]    {"column_title" "4"}
-                                      ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
-                                      ["name" "column_name"]                                    {"column_title" "6"}}
-                                     (update-keys json/generate-string))}
-              user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                    {:first_name  "Howard"
-                                                     :last_name   "Hughes"
-                                                     :email       "howard@aircraft.com"
-                                                     :password    "superstrong"
-                                                     :date_joined :%now})
-              database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                    {:name       "DB"
-                                                     :engine     "h2"
-                                                     :created_at :%now
-                                                     :updated_at :%now
-                                                     :details    "{}"})
-              card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                    {:name                   "My Saved Question"
-                                                     :created_at             :%now
-                                                     :updated_at             :%now
-                                                     :creator_id             user-id
-                                                     :display                "table"
-                                                     :dataset_query          "{}"
-                                                     :result_metadata        (json/generate-string result_metadata)
-                                                     :visualization_settings "{}"
-                                                     :database_id            database-id
-                                                     :collection_id          nil})
-              dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                       :creator_id          user-id
-                                                                       :parameters          []})
-              dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                           :visualization_settings (json/generate-string visualization-settings)
-                                                                           :card_id      card-id
-                                                                           :size_x       4
-                                                                           :size_y       4
-                                                                           :col          1
-                                                                           :row          1})]
-          (migrate!)
-          (testing "After the migration, column_settings field refs are updated to include join-alias"
-            (is (= expected
-                   (-> (t2/query-one {:select [:visualization_settings]
-                                      :from   [:report_dashboardcard]
-                                      :where  [:= :id dashcard-id]})
-                       :visualization_settings
-                       json/parse-string))))
-          (migrate! :down 46)
-          (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
-            (is (= visualization-settings
-                   (-> (t2/query-one {:select [:visualization_settings]
-                                      :from   [:report_dashboardcard]
-                                      :where  [:= :id dashcard-id]})
-                       :visualization_settings
-                       json/parse-string)))))))))
+    (impl/test-migrations ["v47.00-044"] [migrate!]
+      (let [result_metadata
+            [{:field_ref [:field 1 nil]}
+             {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
+             {:field_ref [:field 2 {:source-field 3}]}
+             {:field_ref [:field 3 {:temporal-unit "default"}]}
+             {:field_ref [:field 4 {:join-alias "Self-joined Table"
+                                    :binning {:strategy "default"}}]}
+             {:field_ref [:field "column_name" {:base-type :type/Text}]}
+             {:field_ref [:name "column_name"]}]
+            visualization-settings
+            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
+                                    ["ref" ["field" 4 nil]]                                   {"column_title" "4"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
+                                    ["name" "column_name"]                                    {"column_title" "6"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
+                                    ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
+                                    ["ref" ["field" 4 {"join-alias" "Self-joined Table"}]]    {"column_title" "4"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
+                                    ["name" "column_name"]                                    {"column_title" "6"}}
+                                   (update-keys json/generate-string))}
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                         :visualization_settings (json/generate-string visualization-settings)
+                                                                         :card_id      card-id
+                                                                         :size_x       4
+                                                                         :size_y       4
+                                                                         :col          1
+                                                                         :row          1})]
+        (migrate!)
+        (testing "After the migration, column_settings field refs are updated to include join-alias"
+          (is (= expected
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))
+        (migrate! :down 46)
+        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
+          (is (= visualization-settings
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))))))
 
 (deftest revision-migrate-legacy-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-045: update dashboard cards' visualization_settings.column_settings legacy field refs"
@@ -1021,90 +1015,89 @@
                      (get-in ["cards" 0 "visualization_settings"])))))))))
 
 (deftest migrate-database-options-to-database-settings-test
-  (with-search-indexing-disabled!
-    (let [do-test
-          (fn [encrypted?]
+  (let [do-test
+        (fn [encrypted?]
           ;; set-new-database-permissions! relies on the data_permissions table, which was added after the migrations
           ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
           ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
           ;; applied so we can't do that.
-            (with-redefs [database/set-new-database-permissions! (constantly nil)]
-              (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
-                (let [default-db                {:name       "DB"
-                                                 :engine     "postgres"
-                                                 :created_at :%now
-                                                 :updated_at :%now}
-                      success-id                (first (t2/insert-returning-pks!
-                                                        :model/Database
-                                                        (merge default-db
-                                                               {:options  (json/generate-string {:persist-models-enabled true})
-                                                                :settings {:database-enable-actions true}})))
-                      options-nil-settings-id   (first (t2/insert-returning-pks!
-                                                        :model/Database
-                                                        (merge default-db
-                                                               {:options  (json/generate-string {:persist-models-enabled true})
-                                                                :settings nil})))
-                      options-empty-settings-id (first (t2/insert-returning-pks!
-                                                        :model/Database
-                                                        (merge default-db
-                                                               {:options  (json/generate-string {:persist-models-enabled true})
-                                                                :settings {}})))
-                      nil-options-id            (first (t2/insert-returning-pks!
-                                                        :model/Database
-                                                        (merge default-db
-                                                               {:options  nil
-                                                                :settings {:database-enable-actions true}})))
-                      empty-options-id          (first (t2/insert-returning-pks!
-                                                        :model/Database
-                                                        (merge default-db
-                                                               {:options  "{}"
-                                                                :settings {:database-enable-actions true}})))]
-                  (testing "fowward migration\n"
-                    (when encrypted?
-                      (testing "make sure the settings is encrypted before the migration"
-                        (is (true? (encryption/possibly-encrypted-string?
-                                    (:settings (t2/query-one {:select [:settings]
-                                                              :from [:metabase_database]
-                                                              :where [[:= :id success-id]]})))))))
-                    (migrate!)
-                    (when encrypted?
-                      (testing "make sure the settings is encrypted after the migration"
-                        (is (true? (encryption/possibly-encrypted-string?
-                                    (:settings (t2/query-one {:select [:settings]
-                                                              :from [:metabase_database]
-                                                              :where [[:= :id success-id]]})))))))
+          (with-redefs [database/set-new-database-permissions! (constantly nil)]
+            (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
+              (let [default-db                {:name       "DB"
+                                               :engine     "postgres"
+                                               :created_at :%now
+                                               :updated_at :%now}
+                    success-id                (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                              :settings {:database-enable-actions true}})))
+                    options-nil-settings-id   (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                              :settings nil})))
+                    options-empty-settings-id (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                              :settings {}})))
+                    nil-options-id            (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  nil
+                                                              :settings {:database-enable-actions true}})))
+                    empty-options-id          (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  "{}"
+                                                              :settings {:database-enable-actions true}})))]
+                (testing "fowward migration\n"
+                  (when encrypted?
+                    (testing "make sure the settings is encrypted before the migration"
+                      (is (true? (encryption/possibly-encrypted-string?
+                                  (:settings (t2/query-one {:select [:settings]
+                                                            :from [:metabase_database]
+                                                            :where [[:= :id success-id]]})))))))
+                  (migrate!)
+                  (when encrypted?
+                    (testing "make sure the settings is encrypted after the migration"
+                      (is (true? (encryption/possibly-encrypted-string?
+                                  (:settings (t2/query-one {:select [:settings]
+                                                            :from [:metabase_database]
+                                                            :where [[:= :id success-id]]})))))))
 
-                    (testing "the options is merged into settings correctly"
-                      (is (= {:persist-models-enabled true
-                              :database-enable-actions true}
-                             (t2/select-one-fn :settings :model/Database success-id)))
-                      (testing "even when settings is nil"
-                        (is (= {:persist-models-enabled true}
-                               (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
-                      (testing "even when settings is empty"
-                        (is (= {:persist-models-enabled true}
-                               (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
+                  (testing "the options is merged into settings correctly"
+                    (is (= {:persist-models-enabled true
+                            :database-enable-actions true}
+                           (t2/select-one-fn :settings :model/Database success-id)))
+                    (testing "even when settings is nil"
+                      (is (= {:persist-models-enabled true}
+                             (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
+                    (testing "even when settings is empty"
+                      (is (= {:persist-models-enabled true}
+                             (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
 
-                    (testing "nil or empty options doesn't break migration"
-                      (is (= {:database-enable-actions true}
-                             (t2/select-one-fn :settings :model/Database nil-options-id)))
-                      (is (= {:database-enable-actions true}
-                             (t2/select-one-fn :settings :model/Database empty-options-id)))))
+                  (testing "nil or empty options doesn't break migration"
+                    (is (= {:database-enable-actions true}
+                           (t2/select-one-fn :settings :model/Database nil-options-id)))
+                    (is (= {:database-enable-actions true}
+                           (t2/select-one-fn :settings :model/Database empty-options-id)))))
 
-                  (testing "rollback migration"
-                    (migrate! :down 46)
-                    (testing "the persist-models-enabled is assoced back to options"
-                      (is (= {:options  "{\"persist-models-enabled\":true}"
-                              :settings {:database-enable-actions true}}
-                             (t2/select-one [:model/Database :settings :options] success-id)))
-                      (is (= {:options  nil
-                              :settings {:database-enable-actions true}}
-                             (t2/select-one [:model/Database :settings :options] empty-options-id))))
+                (testing "rollback migration"
+                  (migrate! :down 46)
+                  (testing "the persist-models-enabled is assoced back to options"
+                    (is (= {:options  "{\"persist-models-enabled\":true}"
+                            :settings {:database-enable-actions true}}
+                           (t2/select-one [:model/Database :settings :options] success-id)))
+                    (is (= {:options  nil
+                            :settings {:database-enable-actions true}}
+                           (t2/select-one [:model/Database :settings :options] empty-options-id))))
 
-                    (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
-      (do-test false)
-      (encryption-test/with-secret-key "dont-tell-anyone-about-this"
-        (do-test true)))))
+                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
+    (do-test false)
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (do-test true))))
 
 (defn- fix-click-thru [card dash]
   (:visualization_settings
@@ -1382,99 +1375,98 @@
                     [:visualization_settings "column_settings"])))))))
 
 (deftest migrate-click-through-test
-  (with-search-indexing-disabled!
-    (let [expect-correct-settings!
-          (fn [f]
-            (let [card-vis          (json/generate-string
-                                     {"column_settings"
-                                      {"[\"ref\",[\"field-id\",2]]"
-                                       {"view_as"       "link",
-                                        "link_template" "http://example.com/{{ID}}",
-                                        "link_text"     "here's an id: {{ID}}"},
-                                       "[\"ref\",[\"field-id\",6]]"
-                                       {"view_as"       "link",
-                                        "link_template" "http://example.com//{{id}}",
-                                        "link_text"     "here is my id: {{id}}"}},
-                                      "table.pivot_column"  "QUANTITY",
-                                      "table.cell_column"   "DISCOUNT",
-                                      "click"               "link",
-                                      "click_link_template" "http://example.com/{{count}}",
-                                      "graph.dimensions"    ["CREATED_AT"],
-                                      "graph.metrics"       ["count"],
-                                      "graph.show_values"   true})
-                  dashcard-vis      (json/generate-string
-                                     {"click"            "link",
-                                      "click_link_template"
-                                      "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
-                                      "graph.dimensions" ["CREATED_AT" "CATEGORY"],
-                                      "graph.metrics"    ["count"]})
-                  [user-id] (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                      {:first_name  "Howard"
-                                                       :last_name   "Hughes"
-                                                       :email       "howard@aircraft.com"
-                                                       :password    "superstrong"
-                                                       :date_joined :%now})
-                  [database-id] (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                          {:name       "DB"
-                                                           :engine     "h2"
-                                                           :created_at :%now
-                                                           :updated_at :%now
-                                                           :details    "{}"})
-                  [card-id] (t2/insert-returning-pks!
-                             :report_card
-                             {:visualization_settings card-vis
-                              :display                "table"
-                              :dataset_query          "{}"
-                              :creator_id             user-id
-                              :database_id            database-id
-                              :name                   "My Card"
-                              :created_at             :%now
-                              :updated_at             :%now})
-                  [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
-                                                                             :creator_id user-id
-                                                                             :parameters []})
-                  [dashcard-id] (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id           dashboard-id
-                                                                                :visualization_settings dashcard-vis
-                                                                                :card_id                card-id
-                                                                                :size_x                 4
-                                                                                :size_y                 4
-                                                                                :col                    1
-                                                                                :row                    1})
-                  expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
-                                     :graph.metrics    ["count"],
-                                     :click            "link",
-                                     :click_link_template
-                                     "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"
-                                     :click_behavior
-                                     {:type         "link",
-                                      :linkType     "url",
-                                      :linkTemplate "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
-                                     :column_settings
-                                     ;; the model keywordizes the json parsing yielding this monstrosity below
-                                     {"[\"ref\",[\"field\",2,null]]"
-                                      {:click_behavior
-                                       {:type             "link",
-                                        :linkType         "url",
-                                        :linkTemplate     "http://example.com/{{ID}}",
-                                        :linkTextTemplate "here's an id: {{ID}}"}},
-                                      "[\"ref\",[\"field\",6,null]]"
-                                      {:click_behavior
-                                       {:type             "link",
-                                        :linkType         "url",
-                                        :linkTemplate     "http://example.com//{{id}}",
-                                        :linkTextTemplate "here is my id: {{id}}"}}}}]
-              (f)
-              (is (= expected-settings
-                     (-> (t2/select-one :model/DashboardCard :id dashcard-id)
-                         :visualization_settings)))))]
-      (testing "Running the migration from scratch"
-        (impl/test-migrations ["v48.00-022"] [migrate!]
-          (expect-correct-settings! migrate!)))
-      (testing "Running the migration after a previous data-migration still works"
-        (impl/test-migrations ["v48.00-022"] [migrate!]
-          (expect-correct-settings! (fn []
-                                      (#'custom-migrations/migrate-click-through!)
-                                      (migrate!))))))))
+  (let [expect-correct-settings!
+        (fn [f]
+          (let [card-vis       (json/generate-string
+                                {"column_settings"
+                                 {"[\"ref\",[\"field-id\",2]]"
+                                  {"view_as"       "link",
+                                   "link_template" "http://example.com/{{ID}}",
+                                   "link_text"     "here's an id: {{ID}}"},
+                                  "[\"ref\",[\"field-id\",6]]"
+                                  {"view_as"       "link",
+                                   "link_template" "http://example.com//{{id}}",
+                                   "link_text"     "here is my id: {{id}}"}},
+                                 "table.pivot_column"  "QUANTITY",
+                                 "table.cell_column"   "DISCOUNT",
+                                 "click"               "link",
+                                 "click_link_template" "http://example.com/{{count}}",
+                                 "graph.dimensions"    ["CREATED_AT"],
+                                 "graph.metrics"       ["count"],
+                                 "graph.show_values"   true})
+                dashcard-vis   (json/generate-string
+                                {"click"            "link",
+                                 "click_link_template"
+                                 "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
+                                 "graph.dimensions" ["CREATED_AT" "CATEGORY"],
+                                 "graph.metrics"    ["count"]})
+                [user-id]      (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                         {:first_name  "Howard"
+                                                          :last_name   "Hughes"
+                                                          :email       "howard@aircraft.com"
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
+                [database-id]  (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                         {:name       "DB"
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"})
+                [card-id]      (t2/insert-returning-pks!
+                                :report_card
+                                {:visualization_settings card-vis
+                                 :display                "table"
+                                 :dataset_query          "{}"
+                                 :creator_id             user-id
+                                 :database_id            database-id
+                                 :name                   "My Card"
+                                 :created_at             :%now
+                                 :updated_at             :%now})
+                [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
+                                                                           :creator_id user-id
+                                                                           :parameters []})
+                [dashcard-id]  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id           dashboard-id
+                                                                               :visualization_settings dashcard-vis
+                                                                               :card_id                card-id
+                                                                               :size_x                 4
+                                                                               :size_y                 4
+                                                                               :col                    1
+                                                                               :row                    1})
+                expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
+                                   :graph.metrics    ["count"],
+                                   :click            "link",
+                                   :click_link_template
+                                   "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"
+                                   :click_behavior
+                                   {:type         "link",
+                                    :linkType     "url",
+                                    :linkTemplate "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
+                                   :column_settings
+                                   ;; the model keywordizes the json parsing yielding this monstrosity below
+                                   {"[\"ref\",[\"field\",2,null]]"
+                                    {:click_behavior
+                                     {:type             "link",
+                                      :linkType         "url",
+                                      :linkTemplate     "http://example.com/{{ID}}",
+                                      :linkTextTemplate "here's an id: {{ID}}"}},
+                                    "[\"ref\",[\"field\",6,null]]"
+                                    {:click_behavior
+                                     {:type             "link",
+                                      :linkType         "url",
+                                      :linkTemplate     "http://example.com//{{id}}",
+                                      :linkTextTemplate "here is my id: {{id}}"}}}}]
+            (f)
+            (is (= expected-settings
+                   (-> (t2/select-one :model/DashboardCard :id dashcard-id)
+                       :visualization_settings)))))]
+    (testing "Running the migration from scratch"
+      (impl/test-migrations ["v48.00-022"] [migrate!]
+        (expect-correct-settings! migrate!)))
+    (testing "Running the migration after a previous data-migration still works"
+      (impl/test-migrations ["v48.00-022"] [migrate!]
+        (expect-correct-settings! (fn []
+                                    (#'custom-migrations/migrate-click-through!)
+                                    (migrate!)))))))
 
 (defn- get-json-setting
   [setting-k]
@@ -1503,39 +1495,38 @@
 ;; because they require all settings are defined.
 ;; That's why we use a set of helper functions that get setting directly from DB during tests
 (deftest migrate-remove-admin-from-group-mapping-if-needed-test
-  (with-search-indexing-disabled!
-    (let [admin-group-id        (u/the-id (perms-group/admin))
-          sso-group-mappings    {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
-                                 "group-mapping-b" [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
-          ldap-group-mappings   {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
-          sso-expected-mapping  {"group-mapping-a" [(+ 1 admin-group-id)]
-                                 "group-mapping-b" [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
-          ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
+  (let [admin-group-id        (u/the-id (perms-group/admin))
+        sso-group-mappings    {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
+                               "group-mapping-b" [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
+        ldap-group-mappings   {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
+        sso-expected-mapping  {"group-mapping-a" [(+ 1 admin-group-id)]
+                               "group-mapping-b" [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
+        ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
 
-      (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
-        (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
+    (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
+        (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
+        (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
+        (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
+        (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
+
+    (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
+        (mt/with-temporary-raw-setting-values
+          [ldap-enabled "false"
+           saml-enabled "false"
+           jwt-enabled  "false"]
           (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
           (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
-          (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
+          (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
 
-      (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
-        (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
-          (mt/with-temporary-raw-setting-values
-            [ldap-enabled "false"
-             saml-enabled "false"
-             jwt-enabled  "false"]
-            (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
-            (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
-            (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
-            (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
-
-      (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
-        (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
-          (mt/with-temporary-raw-setting-values
-            [ldap-sync-admin-group "true"]
-            (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
-            (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings)))))))))
+    (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
+        (mt/with-temporary-raw-setting-values
+          [ldap-sync-admin-group "true"]
+          (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
+          (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings))))))))
 
 (deftest check-data-migrations-rollback
   ;; We're actually testing `v48.00-024`, but we want the `migrate!` function to run all the migrations in 48
@@ -2387,110 +2378,109 @@
 
 (deftest set-stage-number-in-viz-settings-parameter-mappings-test
   (testing "v52.2024-11-12T15:13:18"
-    (with-search-indexing-disabled!
-      (impl/test-migrations ["v52.2024-11-12T15:13:18"] [migrate!]
-        (let [{:keys [dashboard-id
-                      single-stage-question-id
-                      native-question-id
-                      multi-stage-question-id
-                      multi-stage-model-id]}
-              (insert-stage-number-data!)
+    (impl/test-migrations ["v52.2024-11-12T15:13:18"] [migrate!]
+      (let [{:keys [dashboard-id
+                    single-stage-question-id
+                    native-question-id
+                    multi-stage-question-id
+                    multi-stage-model-id]}
+            (insert-stage-number-data!)
 
-              viz-settings-generator
-              (fn [dimensions]             ; 4 dimensions are consumed
-                ;; crazy as it sounds, the FE uses the JSON encoded form of the dimensions as IDs and keys
-                (let [dimension-strs (mapv json/generate-string dimensions)
-                      dimension-keys (mapv keyword dimension-strs)
-                      click-behavior (fn [target-id & dimension-indices]
-                                       {:targetId target-id
-                                        :parameterMapping (into {} (for [i dimension-indices]
-                                                                     [(dimension-keys i)
-                                                                      {:source {:type "column"
-                                                                                :id "0"
-                                                                                :name "0"}
-                                                                       :target {:type "dimension"
-                                                                                :id (dimension-strs i)
-                                                                                :dimension (dimensions i)}
-                                                                       :id (dimension-strs i)}]))
-                                        :linkType "question"
-                                        :type "link"})]
-                  (fn [[target-id0 target-id1 target-id2]]
-                    {:table.cell_column "model_id"
-                     :table.columns
-                     [{:enabled true
-                       :fieldRef ["field" 146 {:base-type "type/Text", :join-alias "People - User"}]
-                       :name "full_name"}
-                      {:enabled false
-                       :fieldRef ["field" 191 {:base-type "type/Integer"}]
-                       :name "user_id"}
-                      {:enabled true
-                       :fieldRef ["aggregation" 0]
-                       :name "count"}],
-                     :table.pivot_column "end_timestamp",
-                     ;; interesting part starts here (the fields above this are just random stuff from viz settings)
-                     :column_settings
-                     {:name0 {:click_behavior (click-behavior target-id0 0 1)} ; two column_settings level mappings
-                      :name1 {:click_behavior (-> (click-behavior target-id1 2) ; dashboard target -> should not change
-                                                  (assoc :linkType "dashboard"))}}
-                     :click_behavior
-                     (click-behavior target-id2 3)}))) ; a single visualization_settings level mapping
+            viz-settings-generator
+            (fn [dimensions]             ; 4 dimensions are consumed
+              ;; crazy as it sounds, the FE uses the JSON encoded form of the dimensions as IDs and keys
+              (let [dimension-strs (mapv json/generate-string dimensions)
+                    dimension-keys (mapv keyword dimension-strs)
+                    click-behavior (fn [target-id & dimension-indices]
+                                     {:targetId target-id
+                                      :parameterMapping (into {} (for [i dimension-indices]
+                                                                   [(dimension-keys i)
+                                                                    {:source {:type "column"
+                                                                              :id "0"
+                                                                              :name "0"}
+                                                                     :target {:type "dimension"
+                                                                              :id (dimension-strs i)
+                                                                              :dimension (dimensions i)}
+                                                                     :id (dimension-strs i)}]))
+                                      :linkType "question"
+                                      :type "link"})]
+                (fn [[target-id0 target-id1 target-id2]]
+                  {:table.cell_column "model_id"
+                   :table.columns
+                   [{:enabled true
+                     :fieldRef ["field" 146 {:base-type "type/Text", :join-alias "People - User"}]
+                     :name "full_name"}
+                    {:enabled false
+                     :fieldRef ["field" 191 {:base-type "type/Integer"}]
+                     :name "user_id"}
+                    {:enabled true
+                     :fieldRef ["aggregation" 0]
+                     :name "count"}],
+                   :table.pivot_column "end_timestamp",
+                   ;; interesting part starts here (the fields above this are just random stuff from viz settings)
+                   :column_settings
+                   {:name0 {:click_behavior (click-behavior target-id0 0 1)} ; two column_settings level mappings
+                    :name1 {:click_behavior (-> (click-behavior target-id1 2) ; dashboard target -> should not change
+                                                (assoc :linkType "dashboard"))}}
+                   :click_behavior
+                   (click-behavior target-id2 3)}))) ; a single visualization_settings level mapping
 
-              dimensions (mapv (fn [id] ["dimension" ["field" id nil]]) (range 200 204))
-              viz-settings-without-stage-numbers (viz-settings-generator dimensions)
+            dimensions (mapv (fn [id] ["dimension" ["field" id nil]]) (range 200 204))
+            viz-settings-without-stage-numbers (viz-settings-generator dimensions)
 
-              viz-settings-with-stage-numbers
-              (fn [target-ids stage-numbers]
-                (let [enriched-dimensions (mapv (fn [dim stage-number]
-                                                  (cond-> dim
-                                                    stage-number (assoc 2 {:stage-number stage-number})))
-                                                dimensions
-                                                ;; The penultimate dimension (index 2) is for a dashboard,
-                                                ;; so it should get no stage-number. The last element is
-                                                ;; moved to the end (index 3).
-                                                (-> stage-numbers
-                                                    (assoc 2 nil)
-                                                    (conj (peek stage-numbers))))]
-                  ((viz-settings-generator enriched-dimensions) target-ids)))
+            viz-settings-with-stage-numbers
+            (fn [target-ids stage-numbers]
+              (let [enriched-dimensions (mapv (fn [dim stage-number]
+                                                (cond-> dim
+                                                  stage-number (assoc 2 {:stage-number stage-number})))
+                                              dimensions
+                                              ;; The penultimate dimension (index 2) is for a dashboard,
+                                              ;; so it should get no stage-number. The last element is
+                                              ;; moved to the end (index 3).
+                                              (-> stage-numbers
+                                                  (assoc 2 nil)
+                                                  (conj (peek stage-numbers))))]
+                ((viz-settings-generator enriched-dimensions) target-ids)))
 
-              create-dashcard (fn create-dashcard
-                                [card-id targets-or-viz-settings]
-                                (insert-returning-pk! :model/DashboardCard
-                                                      {:dashboard_id dashboard-id
-                                                       :parameter_mappings []
-                                                       :visualization_settings
-                                                       (if (map? targets-or-viz-settings)
-                                                         targets-or-viz-settings
-                                                         (viz-settings-without-stage-numbers
-                                                          targets-or-viz-settings))
-                                                       :card_id card-id
-                                                       :size_x  4
-                                                       :size_y  4
-                                                       :col     1
-                                                       :row     1}))
-              single-stage-dashcard-id (create-dashcard single-stage-question-id
-                                                        [single-stage-question-id dashboard-id native-question-id])
-              multi-stage-dashcard-id  (create-dashcard single-stage-question-id
-                                                        [multi-stage-question-id dashboard-id multi-stage-model-id])
-              no-vs-dashcard-id        (create-dashcard multi-stage-question-id {})
-              query-viz-settings (fn []
-                                   (->> (t2/query {:select   [:visualization_settings]
-                                                   :from     [:report_dashboardcard]
-                                                   :where    [:in :id [single-stage-dashcard-id
-                                                                       multi-stage-dashcard-id
-                                                                       no-vs-dashcard-id]]
-                                                   :order-by [:id]})
-                                        (map #(-> % :visualization_settings (json/parse-string true)))))]
-          (migrate!)
-          (testing "After the migration, dimension parameterMappings have stage numbers"
-            (is (= [(viz-settings-with-stage-numbers [single-stage-question-id dashboard-id native-question-id]
-                                                     [0 0 0])
-                    (viz-settings-with-stage-numbers [multi-stage-question-id dashboard-id multi-stage-model-id]
-                                                     [2 2 0])
-                    {}]
-                   (query-viz-settings))))
-          (migrate! :down 51)
-          (testing "After reversing the migration, parameterMappings have no stage numbers"
-            (is (= [(viz-settings-without-stage-numbers [single-stage-question-id dashboard-id native-question-id])
-                    (viz-settings-without-stage-numbers [multi-stage-question-id dashboard-id multi-stage-model-id])
-                    {}]
-                   (query-viz-settings)))))))))
+            create-dashcard (fn create-dashcard
+                              [card-id targets-or-viz-settings]
+                              (insert-returning-pk! :model/DashboardCard
+                                                    {:dashboard_id dashboard-id
+                                                     :parameter_mappings []
+                                                     :visualization_settings
+                                                     (if (map? targets-or-viz-settings)
+                                                       targets-or-viz-settings
+                                                       (viz-settings-without-stage-numbers
+                                                        targets-or-viz-settings))
+                                                     :card_id card-id
+                                                     :size_x  4
+                                                     :size_y  4
+                                                     :col     1
+                                                     :row     1}))
+            single-stage-dashcard-id (create-dashcard single-stage-question-id
+                                                      [single-stage-question-id dashboard-id native-question-id])
+            multi-stage-dashcard-id  (create-dashcard single-stage-question-id
+                                                      [multi-stage-question-id dashboard-id multi-stage-model-id])
+            no-vs-dashcard-id        (create-dashcard multi-stage-question-id {})
+            query-viz-settings (fn []
+                                 (->> (t2/query {:select   [:visualization_settings]
+                                                 :from     [:report_dashboardcard]
+                                                 :where    [:in :id [single-stage-dashcard-id
+                                                                     multi-stage-dashcard-id
+                                                                     no-vs-dashcard-id]]
+                                                 :order-by [:id]})
+                                      (map #(-> % :visualization_settings (json/parse-string true)))))]
+        (migrate!)
+        (testing "After the migration, dimension parameterMappings have stage numbers"
+          (is (= [(viz-settings-with-stage-numbers [single-stage-question-id dashboard-id native-question-id]
+                                                   [0 0 0])
+                  (viz-settings-with-stage-numbers [multi-stage-question-id dashboard-id multi-stage-model-id]
+                                                   [2 2 0])
+                  {}]
+                 (query-viz-settings))))
+        (migrate! :down 51)
+        (testing "After reversing the migration, parameterMappings have no stage numbers"
+          (is (= [(viz-settings-without-stage-numbers [single-stage-question-id dashboard-id native-question-id])
+                  (viz-settings-without-stage-numbers [multi-stage-question-id dashboard-id multi-stage-model-id])
+                  {}]
+                 (query-viz-settings))))))))
