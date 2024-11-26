@@ -10045,8 +10045,25 @@ databaseChangeLog:
                   remarks: the cron schedule for the subscription
                   constraints:
                     nullable: true
+
   - changeSet:
-      id: v52.2024-11-20T05:41:59
+      id: v52.2024-10-26T18:42:42
+      author: metamben
+      comment: Add stage-number to dimension targets in parameter_mappings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddStageNumberToParameterMappingTargets"
+
+  - changeSet:
+      id: v52.2024-11-12T15:13:18
+      author: metamben
+      comment: Add stage-number to dimension targets in visualization_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
+
+  - changeSet:
+      id: v52.2024-11-26T06:06:13
       author: johnswanson
       comment: >
         add a table for user-level KV. This is intended for use as a lightweight mechanism for the frontend to be able
@@ -10108,9 +10125,8 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-
   - changeSet:
-      id: v52.2024-11-25T06:24:30
+      id: v52.2024-11-26T06:06:16
       author: johnswanson
       comment: Add a unique constraint for user_id,context,key
       changes:
@@ -10119,22 +10135,6 @@ databaseChangeLog:
             columnNames: user_id, context, key
             constraintName: unique_user_key_value_user_id_context_key
       rollback: # will be deleted with table
-
-  - changeSet:
-      id: v52.2024-10-26T18:42:42
-      author: metamben
-      comment: Add stage-number to dimension targets in parameter_mappings
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.AddStageNumberToParameterMappingTargets"
-
-  - changeSet:
-      id: v52.2024-11-12T15:13:18
-      author: metamben
-      comment: Add stage-number to dimension targets in visualization_settings
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
