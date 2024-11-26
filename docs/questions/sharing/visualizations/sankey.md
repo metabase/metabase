@@ -5,6 +5,8 @@ title: Sankey
 
 Sankey charts show how data flows through multi-dimensional steps.
 
+![Left-aligned sankey chart](../../images/sankey-left-aligned.png)
+
 ## Data shape
 
 To create a Sankey chart, you'll need three columns in your results:
@@ -13,7 +15,7 @@ To create a Sankey chart, you'll need three columns in your results:
 - **Target**: column that specifies a receiving node.
 - **Count**: value that determines the thickness of the edge from a source to a target.
 
-Here's an example table with a shape suitable for a sankey chart:
+Here's the data shape used to create the chart above.
 
 | Source page  | Target page  | Total Visitors |
 | ------------ | ------------ | -------------- |
@@ -34,10 +36,6 @@ Here's an example table with a shape suitable for a sankey chart:
 | Homepage     | Exit         | 1,020          |
 
 Each row includes a source node, a target node, and a quantity to scale the size of the target node.
-
-Here's the chart:
-
-![Left-aligned sankey chart](../../images/sankey-left-aligned.png)
 
 ## Sankey display options
 
