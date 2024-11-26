@@ -20,7 +20,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
 const { AceEditorInner } = jest.requireActual(
-  "metabase/query_builder/components/NativeQueryEditor/AceEditor",
+  "metabase/query_builder/components/NativeQueryEditor/AceEditor/AceEditor.tsx",
 );
 
 const TEST_DB = createSampleDatabase();
