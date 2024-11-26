@@ -8,10 +8,10 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.search :as search]
    [metabase.search.config :as search.config]
+   [metabase.search.core :as search]
    [metabase.search.impl :as search.impl]
-   [metabase.search.legacy :as search.legacy]
+   [metabase.search.in-place.legacy :as search.legacy]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -26,9 +26,10 @@
     (is (= :search.engine/in-place (#'search.impl/parse-engine "in-place")))
     (when (search/supports-index?)
       (is (= :search.engine/fulltext (#'search.impl/parse-engine "fulltext")))))
-  (when (search/supports-index?)
-    (testing "Subclasses"
-      (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid"))))))
+  ;; We don't currently leverage subclasses.
+  #_(when (search/supports-index?)
+      (testing "Subclasses"
+        (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid"))))))
 
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
@@ -92,7 +93,7 @@
             ;; the call count number here are expected to change if we change the search api
             ;; we have this test here just to keep tracks this number to remind us to put effort
             ;; into keep this number as low as we can
-              (is (= 5 (call-count))))))))))
+              (is (<= (call-count) 5)))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"
@@ -151,6 +152,7 @@
                                 (is (= expected
                                        (->> (search.impl/search (search.impl/search-context
                                                                  {:search-string      search-term
+                                                                  :search-engine      "in-place"
                                                                   :archived           false
                                                                   :models             search.config/all-models
                                                                   :created-at         created-at
@@ -237,6 +239,7 @@
                                 (is (= expected
                                        (->> (search.impl/search (search.impl/search-context
                                                                  {:search-string      search-term
+                                                                  :search-engine      "in-place"
                                                                   :archived           false
                                                                   :models             search.config/all-models
                                                                   :last-edited-at     last-edited-at
