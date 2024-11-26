@@ -17,7 +17,7 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     sdkJwtSignIn();
   });
 
-  it("can create questions via the CreateQuestion component", () => {
+  it("can create a question via the CreateQuestion component", () => {
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
@@ -45,6 +45,9 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
 
       // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
+
+      // Should not show a loading indicator again as the question has not changed (metabase#47564)
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();

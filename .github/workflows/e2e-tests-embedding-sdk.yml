@@ -50,7 +50,7 @@ jobs:
         with:
           script: | # js
             const { getBuildRequirements, getMajorVersionNumberFromReleaseBranch, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const targetBranchName = '${{ github.base_ref }}';
+            const targetBranchName = '${{ github.base_ref || github.ref }}'; // base_ref for PRs, ref for release branch / master
 
             if (targetBranchName === 'master') {
               return {
