@@ -66,12 +66,13 @@ body:
         Copy and paste the JSON from `Admin -> Troubleshooting`.
         _This will be automatically formatted into code, so no need for backticks._
       placeholder: |
-        - Your browser and the version: (e.g., Chrome 52.1, Firefox 48.0, Safari 11.1, …)
-        - Your operating system: (e.g., OS X 10.10, Windows 10.1809, Ubuntu 16.04, …)
-        - Your databases: (e.g, MySQL, Postgres, MongoDB, …)
-        - Metabase version: (e.g., 0.19.3)
-        - Metabase hosting environment: (e.g., Elastic Beanstalk, Docker, Heroku, Jar-file on Ubuntu, …)
-        - Metabase internal database: (e.g., H2 (default), Postgres or MySQL)
+        {"browser-info": {
+           "language": "en-US",
+           "platform": "MacIntel",
+           "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+           "vendor": "Google Inc."},
+         "metabase-info": {
+           "databases": [ "postgres",...
       render: JSON
     validations:
       required: true

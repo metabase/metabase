@@ -1,16 +1,19 @@
-(ns metabase.search.fulltext.scoring-test
+(ns metabase.search.appdb.scoring-test
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
-   ;; For now, this is specialized to postgres, but we should be able to abstract it to all index-based engines.
-   [metabase.search :as search]
+   [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.scoring :as scoring]
+   [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
-   [metabase.search.postgres.index :as search.index]
-   [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2])
-  (:import (java.time Instant)
-           (java.time.temporal ChronoUnit)))
+  (:import
+   (java.time Instant)
+   (java.time.temporal ChronoUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -20,14 +23,15 @@
   "Populate the index with the given appdb agnostic entity shapes."
   [entities & body]
   `(search.tu/with-temp-index-table
-     (#'search.index/batch-upsert! search.index/*active-table*
-                                   (map (comp #'search.index/entity->entry
-                                              #'search.ingestion/->entry)
-                                        ~entities))
+     (#'specialization/batch-upsert! search.index/*active-table*
+                                     (map (comp #'search.index/document->entry
+                                                #'search.ingestion/->document)
+                                          ~entities))
      ~@body))
 
 (defn search-results*
   [search-string & {:as raw-ctx}]
+  (memoize/memo-clear! #'scoring/view-count-percentiles)
   (mapv (juxt :model :id :name)
         (search.tu/search-results search-string (assoc raw-ctx :search-engine "fulltext"))))
 
@@ -124,7 +128,7 @@
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
     (when (search/supports-index?)
-      (let [table-name (search.index/random-table-name)]
+      (let [table-name (search.tu/random-table-name)]
         (binding [search.index/*active-table* table-name]
           (search.index/ensure-ready! table-name)
           (mt/with-model-cleanup [:model/Card]
@@ -132,13 +136,15 @@
                   card-with-view #(merge (mt/with-temp-defaults :model/Card)
                                          {:name search-term
                                           :view_count %})
-                  _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
-                                                                  (for [i (range 1 80)]
-                                                                    (card-with-view i))))
+                  ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
                   outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 100000))
-                  _               (#'search.ingestion/batch-update!
-                                   (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term]))
-                  first-result-id (-> (search-results* search-term) first)]
+                  _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
+                                                                  (for [i (range 1 81)]
+                                                                    (card-with-view i))))
+                  _               (search.ingestion/consume!
+                                   (#'search.ingestion/query->documents
+                                    (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term])))
+                  first-result-id (-> (search-results* search-term) first second)]
               (is (some? first-result-id))
               ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
               ;; but we can solve this later if it actually becomes a flake
