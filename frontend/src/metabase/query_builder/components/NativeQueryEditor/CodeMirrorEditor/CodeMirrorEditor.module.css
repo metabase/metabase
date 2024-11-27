@@ -66,6 +66,14 @@
         padding: 0 8px !important;
         display: flex;
         justify-content: space-between;
+
+        &:first-child {
+          margin-top: 4px;
+        }
+
+        &:last-child {
+          margin-bottom: 4px;
+        }
       }
 
       @supports (grid-template-columns: subgrid) {
