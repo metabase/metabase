@@ -2,6 +2,7 @@ import { type MouseEvent, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   DataPickerModal,
   getDataPickerValue,
@@ -17,7 +18,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import {
   type NotebookContextType,
@@ -31,11 +32,11 @@ interface NotebookDataPickerProps {
   title: string;
   query: Lib.Query;
   stageIndex: number;
-  table?: Lib.TableMetadata | Lib.CardMetadata;
-  databaseId?: DatabaseId;
+  table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder?: string;
-  hasMetrics?: boolean;
-  isDisabled?: boolean;
+  canChangeDatabase: boolean;
+  hasMetrics: boolean;
+  isDisabled: boolean;
   onChange: (
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
@@ -47,10 +48,10 @@ export function NotebookDataPicker({
   query,
   stageIndex,
   table,
-  databaseId,
   placeholder = title,
-  hasMetrics = false,
-  isDisabled = false,
+  canChangeDatabase,
+  hasMetrics,
+  isDisabled,
   onChange,
 }: NotebookDataPickerProps) {
   const store = useStore();
@@ -76,6 +77,7 @@ export function NotebookDataPicker({
         stageIndex={stageIndex}
         table={table}
         placeholder={placeholder}
+        canChangeDatabase={canChangeDatabase}
         hasMetrics={hasMetrics}
         isDisabled={isDisabled}
         onChange={handleChange}
@@ -87,9 +89,9 @@ export function NotebookDataPicker({
         query={query}
         stageIndex={stageIndex}
         table={table}
-        databaseId={databaseId}
         title={title}
         placeholder={placeholder}
+        canChangeDatabase={canChangeDatabase}
         hasMetrics={hasMetrics}
         isDisabled={isDisabled}
         onChange={handleChange}
@@ -102,9 +104,9 @@ type ModernDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
-  databaseId?: DatabaseId;
   title: string;
   placeholder: string;
+  canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
@@ -114,9 +116,9 @@ function ModernDataPicker({
   query,
   stageIndex,
   table,
-  databaseId,
   title,
   placeholder,
+  canChangeDatabase,
   hasMetrics,
   isDisabled,
   onChange,
@@ -125,12 +127,11 @@ function ModernDataPicker({
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
 
-  const tableInfo = table
-    ? Lib.displayInfo(query, stageIndex, table)
-    : undefined;
-  const tableValue = table
-    ? getDataPickerValue(query, stageIndex, table)
-    : undefined;
+  const databaseId = Lib.databaseID(query) ?? undefined;
+  const tableInfo =
+    table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
+  const tableValue =
+    table != null ? getDataPickerValue(query, stageIndex, table) : undefined;
 
   const openDataSourceInNewTab = () => {
     const url = getUrl({ query, table, stageIndex });
@@ -178,7 +179,7 @@ function ModernDataPicker({
         <DataPickerModal
           title={title}
           value={tableValue}
-          databaseId={databaseId}
+          databaseId={canChangeDatabase ? undefined : databaseId}
           models={modelList}
           onChange={onChange}
           onClose={() => setIsOpened(false)}
@@ -193,6 +194,7 @@ type LegacyDataPickerProps = {
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
+  canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
@@ -203,23 +205,31 @@ function LegacyDataPicker({
   stageIndex,
   table,
   placeholder,
+  canChangeDatabase,
   hasMetrics,
   isDisabled,
   onChange,
 }: LegacyDataPickerProps) {
+  const metadata = useSelector(getMetadata);
+  const databaseId = Lib.databaseID(query);
+  const database =
+    databaseId != null ? metadata.database(databaseId) : undefined;
+  const tableInfo =
+    table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
+  const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
+  const { data: card } = useGetCardQuery(
+    pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
+  );
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
-  const databaseId = Lib.databaseID(query);
-  const tableInfo = table
-    ? Lib.displayInfo(query, stageIndex, table)
-    : undefined;
-  const pickerInfo = table ? Lib.pickerInfo(query, table) : undefined;
 
   return (
     <DataSourceSelector
       isInitiallyOpen={!table}
+      databases={canChangeDatabase ? undefined : [database]}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
+      selectedCollectionId={card?.collection_id}
       canSelectMetric={modelList.includes("metric")}
       triggerElement={
         <DataPickerTarget

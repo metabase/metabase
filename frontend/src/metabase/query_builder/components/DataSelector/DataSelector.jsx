@@ -24,7 +24,6 @@ import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import {
   EmptyStateContainer,
@@ -1008,7 +1007,8 @@ export class UnconnectedDataSelector extends Component {
       selectedDataBucketId,
       selectedTable,
     } = this.state;
-    const { canChangeDatabase, selectedDatabaseId } = this.props;
+    const { canChangeDatabase, selectedDatabaseId, selectedCollectionId } =
+      this.props;
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
@@ -1047,11 +1047,7 @@ export class UnconnectedDataSelector extends Component {
           {!isSearchActive &&
             (isPickerOpen ? (
               <SavedEntityPicker
-                collectionName={
-                  selectedTable &&
-                  selectedTable.schema &&
-                  getSchemaName(selectedTable.schema.id)
-                }
+                collectionId={selectedCollectionId}
                 type={this.getCardType()}
                 tableId={selectedTable?.id}
                 databaseId={currentDatabaseId}

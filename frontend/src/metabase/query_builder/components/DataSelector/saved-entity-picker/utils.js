@@ -1,9 +1,9 @@
-export const findCollectionByName = (collections, name) => {
+export const findCollectionByName = (collections, collectionId) => {
   if (!collections || collections.length === 0) {
     return null;
   }
 
-  const collection = collections.find(c => c.schemaName === name);
+  const collection = collections.find(c => c.id === collectionId);
 
   if (collection) {
     return collection;
@@ -14,6 +14,6 @@ export const findCollectionByName = (collections, name) => {
       .map(c => c.children)
       .filter(Boolean)
       .flat(),
-    name,
+    collectionId,
   );
 };

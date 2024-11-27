@@ -34,7 +34,7 @@ const propTypes = {
   currentUser: PropTypes.object.isRequired,
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
-  collectionName: PropTypes.string,
+  collectionId: PropTypes.number,
   rootCollection: PropTypes.object,
 };
 
@@ -58,7 +58,7 @@ function SavedEntityPicker({
   currentUser,
   databaseId,
   tableId,
-  collectionName,
+  collectionId,
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
@@ -99,7 +99,7 @@ function SavedEntityPicker({
 
   const initialCollection = useMemo(
     () =>
-      findCollectionByName(collectionTree, collectionName) ?? collectionTree[0],
+      findCollectionByName(collectionTree, collectionId) ?? collectionTree[0],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
