@@ -609,7 +609,7 @@ describe(
 );
 
 describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
-  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS = 2;
+  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS = 3;
 
   beforeEach(() => {
     restore();

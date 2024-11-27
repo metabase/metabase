@@ -425,7 +425,8 @@ describeWithSnowplow(
         event: "notebook_native_preview_hidden",
       });
 
-      expectGoodSnowplowEvents(3);
+      // Need to ensure that search for command palette model request is counted
+      expectGoodSnowplowEvents(4);
     });
   },
 );

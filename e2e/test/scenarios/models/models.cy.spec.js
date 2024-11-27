@@ -77,6 +77,9 @@ describe("scenarios > models", () => {
       openQuestionActions();
       assertIsModel();
 
+      //If we open the filter too fast, then the filter modal will be empty. This waits for the query to be run before opening the modal
+      cy.wait("@dataset");
+
       filter();
       filterField("Vendor", {
         operator: "Contains",

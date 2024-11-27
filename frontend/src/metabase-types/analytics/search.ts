@@ -44,10 +44,19 @@ type SnowplowSearchContext =
 // TODO: once we've finalized the new context names, we should add them to the Snowplow schema.
 // It would also be good to use an exclusion list, so that this is easier to maintain when new context are added.
 const RegisteredSearchContext = [
-  "search-app",
-  "search-bar",
+  "available-models",
   "command-palette",
   "entity-picker",
+  "metabot",
+  "metrics-browser",
+  "model-upload",
+  "model-browser",
+  "question-picker",
+  "search-app",
+  "search-bar",
+  "skip-token", // never sent to the backend, used in a sentinel payload
+  "strategy-editor",
+  "search-model-filter",
 ] as const;
 
 export function safeSearchContext(
@@ -56,7 +65,7 @@ export function safeSearchContext(
   if ((RegisteredSearchContext as readonly string[]).includes(value)) {
     return value as SnowplowSearchContext;
   } else {
-    return null;
+    throw new Error(`Unrecgonized search context "${value}"`);
   }
 }
 
