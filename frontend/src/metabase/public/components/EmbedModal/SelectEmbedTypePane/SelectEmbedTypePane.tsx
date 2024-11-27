@@ -1,8 +1,8 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { t } from "ttag";
 
-import { useDocsUrl, useUrlWithUtm } from "metabase/common/hooks";
+import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -50,8 +50,6 @@ export function SelectEmbedTypePane({
     utm_content: "embed-modal",
   };
 
-  const sdkUrl = useUrlWithUtm("https://metaba.se/sdk", utmTags);
-
   // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
   const { url: embeddingUrl } = useDocsUrl("embedding/introduction", {
     anchor: "comparison-of-embedding-types",
@@ -90,6 +88,8 @@ export function SelectEmbedTypePane({
     }
   };
 
+  const isEmbeddingSdkDisabled = useSetting("enable-embedding-sdk") === false;
+
   return (
     <Stack
       display={"inline-flex"}
@@ -122,7 +122,6 @@ export function SelectEmbedTypePane({
             title={t`Interactive embedding`}
             badge={<Badge color="brand">{t`Pro`}</Badge>}
             illustration={<InteractiveEmbeddingIllustration />}
-            externalLink={interactiveEmbeddingCta.target === "_blank"}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
@@ -134,7 +133,10 @@ export function SelectEmbedTypePane({
         </Link>
 
         {/* REACT SDK */}
-        <a href={sdkUrl} target="_blank" rel="noreferrer">
+        <MaybeLink
+          to="/admin/settings/embedding-in-other-applications/sdk"
+          shouldRender={!isEmbeddingSdkDisabled}
+        >
           <SharingPaneButton
             title={t`Embedded analytics SDK`}
             badge={
@@ -144,7 +146,7 @@ export function SelectEmbedTypePane({
               </>
             }
             illustration={<SdkIllustration />}
-            externalLink
+            isDisabled={isEmbeddingSdkDisabled}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- visible only to admin */}
@@ -153,7 +155,7 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Advanced customization options for styling`}</List.Item>
             </List>
           </SharingPaneButton>
-        </a>
+        </MaybeLink>
       </Group>
       <Group position="apart">
         {/* PUBLIC EMBEDDING */}
@@ -211,3 +213,14 @@ export const useInteractiveEmbeddingCta = () => {
     target: "_blank",
   };
 };
+
+interface MaybeLinkProps extends ComponentProps<typeof Link> {
+  shouldRender?: boolean;
+}
+function MaybeLink({ shouldRender, ...props }: MaybeLinkProps) {
+  if (shouldRender) {
+    return <Link {...props} />;
+  }
+
+  return props.children;
+}
