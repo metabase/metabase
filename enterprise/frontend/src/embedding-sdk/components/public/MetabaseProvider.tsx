@@ -45,8 +45,14 @@ export interface MetabaseProviderProps {
   eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
   className?: string;
+
+  /** Defines the display language. Accepts an ISO language code such as `en` or `de`. */
   locale?: string;
+
+  /** A custom loader component to display while the SDK is loading. */
   loaderComponent?: () => JSX.Element;
+
+  /** A custom error component to display when the SDK encounters an error. */
   errorComponent?: SdkErrorComponent;
 
   /** Whether to allow logging to the DevTools console. Defaults to true. */
