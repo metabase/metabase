@@ -31,6 +31,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
+  viewFooterControlState: undefined,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
@@ -10,8 +10,8 @@ import {
 } from "metabase/query_builder/actions";
 import {
   getIsActionListVisible,
-  getIsShowingRawTable,
   getIsVisualized,
+  getViewFooterControlState,
 } from "metabase/query_builder/selectors";
 import { Icon, Loader, Tooltip } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
@@ -34,57 +34,26 @@ const ViewFooterControl = ({
   const shouldShowEditorButton =
     !isNative && isEditable && !question.isArchived() && isActionListVisible;
   const vizIcon = getIconForVisualizationType(question.display());
-  const isShowingRawTable = useSelector(getIsShowingRawTable);
   const isVisualized = useSelector(getIsVisualized);
+  const viewFooterControlState: "editor" | "results" | "visualization" =
+    useSelector(getViewFooterControlState);
 
   const dispatch = useDispatch();
 
-  const [value, setValue] = useState<"editor" | "table" | "visualization">(
-    isNotebook ? "editor" : isShowingRawTable ? "table" : "visualization",
-  );
+  const value = viewFooterControlState;
 
-  useEffect(() => {
-    // switch from editor to view
-    if (!isNotebook && value === "editor") {
-      setValue("visualization");
-    }
-  }, [isNative, isNotebook, value]);
-
-  useEffect(() => {
-    // if another visualization type is selected but the value "table" is
-    // selected we need to switch to "visualization"
-    if (!isShowingRawTable && value === "table") {
-      setValue("visualization");
-    }
-  }, [isShowingRawTable, value]);
-
-  useEffect(() => {
-    // handle "convert to native question" case when segment control is rendered
-    // but we do not show "editor" value for it
-    if (isNative && value === "editor") {
-      setValue("visualization");
-    }
-  }, [isNative, value]);
-
-  useEffect(() => {
-    // switch back to editor
-    if (isNotebook && value !== "editor") {
-      setValue("editor");
-    }
-  }, [isNotebook, value]);
-
-  const handleValueChange = (value: "editor" | "table" | "visualization") => {
+  const handleValueChange = (value: "editor" | "results" | "visualization") => {
     if (value === "editor") {
       dispatch(setQueryBuilderMode("notebook"));
     } else {
-      dispatch(setUIControls({ isShowingRawTable: value === "table" }));
+      dispatch(setUIControls({ isShowingRawTable: value === "results" }));
 
       if (isNotebook) {
         dispatch(setQueryBuilderMode("view"));
       }
     }
 
-    setValue(value);
+    dispatch(setUIControls({ viewFooterControlState: value }));
   };
 
   const data = useMemo(
@@ -101,12 +70,14 @@ const ViewFooterControl = ({
             }
           : null,
         {
-          value: "table",
+          value: "results",
           disabled: isRunning,
           label: isRunning ? (
             <Loader
               color={
-                value === "table" ? "var(--mb-color-text-selected)" : undefined
+                value === "results"
+                  ? "var(--mb-color-text-selected)"
+                  : undefined
               }
               size="xs"
             />
@@ -135,7 +106,7 @@ const ViewFooterControl = ({
           ),
         },
       ].filter(isNotNull),
-    [isRunning, shouldShowEditorButton, value, vizIcon],
+    [shouldShowEditorButton, isRunning, value, vizIcon],
   );
 
   return (
