@@ -600,7 +600,7 @@
       [:div {:style (style/style
                      (style/font-style)
                      {:margin-top :8px
-                      :color      style/color-gray-4})}
+                      :color      style/color-text-light})}
        (trs "No results")]]
      :render/text (trs "No results")}))
 

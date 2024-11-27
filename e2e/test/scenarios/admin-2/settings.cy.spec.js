@@ -1154,7 +1154,9 @@ describe("notifications", { tags: "@external" }, () => {
         "DELETE",
         `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
         { failOnStatusCode: false },
-      );
+      ).then(response => {
+        cy.log("Deleted requests.");
+      });
     });
 
     const COMMON_FIELDS = [
