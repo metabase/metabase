@@ -59,17 +59,39 @@
       background-color: white;
       color: var(--mb-color-text-dark);
       border: 1px solid var(--mb-color-border);
-
-      ul {
-        margin: 6px 0;
-      }
+      max-width: 520px;
 
       ul li {
         color: inherit;
         padding: 0 8px !important;
         display: flex;
         justify-content: space-between;
-        gap: 1rem;
+      }
+
+      @supports (grid-template-columns: subgrid) {
+        ul:has(.cm-completionLabel) {
+          display: grid;
+          gap: 0 1rem;
+          grid-template-columns: 1fr;
+
+          &:has(.cm-completionDetail) {
+            grid-template-columns: 1fr max-content;
+          }
+
+          li {
+            display: grid;
+            grid-column: 1 / span 2;
+            grid-template-columns: subgrid;
+          }
+
+          .cm-completionLabel {
+            grid-column: 1;
+          }
+
+          .cm-completionDetail {
+            grid-column: 2;
+          }
+        }
       }
 
       ul li[aria-selected="true"] {
@@ -97,6 +119,8 @@
 
       .cm-completionDetail {
         color: var(--mb-color-text-light);
+        display: flex;
+        justify-content: flex-end;
       }
     }
 
