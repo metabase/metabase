@@ -32,6 +32,7 @@ export const Default = {
     isSaveEnabled: true,
     saveToCollectionId: undefined,
     withTitle: true,
+    withResetButton: true,
   },
 };
 
