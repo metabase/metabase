@@ -22,10 +22,117 @@ const columns = [
     name: "Amount",
     display_name: "Amount",
     base_type: "type/Number",
+    semantic_type: "type/Number",
   }),
 ];
 
 describe("SANKEY_CHART_DEFINITION", () => {
+  describe("isSensible", () => {
+    it("should return true for valid data", () => {
+      const data = createMockDatasetData({
+        rows: [
+          ["A", "B", 10],
+          ["B", "C", 20],
+        ],
+        cols: columns,
+      });
+
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(true);
+    });
+
+    it("should return false when there are no rows", () => {
+      const data = createMockDatasetData({
+        rows: [],
+        cols: columns,
+      });
+
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+    });
+
+    it("should return false when there are not enough columns", () => {
+      const data = createMockDatasetData({
+        rows: [["A", "B"]],
+        cols: columns.slice(0, 2),
+      });
+
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+    });
+
+    it("should return false when there are not enough dimension columns", () => {
+      const columnsWithoutDimensions = [
+        createMockColumn({
+          name: "Date",
+          display_name: "Date",
+          base_type: "type/DateTime",
+        }),
+        createMockColumn({
+          name: "Target",
+          display_name: "Target",
+          base_type: "type/Text",
+        }),
+        createMockColumn({
+          name: "Amount",
+          display_name: "Amount",
+          base_type: "type/Number",
+          semantic_type: "type/Number",
+        }),
+      ];
+
+      const data = createMockDatasetData({
+        rows: [
+          ["2023-01-01", "B", 10],
+          ["2023-01-02", "C", 20],
+        ],
+        cols: columnsWithoutDimensions,
+      });
+
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+    });
+
+    it("should return false when there are not enough metric columns", () => {
+      const columnsWithoutMetrics = [
+        createMockColumn({
+          name: "Source",
+          display_name: "Source",
+          base_type: "type/Text",
+        }),
+        createMockColumn({
+          name: "Target",
+          display_name: "Target",
+          base_type: "type/Text",
+        }),
+        createMockColumn({
+          name: "Category",
+          display_name: "Category",
+          base_type: "type/Text",
+        }),
+      ];
+
+      const data = createMockDatasetData({
+        rows: [
+          ["A", "B", "Cat1"],
+          ["B", "C", "Cat2"],
+        ],
+        cols: columnsWithoutMetrics,
+      });
+
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+    });
+
+    it("should return false when data contains cycles", () => {
+      const data = createMockDatasetData({
+        rows: [
+          ["A", "B", 10],
+          ["B", "C", 20],
+          ["C", "A", 30],
+        ],
+        cols: columns,
+      });
+
+      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+    });
+  });
+
   describe("checkRenderable", () => {
     it("should not throw error for valid data and settings", () => {
       const rawSeries = [
