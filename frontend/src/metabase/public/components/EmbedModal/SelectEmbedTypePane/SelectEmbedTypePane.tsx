@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl, useUrlWithUtm } from "metabase/common/hooks";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
@@ -171,13 +172,13 @@ export function SelectEmbedTypePane({
             >{t`Settings`}</Link>
           </Text>
         )}
-        <a
+        <ExternalLink
           className={cx(CS.link, CS.textBold)}
           style={{ display: "flex", alignItems: "center", gap: 4 }}
           href={embeddingUrl}
         >
-          {t`Compare options`} <Icon name="share" />
-        </a>
+          {t`Compare options`} <Icon name="share" aria-hidden />
+        </ExternalLink>
       </Group>
     </Stack>
   );

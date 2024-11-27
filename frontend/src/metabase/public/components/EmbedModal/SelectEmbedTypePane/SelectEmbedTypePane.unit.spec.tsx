@@ -21,7 +21,7 @@ const setup = ({
   isResourcePublished?: boolean;
   isApplicationEmbeddingEnabled?: boolean;
   isPublicSharingEnabled?: boolean;
-}) => {
+} = {}) => {
   const TEST_DASHBOARD = createMockDashboard({
     public_uuid: hasPublicLink ? "mock-uuid" : undefined,
     enable_embedding: isResourcePublished,
@@ -156,6 +156,18 @@ describe("SelectEmbedTypePane", () => {
 
         expect(onCreatePublicLink).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('"Compare options" button', () => {
+    it("should open in a new tab", () => {
+      setup();
+
+      const compareOptionsButton = screen.getByRole("link", {
+        name: "Compare options",
+      });
+
+      expect(compareOptionsButton).toHaveAttribute("target", "_blank");
     });
   });
 });
