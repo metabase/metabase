@@ -36,6 +36,12 @@ export interface MetabaseColors {
   /** Primary brand color used for buttons and links */
   brand?: string;
 
+  /** Lighter variation of the brand color. Used for hover and accented elements. */
+  "brand-hover"?: string;
+
+  /** Lightest variation of the brand color. Used for hover and accented elements. */
+  "brand-hover-light"?: string;
+
   /** Text color on dark elements. Should be a lighter color for readability. */
   "text-primary"?: string;
 
@@ -47,6 +53,9 @@ export interface MetabaseColors {
 
   /** Default background color. */
   background?: string;
+
+  /** Slightly muted background color. */
+  "background-secondary"?: string;
 
   /** Slightly darker background color used for hover and accented elements. */
   "background-hover"?: string;

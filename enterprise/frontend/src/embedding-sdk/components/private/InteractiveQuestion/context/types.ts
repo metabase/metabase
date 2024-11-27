@@ -14,8 +14,14 @@ export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 type InteractiveQuestionConfig = {
   componentPlugins?: SdkPluginsConfig;
   onNavigateBack?: () => void;
-  onBeforeSave?: (question?: Question) => Promise<void>;
-  onSave?: (question?: Question) => void;
+  onBeforeSave?: (
+    question: Question | undefined,
+    context: { isNewQuestion: boolean },
+  ) => Promise<void>;
+  onSave?: (
+    question: Question | undefined,
+    context: { isNewQuestion: boolean },
+  ) => void;
   entityTypeFilter?: EntityTypeFilterKeys[];
 
   /** Is the save question button visible? */

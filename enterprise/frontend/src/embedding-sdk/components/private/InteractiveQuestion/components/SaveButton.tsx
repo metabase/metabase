@@ -15,9 +15,9 @@ export const SaveButton = ({
     ? question && question.isQueryDirtyComparedTo(originalQuestion)
     : true;
 
-  return (
-    <Button disabled={!isQuestionChanged || !canSave} onClick={onClick}>
-      Save
-    </Button>
-  );
+  if (!isQuestionChanged || !canSave) {
+    return null;
+  }
+
+  return <Button onClick={onClick}>Save</Button>;
 };

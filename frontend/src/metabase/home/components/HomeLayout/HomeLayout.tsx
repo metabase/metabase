@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip/Tooltip";
 import { useSelector } from "metabase/lib/redux";
-import MetabotWidget from "metabase/metabot/components/MetabotWidget";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 
@@ -19,14 +18,10 @@ import {
 } from "./HomeLayout.styled";
 
 interface HomeLayoutProps {
-  hasMetabot: boolean;
   children?: ReactNode;
 }
 
-export const HomeLayout = ({
-  hasMetabot,
-  children,
-}: HomeLayoutProps): JSX.Element => {
+export const HomeLayout = ({ children }: HomeLayoutProps): JSX.Element => {
   const [showModal, setShowModal] = useState(false);
   const isAdmin = useSelector(getUserIsAdmin);
   const landingPageIllustration = useSelector(getLandingPageIllustration);
@@ -40,7 +35,7 @@ export const HomeLayout = ({
           isDefault={landingPageIllustration.isDefault}
         />
       )}
-      {hasMetabot ? <MetabotWidget /> : <HomeGreeting />}
+      <HomeGreeting />
       {isAdmin && (
         <Tooltip tooltip={t`Pick a dashboard to serve as the homepage`}>
           <LayoutEditButton

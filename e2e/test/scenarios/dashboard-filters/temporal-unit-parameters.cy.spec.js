@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   appBar,
-  changeSynchronousBatchUpdateSetting,
   clearFilterWidget,
   createNativeQuestion,
   createQuestion,
@@ -14,13 +13,13 @@ import {
   modal,
   popover,
   queryBuilderHeader,
-  queryBuilderMain,
   resetFilterWidgetToDefault,
   restore,
   saveDashboard,
   selectDashboardFilter,
   setFilter,
   sidebar,
+  tableInteractive,
   undoToast,
   undoToastList,
   updateDashboardCards,
@@ -238,14 +237,7 @@ const getParameterMapping = card => ({
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true);
     cy.signInAsNormalUser();
-  });
-
-  afterEach(() => {
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   describe("mapping targets", () => {
@@ -275,7 +267,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Created At: Year").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
       });
-      queryBuilderMain().findByText("Created At: Year").should("be.visible");
+      tableInteractive().findByText("Created At: Year").should("be.visible");
       backToDashboard();
       editDashboard();
       removeQuestion();
@@ -296,7 +288,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Q2 2022").should("be.visible");
         cy.findByText(multiBreakoutQuestionDetails.name).click();
       });
-      queryBuilderMain().findByText("Q2 2022").should("be.visible");
+      tableInteractive().findByText("Created At: Quarter").should("be.visible");
       backToDashboard();
       editDashboard();
       removeQuestion();
@@ -313,7 +305,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Created At: Month: Quarter").should("be.visible");
         cy.findByText(multiStageQuestionDetails.name).click();
       });
-      queryBuilderMain()
+      tableInteractive()
         .findByText("Created At: Month: Quarter")
         .should("be.visible");
       backToDashboard();
@@ -339,7 +331,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Date: Quarter").should("be.visible");
         cy.findByText(expressionBreakoutQuestionDetails.name).click();
       });
-      queryBuilderMain().findByText("Date: Quarter").should("be.visible");
+      tableInteractive().findByText("Date: Quarter").should("be.visible");
       backToDashboard();
       editDashboard();
       removeQuestion();
@@ -429,10 +421,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       appBar()
         .should("contain.text", "Started from")
         .should("contain.text", multiBreakoutQuestionDetails.name);
-      queryBuilderMain().within(() => {
+      tableInteractive().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("April 24, 2022").should("be.visible");
-        cy.findByText("May 1, 2022").should("be.visible");
+        cy.findByText("Product → Created At: Week").should("be.visible");
       });
     });
 
@@ -464,7 +455,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       appBar()
         .should("contain.text", "Started from")
         .should("contain.text", singleBreakoutQuestionDetails.name);
-      queryBuilderMain().within(() => {
+      tableInteractive().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
         cy.findByText("2022").should("be.visible");
       });

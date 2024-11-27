@@ -6,10 +6,12 @@
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search :as search]
    [metabase.search.config :as search.config]
+   [metabase.search.core :as search.core]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
@@ -45,6 +47,20 @@
                 raise)))
    (meta handler)))
 
+(api/defendpoint POST "/re-init"
+  "If fulltext search is enabled, this will blow away the index table, re-create it, and re-populate it."
+  []
+  (api/check-superuser)
+  (cond
+    (not (public-settings/experimental-fulltext-search-enabled))
+    (throw (ex-info "Search index is not enabled." {:status-code 501}))
+
+    (search.core/supports-index?)
+    (do (search.core/init-index! {:force-reset? true}) {:message "done"})
+
+    :else
+    (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
+
 (api/defendpoint POST "/force-reindex"
   "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
   []
@@ -53,38 +69,38 @@
     (not (public-settings/experimental-fulltext-search-enabled))
     (throw (ex-info "Search index is not enabled." {:status-code 501}))
 
-    (search/supports-index?)
-    (if (task/job-exists? task.search-index/reindex-job-key)
+    (search.core/supports-index?)
+    ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
+    (if (and (task/job-exists? task.search-index/reindex-job-key) (not config/is-test?))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
-      (do (search/reindex!) {:message "done"}))
+      (do (task.search-index/reindex!) {:message "done"}))
 
     :else
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-(defn- set-weights! [overrides]
+(defn- set-weights! [context overrides]
   (api/check-superuser)
-  (let [allowed-key? (set (keys @#'search.config/default-weights))
-        unknown-weights (seq (remove allowed-key? (keys overrides)))]
-    (when unknown-weights
-      (throw (ex-info (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))
+  (when (= context :all)
+    (throw (ex-info (str "Cannot set weights for all context")
+                    {:status-code 400})))
+  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
+        rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
+        unknown-rankers (seq (remove known-ranker? rankers))]
+    (when unknown-rankers
+      (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
     (public-settings/experimental-search-weight-overrides!
-     (merge (public-settings/experimental-search-weight-overrides) overrides))
-    (search.config/weights)))
+     (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
 
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
   [:as {overrides :params}]
   ;; remove cookie
-  (let [overrides (-> overrides (dissoc :search_engine) (update-vals parse-double))]
-    (if (seq overrides)
-      (set-weights! overrides)
-      (search.config/weights))))
-
-(api/defendpoint PUT "/weights"
-  "Return the current weights being used to rank the search results"
-  [:as {overrides :body}]
-  (set-weights! overrides))
+  (let [context   (keyword (:context overrides :default))
+        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+    (when (seq overrides)
+      (set-weights! context overrides))
+    (search.config/weights context)))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.
@@ -108,14 +124,15 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
+  [q context archived created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_engine search_native_query
    verified ids calculate_available_models]
   {q                                   [:maybe ms/NonBlankString]
+   context                             [:maybe :keyword]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
-   filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   filter_items_in_personal_collection [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -133,6 +150,7 @@
     (search/search
      (search/search-context
       {:archived                            archived
+       :context                             context
        :created-at                          created_at
        :created-by                          (set created_by)
        :current-user-id                     api/*current-user-id*

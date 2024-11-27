@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 import {
   getAfterDateFilter,
   getBeforeDateFilter,
@@ -41,8 +41,8 @@ export type DateOperator = {
   name: string;
   displayName: string;
   displayPrefix?: string;
-  init: (filter: Filter) => any[];
-  test: (filter: Filter) => boolean;
+  init: (filter: FilterMBQL) => any[];
+  test: (filter: FilterMBQL) => boolean;
   widget: any;
   group?: DatePickerGroup;
   options?: any;
@@ -117,14 +117,14 @@ export const DATE_OPERATORS: DateOperator[] = [
   },
 ];
 
-export function getOperator(filter: Filter, operators = DATE_OPERATORS) {
+export function getOperator(filter: FilterMBQL, operators = DATE_OPERATORS) {
   return _.find(operators, o => o.test(filter));
 }
 
 type Props = {
   className?: string;
 
-  filter: Filter;
+  filter: FilterMBQL;
   dateShortcutOptions?: DateShortcutOptions;
   operators?: DateOperator[];
 
@@ -206,7 +206,7 @@ const DatePicker: React.FC<React.PropsWithChildren<Props>> = props => {
               filter={filter}
               onCommit={onCommit}
               supportsExpressions={supportsExpressions}
-              onFilterChange={(filter: Filter) => {
+              onFilterChange={(filter: FilterMBQL) => {
                 if (!isStartingFrom(filter) && operator && operator.init) {
                   onFilterChange(operator.init(filter));
                 } else {

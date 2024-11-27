@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [metabase.db :as mdb]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
@@ -11,14 +10,13 @@
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.api :as search.api]
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
+   [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
-   [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
@@ -156,12 +154,16 @@
                       archived_directly model]}]
   (let [matching-columns    (into #{} (keep :column relevant-scores))
         match-context-thunk (some :match-context-thunk relevant-scores)
-        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))]
+        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))
+        use-display-name?   (and display_name
+                                 ;; This collection will be empty unless we used in-place matching.
+                                 ;; For now, for simplicity and performance reasons, we are not bothering to check
+                                 ;; *where* the matches in the tsvector came from.
+                                 (or (empty? matching-columns)
+                                     (contains? matching-columns :display_name)))]
     (-> result
         (assoc
-         :name           (if (and (contains? matching-columns :display_name) display_name)
-                           display_name
-                           name)
+         :name           (if use-display-name? display_name name)
          :context        (when (and match-context-thunk
                                     (empty?
                                      (remove matching-columns displayed-columns)))
@@ -202,55 +204,39 @@
     (not (zero? v))
     v))
 
-(defmulti supported-engine? "Does this instance support the given engine?" keyword)
-
-(defmethod supported-engine? :search.engine/in-place [_] true)
-(defmethod supported-engine? :search.engine/fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
-
-(defn- default-engine []
-  (if (public-settings/experimental-fulltext-search-enabled)
-    :search.engine/fulltext
-    :search.engine/in-place))
-
-(defn- known-engine? [engine]
-  (let [registered? #(contains? (methods supported-engine?) %)]
-    (some registered? (cons engine (ancestors engine)))))
-
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
         (let [engine (keyword "search.engine" value)]
           (cond
-            (not (known-engine? engine))
+            (not (search.engine/known-engine? engine))
             (log/warnf "Search-engine is unknown: %s" value)
 
-            (not (supported-engine? engine))
+            (not (search.engine/supported-engine? engine))
             (log/warnf "Search-engine is not supported: %s" value)
 
             :else
             engine)))
-      (default-engine)))
+      (search.engine/default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
 (defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
-  (let [default (default-engine)]
+  (let [default (search.engine/default-engine)]
     (when (= default search-engine)
       (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
     (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
     (assoc search-ctx :search-engine default)))
 
-(defmethod search.api/results :default [search-ctx]
-  (search.api/results (apply-default-engine search-ctx)))
+(defmethod search.engine/results :default [search-ctx]
+  (search.engine/results (apply-default-engine search-ctx)))
 
-(defmethod search.api/model-set :default [search-ctx]
-  (search.api/model-set (apply-default-engine search-ctx)))
-
-(defmethod search.api/score :default [results search-ctx]
-  (search.api/score results (apply-default-engine search-ctx)))
+(defmethod search.engine/model-set :default [search-ctx]
+  (search.engine/model-set (apply-default-engine search-ctx)))
 
 (mr/def ::search-context.input
   [:map {:closed true}
    [:search-string                                        [:maybe ms/NonBlankString]]
+   [:context                             {:optional true} [:maybe :keyword]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
    [:is-impersonated-user?               {:optional true} :boolean]
@@ -260,7 +246,7 @@
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "only" "exclude"]]]
+   [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
    [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
    [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:limit                               {:optional true} [:maybe ms/Int]]
@@ -276,6 +262,7 @@
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           context
            calculate-available-models?
            created-at
            created-by
@@ -304,17 +291,22 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:archived?                   (boolean archived)
-                        :calculate-available-models? (boolean calculate-available-models?)
-                        :current-user-id             current-user-id
-                        :current-user-perms          current-user-perms
-                        :is-impersonated-user?       is-impersonated-user?
-                        :is-sandboxed-user?          is-sandboxed-user?
-                        :is-superuser?               is-superuser?
-                        :models                      models
-                        :model-ancestors?            (boolean model-ancestors?)
-                        :search-engine               (parse-engine search-engine)
-                        :search-string               search-string}
+        engine (parse-engine search-engine)
+        fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
+        ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))
+                        :context                             (or context :unknown)
+                        :calculate-available-models?         (boolean calculate-available-models?)
+                        :current-user-id                     current-user-id
+                        :current-user-perms                  current-user-perms
+                        :filter-items-in-personal-collection (or filter-items-in-personal-collection
+                                                                 (fvalue :personal-collection-id))
+                        :is-impersonated-user?               is-impersonated-user?
+                        :is-sandboxed-user?                  is-sandboxed-user?
+                        :is-superuser?                       is-superuser?
+                        :models                              models
+                        :model-ancestors?                    (boolean model-ancestors?)
+                        :search-engine                       engine
+                        :search-string                       search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -330,7 +322,11 @@
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
     ;; TODO this is rather hidden, perhaps better to do it further down the stack
-    (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
+    (assoc ctx :models
+           ;; We are not working to keep the legacy engine logic in sync with the new modular approach.
+           (if (= :search.engine/in-place engine)
+             (search.in-place.filter/search-context->applicable-models ctx)
+             (search.filter/search-context->applicable-models ctx)))))
 
 (defn- to-toucan-instance [row]
   (let [model (-> row :model search.config/model-to-db-model :db-model)]
@@ -392,17 +388,17 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
-  (let [reducible-results (search.api/results search-ctx)
+  (let [reducible-results (search.engine/results search-ctx)
         scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
-                           (keep #(search.api/score % scoring-ctx)))
+                           (keep #(search.engine/score scoring-ctx %)))
         total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                             true hydrate-user-metadata
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (map serialize))]
-    (search-results search-ctx search.api/model-set total-results)))
+    (search-results search-ctx search.engine/model-set total-results)))
