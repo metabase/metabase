@@ -212,6 +212,7 @@
 (derive ::upload-event ::event)
 (derive :event/upload-create ::upload-event)
 (derive :event/upload-append ::upload-event)
+(derive :event/upload-replace ::upload-event)
 
 (methodical/defmethod events/publish-event! ::upload-event
   [topic event]

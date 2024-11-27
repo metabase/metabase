@@ -1,12 +1,9 @@
-import cx from "classnames";
-
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import { FilterPicker as InnerFilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { Box } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../../context";
-import S from "../../Picker.module.css";
 import type { SDKFilterItem } from "../hooks/use-filter-data";
 import { useFilterHandlers } from "../hooks/use-filter-handlers";
 
@@ -32,7 +29,7 @@ const FilterPickerInner = ({
     onQueryChange,
   });
   return (
-    <Box className={cx(S.PickerContainer, className)}>
+    <Box className={className}>
       <InnerFilterPicker
         query={query}
         stageIndex={stageIndex}

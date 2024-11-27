@@ -355,7 +355,7 @@ export function AggregationPicker({
   }
 
   return (
-    <Box className={className} c="summarize">
+    <Box className={className} c="summarize" data-testid="aggregation-picker">
       <AccordionList
         sections={sections}
         onChange={handleChange}
