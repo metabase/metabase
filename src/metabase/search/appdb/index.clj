@@ -22,6 +22,8 @@
 
 (defonce ^:dynamic ^:private *pending-table* (atom nil))
 
+(def ^:private ^:dynamic *mocking-tables* false)
+
 (defn active-table
   "The table against which we should currently make search queries."
   []
@@ -83,8 +85,9 @@
   :on-change sync-tables)
 
 (defn- update-metadata! [new-metadata]
-  (search-engine-appdb-index-state!
-   (merge (search-engine-appdb-index-state) new-metadata)))
+  (when-not *mocking-tables*
+    (search-engine-appdb-index-state!
+     (merge (search-engine-appdb-index-state) new-metadata))))
 
 (comment
   (search-engine-appdb-index-state! nil))
@@ -207,8 +210,9 @@
   "Create a temporary index table for the duration of the body."
   [& body]
   `(let [table-name# (gen-table-name)]
-     (binding [*pending-table* (atom nil)
-               *active-table*  (atom table-name#)]
+     (binding [*mocking-tables* true
+               *pending-table*  (atom nil)
+               *active-table*   (atom table-name#)]
        (try
          (create-table! table-name#)
          ~@body
