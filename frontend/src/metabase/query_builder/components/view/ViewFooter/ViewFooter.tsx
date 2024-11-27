@@ -1,7 +1,10 @@
 import cx from "classnames";
+import { useEffect, useRef, useState } from "react";
+import { CSSTransition } from "react-transition-group";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import S from "./ViewFooterControl.module.css"
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
@@ -50,6 +53,20 @@ export const ViewFooter = ({
   const shouldHideFooterForNativeQuestionWithoutResult = isNative && !result;
 
   const { isShowingNotebookNativePreview } = useSelector(getUiControls);
+  const [showViewControl, setShowViewControl] = useState(!isNotebook);
+  const [showButton, setShowButton] = useState(isNotebook);
+  useEffect(() => {
+    if (isNotebook && hasVisualizeButton && isResultDirty) {
+      if (!showButton) {
+        setShowButton(true);
+        setShowViewControl(false);
+      }
+    }
+  }, [hasVisualizeButton, isNotebook, isResultDirty, showButton]);
+
+  const viewControlRef = useRef(null);
+  const buttonRef = useRef(null);
+
   if (!question || shouldHideFooterForNativeQuestionWithoutResult) {
     return null;
   }
@@ -95,6 +112,8 @@ export const ViewFooter = ({
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hideChartSettings =
     (result?.error && !isEditable) || question.isArchived();
+  const shouldRenderVizButton = isNotebook && hasVisualizeButton && isResultDirty;
+
 
   return (
     <ViewFooterRoot
@@ -102,26 +121,43 @@ export const ViewFooter = ({
       data-testid="view-footer"
     >
       <Group position="apart" pos="relative" noWrap w="100%">
-        {isNotebook && hasVisualizeButton && isResultDirty ? (
+        {/* {isNotebook && hasVisualizeButton && isResultDirty ? ( */}
+        <CSSTransition in={showButton} key="visualize-button" timeout={300} nodeRef={buttonRef} unmountOnExit
+          onEnter={() => console.log("on enter")}
+          onExited={() => {
+            setShowViewControl(true);
+          }}
+          classNames={{
+            enter: S.buttonEnter,
+            enterActive: S.buttonEnterActive,
+            exit: S.buttonExit,
+            exitActive: S.buttonExitActive,
+          }}>
           <Button
+            ref={buttonRef}
             variant="filled"
             radius="xl"
             pt={rem(7)}
             pb={rem(7)}
             miw={190}
-            onClick={visualize}
+            onClick={() => {
+              visualize();
+              setShowButton(false);
+            }}
           >
             {t`Visualize`}
           </Button>
-        ) : (
+        </CSSTransition>
+        <CSSTransition nodeRef={viewControlRef} timeout={300} key="view-footer-control" unmountOnExit in={showViewControl} onExited={() => { console.log("on exited") }} onEnter={() => { console.log("on enter") }}>
           <LeftViewFooterButtonGroup
+            ref={viewControlRef}
             question={question}
             hideChartSettings={hideChartSettings}
             isResultLoaded={!!result}
             isRunning={isRunning}
             isNotebook={isNotebook}
           />
-        )}
+        </CSSTransition>
         {isNotebook ? (
           isShowingNotebookNativePreview ? (
             <ConvertToNativeQuestionButton />
