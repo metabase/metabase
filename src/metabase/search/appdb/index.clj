@@ -21,20 +21,20 @@
 
 (def ^:dynamic ^:private *pending-table* (atom nil))
 
-(defn gen-table-name
-  "Generate a unique table name to use as a search index table."
-  []
-  (keyword (str/replace (str "search_index_" (random-uuid)) #"-" "_")))
-
 (defn active-table
   "The table against which we should currently make search queries."
   []
   @*active-table*)
 
-(defn pending-table
+(defn- pending-table
   "A partially populated table that will take over from [[active-table]] when it is done."
   []
   @*pending-table*)
+
+(defn gen-table-name
+  "Generate a unique table name to use as a search index table."
+  []
+  (keyword (str/replace (str "search_index_" (random-uuid)) #"-" "_")))
 
 (defn- exists? [table-name]
   (t2/exists? :information_schema.tables :table_name (name table-name)))
@@ -56,14 +56,12 @@
 
 (defn maybe-create-pending!
   "Create a search index table."
-  ([]
-   (when (not (pending-table))
-     (let [tn (gen-table-name)]
-       (maybe-create-pending! tn)
-       (reset! *pending-table* tn))))
-  ([table-name]
-   (when-not (exists? table-name)
-     (create-table! table-name))))
+  []
+  (when (not (pending-table))
+    (let [table-name (gen-table-name)]
+      (when-not (exists? table-name)
+        (create-table! table-name))
+      (reset! *pending-table* table-name))))
 
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
