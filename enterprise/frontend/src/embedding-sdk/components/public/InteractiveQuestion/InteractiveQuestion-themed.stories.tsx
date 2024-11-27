@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
 import { MetabaseProvider, defineEmbeddingSdkTheme } from "embedding-sdk";
-import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box } from "metabase/ui";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
@@ -78,7 +78,10 @@ const darkTheme = defineEmbeddingSdkTheme({
 });
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MetabaseProvider authConfig={storybookSdkDefaultConfig} theme={darkTheme}>
+  <MetabaseProvider
+    authConfig={storybookSdkAuthDefaultConfig}
+    theme={darkTheme}
+  >
     <Box p="xl" bg={colors.background}>
       {children}
     </Box>

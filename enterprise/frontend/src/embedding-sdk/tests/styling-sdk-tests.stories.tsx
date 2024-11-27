@@ -2,7 +2,7 @@ import {
   MetabaseProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
-import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 
 export default {
@@ -42,7 +42,7 @@ export const NoStylesSuccess = () => (
       <h1>This is outside of the provider</h1>
     </div>
 
-    <MetabaseProvider authConfig={storybookSdkDefaultConfig}>
+    <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
       <div style={{ border: "1px solid black" }}>
         <h1>This is inside of the provider</h1>
       </div>
@@ -55,7 +55,7 @@ export const NoStylesSuccess = () => (
 export const FontFromConfig = () => (
   <div>
     <MetabaseProvider
-      authConfig={storybookSdkDefaultConfig}
+      authConfig={storybookSdkAuthDefaultConfig}
       theme={{ fontFamily: "Impact" }}
     >
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />

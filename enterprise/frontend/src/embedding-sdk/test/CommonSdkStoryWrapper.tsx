@@ -12,9 +12,9 @@ const METABASE_JWT_SHARED_SECRET =
 const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
 
 /**
- * SDK config that signs the jwt on the FE
+ * SDK auth config that signs the jwt on the FE
  */
-export const storybookSdkDefaultConfig: MetabaseAuthConfig = {
+export const storybookSdkAuthDefaultConfig: MetabaseAuthConfig = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
@@ -42,7 +42,7 @@ export const storybookSdkDefaultConfig: MetabaseAuthConfig = {
 };
 
 export const CommonSdkStoryWrapper = (Story: Story) => (
-  <MetabaseProvider authConfig={storybookSdkDefaultConfig}>
+  <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
     <Story />
   </MetabaseProvider>
 );
