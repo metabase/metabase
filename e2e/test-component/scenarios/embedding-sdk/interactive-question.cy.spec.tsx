@@ -22,7 +22,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
-import { Box, Button, Flex, Modal, Popover } from "metabase/ui";
+import { Box, Button, Modal } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -152,20 +152,16 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    const TestSuiteComponent = ({ questionId }: { questionId: string }) => {
-      const [isOpen, { close, toggle }] = useDisclosure();
-
-      return (
-        <Box p="lg">
-          <InteractiveQuestion questionId={questionId}>
-            <Box>
-              <InteractiveQuestion.FilterDropdown />
-              <InteractiveQuestion.QuestionVisualization />
-            </Box>
-          </InteractiveQuestion>
-        </Box>
-      );
-    };
+    const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
+      <Box p="lg">
+        <InteractiveQuestion questionId={questionId}>
+          <Box>
+            <InteractiveQuestion.FilterDropdown />
+            <InteractiveQuestion.QuestionVisualization />
+          </Box>
+        </InteractiveQuestion>
+      </Box>
+    );
 
     cy.get<string>("@questionId").then(questionId => {
       mountSdkContent(<TestSuiteComponent questionId={questionId} />);
@@ -255,7 +251,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     cy.get("@onSaveSpy").should("have.been.calledWith", "Sample Orders 4");
   });
 
-  it.only("should not crash when clicking on Summarize (metabase#50398)", () => {
+  it("should not crash when clicking on Summarize (metabase#50398)", () => {
     mountInteractiveQuestion();
 
     cy.wait("@cardQuery").then(({ response }) => {
@@ -267,7 +263,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText("1 summary").click();
     });
 
-    cy.findByText("Add another summary").click();
+    popover().findByText("Add another summary").click();
 
     // Expect the default summarization view to be there.
     cy.findByTestId("aggregation-picker").should("be.visible");
