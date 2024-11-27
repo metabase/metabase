@@ -527,11 +527,11 @@
   :default    true)
 
 (defsetting trial-banner-dismissal-timestamp
-  (deferred-tru "The last time a user dismissed the trial banner.")
+  (deferred-tru "The ISO8601 date when a user last dismissed the trial banner.")
   :user-local :only
   :export?    false
   :visibility :authenticated
-  :type       :integer
+  :type       :string
   :default    nil)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------

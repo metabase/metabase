@@ -26,24 +26,22 @@ export const TrialBanner = ({ tokenStatus }: { tokenStatus: TokenStatus }) => {
       return false;
     }
 
-    // In the last 3 days, check dismissal logic with stricter reappearance
+    // In the last 3 days, check dismissal logic daily
     if (daysRemaining <= 3) {
-      const bannerReappearanceThreshold = tokenExpiryDate
-        .subtract(daysRemaining, "day")
-        .unix();
+      const wasDismissedToday =
+        !!lastDismissed && dayjs().isSame(lastDismissed, "day");
 
-      // Banner shows if it hasn't been dismissed after the reappearance point
-      return !lastDismissed || lastDismissed < bannerReappearanceThreshold;
+      return !wasDismissedToday;
     }
 
-    // For the first 11 days, check if it was ever dismissed
+    // Otherwise, just check if it was ever dismissed
     return !lastDismissed;
-  }, [daysRemaining, lastDismissed, tokenExpiryDate]);
+  }, [daysRemaining, lastDismissed]);
 
   const href = getStoreUrl("account/manage/plans");
 
   const handleBannerClose = () => {
-    setLastDismissed(dayjs().unix());
+    setLastDismissed(dayjs().toISOString());
   };
 
   if (!shouldShowBanner) {
