@@ -10,11 +10,6 @@ const LOG_COLORS = {
   black: color("text-dark"),
   white: color("text-white"),
   gray: color("text-medium"),
-  red: color("saturated-red"),
-  green: color("saturated-green"),
-  yellow: color("saturated-yellow"),
-  blue: color("saturated-blue"),
-  magenta: color("saturated-purple"),
   cyan: "cyan",
 };
 
@@ -63,6 +58,26 @@ export const LogsContent = styled.div`
 
   ${LOG_PREFIX}-strikethrough {
     text-decoration: line-through;
+  }
+
+  ${LOG_PREFIX}-red {
+    color: var(--mb-base-color-lobster-50);
+  }
+
+  ${LOG_PREFIX}-green {
+    color: var(--mb-base-color-palm-40);
+  }
+
+  ${LOG_PREFIX}-yellow {
+    color: var(--mb-base-color-dubloon-30);
+  }
+
+  ${LOG_PREFIX}-blue {
+    color: var(--mb-base-color-ocean-50);
+  }
+
+  ${LOG_PREFIX}-magenta {
+    color: var(--mb-base-color-octopus-60);
   }
 
   ${Object.entries(LOG_COLORS).map(
