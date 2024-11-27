@@ -11,6 +11,7 @@ import {
   sql,
 } from "@codemirror/lang-sql";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import type { EditorState } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
@@ -138,7 +139,10 @@ function language({
               return null;
             }
 
-            const tag = getTagAtCursor(context);
+            const tag = matchTagAtCursor(context.state, {
+              allowOpenEnded: true,
+              position: context.pos,
+            });
 
             if (!tag) {
               // the cursor is not inside in a variable, card or snippet tag
@@ -169,49 +173,30 @@ function language({
               };
             }
 
-            const hasClosingTag = tag.text.endsWith("}}");
-            const content = hasClosingTag
-              ? tag.text.slice(2, -2).trim()
-              : tag.text.slice(2).trim();
-
-            if (content.toLowerCase().startsWith("snippet:")) {
-              const prefix = tag.text.match(/^\{\{\s*snippet:\s*/i)?.[0];
-              if (!prefix) {
-                return null;
-              }
-
-              const query = content.replace(/^snippet:/i, "").trim();
-              if (!query) {
-                return null;
-              }
-
+            if (tag.type === "snippet") {
+              const query = tag.content.text;
               const results = snippets.filter(snippet =>
                 snippet.name.toLowerCase().includes(query.toLowerCase()),
               );
 
               return {
-                from: tag.from + prefix.length,
+                from: tag.content.from,
                 validFor(text: string) {
                   return text.startsWith(query);
                 },
                 options: results.map(snippet => ({
                   label: snippet.name,
-                  apply: hasClosingTag ? snippet.name : `${snippet.name} }}`,
+                  apply: tag.hasClosingTag
+                    ? snippet.name
+                    : `${snippet.name} }}`,
                   detail: t`Snippet`,
                   boost: 50,
                 })),
               };
             }
 
-            if (content.startsWith("#")) {
-              // the cursor is inside a card tag
-              const prefix = tag.text.match(/^\{\{\s*#/i)?.[0];
-
-              if (!prefix) {
-                return null;
-              }
-
-              const query = content.trim().replace(/^#/, "").trim();
+            if (tag.type === "card") {
+              const query = tag.content.text.replace(/^#/, "").trim();
               if (!query) {
                 return null;
               }
@@ -227,14 +212,15 @@ function language({
               });
 
               return {
-                from: tag.from + prefix.length - 1,
+                // -1 because we want to include the # in the autocomplete
+                from: tag.content.from - 1,
                 validFor(text: string) {
                   return text.startsWith(`#${query}`);
                 },
                 options: results.map(({ id, name, type, collection_name }) => ({
                   label: `#${id}-${slugg(name)}`,
                   detail: getCardAutocompleteResultMeta(type, collection_name),
-                  apply: hasClosingTag
+                  apply: tag.hasClosingTag
                     ? `#${id}-${slugg(name)}`
                     : `#${id}-${slugg(name)} }}`,
                   boost: 50,
@@ -250,20 +236,54 @@ function language({
   }
 }
 
-type Match = {
-  from: number;
-  to: number;
-  text: string;
+export type TagMatch = {
+  type: "variable" | "snippet" | "card";
+  hasClosingTag: boolean;
+  tag: {
+    from: number;
+    to: number;
+    text: string;
+  };
+  content: {
+    from: number;
+    to: number;
+    text: string;
+  };
+};
+
+type MatchTagOptions = {
+  // If set consider this position as the cursor position.
+  // If not set, the cursor position is the current position of the cursor in the editor.
+  position?: number;
+
+  // If true, return the tag even it it does not have a closing tag.
+  // In this case we assume the tag is still being authored and it runs until the end of the line.
+  allowOpenEnded?: boolean;
 };
 
 // Looks for the tag that the cursor is inside of, or null if the cursor is not inside a tag.
 // Tags are delimited by {{ and }}.
 // This also returns a Match if the tag is opened, but not closed at the end of the line.
-function getTagAtCursor(context: CompletionContext): Match | null {
-  const doc = context.state.doc.toString();
+function matchTagAtCursor(
+  state: EditorState,
+  options: MatchTagOptions,
+): TagMatch | null {
+  const doc = state.doc.toString();
+  const { position, allowOpenEnded } = options;
+
+  if (
+    position === undefined &&
+    state.selection.main.from !== state.selection.main.to
+  ) {
+    return null;
+  }
+
+  const cursor = position ?? state.selection.main.from;
+
   let start = null;
 
-  for (let idx = context.pos; idx >= 0; idx--) {
+  // look for the opening tag to the left of the cursor
+  for (let idx = cursor; idx >= 0; idx--) {
     const currChar = doc[idx];
     const prevChar = doc[idx - 1];
 
@@ -274,39 +294,103 @@ function getTagAtCursor(context: CompletionContext): Match | null {
 
     if (currChar === "}" && prevChar === "}") {
       // closing bracket found before opening bracket
+      // this means we are not in a tag
       return null;
     }
 
     if (currChar === "{" && prevChar === "{") {
+      // we found the opening tag, exit the loop
       start = idx - 1;
       break;
     }
   }
 
-  let end = doc.length;
+  let end = null;
 
-  for (let idx = context.pos; idx < doc.length; idx++) {
+  // look for the closing tag to the right of the cursor
+  for (let idx = cursor; idx < doc.length; idx++) {
     const currChar = doc[idx];
     const nextChar = doc[idx + 1];
 
     if (currChar === "\n") {
-      end = idx;
-      break;
+      if (allowOpenEnded) {
+        // we ran into the end of the line
+        // but we allow open ended tags, so the tag implicitly closes here
+        end = idx;
+        break;
+      }
+
+      // we ran into the end of the line without a closing tag
+      // the tag is malformed
+      return null;
     }
+
     if (currChar === "}" && nextChar === "}") {
+      // we found the closing tag, exit the loop
       end = idx + 2;
       break;
     }
   }
 
-  if (start == null) {
+  if (start == null || end == null) {
     return null;
   }
 
-  return {
-    text: doc.slice(start, end),
+  const text = doc.slice(start, end);
+  const prefix = text.match(/^\{\{\s*/)?.[0];
+  const suffix = text.match(/\s*(\}\})?$/)?.[0];
+  if (!prefix || !suffix) {
+    return null;
+  }
+
+  const content = doc.slice(start + prefix.length, end - suffix.length);
+
+  const tag = {
+    text,
     from: start,
     to: end,
+  };
+  const hasClosingTag = tag.text.endsWith("}}");
+
+  if (content.startsWith("#")) {
+    return {
+      type: "card",
+      hasClosingTag,
+      tag,
+      content: {
+        text: content.slice(1),
+        from: start + prefix.length + 1,
+        to: end - suffix.length,
+      },
+    };
+  }
+
+  if (content.toLowerCase().startsWith("snippet:")) {
+    const snippet = content.match(/^snippet:\s*/)?.[0];
+    if (!snippet) {
+      return null;
+    }
+    return {
+      type: "snippet",
+      hasClosingTag,
+      tag,
+      content: {
+        text: content.slice(snippet.length),
+        from: start + prefix.length + snippet.length,
+        to: end - suffix.length,
+      },
+    };
+  }
+
+  return {
+    type: "variable",
+    hasClosingTag,
+    tag,
+    content: {
+      text: content,
+      from: start + prefix.length,
+      to: end - suffix.length,
+    },
   };
 }
 
