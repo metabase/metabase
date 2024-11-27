@@ -2,7 +2,6 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useTestAlertMutation } from "metabase/api";
-import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { useActionButtonLabel } from "metabase/hooks/use-action-button-label";
@@ -12,7 +11,6 @@ import type {
   Alert,
   ChannelSpec,
   NotificationChannel,
-  User,
 } from "metabase-types/api";
 
 export const WebhookChannelEdit = ({
@@ -20,7 +18,6 @@ export const WebhookChannelEdit = ({
   alert,
   notification,
   toggleChannel,
-  user,
 }: {
   channelSpec: ChannelSpec;
   alert: Alert;
@@ -30,7 +27,6 @@ export const WebhookChannelEdit = ({
     value: boolean,
     notification: NotificationChannel,
   ) => void;
-  user: User;
   notification: NotificationChannel;
 }) => {
   const [testAlert, testAlertRequest] = useTestAlertMutation();
@@ -103,16 +99,7 @@ export const WebhookChannelEdit = ({
               </Box>
             </Flex>
           </li>
-
-          {/* {renderChannel(channel, channelSpec, channelIndex)} */}
         </ul>
-      ) : channel?.enabled && !channelSpec.configured ? (
-        <div className={cx(CS.p4, CS.textCentered)}>
-          <h3
-            className={CS.mb2}
-          >{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
-          <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
-        </div>
       ) : null}
     </li>
   );

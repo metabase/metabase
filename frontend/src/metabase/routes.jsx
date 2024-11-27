@@ -32,13 +32,12 @@ import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardAp
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
+import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
-import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
-import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { PLUGIN_COLLECTIONS, PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
@@ -58,7 +57,6 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
-  CanAccessMetabot,
   CanAccessSettings,
   IsAdmin,
   IsAuthenticated,
@@ -130,6 +128,14 @@ export const getRoutes = store => {
             }}
           />
 
+          <Route
+            path="getting-started"
+            title={t`Getting Started`}
+            component={IsAdmin}
+          >
+            <IndexRoute component={Onboarding} />
+          </Route>
+
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
           <Redirect path="archive" to="trash" replace />
@@ -172,11 +178,6 @@ export const getRoutes = store => {
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
-          </Route>
-
-          <Route path="/metabot" component={CanAccessMetabot}>
-            <Route path="database/:databaseId" component={DatabaseMetabotApp} />
-            <Route path="model/:slug" component={ModelMetabotApp} />
           </Route>
 
           {/* MODELS */}

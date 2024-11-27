@@ -76,8 +76,8 @@
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
       (testing "Should require a token with `:serialization`"
         (mt/with-premium-features #{}
-          (is (= "Serialization is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :rasta :post 402 "ee/serialization/export")))))
+          (mt/assert-has-premium-feature-error "Serialization"
+                                               (mt/user-http-request :rasta :post 402 "ee/serialization/export"))))
       (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/with-empty-h2-app-db
@@ -217,13 +217,13 @@
                                                                                   (assoc :collection_id "DoesNotExist")))))))]
                   (testing "ERROR /api/ee/serialization/import"
                     (let [res (binding [api.serialization/*additive-logging* false]
-                                (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
+                                (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
                                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                       {:file ba}))
                           log (slurp (io/input-stream res))]
                       (testing "3 header lines, then cards+database+collection, then the error"
                         (is (re-find #"Failed to read file for Collection DoesNotExist" log))
-                        (is (re-find #"Cannot find file entry" log)) ;; underlying error
+                        (is (re-find #"Cannot find file" log)) ;; underlying error
                         (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
                                 :error      :metabase-enterprise.serialization.v2.load/not-found,
                                 :model      "Collection",
@@ -261,6 +261,13 @@
                                  "error_count" 1
                                  "models"      "Collection,Dashboard"}
                                 (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
+
+              (testing "Client error /api/ee/serialization/import"
+                (let [res (mt/user-http-request :crowberto :post 422 "ee/serialization/import"
+                                                {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                                {:file (.getBytes "not an archive" "UTF-8")})
+                      log (slurp (io/input-stream res))]
+                  (is (re-find #"Cannot unpack archive" log))))
 
               (mt/with-dynamic-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                              (mt/dynamic-value serdes/extract-one))]

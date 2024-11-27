@@ -281,8 +281,8 @@
       (with-redefs [premium-features/cached-active-users-count (fn []
                                                                  (t2/count :core_user :is_active true))]
         (is (= (t2/count :core_user :is_active true)
-               (premium-features/active-users-count)))))
+               (premium-features/cached-active-users-count)))))
 
     (testing "Default to 0 if db is not setup yet"
       (binding [mdb.connection/*application-db* {:status (atom nil)}]
-        (is (zero? (premium-features/active-users-count)))))))
+        (is (zero? (premium-features/cached-active-users-count)))))))

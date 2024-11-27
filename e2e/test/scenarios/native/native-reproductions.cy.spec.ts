@@ -1,6 +1,8 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   adhocQuestionHash,
   createNativeQuestion,
+  createQuestion,
   openNativeEditor,
   restore,
   runNativeQuery,
@@ -8,6 +10,7 @@ import {
 } from "e2e/support/helpers";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
@@ -153,5 +156,40 @@ describe("issue 33327", () => {
 
     cy.findByTestId("scalar-value").should("have.text", "1");
     cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+  });
+});
+
+describe("issue 49454", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestion({
+      name: "Test Metric 49454",
+      type: "metric",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+    });
+    createQuestion({
+      name: "Test Question 49454",
+      type: "question",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+    });
+  });
+
+  it("should be possible to use metrics in native queries (metabase#49454)", () => {
+    openNativeEditor().type("select * from {{ #test");
+
+    cy.get(".ace_autocomplete")
+      .should("be.visible")
+      .within(() => {
+        cy.findByText("-question-49454").should("be.visible");
+        cy.findByText("-metric-49454").should("be.visible");
+      });
   });
 });

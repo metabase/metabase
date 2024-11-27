@@ -48,13 +48,15 @@ import type {
   DatasetQuery,
   Field,
   LastEditInfo,
+  ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
-  ParameterValues,
+  ParameterValuesMap,
   TableId,
   UserInfo,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 
 import type { Query } from "../types";
 
@@ -64,7 +66,7 @@ export type QuestionCreatorOpts = {
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
-  parameterValues?: ParameterValues;
+  parameterValues?: ParameterValuesMap;
   type?: "query" | "native";
   name?: string;
   display?: CardDisplayType;
@@ -93,7 +95,7 @@ class Question {
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
    * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
    */
-  _parameterValues: ParameterValues;
+  _parameterValues: ParameterValuesMap;
 
   private __mlv2Query: Lib.Query | undefined;
 
@@ -105,7 +107,7 @@ class Question {
   constructor(
     card: any,
     metadata?: Metadata,
-    parameterValues?: ParameterValues,
+    parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
     this._metadata =
@@ -745,9 +747,8 @@ class Question {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  _convertParametersToMbql(): Question {
+  _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
     const query = this.query();
-    const stageIndex = -1;
     const { isNative } = Lib.queryDisplayInfo(query);
 
     if (isNative) {
@@ -756,8 +757,17 @@ class Question {
 
     const newQuery = this.parameters().reduce((query, parameter) => {
       if (isFilterParameter(parameter)) {
+        const stageIndex =
+          isDimensionTarget(parameter.target) && !isComposed
+            ? getParameterDimensionTargetStageIndex(parameter.target)
+            : -1;
         return applyFilterParameter(query, stageIndex, parameter);
       } else if (isTemporalUnitParameter(parameter)) {
+        const stageIndex =
+          isDimensionTarget(parameter.target) && !isComposed
+            ? getParameterDimensionTargetStageIndex(parameter.target)
+            : -1;
+
         return applyTemporalUnitParameter(query, stageIndex, parameter);
       } else {
         return query;
@@ -769,6 +779,13 @@ class Question {
 
     const hasQueryBeenAltered = query !== newQuery;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
+
+    function getParameterDimensionTargetStageIndex(
+      target: ParameterDimensionTarget,
+    ) {
+      const [_type, _variableTarget, options] = target;
+      return options?.["stage-number"] ?? -1;
+    }
   }
 
   query(): Query {
@@ -819,6 +836,10 @@ class Question {
 
   getCreatedAt(): string {
     return getIn(this, ["_card", "created_at"]) || "";
+  }
+
+  canManageDB(): boolean {
+    return this.card().can_manage_db || false;
   }
 
   /**

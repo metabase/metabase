@@ -7,7 +7,9 @@ import { alpha, color, darken } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { Icon, Tooltip } from "metabase/ui";
 
-export const SidebarIcon = styled(Icon)<{
+export const SidebarIcon = styled(Icon, {
+  shouldForwardProp: propName => propName !== "isSelected",
+})<{
   color?: string | null;
   isSelected: boolean;
 }>`

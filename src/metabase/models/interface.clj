@@ -9,10 +9,12 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
+   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
@@ -215,6 +217,17 @@
   (or (mbql.normalize/normalize-fragment [:parameters] parameters)
       []))
 
+(defn- keywordize-temporal_units
+  [parameter]
+  (m/update-existing parameter :temporal_units (fn [units] (mapv keyword units))))
+
+(defn normalize-card-parameters-list
+  "Normalize `parameters` of actions, cards, and dashboards when coming out of the application database."
+  [parameters]
+  (->> parameters
+       normalize-parameters-list
+       (mapv keywordize-temporal_units)))
+
 (def transform-metabase-query
   "Transform for metabase-query."
   {:in  (comp json-in (partial maybe-normalize-query :in))
@@ -224,6 +237,11 @@
   "Transform for parameters list."
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
+
+(def transform-card-parameters-list
+  "Transform for parameters list."
+  {:in  (comp json-in normalize-card-parameters-list)
+   :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
 
 (def transform-field-ref
   "Transform field refs"
@@ -235,7 +253,9 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
+              ;; This is necessary, because in the wild, there may be cards created prior to this change.
+              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."

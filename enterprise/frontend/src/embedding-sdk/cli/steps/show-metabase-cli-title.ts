@@ -8,10 +8,5 @@ export const showMetabaseCliTitle: CliStepMethod = state => {
   printTitle(`View docs at https://npm.im/${SDK_PACKAGE_NAME}`);
   printEmptyLines();
 
-  return [
-    {
-      type: "success",
-    },
-    state,
-  ];
+  return [{ type: "success" }, state];
 };

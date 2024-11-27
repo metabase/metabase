@@ -52,6 +52,7 @@ export const InteractiveQuestionProvider = ({
   onSave,
   isSaveEnabled = true,
   entityTypeFilter,
+  saveToCollectionId,
 }: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
     type: "card",
@@ -63,16 +64,27 @@ export const InteractiveQuestionProvider = ({
 
   const handleSave = async (question: Question) => {
     if (isSaveEnabled) {
-      await onBeforeSave?.(question);
+      const saveContext = { isNewQuestion: false };
+
+      await onBeforeSave?.(question, saveContext);
       await handleSaveQuestion(question);
-      onSave?.(question);
+      onSave?.(question, saveContext);
       await loadQuestion();
     }
   };
 
   const handleCreate = async (question: Question) => {
-    await handleCreateQuestion(question);
-    await loadQuestion();
+    if (isSaveEnabled) {
+      const saveContext = { isNewQuestion: true };
+
+      await onBeforeSave?.(question, saveContext);
+
+      const createdQuestion = await handleCreateQuestion(question);
+      onSave?.(createdQuestion, saveContext);
+
+      // Set the latest saved question object to update the question title.
+      replaceQuestion(createdQuestion);
+    }
   };
 
   const {
@@ -85,6 +97,7 @@ export const InteractiveQuestionProvider = ({
     isQueryRunning,
 
     runQuestion,
+    replaceQuestion,
     loadQuestion,
     updateQuestion,
     navigateToNewCard,
@@ -111,6 +124,7 @@ export const InteractiveQuestionProvider = ({
     onReset: loadQuestion,
     onNavigateBack,
     runQuestion,
+    replaceQuestion,
     updateQuestion,
     navigateToNewCard,
     plugins: combinedPlugins,
@@ -120,8 +134,9 @@ export const InteractiveQuestionProvider = ({
     mode,
     onSave: handleSave,
     onCreate: handleCreate,
-    isSaveEnabled,
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
+    isSaveEnabled,
+    saveToCollectionId,
   };
 
   useEffect(() => {

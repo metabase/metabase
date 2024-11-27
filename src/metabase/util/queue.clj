@@ -1,6 +1,7 @@
 (ns metabase.util.queue
   (:import
-   (java.util.concurrent ArrayBlockingQueue SynchronousQueue TimeUnit)))
+   (java.time Duration Instant)
+   (java.util.concurrent ArrayBlockingQueue DelayQueue Delayed SynchronousQueue TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,3 +48,40 @@
                         (SynchronousQueue.)
                         block-ms
                         sleep-ms))
+
+(defrecord DelayValue [value ^Instant ready-at]
+  Delayed
+  (getDelay [_ unit]
+    (.convert unit (- (.toEpochMilli ready-at) (System/currentTimeMillis)) TimeUnit/MILLISECONDS))
+  (compareTo [this other]
+    (Long/compare (.getDelay this TimeUnit/MILLISECONDS)
+                  (.getDelay ^Delayed other TimeUnit/MILLISECONDS))))
+
+(defn delay-queue
+  "Return an unbounded queue that returns each item only after some specified delay."
+  ^DelayQueue []
+  (DelayQueue.))
+
+(defn put-with-delay!
+  "Put an item on the delay queue, with a delay given in milliseconds."
+  [^DelayQueue queue delay-ms value]
+  (.offer queue (->DelayValue value (.plus (Instant/now) (Duration/ofMillis delay-ms)))))
+
+(defn- take-delayed-batch* [^DelayQueue queue max-items ^long poll-ms acc]
+  (loop [acc acc]
+    (if (>= (count acc) max-items)
+      acc
+      (if-let [item (if (pos? poll-ms)
+                      (.poll queue poll-ms TimeUnit/MILLISECONDS)
+                      (.poll queue))]
+        (recur (conj acc (:value item)))
+        (not-empty acc)))))
+
+(defn take-delayed-batch!
+  "Get up to `max-items` of the ready items off a given delay queue."
+  ([queue max-items]
+   (take-delayed-batch* queue max-items 0 []))
+  ([^DelayQueue queue max-items ^long max-first-ms ^long max-next-ms]
+   (if-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
+     (take-delayed-batch* queue max-items max-next-ms [(:value fst)])
+     nil)))

@@ -22,7 +22,6 @@ import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
 } from "metabase/visualizations/echarts/tooltip";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ClickObject,
   VisualizationProps,
@@ -76,7 +75,7 @@ export const getTooltipModel = (
   return {
     header:
       nodes.length === 1
-        ? getFriendlyName(sliceTreeNode.column)
+        ? sliceTreeNode.column?.display_name
         : nodes
             .slice(0, -1)
             .map(node => node.name)

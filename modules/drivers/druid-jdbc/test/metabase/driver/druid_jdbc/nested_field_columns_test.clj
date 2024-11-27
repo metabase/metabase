@@ -67,7 +67,7 @@
                   :visibility-type :normal,
                   :nfc-path [:json_bit "genres"]}
                  {:name "json_bit → 1234",
-                  :database-type "bigint",
+                  :database-type "decimal",
                   :base-type :type/Integer,
                   :database-position 0,
                   :json-unfolding false,

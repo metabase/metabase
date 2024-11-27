@@ -14,6 +14,21 @@
   #?(:cljs (moment/utc time-str)
      :clj  (t/offset-date-time time-str)))
 
+(defn- from-local [time-str]
+  #?(:cljs (moment time-str)
+     :clj  (t/local-date-time time-str)))
+
+(defn- from-local-date [time-str]
+  #?(:cljs (moment time-str)
+     :clj  (t/local-date time-str)))
+
+(defn- from-local-time [time-str]
+  #?(:cljs (moment time-str
+                   #js [(.. moment -HTML5_FMT -TIME_MS)
+                        (.. moment -HTML5_FMT -TIME_SECONDS)
+                        (.. moment -HTML5_FMT -TIME)])
+     :clj  (t/local-time time-str)))
+
 (defn- same?
   "True if these two datetimes are equivalent.
   JVM objects are [[=]] but Moment.js values are not, so use the Moment.isSame method in CLJS."
@@ -392,3 +407,27 @@
     :second      "00:00:02"
     :minute      "00:02"
     :hour        "02:00"))
+
+(deftest ^:parallel local-date-test
+  (are [exp-str act] (same? (from-local-date exp-str) act)
+    "2024-11-01" (shared.ut/local-date 2024 11 1)
+    "2000-02-29" (shared.ut/local-date 2000 2 29)
+    "2037-12-31" (shared.ut/local-date 2037 12 31)))
+
+(deftest ^:parallel local-time-test
+  (are [exp-str act] (same? (from-local-time exp-str) act)
+    "12:34:00"     (shared.ut/local-time 12 34)
+    "12:34:56"     (shared.ut/local-time 12 34 56)
+    "12:34:56.789" (shared.ut/local-time 12 34 56 789)))
+
+(deftest ^:parallel local-date-time-test
+  (let [nov4 (shared.ut/local-date 2024 11 4)]
+    (are [exp-str act] (same? (from-local exp-str) act)
+      ;; Local date + local time
+      "2024-11-04T12:34:00"     (shared.ut/local-date-time nov4 (shared.ut/local-time 12 34))
+      "2024-11-04T12:34:56"     (shared.ut/local-date-time nov4 (shared.ut/local-time 12 34 56))
+      "2024-11-04T12:34:56.789" (shared.ut/local-date-time nov4 (shared.ut/local-time 12 34 56 789))
+      ;; Literal values
+      "2024-11-04T12:34:00"     (shared.ut/local-date-time 2024 11 4 12 34)
+      "2024-11-04T12:34:56"     (shared.ut/local-date-time 2024 11 4 12 34 56)
+      "2024-11-04T12:34:56.789" (shared.ut/local-date-time 2024 11 4 12 34 56 789))))

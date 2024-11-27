@@ -31,9 +31,9 @@ const PIVOT_QUESTION_DETAILS = {
     "table.pivot_column": "CREATED_AT",
     "table.cell_column": "count",
     "pivot_table.column_split": {
-      rows: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      rows: ["CREATED_AT"],
       columns: [],
-      values: [["aggregation", 0]],
+      values: ["count"],
     },
   },
 };

@@ -15,6 +15,10 @@
   Exception (i.e., remove the original stacktrace), to prevent details from leaking in public endpoints."
   #'mw.exceptions/message-only-exceptions)
 
+(def +static-apikey
+  "Wrap `routes` so they may only be accessed with a correct API key header."
+  #'mw.auth/enforce-static-api-key)
+
 (def +auth
   "Wrap `routes` so they may only be accessed with proper authentication credentials."
   #'mw.auth/enforce-authentication)

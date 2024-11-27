@@ -19,6 +19,7 @@ class ItemsDragLayerInner extends Component {
       pinnedItems,
       item,
       collection,
+      visibleColumnsMap,
     } = this.props;
     if (!isDragging || !currentOffset) {
       return null;
@@ -43,6 +44,7 @@ class ItemsDragLayerInner extends Component {
           draggedItem={item.item}
           pinnedItems={pinnedItems}
           collection={collection}
+          visibleColumnsMap={visibleColumnsMap}
         />
       </div>
     );
@@ -107,7 +109,7 @@ class DraggedItems extends Component {
   };
 
   render() {
-    const { items, draggedItem } = this.props;
+    const { items, draggedItem, visibleColumnsMap } = this.props;
     const index = _.findIndex(items, draggedItem);
     const allPinned = items.every(item => this.checkIsPinned(item));
     return (
@@ -124,6 +126,7 @@ class DraggedItems extends Component {
           isInDragLayer
           style={{ width: allPinned ? 400 : undefined }}
           includeColGroup={!allPinned}
+          visibleColumnsMap={visibleColumnsMap}
         />
       </div>
     );

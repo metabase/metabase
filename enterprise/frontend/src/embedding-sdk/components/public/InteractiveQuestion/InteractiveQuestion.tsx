@@ -1,14 +1,17 @@
 import type { PropsWithChildren } from "react";
 
+import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import {
   BackButton,
   ChartTypeSelector,
+  Editor,
+  EditorButton,
   Filter,
   FilterBar,
   FilterButton,
-  Notebook,
-  NotebookButton,
+  FilterPicker,
   QuestionResetButton,
+  QuestionSettings,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
@@ -25,7 +28,7 @@ import {
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/util/FlexibleSizeComponent";
+import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: InteractiveQuestionProviderProps["cardId"];
@@ -33,7 +36,11 @@ export type InteractiveQuestionProps = PropsWithChildren<{
 }> &
   Pick<
     InteractiveQuestionProviderProps,
-    "onBeforeSave" | "onSave" | "isSaveEnabled" | "entityTypeFilter"
+    | "onBeforeSave"
+    | "onSave"
+    | "entityTypeFilter"
+    | "isSaveEnabled"
+    | "saveToCollectionId"
   >;
 
 export const _InteractiveQuestion = ({
@@ -49,8 +56,9 @@ export const _InteractiveQuestion = ({
   children = null,
   onBeforeSave,
   onSave,
-  isSaveEnabled,
   entityTypeFilter,
+  isSaveEnabled,
+  saveToCollectionId,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
@@ -59,8 +67,9 @@ export const _InteractiveQuestion = ({
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
-    isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
+    isSaveEnabled={isSaveEnabled}
+    saveToCollectionId={saveToCollectionId}
   >
     {children ?? (
       <InteractiveQuestionResult
@@ -82,32 +91,46 @@ const InteractiveQuestion = withPublicComponentWrapper(
   BackButton: typeof BackButton;
   FilterBar: typeof FilterBar;
   Filter: typeof Filter;
+  FilterPicker: typeof FilterPicker;
   FilterButton: typeof FilterButton;
   ResetButton: typeof QuestionResetButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeButton: typeof SummarizeButton;
-  Notebook: typeof Notebook;
-  NotebookButton: typeof NotebookButton;
+  /** @deprecated Use `InteractiveQuestion.Editor` instead */
+  Notebook: typeof Editor;
+  Editor: typeof Editor;
+  /** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+  NotebookButton: typeof EditorButton;
+  EditorButton: typeof EditorButton;
   QuestionVisualization: typeof QuestionVisualization;
   SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
+  EditorViewControl: typeof EditorViewControl;
+  QuestionSettings: typeof QuestionSettings;
 };
 
 InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.FilterBar = FilterBar;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterButton = FilterButton;
+InteractiveQuestion.FilterPicker = FilterPicker;
 InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
 InteractiveQuestion.SummarizeButton = SummarizeButton;
-InteractiveQuestion.Notebook = Notebook;
-InteractiveQuestion.NotebookButton = NotebookButton;
+/** @deprecated Use `InteractiveQuestion.Editor` instead */
+InteractiveQuestion.Notebook = Editor;
+InteractiveQuestion.Editor = Editor;
+/** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+InteractiveQuestion.NotebookButton = EditorButton;
+InteractiveQuestion.EditorButton = EditorButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
 InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
+InteractiveQuestion.EditorViewControl = EditorViewControl;
+InteractiveQuestion.QuestionSettings = QuestionSettings;
 
 export { InteractiveQuestion };

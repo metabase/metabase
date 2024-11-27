@@ -1,5 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  type NativeQuestionDetails,
+  createNativeQuestion,
   createQuestion,
   getNotebookStep,
   modal,
@@ -228,4 +230,66 @@ describe("issue 39487", () => {
   function previousButton() {
     return popover().get("button[data-previous]");
   }
+});
+
+const MONGO_DB_ID = 2;
+
+describe("issue 47793", () => {
+  const questionDetails: NativeQuestionDetails = {
+    database: MONGO_DB_ID,
+    native: {
+      query: `[
+  { $match: { quantity: {{quantity}} }},
+  {
+    "$project": {
+      "_id": "$_id",
+      "id": "$id",
+      "user_id": "$user_id",
+      "product_id": "$product_id",
+      "subtotal": "$subtotal",
+      "tax": "$tax",
+      "total": "$total",
+      "created_at": "$created_at",
+      "quantity": "$quantity",
+      "discount": "$discount"
+    }
+  },
+  {
+    "$limit": 1048575
+  }
+]`,
+      "template-tags": {
+        quantity: {
+          type: "number",
+          name: "quantity",
+          id: "754ae827-661c-4fc9-b511-c0fb7b6bae2b",
+          "display-name": "Quantity",
+          default: "10",
+        },
+      },
+      collection: "orders",
+    },
+  };
+
+  beforeEach(() => {
+    restore("mongo-5");
+    cy.signInAsAdmin();
+  });
+
+  it(
+    "should be able to preview queries for mongodb (metabase#47793)",
+    { tags: ["@external", "@mongo"] },
+    () => {
+      createNativeQuestion(questionDetails, { visitQuestion: true });
+      cy.findByTestId("visibility-toggler")
+        .findByText(/open editor/i)
+        .click();
+      cy.findByTestId("native-query-editor-container")
+        .findByLabelText("Preview the query")
+        .click();
+      modal()
+        .should("contain.text", "$project")
+        .and("contain.text", "quantity: 10");
+    },
+  );
 });

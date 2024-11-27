@@ -23,6 +23,7 @@ import type {
 } from "./actions";
 import type { Card, CardId, VisualizationSettings } from "./card";
 import type { Dataset } from "./dataset";
+import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
 
 // x-ray dashboard have string ids
@@ -73,6 +74,8 @@ export interface Dashboard {
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
   width: DashboardWidth;
+
+  moderation_reviews: ModerationReview[];
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;

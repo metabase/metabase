@@ -34,7 +34,7 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -110,6 +110,7 @@
                   :can_write
                   :param_fields
                   :param_values
+                  [:moderation_reviews :moderator_details]
                   [:collection :is_personal]))))
 
 (api/defendpoint POST "/"
@@ -752,7 +753,7 @@
   [dashboard-id original-dashboard-params]
   (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
     ;; Archive the pulse
-    (pulse/update-pulse! {:id pulse-id :archived true})
+    (models.pulse/update-pulse! {:id pulse-id :archived true})
     ;; Let the pulse and subscription creator know about the broken pulse
     (messages/send-broken-subscription-notification! broken-subscription)))
 
@@ -1054,10 +1055,10 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                       (mbql.u/check-clause :dimension))]
-                              :when dimension]
-                          (custom-values/values-from-card card dimension))]
+                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                                            (mbql.u/check-clause :dimension))]
+                              :when field-ref]
+                          (custom-values/values-from-card card field-ref opts))]
     (when-some [values (seq (distinct (mapcat :values results)))]
       (let [has_more_values (boolean (some true? (map :has_more_values results)))]
         {:values          (cond->> values

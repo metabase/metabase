@@ -67,7 +67,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.findByRole("article", { name: "Static embedding" }).within(() => {
         // FE unit tests are making sure this section doesn't exist when a valid token is provided,
         // so we don't have to do it here using conditional logic
-        assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
+        assertLinkMatchesUrl("upgrade to a specific paid plan", upgradeUrl);
 
         cy.findByRole("link", { name: "Manage" })
           .should("have.attr", "href")

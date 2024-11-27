@@ -1,6 +1,5 @@
 (ns metabase-enterprise.stale.api-test
-  (:require  [clojure.string :as str]
-             [clojure.test :refer [deftest testing is]]
+  (:require  [clojure.test :refer [deftest testing is]]
              [metabase.analytics.snowplow-test :as snowplow-test]
              [metabase.models.collection :as collection]
              [metabase.models.collection-test :refer [with-collection-hierarchy!]]
@@ -16,8 +15,7 @@
   (mt/with-premium-features #{}
     (stale.test/with-stale-items [:model/Card _ {}
                                   :model/Dashboard _ {}]
-      (is (str/starts-with? (mt/user-http-request :crowberto :get 402 "ee/stale/root")
-                            "Collection Cleanup is a paid feature")))))
+      (mt/assert-has-premium-feature-error "Collection Cleanup" (mt/user-http-request :crowberto :get 402 "ee/stale/root")))))
 
 (defn- stale-url [collection-or-id]
   (str "ee/stale/" (u/the-id collection-or-id)))
@@ -29,11 +27,12 @@
                                     :model/Dashboard dashboard {:collection_id (:id a)}]
         (let [result (mt/user-http-request :crowberto :get 200 (stale-url a))]
           (testing "With minor exceptions, the results look just like `/collection/:id/items`"
-            (is (= (dissoc
-                    (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/items")
-                                          :models "dashboard" :models "card")
-                    :models)
-                   (update result :data (fn [results] (map (fn [result] (dissoc result :collection)) results))))))
+            (is (= (-> :crowberto
+                       (mt/user-http-request :get 200 (str "collection/" (u/the-id a) "/items")
+                                             :models "dashboard" :models "card")
+                       (dissoc :models)
+                       (update :data (fn [results] (map (fn [result] (dissoc result :moderated_status)) results))))
+                   (update result :data (fn [results] (map (fn [result] (dissoc result :collection :moderated_status)) results))))))
           (testing "The card and dashboard are in there"
             (is (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]}
                    (->> result

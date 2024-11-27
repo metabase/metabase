@@ -662,7 +662,7 @@
                    :model/Card card2 {:name "derived card"
                                       :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]
       (is (empty? (serdes/descendants "Card" (:id card1))))
-      (is (= #{["Card" (:id card1)]}
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest ^:parallel descendants-test-3
@@ -676,7 +676,7 @@
                                                                :snippet-name "snippet"
                                                                :snippet-id   (:id snippet)}}
                                      :query "select * from products where {{snippet}}"}}}]
-      (is (= #{["NativeQuerySnippet" (:id snippet)]}
+      (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
              (serdes/descendants "Card" (:id card)))))))
 
 (deftest ^:parallel descendants-test-4
@@ -687,7 +687,7 @@
                                                     :type                 "id"
                                                     :values_source_type   "card"
                                                     :values_source_config {:card_id (:id card1)}}]}]
-      (is (= #{["Card" (:id card1)]}
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest ^:parallel extract-test
@@ -1037,3 +1037,69 @@
           (mt/with-test-user :crowberto
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
+
+(deftest breakouts-->identifier->action-fn-test
+  (are [b1 b2 expected--identifier->action] (= expected--identifier->action
+                                               (#'card/breakouts-->identifier->action b1 b2))
+    [[:field 10 {:temporal-unit :day}]]
+    nil
+    nil
+
+    [[:expression "x" {:temporal-unit :day}]]
+    nil
+    nil
+
+    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :month}]]
+    {[:expression "x"] [:update [:expression "x" {:temporal-unit :month}]]}
+
+    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :day}]]
+    nil
+
+    [[:field 10 {:temporal-unit :day}] [:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :day}] [:field 10 {:temporal-unit :month}]]
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+
+    [[:field 10 {:temporal-unit :year}] [:field 10 {:temporal-unit :day-of-week}]]
+    [[:field 10 {:temporal-unit :year}]]
+    nil))
+
+(deftest update-for-dashcard-fn-test
+  (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
+       (= expected-quasi-dashcards
+          (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:parameter_mappings []}]
+    nil
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]
+
+    {[:field 10] [:noop]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    nil
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :year}]]}
+                                 {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                                 {:target [:dimension [:field 10 {:temporal-unit :day}]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))
+
+(deftest update-does-not-break
+  ;; There's currently a footgun in Toucan2 - if 1) the result of `before-update` doesn't have an ID, 2) part of your
+  ;; `update` would change a subset of selected rows, and 3) part of your `update` would change *every* selected row
+  ;; (in this case, that's the `updated_at` we automatically set), then it emits an update without a `WHERE` clause.
+  ;;
+  ;;This can be removed after https://github.com/camsaul/toucan2/pull/196 is merged.
+  (mt/with-temp [:model/Card {card-1-id :id} {:name "Flippy"}
+                 :model/Card {card-2-id :id} {:name "Dog Man"}
+                 :model/Card {card-3-id :id} {:name "Petey"}]
+    (testing "only the two cards specified get updated"
+      (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
+                  {:name "Flippy"})
+      (is (= "Petey" (t2/select-one-fn :name :model/Card :id card-3-id))))))

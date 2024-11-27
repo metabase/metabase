@@ -19,7 +19,7 @@ import {
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
   NightModeToggleButton,
-  getExtraButtons,
+  useGetExtraButtons,
 } from "../buttons";
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 
@@ -162,20 +162,21 @@ export const dashboardActionButtons: Record<
         canEdit,
         location,
         openSettingsSidebar,
-      }) => (
-        <DashboardActionMenu
-          items={getExtraButtons({
-            canResetFilters,
-            onResetFilters,
-            onFullscreenChange,
-            isFullscreen,
-            dashboard,
-            canEdit,
-            pathname: location?.pathname,
-            openSettingsSidebar,
-          })}
-        />
-      ),
+      }) => {
+        const { extraButtons } = useGetExtraButtons({
+          canResetFilters,
+          onResetFilters,
+          onFullscreenChange,
+          isFullscreen,
+          dashboard,
+          canEdit,
+          pathname: location?.pathname,
+          openSettingsSidebar,
+          location,
+        });
+
+        return <DashboardActionMenu items={extraButtons} />;
+      },
     ),
     enabled: ({ isFullscreen, isEditing, isAnalyticsDashboard, dashboard }) =>
       !isFullscreen &&

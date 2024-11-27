@@ -3,6 +3,7 @@ import {
   assertSheetRowsCount,
   createNativeQuestion,
   createPublicQuestionLink,
+  describeEE,
   downloadAndAssert,
   filterWidget,
   main,
@@ -12,7 +13,9 @@ import {
   openSharingMenu,
   restore,
   saveQuestion,
+  setTokenFeatures,
   updateSetting,
+  visitPublicQuestion,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -65,43 +68,39 @@ describe("scenarios > public > question", () => {
     updateSetting("enable-public-sharing", true);
   });
 
-  it(
-    "adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)",
-    { tags: "@flaky" },
-    () => {
-      cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-        visitQuestion(id);
+  it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
+    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+      visitQuestion(id);
 
-        // Make sure metadata fully loaded before we continue
-        cy.get("[data-testid=cell-data]").contains("Winner");
+      // Make sure metadata fully loaded before we continue
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
-        openNewPublicLinkDropdown("card");
+      openNewPublicLinkDropdown("card");
 
-        // Although we already have API helper `visitPublicQuestion`,
-        // it makes sense to use the UI here in order to check that the
-        // generated url originally doesn't include query params
-        visitPublicURL();
+      // Although we already have API helper `visitPublicQuestion`,
+      // it makes sense to use the UI here in order to check that the
+      // generated url originally doesn't include query params
+      visitPublicURL();
 
-        // On page load, query params are added
-        cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
+      // On page load, query params are added
+      cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-        filterWidget().contains("Previous 30 Years");
-        filterWidget().contains("Affiliate");
+      filterWidget().contains("Previous 30 Years");
+      filterWidget().contains("Affiliate");
 
-        cy.wait("@publicQuery");
-        // Name of a city from the expected results
-        cy.get("[data-testid=cell-data]").contains("Winner");
+      cy.wait("@publicQuery");
+      // Name of a city from the expected results
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
-        // Make sure we can download the public question (metabase#21993)
-        cy.get("@uuid").then(publicUuid => {
-          downloadAndAssert(
-            { fileType: "xlsx", questionId: id, publicUuid },
-            assertSheetRowsCount(5),
-          );
-        });
+      // Make sure we can download the public question (metabase#21993)
+      cy.get("@uuid").then(publicUuid => {
+        downloadAndAssert(
+          { fileType: "xlsx", questionId: id, publicUuid },
+          assertSheetRowsCount(5),
+        );
       });
-    },
-  );
+    });
+  });
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
@@ -114,9 +113,9 @@ describe("scenarios > public > question", () => {
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").then($input =>
-            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
-          );
+          cy.findByTestId("public-link-input").should($input => {
+            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
+          });
           cy.findByText("Remove public URL").should("not.exist");
         });
       });
@@ -201,8 +200,20 @@ describe("scenarios > public > question", () => {
       });
     });
   });
+});
 
-  it("should allow to set locale from the `locale` query parameter", () => {
+describeEE("scenarios [EE] > public > question", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
+
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+
+    updateSetting("enable-public-sharing", true);
+  });
+
+  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
     createNativeQuestion(
       {
         name: "Native question with a parameter",
@@ -224,13 +235,14 @@ describe("scenarios > public > question", () => {
     );
 
     cy.get("@questionId").then(id => {
-      cy.request("POST", `/api/card/${id}/public_link`).then(
-        ({ body: { uuid } }) => {
-          cy.visit(
-            `/public/question/${uuid}?locale=de&some_parameter=some_value`,
-          );
+      visitPublicQuestion(id, {
+        params: {
+          some_parameter: "some_value",
         },
-      );
+        hash: {
+          locale: "de",
+        },
+      });
     });
 
     main().findByText("Februar 11, 2025");
@@ -240,12 +252,13 @@ describe("scenarios > public > question", () => {
 });
 
 const visitPublicURL = () => {
+  cy.findByTestId("public-link-input").should($input => {
+    // Copied URL has no get params
+    expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
+  });
   cy.findByTestId("public-link-input")
     .invoke("val")
     .then(publicURL => {
-      // Copied URL has no get params
-      expect(publicURL).to.match(PUBLIC_QUESTION_REGEX);
-
       cy.signOut();
       cy.visit(publicURL);
     });

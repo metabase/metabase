@@ -20,7 +20,7 @@ import {
 } from "__support__/ui";
 import { METAKEY } from "metabase/lib/browser";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
   createMockCollectionItem,
@@ -66,43 +66,6 @@ const metadata = createMockMetadata({
   questions: [MODEL, QUESTION],
 });
 
-function getJoinQueryHelpers(query: Lib.Query) {
-  const table = Lib.tableOrCardMetadata(query, PRODUCTS_ID);
-
-  const findLHSColumn = columnFinder(
-    query,
-    Lib.joinConditionLHSColumns(query, 0),
-  );
-  const findRHSColumn = columnFinder(
-    query,
-    Lib.joinConditionRHSColumns(query, 0, table),
-  );
-
-  const defaultStrategy = Lib.availableJoinStrategies(query, 0).find(
-    strategy => Lib.displayInfo(query, 0, strategy).default,
-  );
-
-  if (!defaultStrategy) {
-    throw new Error("No default strategy found");
-  }
-
-  const defaultOperator = Lib.joinConditionOperators(query, 0).find(
-    operator => Lib.displayInfo(query, 0, operator).default,
-  );
-
-  if (!defaultOperator) {
-    throw new Error("No default operator found");
-  }
-
-  return {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  };
-}
-
 function getJoinedQuery() {
   const query = createQuery({ metadata });
 
@@ -112,7 +75,7 @@ function getJoinedQuery() {
     defaultOperator,
     findLHSColumn,
     findRHSColumn,
-  } = getJoinQueryHelpers(query);
+  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
 
   const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
   const productsId = findRHSColumn("PRODUCTS", "ID");
@@ -136,8 +99,11 @@ function getJoinedQuery() {
 
 function getJoinedQueryWithMultipleConditions() {
   const query = getJoinedQuery();
-  const { defaultOperator, findLHSColumn, findRHSColumn } =
-    getJoinQueryHelpers(query);
+  const { defaultOperator, findLHSColumn, findRHSColumn } = getJoinQueryHelpers(
+    query,
+    0,
+    PRODUCTS_ID,
+  );
 
   const [currentJoin] = Lib.joins(query, 0);
   const currentConditions = Lib.joinConditions(currentJoin);
@@ -557,6 +523,28 @@ describe("Notebook Editor > Join Step", () => {
 
     const [condition] = getRecentJoin().conditions;
     expect(condition.operator.shortName).toBe("!=");
+  });
+
+  it("should reset the draft join condition state when the rhs table is changed", async () => {
+    setup();
+    const rhsTablePicker = screen.getByLabelText("Right table");
+    await userEvent.click(within(rhsTablePicker).getByRole("button"));
+    const entityPickerModal = await screen.findByTestId("entity-picker-modal");
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(within(entityPickerModal).getByText("Reviews"));
+    const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+    await userEvent.click(within(lhsColumnPicker).getByText("ID"));
+
+    const newRhsTablePicker = screen.getByLabelText("Right table");
+    await userEvent.click(within(newRhsTablePicker).getByText("Reviews"));
+    const newEntityPickerModal = await screen.findByTestId(
+      "entity-picker-modal",
+    );
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(within(newEntityPickerModal).getByText("Orders"));
+    const lhsColumn = screen.getByLabelText("Left column");
+    expect(within(lhsColumn).getByText("Pick a column…")).toBeInTheDocument();
+    expect(within(lhsColumn).queryByText("ID")).not.toBeInTheDocument();
   });
 
   describe("join strategies", () => {

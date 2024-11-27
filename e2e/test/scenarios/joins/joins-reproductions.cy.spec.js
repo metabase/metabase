@@ -5,6 +5,7 @@ import {
   assertQueryBuilderRowCount,
   cartesianChartCircle,
   chartPathWithFillColor,
+  createQuestion,
   dashboardGrid,
   echartsContainer,
   enterCustomColumnDetails,
@@ -27,6 +28,7 @@ import {
   selectSavedQuestionsToJoin,
   startNewQuestion,
   summarize,
+  tableInteractive,
   visitDashboard,
   visitQuestionAdhoc,
   visualize,
@@ -421,9 +423,9 @@ describe("issue 18502", () => {
     selectSavedQuestionsToJoin("18502#1", "18502#2");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click();
+    cy.findByText("Created At: Month").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Birth Date").click();
+    cy.findByText("Birth Date: Month").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
@@ -488,15 +490,15 @@ describe("issue 18512", () => {
     startNewQuestion();
     selectSavedQuestionsToJoin("18512#1", "18512#2");
 
-    popover().findByText("Products → Created At").click();
-    popover().findByText("Products → Created At").click();
+    popover().findByText("Products → Created At: Month").click();
+    popover().findByText("Products → Created At: Month").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Products → Created At");
+    cy.contains("Products → Created At: Month");
   });
 });
 
@@ -1359,5 +1361,80 @@ describe("issue 45300", () => {
       "have.text",
       "Product → Category is Doohickey",
     );
+  });
+});
+
+describe("issue 46675", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+
+    cy.log("create draft state with a rhs table and a lhs column");
+    createQuestion(questionDetails, { visitQuestion: true });
+    openNotebook();
+    getNotebookStep("data").findByLabelText("Join data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Reviews").click();
+    });
+    popover().findByText("ID").click();
+  });
+
+  it("should reset the draft join state when the source table changes (metabase#46675)", () => {
+    cy.log("change the source table and verify that the state was reset");
+    getNotebookStep("data").findByText("Orders").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+    getNotebookStep("join").within(() => {
+      cy.findByLabelText("Left table").should("have.text", "Products");
+      cy.findByLabelText("Right table").should("have.text", "Pick data…");
+      cy.findByLabelText("Left column").should("not.exist");
+    });
+
+    cy.log("complete the join and make sure the query can be executed");
+    getNotebookStep("join")
+      .findByLabelText("Right table")
+      .findByText("Pick data…")
+      .click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    visualize();
+    tableInteractive().should("be.visible");
+  });
+
+  it("should reset the draft join state when the source table changes (metabase#46675)", () => {
+    cy.log("change the rhs table and verify that the state was reset");
+    getNotebookStep("join")
+      .findByLabelText("Right table")
+      .findByText("Reviews")
+      .click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    getNotebookStep("join").within(() => {
+      cy.findByLabelText("Left table").should("have.text", "Orders");
+      cy.findByLabelText("Right table").should("have.text", "Orders");
+      cy.findByLabelText("Left column").should(
+        "contain.text",
+        "Pick a column…",
+      );
+    });
+
+    cy.log("complete the join and make sure the query can be executed");
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+    visualize();
+    tableInteractive().should("be.visible");
   });
 });

@@ -67,8 +67,11 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
   }
 
-  function searchFieldType(type) {
-    cy.findByPlaceholderText("Find...").type(type);
+  function searchFieldType(value) {
+    // .type() is flaky when used for ListSearchField - typed characters can
+    // sometimes get rearranged while typing.
+    // Unclear why. Possibly because it's rendered as a virtualized list item.
+    cy.findByPlaceholderText("Find...").invoke("val", value).trigger("blur");
   }
 
   function getFKTargetField(targetField) {
@@ -100,23 +103,19 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
   });
 
-  it(
-    "should let you change the type to 'No semantic type'",
-    { tags: "@flaky" },
-    () => {
-      visitAlias("@ORDERS_PRODUCT_ID_URL");
-      cy.wait(["@metadata", "@metadata"]);
+  it("should let you change the type to 'No semantic type'", () => {
+    visitAlias("@ORDERS_PRODUCT_ID_URL");
+    cy.wait(["@metadata", "@metadata"]);
 
-      setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
+    setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
 
-      waitAndAssertOnResponse("fieldUpdate");
+    waitAndAssertOnResponse("fieldUpdate");
 
-      cy.reload();
-      cy.wait("@metadata");
+    cy.reload();
+    cy.wait("@metadata");
 
-      getFieldType("No semantic type");
-    },
-  );
+    getFieldType("No semantic type");
+  });
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
     visitAlias("@ORDERS_QUANTITY_URL");
@@ -713,10 +712,12 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       cy.button("New segment").click();
 
-      cy.findByTestId("gui-builder").findByText("Select a table").click();
-      popover().findByText("Orders").click();
+      cy.findByTestId("segment-editor").findByText("Select a table").click();
+      entityPickerModal().within(() => {
+        cy.findByText("Orders").click();
+      });
 
-      cy.findByTestId("gui-builder")
+      cy.findByTestId("segment-editor")
         .findByText("Add filters to narrow your answer")
         .click();
 
@@ -839,19 +840,16 @@ describe("scenarios > admin > datamodel > segments", () => {
       // update the filter from "< 100" to "> 10"
       cy.url().should("match", /segment\/1$/);
       cy.get("label").contains("Edit Your Segment");
-      cy.findByTestId("filter-widget-target")
+      cy.findByTestId("filter-pill")
         .contains(/Total\s+is less than/)
         .click();
-      popover().findByTestId("operator-select").click();
+      popover().findByLabelText("Filter operator").click();
       popover().contains("Greater than").click();
-      popover()
-        .findByTestId("field-values-widget")
-        .find("input")
-        .type("{SelectAll}10");
+      popover().findByPlaceholderText("Enter a number").type("{SelectAll}10");
       popover().contains("Update filter").click();
 
       // confirm that the preview updated
-      cy.findByTestId("gui-builder").contains("18758 rows");
+      cy.findByTestId("segment-editor").contains("18758 rows");
 
       // update name and description, set a revision note, and save the update
       cy.get('[name="name"]').clear().type("Orders > 10");

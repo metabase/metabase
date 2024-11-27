@@ -35,6 +35,7 @@ import {
 } from "metabase/dashboard/selectors";
 import type {
   DashboardFullscreenControls,
+  DashboardLoaderWrapperProps,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
@@ -100,6 +101,7 @@ type ConnectedDashboardProps = {
   className?: string;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
+  DashboardLoaderWrapperProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 const ConnectedDashboardInner = ({

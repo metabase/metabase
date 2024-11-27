@@ -3,7 +3,7 @@ import type {
   TextWidthMeasurer,
 } from "../shared/types/measure-text";
 
-const CHAR_ELLIPSES = "…";
+export const CHAR_ELLIPSES = "…";
 
 export function truncateText(
   text: string,

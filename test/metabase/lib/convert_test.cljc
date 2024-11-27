@@ -3,9 +3,11 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]))
@@ -715,74 +717,56 @@
             (lib.convert/->pMBQL [:value "TX" nil])))))
 
 (deftest ^:parallel clean-test
-  (testing "irrecoverable queries"
-    ;; Eventually we should get to a place where ->pMBQL throws an exception here
-    ;; but legacy e2e tests make this impossible right now
-    (is (= {:type :query
-            :query {}}
-           (lib.convert/->legacy-MBQL
-            (lib.convert/->pMBQL
-             {:type :query}))))
-    (is (= {:type :query
-            :database 1
-            :query {}}
-           (lib.convert/->legacy-MBQL
-            (lib.convert/->pMBQL
-             {:type :query
-              :database 1}))))
-    (is (= {:type :query
-            :database 1
-            :query {}}
-           (lib.convert/->legacy-MBQL
-            (lib.convert/->pMBQL
-             {:type :query
-              :database 1})))))
-  (testing "recoverable queries"
-    (is (nil? (->
-               {:database 1
-                :type :query
-                :query {:source-table 224
-                        :order-by [[:asc [:xfield 1 nil]]]}}
-               lib.convert/->pMBQL
-               lib/order-bys)))
-    (is (nil? (->
-               {:database 1
-                :type :query
-                :query {:source-table 224
-                        :filter [:and [:= [:xfield 1 nil]]]}}
-               lib.convert/->pMBQL
-               lib/filters)))
-    (is (nil? (->
-               {:database 5
-                :type :query
-                :query {:joins [{:source-table 3
-                                 ;; Invalid condition makes the join invalid
-                                 :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
-                        :source-table 4}}
-               lib.convert/->pMBQL
-               lib/joins)))
-    (is (nil? (->
-               {:database 5
-                :type :query
-                :query {:joins [{:source-table 3
-                                 :condition [:= [:field 2 nil] [:field 2 nil]]
-                                 ;; Invalid field, the join is still valid
-                                 :fields [[:xfield 2 nil]]}]
-                        :source-table 4}}
-               lib.convert/->pMBQL
-               (get-in [:stages 0 :joins 0 :fields]))))
-    (testing "references to missing expressions are removed (#32625)"
-      (let [query {:database 2762
-                   :type     :query
-                   :query    {:aggregation [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
-                              :expressions {"custom" [:+ 1 1]}
-                              :breakout    [[:expression "expr1" nil] [:expression "expr2" nil]]
-                              :order-by    [[:expression "expr2" nil]]
-                              :limit       4
-                              :source-table 33674}}
-            converted (lib.convert/->pMBQL query)]
-        (is (empty? (get-in converted [:stages 0 :breakout])))
-        (is (empty? (get-in converted [:stages 0 :group-by])))))))
+  ;; These nearly-empty queries should be handled correctly - iframe-based embedding yields queries like
+  ;; `{:type :native}` and nothing more.
+  (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
+    {:type :query
+     :database 1}
+    {:type :query
+     :database 1}
+    {:type :query})
+
+  (is (nil? (-> {:database 1
+                 :type :query
+                 :query {:source-table 224
+                         :order-by [[:asc [:xfield 1 nil]]]}}
+                lib.convert/->pMBQL
+                lib/order-bys)))
+  (is (nil? (-> {:database 1
+                 :type :query
+                 :query {:source-table 224
+                         :filter [:and [:= [:xfield 1 nil]]]}}
+                lib.convert/->pMBQL
+                lib/filters)))
+  (is (nil? (-> {:database 5
+                 :type :query
+                 :query {:joins [{:source-table 3
+                                  ;; Invalid condition makes the join invalid
+                                  :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
+                         :source-table 4}}
+                lib.convert/->pMBQL
+                lib/joins)))
+  (is (nil? (-> {:database 5
+                 :type :query
+                 :query {:joins [{:source-table 3
+                                  :condition [:= [:field 2 nil] [:field 2 nil]]
+                                  ;; Invalid field, the join is still valid
+                                  :fields [[:xfield 2 nil]]}]
+                         :source-table 4}}
+                lib.convert/->pMBQL
+                (get-in [:stages 0 :joins 0 :fields]))))
+  (testing "references to missing expressions are removed (#32625)"
+    (let [query {:database 2762
+                 :type     :query
+                 :query    {:aggregation [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+                            :expressions {"custom" [:+ 1 1]}
+                            :breakout    [[:expression "expr1" nil] [:expression "expr2" nil]]
+                            :order-by    [[:expression "expr2" nil]]
+                            :limit       4
+                            :source-table 33674}}
+          converted (lib.convert/->pMBQL query)]
+      (is (empty? (get-in converted [:stages 0 :breakout])))
+      (is (empty? (get-in converted [:stages 0 :group-by]))))))
 
 (deftest ^:parallel remove-namespaced-lib-keys-from-legacy-refs-test
   (testing "namespaced lib keys should be removed when converting to legacy (#33012)"
@@ -984,3 +968,28 @@
                                           :effective-type :type/BigInteger,
                                           :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
                                          48400]]]}]}))))
+
+(deftest ^:parallel blank-queries-test
+  (testing "minimal legacy"
+    (testing "native queries"
+      (let [query {:type :native}]
+        (testing "pass the legacy schema"
+          (is (mbql.s/valid-query? query)))
+        (testing "pass the pMBQL schema after conversion"
+          (is (nil? (->> query
+                         lib.convert/->pMBQL
+                         (mc/explain ::lib.schema/query)))))
+        (testing "round trip to pMBQL and back with small changes"
+          (is (= query
+                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))
+    (testing "MBQL queries"
+      (let [query {:type :query}]
+        (testing "pass the legacy schema"
+          (is (mbql.s/valid-query? query)))
+        (testing "pass the pMBQL schema after conversion"
+          (is (nil? (->> query
+                         lib.convert/->pMBQL
+                         (mc/explain ::lib.schema/query)))))
+        (testing "round trip to pMBQL and back with small changes"
+          (is (= query
+                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))))

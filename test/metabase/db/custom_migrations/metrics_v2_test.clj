@@ -233,8 +233,11 @@
               rewritten-query (-> rewritten-card :dataset_query normalized-query)]
           (is (= 1 (count metric-cards)))
           (is (int? card-id))
-          (is (=? [{:object (str "/collection/" (:id migration-coll) "/read/")
-                    :group_id 1}]
+          (is (=? [{:object        (str "/collection/" (:id migration-coll) "/read/")
+                    :group_id      1
+                    :collection_id (:id migration-coll)
+                    :perm_type     "perms/collection-access"
+                    :perm_value    "read"}]
                   coll-permissions))
           (is (= original-query (:dataset_query_metrics_v2_migration_backup rewritten-card)))
           (is (query-validator rewritten-query))

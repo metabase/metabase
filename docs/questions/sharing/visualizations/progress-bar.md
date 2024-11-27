@@ -26,7 +26,7 @@ To create a progress bar you'll need:
   | --------------- | ---------------- | ------------ |
   | 4910            | 17.32            | 173          |
 
- In this case, the progress bar chart will use the metric in the first column ("Sum of quantity"). To change the metric, go to the editor and drag the metric you want to the first position in the Summarize block.
+In this case, the progress bar chart will use the metric in the first column ("Sum of quantity"). To change the metric, go to the editor and drag the metric you want to the first position in the Summarize block.
 
 - A goal value. The goal value should be a positive number. Currently, Metabase only supports setting a static goal (you can't set a goal based on another query).
 

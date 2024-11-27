@@ -7,8 +7,8 @@
    [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as pulse]
-   [metabase.pulse-test :as pulse-test]
+   [metabase.models.pulse :as models.pulse]
+   [metabase.pulse.send-test :as pulse.send-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -80,10 +80,10 @@
          user  [group]]
         (mt/with-temp [Card {card-id :id} {}]
           (letfn [(add-pulse-recipient [req-user status]
-                    (pulse-test/with-pulse-for-card [the-pulse {:card          card-id
-                                                                :pulse         {:creator_id (u/the-id user)}
-                                                                :pulse-channel :email}]
-                      (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
+                    (pulse.send-test/with-pulse-for-card [the-pulse {:card          card-id
+                                                                     :pulse         {:creator_id (u/the-id user)}
+                                                                     :pulse-channel :email}]
+                      (let [the-pulse   (models.pulse/retrieve-pulse (:id the-pulse))
                             channel     (api.alert/email-channel the-pulse)
                             new-channel (assoc channel :recipients (conj (:recipients channel) (mt/fetch-user :lucky)))
                             new-pulse   (assoc the-pulse :channels [new-channel])]
@@ -91,15 +91,15 @@
                           (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))
 
                   (remove-pulse-recipient [req-user status]
-                    (pulse-test/with-pulse-for-card [the-pulse {:card          card-id
-                                                                :pulse         {:creator_id (u/the-id user)}
-                                                                :pulse-channel :email}]
+                    (pulse.send-test/with-pulse-for-card [the-pulse {:card          card-id
+                                                                     :pulse         {:creator_id (u/the-id user)}
+                                                                     :pulse-channel :email}]
                       ;; manually add another user as recipient
                       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id (:id user)
                                                                         :pulse_channel_id
                                                                         (t2/select-one-pk
                                                                          PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
-                        (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
+                        (let [the-pulse   (models.pulse/retrieve-pulse (:id the-pulse))
                               channel     (api.alert/email-channel the-pulse)
                               new-channel (update channel :recipients rest)
                               new-pulse   (assoc the-pulse :channels [new-channel])]

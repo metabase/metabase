@@ -1,6 +1,10 @@
 import { action } from "@storybook/addon-actions";
 import type { StoryFn } from "@storybook/react";
-import { type JSXElementConstructor, useState } from "react";
+import {
+  type ComponentProps,
+  type JSXElementConstructor,
+  useState,
+} from "react";
 
 import { EditableDashboard } from "embedding-sdk/components/public";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
@@ -19,15 +23,20 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<typeof CreateDashboardModal> = () => (
+const Template: StoryFn<ComponentProps<typeof CreateDashboardModal>> = args => (
   <CreateDashboardModal
     onClose={action("onClose")}
     onCreate={action("onCreate")}
+    {...args}
   />
 );
 
 export const Default = {
   render: Template,
+
+  args: {
+    isOpen: true,
+  },
 };
 
 const HookTemplate: StoryFn<

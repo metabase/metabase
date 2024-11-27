@@ -56,6 +56,7 @@ const defaultProps = {
   isSettings: false,
   isQueryBuilder: false,
   isEmbeddingSdk: false,
+  onUpdateQuestion: () => {},
   onUpdateVisualizationSettings: () => {},
   // prefer passing in a function that doesn't cause the application to reload
   onChangeLocation: location => {
@@ -244,10 +245,6 @@ class Visualization extends PureComponent {
   }
 
   visualizationIsClickable = clicked => {
-    const { onChangeCardAndRun } = this.props;
-    if (!onChangeCardAndRun) {
-      return false;
-    }
     try {
       return this.getClickActions(clicked).length > 0;
     } catch (e) {
@@ -540,6 +537,7 @@ class Visualization extends PureComponent {
               clicked={clicked}
               clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
+              onUpdateQuestion={this.props.onUpdateQuestion}
               onClose={this.hideActions}
               series={series}
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}

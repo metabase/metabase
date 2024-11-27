@@ -6,6 +6,10 @@ import { isNotNull } from "metabase/lib/types";
 
 import TooltipStyles from "./EChartsTooltip.module.css";
 
+const getPaddedValuesArray = (values: React.ReactNode[], maxValues: number) => {
+  return Object.assign(Array(maxValues).fill(null), values.slice(0, maxValues));
+};
+
 export interface EChartsTooltipRow {
   /* We pass CSS class with marker colors because setting styles in tooltip rendered by ECharts violates CSP */
   markerColorClass?: string;
@@ -40,14 +44,9 @@ export const EChartsTooltip = ({
   }, 0);
 
   const paddedRows = rows.map(row => {
-    const paddedValues = Object.assign(
-      Array(maxValuesColumns).fill(null),
-      row.values.slice(0, maxValuesColumns),
-    );
-
     return {
       ...row,
-      values: paddedValues,
+      values: getPaddedValuesArray(row.values, maxValuesColumns),
     };
   });
 
@@ -67,11 +66,12 @@ export const EChartsTooltip = ({
         })}
       >
         <tbody>
-          {paddedRows.map(row => {
+          {paddedRows.map((row, i) => {
+            const key = row.key ?? String(i);
             return !row.isSecondary ? (
-              <TooltipRow {...row} />
+              <TooltipRow {...row} key={key} />
             ) : (
-              <SecondaryRow {...row} />
+              <SecondaryRow {...row} key={key} />
             );
           })}
         </tbody>
@@ -79,6 +79,7 @@ export const EChartsTooltip = ({
           <tfoot data-testid="echarts-tooltip-footer">
             <FooterRow
               {...footer}
+              values={getPaddedValuesArray(footer.values, maxValuesColumns)}
               markerContent={hasMarkers ? <span /> : null}
             />
           </tfoot>

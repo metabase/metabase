@@ -1,1 +1,4 @@
 frontend/src/cljs
+docs/configuring-metabase/environment-variables.md
+docs/api/*
+docs/api-documentation.md

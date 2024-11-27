@@ -343,6 +343,41 @@
 
 (defmethod session-schema :sql/test-extensions [_] nil)
 
+(defmulti create-materialized-view-of-table-sql
+  "Return a `CREATE MATERIALIZED VIEW` statement.
+   The view should be a simple view of the table, like `select * from table`
+   `view-name` is the name of the new view
+   `table-name` is the name of the table."
+  {:arglists '([driver database view-name table-name])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-materialized-view-of-table-sql :sql/test-extensions
+  [driver _database view-name table-name]
+  (let [qualified-view-name (sql.u/quote-name driver :table view-name)
+        qualified-table-name (sql.u/quote-name driver :table table-name)
+        schema-name (sql.u/quote-name driver :schema (session-schema driver))]
+    (format "CREATE MATERIALIZED VIEW %s.%s AS select * from %s.%s;"
+            schema-name
+            qualified-view-name
+            schema-name
+            qualified-table-name)))
+
+(defmulti drop-materialized-view-sql
+  "Return a `DROP MATERIALIZED VIEW` statement.
+   `view-name` is the name of the new view."
+  {:arglists '([driver database view-name])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-materialized-view-sql :sql/test-extensions
+  [driver _database view-name]
+  (let [qualified-view-name (sql.u/quote-name driver :table view-name)
+        schema-name (sql.u/quote-name driver :schema (session-schema driver))]
+    (format "DROP MATERIALIZED VIEW %s.%s;"
+            schema-name
+            qualified-view-name)))
+
 (defmethod tx/native-query-with-card-template-tag :sql
   [_driver card-template-tag-name]
   (let [source-table-name (u/lower-case-en (u.random/random-name))]

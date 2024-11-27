@@ -34,7 +34,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const testCases = ["csv", "xlsx"];
 
@@ -68,6 +68,15 @@ describe("scenarios > question > download", () => {
   });
 
   describeWithSnowplow("[snowplow]", () => {
+    beforeEach(() => {
+      resetSnowplow();
+      enableTracking();
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+    });
+
     testCases.forEach(fileType => {
       it(`downloads ${fileType} file`, () => {
         startNewQuestion();
@@ -148,6 +157,47 @@ describe("scenarios > question > download", () => {
         );
       });
     });
+  });
+
+  it("should allow downloading pivoted results", () => {
+    createQuestion(
+      {
+        name: "Pivot Table",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
+            ["field-id", PRODUCTS.CATEGORY],
+          ],
+        },
+        display: "pivot",
+      },
+      { visitQuestion: true },
+    );
+
+    downloadAndAssert(
+      {
+        enableFormatting: true,
+        fileType: "csv",
+      },
+      sheet => {
+        expect(sheet["B1"].v).to.eq("Doohickey");
+        expect(sheet["B2"].w).to.eq("13");
+      },
+    );
+
+    downloadAndAssert(
+      {
+        enableFormatting: true,
+        pivoting: "non-pivoted",
+        fileType: "csv",
+      },
+      sheet => {
+        expect(sheet["B1"].v).to.eq("Category");
+        expect(sheet["B2"].w).to.eq("Doohickey");
+      },
+    );
   });
 
   it("respects renamed columns in self-joins", () => {
@@ -363,7 +413,7 @@ describe("scenarios > question > download", () => {
       });
 
       showDashboardCardActions(0);
-      getDashboardCard(0).findByText("Created At").should("be.visible");
+      getDashboardCard(0).findByText("Created At: Month").should("be.visible");
       getDashboardCardMenu(0).click();
 
       exportFromDashcard(".png");
@@ -461,7 +511,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
     });
 
     showDashboardCardActions(0);
-    getDashboardCard(0).findByText("Created At").should("be.visible");
+    getDashboardCard(0).findByText("Created At: Month").should("be.visible");
     getDashboardCardMenu(0).click();
 
     exportFromDashcard(".png");

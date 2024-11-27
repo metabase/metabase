@@ -163,6 +163,7 @@
         (server.protocols/respond streaming-response
                                   {:response      (reify HttpServletResponse
                                                     (setStatus [_ _])
+                                                    (setHeader [_ _ _])
                                                     (getOutputStream [_]
                                                       (proxy [ServletOutputStream] []
                                                         (write

@@ -199,21 +199,21 @@ export const DataPermissionsHelp = () => {
             <Stack spacing="1rem" py="1rem">
               <Text>
                 {jt`${(
-                  <strong>{t`Download results (Pro):`}</strong>
+                  <strong key="permission">{t`Download results (Pro):`}</strong>
                 )} The group can download results, up to a maximum number of rows that you set.`}{" "}
                 {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>
               <Text>
                 {jt`${(
-                  <strong>{t`Manage Data Model (Pro):`}</strong>
+                  <strong key="permission">{t`Manage Data Model (Pro):`}</strong>
                 )} The group can edit metadata via the “Table metadata” tab in the Admin settings.`}{" "}
                 {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>
               <Text>
                 {jt`${(
-                  <strong>{t`Manage Database (Pro):`}</strong>
+                  <strong key="permission">{t`Manage Database (Pro):`}</strong>
                 )} The group can edit database settings for a given database in the “Database” tab of the Admin settings.`}{" "}
                 {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}

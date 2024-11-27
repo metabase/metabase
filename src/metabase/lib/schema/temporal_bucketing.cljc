@@ -99,6 +99,13 @@
                 :decode/normalize common/normalize-keyword}]
         time-bucketing-units))
 
+(def ordered-datetime-truncation-units
+  "Valid datetime bucketing units for truncation operations.
+  The front end shows the options in this order."
+  (into []
+        (distinct)
+        (concat ordered-time-truncation-units ordered-date-truncation-units)))
+
 (def ordered-datetime-bucketing-units
   "Valid datetime bucketing units for either truncation or extraction operations.
   The front end shows the options in this order."

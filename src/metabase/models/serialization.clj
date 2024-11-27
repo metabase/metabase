@@ -501,7 +501,7 @@
       (t2/reducible-select model {:where [:and
                                           [:or
                                            [:in :collection_id collection-set]
-                                           (when (contains? collection-set nil)
+                                           (when (some nil? collection-set)
                                              [:= :collection_id nil])]
                                           (when where
                                             where)]}))))
@@ -513,8 +513,8 @@
       nested? (extract-reducible-nested model-name (dissoc opts :where)))))
 
 (defmulti descendants
-  "Returns set of `[model-name database-id]` pairs for all entities contained or used by this entity. e.g. the Dashboard
-   implementation should return pairs for all DashboardCard entities it contains, etc.
+  "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities contained or used by this
+   entity. e.g. the Dashboard implementation should return pairs for all DashboardCard entities it contains, etc.
 
    Dispatched on model-name."
   {:arglists '([model-name db-id])}
@@ -524,9 +524,9 @@
   nil)
 
 (defmulti ascendants
-  "Return set of `[model-name database-id]` pairs for all entities containing this entity, required to successfully
-  load this entity in destination db. Notice that ascendants are searched recursively, but their descendants are not
-  analyzed.
+  "Return map of `{[model-name database-id] {initiating-model id}}` for all entities containing this entity, required
+  to successfully load this entity in destination db. Notice that ascendants are searched recursively, but their
+  descendants are not analyzed.
 
   Dispatched on model-name."
   {:arglists '([model-name db-id])}
@@ -844,9 +844,19 @@
       (cond
         (nil? entity)      (throw (ex-info "FK target not found" {:model model
                                                                   :id    id
-                                                                  :skip  true}))
+                                                                  :skip  true
+                                                                  ::type :target-not-found}))
         (= (count path) 1) (first path)
         :else              path))))
+
+(defn- maybe-export-fk
+  "Exactly like the above `*export-fk*`, except returns `nil` if the target was not found"
+  [id model]
+  (try (*export-fk* id model)
+       (catch clojure.lang.ExceptionInfo e
+         (when-not (= (::type (ex-data e)) :target-not-found)
+           (throw e))
+         nil)))
 
 (defn ^:dynamic ^::cache *import-fk*
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
@@ -1329,9 +1339,12 @@
       json/generate-string))
 
 (defn- export-viz-click-behavior-link
-  [{:keys [linkType type] :as click-behavior}]
-  (cond-> click-behavior
-    (= type "link") (update :targetId *export-fk* (link-card-model->toucan-model linkType))))
+  [{:keys [linkType type] old-target-id :targetId :as click-behavior}]
+  (if-not (= type "link")
+    click-behavior
+    ;; if the card doesn't exist anymore, just remove the entire click behavior
+    (when-let [new-target-id (maybe-export-fk old-target-id (link-card-model->toucan-model linkType))]
+      (assoc click-behavior :targetId new-target-id))))
 
 (defn- import-viz-click-behavior-link
   [{:keys [linkType type] :as click-behavior}]
@@ -1379,7 +1392,10 @@
 (defn- export-viz-click-behavior [settings]
   (some-> settings
           (m/update-existing    :click_behavior export-viz-click-behavior-link)
-          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)))
+          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)
+          (as-> updated-settings
+                (cond-> updated-settings
+                  (nil? (:click_behavior updated-settings)) (dissoc :click_behavior)))))
 
 (defn- import-viz-click-behavior [settings]
   (some-> settings
@@ -1533,27 +1549,29 @@
          (filter some?)
          (reduce set/union #{}))))
 
-(defn- viz-click-behavior-descendants [{:keys [click_behavior]}]
+(defn- viz-click-behavior-descendants [{:keys [click_behavior]} src]
   (when-let [{:keys [linkType targetId type]} click_behavior]
     (case type
       "link" (when-let [model (link-card-model->toucan-model linkType)]
-               #{[(name model) targetId]})
+               ;; if the card was deleted, just ignore it.
+               (when (maybe-export-fk targetId model)
+                 {[(name model) targetId] src}))
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
 
-(defn- viz-column-settings-descendants [{:keys [column_settings]}]
+(defn- viz-column-settings-descendants [{:keys [column_settings]} src]
   (when column_settings
     (->> (vals column_settings)
-         (mapcat viz-click-behavior-descendants)
+         (mapcat #(viz-click-behavior-descendants % src))
          set)))
 
 (defn visualization-settings-descendants
   "Given the :visualization_settings (possibly nil) for an entity, return anything that should be considered a
   descendant. Always returns an empty set even if the input is nil."
-  [viz]
-  (set/union (viz-click-behavior-descendants  viz)
-             (viz-column-settings-descendants viz)))
+  [viz src]
+  (set/union (viz-click-behavior-descendants  viz src)
+             (viz-column-settings-descendants viz src)))
 
 ;;; Common transformers
 

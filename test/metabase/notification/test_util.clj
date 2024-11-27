@@ -5,6 +5,7 @@
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -29,11 +30,15 @@
   [_channel-type notification-info _template _recipients]
   [notification-info])
 
+(defmethod notification.payload/payload :notification/testing
+  [_notification]
+  {::payload? true})
+
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
-  `(binding [notification/*send-notification!* #'notification/send-notification-sync!]
+  `(binding [notification/*default-options* {:notification/sync? true}]
      ~@body))
 
 (defn do-with-captured-channel-send!
@@ -79,7 +84,7 @@
   "Macro that sets up the notification testing environment."
   [& body]
   `(mt/with-model-cleanup [:model/Notification]
-     (notification.tu/with-send-notification-sync
+     (with-send-notification-sync
        ~@body)))
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -96,27 +101,9 @@
                  :return-value true}
    :active      true})
 
-;; :model/ChannelTemplate
-
-(def channel-template-email-with-mustache-body
-  "A :model/ChannelTemplate for email channels that has a :event/mustache template."
+(def channel-template-email-with-handlebars-body
+  "A :model/ChannelTemplate for email channels that has a :event/handlebars-text template."
   {:channel_type :channel/email
-   :details      {:type    :email/mustache-text
-                  :subject "Welcome {{event-info.object.first_name}} to {{settings.site-name}}"
-                  :body    "Hello {{event-info.object.first_name}}! Welcome to {{settings.site-name}}!"}})
-
-;; notification info
-(def notification-info-user-joined-event
-  "A notification-info of the user-joined system event notification that can be used
-  to test [[channel/render-notification]]."
-  {:payload_type :notification/system-event
-   :payload      (#'events.notification/enriched-event-info
-                  :event/user-joined
-                  {:object
-                   {:email        "rasta@metabase.com"
-                    :first_name   "Rasta"
-                    :last_login   nil
-                    :is_qbnewb    true
-                    :is_superuser false
-                    :last_name    "Toucan"
-                    :common_name  "Rasta Toucan"}})})
+   :details      {:type    :email/handlebars-text
+                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
+                  :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})

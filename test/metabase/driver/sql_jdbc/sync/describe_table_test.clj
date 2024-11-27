@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
@@ -43,12 +44,6 @@
       (or (uses-default-describe-table? driver)
           (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
-
-(deftest ^:parallel describe-fields-nested-field-columns-test
-  (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
-                "It is possible to support both in the future but this has not been implemented yet.")
-    (is (empty? (filter #(driver.u/supports? % :describe-fields nil)
-                        (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
   (mt/test-driver :h2
@@ -143,11 +138,53 @@
   (let [driver (driver.u/database->driver db)]
     (sort-by :database-position
              (if (driver.u/supports? driver :describe-fields db)
-               (vec (driver/describe-fields driver
-                                            db
-                                            :schema-names [(:schema table)]
-                                            :table-names [(:name table)]))
+               (vec (m/mapply driver/describe-fields
+                              driver
+                              db
+                              (cond-> {:table-names [(:name table)]}
+                                (:schema table) (assoc :schema-names [(:schema table)]))))
                (:fields (driver/describe-table driver db table))))))
+
+(defmethod driver/database-supports? [::driver/driver ::describe-pks]
+  [driver _feature database]
+  ;; This is a decent proxy for drivers that set the `pk?` metadata field.
+  (driver/database-supports? driver :metadata/key-constraints database))
+
+;; These drivers set the `:pk?` field even though they do no support key-constriants
+(doseq [driver [:mongo :sqlite]]
+  (defmethod driver/database-supports? [driver ::describe-pks]
+    [_driver _feature _database]
+    true))
+
+(deftest describe-fields-shared-attributes-test
+  (testing "common metadata attributes"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (is (=?
+           [[0 false true (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
+            [1 false false false]
+            [2 false false false]
+            [3 false false false]
+            [4 false false false]
+            [5 false false false]]
+           (sort-by
+            :first
+            (map (juxt :database-position
+                       :database-required
+                       :database-is-auto-increment
+                       (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
+    (mt/test-drivers (mt/normal-drivers-without-feature :actions)
+      (is (=?
+           [[0 (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
+            [1 false]
+            [2 false]
+            [3 false]
+            [4 false]
+            [5 false]]
+           (sort-by
+            :first
+            (map (juxt :database-position (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
@@ -295,7 +332,7 @@
                     :visibility-type :normal,
                     :nfc-path [:json_bit "genres"]}
                    {:name "json_bit → 1234",
-                    :database-type "bigint",
+                    :database-type "decimal",
                     :base-type :type/Integer,
                     :database-position 0,
                     :json-unfolding false,
@@ -489,7 +526,7 @@
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "mybool"]}
                    {:name              "jsoncol → myint"
-                    :database-type     "double precision"
+                    :database-type     "decimal"
                     :base-type         :type/Number
                     :database-position 0
                     :json-unfolding    false
@@ -554,7 +591,7 @@
                                (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
-                         :database-type     "bigint"
+                         :database-type     "decimal"
                          :base-type         :type/Integer
                          :database-position 0
                          :json-unfolding    false
@@ -717,3 +754,53 @@
                         (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
          (is (= #{{:type :normal-column-index :value "id"}}
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
+  [_driver _feature _database]
+  false)
+
+;; TODO Make all drivers that support materialized-views pass this test
+(doseq [driver [:postgres
+                #_:redshift
+                #_:vertica
+                #_:athena
+                #_:bigquery-cloud-sdk]]
+  (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
+    [_driver _feature _database]
+    true))
+
+(defmethod driver/database-supports? [:redshift ::describe-materialized-view-fields]
+  [_driver _feature _database]
+  false)
+
+(deftest describe-materialized-view-fields
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
+                                     (mt/sql-jdbc-drivers))
+    (do-with-temporary-dataset
+     (mt/dataset-definition "describe-materialized-views-test"
+                            ["orders"
+                             [{:field-name "amount" :base-type :type/Integer}]
+                             [[1 2]]])
+     (fn []
+       (try
+         ;; Move creating and dropping view to a sql-jdbc defmethod of a metabase.test.data defmulti
+         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                        [(sql.tx/create-materialized-view-of-table-sql driver/*driver* (mt/db) "orders_m" "orders")])
+         (sync/sync-database! (mt/db))
+         (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders")
+               orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m")]
+           (is (= [["id" :type/Integer 0]
+                   ["amount" :type/Integer 1]]
+                  (t2/select-fn-vec
+                   (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                   :model/Field
+                   :table_id orders-id
+                   {:order-by [:database_position]})
+                  (t2/select-fn-vec
+                   (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                   :model/Field
+                   :table_id orders-m-id
+                   {:order-by [:database_position]}))))
+         (finally
+           (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                          [(sql.tx/drop-materialized-view-sql driver/*driver* (mt/db) "orders_m")])))))))

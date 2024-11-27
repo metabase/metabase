@@ -10,6 +10,9 @@ export default {
 
 export const DeLocale = () => (
   <MetabaseProvider config={storybookSdkDefaultConfig} locale="de">
-    <StaticDashboard dashboardId={(window as any).DASHBOARD_ID || 1} />
+    <StaticDashboard
+      dashboardId={(window as any).DASHBOARD_ID || 1}
+      withDownloads
+    />
   </MetabaseProvider>
 );

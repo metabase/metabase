@@ -72,7 +72,9 @@ describe("[EE, with token] embedding settings", () => {
           }),
         );
         expect(
-          withinStaticEmbeddingCard.queryByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.queryByText(
+            "upgrade to a specific paid plan",
+          ),
         ).not.toBeInTheDocument();
       });
 
@@ -301,7 +303,9 @@ describe("[EE, with token] embedding settings", () => {
           }),
         );
         expect(
-          withinStaticEmbeddingCard.queryByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.queryByText(
+            "upgrade to a specific paid plan",
+          ),
         ).not.toBeInTheDocument();
       });
 

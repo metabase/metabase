@@ -8,6 +8,8 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
@@ -193,6 +195,15 @@
             (is (= query
                    (json/parse-string weird-formatted-query)))))))))
 
+(deftest ^:parallel prettify-native-form-executable-test
+  (mt/test-drivers
+    (set (filter (partial get-method driver/prettify-native-form) (mt/normal-drivers)))
+    (is (=? {:status :completed}
+            (qp/process-query {:database (mt/id)
+                               :type     :native
+                               :native   (-> (qp.compile/compile (mt/mbql-query orders {:limit 1}))
+                                             (update :query (partial driver/prettify-native-form driver/*driver*)))})))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Begin tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -200,9 +211,10 @@
 (defn- describe-fields-for-table [db table]
   (sort-by :database-position
            (if (driver/database-supports? driver/*driver* :describe-fields db)
-             (vec (driver/describe-fields driver/*driver* db
-                                          :schema-names [(:schema table)]
-                                          :table-names [(:name table)]))
+             (mapv #(dissoc % :table-name :table-schema)
+                   (driver/describe-fields driver/*driver* db
+                                           :schema-names [(:schema table)]
+                                           :table-names [(:name table)]))
              (:fields (driver/describe-table driver/*driver* db table)))))
 
 (deftest ^:parallel describe-fields-or-table-test

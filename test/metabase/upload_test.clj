@@ -220,7 +220,12 @@
                 "Luke Skywalker, 172, -19"
                 "Darth Vader, 202, -41.9"
                 ;; comma, but blank column
-                "Sebulba, 112,"]))))))
+                "Sebulba, 112,"]))))
+    (testing "Longer text is text"
+      (is (= {:text text-type}
+             (detect-schema-with-csv-rows
+              ["Text"
+               (apply str (repeat 30 "some_text "))]))))))
 
 (deftest ^:parallel detect-schema-dates-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -550,17 +555,17 @@
                     :file (csv-file-with lines)
                     :auxiliary-sync-steps :synchronous)]
             (testing "Table and Fields exist after sync"
-              (is (=? (cond->> [["id" {:semantic_type :type/PK
-                                       :base_type     :type/BigInteger}]
-                                ["nulls" {:base_type :type/Text}]
-                                ["string" {:base_type :type/Text}]
-                                ["bool" {:base_type :type/Boolean}]
-                                ["number" {:base_type :type/Float}]
-                                ["date" {:base_type :type/Date}]
-                                ["datetime" {:base_type :type/DateTime}]]
+              (is (=? (cond->> [["id"       {:semantic_type :type/PK
+                                             :base_type     :type/BigInteger}]
+                                ["nulls"    {:base_type     :type/Text}]
+                                ["string"   {:base_type     :type/Text}]
+                                ["bool"     {:base_type     :type/Boolean}]
+                                ["number"   {:base_type     :type/Float}]
+                                ["date"     {:base_type     :type/Date}]
+                                ["datetime" {:base_type     :type/DateTime}]]
                         (auto-pk-column?)
-                        (cons ["_mb_row_id" {:semantic_type     :type/PK
-                                             :base_type         :type/BigInteger}]))
+                        (cons ["_mb_row_id" {:semantic_type :type/PK
+                                             :base_type     :type/BigInteger}]))
                       (->> (t2/select :model/Field :table_id (:id table))
                            (sort-by :database_position)
                            (map (juxt (comp u/lower-case-en :name) identity))))))
@@ -582,6 +587,17 @@
             (testing "Headers are displayed correctly"
               (is (= (header-with-auto-pk ["Dirección" "País"])
                      (column-display-names-for-table table))))))))))
+
+(deftest detect-charset-test
+  (doseq [[encoding filename] [["UTF-8" "csv/utf-8.csv"]
+                               ["UTF-8" "csv/48945-1.csv"]
+                               ["UTF-8" "csv/48945-2.csv"]
+                               ["UTF-8" "csv/48945-3.csv"]
+                               ["UTF-16BE" "csv/utf-16.csv"]
+                               ;; Hmm, https://stackoverflow.com/a/19111140
+                               ["WINDOWS-1252" "csv/iso-8859-1.csv"]]]
+    (testing (str "Correct charset detected for " filename)
+      (is (= encoding (#'upload/detect-charset (io/file (io/resource filename))))))))
 
 (deftest infer-separator-catch-exception-test
   (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
@@ -1503,19 +1519,20 @@
       (testing (action-testing-str action)
         (with-uploads-enabled!
           (testing "Append should fail only if there are missing columns in the CSV file"
-            (doseq [[csv-rows error-message]
-                    {[""]
-                     (trim-lines "The CSV file is missing columns that are in the table:
+            (let [long-text (apply str (repeat 30 "some_text "))] ; more than 256 chars
+              (doseq [[csv-rows error-message]
+                      {[""]
+                       (trim-lines "The CSV file is missing columns that are in the table:
                               - id
                               - name")
 
-                    ;; Extra columns are fine, as long as none are missing.
-                     ["_mb_row_id,id,extra 1, extra 2,name"]
-                     nil
-                     ["extra 1, extra 2"]
-                     ;; TODO note that the order of the fields is reversed
-                     ;; It would be better if they were alphabetical, or matched the order in the database / file.
-                     (trim-lines "The CSV file is missing columns that are in the table:
+                       ;; Extra columns are fine, as long as none are missing.
+                       ["_mb_row_id,id,extra 1, extra 2,name"]
+                       nil
+                       ["extra 1, extra 2"]
+                       ;; TODO note that the order of the fields is reversed
+                       ;; It would be better if they were alphabetical, or matched the order in the database / file.
+                       (trim-lines "The CSV file is missing columns that are in the table:
                               - id
                               - name
 
@@ -1523,41 +1540,41 @@
                               - extra_2
                               - extra_1")
 
-                     ["_mb_row_id,id, extra 2"]
-                     (if (auto-pk-column?)
-                       (trim-lines "The CSV file is missing columns that are in the table:
+                       ["_mb_row_id,id, extra 2"]
+                       (if (auto-pk-column?)
+                         (trim-lines "The CSV file is missing columns that are in the table:
                                    - name
 
                                    There are new columns in the CSV file that are not in the table:
                                    - extra_2")
-                       (trim-lines "The CSV file is missing columns that are in the table:
+                         (trim-lines "The CSV file is missing columns that are in the table:
                                   - name
 
                                   There are new columns in the CSV file that are not in the table:
                                   - extra_2
                                   - _mb_row_id"))}]
-              (with-upload-table!
-                [table (create-upload-table!
-                        {:col->upload-type (ordered-map/ordered-map
-                                            :id int-type
-                                            :name vchar-type)
-                         :rows             [[1, "some_text"]]})]
+                (with-upload-table!
+                  [table (create-upload-table!
+                          {:col->upload-type (ordered-map/ordered-map
+                                              :id int-type
+                                              :name text-type)
+                           :rows             [[1 long-text]]})]
 
-                (let [file (csv-file-with csv-rows)]
-                  (when error-message
-                    (is (= {:message error-message
-                            :data    {:status-code 422}}
-                           (catch-ex-info (update-csv! action {:file file :table-id (:id table)}))))
-                    (testing "Check the data was not uploaded into the table"
-                      (is (= [[1 "some_text"]]
-                             (rows-for-table table)))))
+                  (let [file (csv-file-with csv-rows)]
+                    (when error-message
+                      (is (= {:message error-message
+                              :data    {:status-code 422}}
+                             (catch-ex-info (update-csv! action {:file file :table-id (:id table)}))))
+                      (testing "Check the data was not uploaded into the table"
+                        (is (= [[1 long-text]]
+                               (rows-for-table table)))))
 
-                  (when-not error-message
-                    (testing "Check the data was uploaded into the table"
-                     ;; No exception is thrown - but there were also no rows in the table to check
-                      (update-csv! action {:file file :table-id (:id table)})))
+                    (when-not error-message
+                      (testing "Check the data was uploaded into the table"
+                        ;; No exception is thrown - but there were also no rows in the table to check
+                        (update-csv! action {:file file :table-id (:id table)})))
 
-                  (io/delete-file file))))))))))
+                    (io/delete-file file)))))))))))
 
 (deftest update-common-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1806,11 +1823,15 @@
       (testing (action-testing-str action)
         (mt/with-premium-features #{:audit-app}
           (with-upload-table! [table (create-upload-table!)]
-            (let [csv-rows ["name" "Luke Skywalker"]
-                  file     (csv-file-with csv-rows)]
+            (let [csv-rows   ["name" "Luke Skywalker"]
+                  file       (csv-file-with csv-rows)
+                  event-type (case action
+                               ::upload/append  :upload-append
+                               ::upload/replace :upload-replace)]
+
               (update-csv! action {:file file, :table-id (:id table)})
 
-              (is (=? {:topic    :upload-append
+              (is (=? {:topic    event-type
                        :user_id  (:id (mt/fetch-user :crowberto))
                        :model    "Table"
                        :model_id (:id table)
@@ -1822,7 +1843,7 @@
                                                 :generated-columns 0
                                                 :size-mb           1.811981201171875E-5
                                                 :upload-seconds    pos?}}}
-                      (last-audit-event :upload-append)))
+                      (last-audit-event event-type)))
 
               (io/delete-file file))))))))
 
@@ -2178,7 +2199,7 @@
                           {:fail-msg "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
                           {:coerced 2.1})) ; column is promoted to float
                        {:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ; value is coerced to int
-                       {:upload-type float-type, :uncoerced "2",          :coerced 2.0}
+                       {:upload-type float-type, :uncoerced "2",          :coerced 2.0} ; column is promoted to float
                        {:upload-type bool-type,  :uncoerced "0",          :coerced false}
                        {:upload-type bool-type,  :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
                        {:upload-type bool-type,  :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}

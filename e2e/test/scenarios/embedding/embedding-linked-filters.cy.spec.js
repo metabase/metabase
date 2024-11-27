@@ -86,7 +86,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
       assertEChartsTooltip({
         header: "AK",
-        rows: [{ color: "#509EE3", name: "Count", value: "68" }],
+        rows: [{ color: "#509EE3", name: "count", value: "68" }],
         blurAfter: true,
       });
 
@@ -107,7 +107,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       assertEChartsTooltip({
         header: "AK",
-        rows: [{ color: "#509EE3", name: "Count", value: "1" }],
+        rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
     });
 
@@ -159,7 +159,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       assertEChartsTooltip({
         header: "AK",
-        rows: [{ color: "#509EE3", name: "Count", value: "68" }],
+        rows: [{ color: "#509EE3", name: "count", value: "68" }],
         blurAfter: true,
       });
 
@@ -183,7 +183,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       assertEChartsTooltip({
         header: "AK",
-        rows: [{ color: "#509EE3", name: "Count", value: "1" }],
+        rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
     });
 
@@ -205,7 +205,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       assertEChartsTooltip({
         header: "AK",
-        rows: [{ color: "#509EE3", name: "Count", value: "68" }],
+        rows: [{ color: "#509EE3", name: "count", value: "68" }],
         blurAfter: true,
       });
 
@@ -226,7 +226,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       assertEChartsTooltip({
         header: "AK",
-        rows: [{ color: "#509EE3", name: "Count", value: "1" }],
+        rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
     });
 
@@ -239,7 +239,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         visitEmbeddedPage(payload, {
           setFilters: { state: "AK" },
-          hideFilters: ["state"],
+          additionalHashOptions: {
+            hideFilters: ["state"],
+          },
         });
       });
 
@@ -247,7 +249,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       assertEChartsTooltip({
         header: "AK",
-        rows: [{ color: "#509EE3", name: "Count", value: "68" }],
+        rows: [{ color: "#509EE3", name: "count", value: "68" }],
         blurAfter: true,
       });
 
@@ -268,7 +270,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       assertEChartsTooltip({
         header: "AK",
-        rows: [{ color: "#509EE3", name: "Count", value: "1" }],
+        rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
     });
 
@@ -438,7 +440,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         };
 
         visitEmbeddedPage(payload, {
-          hideFilters: ["id_filter"],
+          additionalHashOptions: {
+            hideFilters: ["id_filter"],
+          },
         });
       });
 

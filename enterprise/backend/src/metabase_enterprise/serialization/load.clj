@@ -395,14 +395,18 @@
     [f-type f-str f-md]))
 
 (defn- resolve-pivot-table-settings
-  "Resolve the entries in a :pivot_table.column_split map (which is under a :visualization_settings map). These map entries
-  may contain fully qualified field names, or even other cards. In case of an unresolved name (i.e. a card that hasn't
-  yet been loaded), we will track it under ::unresolved-names and revisit on the next pass."
+  "Resolve the entries in a :pivot_table.column_split map (which is under a :visualization_settings map). Modern map
+  entries contain column names that should be preserved as is. Legacy map entries may contain fully qualified field
+  names, or even other cards. In case of an unresolved name (i.e. a card that hasn't yet been loaded), we will track it
+  under ::unresolved-names and revisit on the next pass."
   [vs-norm]
   (if (:pivot_table.column_split vs-norm)
     (letfn [(resolve-vec [pivot vec-type]
-              (update-in pivot [:pivot_table.column_split vec-type] (fn [tbl-vecs]
-                                                                      (mapv resolve-table-column-field-ref tbl-vecs))))]
+              (update-in pivot [:pivot_table.column_split vec-type]
+                         (fn [tbl-vecs]
+                           (if (every? string? tbl-vecs)
+                             tbl-vecs
+                             (mapv resolve-table-column-field-ref tbl-vecs)))))]
       (-> vs-norm
           (resolve-vec :rows)
           (resolve-vec :columns)))

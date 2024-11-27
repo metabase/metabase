@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { formatColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/lib/formatting";
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
 import {
   columnSettings,
@@ -30,7 +30,7 @@ const ObjectDetailProperties = {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => formatColumn(column),
+        getDefault: column => displayNameForColumn(column),
       },
       click_behavior: {},
     };

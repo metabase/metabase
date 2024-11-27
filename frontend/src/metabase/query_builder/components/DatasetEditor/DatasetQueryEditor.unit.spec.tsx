@@ -63,6 +63,7 @@ const setup = async ({
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
+  // eslint-disable-next-line no-restricted-syntax
   const query = question.legacyQuery({ useStructuredQuery: true });
   const DatasetQueryEditor = await importDatasetQueryEditor();
   const onSetDatabaseId = jest.fn();

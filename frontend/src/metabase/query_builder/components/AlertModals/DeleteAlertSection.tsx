@@ -34,7 +34,7 @@ export const DeleteAlertSection = ({
             <span
               key={`${channel.channel_type}-${index}`}
             >{jt`This alert will no longer be emailed to ${(
-              <strong>
+              <strong key="bold">
                 {(n => ngettext(msgid`${n} address`, `${n} addresses`, n || 0))(
                   channel.recipients?.length,
                 )}
@@ -45,7 +45,9 @@ export const DeleteAlertSection = ({
         case "slack": {
           return (
             <span>{jt`Slack channel ${(
-              <strong>{channel.details && channel.details.channel}</strong>
+              <strong key="bold">
+                {channel.details && channel.details.channel}
+              </strong>
             )} will no longer get this alert.`}</span>
           );
         }
@@ -56,14 +58,16 @@ export const DeleteAlertSection = ({
           );
           return (
             <span>{jt`Channel ${(
-              <strong>{notification?.name || channel.channel_type}</strong>
+              <strong key="bold">
+                {notification?.name || channel.channel_type}
+              </strong>
             )} will no longer receive this alert.`}</span>
           );
         }
         default: {
           return (
             <span>{jt`Channel ${(
-              <strong>{channel.channel_type}</strong>
+              <strong key="bold">{channel.channel_type}</strong>
             )} will no longer receive this alert.`}</span>
           );
         }

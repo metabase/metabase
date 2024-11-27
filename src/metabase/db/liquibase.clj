@@ -233,7 +233,7 @@
           (str
            (trs "Database has migration lock; cannot run migrations.")
            " "
-           (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."))))))
+           (trs "You can force-release these locks by running `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks`."))))))
     (if (pos? @retry-counter)
       (log/warnf "Migration lock was acquired after %d retries." @retry-counter)
       (do (log/info "No migration lock found.")

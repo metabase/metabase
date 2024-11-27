@@ -30,7 +30,10 @@
   unit-diff
   truncate
   add
-  format-for-base-type])
+  format-for-base-type
+  local-date
+  local-date-time
+  local-time])
 
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))

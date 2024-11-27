@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -28,6 +29,7 @@ export const ExportSettingsWidget = ({
   onToggleFormatting,
   onTogglePivoting,
 }: ExportSettingsWidgetProps) => {
+  const arePivotedExportsEnabled = useSetting("enable-pivoted-exports") ?? true;
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack>
@@ -53,14 +55,21 @@ export const ExportSettingsWidget = ({
               <Radio value="false" label={t`Unformatted`} />
             </Group>
           </Radio.Group>
+
           <Text
+            data-testid="formatting-description"
             size="sm"
             color="text-medium"
-          >{t`E.g. September 6, 2024 or $187.50, like in ${applicationName}`}</Text>
+          >
+            {isFormattingEnabled
+              ? t`E.g. September 6, 2024 or $187.50, like in ${applicationName}`
+              : t`E.g. 2024-09-06 or 187.50, like in the database`}
+          </Text>
         </Stack>
       ) : null}
-      {canConfigurePivoting ? (
+      {arePivotedExportsEnabled && canConfigurePivoting ? (
         <Checkbox
+          data-testid="keep-data-pivoted"
           label={t`Keep data pivoted`}
           checked={isPivotingEnabled}
           onChange={() => onTogglePivoting()}

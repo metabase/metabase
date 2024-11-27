@@ -40,6 +40,11 @@ export function entityPickerModalLevel(level) {
   return cy.findByTestId(`item-picker-level-${level}`);
 }
 
+/**
+ *
+ * @param {number} level
+ * @param {string} name
+ */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("button");
 }
@@ -345,4 +350,14 @@ export function removeMultiAutocompleteValue(index, filter) {
   return multiAutocompleteValue(index, filter)
     .findByRole("button", { hidden: true })
     .click();
+}
+
+export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
+  if (timeout <= 0) {
+    return;
+  }
+  assertFn();
+
+  cy.wait(interval);
+  repeatAssertion(assertFn, timeout - interval, interval);
 }

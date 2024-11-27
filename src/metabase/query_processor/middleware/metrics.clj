@@ -49,23 +49,23 @@
          (lib.metadata/bulk-metadata-or-throw query :metadata/card)
          (into {}
                (map (fn [card-metadata]
-                      (let [unprocessed-metric-query (lib/query query (:dataset-query card-metadata))
-                            [_ {aggregation-name :name}] (first (lib/aggregations unprocessed-metric-query))
-                            metric-query (lib.convert/->pMBQL
+                      (let [metric-query (lib.convert/->pMBQL
                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                                           unprocessed-metric-query))
+                                           (lib/query query (:dataset-query card-metadata))))
                             metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
                            {:query metric-query
-                            :aggregation (assoc-in aggregation [1 :name] (or aggregation-name metric-name))
+                            ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
+                            ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
+                            :aggregation aggregation
                             :name metric-name}]
                           (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
 
 (defn- expression-with-name-from-source
-  [query [_ {:lib/keys [expression-name]} :as expression]]
-  (lib/expression query 0 expression-name expression))
+  [query agg-stage-index [_ {:lib/keys [expression-name]} :as expression]]
+  (lib/expression query agg-stage-index expression-name expression))
 
 (defn- update-metric-query-expression-names
   [metric-query unique-name-fn]
@@ -137,7 +137,8 @@
                                          (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
                            (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
                              (as-> query $q
-                               (reduce expression-with-name-from-source $q (lib/expressions metric-query -1))
+                               (reduce #(expression-with-name-from-source %1 agg-stage-index %2)
+                                       $q (lib/expressions metric-query -1))
                                (include-implicit-joins $q agg-stage-index metric-query)
                                (reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
                                (replace-metric-aggregation-refs $q agg-stage-index lookup)))
@@ -250,10 +251,10 @@
    2. Metric source cards can reference themselves.
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
-  (if-not (find-first-metric query)
+  (if-not (find-first-metric (:stages query))
     query
     (do
-      (prometheus/inc! :metabase-query-processor/metrics)
+      (prometheus/inc! :metabase-query-processor/metrics-adjust)
       (try
         (let [query (lib.walk/walk
                      query
@@ -262,8 +263,8 @@
                          (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
           (u/prog1
             (update query :stages #(adjust-metric-stages query nil %))
-            (when-let [metric (find-first-metric <>)]
+            (when-let [metric (find-first-metric (:stages <>))]
               (throw (ex-info "Failed to replace metric" {:metric metric})))))
         (catch Throwable e
-          (prometheus/inc! :metabase-query-processor/metric-errors)
+          (prometheus/inc! :metabase-query-processor/metrics-adjust-errors)
           (throw e))))))

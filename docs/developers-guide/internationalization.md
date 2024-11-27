@@ -27,7 +27,6 @@ and in the backend using `trs` (to use the site language) or `tru` (to use the c
 
 If you see incorrect or missing strings for your language, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
 
-
 # Backend Translation Guide
 
 Metabase allows for translations into many languages. An authoritative list can be found in `resources/locales.clj`.

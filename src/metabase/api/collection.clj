@@ -25,7 +25,7 @@
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
    [metabase.public-settings.premium-features
@@ -410,17 +410,7 @@
                     [:u.first_name :last_edit_first_name]
                     [:u.last_name :last_edit_last_name]
                     [:r.timestamp :last_edit_timestamp]
-                    [{:select   [:status]
-                      :from     [:moderation_review]
-                      :where    [:and
-                                 [:= :moderated_item_type "card"]
-                                 [:= :moderated_item_id :c.id]
-                                 [:= :most_recent true]]
-                       ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                       ;; protecting against potential bugs
-                      :order-by [[:id :desc]]
-                      :limit    1}
-                     :moderated_status]]
+                    [:mr.status :moderated_status]]
                     (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
@@ -428,6 +418,10 @@
                                    [:= :r.model_id :c.id]
                                    [:= :r.most_recent true]
                                    [:= :r.model (h2x/literal "Card")]]
+                   [:moderation_review :mr] [:and
+                                             [:= :mr.moderated_item_id :c.id]
+                                             [:= :mr.most_recent true]
+                                             [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    (collection/visible-collection-filter-clause :collection_id
@@ -551,9 +545,14 @@
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]]
+                   [:r.timestamp :last_edit_timestamp]
+                   [:mr.status :moderated_status]]
        :from      [[:report_dashboard :d]]
-       :left-join [[:revision :r] [:and
+       :left-join [[:moderation_review :mr] [:and
+                                             [:= :mr.moderated_item_id :d.id]
+                                             [:= :mr.most_recent true]
+                                             [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
+                   [:revision :r] [:and
                                    [:= :r.model_id :d.id]
                                    [:= :r.most_recent true]
                                    [:= :r.model (h2x/literal "Dashboard")]]
@@ -582,7 +581,7 @@
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete)
-      (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+      (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :dashboard
@@ -1113,9 +1112,10 @@
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
-                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
-      (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
+    (when-let [alerts (not-empty (models.pulse/retrieve-alerts-for-cards
+                                  {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
+      (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
+      (events/publish-event! :event/card-update.alerts-deleted.card-archived {:alerts alerts, :actor actor}))))
 
 (defn- move-collection!
   "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do
@@ -1228,7 +1228,7 @@
   "Map describing permissions for 1 or more groups.
   Revision # is used for consistency"
   [:map
-   [:revision int?]
+   [:revision {:optional true} [:maybe int?]]
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
 (def ^:private graph-decoder
@@ -1241,26 +1241,32 @@
 
 (defn- update-graph!
   "Handles updating the graph for a given namespace."
-  [namespace graph skip_graph]
-  (graph/update-graph! namespace graph)
-  (if skip_graph
+  [namespace graph skip-graph force?]
+  (graph/update-graph! namespace graph force?)
+  (if skip-graph
     {:revision (c-perm-revision/latest-id)}
     (graph/graph namespace)))
 
 (api/defendpoint PUT "/graph"
-  "Do a batch update of Collections Permissions by passing in a modified graph.
-  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
+  "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
+  are present in the request, and leave the rest unchanged.
 
-  If the `skip_graph` query parameter is true, it will only return the current revision"
-  [:as {{:keys [namespace revision groups skip_graph]} :body}]
-  {namespace [:maybe ms/NonBlankString]
-   revision  ms/Int
-   groups :map
-   skip_graph [:maybe ms/BooleanValue]}
+  If the `force` query parameter is `true`, a `revision` number is not required. The provided graph will be persisted
+  as-is, and has the potential to clobber other writes that happened since the last read.
+
+  If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
+  graph."
+  [:as {{:keys [namespace revision groups]} :body
+        {:keys [skip-graph force]} :params}]
+  {namespace  [:maybe ms/NonBlankString]
+   revision   [:maybe ms/Int]
+   groups     :map
+   force      [:maybe ms/BooleanValue]
+   skip-graph [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (update-graph!
-   namespace
-   (decode-graph {:revision revision :groups groups})
-   skip_graph))
+  (update-graph! namespace
+                 (decode-graph {:revision revision :groups groups})
+                 skip-graph
+                 force))
 
 (api/define-routes)

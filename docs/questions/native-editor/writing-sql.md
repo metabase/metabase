@@ -88,13 +88,12 @@ On saved SQL questions without [parameters](./sql-parameters.md), you'll get the
 
 ![Explore results button](../images/explore-results.png)
 
-## To enable drill-through, turn a SQL question into a model and set the data types
+## Drill-though in SQL questions
 
-Visualizations created with SQL do not have [drill-through][drill-through] capability. To enable drill-through on a SQL question, you can turn it into a model:
+Visualizations created with SQL have limited [drill-through][drill-through] capabilities:
 
-1. Save the SQL question and [turn it into a model](../../data-modeling/models.md#create-a-model-from-a-saved-question).
-2. [Edit the column metadata](../../data-modeling/metadata-editing.md#column-field-settings) in the model's settings. Make sure to set the data types for all the columns.
-3. [Create a Query Builder question](../query-builder/introduction.md#creating-a-new-question-with-the-query-builder) based on the model. You should be able to use drill-through on this question, if you configured the metadata correctly.
+- You can filter results of SQL queries by clicking on data points, zoom in on time series or maps, and use some [column header actions](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+- You won't be able to drill down to unaggregated records, change time granularity, or break out by categories or locations.
 
 ## Caching results
 
@@ -102,14 +101,14 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 
 ## Learn more
 
-- [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
+- [Best practices for writing SQL queries](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-best-practices)
 - [SQL troubleshooting guide][troubleshooting-sql].
 
 [asking-questions]: ../query-builder/introduction.md#creating-a-new-question-with-the-query-builder
-[learn-sql]: https://www.metabase.com/learn/sql-questions
+[learn-sql]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: https://www.metabase.com/glossary/sample_database
 [sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable
-[drill-through]: https://www.metabase.com/learn/questions/drill-through
+[drill-through]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through

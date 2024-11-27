@@ -41,6 +41,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   initially_published_at: null,
   width: "fixed",
   creator_id: 1,
+  moderation_reviews: [],
   ...opts,
 });
 

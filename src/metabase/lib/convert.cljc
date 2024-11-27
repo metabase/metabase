@@ -585,8 +585,9 @@
                         :native
                         :query)]
       (merge (dissoc base :stages :parameters :lib.convert/converted?)
-             (cond-> {:type query-type query-type inner-query}
-               (seq parameters) (assoc :parameters parameters))))
+             (cond-> {:type query-type}
+               (seq inner-query) (assoc query-type inner-query)
+               (seq parameters)  (assoc :parameters parameters))))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
                       {:query query}

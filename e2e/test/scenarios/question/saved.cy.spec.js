@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
@@ -11,9 +12,11 @@ import {
   addSummaryGroupingField,
   appBar,
   collectionOnTheGoModal,
+  createQuestion,
   entityPickerModal,
   entityPickerModalTab,
   getAlertChannel,
+  main,
   modal,
   openNotebook,
   openOrdersTable,
@@ -24,11 +27,15 @@ import {
   restore,
   rightSidebar,
   selectFilterOperator,
+  sidebar,
   sidesheet,
   summarize,
   tableHeaderClick,
+  toggleAlertChannel,
   visitQuestion,
 } from "e2e/support/helpers";
+
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -317,6 +324,127 @@ describe("scenarios > question > saved", () => {
       );
     });
   });
+
+  describe("with hidden tables", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+    });
+
+    const HIDDEN_TYPES = ["hidden", "technical", "cruft"];
+
+    function hideTable(name, visibilityType) {
+      cy.visit("/admin/datamodel");
+      sidebar().findByText(name).click();
+      main().findByText("Hidden").click();
+
+      if (visibilityType === "technical") {
+        main().findByText("Technical Data").click();
+      }
+      if (visibilityType === "cruft") {
+        main().findByText("Irrelevant/Cruft").click();
+      }
+    }
+
+    HIDDEN_TYPES.forEach(visibilityType => {
+      it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
+        hideTable("Orders", visibilityType);
+
+        visitQuestion(ORDERS_QUESTION_ID);
+
+        queryBuilderHeader()
+          .findByText("View-only")
+          .should("be.visible")
+          .realHover();
+        popover()
+          .findByText(
+            "One of the administrators hid the source table “Orders”, making this question view-only.",
+          )
+          .should("be.visible");
+      });
+
+      it(`should show a View-only tag when a joined table is marked as ${visibilityType}`, () => {
+        cy.signInAsAdmin();
+        hideTable("Products", visibilityType);
+        createQuestion(
+          {
+            name: "Joined question",
+            query: {
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  "source-table": PRODUCTS_ID,
+                  alias: "Orders",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.PRODUCT_ID, null],
+                    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                  ],
+                  fields: "all",
+                },
+              ],
+            },
+          },
+          {
+            visitQuestion: true,
+          },
+        );
+        queryBuilderHeader()
+          .findByText("View-only")
+          .should("be.visible")
+          .realHover();
+        popover()
+          .findByText(
+            "One of the administrators hid the source table “Products”, making this question view-only.",
+          )
+          .should("be.visible");
+      });
+    });
+
+    function moveQuestionTo(newCollectionName, clickTab = false) {
+      openQuestionActions();
+      cy.findByTestId("move-button").click();
+      entityPickerModal().within(() => {
+        clickTab && cy.findByRole("tab", { name: /Collections/ }).click();
+        cy.findByText(newCollectionName).click();
+        cy.button("Move").click();
+      });
+    }
+
+    it("should show a View-only tag when one of the source cards is unavailable", () => {
+      createQuestion(
+        {
+          name: "Products Question + Orders",
+          query: {
+            "source-table": `card__${ORDERS_QUESTION_ID}`,
+            joins: [
+              {
+                "source-table": PRODUCTS_ID,
+                alias: "Orders Question",
+                fields: "all",
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.PRODUCT_ID, null],
+                  ["field", ORDERS.ID, { "join-alias": "Orders" }],
+                ],
+              },
+            ],
+          },
+        },
+        {
+          wrapId: true,
+          idAlias: "questionId",
+        },
+      );
+
+      visitQuestion(ORDERS_QUESTION_ID);
+      moveQuestionTo(/Personal Collection/, true);
+
+      cy.signInAsNormalUser();
+      cy.get("@questionId").then(visitQuestion);
+
+      queryBuilderHeader().findByText("View-only").should("be.visible");
+    });
+  });
 });
 
 //http://127.0.0.1:9080/api/session/00000000-0000-0000-0000-000000000000/requests
@@ -356,12 +484,6 @@ describe(
           "fe-form-type": "none",
         },
       });
-
-      cy.request(
-        "DELETE",
-        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
-        { failOnStatusCode: false },
-      );
     });
 
     it("should allow you to enable a webhook alert", () => {
@@ -370,10 +492,8 @@ describe(
       popover().findByText("Create alert").click();
       modal().button("Set up an alert").click();
       modal().within(() => {
-        getAlertChannel(secondWebhookName).scrollIntoView();
-        getAlertChannel(secondWebhookName)
-          .findByRole("checkbox")
-          .click({ force: true });
+        toggleAlertChannel("Email");
+        toggleAlertChannel(secondWebhookName);
         cy.button("Done").click();
       });
       cy.findByTestId("sharing-menu-button").click();

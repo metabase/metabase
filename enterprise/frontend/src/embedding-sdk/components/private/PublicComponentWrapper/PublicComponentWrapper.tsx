@@ -25,10 +25,6 @@ export const PublicComponentWrapper = React.forwardRef<
     content = <div>{t`Initializing…`}</div>;
   }
 
-  if (loginStatus.status === "validated") {
-    content = <div>{t`JWT is valid.`}</div>;
-  }
-
   if (loginStatus.status === "loading") {
     content = <SdkLoader />;
   }

@@ -6,7 +6,10 @@
    Functions for generating URLs not related to Metabase *objects* generally do not belong here, unless they are used in many places in the
    codebase; one-off URL-generation functions should go in the same namespaces or modules where they are used."
   (:require
-   [metabase.public-settings :as public-settings]))
+   [clojure.string :as str]
+   [metabase.models.params.shared :as shared.params]
+   [metabase.public-settings :as public-settings]
+   [ring.util.codec :as codec]))
 
 (defn site-url
   "Return the Notification Link Base URL if set by enterprise env var, or Site URL."
@@ -22,8 +25,22 @@
   "Return an appropriate URL for a `Dashboard` with ID.
 
      (dashboard-url 10) -> \"http://localhost:3000/dashboard/10\""
-  [^Integer id]
-  (format "%s/dashboard/%d" (site-url) id))
+  ([^Integer id]
+   (format "%s/dashboard/%d" (site-url) id))
+  ([^Integer id parameters]
+   (let [base-url   (dashboard-url id)
+         url-params (flatten
+                     (for [param parameters
+                           :let  [values (shared.params/param-val-or-default param)]]
+                       (for [value (if ((some-fn sequential? set? nil?) values)
+                                     values
+                                     [values])]
+                         (str (codec/url-encode (:slug param))
+                              "="
+                              (codec/url-encode value)))))]
+
+     (str base-url (when (seq url-params)
+                     (str "?" (str/join "&" url-params)))))))
 
 (defn card-url
   "Return an appropriate URL for a `Card` with ID.

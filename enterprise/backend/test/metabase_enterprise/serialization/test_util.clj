@@ -409,9 +409,9 @@
                                                                                         :aggregation [:sum [:field latitude-field-id nil]]
                                                                                         :breakout [[:field category-field-id nil]]}}
                                                                 :visualization_settings
-                                                                {:pivot_table.column_split {:columns [["field" latitude-field-id nil]]
-                                                                                            :rows    [["field" latitude-field-id nil]]
-                                                                                            :values  [["aggregation" 0]]}}}]
+                                                                {:pivot_table.column_split {:columns ["LATITUDE"]
+                                                                                            :rows    ["LONGITUDE"]
+                                                                                            :values  ["sum"]}}}]
     (f {:card-arch-id                 card-arch-id
         :card-id                      card-id
         :card-id-collection-to-root   card-id-collection-to-root

@@ -36,6 +36,7 @@
 (def notification-types
   "Set of valid notification types."
   #{:notification/system-event
+    :notification/dashboard-subscription
     ;; for testing only
     :notification/testing})
 

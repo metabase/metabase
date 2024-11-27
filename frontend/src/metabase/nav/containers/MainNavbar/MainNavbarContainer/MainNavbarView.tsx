@@ -1,10 +1,15 @@
+import dayjs from "dayjs";
 import type { MouseEvent } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useUserSetting } from "metabase/common/hooks";
+import {
+  useHasTokenFeature,
+  useSetting,
+  useUserSetting,
+} from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
@@ -13,8 +18,13 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { getHasOwnDatabase } from "metabase/selectors/data";
+import { getIsEmbedded } from "metabase/selectors/embed";
+import { getSetting } from "metabase/selectors/settings";
+import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import type { IconName, IconProps } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -31,7 +41,9 @@ import {
   TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
-import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
+import { AddDatabase } from "../SidebarItems/AddDatabase";
+import { DwhUploadCSV } from "../SidebarItems/DwhUploadCSV/DwhUploadCSV";
+import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -111,6 +123,53 @@ export function MainNavbarView({
     [collections],
   );
 
+  const ONBOARDING_URL = "/getting-started";
+
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const instanceCreated = useSetting("instance-creation");
+
+  useEffect(() => {
+    const daysSinceCreation = dayjs().diff(dayjs(instanceCreated), "days");
+    const isNewInstance = daysSinceCreation <= 30;
+
+    if (isNewInstance) {
+      setShowOnboarding(true);
+    }
+  }, [instanceCreated]);
+
+  const isEmbedded = useSelector(getIsEmbedded);
+  const isWhiteLabelled = useSelector(getIsWhiteLabeling);
+
+  const showOnboardingChecklist =
+    isAdmin && showOnboarding && !isEmbedded && !isWhiteLabelled;
+
+  // Instances with DWH enabled already have uploads enabled by default.
+  // It is not possible to turn the uploads off, nor to delete the attached database.
+  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
+  );
+
+  const rootCollection = collections.find(
+    c => c.id === "root" || c.id === null,
+  );
+  const canCurateRootCollection = rootCollection?.can_write;
+  const canUploadToDatabase = databases
+    ?.find(db => db.id === uploadDbId)
+    ?.canUpload();
+
+  /**
+   * the user must have:
+   *   - "write" permissions for the root collection AND
+   *   - "upload" permissions for the attached DWH
+   */
+  const canUpload = canCurateRootCollection && canUploadToDatabase;
+  const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
+
+  const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
+  const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -124,6 +183,18 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+            {showOnboardingChecklist && (
+              <PaddedSidebarLink
+                icon="learn"
+                url={ONBOARDING_URL}
+                isSelected={nonEntityItem?.url === ONBOARDING_URL}
+                onClick={() => trackOnboardingChecklistOpened()}
+              >
+                {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+                {t`How to use Metabase`}
+              </PaddedSidebarLink>
+            )}
+            {showUploadCSVButton && <DwhUploadCSV />}
           </SidebarSection>
 
           {bookmarks.length > 0 && (
@@ -181,14 +252,15 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
+          {showAddDatabaseButton && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <AddDatabase />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection
-          collections={collections}
-          databases={databases}
-          hasDataAccess={hasDataAccess}
-          isAdmin={isAdmin}
-        />
       </SidebarContentRoot>
     </ErrorBoundary>
   );

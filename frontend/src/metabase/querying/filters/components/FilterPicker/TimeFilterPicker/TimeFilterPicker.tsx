@@ -12,7 +12,7 @@ import * as Lib from "metabase-lib";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MAX_WIDTH, MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function TimeFilterPicker({
@@ -62,8 +62,7 @@ export function TimeFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
-      maw={MAX_WIDTH}
+      w={WIDTH}
       data-testid="time-filter-picker"
       onSubmit={handleSubmit}
     >

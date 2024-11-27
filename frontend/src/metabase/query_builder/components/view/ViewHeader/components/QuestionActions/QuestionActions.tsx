@@ -2,16 +2,13 @@ import type { ChangeEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { useDispatch } from "metabase/lib/redux";
 import {
   PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
@@ -24,7 +21,6 @@ import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -77,9 +73,6 @@ export const QuestionActions = ({
   onInfoClick,
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
-
-  const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
   const dispatch = useDispatch();
 
@@ -95,7 +88,6 @@ export const QuestionActions = ({
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
   const hasCollectionPermissions = question.canWrite();
-  const database = question.database();
   const canAppend =
     hasCollectionPermissions && !!question._card.based_on_upload;
   const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
@@ -134,22 +126,8 @@ export const QuestionActions = ({
     });
   }
 
-  if (
-    isMetabotEnabled &&
-    isModel &&
-    database &&
-    canUseMetabotOnDatabase(database)
-  ) {
-    extraButtons.push({
-      title: t`Ask Metabot`,
-      icon: "insight",
-      link: Urls.modelMetabot(question.id()),
-    });
-  }
-
-  const moderationItems = PLUGIN_MODERATION.useMenuItems(
+  const moderationItems = PLUGIN_MODERATION.useQuestionMenuItems(
     question,
-    isModerator,
     reload,
   );
   extraButtons.push(...moderationItems);

@@ -14,7 +14,7 @@ import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MAX_WIDTH, MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
@@ -74,8 +74,7 @@ export function CoordinateFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
-      maw={MAX_WIDTH}
+      w={WIDTH}
       data-testid="coordinate-filter-picker"
       onSubmit={handleSubmit}
     >

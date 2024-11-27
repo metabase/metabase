@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
@@ -33,15 +34,21 @@ const TEST_RESULT = createMockDataset();
 interface SetupOpts {
   card?: Card;
   result?: Dataset;
+  settings?: Record<string, unknown>;
 }
 
-const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
+const setup = ({
+  card = TEST_CARD,
+  result = TEST_RESULT,
+  settings = { "enable-pivoted-exports": true },
+}: SetupOpts = {}) => {
   const onDownload = jest.fn();
 
   const state = createMockState({
     entities: createMockEntitiesState({
       questions: [card],
     }),
+    settings: mockSettings(settings),
   });
 
   const metadata = getMetadata(state);
@@ -55,6 +62,9 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
       result={result}
       onDownload={onDownload}
     />,
+    {
+      storeInitialState: state,
+    },
   );
 
   return { onDownload };
@@ -96,7 +106,10 @@ describe("QueryDownloadPopover", () => {
       const { onDownload } = setup();
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
-      await userEvent.click(screen.getByLabelText(`Unformatted`));
+      await userEvent.click(screen.getByLabelText("Unformatted"));
+      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
+        `E.g. 2024-09-06 or 187.50, like in the database`,
+      );
       expect(
         screen.queryByLabelText("Keep data pivoted"),
       ).not.toBeInTheDocument();
@@ -107,6 +120,31 @@ describe("QueryDownloadPopover", () => {
       expect(onDownload).toHaveBeenCalledWith({
         type: format,
         enableFormatting: false,
+        enablePivot: false,
+      });
+    },
+  );
+
+  it.each(["csv", "json", "xlsx"])(
+    "should trigger formatted download for %s format",
+    async format => {
+      const { onDownload } = setup();
+
+      await userEvent.click(screen.getByLabelText(`.${format}`));
+      await userEvent.click(screen.getByLabelText("Formatted"));
+      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
+        `E.g. September 6, 2024 or $187.50, like in Metabase`,
+      );
+      expect(
+        screen.queryByLabelText("Keep data pivoted"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
+
+      expect(onDownload).toHaveBeenCalledWith({
+        type: format,
+        enableFormatting: true,
         enablePivot: false,
       });
     },
@@ -142,7 +180,6 @@ describe("QueryDownloadPopover", () => {
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
       await userEvent.click(screen.getByLabelText(`Unformatted`));
-      await userEvent.click(screen.getByLabelText("Keep data pivoted"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
       );
@@ -154,4 +191,16 @@ describe("QueryDownloadPopover", () => {
       });
     },
   );
+
+  it("should hide 'Keep data pivoted' option when enable-pivoted-exports setting is false", async () => {
+    setup({
+      card: { ...TEST_CARD, display: "pivot" },
+      settings: { "enable-pivoted-exports": false },
+    });
+
+    await userEvent.click(screen.getByLabelText(".csv"));
+    expect(
+      screen.queryByLabelText("Keep data pivoted"),
+    ).not.toBeInTheDocument();
+  });
 });

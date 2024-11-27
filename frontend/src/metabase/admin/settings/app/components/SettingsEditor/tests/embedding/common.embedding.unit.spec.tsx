@@ -62,12 +62,14 @@ describe("[OSS] embedding settings", () => {
           }),
         );
         expect(
-          withinStaticEmbeddingCard.getByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.getByText(
+            "upgrade to a specific paid plan",
+          ),
         ).toBeInTheDocument();
 
         expect(
           withinStaticEmbeddingCard.getByRole("link", {
-            name: "upgrade to a paid plan",
+            name: "upgrade to a specific paid plan",
           }),
         ).toHaveProperty(
           "href",
@@ -274,12 +276,14 @@ describe("[OSS] embedding settings", () => {
           }),
         );
         expect(
-          withinStaticEmbeddingCard.getByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.getByText(
+            "upgrade to a specific paid plan",
+          ),
         ).toBeInTheDocument();
 
         expect(
           withinStaticEmbeddingCard.getByRole("link", {
-            name: "upgrade to a paid plan",
+            name: "upgrade to a specific paid plan",
           }),
         ).toHaveProperty(
           "href",

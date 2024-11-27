@@ -96,7 +96,7 @@
             (ingest-file (second target))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:abs-path abs-path} e))))
-          (throw (ex-info "Cannot find file entry" {:abs-path abs-path})))))))
+          (throw (ex-info "Cannot find file" {:abs-path abs-path})))))))
 
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by

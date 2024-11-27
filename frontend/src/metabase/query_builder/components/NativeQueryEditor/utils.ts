@@ -128,5 +128,9 @@ export const getAutocompleteResultMeta = (
     return t`Model in ${collectionName}`;
   }
 
+  if (type === "metric") {
+    return t`Metric in ${collectionName}`;
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };

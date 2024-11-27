@@ -8,57 +8,43 @@ import {
   type NativeQuestionDetails,
   type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
-  assertQueryBuilderRowCount,
   createNativeQuestion,
   createQuestion,
   describeEE,
-  describeEE,
-  editDashboard,
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
   getPinnedSection,
-  getPinnedSection,
   hovercard,
   join,
+  main,
   mapColumnTo,
   modal,
   navigationSidebar,
-  navigationSidebar,
-  newButton,
   newButton,
   openColumnOptions,
   openNotebook,
   openQuestionActions,
   popover,
   questionInfoButton,
-  questionInfoButton,
   renameColumn,
   restore,
-  rightSidebar,
   rightSidebar,
   saveMetadataChanges,
   saveQuestion,
   setDropdownFilterType,
-  setDropdownFilterType,
-  setFilter,
   setFilter,
   setTokenFeatures,
-  setTokenFeatures,
-  sidebar,
   sidebar,
   sidesheet,
   startNewModel,
   startNewQuestion,
   summarize,
-  summarize,
   tableHeaderClick,
   tableInteractive,
-  tableInteractive,
   undoToast,
-  visitDashboard,
   visitDashboard,
   visitModel,
   visualize,
@@ -782,7 +768,9 @@ describe("issue 25885", () => {
     cy.findByLabelText("Display name")
       .should("have.value", oldName)
       .clear()
-      .type(newName);
+      .type(newName)
+      .blur();
+    tableInteractive().findByTextEnsureVisible(newName);
   }
 
   function verifyColumnName(name: string) {
@@ -975,6 +963,12 @@ describe("issue 34574", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
+    cy.intercept("GET", "/api/card/*").as("card");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("GET", "/api/table/*/fks").as("fks");
+    cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
+    cy.intercept("POST", "api/dataset").as("dataset");
   });
 
   it("should accept markdown for model description and render it properly (metabase#34574)", () => {
@@ -989,6 +983,7 @@ describe("issue 34574", () => {
     createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
       visitModel(modelId),
     );
+    cy.wait(["@card", "@metadata", "@dataset"]);
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       // make sure the model fully loaded
@@ -998,27 +993,32 @@ describe("issue 34574", () => {
 
     sidesheet().within(() => {
       cy.log("Set the model description to a markdown text");
-      cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
       cy.findByPlaceholderText("Add description").type(
         "# Hello{enter}## World{enter}This is an **important** description!",
       );
       cy.realPress("Tab");
-      cy.wait("@metadata");
+      cy.wait(["@metadata", "@updateCard"]);
 
       cy.log("Make sure we immediately render the proper markdown");
+      cy.findByTestId("editable-text").get("textarea").should("not.exist");
       cy.findByTestId("editable-text").within(assertMarkdownPreview);
     });
 
     cy.log(
       "Make sure the markdown is properly preserved in the model details page",
     );
+    // Let redux handle async actions so that they won't interfere with the action
+    // triggered by the next click. Test will flake without this due to wrong navigation.
+    cy.wait(1);
     cy.findByRole("link", { name: "See more about this model" }).click();
+    cy.wait("@fks");
     cy.findByLabelText("Description").within(assertMarkdownPreview);
 
     cy.log(
       "Make sure the description is present in the collection entry tooltip",
     );
     cy.findByTestId("app-bar").findByText("Our analytics").click();
+    cy.wait(["@rootCollection", "@rootCollection"]);
     cy.location("pathname").should("eq", "/collection/root");
     cy.findAllByTestId("collection-entry-name")
       .filter(`:contains(${modelDetails.name})`)
@@ -1313,5 +1313,87 @@ describe("issue 46221", () => {
     cy.findByTestId("head-crumbs-container")
       .should("contain", "First collection")
       .and("contain", modelDetails.name);
+  });
+});
+
+describe("issue 20624", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    name: "Question",
+    type: "question",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+    visualization_settings: {
+      column_settings: {
+        '["name","VENDOR"]': { column_title: "Retailer" },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should reset the question's viz settings when converting to a model (metabase#20624)", () => {
+    cy.log("check that a column is renamed via the viz settings");
+    createQuestion(questionDetails, { visitQuestion: true });
+    tableInteractive().within(() => {
+      cy.findByText("Retailer").should("be.visible");
+      cy.findByText("Vendor").should("not.exist");
+    });
+
+    cy.log("check that the viz settings are reset when converting to a model");
+    openQuestionActions();
+    popover().findByText("Turn into a model").click();
+    modal().findByText("Turn this into a model").click();
+    cy.wait("@updateCard");
+    tableInteractive().within(() => {
+      cy.findByText("Vendor").should("be.visible");
+      cy.findByText("Retailer").should("not.exist");
+    });
+
+    cy.log("rename the column using the model's metadata");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("Vendor");
+    cy.findByLabelText("Display name").clear().type("Retailer");
+    cy.button("Save changes").should("be.enabled").click();
+    cy.wait("@updateCard");
+    tableInteractive().within(() => {
+      cy.findByText("Retailer").should("be.visible");
+      cy.findByText("Vendor").should("not.exist");
+    });
+  });
+});
+
+describe("issue 37300", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+
+    createQuestion(
+      {
+        type: "model",
+        query: {
+          "source-table": PRODUCTS_ID,
+          filter: ["=", ["field", PRODUCTS.ID, null], "999991"],
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should show the table headers even when there are no results (metabase/metabase#37300)", () => {
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+
+    main().within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("Ean").should("be.visible");
+
+      cy.findByText("No results!").should("be.visible");
+    });
   });
 });

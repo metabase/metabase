@@ -18,6 +18,10 @@ export type ExcludeDatePickerOperator =
 
 export type DatePickerShortcut = (typeof DATE_PICKER_SHORTCUTS)[number];
 
+export type DatePickerUnit =
+  | DatePickerExtractionUnit
+  | DatePickerTruncationUnit;
+
 export type DatePickerExtractionUnit =
   (typeof DATE_PICKER_EXTRACTION_UNITS)[number];
 

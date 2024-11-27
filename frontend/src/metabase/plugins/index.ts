@@ -41,6 +41,7 @@ import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  BaseUser,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
@@ -58,7 +59,6 @@ import type {
   ModelCacheRefreshStatus,
   Revision,
   User,
-  UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
@@ -225,7 +225,7 @@ const defaultLoginPageIllustration = {
   isDefault: true,
 };
 
-const getLoadingMessage = (isSlow: boolean) =>
+const getLoadingMessage = (isSlow: boolean = false) =>
   isSlow ? t`Waiting for results...` : t`Doing science...`;
 
 // selectors that customize behavior between app versions
@@ -333,6 +333,9 @@ export const PLUGIN_COLLECTIONS = {
     _canWrite: boolean,
   ): CleanUpMenuItem[] => [],
   cleanUpRoute: null as React.ReactElement | null,
+  cleanUpAlert: (() => null) as (props: {
+    collection: Collection;
+  }) => JSX.Element | null,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<
@@ -375,25 +378,19 @@ export type RevisionOrModerationEvent = {
 
 export const PLUGIN_MODERATION = {
   isEnabled: () => false,
-  QuestionModerationIcon: PluginPlaceholder,
+  EntityModerationIcon: PluginPlaceholder,
   QuestionModerationSection: PluginPlaceholder,
-  QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
-  ModerationReviewText: PluginPlaceholder,
+  ModerationReviewTextForQuestion: PluginPlaceholder,
+  ModerationReviewTextForDashboard: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getQuestionIcon: PluginPlaceholder,
   getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
     undefined,
-  getModerationTimelineEvents: (
-    _reviews: any,
-    _usersById: Record<string, UserListResult>,
-    _currentUser: User | null,
-  ) => [] as RevisionOrModerationEvent[],
-  useMenuItems: (
-    _question?: Question,
-    _isModerator?: boolean,
-    _reload?: () => void,
-  ) => [],
+  getModerationTimelineEvents: (_reviews: any, _currentUser: BaseUser | null) =>
+    [] as RevisionOrModerationEvent[],
+  useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
+  useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
 };
 
 export type InvalidateNowButtonProps = {

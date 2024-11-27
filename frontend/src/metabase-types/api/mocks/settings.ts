@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
   Engine,
@@ -145,6 +147,8 @@ export const createMockSettings = (
   opts?: Partial<Settings | EnterpriseSettings>,
 ): EnterpriseSettings => ({
   "admin-email": "admin@metabase.test",
+  "airgap-enabled": false,
+  "allowed-iframe-hosts": "*",
   "anon-tracking-enabled": false,
   "application-colors": {},
   "application-font": "Lato",
@@ -153,6 +157,7 @@ export const createMockSettings = (
   "application-name": "Metabase",
   "available-fonts": [],
   "available-locales": null,
+  "bug-reporting-enabled": false,
   "bcc-enabled?": true,
   "cloud-gateway-ips": null,
   "custom-formatting": {},
@@ -179,6 +184,7 @@ export const createMockSettings = (
   "enable-embedding-interactive": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
+  "enable-pivoted-exports": true,
   "expand-browse-in-nav": true,
   "expand-bookmarks-in-nav": true,
   "query-caching-ttl-ratio": 10,
@@ -190,13 +196,13 @@ export const createMockSettings = (
   "example-dashboard-id": 1,
   "has-user-setup": true,
   "hide-embed-branding?": true,
+  "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,
   "google-auth-enabled": false,
   "is-hosted?": false,
-  "is-metabot-enabled": false,
   "jwt-enabled": false,
   "jwt-configured": false,
   "ldap-configured?": false,
@@ -227,6 +233,7 @@ export const createMockSettings = (
   "setup-token": null,
   "session-cookies": null,
   "session-cookie-samesite": "lax",
+  "slack-bug-report-channel": null,
   "snowplow-enabled": false,
   "show-database-syncing-modal": false,
   "show-homepage-data": false,

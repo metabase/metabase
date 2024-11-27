@@ -43,7 +43,13 @@ export default function QueryVisualization(props) {
       ) : null}
       <VisualizationDirtyState
         {...props}
-        hidden={!canRun || !isResultDirty || isRunning || isNativeEditorOpen}
+        hidden={
+          !canRun ||
+          !isResultDirty ||
+          isRunning ||
+          isNativeEditorOpen ||
+          result?.error
+        }
         className={cx(CS.spread, CS.z2)}
       />
       {!isObjectDetail && (

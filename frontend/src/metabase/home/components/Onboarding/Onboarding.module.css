@@ -1,0 +1,130 @@
+.page {
+  background-color: var(--mb-base-color-white);
+
+  @media screen and (--breakpoint-min-lg) {
+    background-image: url("~assets/img/onboarding_bg.svg");
+    background-repeat: no-repeat;
+    background-position: bottom right;
+  }
+}
+
+.item:not([data-css-specificity-hack="🪗"]) {
+  &,
+  & + &,
+  &[data-active="true"] {
+    border: 0;
+    margin-top: 0;
+  }
+
+  &:not(:last-child) {
+    margin-bottom: 0.25rem;
+  }
+}
+
+.label:not([data-css-specificity-hack="🪗"]) {
+  color: var(--mb-color-text-dark);
+  font-weight: normal;
+}
+
+.control:not([data-css-specificity-hack="🪗"]) {
+  background: linear-gradient(
+    to right,
+    var(--mb-base-color-blue-10) 3rem,
+    transparent 3rem
+  );
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-dark);
+  padding-left: 0;
+  height: 3rem;
+
+  &:hover {
+    background: linear-gradient(
+      to right,
+      var(--mb-base-color-brand-20) 3rem,
+      var(--mb-base-color-brand-10) 3rem
+    );
+    color: var(--mb-color-brand);
+  }
+
+  [data-active="true"] & {
+    background: linear-gradient(
+      to right,
+      var(--mb-color-brand) 3rem,
+      transparent 3rem
+    );
+
+    &:hover {
+      background: linear-gradient(
+        to right,
+        var(--mb-color-brand) 3rem,
+        var(--mb-base-color-brand-10) 3rem
+      );
+
+      .label,
+      .chevron svg {
+        color: var(--mb-color-brand);
+      }
+    }
+  }
+}
+
+.chevron:not([data-css-specificity-hack="🪗"]) {
+  border: 0;
+}
+
+.content:not([data-css-specificity-hack="🪗"]) {
+  border: 0;
+  color: var(--mb-color-text-medium);
+  padding-inline: 1rem;
+  padding-top: 1.5rem;
+  padding-bottom: 3rem;
+}
+
+.icon:not([data-css-specificity-hack="🪗"]) {
+  color: var(--mb-color-brand);
+  height: 3rem;
+  margin-right: 1rem;
+  width: 3rem;
+
+  [data-active="true"] & {
+    color: var(--mb-base-color-white);
+  }
+}
+
+.list {
+  list-style-type: circle;
+
+  li {
+    margin-left: 2rem;
+  }
+}
+
+.inlineIcon {
+  vertical-align: middle;
+}
+
+.support {
+  align-items: center;
+  background-color: var(--mb-base-color-blue-10);
+  border-radius: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+
+  @media screen and (--breakpoint-min-sm) {
+    flex-wrap: nowrap;
+  }
+}
+
+.video {
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  width: 100%;
+}
+
+.image {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+}

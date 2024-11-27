@@ -1,23 +1,20 @@
 (ns metabase.models.params.shared
   "Util functions for dealing with parameters. Primarily used for substituting parameters into variables in Markdown
   dashboard cards."
-  #?@
-   (:clj
-    [(:require
-      [clojure.string :as str]
-      [metabase.legacy-mbql.normalize :as mbql.normalize]
-      [metabase.util.date-2 :as u.date]
-      [metabase.util.date-2.parse.builder :as b]
-      [metabase.util.i18n :refer [trs trsn]]
-      [metabase.util.i18n.impl :as i18n.impl])
-     (:import
-      (java.time.format DateTimeFormatter))]
-    :cljs
-    [(:require
-      ["moment" :as moment]
-      [clojure.string :as str]
-      [metabase.legacy-mbql.normalize :as mbql.normalize]
-      [metabase.util.i18n :refer [trs trsn]])]))
+  (:require
+   #?@(:clj
+       ([metabase.util.date-2 :as u.date]
+        [metabase.util.date-2.parse.builder :as b]
+        [metabase.util.i18n.impl :as i18n.impl]))
+   #?@(:cljs
+       (["moment" :as moment]))
+   [clojure.string :as str]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs trsn]])
+  (:import
+   #?@(:clj
+       ((java.time.format DateTimeFormatter)))))
 
 ;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
 #?(:cljs (comment moment/keep-me))
@@ -153,6 +150,22 @@
              ;; If we got an exception (most likely during date parsing/formatting), fallback to the default
              ;; implementation of formatted-value
              (formatted-value :default value locale))))))
+
+(defn param-val-or-default
+  "Returns the parameter value, such that:
+    * nil value => nil
+    * missing value key => default"
+  [parameter]
+  (get parameter :value (:default parameter)))
+
+(defn value-string
+  "Returns the value(s) of a dashboard filter, formatted appropriately."
+  [parameter locale]
+  (let [tyype  (:type parameter)
+        values (param-val-or-default parameter)]
+    (try (formatted-value tyype values locale)
+         (catch #?(:clj Throwable :cljs js/Error) _
+           (formatted-list (u/one-or-many values))))))
 
 (def ^:private template-tag-regex
   "A regex to find template tags in a text card on a dashboard. This should mirror the regex used to find template

@@ -76,7 +76,8 @@
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
 (doto :model/Revision
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/search-index))
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
@@ -84,7 +85,7 @@
 (t2/define-before-insert :model/Revision
   [revision]
   (assoc revision
-         :timestamp :%now
+         :timestamp (or (:timestamp revision) :%now)
          :metabase_version config/mb-version-string
          :most_recent true))
 

@@ -15,15 +15,23 @@ export const SaveQuestionModal = ({
   originalQuestion,
   question,
   closeOnSuccess,
+  saveToCollectionId,
   ...modalProps
 }: SaveQuestionProps & Omit<ModalProps, "title">) => (
   <SaveQuestionProvider
     question={question}
     originalQuestion={originalQuestion}
-    onCreate={onCreate}
+    onCreate={async question => {
+      await onCreate(question);
+
+      if (closeOnSuccess) {
+        modalProps.onClose();
+      }
+    }}
     onSave={onSave}
     multiStep={multiStep}
     initialCollectionId={initialCollectionId}
+    saveToCollectionId={saveToCollectionId}
   >
     <Modal.Root padding="2.5rem" {...modalProps}>
       <Modal.Overlay />

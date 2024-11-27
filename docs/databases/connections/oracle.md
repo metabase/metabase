@@ -1,5 +1,5 @@
 ---
-title:
+title: Oracle
 redirect_from:
   - /docs/latest/administration-guide/databases/oracle
 ---
@@ -44,6 +44,19 @@ The password for the username that you use to connect to the database.
 
 You can use both client and server authentication (known as mutual authentication).
 
+### Connecting to Oracle Cloud Autonomous Database
+
+If you've configured your database to require mutual TLS (mTLS), you'll need a [wallet](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/connect-download-wallet.html#GUID-DED75E69-C303-409D-9128-5E10ADD47A35). To download your wallet:
+
+1. Go to your Oracle Autonomous Database.
+2. Go to the database's details.
+3. Click on **DB connection**.
+4. Download the wallet.
+5. Create a password for the keyfile.
+6. Copy the `keystore.jks` file to wherever you store your Metabase configuration data.
+7. Use `JAVA_OPTS` to let Metabase know about the keystore's location and password (for more info on keystores, see the next section).
+8. In Metabase, on the data connection page, enter your `host`, `port`, and `service_name`. You can find these values in the `tsnnames.ora` file.
+
 #### Client authentication with a keystore
 
 To configure the server (the Oracle server) to authenticate the identity of the client (Metabase), you need to
@@ -55,6 +68,12 @@ You'll import the client's private key into the keystore (rather than a root CA 
 -Djavax.net.ssl.keyStore=/path/to/keystore.jks
 -Djavax.net.ssl.keyStoreType=JKS \
 -Djavax.net.ssl.keyStorePassword=<keyStorePassword>
+```
+
+You can define these with the `JAVA_OPTS` environment variable, like so:
+
+```sh
+JAVA_OPTS: "-Djavax.net.ssl.keyStore=/scripts/keystore.jks -Djavax.net.ssl.keyStoreType=JKS -Djavax.net.ssl.keyStorePassword=<keyStorePassword>"
 ```
 
 With this done, the Oracle server will authenticate Metabase using the private key when Metabase tries to connect over SSL.

@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.pivots :as api.pivots]
+   [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.http-client :as client]
@@ -48,7 +49,7 @@
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.revision :as revision]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
@@ -904,10 +905,23 @@
                            :id        "927e929"
                            :type      :temporal-unit
                            :sectionId "temporal-unit"
-                           :temporal_units ["week" "month"]}]]
+                           :temporal_units [:week :month]}]]
               (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:parameters params})
               (is (= params
-                     (t2/select-one-fn :parameters Dashboard :id (u/the-id dashboard)))))))))))
+                     (t2/select-one-fn :parameters Dashboard :id (u/the-id dashboard))))))
+
+          (testing "Update dashboard with parameters works (#50371)"
+            (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
+                                                     {:archived :true})]
+              (is (=? {:archived true
+                       :parameters
+                       [{:name      "Time Unit"
+                         :slug      "time_unit"
+                         :id        "927e929"
+                         :type      "temporal-unit"
+                         :sectionId "temporal-unit"
+                         :temporal_units ["week" "month"]}]}
+                      put-response)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD CARD IN DASHCARD                                         |
@@ -1042,7 +1056,7 @@
   (testing "Check that moving a dashboard to another collection will fixup both collections"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Collection collection-1 {}
-                     Collection collection-2] {}
+                     Collection collection-2 {}]
         (api.card-test/with-ordered-items collection-1 [Dashboard a
                                                         Card      b
                                                         Card      c
@@ -4365,7 +4379,7 @@
             (testing "Pulse starts as unarchived"
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
-              (is (true? (:archived (pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
+              (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
@@ -4617,10 +4631,38 @@
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
          (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
-              ;; The output is so large, these help debugging
-             #_#_#_(update :fields #(map (fn [x] (select-keys x [:id])) %))
-                 (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))))
+             #_(api.test-util/select-query-metadata-keys-for-debugging))))))
+
+(deftest dashboard-query-metadata-with-archived-and-deleted-source-card-test
+  (testing "Don't throw an error if source card is deleted (#48461)"
+    (mt/with-temp
+      [Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
+       Card          {card-id-2 :id}    {:dataset_query {:type     :query
+                                                         :query    {:source-table (str "card__" card-id-1)}}}
+       Dashboard     {dashboard-id :id} {}
+       DashboardCard _                  {:card_id      card-id-2
+                                         :dashboard_id dashboard-id}]
+
+      (letfn [(query-metadata []
+                (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
+                    (api.test-util/select-query-metadata-keys-for-debugging)))]
+        (api.test-util/before-and-after-deleted-card
+         card-id-1
+         #(testing "Before delete"
+            (is (=?
+                 {:cards      empty?
+                  :fields     empty?
+                  :dashboards empty?
+                  :tables     [{:id (str "card__" card-id-1)}]
+                  :databases  [{:id (mt/id) :engine string?}]}
+                 (query-metadata))))
+         #(testing "After delete"
+            (is (=? {:cards      empty?
+                     :fields     empty?
+                     :dashboards empty?
+                     :tables     empty?
+                     :databases  empty?}
+                    (query-metadata)))))))))
 
 (deftest dashboard-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
@@ -4864,3 +4906,69 @@
             ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
             ;; of things working as described.
             (is (= 1 @call-count))))))))
+
+;; Exception during scheduled (grouper) update of UserParameterValue is thrown. It is not relevant in context
+;; of tested functionality.
+;; TODO: Address the exception!
+(deftest dependent-dashcard-parameters-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "c1"
+                                            :dataset_query (mt/mbql-query
+                                                             orders
+                                                             {:aggregation [[:count]]
+                                                              :breakout
+                                                              [!day.$created_at]})}
+                 :model/Dashboard {dashboard-id :id} {:name "d1"
+                                                      :parameters []}
+                 :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                         :dashboard_id dashboard-id
+                                                         :parameter_mappings []}]
+    (t2/update! :model/Dashboard :id dashboard-id {:parameters [{:name "TIME Gr"
+                                                                 :slug "tgr"
+                                                                 :id "30d7efb0"
+                                                                 :type :temporal-unit
+                                                                 :sectionId "temporal-unit"}]})
+    (t2/update! :model/DashboardCard :id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
+                                                                            :type :temporal-unit
+                                                                            :card_id card-id
+                                                                            :target [:dimension
+                                                                                     (mt/$ids orders !day.$created_at)]}]})
+    (testing "Baseline"
+      (is (=? [["2016-04-01T00:00:00Z" 1]
+               ["2016-05-01T00:00:00Z" 19]]
+              (->> (mt/user-http-request
+                    :crowberto :post 202
+                    (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id)
+                    {:parameters [{:id "30d7efb0"
+                                   :type "temporal-unit"
+                                   :value "month"
+                                   :target
+                                   [:dimension
+                                    (mt/$ids orders !day.$created_at)]}]})
+                   mt/rows
+                   (take 2)))))
+    (mt/user-http-request
+     :crowberto :put 200
+     (format "card/%d" card-id)
+     {:dataset_query (mt/mbql-query
+                       orders
+                       {:aggregation [[:count]]
+                        :breakout
+                        [!year.$created_at]})})
+    (testing "Mapping is adjusted to new target (#49202)"
+      (is (= (mt/$ids orders !year.$created_at)
+             (t2/select-one-fn #(get-in % [:parameter_mappings 0 :target 1])
+                               :model/DashboardCard :id dashcard-id))))))
+
+(deftest querying-a-dashboard-returns-moderated_status
+  (mt/dataset test-data
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
+                   :model/ModerationReview _ {:moderated_item_id dashboard-id
+                                              :moderated_item_type "dashboard"
+                                              :moderator_id (mt/user->id :crowberto)
+                                              :most_recent true
+                                              :status "verified"}]
+      (is (malli= [:sequential
+                   [:map
+                    [:most_recent [:= true]]
+                    [:moderator_id [:= (mt/user->id :crowberto)]]]]
+                  (:moderation_reviews (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id))))))))

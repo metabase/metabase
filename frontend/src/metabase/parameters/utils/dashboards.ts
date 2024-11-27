@@ -20,6 +20,7 @@ import type {
   CardId,
   DashCardId,
   Dashboard,
+  DashboardCard,
   DashboardParameterMapping,
   Parameter,
   ParameterMappingOptions,
@@ -140,6 +141,28 @@ export function getDashboardUiParameters(
   });
 
   return uiParameters;
+}
+
+export function getDashboardQuestions(
+  dashcards: DashboardCard[],
+  metadata: Metadata,
+) {
+  return dashcards.reduce<Record<CardId, Question>>((acc, dashcard) => {
+    if (isQuestionDashCard(dashcard)) {
+      const cards = [dashcard.card, ...(dashcard.series ?? [])];
+
+      for (const card of cards) {
+        const question = isQuestionCard(card)
+          ? new Question(card, metadata)
+          : undefined;
+        if (question) {
+          acc[card.id] = question;
+        }
+      }
+    }
+
+    return acc;
+  }, {});
 }
 
 function buildFieldFilterUiParameter(

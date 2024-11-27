@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.driver.mysql-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -76,6 +77,22 @@
             (is (= [[1 nil]]
                    (mt/rows
                     (mt/run-mbql-query exciting-moments-in-history))))))))))
+
+(deftest multiple-schema-test
+  (testing "Make sure that we filter databases (schema) with :db or :dbname (#50072)"
+    (mt/test-driver :mysql
+      (drop-if-exists-and-create-db! "dbone")
+      (drop-if-exists-and-create-db! "dbtwo")
+      (doseq [dbname ["dbone" "dbtwo"]
+              :let [details (tx/dbdef->connection-details :mysql :db {:database-name dbname})
+                    spec    (sql-jdbc.conn/connection-details->spec :mysql details)]]
+        (jdbc/execute! spec [(format "CREATE TABLE same_table_name (%s_a integer, %s_b integer, %s_c integer);" dbname dbname dbname)]))
+      (doseq [details [(tx/dbdef->connection-details :mysql :db {:database-name "dbone"})
+                       (set/rename-keys (tx/dbdef->connection-details :mysql :db {:database-name "dbone"}) {:db :dbname})]]
+        (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+          (sync/sync-database! database)
+          (is (= #{"dbone_a" "dbone_b" "dbone_c"}
+                 (into #{} (map :name) (driver/describe-fields :mysql database)))))))))
 
 (deftest date-test
   ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
@@ -528,14 +545,14 @@
                                            :aggregation  [[:count]]
                                            :breakout     [[:field (u/the-id field) nil]]}})]
               (is (= ["SELECT"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) AS `json_bit → 1234`,"
+                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
                       "FROM"
                       "  `json`"
                       "GROUP BY"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED)"
+                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL)"
                       "ORDER BY"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) ASC"]
+                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) ASC"]
                      (str/split-lines (driver/prettify-native-form :mysql (:query compile-res)))))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -555,7 +572,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((FLOOR(((CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) - 0.75) / 0.75)) * 0.75) + 0.75)"
+                  (is (= ["((FLOOR(((CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
 

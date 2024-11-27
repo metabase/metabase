@@ -84,16 +84,18 @@ export function saveDashboard({
   waitMs = 1,
   awaitRequest = true,
 } = {}) {
-  cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+  cy.intercept("PUT", "/api/dashboard/*").as(
+    "saveDashboard-saveDashboardCards",
+  );
+  cy.intercept("GET", "/api/dashboard/*").as("saveDashboard-getDashboard");
   cy.button(buttonLabel).click();
 
   if (awaitRequest) {
-    cy.wait("@saveDashboardCards").then(() => {
-      cy.findByText(editBarText).should("not.exist");
-    });
-  } else {
-    cy.findByText(editBarText).should("not.exist");
+    cy.wait("@saveDashboard-saveDashboardCards");
+    cy.wait("@saveDashboard-getDashboard");
   }
+
+  cy.findByText(editBarText).should("not.exist");
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
@@ -160,6 +162,20 @@ export function addIFrameWhileEditing(
   cy.findByTestId("iframe-card-input").type(embed, options);
 }
 
+export function editIFrameWhileEditing(
+  dashcardIndex = 0,
+  embed: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
+  getDashboardCard(dashcardIndex)
+    .realHover()
+    .findByTestId("dashboardcard-actions-panel")
+    .should("be.visible")
+    .icon("pencil")
+    .click();
+  cy.findByTestId("iframe-card-input").type(`{selectall}${embed}`, options);
+}
+
 export function addTextBoxWhileEditing(
   text: string,
   options: Partial<Cypress.TypeOptions> = {},
@@ -218,6 +234,14 @@ export function duplicateTab(tabName: string) {
 
 export function goToTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).click();
+}
+
+export function assertTabSelected(tabName: string) {
+  cy.findByRole("tab", { name: tabName }).should(
+    "have.attr",
+    "aria-selected",
+    "true",
+  );
 }
 
 export function moveDashCardToTab({

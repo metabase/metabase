@@ -2,7 +2,6 @@ import {
   createMockCard,
   createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
-import { ORDERS } from "metabase-types/api/mocks/presets";
 
 import { extendCardWithDashcardSettings, mergeSettings } from "./typed-utils";
 
@@ -52,22 +51,18 @@ describe("mergeSettings (metabase#14597)", () => {
   describe("table.columns", () => {
     const ID_COLUMN = createMockTableColumnOrderSetting({
       name: "ID",
-      fieldRef: ["field", ORDERS.ID, null],
     });
 
     const QUANTITY_COLUMN = createMockTableColumnOrderSetting({
       name: "QUANTITY",
-      fieldRef: ["field", ORDERS.QUANTITY, null],
     });
 
     const TAX_COLUMN = createMockTableColumnOrderSetting({
       name: "TAX",
-      fieldRef: ["field", ORDERS.TAX, null],
     });
 
     const DISCOUNT_COLUMN = createMockTableColumnOrderSetting({
       name: "DISCOUNT",
-      fieldRef: ["field", ORDERS.DISCOUNT, null],
     });
 
     it("should remove columns that don't appear in the first settings", () => {

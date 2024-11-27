@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
-import { formatColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import {
   ChartSettingsTableFormatting,
@@ -198,7 +198,7 @@ class Table extends Component<TableProps, TableState> {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => formatColumn(column),
+        getDefault: column => displayNameForColumn(column),
       },
       click_behavior: {},
     };

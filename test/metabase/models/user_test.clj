@@ -31,6 +31,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
@@ -38,6 +39,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures
+  :once
+  (fixtures/initialize :test-users :notifications))
 
 (comment
   ;; this has to be loaded for the Google Auth tests to work

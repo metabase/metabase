@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
+   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -55,6 +56,17 @@
                                          embedding-app-origin "https: http:"]
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))))
+
+(deftest csp-header-iframe-hosts-tests
+  (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
+    (tu/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
+      (is (= (str "frame-src 'self' https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
+                  "https://metabase.com https://*.metabase.com https://www.metabase.com "
+                  "https://clojure.org https://*.clojure.org")
+             (csp-directive "frame-src")))))
+  (testing "Includes 'self' so embed previews work (#49142)"
+    (let [hosts (-> (csp-directive "frame-src") (str/split #"\s+") set)]
+      (is (contains? hosts "'self'") "frame-src hosts does not include 'self'"))))
 
 (deftest xframeoptions-header-tests
   (mt/with-premium-features #{:embedding}
@@ -218,3 +230,65 @@
                                                           (embed.settings/enable-embedding-sdk)
                                                           (embed.settings/embedding-app-origins-sdk))
                       "Access-Control-Allow-Origin"))))))))
+
+(deftest allowed-iframe-hosts-test
+  (testing "The allowed iframe hosts parse in the expected way."
+    (let [default-hosts @#'public-settings/default-allowed-iframe-hosts]
+      (testing "The defaults hosts parse correctly"
+        (is (= ["'self'"
+                "youtube.com"
+                "*.youtube.com"
+                "youtu.be"
+                "*.youtu.be"
+                "loom.com"
+                "*.loom.com"
+                "vimeo.com"
+                "*.vimeo.com"
+                "docs.google.com"
+                "calendar.google.com"
+                "airtable.com"
+                "*.airtable.com"
+                "typeform.com"
+                "*.typeform.com"
+                "canva.com"
+                "*.canva.com"
+                "codepen.io"
+                "*.codepen.io"
+                "figma.com"
+                "*.figma.com"
+                "grafana.com"
+                "*.grafana.com"
+                "miro.com"
+                "*.miro.com"
+                "excalidraw.com"
+                "*.excalidraw.com"
+                "notion.com"
+                "*.notion.com"
+                "atlassian.com"
+                "*.atlassian.com"
+                "trello.com"
+                "*.trello.com"
+                "asana.com"
+                "*.asana.com"
+                "gist.github.com"
+                "linkedin.com"
+                "*.linkedin.com"
+                "twitter.com"
+                "*.twitter.com"
+                "x.com"
+                "*.x.com"]
+               (mw.security/parse-allowed-iframe-hosts default-hosts))))
+      (testing "Additional hosts a user may configure will parse correctly as well"
+        (is (= ["'self'" "localhost"
+                "http://localhost:8000"
+                "my.domain.local:9876"
+                "*"
+                "mysite.com"
+                "*.mysite.com"
+                "www.mysite.com"
+                "mysite.cool.com"
+                "www.mysite.cool.com"]
+               (mw.security/parse-allowed-iframe-hosts "localhost, http://localhost:8000,    my.domain.local:9876, *, www.mysite.com/, www.mysite.cool.com"))))
+      (testing "invalid hosts are not included"
+        (is (= ["'self'"]
+               (mw.security/parse-allowed-iframe-hosts "asdf/wasd/:8000 */localhost:*")))))))

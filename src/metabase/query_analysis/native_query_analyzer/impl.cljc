@@ -16,7 +16,7 @@
 ;; Using a separate list to the above, as we may want this to be more restrictive.
 (def trusted-for-table-permissions?
   "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"
-  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
+  #{:h2 :mysql :postgres})
 
 (defn macaw-options
   "Generate the options expected by Macaw based on the nature of the given driver."
@@ -51,7 +51,7 @@
      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
                              :square-bracket-quotes  (= :sqlserver driver)
-                             :unsupported-statements true
+                             :unsupported-statements false
                              :backslash-escape-char  true
                              ;; This will slow things down, but until we measure the difference, opt for correctness.
                              :complex-parsing        true}

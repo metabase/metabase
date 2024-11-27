@@ -244,6 +244,21 @@
              :sort-direction :asc}))
         "should not include verified dashboards or cards")))
 
+(deftest cards-in-non-standard-collection-types-are-excluded
+  (mt/with-temp [:model/Collection {col-id :id} {:type "instance-analytics"}
+                 :model/Card _ (stale-card {:name "A" :collection_id col-id})
+                 :model/Dashboard _ (stale-dashboard {:name "Dash" :collection_id col-id})]
+    (is (= {:rows  []
+            :total 0}
+           (stale/find-candidates
+            {:collection-ids #{col-id}
+             :cutoff-date    (date-months-ago 6)
+             :limit          10
+             :offset         0
+             :sort-column    :name
+             :sort-direction :asc}))
+        "should not include cards or dashboard in non-standard collections")))
+
 (deftest public-and-embedded-content-is-excluded
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Card {card-id1 :id} (stale-card {:name          "Acard"

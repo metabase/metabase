@@ -91,7 +91,9 @@ export const QuestionInfoSidebar = ({
                     onChange={handleSave}
                     canWrite={canWrite}
                   />
-                  <PLUGIN_MODERATION.ModerationReviewText question={question} />
+                  <PLUGIN_MODERATION.ModerationReviewTextForQuestion
+                    question={question}
+                  />
                   {question.type() === "model" && !question.isArchived() && (
                     <Box
                       component={Link}

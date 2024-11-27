@@ -25,7 +25,7 @@ Go to your SQL question and [change the visualization type](../questions/sharing
 
 - [Aggregations (counts, sums, etc.) are wrong](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic#aggregated-results-counts-sums-etc-are-wrong).
 - [Results have duplicated rows](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic-duplicated-data).
-- [Results are missing rows](https://www.metabase.com/learn/debugging-sql/sql-logic-missing-data).
+- [Results are missing rows](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic-missing-data).
 
 **Explanation**
 

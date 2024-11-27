@@ -20,7 +20,7 @@ export type OnMoveWithSourceAndDestination = (
 ) => Promise<any>;
 export type OnMoveById = (id: CollectionId) => void;
 export type OnPin = () => void | null;
-export type OnArchive = (() => Promise<any> | void) | null;
+export type OnArchive = (() => Promise<any>) | null;
 export type OnRestore = (() => Promise<any> | void) | null;
 export type OnDeletePermanently = (() => Promise<any> | void) | null;
 export type OnTogglePreview = () => void | null;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -33,7 +33,7 @@ export function JoinDraft({
   isReadOnly,
   onJoinChange,
 }: JoinDraftProps) {
-  const databaseId = Lib.databaseID(query);
+  const sourceTableId = Lib.sourceTableOrCardId(query);
   const [strategy, setStrategy] = useState(
     () => initialStrategy ?? getDefaultJoinStrategy(query, stageIndex),
   );
@@ -87,23 +87,21 @@ export function JoinDraft({
     }
   };
 
-  const resetStateRef = useLatest(() => {
+  const handleReset = () => {
     const rhsTableColumns = initialRhsTable
       ? Lib.joinableColumns(query, stageIndex, initialRhsTable)
       : [];
-
     setStrategy(initialStrategy ?? getDefaultJoinStrategy(query, stageIndex));
     setRhsTable(initialRhsTable);
     setRhsTableColumns(rhsTableColumns);
     setSelectedRhsTableColumns(rhsTableColumns);
     setLhsColumn(undefined);
-  });
+  };
 
-  useEffect(
-    function resetStateOnDatabaseChange() {
-      resetStateRef.current();
-    },
-    [databaseId, resetStateRef],
+  const handleResetRef = useLatest(handleReset);
+  useLayoutEffect(
+    () => handleResetRef.current(),
+    [sourceTableId, handleResetRef],
   );
 
   return (
@@ -150,6 +148,7 @@ export function JoinDraft({
               stageIndex={stageIndex}
               joinable={rhsTable}
               lhsTableName={lhsTableName}
+              rhsTable={rhsTable}
               rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}
               isRemovable={false}

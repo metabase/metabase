@@ -23,7 +23,7 @@ For a deep dive on why and how to use models, check out our [Learn article on mo
 You can use models to:
 
 - Create, uh, models, with model here meaning an intuitive description of some concept in your business that you codify as a set of columns. An example model could be a "customer", which is a table that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column. This model represents the [measures and dimensions][measures-dimensions] that you think are relevant to your understanding of your customers.
-- Let people explore the results of SQL queries with the drill-through menu and query builder (provided you [set the column types](#column-type)).
+- Let people explore the results of SQL queries with the query builder (provided you [set the column types](#column-type)).
 - Create summary tables that pull in or aggregate data from multiple tables.
 - Clean up tables with unnecessary columns and rows filtered out.
 
@@ -82,7 +82,7 @@ You can also edit the model's metadata.
 
 ## Add metadata to columns in a model
 
-Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, or explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its query magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
 
 If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
 
@@ -102,7 +102,7 @@ For models based on SQL queries, you can tell Metabase if the column has the sam
 
 You can set the [column type][column-type]. The default is "No special type".
 
-If your model is based on a SQL query and you want people to be able to explore the results with the query builder and drill-through menu, you'll need to set the [column type](./field-types.md) for each column in your model.
+If your model is based on a SQL query and you want people to be able to explore the results with the query builder, you'll need to set the [column type](./field-types.md) for each column in your model.
 
 ### This column should appear in...
 
@@ -170,7 +170,7 @@ See [History](../exploration-and-organization/history.md).
 
 You can move outdated or unneeded models to trash, or delete them permanently. Deleting a model will affect questions that use it as a data source.
 
-See [Deleting and restoring items](../exploration-and-organization/delete-and-restore.md#delete-and-restore-items).
+See [Deleting and restoring items](../exploration-and-organization/delete-and-restore.md).
 
 ## Verifying a model
 
@@ -188,8 +188,8 @@ See [Model persistence](./model-persistence.md)
 - [Troubleshooting models][troubleshooting-models].
 
 [column-type]: ./field-types.md
-[cte]: https://www.metabase.com/learn/sql-questions/sql-cte
-[measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
+[cte]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte
+[measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures
 [question]: ../questions/start.md
-[learn-models]: https://www.metabase.com/learn/getting-started/models
+[learn-models]: https://www.metabase.com/learn/metabase-basics/getting-started/models
 [troubleshooting-models]: ../troubleshooting-guide/models.md

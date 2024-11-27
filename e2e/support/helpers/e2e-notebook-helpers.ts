@@ -5,7 +5,8 @@ import {
   entityPickerModalTab,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
-import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
+import type { NotebookStepType } from "metabase/querying/notebook/types";
+import type { IconName } from "metabase/ui";
 
 export function notebookButton() {
   return cy
@@ -222,4 +223,275 @@ export function selectSavedQuestionsToJoin(
 export function selectFilterOperator(operatorName: string) {
   cy.findByLabelText("Filter operator").click();
   cy.findByRole("menu").findByText(operatorName).click();
+}
+
+type JoinType = "left-join" | "right-join" | "inner-join" | "full-join";
+
+type Stage = {
+  joins?: {
+    lhsTable: string;
+    rhsTable: string;
+    type: JoinType;
+    conditions: {
+      operator: "=" | ">" | "<" | ">=" | "<=" | "!=";
+      lhsColumn: string;
+      rhsColumn: string;
+    }[];
+  }[];
+  expressions?: string[];
+  filters?: string[];
+  aggregations?: string[];
+  breakouts?: string[];
+  sort?: {
+    column: string;
+    order: "asc" | "desc";
+  }[];
+  limit?: number;
+};
+
+export function verifyNotebookQuery(dataSource: string, stages: Stage[] = []) {
+  getNotebookStep("data").findByText(dataSource).should("be.visible");
+
+  for (let stageIndex = 0; stageIndex < stages.length; ++stageIndex) {
+    const {
+      joins,
+      expressions,
+      filters,
+      aggregations,
+      breakouts,
+      sort,
+      limit,
+    } = stages[stageIndex];
+
+    verifyNotebookJoins(stageIndex, joins);
+    verifyNotebookExpressions(stageIndex, expressions);
+    verifyNotebookFilters(stageIndex, filters);
+    verifyNotebookAggregations(stageIndex, aggregations, breakouts);
+    verifyNotebookBreakouts(stageIndex, aggregations, breakouts);
+    verifyNotebookSort(stageIndex, sort);
+    verifyNotebookLimit(stageIndex, limit);
+  }
+}
+
+function verifyNotebookJoins(
+  stageIndex: number,
+  joins: Stage["joins"] | undefined,
+) {
+  const joinTypeIcons: Record<JoinType, IconName> = {
+    "left-join": "join_left_outer",
+    "right-join": "join_right_outer",
+    "inner-join": "join_inner",
+    "full-join": "join_full_outer",
+  };
+
+  if (Array.isArray(joins)) {
+    cy.findAllByTestId(new RegExp(`^step-join-${stageIndex}-\\d+$`)).should(
+      "have.length",
+      joins.length,
+    );
+
+    for (let joinIndex = 0; joinIndex < joins.length; ++joinIndex) {
+      const { lhsTable, rhsTable, type, conditions } = joins[joinIndex];
+
+      getJoinItems(stageIndex, joinIndex).eq(0).should("have.text", lhsTable);
+      getJoinItems(stageIndex, joinIndex).eq(1).should("have.text", rhsTable);
+
+      getNotebookStep("join", { stage: stageIndex, index: joinIndex })
+        .icon(joinTypeIcons[type])
+        .should("be.visible");
+
+      getNotebookStep("join", { stage: stageIndex, index: joinIndex })
+        .findAllByTestId(/^join-condition-\d+$/)
+        .should("have.length", conditions.length);
+
+      for (
+        let conditionIndex = 0;
+        conditionIndex < conditions.length;
+        ++conditionIndex
+      ) {
+        const { operator, lhsColumn, rhsColumn } = conditions[conditionIndex];
+        getNotebookStep("join", { stage: stageIndex, index: joinIndex })
+          .findByTestId(`join-condition-${conditionIndex}`)
+          .within(() => {
+            cy.findByLabelText("Left column")
+              .should("contain.text", lhsTable)
+              .and("contain.text", lhsColumn);
+
+            cy.findByLabelText("Right column")
+              .should("contain.text", rhsTable)
+              .and("contain.text", rhsColumn);
+
+            cy.findByLabelText("Change operator").should("have.text", operator);
+          });
+      }
+    }
+  } else {
+    getNotebookStep("join", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function verifyNotebookExpressions(
+  stageIndex: number,
+  expressions: string[] | undefined,
+) {
+  if (Array.isArray(expressions)) {
+    getExpressionItems(stageIndex).should(
+      "have.length",
+      expressions.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < expressions.length; ++index) {
+      getExpressionItems(stageIndex)
+        .eq(index)
+        .should("have.text", expressions[index]);
+    }
+  } else {
+    getNotebookStep("expression", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function verifyNotebookFilters(
+  stageIndex: number,
+  filters: string[] | undefined,
+) {
+  if (Array.isArray(filters)) {
+    getFilterItems(stageIndex).should(
+      "have.length",
+      filters.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < filters.length; ++index) {
+      getFilterItems(stageIndex).eq(index).should("have.text", filters[index]);
+    }
+  } else {
+    getNotebookStep("filter", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function verifyNotebookAggregations(
+  stageIndex: number,
+  aggregations: string[] | undefined,
+  breakouts: string[] | undefined,
+) {
+  if (Array.isArray(aggregations)) {
+    getNotebookStep("summarize", { stage: stageIndex }).scrollIntoView();
+    getSummarizeItems(stageIndex, "aggregate").should(
+      "have.length",
+      aggregations.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < aggregations.length; ++index) {
+      getSummarizeItems(stageIndex, "aggregate")
+        .eq(index)
+        .should("have.text", aggregations[index]);
+    }
+  } else {
+    if (Array.isArray(breakouts)) {
+      getSummarizeItems(stageIndex, "aggregate").should(
+        "have.length",
+        1, // 1 because of add button
+      );
+    } else {
+      getNotebookStep("summarize", { stage: stageIndex }).should("not.exist");
+    }
+  }
+}
+
+function verifyNotebookBreakouts(
+  stageIndex: number,
+  aggregations: string[] | undefined,
+  breakouts: string[] | undefined,
+) {
+  if (Array.isArray(breakouts)) {
+    getSummarizeItems(stageIndex, "breakout").should(
+      "have.length",
+      breakouts.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < breakouts.length; ++index) {
+      getSummarizeItems(stageIndex, "breakout")
+        .eq(index)
+        .should("have.text", breakouts[index]);
+    }
+  } else {
+    if (Array.isArray(aggregations)) {
+      getSummarizeItems(stageIndex, "breakout").should(
+        "have.length",
+        1, // 1 because of add button
+      );
+    } else {
+      getNotebookStep("summarize", { stage: stageIndex }).should("not.exist");
+    }
+  }
+}
+
+function verifyNotebookSort(
+  stageIndex: number,
+  sort:
+    | {
+        column: string;
+        order: "asc" | "desc";
+      }[]
+    | undefined,
+) {
+  if (Array.isArray(sort)) {
+    getSortItems(stageIndex).should(
+      "have.length",
+      sort.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < sort.length; ++index) {
+      const { column, order } = sort[index];
+      getSortItems(stageIndex).eq(index).should("have.text", column);
+      getSortItems(stageIndex)
+        .eq(index)
+        .icon(order === "asc" ? "arrow_up" : "arrow_down")
+        .should("be.visible");
+    }
+  } else {
+    getNotebookStep("sort", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
+  if (typeof limit === "number") {
+    getNotebookStep("limit", { stage: stageIndex })
+      .findByPlaceholderText("Enter a limit")
+      .should("have.value", String(limit));
+  } else {
+    getNotebookStep("limit", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function getJoinItems(stageIndex: number, index: number) {
+  return getNotebookStep("join", { stage: stageIndex, index }).findAllByTestId(
+    "notebook-cell-item",
+  );
+}
+
+function getExpressionItems(stageIndex: number) {
+  return getNotebookStep("expression", { stage: stageIndex }).findAllByTestId(
+    "notebook-cell-item",
+  );
+}
+
+function getFilterItems(stageIndex: number) {
+  return getNotebookStep("filter", { stage: stageIndex }).findAllByTestId(
+    "notebook-cell-item",
+  );
+}
+
+function getSummarizeItems(
+  stageIndex: number,
+  stepType: Extract<NotebookStepType, "aggregate" | "breakout">,
+) {
+  return getNotebookStep("summarize", { stage: stageIndex })
+    .findByTestId(stepType === "aggregate" ? "aggregate-step" : "breakout-step")
+    .findAllByTestId("notebook-cell-item");
+}
+
+function getSortItems(stageIndex: number) {
+  return getNotebookStep("sort", { stage: stageIndex }).findAllByTestId(
+    "notebook-cell-item",
+  );
 }

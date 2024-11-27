@@ -53,10 +53,14 @@
   "Fastpath for parsing ISO Instant timestamp if it matches the required length. Return nil if the length doesn't match
   or the parsing fails, otherwise return a ZonedDateTime instance at UTC."
   [^String s]
-  (when (and s (= (.length s) (.length "1970-01-01T00:00:00Z")))
-    (try (let [temporal-accessor (.parse DateTimeFormatter/ISO_INSTANT s)]
-           (.atZone (Instant/from temporal-accessor) utc-zone-region))
-         (catch DateTimeParseException _))))
+  (when s
+    (let [len (.length s)
+          min-len (.length "1970-01-01T00:00:00Z")
+          max-len (.length "1970-01-01T00:00:00.000Z")]
+      (when (and (>= len min-len) (<= len max-len) (.endsWith s "Z"))
+        (try (let [temporal-accessor (.parse DateTimeFormatter/ISO_INSTANT s)]
+               (.atZone (Instant/from temporal-accessor) utc-zone-region))
+             (catch DateTimeParseException _))))))
 
 (mu/defn parse-with-formatter :- [:maybe InstanceOfTemporal]
   "Parse a String with a DateTimeFormatter, returning an appropriate instance of an `java.time` temporal class."

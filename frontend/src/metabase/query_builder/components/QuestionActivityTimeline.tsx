@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useRevisionListQuery, useUserListQuery } from "metabase/common/hooks";
+import { useRevisionListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -27,18 +27,15 @@ export function QuestionActivityTimeline({
   } = useRevisionListQuery({
     query: { model_type: "card", model_id: question.id() },
   });
-  const { data: users } = useUserListQuery();
 
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 
-  const usersById = useMemo(() => _.indexBy(users ?? [], "id"), [users]);
   const moderationReviews = question.getModerationReviews();
 
   const events = useMemo(() => {
     const moderationEvents = getModerationTimelineEvents(
       moderationReviews,
-      usersById,
       currentUser,
     );
     const revisionEvents = getTimelineEvents({ revisions, currentUser });
@@ -47,7 +44,7 @@ export function QuestionActivityTimeline({
       (a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
-  }, [moderationReviews, revisions, usersById, currentUser]);
+  }, [moderationReviews, revisions, currentUser]);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;

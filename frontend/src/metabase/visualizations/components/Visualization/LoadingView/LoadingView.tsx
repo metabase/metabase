@@ -22,7 +22,7 @@ function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
       {isSlow === "usually-slow" ? (
         <div>
           {jt`This usually takes an average of ${(
-            <Duration>{duration(expectedDuration)}</Duration>
+            <Duration key="duration">{duration(expectedDuration)}</Duration>
           )}, but is currently taking longer.`}
         </div>
       ) : (

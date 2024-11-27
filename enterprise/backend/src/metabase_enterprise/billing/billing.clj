@@ -32,7 +32,7 @@
                   (json/parse-string keyword))
           (catch JsonParseException _
             {:content nil})))
-   :ttl/threshold (u/hours->ms 5)))
+   :ttl/threshold (u/minutes->ms 5)))
 
 (defn- valid-thru []
   (some->> (premium-features/premium-embedding-token)
@@ -52,7 +52,7 @@
      :content [{:name "Users included in your plan" :value max-users :format "integer" :display "value"}
                {:name "Users available" :value (- max-users total-users) :format "integer" :display "value"}
                {:name "Token expiration date" :value (valid-thru) :format "string" :display "value"}
-               {:name "Plan" :value "Metabase Enterprise Airgap" :format "string" :display "value"}]}))
+               {:name "Plan" :value "Enterprise Airgap" :format "string" :display "value"}]}))
 
 (api/defendpoint GET "/"
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,

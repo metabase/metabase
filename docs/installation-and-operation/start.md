@@ -50,6 +50,6 @@ We collect anonymous Metabase usage data to improve the product. We don't collec
 
 Metabase's CLI.
 
-***
+---
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).

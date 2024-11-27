@@ -19,11 +19,12 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search :as search]
+   [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
-   [metabase.search.fulltext :as search.fulltext]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.core :as search]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -31,7 +32,7 @@
 
 (comment
   ;; We need this to ensure the engine hierarchy is registered
-  search.fulltext/keep-me)
+  search.engines.appdb/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -311,8 +312,9 @@
 (deftest custom-engine-test
   (when (search/supports-index?)
     (testing "It can use an alternate search engine"
+      (is (search/init-index! {:force-reset? false :populate? false}))
       (with-search-items-in-root-collection "test"
-        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext")]
+        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
           (is (= "search.engine/fulltext" (:engine resp))))))))
 
@@ -734,9 +736,10 @@
                            (search! "rom" :rasta))))))
 
           (testing "Sandboxed users do not see indexed entities in search"
-            (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-              (is (= #{}
-                     (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
+            (with-redefs [premium-features/impersonated-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (with-redefs [premium-features/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
   (assoc m
@@ -842,7 +845,7 @@
     (mt/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
-               (search-request-data user :q "RoundTable")))))))
+               (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
   (testing "You should not see hidden tables"
@@ -1179,8 +1182,9 @@
 
         (testing "error if doesn't have premium-features"
           (mt/with-premium-features #{}
-            (is (= "Content Management or Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                   (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true)))))))))
+            (mt/assert-has-premium-feature-error
+             "Content Management or Official Collections"
+             (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true))))))))
 
 (deftest created-at-api-test
   (let [search-term "created-at-filtering"]
@@ -1576,15 +1580,91 @@
 (deftest force-reindex-test
   (when (search/supports-index?)
     (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
-      (let [search-results #(:data (mt/user-http-request :rasta :get 200 "search" :q "boggle" :search_engine "fulltext"))]
-        (try
-          (t2/delete! :search_index)
-          (catch Exception _))
-        (is (empty? (search-results)))
+      (mt/user-http-request :crowberto :post 200 "search/re-init")
+      (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "fulltext"))]
+        (is (try
+              (t2/delete! :search_index)
+              (catch Exception _
+                :already-deleted)))
+        (is (empty? (search-results 200)))
         (mt/user-http-request :crowberto :post 200 "search/force-reindex")
         (is (loop [attempts-left 5]
-              (if (some (comp #{id} :id) (search-results))
+              (if (and (pos? (try (t2/count :search_index) (catch Exception _ 0)))
+                       (some (comp #{id} :id) (search-results 200)))
                 ::success
                 (when (pos? attempts-left)
                   (Thread/sleep 200)
                   (recur (dec attempts-left))))))))))
+
+(defn- weights-url
+  ([]
+   "search/weights")
+  ([params]
+   (str (weights-url)
+        (when (seq params) "?")
+        (str/join "&" (map (fn [[k v]]
+                             (str
+                              (namespace k)
+                              (when (namespace k) "/")
+                              (name k)
+                              "=" v))
+                           params))))
+  ([context params]
+   (weights-url (assoc params :context (name context)))))
+
+(deftest ^:synchronized weights-test
+  (let [base-url           (weights-url)
+        original-weights   (search.config/weights :default)
+        original-overrides (public-settings/experimental-search-weight-overrides)]
+    (try
+      (public-settings/experimental-search-weight-overrides! nil)
+      (testing "default weights"
+        (is (= original-weights (mt/user-http-request :crowberto :get 200 base-url)))
+        (is (mt/user-http-request :rasta :get 403 (weights-url {:recency 4})))
+        (is (= (assoc original-weights :recency 4.0)
+               (mt/user-http-request :crowberto :get 200 (weights-url {:recency 4}))))
+        (is (= (assoc original-weights :recency 4.0 :text 30.0)
+               (mt/user-http-request :crowberto :get 200 (weights-url {:text 30}))))
+        (is (= (assoc original-weights :recency 4.0 :text 30.0)
+               (mt/user-http-request :crowberto :get 200 base-url))))
+
+      (testing "custom context"
+        (let [context          :none-given
+              context-url      (weights-url context {})
+              original-weights (search.config/weights context)]
+          ;; overrides from before will cascade
+          (is (= 30.0 (:text (mt/user-http-request :crowberto :get 200 context-url))))
+          (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
+          (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
+          (is (= (assoc original-weights :recency 5.0)
+                 (mt/user-http-request :crowberto :get 200 (weights-url context {:recency 5}))))
+          (is (= (assoc original-weights :recency 5.0 :text 40.0)
+                 (mt/user-http-request :crowberto :get 200 (weights-url context {:text 40}))))
+          (is (= (assoc original-weights :recency 5.0 :text 40.0)
+                 (mt/user-http-request :crowberto :get 200 context-url)))))
+
+      (testing "all weights (nested)"
+        (let [context     :all
+              context-url (weights-url context {})
+              all-weights (search.config/weights context)]
+          (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))
+          (is (= (mt/user-http-request :crowberto :get 200 base-url)
+                 (:default (mt/user-http-request :crowberto :get 200 context-url))))
+          (is (= (mt/user-http-request :crowberto :get 200 (weights-url :none-given {}))
+                 (merge
+                  (:default (mt/user-http-request :crowberto :get 200 context-url))
+                  (:none-given (mt/user-http-request :crowberto :get 200 context-url)))))
+          (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 4})))
+          (is (mt/user-http-request :crowberto :get 400 (weights-url context {:recency 4})))
+          (is (mt/user-http-request :crowberto :get 400 (weights-url context {:text 30})))
+          (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))))
+
+      (testing "ranker parameters"
+        (let [context :just-for-fun]
+          (is (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 10})))
+          (is (= 10.0 (search.config/scorer-param context :model :dataset)))
+          (is (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 5})))
+          (is (= 5.0 (search.config/scorer-param context :model :dataset)))))
+
+      (finally
+        (public-settings/experimental-search-weight-overrides! original-overrides)))))

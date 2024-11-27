@@ -290,3 +290,38 @@
       "{{foo}}"
       {"foo" {:type :string/= :value "[[bar]]"}}
       "\\[\\[bar\\]\\]")))
+
+(t/deftest ^:parallel value-string-test
+  (let [parameters [{:name "State",
+                     :slug "state",
+                     :id "63e719d0",
+                     :default ["CA", "NY", "NJ"],
+                     :type "string/=",
+                     :sectionId "location"}
+                    {:name "Quarter and Year",
+                     :slug "quarter_and_year",
+                     :id "a6db3d8b",
+                     :default "Q1-2021"
+                     :type "date/quarter-year",
+                     :sectionId "date"}
+    ;; Filter without default, should not be included in subscription
+                    {:name "Product title contains",
+                     :slug "product_title_contains",
+                     :id "acd0dfab",
+                     :type "string/contains",
+                     :sectionId "string"}]]
+    (t/testing "If a filter has multiple values, they are concatenated into a comma-separated string"
+      (t/is (= "CA, NY, and NJ"
+               (params/value-string (first parameters) "en"))))
+
+    (t/testing "If a filter has a single default value, it is formatted appropriately"
+      (t/is (= "Q1, 2021"
+               (params/value-string (second parameters) "en"))))))
+
+(t/deftest param-val-or-default-test
+  (let [param-val-or-default #'params/param-val-or-default]
+    (t/testing "When the parameter’s :value key is missing, fallback to the :default key"
+      (t/is (= "my default value"
+               (param-val-or-default {:default "my default value"}))))
+    (t/testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
+      (t/is (nil? (param-val-or-default {:value nil :default "my default value"}))))))

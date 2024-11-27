@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -23,7 +21,6 @@ import type {
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   SERIES_COLORS_SETTING_KEY,
   SERIES_SETTING_KEY,
@@ -177,11 +174,11 @@ export const getCardSeriesModels = (
         createLegacySeriesObjectKey(vizSettingsKey);
 
       const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
-      const tooltipName = customName ?? getFriendlyName(metric.column);
+      const tooltipName = customName ?? metric.column.display_name;
       const name =
         customName ??
         getDefaultSeriesName(
-          getFriendlyName(metric.column),
+          metric.column.display_name,
           hasMultipleCards,
           columns.metrics.length,
           false,
@@ -239,7 +236,7 @@ export const getCardSeriesModels = (
       createLegacySeriesObjectKey(vizSettingsKey);
 
     const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
-    const tooltipName = getFriendlyName(metric.column);
+    const tooltipName = metric.column.display_name;
     const name =
       customName ??
       getDefaultSeriesName(

@@ -63,6 +63,12 @@
       (is (=? {:stages [{:order-by [#"^Duplicate values ignoring uuids in.*"]}]}
               (me/humanize (mc/explain ::lib.schema/query query-with-duplicate-order-bys)))))))
 
+(deftest ^:parallel allow-blank-database-test
+  (testing ":database field can be missing"
+    (is (not (mc/explain ::lib.schema/query {:lib/type :mbql/query
+                                             :stages   [{:lib/type :mbql.stage/native
+                                                         :native   "SELECT 1"}]})))))
+
 (def ^:private valid-ag-1
   [:count {:lib/uuid (str (random-uuid))}])
 

@@ -35,10 +35,8 @@ describe("scenarios > models > revision history", () => {
 });
 
 function openRevisionHistory() {
-  cy.intercept("GET", "/api/user").as("user");
   questionInfoButton().click();
   sidesheet().findByRole("tab", { name: "History" }).click();
-  cy.wait("@user");
   cy.findByTestId("saved-question-history-list").should("be.visible");
 }
 

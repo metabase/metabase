@@ -11,7 +11,6 @@ import {
 import {
   addHeadingWhileEditing,
   addLinkWhileEditing,
-  changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createNewTab,
   dashboardCards,
@@ -98,12 +97,6 @@ describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true);
-  });
-
-  afterEach(() => {
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("should only display cards on the selected tab", () => {

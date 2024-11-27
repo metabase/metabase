@@ -711,7 +711,7 @@ function getCollectionItemRow(itemName) {
 }
 
 function getCollectionItemCard(itemName) {
-  return cy.findByText(itemName).parent();
+  return cy.findByText(itemName).closest("a");
 }
 
 function getResults() {

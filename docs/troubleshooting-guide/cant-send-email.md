@@ -16,11 +16,11 @@ Before any other troubleshooting, try sending a test email to isolate the proble
 
 **Steps to take:**
 
-1. Navigate to the __Admin Panel__ and click __Email__ in the left sidebar.
-2. Confirm that your host, port, email address, and password are entered correctly. If they are, click __Save changes__. If your changes have successfully saved, you'll see an option to __Send test email__.
-3. Click __Send test email__. The test email will go the address associated with your Metabase account.
+1. Navigate to the **Admin Panel** and click **Email** in the left sidebar.
+2. Confirm that your host, port, email address, and password are entered correctly. If they are, click **Save changes**. If your changes have successfully saved, you'll see an option to **Send test email**.
+3. Click **Send test email**. The test email will go the address associated with your Metabase account.
 4. Verify that the email is delivered to your account.
-5. If the message is not sent or an error message is displayed in Metabase, try to use the same account credentials in another email program and see if they work. See the logs for more detailed error by navigating to __Troubleshooting__ and click __Logs__ in the left sidebar.
+5. If the message is not sent or an error message is displayed in Metabase, try to use the same account credentials in another email program and see if they work. See the logs for more detailed error by navigating to **Troubleshooting** and click **Logs** in the left sidebar.
 
 ## Is the mail server actually sending the message?
 

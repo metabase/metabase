@@ -186,6 +186,7 @@
     [:include_csv                        ms/BooleanValue]
     [:include_xls                        ms/BooleanValue]
     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
+    [:pivot_results     {:optional true} [:maybe ms/BooleanValue]]
     [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
 

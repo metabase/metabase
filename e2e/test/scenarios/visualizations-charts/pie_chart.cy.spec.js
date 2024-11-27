@@ -389,7 +389,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     assertEChartsTooltip({
-      header: "Created At",
+      header: "Created At: Day of week",
       rows: [
         {
           color: "#51528D",
@@ -533,6 +533,60 @@ describe("scenarios > visualizations > pie chart", () => {
     confirmSliceClickBehavior("2024", 5834);
     confirmSliceClickBehavior("Organic", 1180, 1);
     confirmSliceClickBehavior("Gizmo", 354, 8);
+  });
+
+  it("should handle min percentage setting correctly", () => {
+    createQuestionAndDashboard({
+      questionDetails: {
+        query: threeRingQuery.query,
+        display: "pie",
+        visualization_settings: {
+          "pie.slice_threshold": 20.6,
+          "pie.percent_visibility": "inside",
+          "pie.show_labels": false,
+        },
+      },
+      cardDetails: {
+        size_x: 30,
+        size_y: 15,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+
+    // Other slice percentage
+    echartsContainer().findByText("79%").realHover();
+
+    assertEChartsTooltip({
+      header: "2024",
+      rows: [
+        {
+          name: "Affiliate",
+          value: "1,046",
+          secondaryValue: "22.68 %",
+        },
+        {
+          name: "Google",
+          value: "1,195",
+          secondaryValue: "25.92 %",
+        },
+        {
+          name: "Organic",
+          value: "1,180",
+          secondaryValue: "25.59 %",
+        },
+        {
+          name: "Twitter",
+          value: "1,190",
+          secondaryValue: "25.81 %",
+        },
+        {
+          name: "Total",
+          value: "4,611",
+          secondaryValue: "100 %",
+        },
+      ],
+    });
   });
 });
 

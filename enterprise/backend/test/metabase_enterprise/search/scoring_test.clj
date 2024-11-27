@@ -7,7 +7,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.appdb.scoring-test :as appdb.scoring-test]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]))
 
 (deftest ^:parallel verified-score-test
@@ -108,7 +109,7 @@
   {:pre [(> 10 (count values))]}
   (mapv vec (mapcat math.combo/permutations (math.combo/subsets values))))
 
-(defn test-corups [words]
+(defn test-corpus [words]
   (let [corpus (->> words
                     all-permutations-all-orders
                     (mapv #(str/join " " %))
@@ -126,9 +127,9 @@
                  :name))))))
 
 (deftest identical-results-result-in-identical-hits
-  (test-corups ["foo" "bar"])
-  (test-corups ["foo" "bar" "baz"])
-  (test-corups ["foo" "bar" "baz" "quux"]))
+  (test-corpus ["foo" "bar"])
+  (test-corpus ["foo" "bar" "baz"])
+  (test-corpus ["foo" "bar" "baz" "quux"]))
 
 (deftest score-result-test
   (let [score-result-names (fn [] (set (map :name (scoring/score-result {}))))]
@@ -149,3 +150,33 @@
     (testing "includes both if has both features"
       (mt/with-premium-features #{:official-collections :content-verification}
         (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))
+
+(deftest appdb-official-collection-test
+  (appdb.scoring-test/with-index-contents
+    [{:model "collection" :id 1 :name "collection normal" :official_collection false}
+     {:model "collection" :id 2 :name "collection official" :official_collection true}]
+    (testing "official collections has higher rank"
+      (mt/with-premium-features #{:official-collections}
+        (is (= [["collection" 2 "collection official"]
+                ["collection" 1 "collection normal"]]
+               (appdb.scoring-test/search-results :official-collection "collection")))))
+    (testing "only if feature is enabled"
+      (mt/with-premium-features #{}
+        (is (= [["collection" 1 "collection normal"]
+                ["collection" 2 "collection official"]]
+               (appdb.scoring-test/search-results* "collection")))))))
+
+(deftest appdb-verified-test
+  (appdb.scoring-test/with-index-contents
+    [{:model "card" :id 1 :name "card normal" :verified false}
+     {:model "card" :id 2 :name "card verified" :verified true}]
+    (testing "verified items have higher rank"
+      (mt/with-premium-features #{:content-verification}
+        (is (= [["card" 2 "card verified"]
+                ["card" 1 "card normal"]]
+               (appdb.scoring-test/search-results :verified "card")))))
+    (testing "only if feature is enabled"
+      (mt/with-premium-features #{}
+        (is (= [["card" 1 "card normal"]
+                ["card" 2 "card verified"]]
+               (appdb.scoring-test/search-results* "card")))))))

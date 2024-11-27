@@ -9,7 +9,7 @@
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
-   [metabase.pulse]
+   [metabase.pulse.send :as pulse.send]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
@@ -112,8 +112,8 @@
 (deftest send-pulse!*-delete-pcs-no-recipients-test
   (testing "send-pulse!* should delete PulseChannels and only send to enabled channels"
     (let [sent-channel-ids (atom #{})]
-      (with-redefs [metabase.pulse/send-pulse! (fn [_pulse-id & {:keys [channel-ids]}]
-                                                 (swap! sent-channel-ids set/union channel-ids))]
+      (with-redefs [pulse.send/send-pulse! (fn [_pulse-id & {:keys [channel-ids]}]
+                                             (swap! sent-channel-ids set/union channel-ids))]
         (mt/with-temp
           [:model/Pulse        {pulse :id}            {}
            :model/PulseChannel {pc :id}               (merge

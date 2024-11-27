@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isEEBuild } from "metabase/lib/utils";
 import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
@@ -48,15 +47,6 @@ export const EmbedHomepage = () => {
 
   const utmTags = `?utm_source=product&source_plan=${plan}&utm_content=embedding-homepage`;
 
-  const initialTab = useMemo(() => {
-    // we want to show the interactive tab for EE builds
-    // unless it's a starter cloud plan, which is EE build but doesn't have interactive embedding
-    if (isEEBuild()) {
-      return plan === "starter" ? "static" : "interactive";
-    }
-    return "static";
-  }, [plan]);
-
   const onDismiss = (reason: EmbeddingHomepageDismissReason) => {
     if (reason === "dismissed-run-into-issues") {
       setFeedbackModalOpened(true);
@@ -93,7 +83,6 @@ export const EmbedHomepage = () => {
         onDismiss={onDismiss}
         exampleDashboardId={exampleDashboardId}
         licenseActiveAtSetup={licenseActiveAtSetup}
-        initialTab={initialTab}
         interactiveEmbeddingQuickstartUrl={
           interactiveEmbeddingQuickStartUrl + utmTags
         }
@@ -104,7 +93,8 @@ export const EmbedHomepage = () => {
         }
         learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding + utmTags}
         learnMoreStaticEmbedUrl={learnMoreStaticEmbedding + utmTags}
-        sdkUrl={"https://metaba.se/sdk" + utmTags}
+        sdkQuickstartUrl={"https://metaba.se/sdk-quick-start" + utmTags}
+        sdkDocsUrl={"https://metaba.se/sdk-docs" + utmTags}
       />
       <FeedbackModal
         opened={feedbackModalOpened}

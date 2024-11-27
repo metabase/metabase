@@ -49,47 +49,35 @@ If the sort is changed (while values remain the same), then the cumulative count
 | July     | 5       | 2 + 5 = 7         |
 | November | 4       | 2 + 5 + 4 = 11    |
 
-Metabase will automatically sort the data by the breakout column in ascending order (using the logic that your database uses for the column's data type). If you add a manual sort, it will only apply _after_ cumulative count or sum computes its results. Sorting here has no effect on how Metabase computes the cumulative metric.
-
-If you want to use a different order (for example, sort by the breakout column but in descending order), you can [use SQL](#related-functions).
+When you have only one breakout in the query, Metabase will sort the data by the breakout column in ascending order (using the logic that your database uses for the column's data type). To change how Metabase accumulates the metric, you can add a **Sort** block by the breakout column.
 
 ## Cumulative metrics with multiple breakouts
 
-Because cumulative metrics calculate its summaries based on previous rows, Metabase needs to determine what those previous rows are. Cumulative metrics will always order the rows based on the _first_ breakout. So if there are multiple breakout columns specified in **Group by**, Metabase will:
+Because cumulative metrics calculate their summaries based on previous rows, Metabase needs to determine what those previous rows are. Metabase will decide how to compute and display the cumulative metric first based on whether you're grouping by a datetime column, then by the order of other breakouts:
 
-1. Sort by the first breakout column to determine what the previous rows are.
-2. Break out by the first column and any additional columns.
-3. Compute cumulative sums or counts for the additional breakouts over the first column.
+### Queries with a datetime dimension
 
-This sorting in step 1 only happens in the context of calculating the Cumulative metric.
+If you use a datetime dimension in the **Group by** block, Metabase will accumulate along the datetime dimension, then break out by any other fields in the **Group by** block (in order):
 
-If you then want to manually sort the results, this sorting only applies _after_ cumulative count or sum computes its results. Sorting here has no effect on how Metabase computes the cumulative metric.
+![Cumulative count by category, source, and created at](../../images/cumulative-date-category.png)
 
-For example, if you want to see the cumulative sum of order quantity over time by product category, you should first group by `Created At`, _then_ group by product category.
+If there are multiple datetime dimensions (including multiple groupings by the same datetime column), Metabase will accumulate along the the more granular dimension, regardless of their order. For example, if you're grouping by "Created At: Month" and "Viewed At: Week", Metabase will accumulate along "Viewed At: Week".
 
-In the example below, the cumulative sum uses `Created At` date for sort, and `Category` for breakout, so cumulative sum will:
+![Cumulative count by two datetime fields](../../images/cumulative-multiple-datetimes.png)
 
-1. Sort by `Created At`.
-2. Break out by `Created At` and `Category`, and compute total sum of sums for each group.
-3. For each `Created At` and `Category`, compute the cumulative total sum of sums in the same `Category` using previous `Created At` dates.
+In queries with a datetime dimension, **Sort** blocks for non-datetime fields won't affect how Metabase computes the results. Sort blocks will only affect the order of breakouts in the results.
 
-![Cumulative sum for products over months in QB](../../images/cumulative-metric.png)
+### Queries without datetime dimension
 
-For example, the cumulative sums for Gadgets in June 2022 will be determined by the total sums for Gadgets over this month and previous months.
+If there is no datetime field in the **Group by** block, Metabase will accumulate along the _last_ dimension specified in the **Group By** block, and break out by the other fields in their order, from left to right.
 
-To make these results easier to digest, you can add sort by `Category` to see the results for the same category together next to each other:
+![Cumulative count by two categorical dimensions](../../images/cumulative-no-datetime.png)
 
-![Cumulative sum for products over months sorted by category in QB](../../images/cumulative-metric-plus-sort.png)
+By default, Metabase will use ascending sort for the dimension used for accumulation. You can add a **Sort** block for the accumulation dimension to change the order, which will change both how Metabase computes the cumulative metric and, how it presents the results.
 
-Adding a **Sort** block only changes how data is displayed, but it will not change how the cumulative metric is computed.
+![Cumulative count by two categorical dimensions with order of accumulation changed](../../images/cumulative-no-datetime-order.png)
 
-If instead you group first by category, then by date: Metabase will compute the cumulative sum for the same month, but _over_ categories.
-
-![Summarize block Cumulative sum for products over categories sorted by category](../../images/cumulative-metric-reverse.png)
-
-Here, Metabase determines the cumulative cum for Gadgets in July 2022 by taking the total sums for July 2022 over Gadgets and previous categories (in alphabetical order).
-
-This result looks similar to the previous cumulative count result (grouped by `Created At` and `Category`, sorted by `Category`), but the actual values are different. That's probably not what you want. In this case, you probably want cumulative count by `Created At` and `Category` (in that order). Then you can sort by `Category` (for readability).
+Sorting by any field _other than_ the last (accumulation) field only affects the order of breakouts in the results. It won't change how Metabase computes the results.
 
 ## Related functions
 

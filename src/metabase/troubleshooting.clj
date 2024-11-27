@@ -44,7 +44,7 @@
                                                        :version (.getDatabaseProductVersion metadata)}
                                          :jdbc-driver {:name    (.getDriverName metadata)
                                                        :version (.getDriverVersion metadata)}}))})
-   (when (premium-features/is-airgapped?)
+   (when (premium-features/airgap-enabled)
      {:airgap-token       :enabled
       :max-users          (premium-features/max-users-allowed)
       :current-user-count (premium-features/cached-active-users-count)

@@ -90,8 +90,16 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should instruct user to connect email or slack", () => {
       openDashboardSubscriptions();
       // Look for the messaging about configuring slack and email
-      cy.findByRole("link", { name: /set up email/i });
-      cy.findByRole("link", { name: /configure Slack/i });
+      cy.findByRole("link", { name: /set up email/i }).should(
+        "have.attr",
+        "href",
+        "/admin/settings/email",
+      );
+      cy.findByRole("link", { name: /configure Slack/i }).should(
+        "have.attr",
+        "href",
+        "/admin/settings/notifications/slack",
+      );
     });
   });
 
@@ -225,7 +233,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         emailSubscriptionRecipients();
 
         openEmailPage(dashboardName).then(() => {
-          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.intercept("/api/pulse/unsubscribe").as("unsubscribe");
           cy.findByText("Unsubscribe").click();
           cy.wait("@unsubscribe");
           cy.contains(
@@ -249,8 +257,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         emailSubscriptionRecipients();
 
         openEmailPage(dashboardName).then(() => {
-          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
-          cy.intercept("/api/session/pulse/unsubscribe/undo").as("resubscribe");
+          cy.intercept("/api/pulse/unsubscribe").as("unsubscribe");
+          cy.intercept("/api/pulse/unsubscribe/undo").as("resubscribe");
 
           cy.findByText("Unsubscribe").click();
           cy.wait("@unsubscribe");
@@ -324,7 +332,8 @@ describe("scenarios > dashboard > subscriptions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Questions to attach");
       cy.findAllByRole("listitem")
-        .contains("Orders") // yields the whole <li> element
+        .contains("Orders")
+        .closest("li")
         .within(() => {
           cy.findByRole("checkbox").should("be.checked");
         });

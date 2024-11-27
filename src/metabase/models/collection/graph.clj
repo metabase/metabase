@@ -38,7 +38,7 @@
 
 (def ^:private PermissionsGraph
   [:map {:closed true}
-   [:revision :int]
+   [:revision {:optional true} [:maybe :int]]
    [:groups   [:map-of ms/PositiveInt GroupPermissionsGraph]]])
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
@@ -186,9 +186,11 @@
   If there are changes, returns the future that is used to call `fill-revision-details!`.
   To run this syncronously deref the non-nil return value."
   ([new-graph]
-   (update-graph! nil new-graph))
+   (update-graph! nil new-graph false))
 
-  ([collection-namespace :- [:maybe ms/KeywordOrString], new-graph :- PermissionsGraph]
+  ([collection-namespace :- [:maybe ms/KeywordOrString]
+    new-graph            :- PermissionsGraph
+    force?               :- [:maybe boolean?]]
    (let [old-graph          (graph collection-namespace)
          old-perms          (:groups old-graph)
          new-perms          (:groups new-graph)
@@ -198,7 +200,7 @@
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
                                        [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
-     (perms.u/check-revision-numbers old-graph new-graph)
+     (when-not force? (perms.u/check-revision-numbers old-graph new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
                            (doseq [[group-id changes] changes]

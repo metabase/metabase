@@ -64,8 +64,6 @@ describe("search > recently viewed", () => {
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
     cy.findByTestId("loading-indicator").should("not.exist");
-    cy.log("check output");
-    cy.wait(10000);
 
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");

@@ -102,7 +102,7 @@ describe("ModelCacheRefreshJobs", () => {
   it("displays 'creating' state correctly", async () => {
     await setup({ logs: [getMockModelCacheInfo({ state: "creating" })] });
     expect(screen.getByText("Queued")).toBeInTheDocument();
-    expect(screen.queryByLabelText("refresh icon")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
   });
 
   it("displays 'refreshing' state correctly", async () => {

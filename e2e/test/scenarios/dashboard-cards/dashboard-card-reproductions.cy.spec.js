@@ -1,4 +1,4 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -6,11 +6,15 @@ import {
   assertDescendantNotOverflowsContainer,
   assertIsEllipsified,
   assertIsNotEllipsified,
+  createNativeQuestionAndDashboard,
   createQuestion,
+  createQuestionAndDashboard,
   cypressWaitAll,
   echartsContainer,
   editDashboard,
+  focusNativeEditor,
   getDashboardCard,
+  modal,
   openNavigationSidebar,
   pieSlices,
   popover,
@@ -19,6 +23,7 @@ import {
   restore,
   resyncDatabase,
   saveDashboard,
+  setActionsEnabledForDB,
   showDashboardCardActions,
   sidebar,
   updateSetting,
@@ -153,6 +158,10 @@ describe("issue 16334", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
   });
 
   it("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
@@ -163,7 +172,7 @@ describe("issue 16334", () => {
       },
     };
 
-    cy.createQuestion({
+    createQuestion({
       name: "16334",
       query: {
         "source-table": PRODUCTS_ID,
@@ -172,7 +181,7 @@ describe("issue 16334", () => {
       },
       display: "pie",
     }).then(({ body: { id: question1Id } }) => {
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           addOrUpdateDashboardCard({
             dashboard_id,
@@ -184,19 +193,22 @@ describe("issue 16334", () => {
           });
 
           visitDashboard(dashboard_id);
+          cy.wait("@dashcardQuery");
         },
       );
     });
 
     cy.findAllByTestId("cell-data").contains("5").first().click();
+    cy.wait("@dataset");
 
     // Make sure filter is set
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating is equal to 5");
+    cy.findByTestId("qb-filters-panel").should(
+      "contain.text",
+      "Rating is equal to 5",
+    );
 
     // Make sure it's connected to the original question
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Started from 16334");
+    cy.findByTestId("app-bar").should("contain.text", "Started from 16334");
 
     // Make sure the original visualization didn't change
     pieSlices().should("have.length", 2);
@@ -207,19 +219,28 @@ describe("issue 16334", () => {
           click_behavior: {
             targetId,
             parameterMapping: {
-              [`["dimension",["field",${PRODUCTS.RATING},null]]`]: {
-                source: {
-                  type: "column",
-                  id: "RATING",
-                  name: "Rating",
+              [`["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`]:
+                {
+                  source: {
+                    type: "column",
+                    id: "RATING",
+                    name: "Rating",
+                  },
+                  target: {
+                    type: "dimension",
+                    id: [
+                      `["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`,
+                    ],
+                    dimension: [
+                      "dimension",
+                      ["field", PRODUCTS.RATING, null],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                  id: [
+                    `["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`,
+                  ],
                 },
-                target: {
-                  type: "dimension",
-                  id: [`["dimension",["field",${PRODUCTS.RATING},null]]`],
-                  dimension: ["dimension", ["field", PRODUCTS.RATING, null]],
-                },
-                id: [`["dimension",["field",${PRODUCTS.RATING},null]]`],
-              },
             },
             linkType: "question",
             type: "link",
@@ -1738,5 +1759,212 @@ describe("issue 43219", () => {
 
       cy.findByText("Series 10").should("be.visible");
     });
+  });
+});
+
+describe("issue 48878", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card").as("saveQuestion");
+    cy.intercept("POST", "/api/action").as("createAction");
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+    let fetchCardRequestsCount = 0;
+
+    cy.intercept("GET", "/api/card/*", request => {
+      // we only want to simulate the race condition 4th time this request is triggered
+      if (fetchCardRequestsCount === 2) {
+        request.continue(
+          () => new Promise(resolve => setTimeout(resolve, 2000)),
+        );
+      } else {
+        request.continue();
+      }
+
+      ++fetchCardRequestsCount;
+    }).as("fetchCard");
+    setup();
+  });
+
+  // I could only reproduce this issue in Cypress when I didn't use any helpers like createQuestion, etc.
+  it("does not crash the action button viz (metabase#48878)", () => {
+    cy.reload();
+    cy.wait("@fetchCard");
+    getDashboardCard(0).findByText("Click Me").should("be.visible");
+  });
+
+  function setup() {
+    cy.log("create dummy model");
+
+    // Create a dummy model so that GET /api/search does not return the model want to test.
+    // If we don't do this, GET /api/search will return and put card object with dataset_query
+    // attribute in the redux store (entity framework) which would prevent the issue from happening.
+    cy.visit("/model/new");
+    createModel({
+      name: "Dummy model",
+      query: "select 1",
+    });
+
+    cy.log("create model");
+
+    cy.button("New").click();
+    popover().findByText("Model").click();
+    createModel({
+      name: "SQL Model",
+      query: "select * from orders limit 5",
+    });
+
+    cy.log("create model action");
+
+    cy.findByTestId("qb-header-info-button").click();
+    modal().findByText("See more about this model").click();
+
+    cy.findByRole("tab", { name: "Actions" }).click();
+    cy.findByTestId("model-actions-header").findByText("New action").click();
+
+    modal().within(() => {
+      focusNativeEditor().type("UPDATE orders SET plan = {{ plan ", {
+        parseSpecialCharSequences: false,
+      });
+      cy.button("Save").click();
+    });
+
+    modal()
+      .last()
+      .within(() => {
+        cy.findByPlaceholderText("My new fantastic action").type("Test action");
+        cy.button("Create").click();
+        cy.wait("@createAction");
+      });
+
+    cy.visit("/");
+
+    cy.log("create dashoard");
+
+    cy.button("New").click();
+    popover().findByText("Dashboard").click();
+
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your dashboard?").type(
+        "Dash",
+      );
+      cy.button("Create").click();
+      cy.wait("@getDashboard");
+    });
+
+    cy.button("Add action").click();
+    cy.button("Pick an action").click();
+    modal().within(() => {
+      cy.findByText("SQL Model").click();
+      cy.findByText("Test action").click();
+      cy.button("Done").click();
+    });
+    cy.button("Save").click();
+    cy.wait("@updateDashboard");
+    cy.wait("@fetchCard");
+  }
+
+  function createModel({ name, query }) {
+    cy.findByTestId("new-model-options")
+      .findByText("Use a native query")
+      .click();
+
+    focusNativeEditor().type(query);
+    cy.findByTestId("native-query-editor-sidebar")
+      .findByTestId("run-button")
+      .click();
+    cy.wait("@dataset");
+    cy.button("Save").click();
+
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your model?").type(name);
+      cy.button("Save").click();
+      cy.wait("@saveQuestion");
+    });
+    cy.wait("@fetchCard");
+  }
+});
+
+describe("issue 46318", () => {
+  const query = `SELECT 'group_1' AS main_group, 'sub_group_1' AS sub_group, 111 AS value_sum, 'group_1__sub_group_1' AS group_name
+UNION ALL
+SELECT 'group_1', 'sub_group_2', 68, 'group_1__sub_group_2'
+UNION ALL
+SELECT 'group_2', 'sub_group_1', 79, 'group_2__sub_group_1'
+UNION ALL
+SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
+`;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestionAndDashboard({
+      questionDetails: {
+        name: "46318",
+        native: { query },
+        display: "row",
+        visualization_settings: {
+          "graph.dimensions": ["MAIN_GROUP", "SUB_GROUP"],
+          "graph.series_order_dimension": null,
+          "graph.series_order": null,
+          "graph.metrics": ["VALUE_SUM"],
+        },
+      },
+    }).then(response => {
+      visitDashboard(response.body.dashboard_id);
+    });
+
+    editDashboard();
+    getDashboardCard().realHover().icon("click").click();
+    cy.get("aside").within(() => {
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("URL").click();
+    });
+    modal().within(() => {
+      cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
+        "http://localhost:4000/?q={{group_name}}",
+        { parseSpecialCharSequences: false },
+      );
+      cy.button("Done").click();
+    });
+    saveDashboard();
+  });
+
+  it("passes values from unused columns of row visualization to click behavior (metabase#46318)", () => {
+    cy.findAllByRole("graphics-symbol").eq(0).click();
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_1__sub_group_1",
+    );
+
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(2).click(); // intentionally eq(2), not eq(1) - that's how row viz works
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_1__sub_group_2",
+    );
+
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(1).click(); // intentionally eq(1), not eq(2) - that's how row viz works
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_2__sub_group_1",
+    );
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(3).click();
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_2__sub_group_2",
+    );
   });
 });

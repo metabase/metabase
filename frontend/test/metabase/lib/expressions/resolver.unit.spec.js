@@ -102,11 +102,6 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       expect(() => filter(["<=", ["lower", A], "P"])).not.toThrow();
     });
 
-    it("should reject a less/greater comparison on functions returning boolean", () => {
-      // IsEmpty([A]) < 0
-      expect(() => filter(["<", ["is-empty", A], 0])).toThrow();
-    });
-
     // backward-compatibility
     it("should reject a number literal on the left-hand side of a comparison", () => {
       // 0 < [A]

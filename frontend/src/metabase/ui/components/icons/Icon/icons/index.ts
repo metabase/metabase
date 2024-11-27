@@ -231,6 +231,8 @@ import location_component from "./location.svg?component";
 import location_source from "./location.svg?source";
 import lock_component from "./lock.svg?component";
 import lock_source from "./lock.svg?source";
+import lock_filled_component from "./lock_filled.svg?component";
+import lock_filled_source from "./lock_filled.svg?source";
 import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
@@ -303,6 +305,8 @@ import rocket_component from "./rocket.svg?component";
 import rocket_source from "./rocket.svg?source";
 import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
+import sankey_component from "./sankey.svg?component";
+import sankey_source from "./sankey.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
 import section_component from "./section.svg?component";
@@ -859,6 +863,10 @@ export const Icons = {
     component: lock_component,
     source: lock_source,
   },
+  lock_filled: {
+    component: lock_filled_component,
+    source: lock_filled_source,
+  },
   mail: {
     component: mail_component,
     source: mail_source,
@@ -970,6 +978,10 @@ export const Icons = {
   revert: {
     component: revert_component,
     source: revert_source,
+  },
+  sankey: {
+    component: sankey_component,
+    source: sankey_source,
   },
   share: {
     component: share_component,

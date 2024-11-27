@@ -194,7 +194,7 @@
        (= (count datetimes) 1)))
 
 ;; We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities.
-(def ^Long ^:const ^:private ms-in-a-day (* 1000 60 60 24))
+(def ^Double ^:const ^:private ms-in-a-day (* 1000.0 60 60 24))
 
 (defn- ms->day
   [dt]
@@ -225,15 +225,14 @@
   (m/find-first (partial valid-period? from to) (keys unit->duration)))
 
 (defn- ->millis-from-epoch [t]
-  (when t
-    (condp instance? t
-      Instant        (.toEpochMilli ^Instant t)
-      OffsetDateTime (.toEpochMilli (.toInstant ^OffsetDateTime t))
-      ZonedDateTime  (.toEpochMilli (.toInstant ^ZonedDateTime t))
-      LocalDate      (->millis-from-epoch (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
-      LocalDateTime  (->millis-from-epoch (t/offset-date-time t (t/zone-offset 0)))
-      LocalTime      (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
-      OffsetTime     (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t))))))
+  (cond (instance? Instant t)        (.toEpochMilli ^Instant t)
+        (instance? OffsetDateTime t) (.toEpochMilli (.toInstant ^OffsetDateTime t))
+        (instance? ZonedDateTime t)  (.toEpochMilli (.toInstant ^ZonedDateTime t))
+        (instance? LocalDate t)      (recur (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
+        (instance? LocalDateTime t)  (recur (t/offset-date-time t (t/zone-offset 0)))
+        (instance? LocalTime t)      (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
+        (instance? OffsetTime t)     (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t)))
+        :else                        (throw (ex-info (str "->millis-from-epoch: unsupported type " (class t)) {}))))
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
@@ -242,7 +241,7 @@
         xfn        #(nth % x-position)]
     (fingerprinters/with-error-handling
       ((map (fn [row]
-              ;; Convert string datetime into days-from-epoch early.
+              ;; Convert string datetimes or Instants into into days-from-epoch early.
               (update (vec row) x-position #(some-> %
                                                     fingerprinters/->temporal
                                                     ->millis-from-epoch

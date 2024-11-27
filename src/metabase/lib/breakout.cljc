@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.join :as-alias lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -102,23 +103,31 @@
   ([query                                         :- ::lib.schema/query
     stage-number                                  :- :int
     column                                        :- ::lib.schema.metadata/column
-    {:keys [same-temporal-bucket?], :as _options} :- [:maybe
+    {:keys [same-binning-strategy?
+            same-temporal-bucket?], :as _options} :- [:maybe
                                                       [:map
+                                                       [:same-binning-strategy? {:optional true} [:maybe :boolean]]
                                                        [:same-temporal-bucket? {:optional true} [:maybe :boolean]]]]]
    (not-empty
     (into []
-          (filter (fn [a-breakout]
+          (filter (fn [[_ref {:keys [join-alias source-field]} _id-or-name :as a-breakout]]
                     (and (lib.equality/find-matching-column query stage-number a-breakout [column] {:generous? true})
-                         (if same-temporal-bucket?
-                           (= (lib.temporal-bucket/temporal-bucket a-breakout)
-                              (lib.temporal-bucket/temporal-bucket column))
-                           true))))
+                         (= source-field (:fk-field-id column)) ; Must match, including both being nil/missing.
+                         (= join-alias   (::lib.join/join-alias column))  ; Must match, including both being nil/missing.
+                         (or (not same-temporal-bucket?)
+                             (= (lib.temporal-bucket/temporal-bucket a-breakout)
+                                (lib.temporal-bucket/temporal-bucket column)))
+                         (or (not same-binning-strategy?)
+                             (lib.binning/binning= (lib.binning/binning a-breakout)
+                                                   (lib.binning/binning column))))))
           (breakouts query stage-number)))))
 
 (defn breakout-column?
   "Returns if `column` is a breakout column of stage with `stage-number` of `query`."
-  [query stage-number column]
-  (seq (existing-breakouts query stage-number column)))
+  ([query stage-number column]
+   (breakout-column? query stage-number column nil))
+  ([query stage-number column opts]
+   (seq (existing-breakouts query stage-number column opts))))
 
 (mu/defn remove-existing-breakouts-for-column :- ::lib.schema/query
   "Remove all existing breakouts against `column` if there are any in the stage in question. Disregards temporal

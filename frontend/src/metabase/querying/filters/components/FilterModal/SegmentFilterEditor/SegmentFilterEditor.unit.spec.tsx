@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { SegmentItem } from "metabase/querying/filters/hooks/use-filter-modal";
+import type { SegmentItem } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 import { createQuery, findSegment } from "metabase-lib/test-helpers";
 import { createMockSegment } from "metabase-types/api/mocks";

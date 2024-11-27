@@ -56,8 +56,11 @@ const SemanticTypeAndTargetPicker = ({
   hasSeparator,
   onUpdateField,
 }: SemanticTypeAndTargetPickerProps) => {
-  const hasIdFields = idFields.length > 0;
-  const includeSchema = hasMultipleSchemas(idFields);
+  const comparableIdFields = idFields.filter((idField: Field) =>
+    field.isComparableWith(idField),
+  );
+  const hasIdFields = comparableIdFields.length > 0;
+  const includeSchema = hasMultipleSchemas(comparableIdFields);
   const showFKTargetSelect = field.isFK();
   const showCurrencyTypeSelect = field.isCurrency();
 
@@ -148,11 +151,11 @@ const SemanticTypeAndTargetPicker = ({
             hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
-          placeholder={getFkFieldPlaceholder(field, idFields)}
+          placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
           searchProp={SEARCH_PROPS}
           value={field.fk_target_field_id}
           onChange={handleChangeTarget}
-          options={idFields}
+          options={comparableIdFields}
           optionValueFn={getFieldId}
           optionNameFn={includeSchema ? getFieldNameWithSchema : getFieldName}
           optionIconFn={getFieldIcon}

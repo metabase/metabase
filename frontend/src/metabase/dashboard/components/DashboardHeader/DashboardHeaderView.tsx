@@ -29,7 +29,10 @@ import type {
 } from "metabase/dashboard/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -196,6 +199,9 @@ export function DashboardHeaderView({
                     isDisabled={!dashboard.can_write}
                     data-testid="dashboard-name-heading"
                     onChange={handleUpdateCaption}
+                  />
+                  <PLUGIN_MODERATION.EntityModerationIcon
+                    dashboard={dashboard}
                   />
                   <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
                     color={color("brand")}

@@ -80,7 +80,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
       FieldFilter.selectFilterValueFromList("Gadget", {
-        buttonLabel: "Add filter",
+        buttonLabel: "Update filter",
       });
     });
 
@@ -105,9 +105,13 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       SQLFilter.toggleRequired();
       cy.findByTestId("sidebar-content")
-        .findByPlaceholderText("Start typing to filter…")
+        .findByText("Enter a default value…")
         .click();
-      popover().findByText("Gadget").click();
+
+      popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Update filter").click();
+      });
     });
 
     it("should be able to use a structured question source without saving the question", () => {
@@ -833,10 +837,13 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
 
     cy.findByTestId("sidebar-content")
-      .findByPlaceholderText("Select a default value…")
+      .findByText("Enter a default value…")
       .click();
 
-    popover().findByText("Twenty").click();
+    popover().within(() => {
+      cy.findByText("Twenty").click();
+      cy.button("Add filter").click();
+    });
 
     saveQuestion("SQL filter");
 
