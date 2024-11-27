@@ -19,6 +19,7 @@ import {
   navigationSidebar,
   popover,
   restore,
+  resyncDatabase,
   setTokenFeatures,
   updateDashboardCards,
   visitFullAppEmbeddingUrl,
@@ -27,6 +28,7 @@ import {
   createMockDashboardCard,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -396,6 +398,38 @@ describeEE("scenarios > embedding > full app", () => {
           popover().within(() => {
             cy.findByText("QA MySQL8").should("be.visible");
             cy.findByLabelText("Reviews").should(
+              "have.attr",
+              "aria-selected",
+              "true",
+            );
+          });
+        },
+      );
+
+      it(
+        "should select a table when there are multiple schemas",
+        { tags: "@external" },
+        () => {
+          restore("postgres-writable");
+          cy.signInAsAdmin();
+          resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          cy.log("select a table");
+          startNewEmbeddingQuestion();
+          popover().within(() => {
+            cy.findByText("Raw Data").click();
+            cy.findByText("Writable Postgres12").click();
+            cy.findByText("Domestic").click();
+            cy.findByText("Animals").click();
+          });
+          getNotebookStep("data").findByText("Animals").should("be.visible");
+
+          cy.log("make sure it is selected in the picker when opened again");
+          getNotebookStep("data").findByText("Animals").click();
+          popover().within(() => {
+            cy.findByText("Writable Postgres12").should("be.visible");
+            cy.findByText("Domestic").should("be.visible");
+            cy.findByLabelText("Animals").should(
               "have.attr",
               "aria-selected",
               "true",
