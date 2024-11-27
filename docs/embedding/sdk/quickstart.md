@@ -162,7 +162,7 @@ Install packages:
 npm install
 ```
 
-This command will install the [Metabase embedded analytics SDK](https://metaba.se/sdk), in addition to the application's other dependencies.
+This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
 
 ## Start the client
 

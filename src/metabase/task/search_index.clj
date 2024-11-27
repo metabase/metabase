@@ -1,13 +1,10 @@
 (ns metabase.task.search-index
-  ;; metabase.search.postgres.ingestion has not been exposed publicly yet, it needs a higher level API
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.search :as search]
-   [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.core :as search]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -59,7 +56,7 @@
   (when (search/supports-index?)
     (while true
       (let [timer  (u/start-timer)
-            report (search.ingestion/process-next-batch Long/MAX_VALUE 100)]
+            report (search/process-next-batch! Long/MAX_VALUE 100)]
         (when (seq report)
           (report->prometheus! report)
           (log/debugf "Indexed search entries in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report)))))))

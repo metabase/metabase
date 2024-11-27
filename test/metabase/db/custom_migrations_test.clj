@@ -24,6 +24,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.setting :as setting]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.task.sync-databases-test :as task.sync-databases-test]
@@ -39,6 +40,11 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+;; Disable the search index, as older schemas may not be compatible with ingestion.
+(use-fixtures :each (fn [thunk]
+                      (binding [search.ingestion/*disable-updates* true]
+                        (thunk))))
 
 (jobs/defjob AbandonmentEmail [_] :default)
 

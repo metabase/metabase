@@ -3,8 +3,9 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.db :as mdb]
-   [metabase.search.postgres.index :as search.index]
-   [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.appdb.index :as search.index]
+   [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -14,6 +15,10 @@
 
 (defn- index-hits [term]
   (count (search.index/search term)))
+
+(defn- now []
+  ;; Truncate to milliseconds as precision may be lost when roundtripping to the database.
+  (t/truncate-to (t/offset-date-time) :millis))
 
 ;; These helpers only mutate the temp local AppDb.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -31,14 +36,14 @@
                         :model/Database {db-id# :id} {:name "Indexed Database"}
                         :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
            (search.index/reset-index!)
-           (search.ingestion/populate-index!)
+           (search.ingestion/populate-index! :search.engine/fulltext)
            ~@body)))))
 
 (deftest idempotent-test
   (with-index
     (let [count-rows  (fn [] (t2/count @#'search.index/*active-table*))
           rows-before (count-rows)]
-      (search.ingestion/populate-index!)
+      (search.ingestion/populate-index! :search.engine/fulltext)
       (is (= rows-before (count-rows))))))
 
 ;; Disabled due to CI issue
@@ -125,56 +130,12 @@
     (testing "only sometimes do these occur sequentially in a phrase"
       (is (= 1 (index-hits "\"projected revenue\""))))))
 
-;; lower level search expression tests
-
-(def search-expr #'search.index/to-tsquery-expr)
-
-(deftest to-tsquery-expr-test
-  (is (= "'a' & 'b' & 'c':*"
-         (search-expr "a b c")))
-
-  (is (= "'a' & 'b' & 'c':*"
-         (search-expr "a AND b AND c")))
-
-  (is (= "'a' & 'b' & 'c'"
-         (search-expr "a b \"c\"")))
-
-  (is (= "'a' & 'b' | 'c':*"
-         (search-expr "a b or c")))
-
-  (is (= "'this' & !'that':*"
-         (search-expr "this -that")))
-
-  (is (= "'a' & 'b' & 'c' <-> 'd' & 'e' | 'b' & 'e':*"
-         (search-expr "a b \" c d\" e or b e")))
-
-  (is  (= "'ab' <-> 'and' <-> 'cde' <-> 'f' | !'abc' & 'def' & 'ghi' | 'jkl' <-> 'mno' <-> 'or' <-> 'pqr'"
-          (search-expr "\"ab and cde f\" or -abc def AND ghi OR \"jkl mno OR pqr\"")))
-
-  (is (= "'big' & 'data' | 'business' <-> 'intelligence' | 'data' & 'wrangling':*"
-         (search-expr "Big Data oR \"Business Intelligence\" OR data and wrangling")))
-
-  (testing "unbalanced quotes"
-    (is (= "'big' <-> 'data' & 'big' <-> 'mistake':*"
-           (search-expr "\"Big Data\" \"Big Mistake")))
-    (is (= "'something'"
-           (search-expr "something \""))))
-
-  (is (= "'partial' <-> 'quoted' <-> 'and' <-> 'or' <-> '-split':*"
-         (search-expr "\"partial quoted AND OR -split")))
-
-  (testing "dangerous characters"
-    (is (= "'you' & '<-' & 'pointing':*"
-           (search-expr "you <- pointing"))))
-
-  (testing "single quotes"
-    (is (= "'you''re':*"
-           (search-expr "you're")))))
-
 (defn ingest!
   [model where-clause]
-  (#'search.ingestion/batch-update!
-   (#'search.ingestion/spec-index-reducible model where-clause)))
+  (#'search.engine/consume!
+   :search.engine/fulltext
+   (#'search.ingestion/query->documents
+    (#'search.ingestion/spec-index-reducible model where-clause))))
 
 (defn ingest-then-fetch!
   [model entity-name]
@@ -211,7 +172,7 @@
     (doseq [[model-type card-type] [["card" "question"] ["dataset" "model"] ["metric" "metric"]]]
       (testing (format "simple %s" model-type)
         (let [card-name (mt/random-name)
-              yesterday (t/- (t/offset-date-time) (t/days 1))]
+              yesterday (t/- (now) (t/days 1))]
           (mt/with-temp [:model/Card {card-id :id} {:name         card-name
                                                     :type         card-type
                                                     :created_at   yesterday
@@ -237,7 +198,7 @@
 
       (testing (format "everything %s" model-type)
         (let [card-name    (mt/random-name)
-              yesterday    (t/- (t/offset-date-time) (t/days 1))
+              yesterday    (t/- (now) (t/days 1))
               two-days-ago (t/- yesterday (t/days 1))]
           (mt/with-temp
             [:model/Collection    {coll-id :id}      {:name            "My collection"
@@ -301,7 +262,7 @@
 (deftest database-ingestion-test
   (search.tu/with-temp-index-table
     (let [db-name (mt/random-name)
-          yesterday (t/- (t/offset-date-time) (t/days 1))]
+          yesterday (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database {db-id :id} {:name       db-name
                                                   :created_at yesterday
                                                   :updated_at yesterday}]
@@ -316,7 +277,7 @@
 (deftest table-ingestion-test
   (search.tu/with-temp-index-table
     (let [table-name (mt/random-name)
-          yesterday  (t/- (t/offset-date-time) (t/days 1))]
+          yesterday  (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:name       table-name
                                                   ;; :view_count = 42
@@ -340,7 +301,7 @@
 (deftest collection-ingestion-test
   (search.tu/with-temp-index-table
     (let [collection-name (mt/random-name)
-          yesterday       (t/- (t/offset-date-time) (t/days 1))]
+          yesterday       (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Collection {coll-id :id} {:name collection-name
                                                       ;; :authority_level = "official"
                                                       :authority_level "official"
@@ -362,7 +323,7 @@
 (deftest action-ingestion-test
   (search.tu/with-temp-index-table
     (let [action-name (mt/random-name)
-          yesterday   (t/- (t/offset-date-time) (t/days 1))]
+          yesterday   (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database   {db-id :id}     {}
                      :model/Collection {coll-id :id}   {}
                      :model/Card       {model-id :id}  {:type "model"
@@ -396,7 +357,7 @@
 (deftest dashboard-ingestion-test
   (search.tu/with-temp-index-table
     (let [dashboard-name (mt/random-name)
-          yesterday      (t/- (t/offset-date-time) (t/days 1))
+          yesterday      (t/- (now) (t/days 1))
           two-days-ago   (t/- yesterday (t/days 1))]
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name       dashboard-name
                                                           ;; :model_created_at = yesterday
@@ -434,7 +395,7 @@
 (deftest segment-ingestion-test
   (search.tu/with-temp-index-table
     (let [segment-name (mt/random-name)
-          yesterday    (t/- (t/offset-date-time) (t/days 1))]
+          yesterday    (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database   {db-id :id}      {}
                      :model/Table      {table-id :id}   {:db_id db-id}
                      :model/Segment    {segment-id :id} {:name       segment-name

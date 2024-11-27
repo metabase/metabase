@@ -114,6 +114,16 @@ export function SchemaTableAndFieldDataSelector(props) {
   );
 }
 
+export function FieldDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[FIELD_STEP]}
+      getTriggerElementContent={FieldTrigger}
+      {...props}
+    />
+  );
+}
+
 export class UnconnectedDataSelector extends Component {
   constructor(props) {
     super();
