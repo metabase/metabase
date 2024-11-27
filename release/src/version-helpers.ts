@@ -90,6 +90,16 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+export const getSdkVersionFromReleaseTagName = (tagName: string) => {
+  const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(tagName);
+
+  if (!match) {
+    throw new Error(`Invalid sdk release tag: ${tagName}`);
+  }
+
+  return match[1];
+};
+
 export const getSdkVersionFromReleaseBranchName = async ({
   github,
   owner,
@@ -120,19 +130,13 @@ export const getSdkVersionFromReleaseBranchName = async ({
   );
 
   if (latestSdkTagForMajorRelease) {
-    const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(
-      latestSdkTagForMajorRelease,
+    sdkVersion = getSdkVersionFromReleaseTagName(latestSdkTagForMajorRelease);
+
+    console.log(
+      `Resolved SDK latest release version for v${majorVersion} - ${sdkVersion}`,
     );
 
-    if (match) {
-      sdkVersion = match[1];
-
-      console.log(
-        `Resolved SDK latest release version for v${majorVersion} - ${sdkVersion}`,
-      );
-
-      return sdkVersion;
-    }
+    return sdkVersion;
   }
 
   const latestSdkTag = await getLastEmbeddingSdkReleaseTag({
@@ -141,18 +145,13 @@ export const getSdkVersionFromReleaseBranchName = async ({
     repo,
   });
 
-  const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(latestSdkTag);
-  if (match) {
-    sdkVersion = match[1];
+  sdkVersion = getSdkVersionFromReleaseTagName(latestSdkTag);
 
-    console.warn(
-      `Failed to resolve latest SDK package version! Using latest SDK version available - ${sdkVersion}`,
-    );
+  console.warn(
+    `Failed to resolve latest SDK package version! Using latest SDK version available - ${sdkVersion}`,
+  );
 
-    return sdkVersion;
-  }
-
-  throw new Error("Failed to resolve SDK version from git tags");
+  return sdkVersion;
 };
 
 /**
