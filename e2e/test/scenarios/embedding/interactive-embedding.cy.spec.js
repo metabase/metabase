@@ -467,7 +467,7 @@ describeEE("scenarios > embedding > full app", () => {
       );
     });
 
-    describe("cards", () => {
+    describe("questions", () => {
       it("should select a question in the root collection", () => {
         const questionDetails = {
           ...cardDetails,
