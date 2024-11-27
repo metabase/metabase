@@ -92,7 +92,7 @@
     (search.ingestion/populate-index! :search.engine/fulltext)))
 
 (defmethod search.engine/reindex! :search.engine/fulltext
-  []
+  [_]
   (search.index/ensure-ready! false)
   (search.index/maybe-create-pending!)
   (u/prog1 (search.ingestion/populate-index! :search.engine/fulltext)
