@@ -122,6 +122,7 @@ export function SelectEmbedTypePane({
             title={t`Interactive embedding`}
             badge={<Badge color="brand">{t`Pro`}</Badge>}
             illustration={<InteractiveEmbeddingIllustration />}
+            externalLink={interactiveEmbeddingCta.target === "_blank"}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
