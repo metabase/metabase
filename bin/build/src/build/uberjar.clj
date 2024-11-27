@@ -6,13 +6,10 @@
    [clojure.tools.namespace.dependency :as ns.deps]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
-   [hf.depstar.api :as depstar]
    [metabuild-common.core :as u])
   (:import
    (java.io OutputStream)
-   (java.net URI)
-   (java.nio.file Files FileSystems OpenOption StandardOpenOption)
-   (java.util Collections)
+   (java.nio.file Files OpenOption StandardOpenOption)
    (java.util.jar Manifest)))
 
 (set! *warn-on-reflection* true)
@@ -46,12 +43,14 @@
   (concat (:paths basis)
           (get-in basis [:argmap :extra-paths])))
 
+(defn- delete! [path]
+  (u/step (format "Delete %s" path)
+    (b/delete {:path path})))
+
 (defn- clean! []
   (u/step "Clean"
-    (u/step (format "Delete %s" class-dir)
-      (b/delete {:path class-dir}))
-    (u/step (format "Delete %s" uberjar-filename)
-      (b/delete {:path uberjar-filename}))))
+    (delete! class-dir)
+    (delete! uberjar-filename)))
 
 ;; this topo sort order stuff is required for stuff to work correctly... I copied it from my Cloverage PR
 ;; https://github.com/cloverage/cloverage/pull/303
@@ -98,20 +97,45 @@
                         :ns-compile ns-decls})
         (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
+(def ^:private resource-ignore-patterns
+  "Files to ignore when copying resources from source directories (`src` and `enterprise/backend/src`) and resource
+  directories (`resources`)."
+  [#"\.clj[c|s]?$"
+   #""
+   ;; ignore .~undo-tree~ or other nonsense files created by editors. I was considering using
+   ;;
+   ;;    git ls-files --ignored --exclude-from=.gitignore --others
+   ;;
+   ;; to find ALL the files to ignore here but then we run into problems accidentally ignoring build artifacts like
+   ;; translation files. This should be good enough for now -- we don't really NEED to do this stuff since we build in a
+   ;; clean Docker env, so it's more of a nice to have to keep the clutter in our JARs down when building locally.
+   #"\~$"
+   #"^\.?#"
+   #"\.rej$"])
+
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
     (doseq [path (all-paths basis)]
-      (when (not (#{"src" "enterprise/backend/src"} path))
-        (u/step (format "Copy %s" path)
-          (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
+      (u/step (format "Copy resources from %s" path)
+        (b/copy-dir {:target-dir class-dir
+                     :src-dirs   [path]
+                     :ignores    resource-ignore-patterns})))))
+
+(def ^:private dependency-ignore-patterns
+  "Files to ignore when copying resources from our dependencies."
+  [#".*metabase.*\.clj[c|s]?$"
+   ;; ignore module-info files inside META-INF because we don't have a modular JAR and they can break tools like `jar
+   ;; tf` -- see Slacc thread
+   ;; https://metaboat.slack.com/archives/C5XHN8GLW/p1731633690703149?thread_ts=1731504670.951389&cid=C5XHN8GLW
+   #".*module-info\.class"])
 
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
-      (depstar/uber {:class-dir class-dir
-                     :uber-file uberjar-filename
-                     :basis     basis
-                     :exclude   [".*metabase.*.clj[c|s]?$"]})
+      (b/uber {:class-dir class-dir
+               :uber-file uberjar-filename
+               :basis     basis
+               :exclude   dependency-ignore-patterns})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def ^:private manifest-entries
@@ -136,9 +160,8 @@
   to do it by hand for the time being."
   []
   (u/step "Update META-INF/MANIFEST.MF"
-    (with-open [fs (FileSystems/newFileSystem (URI. (str "jar:file:" (.getAbsolutePath (io/file "target/uberjar/metabase.jar"))))
-                                              Collections/EMPTY_MAP)]
-      (let [manifest-path (.getPath fs "META-INF" (into-array String ["MANIFEST.MF"]))]
+    (u/with-open-jar-file-system [fs "target/uberjar/metabase.jar"]
+      (let [manifest-path (u/get-path-in-filesystem fs "META-INF" "MANIFEST.MF")]
         (with-open [os (Files/newOutputStream manifest-path (into-array OpenOption [StandardOpenOption/WRITE
                                                                                     StandardOpenOption/TRUNCATE_EXISTING]))]
           (write-manifest! os))))))
