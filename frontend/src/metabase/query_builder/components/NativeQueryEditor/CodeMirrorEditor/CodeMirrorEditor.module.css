@@ -74,6 +74,11 @@
         &:last-child {
           margin-bottom: 4px;
         }
+
+        &[aria-selected="true"] {
+          color: inherit;
+          background-color: var(--mb-color-focus);
+        }
       }
 
       @supports (grid-template-columns: subgrid) {
@@ -100,11 +105,6 @@
             grid-column: 2;
           }
         }
-      }
-
-      ul li[aria-selected="true"] {
-        color: inherit;
-        background-color: var(--mb-color-focus);
       }
 
       .cm-completionIcon {
