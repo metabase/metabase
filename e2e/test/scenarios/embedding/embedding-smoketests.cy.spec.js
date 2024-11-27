@@ -8,7 +8,6 @@ import {
   openSharingMenu,
   openStaticEmbeddingModal,
   restore,
-  sharingMenu,
   sharingMenuButton,
   updateSetting,
   visitDashboard,
@@ -331,7 +330,8 @@ function assertLinkMatchesUrl(text, url) {
 
 function ensureEmbeddingIsDisabled() {
   openSharingMenu();
-  sharingMenu().findByText(/embedding is off/i);
+  // XXX: Check the embed modal instead when implemented
+  // sharingMenu().findByText(/embedding is off/i);
 }
 
 function visitAndEnableSharing(object, acceptTerms = true) {

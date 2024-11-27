@@ -9,7 +9,7 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
       py="sm"
       icon={
         <Center mr="xs">
-          <Icon name="embed" />
+          <Icon name="embed" aria-hidden />
         </Center>
       }
       onClick={onClick}

@@ -14,7 +14,6 @@ import {
   setTokenFeatures,
   setupSMTP,
   sharingMenu,
-  sharingMenuButton,
   sidebar,
   tableInteractive,
   undoToast,
@@ -84,7 +83,12 @@ describeEE("scenarios > admin > permissions > application", () => {
 
         visitQuestion(ORDERS_QUESTION_ID);
         tableInteractive().should("be.visible");
-        sharingMenuButton().should("be.disabled");
+        openSharingMenu();
+        sharingMenu()
+          .findByRole("menuitem", {
+            name: "Ask your admin to create a public link",
+          })
+          .should("be.disabled");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {

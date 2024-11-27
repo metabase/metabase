@@ -41,21 +41,21 @@ import {
       });
 
       describe("when user is admin", () => {
-        it(`should disable the embed button for ${resource} and provide a tooltip`, () => {
+        it(`should always show the embed button for ${resource}`, () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
 
           openSharingMenu();
-          sharingMenu().within(() => {
-            cy.findByText("Embedding is off").should("be.visible");
-            cy.findByText("Enable it in settings").should("be.visible");
-          });
+          sharingMenu()
+            .findByRole("menuitem", { name: "Embed" })
+            .should("be.visible")
+            .and("be.enabled");
         });
       });
 
       describe("when user is non-admin", () => {
-        it(`should not show embed button for ${resource}`, () => {
+        it(`should always show the embed button for ${resource}`, () => {
           cy.signInAsNormalUser();
 
           cy.get("@resourceId").then(id => {
@@ -63,7 +63,10 @@ import {
           });
 
           openSharingMenu();
-          sharingMenu().findByText(/embed/i).should("not.exist");
+          sharingMenu()
+            .findByRole("menuitem", { name: "Embed" })
+            .should("be.visible")
+            .and("be.enabled");
         });
       });
     });
