@@ -88,6 +88,10 @@ export function SelectEmbedTypePane({
     }
   };
 
+  const isStaticEmbeddingDisabled =
+    useSetting("enable-embedding-static") === false;
+  const isInteractiveEmbeddingDisabled =
+    useSetting("enable-embedding-interactive") === false;
   const isEmbeddingSdkDisabled = useSetting("enable-embedding-sdk") === false;
 
   return (
@@ -103,7 +107,8 @@ export function SelectEmbedTypePane({
         <SharingPaneButton
           title={t`Static embedding`}
           illustration={<StaticEmbeddingIllustration />}
-          onClick={goToNextStep}
+          onClick={isStaticEmbeddingDisabled ? undefined : goToNextStep}
+          isDisabled={isStaticEmbeddingDisabled}
         >
           <List>
             <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
@@ -113,15 +118,17 @@ export function SelectEmbedTypePane({
         </SharingPaneButton>
 
         {/* INTERACTIVE EMBEDDING */}
-        <Link
+        <MaybeLink
           to={interactiveEmbeddingCta.url}
           target={interactiveEmbeddingCta.target}
           rel="noreferrer"
+          shouldRender={!isInteractiveEmbeddingDisabled}
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
             badge={<Badge color="brand">{t`Pro`}</Badge>}
             illustration={<InteractiveEmbeddingIllustration />}
+            isDisabled={isInteractiveEmbeddingDisabled}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
@@ -130,7 +137,7 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Customize appearance with your logo, font, and colors.`}</List.Item>
             </List>
           </SharingPaneButton>
-        </Link>
+        </MaybeLink>
 
         {/* REACT SDK */}
         <MaybeLink
