@@ -24,8 +24,8 @@ export type { FlexibleSizeProps } from "./FlexibleSizeComponent";
 // These functions looks useless but it's a trick to have a way to type the config
 // while having code snippets the same across js and ts. This works because the
 // type is only in the function declaration and not where the config is
-// declared. `const config = defineEmbeddingSdkAuthConfig({})` will have the type of
-// `SDKConfig` and even provide autocompletion for js users depending on their
+// declared. `const authConfig = defineEmbeddingSdkAuthConfig({})` will have the type of
+// `MetabaseAuthConfig` and even provide autocompletion for js users depending on their
 // IDE configuration.
 
 export const defineEmbeddingSdkAuthConfig = (

@@ -27,8 +27,8 @@ import {MetabaseProvider} from '${SDK_PACKAGE_NAME}'
 
 ${imports}
 
-/** @type {import('@metabase/embedding-sdk-react').SDKConfig} */
-const config = {
+/** @type {import('@metabase/embedding-sdk-react').MetabaseAuthConfig} */
+const authConfig = {
   metabaseInstanceUrl: \`${instanceUrl}\`,
   ${apiKeyOrAuthUriConfig}
 }
