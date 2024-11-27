@@ -370,6 +370,13 @@ describeEE("scenarios > embedding > full app", () => {
       getNotebookStep("data").findByText(sourceName).click();
     }
 
+    function clickOnJoinDataSource(sourceName) {
+      getNotebookStep("join")
+        .findByLabelText("Right table")
+        .findByText(sourceName)
+        .click();
+    }
+
     function verifyTableSelected({ tableName, schemaName, databaseName }) {
       popover().within(() => {
         cy.findByLabelText(tableName).should(
@@ -465,6 +472,42 @@ describeEE("scenarios > embedding > full app", () => {
           });
         },
       );
+
+      it("should be able to join a table", () => {
+        startNewEmbeddingQuestion();
+        selectTable({
+          tableName: "Orders",
+        });
+        getNotebookStep("data").button("Join data").click();
+        popover().findByText("Products").click();
+        clickOnJoinDataSource("Products");
+        verifyTableSelected({
+          tableName: "Products",
+          databaseName: "Sample Database",
+        });
+      });
+
+      it("should be able to join a question", () => {
+        startNewEmbeddingQuestion();
+        selectTable({
+          tableName: "Products",
+        });
+        getNotebookStep("data").button("Join data").click();
+        popover().within(() => {
+          cy.icon("chevronleft").click();
+          cy.icon("chevronleft").click();
+        });
+        selectCard({
+          cardName: "Orders",
+          cardType: "question",
+          collectionNames: [],
+        });
+        clickOnJoinDataSource("Orders");
+        verifyCardSelected({
+          cardName: "Orders",
+          collectionName: "Our analytics",
+        });
+      });
     });
 
     describe("questions", () => {
