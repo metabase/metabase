@@ -170,7 +170,8 @@
       (->> entries (map :model) frequencies))))
 
 (defmethod search.engine/reset-tracking! :search.engine/fulltext [_]
-  (update-metadata! {:active-table nil :pending-table nil}))
+  (reset! *active-table* nil)
+  (reset! *pending-table* nil))
 
 (defmethod search.engine/consume! :search.engine/fulltext [_engine document-reducible]
   (transduce (comp (partition-all insert-batch-size)
