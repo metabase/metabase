@@ -1,8 +1,9 @@
-import type { UseQuery } from "@reduxjs/toolkit/dist/query/react/buildHooks";
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
 import type { Dispatch, State } from "metabase-types/store";
+
+import type { UseQuery } from "./rtk";
 
 export type Selector<T> = (state: State, entityOptions: EntityOptions) => T;
 
