@@ -392,7 +392,7 @@ const useGetMetadataAndForeignTables = (entityQuery, options) => {
     [table],
   );
 
-  // fetch foreign key linked table's metadata as well
+  // fetch foreign key linked tables metadata as well
   useEffect(() => {
     for (const id of tableForeignKeyTableIds) {
       dispatch(Tables.actions.fetchMetadataDeprecated({ id }, options));
