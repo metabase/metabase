@@ -77,7 +77,6 @@ export function NotebookDataPicker({
         stageIndex={stageIndex}
         table={table}
         placeholder={placeholder}
-        canChangeDatabase={canChangeDatabase}
         hasMetrics={hasMetrics}
         isDisabled={isDisabled}
         onChange={handleChange}
@@ -194,7 +193,6 @@ type LegacyDataPickerProps = {
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
-  canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
@@ -205,15 +203,11 @@ function LegacyDataPicker({
   stageIndex,
   table,
   placeholder,
-  canChangeDatabase,
   hasMetrics,
   isDisabled,
   onChange,
 }: LegacyDataPickerProps) {
-  const metadata = useSelector(getMetadata);
   const databaseId = Lib.databaseID(query);
-  const database =
-    databaseId != null ? metadata.database(databaseId) : undefined;
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
@@ -226,10 +220,10 @@ function LegacyDataPicker({
   return (
     <DataSourceSelector
       isInitiallyOpen={!table}
-      databases={canChangeDatabase ? undefined : [database]}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
       selectedCollectionId={card?.collection_id}
+      databaseQuery={{ saved: true }}
       canSelectMetric={modelList.includes("metric")}
       triggerElement={
         <DataPickerTarget

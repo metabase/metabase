@@ -1,12 +1,16 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
   appBar,
   createDashboardWithTabs,
+  createQuestion,
   dashboardGrid,
   describeEE,
   exportFromDashcard,
@@ -28,9 +32,8 @@ import {
   createMockDashboardCard,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
-const { ORDERS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -320,16 +323,30 @@ describeEE("scenarios > embedding > full app", () => {
   });
 
   describe("notebook", () => {
+    const cardDetails = {
+      name: "Card",
+      type: "question",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+    };
+
     function startNewEmbeddingQuestion() {
       visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
       cy.button("New").click();
       popover().findByText("Question").click();
     }
 
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+    });
+
     describe("tables", () => {
       it("should select a table in the only database", () => {
-        cy.log("select a table");
         startNewEmbeddingQuestion();
+
+        cy.log("select a table");
         popover().within(() => {
           cy.findByText("Raw Data").click();
           cy.findByText("Products").click();
@@ -354,9 +371,9 @@ describeEE("scenarios > embedding > full app", () => {
         () => {
           restore("postgres-12");
           cy.signInAsAdmin();
+          startNewEmbeddingQuestion();
 
           cy.log("select a table");
-          startNewEmbeddingQuestion();
           popover().within(() => {
             cy.findByText("Raw Data").click();
             cy.findByText("QA Postgres12").click();
@@ -383,9 +400,9 @@ describeEE("scenarios > embedding > full app", () => {
         () => {
           restore("mysql-8");
           cy.signInAsAdmin();
+          startNewEmbeddingQuestion();
 
           cy.log("select a table");
-          startNewEmbeddingQuestion();
           popover().within(() => {
             cy.findByText("Raw Data").click();
             cy.findByText("QA MySQL8").click();
@@ -413,9 +430,9 @@ describeEE("scenarios > embedding > full app", () => {
           restore("postgres-writable");
           cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID });
+          startNewEmbeddingQuestion();
 
           cy.log("select a table");
-          startNewEmbeddingQuestion();
           popover().within(() => {
             cy.findByText("Raw Data").click();
             cy.findByText("Writable Postgres12").click();
@@ -437,6 +454,88 @@ describeEE("scenarios > embedding > full app", () => {
           });
         },
       );
+    });
+
+    describe("questions", () => {
+      it("should select a question in the root collection", () => {
+        createQuestion({
+          ...cardDetails,
+          type: "question",
+        });
+        startNewEmbeddingQuestion();
+
+        cy.log("select a question");
+        popover().within(() => {
+          cy.findByText("Saved Questions").click();
+          cy.findByText(cardDetails.name).click();
+        });
+        getNotebookStep("data")
+          .findByText(cardDetails.name)
+          .should("be.visible");
+
+        cy.log("make sure it is selected in the picker when opened again");
+        getNotebookStep("data").findByText(cardDetails.name).click();
+        cy.findByLabelText(cardDetails.name).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+      });
+
+      it("should select a question in a regular collection", () => {
+        createQuestion({
+          ...cardDetails,
+          type: "question",
+          collection_id: FIRST_COLLECTION_ID,
+        });
+        startNewEmbeddingQuestion();
+
+        cy.log("select a question");
+        popover().within(() => {
+          cy.findByText("Saved Questions").click();
+          cy.findByText("First collection").click();
+          cy.findByText(cardDetails.name).click();
+        });
+        getNotebookStep("data")
+          .findByText(cardDetails.name)
+          .should("be.visible");
+
+        cy.log("make sure it is selected in the picker when opened again");
+        getNotebookStep("data").findByText(cardDetails.name).click();
+        cy.findByLabelText(cardDetails.name).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+      });
+
+      it("should select a question in a nested collection", () => {
+        createQuestion({
+          ...cardDetails,
+          type: "question",
+          collection_id: SECOND_COLLECTION_ID,
+        });
+        startNewEmbeddingQuestion();
+
+        cy.log("select a question");
+        popover().within(() => {
+          cy.findByText("Saved Questions").click();
+          cy.findByText("First collection").click();
+          cy.findByText("Second collection").click();
+          cy.findByText(cardDetails.name).click();
+        });
+        getNotebookStep("data")
+          .findByText(cardDetails.name)
+          .should("be.visible");
+
+        cy.log("make sure it is selected in the picker when opened again");
+        getNotebookStep("data").findByText(cardDetails.name).click();
+        cy.findByLabelText(cardDetails.name).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+      });
     });
   });
 
