@@ -1,12 +1,13 @@
-name: E2E Component Tests for Embedding SDK
+name: E2E Cross-version Component Tests for Embedding SDK
 
 on:
   push:
     branches:
-      - "master"
       - "release-**"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - "release-**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -31,8 +32,7 @@ jobs:
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
     if: |
-      !cancelled() &&
-      contains(github.base_ref || github.ref, 'release-x')
+      !cancelled()
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
@@ -67,8 +67,7 @@ jobs:
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
-      github.event.pull_request.draft == false &&
-      needs.files-changed.outputs.e2e_all == 'true'
+      github.event.pull_request.draft == false
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:
@@ -96,8 +95,40 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
+  resolve-sdk-version:
+    if: |
+      !cancelled()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      sdk_version: ${{ fromJson(steps.dependencies.outputs.result).sdk_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Get latest SDK release for this branch
+        uses: actions/github-script@v7
+        id: dependencies
+        with:
+          script: | # js
+            const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const branchName = '${{ github.base_ref || github.ref }}';
+
+            const sdk_version = await getSdkVersionFromReleaseBranchName({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branchName,
+            });
+
+            return {
+              sdk_version,
+            };
+
   e2e-tests:
-    needs: [get-build-requirements, build]
+    needs: [get-build-requirements, build, resolve-sdk-version]
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ubuntu-22.04
@@ -124,6 +155,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # Needed to omit newly added tests for functionality that is not yet released
+      - name: Checkout SDK release commit
+        uses: actions/checkout@v4
+        with:
+          ref: embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }}
+
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
@@ -147,17 +184,8 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
-
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-
-      - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
+      - name: Install Embedding SDK package v${{ needs.resolve-sdk-version.outputs.sdk_version }}
+        run: yarn add @metabase/embedding-sdk-react@${{ needs.resolve-sdk-version.outputs.sdk_version }}
 
       - name: Run E2E tests for Embedding SDK
         run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -178,7 +206,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: cypress-recording-embedding-sdk-latest
+          name: cypress-recording-embedding-sdk-cross-version
           path: |
             ./cypress
             ./logs/test.log
@@ -206,7 +234,7 @@ jobs:
       needs.e2e-tests.result == 'skipped'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
-    name: e2e-component-tests-embedding-sdk
+    name: e2e-component-tests-embedding-sdk-cross-version
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
