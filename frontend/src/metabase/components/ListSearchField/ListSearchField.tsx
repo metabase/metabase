@@ -34,6 +34,7 @@ export default function ListSearchField({
           </ActionIcon>
         ) : null
       }
+      data-testid="list-search-field"
       {...props}
     />
   );
