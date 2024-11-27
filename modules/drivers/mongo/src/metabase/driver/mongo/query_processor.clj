@@ -335,6 +335,8 @@
           :hour-of-day      (extract $hour column)
           :day              (truncate :day)
           :day-of-week      (day-of-week column)
+          :day-of-week-iso  (binding [driver.common/*start-of-week* :monday]
+                              (day-of-week column))
           :day-of-month     (extract $dayOfMonth column)
           :day-of-year      (extract $dayOfYear column)
           :week             (if supports-dateTrunc?
