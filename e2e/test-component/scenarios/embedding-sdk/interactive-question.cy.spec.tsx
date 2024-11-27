@@ -159,25 +159,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
         <Box p="lg">
           <InteractiveQuestion questionId={questionId}>
             <Box>
-              <Flex justify="space-between" w="100%">
-                <Box>
-                  <InteractiveQuestion.FilterBar />
-                </Box>
-
-                <Popover position="bottom-end" opened={isOpen} onClose={close}>
-                  <Popover.Target>
-                    <Button onClick={toggle}>Filter</Button>
-                  </Popover.Target>
-
-                  <Popover.Dropdown>
-                    <InteractiveQuestion.FilterPicker
-                      onClose={close}
-                      withIcon
-                    />
-                  </Popover.Dropdown>
-                </Popover>
-              </Flex>
-
+              <InteractiveQuestion.FilterDropdown />
               <InteractiveQuestion.QuestionVisualization />
             </Box>
           </InteractiveQuestion>
@@ -199,9 +181,10 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText("User ID").click();
       cy.findByPlaceholderText("Enter an ID").type("12");
       cy.findByText("Add filter").click();
-    });
 
-    getSdkRoot().contains("User ID is 12");
+      cy.findByText("User ID is 12").should("be.visible");
+      cy.findByText("Add another filter").should("be.visible");
+    });
   });
 
   it("can create questions via the SaveQuestionForm component", () => {
@@ -272,7 +255,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     cy.get("@onSaveSpy").should("have.been.calledWith", "Sample Orders 4");
   });
 
-  it("should not crash when clicking on Summarize (metabase#50398)", () => {
+  it.only("should not crash when clicking on Summarize (metabase#50398)", () => {
     mountInteractiveQuestion();
 
     cy.wait("@cardQuery").then(({ response }) => {
@@ -282,10 +265,12 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().within(() => {
       // Open the default summarization view in the sdk
       cy.findByText("1 summary").click();
-
-      // Expect the default summarization view to be there.
-      cy.findByTestId("summarize-aggregation-item-list").should("be.visible");
     });
+
+    cy.findByText("Add another summary").click();
+
+    // Expect the default summarization view to be there.
+    cy.findByTestId("aggregation-picker").should("be.visible");
 
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;

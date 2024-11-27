@@ -57,11 +57,13 @@
 
 (defn maybe-create-pending!
   "Create a search index table."
-  []
-  (when (not @reindexing?)
-    (when-not (exists? pending-table)
-      (create-table! pending-table))
-    (reset! reindexing? true)))
+  ([]
+   (when (not @reindexing?)
+     (maybe-create-pending! pending-table)
+     (reset! reindexing? true)))
+  ([table-name]
+   (when-not (exists? table-name)
+     (create-table! table-name))))
 
 (defn activate-pending!
   "Make the pending index active if it exists. Returns true if it did so."
@@ -113,9 +115,11 @@
   "Create the given search index entries in bulk"
   [documents]
   (let [entries          (map document->entry documents)
+        ;; When stubbing the table in tests, always treat it as active
+        active?          (or @initialized? (not= :search_index *active-table*))
         ;; Ideally, we would reset these atoms if the corresponding tables don't exist.
         ;; We're about to rework this area, so just leaving this as a note for now.
-        active-updated?  (when @initialized? (safe-batch-upsert! *active-table* entries))
+        active-updated?  (when active? (safe-batch-upsert! *active-table* entries))
         pending-updated? (when @reindexing?  (safe-batch-upsert! pending-table entries))]
     (when (or active-updated? pending-updated?)
       (->> entries (map :model) frequencies))))
@@ -147,11 +151,17 @@
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
   []
-  (reset! reindexing? false)
-  (drop-table! pending-table)
-  (maybe-create-pending!)
-  (activate-pending!)
-  (reset! initialized? true))
+  ;; Moving to random tables will clean this up
+  (let [testing?   (not= *active-table* :search_index)
+        table-name (if testing? *active-table* pending-table)]
+    (when-not testing?
+      (reset! reindexing? false))
+    (drop-table! table-name)
+    (maybe-create-pending! table-name)
+    (when-not testing?
+      (activate-pending!)
+      (reset! initialized? true))
+    true))
 
 (defn ensure-ready!
   "Ensure the index is ready to be populated. Return false if it was already ready."
