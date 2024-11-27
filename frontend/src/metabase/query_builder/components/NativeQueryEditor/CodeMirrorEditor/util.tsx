@@ -1,7 +1,7 @@
 import type { EditorState } from "@codemirror/state";
 import { t } from "ttag";
 
-import type { CardType } from "metabase-types/api";
+import type { CardId, CardType } from "metabase-types/api";
 
 import type { Location } from "../types";
 
@@ -75,7 +75,7 @@ export type MatchTagOptions = {
 // This also returns a Match if the tag is opened, but not closed at the end of the line.
 export function matchTagAtCursor(
   state: EditorState,
-  options: MatchTagOptions,
+  options: MatchTagOptions = {},
 ): TagMatch | null {
   const { position, allowOpenEnded } = options;
 
@@ -201,4 +201,24 @@ export function matchTagAtCursor(
       to: end - suffix.length,
     },
   };
+}
+
+export function matchCardIdAtCursor(
+  state: EditorState,
+  options: MatchTagOptions = {},
+): CardId | null {
+  const tag = matchTagAtCursor(state, options);
+  if (!tag || tag.type !== "card") {
+    return null;
+  }
+
+  const id = tag.content.text.match(/^(\d+)/)?.[1];
+  if (!id) {
+    return null;
+  }
+  const parsedId = parseInt(id, 10);
+  if (!Number.isInteger(parsedId)) {
+    return null;
+  }
+  return parsedId;
 }

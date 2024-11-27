@@ -16,7 +16,7 @@ import type { EditorProps, EditorRef } from "../Editor";
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
-import { convertIndexToPosition } from "./util";
+import { convertIndexToPosition, matchCardIdAtCursor } from "./util";
 
 type CodeMirrorEditorProps = EditorProps;
 
@@ -29,6 +29,7 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
       readOnly,
       onSelectionChange,
       onRightClickSelection,
+      onCursorMoveOverCardTag,
     } = props;
     const extensions = useExtensions({
       engine: query.engine() ?? undefined,
@@ -62,8 +63,14 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
             end: convertIndexToPosition(value, update.state.selection.main.to),
           });
         }
+        if (onCursorMoveOverCardTag) {
+          const cardId = matchCardIdAtCursor(update.state);
+          if (cardId !== null) {
+            onCursorMoveOverCardTag(cardId);
+          }
+        }
       },
-      [onSelectionChange],
+      [onSelectionChange, onCursorMoveOverCardTag],
     );
 
     useEffect(() => {
