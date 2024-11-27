@@ -547,6 +547,30 @@ describeEE("scenarios > embedding > full app", () => {
           collectionName: "Your personal collection",
         });
       });
+
+      it("should select a question in another user personal collection", () => {
+        cy.signInAsAdmin();
+        const questionDetails = {
+          ...cardDetails,
+          type: "question",
+          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+        };
+        createQuestion(questionDetails);
+        startNewEmbeddingQuestion();
+        selectCard({
+          cardName: questionDetails.name,
+          cardType: questionDetails.type,
+          collectionNames: [
+            "All personal collections",
+            "Robert Tableton's Personal Collection",
+          ],
+        });
+        clickOnDataSource(cardDetails.name);
+        verifyCardSelected({
+          cardName: questionDetails.name,
+          collectionName: "Robert Tableton's Personal Collection",
+        });
+      });
     });
   });
 
