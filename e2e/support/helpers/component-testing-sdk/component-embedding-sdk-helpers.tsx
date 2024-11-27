@@ -1,4 +1,4 @@
-import type { SDKConfig } from "@metabase/embedding-sdk-react";
+import type { MetabaseAuthConfig } from "@metabase/embedding-sdk-react";
 import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 import * as jose from "jose";
 import type { JSX } from "react";
@@ -53,13 +53,13 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
 
 export function mountSdkContent(
   children: JSX.Element,
-  extraConfig: Partial<SDKConfig> = {},
+  extraConfig: Partial<MetabaseAuthConfig> = {},
 ) {
   cy.intercept("GET", "/api/user/current").as("getUser");
 
   cy.mount(
     <MetabaseProvider
-      config={{ ...DEFAULT_SDK_PROVIDER_CONFIG, ...extraConfig }}
+      authConfig={{ ...DEFAULT_SDK_PROVIDER_CONFIG, ...extraConfig }}
     >
       {children}
     </MetabaseProvider>,

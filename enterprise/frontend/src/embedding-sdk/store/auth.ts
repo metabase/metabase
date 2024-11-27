@@ -1,7 +1,7 @@
 import type {
   EmbeddingSessionToken,
   FetchRequestTokenFn,
-  SDKConfig,
+  MetabaseAuthConfig,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -18,7 +18,7 @@ import { getFetchRefreshTokenFn } from "./selectors";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
-  async (sdkConfig: SDKConfig, { dispatch }) => {
+  async (sdkConfig: MetabaseAuthConfig, { dispatch }) => {
     // Setup JWT or API key
     const isValidAuthProviderUri =
       sdkConfig.authProviderUri && sdkConfig.authProviderUri?.length > 0;

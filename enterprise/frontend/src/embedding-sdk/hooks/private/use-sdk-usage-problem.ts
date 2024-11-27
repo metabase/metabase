@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useDispatch } from "react-redux";
 
-import type { SDKConfig } from "embedding-sdk";
+import type { MetabaseAuthConfig } from "embedding-sdk";
 import { printUsageProblemToConsole } from "embedding-sdk/lib/print-usage-problem";
 import { getSdkUsageProblem } from "embedding-sdk/lib/usage-problem";
 import { setUsageProblem } from "embedding-sdk/store/reducer";
@@ -9,7 +9,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getTokenFeature } from "metabase/setup/selectors";
 
-export function useSdkUsageProblem(config: SDKConfig) {
+export function useSdkUsageProblem(config: MetabaseAuthConfig) {
   const { allowConsoleLog = true } = config;
 
   const hasLoggedRef = useRef(false);

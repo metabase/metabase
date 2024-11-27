@@ -56,7 +56,7 @@ const setup = async ({
   setupCurrentUserEndpoint(createMockUser({ id: 1 }));
 
   render(
-    <MetabaseProvider config={defaultAuthUriConfig}>
+    <MetabaseProvider authConfig={defaultAuthUriConfig}>
       <div>Hello</div>
     </MetabaseProvider>,
   );

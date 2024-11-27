@@ -78,7 +78,7 @@ const darkTheme = defineEmbeddingSdkTheme({
 });
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MetabaseProvider config={storybookSdkDefaultConfig} theme={darkTheme}>
+  <MetabaseProvider authConfig={storybookSdkDefaultConfig} theme={darkTheme}>
     <Box p="xl" bg={colors.background}>
       {children}
     </Box>

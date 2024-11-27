@@ -16,7 +16,7 @@ import {
   StaticQuestion,
   defineEmbeddingSdkConfig,
 } from "embedding-sdk/components/public";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
   createMockCard,
   createMockSettings,
@@ -34,9 +34,9 @@ const defaultAuthUriConfig = defineEmbeddingSdkConfig({
 
 const MOCK_CARD = createMockCard({ id: 1 });
 
-const setup = async (config: SDKConfig) => {
+const setup = async (config: MetabaseAuthConfig) => {
   render(
-    <MetabaseProvider config={config}>
+    <MetabaseProvider authConfig={config}>
       <StaticQuestion questionId={1} />
     </MetabaseProvider>,
   );

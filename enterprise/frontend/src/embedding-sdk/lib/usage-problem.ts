@@ -1,12 +1,12 @@
 import { match } from "ts-pattern";
 
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 
 import { getIsLocalhost } from "./is-localhost";
 
 interface SdkProblemOptions {
-  config: SDKConfig;
+  config: MetabaseAuthConfig;
 
   isEnabled: boolean;
   hasTokenFeature: boolean;

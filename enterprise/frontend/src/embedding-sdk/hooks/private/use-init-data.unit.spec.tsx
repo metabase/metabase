@@ -25,7 +25,10 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig, SDKConfigWithAuthProvider } from "embedding-sdk/types";
+import type {
+  MetabaseAuthConfig,
+  MetabaseAuthConfigWithProvider,
+} from "embedding-sdk/types";
 import { GET } from "metabase/lib/api";
 import {
   createMockSettings,
@@ -36,17 +39,17 @@ import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-const TestComponent = ({ config }: { config: SDKConfig }) => {
+const TestComponent = ({ config }: { config: MetabaseAuthConfig }) => {
   const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
   useInitData({
-    config: {
+    authConfig: {
       ...config,
       metabaseInstanceUrl: "http://localhost",
-    } as SDKConfig,
+    } as MetabaseAuthConfig,
   });
 
   const refreshToken = () =>
@@ -79,7 +82,7 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
-} & Partial<SDKConfigWithAuthProvider>) => {
+} & Partial<MetabaseAuthConfigWithProvider>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,

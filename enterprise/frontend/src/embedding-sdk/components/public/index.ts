@@ -1,4 +1,4 @@
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
 
 export { StaticQuestion } from "./StaticQuestion";
@@ -28,8 +28,9 @@ export type { FlexibleSizeProps } from "./FlexibleSizeComponent";
 // `SDKConfig` and even provide autocompletion for js users depending on their
 // IDE configuration.
 
-export const defineEmbeddingSdkConfig = (config: SDKConfig): SDKConfig =>
-  config;
+export const defineEmbeddingSdkConfig = (
+  config: MetabaseAuthConfig,
+): MetabaseAuthConfig => config;
 
 export const defineEmbeddingSdkTheme = (theme: MetabaseTheme): MetabaseTheme =>
   theme;

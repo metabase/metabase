@@ -12,7 +12,7 @@ import {
   createMockAuthProviderUriConfig,
 } from "embedding-sdk/test/mocks/config";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -25,7 +25,7 @@ const TEST_USER = createMockUser();
 jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
 
 interface Options {
-  config: SDKConfig;
+  config: MetabaseAuthConfig;
   hasEmbeddingFeature?: boolean;
 }
 
@@ -46,7 +46,7 @@ const setup = (options: Options) => {
   setupPropertiesEndpoints(settingValues);
 
   return renderWithProviders(<div>hello!</div>, {
-    sdkProviderProps: { config: options.config },
+    sdkProviderProps: { authConfig: options.config },
     storeInitialState: state,
     mode: "sdk",
   });

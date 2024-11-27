@@ -188,13 +188,15 @@ const theme = defineEmbeddingSdkTheme({
 
 ### Customizing loader and error components
 
-You can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` in the config.
+You can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` in the MetabaseProvider props.
 
 ```tsx
-import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({
-  loaderComponent: () => <div>Analytics is loading...</div>,
-  errorComponent: ({ message }) => <div>There was an error: {message}</div>,
-});
+<MetabaseProvider
+  errorComponent={({ message }) => <div>There was an error: {message}</div>}
+  loaderComponent={() => <div>Analytics is loading...</div>}
+>
+  <StaticDashboard dashboardId={1} />
+</MetabaseProvider>
 ```

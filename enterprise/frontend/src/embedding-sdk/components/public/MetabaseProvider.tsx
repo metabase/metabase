@@ -16,8 +16,11 @@ import {
   setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
-import type { SdkStoreState } from "embedding-sdk/store/types";
-import type { SDKConfig } from "embedding-sdk/types";
+import type {
+  SdkErrorComponent,
+  SdkStoreState,
+} from "embedding-sdk/store/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
@@ -37,12 +40,17 @@ import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
   children: ReactNode;
-  config: SDKConfig;
+  authConfig: MetabaseAuthConfig;
   pluginsConfig?: SdkPluginsConfig;
   eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
   className?: string;
   locale?: string;
+  loaderComponent?: () => JSX.Element;
+  errorComponent?: SdkErrorComponent;
+
+  /** Whether to allow logging to the DevTools console. Defaults to true. */
+  allowConsoleLog?: boolean;
 }
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
@@ -51,16 +59,19 @@ interface InternalMetabaseProviderProps extends MetabaseProviderProps {
 
 export const MetabaseProviderInternal = ({
   children,
-  config,
+  authConfig,
   pluginsConfig,
   eventHandlers,
   theme,
   store,
   className,
   locale = "en",
+  errorComponent,
+  loaderComponent,
+  allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
-  useInitData({ config });
+  useInitData({ authConfig, allowConsoleLog });
 
   useEffect(() => {
     if (fontFamily) {
@@ -77,25 +88,25 @@ export const MetabaseProviderInternal = ({
   }, [store, eventHandlers]);
 
   useEffect(() => {
-    store.dispatch(setLoaderComponent(config.loaderComponent ?? null));
-  }, [store, config.loaderComponent]);
+    store.dispatch(setLoaderComponent(loaderComponent ?? null));
+  }, [store, loaderComponent]);
 
   useEffect(() => {
-    store.dispatch(setErrorComponent(config.errorComponent ?? null));
-  }, [store, config.errorComponent]);
+    store.dispatch(setErrorComponent(errorComponent ?? null));
+  }, [store, errorComponent]);
 
   useEffect(() => {
-    store.dispatch(setMetabaseClientUrl(config.metabaseInstanceUrl));
-  }, [store, config.metabaseInstanceUrl]);
+    store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
+  }, [store, authConfig.metabaseInstanceUrl]);
 
   return (
     <EmotionCacheProvider>
       <Global styles={SCOPED_CSS_RESET} />
       <SdkThemeProvider theme={theme}>
-        <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
+        <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
         <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
           <LocaleProvider locale={locale}>{children}</LocaleProvider>
-          <SdkUsageProblemDisplay config={config} />
+          <SdkUsageProblemDisplay config={authConfig} />
           <PortalContainer />
           <FullPagePortalContainer />
         </Box>

@@ -14,7 +14,7 @@ import {
   StaticQuestion,
   defineEmbeddingSdkConfig,
 } from "embedding-sdk/components/public";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
   createMockCard,
   createMockSettings,
@@ -38,12 +38,12 @@ const setup = ({
   sdkConfig,
   locale,
 }: {
-  sdkConfig: SDKConfig;
+  sdkConfig: MetabaseAuthConfig;
   locale?: string;
 }) => {
   return render(
     <MetabaseProvider
-      config={{
+      authConfig={{
         ...sdkConfig,
       }}
       locale={locale}
@@ -92,7 +92,7 @@ describe("SDK auth and init flow", () => {
 
     rerender(
       <MetabaseProvider
-        config={{
+        authConfig={{
           ...sdkConfig,
         }}
       >
