@@ -122,11 +122,11 @@ export async function GET() {
 }
 ```
 
-Then, pass this `config` to `MetabaseProvider`
+Then, pass this `authConfig` to `MetabaseProvider`
 
 ```typescript
 import { defineEmbeddingSdkAuthConfig } from "@metabase/embedding-sdk-react";
-const config = defineEmbeddingSdkAuthConfig({
+const authConfig = defineEmbeddingSdkAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
@@ -179,11 +179,11 @@ export default async function handler(
 }
 ```
 
-Then, pass this `config` to `MetabaseProvider`
+Then, pass this `authConfig` to `MetabaseProvider`
 
 ```ts
 import { defineEmbeddingSdkAuthConfig } from "@metabase/embedding-sdk-react";
-const config = defineEmbeddingSdkAuthConfig({
+const authConfig = defineEmbeddingSdkAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
