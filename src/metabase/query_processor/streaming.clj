@@ -59,7 +59,8 @@
 
   The resulting list of indices determines the order of column names and data in exports."
   [cols table-columns]
-  (let [table-columns'     (or (validate-table-columms table-columns cols)
+  (let [pivot?             (some #(= (:name %) "pivot-grouping") cols)
+        table-columns'     (or (validate-table-columms table-columns cols)
                                ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                ;; that retains the original column ordering in `cols`
                                (for [col cols]
@@ -67,8 +68,8 @@
                                        id-or-name (or (:id col) col-name)
                                        field-ref  (:field_ref col)]
                                    {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
-                                    ::mb.viz/table-column-enabled true
-                                    ::mb.viz/table-column-name col-name})))
+                                    ::mb.viz/table-column-enabled   true
+                                    ::mb.viz/table-column-name      col-name})))
         enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
         cols-vector        (into [] cols)
         ;; cols-index is a map from keys representing fields to their indices into `cols`
@@ -81,21 +82,23 @@
                                             m')))
                                       {}
                                       cols-vector)]
-    (->> (map
-          (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
-            (let [index              (or (get cols-index field-ref)
-                                         (get cols-index col-name))
-                  col                (get cols-vector index)
-                  remapped-to-name   (:remapped_to col)
-                  remapped-from-name (:remapped_from col)]
-              (cond
-                remapped-to-name
-                (get cols-index remapped-to-name)
+    (if pivot?
+      (range (count cols))
+      (->> (map
+            (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
+              (let [index              (or (get cols-index field-ref)
+                                           (get cols-index col-name))
+                    col                (get cols-vector index)
+                    remapped-to-name   (:remapped_to col)
+                    remapped-from-name (:remapped_from col)]
+                (cond
+                  remapped-to-name
+                  (get cols-index remapped-to-name)
 
-                (not remapped-from-name)
-                index)))
-          enabled-table-cols)
-         (remove nil?))))
+                  (not remapped-from-name)
+                  index)))
+            enabled-table-cols)
+           (remove nil?)))))
 
 (defn order-cols
   "Dedups and orders `cols` based on the contents of table-columns in the provided viz settings. Also
