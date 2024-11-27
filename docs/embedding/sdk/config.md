@@ -8,26 +8,26 @@ title: Embedded analytics SDK - config
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-To use the SDK in your app, you need to import the `MetabaseProvider` component and provide it with a `config` object, like so:
+To use the SDK in your app, you need to import the `MetabaseProvider` component with an `authConfig`, like so:
 
 ```typescript
-const config = defineEmbeddingSdkConfig({
+const authConfig = defineEmbeddingSdkAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 
 export default function App() {
   return (
-    <MetabaseProvider config={config} theme={theme} className="optional-class">
+    <MetabaseProvider authConfig={authConfig} theme={theme} className="optional-class">
       Hello World!
     </MetabaseProvider>
   );
 }
 ```
 
-You can also pass additional objects to `MetabaseProvider`:
+You can also pass additional props to `MetabaseProvider`:
 
-- `config` (Required). Includes information about your Metabase.
+- `authConfig` (Required). Defines how to authenticate with Metabase.
 - `theme` (Optional) See [Appearance](./appearance.md).
 - `pluginsConfig` (Optional). See [Plugins](./plugins.md).
 - `eventHandlers` (Optional). See [Global event handlers](#global-event-handlers).
@@ -38,12 +38,12 @@ You can also pass additional objects to `MetabaseProvider`:
 import React from "react";
 import {
   MetabaseProvider,
-  defineEmbeddingSdkConfig,
+  defineEmbeddingSdkAuthConfig,
   defineEmbeddingSdkTheme,
 } from "@metabase/embedding-sdk-react";
 
-// Configuration
-const config = defineEmbeddingSdkConfig({
+// Configure authentication
+const config = defineEmbeddingSdkAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
@@ -91,7 +91,7 @@ const eventHandlers = {
 };
 
 return (
-  <MetabaseProvider config={config} eventHandlers={eventHandlers}>
+  <MetabaseProvider authConfig={authConfig} eventHandlers={eventHandlers}>
     {children}
   </MetabaseProvider>
 );

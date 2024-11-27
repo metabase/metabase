@@ -14,7 +14,7 @@ import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
   StaticQuestion,
-  defineEmbeddingSdkConfig,
+  defineEmbeddingSdkAuthConfig,
 } from "embedding-sdk/components/public";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
@@ -27,7 +27,7 @@ import {
 const METABASE_INSTANCE_URL = "path:";
 const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
-const defaultAuthUriConfig = defineEmbeddingSdkConfig({
+const defaultAuthUriConfig = defineEmbeddingSdkAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: AUTH_PROVIDER_URL,
 });
@@ -113,7 +113,7 @@ describe("SDK auth errors", () => {
     });
 
     it("should show a message when fetchRequestToken doesn't return a json object", async () => {
-      const config = defineEmbeddingSdkConfig({
+      const config = defineEmbeddingSdkAuthConfig({
         ...defaultAuthUriConfig,
         // @ts-expect-error -- testing error path
         fetchRequestToken: async () => "not a json object",
@@ -139,7 +139,7 @@ describe("SDK auth errors", () => {
     });
 
     it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
-      const config = defineEmbeddingSdkConfig({
+      const config = defineEmbeddingSdkAuthConfig({
         ...defaultAuthUriConfig,
         fetchRequestToken: async () => {
           throw new Error("Custom error message");
