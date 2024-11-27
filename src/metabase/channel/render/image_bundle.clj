@@ -79,7 +79,7 @@
    :render-type render-type})
 
 (def ^:private external-link-url (io/resource "frontend_client/app/assets/img/external_link.png"))
-(def ^:private no-results-url    (io/resource "frontend_client/app/assets/img/pulse_no_results@2x.png"))
+(def ^:private no-results-url    (io/resource "frontend_client/app/assets/img/no_results.png"))
 (def ^:private attached-url      (io/resource "frontend_client/app/assets/img/attachment@2x.png"))
 
 (def ^:private external-link-image
