@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.metadata :as lib.metadata]
@@ -524,7 +525,11 @@
     (check-display-names
      [{:clause [:!= (created-at-with :day-of-week) "2023-10-02"],
        :name "Created At excludes Mondays"}
+      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 1],
+       :name "Created At excludes Mondays"}
       {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
+       :name "Created At excludes 3 day of week selections"}
+      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 1 2 3],
        :name "Created At excludes 3 day of week selections"}
       {:clause [:!= (created-at-with :month-of-year) "2023-01-01"],
        :name "Created At excludes each Jan"}

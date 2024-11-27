@@ -87,6 +87,16 @@
                            lib.temporal-bucket/describe-temporal-unit
                            u/lower-case-en)]
     (lib.util.match/match-one expr
+      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] (b :guard int?)]
+      (i18n/tru "{0} excludes {1}"
+                (->unbucketed-display-name a)
+                (inflections/plural (u.time/format-unit b :day-of-week-iso)))
+
+      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int %))]
+      (i18n/tru "{0} excludes {1} {2} selections"
+                (->unbucketed-display-name a)
+                (count args) (-> :day-of-week lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
+
       [:= _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
