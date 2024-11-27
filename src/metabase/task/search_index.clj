@@ -37,7 +37,7 @@
   "Reindex the whole AppDB"
   ([]
    (let [recreate? (not @recreated?)]
-     (u/prog1 (reindex!)
+     (u/prog1 (reindex! recreate?)
        (when recreate?
          (reset! recreated? true)))))
   ([recreate?]
