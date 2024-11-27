@@ -37,7 +37,8 @@
   (keyword (str/replace (str "search_index_" (random-uuid)) #"-" "_")))
 
 (defn- exists? [table-name]
-  (t2/exists? :information_schema.tables :table_name (name table-name)))
+  (when table-name
+    (t2/exists? :information_schema.tables :table_name (name table-name))))
 
 (defn- drop-table! [table-name]
   (boolean
