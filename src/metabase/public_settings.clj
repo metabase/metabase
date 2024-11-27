@@ -1068,7 +1068,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Enables search engines which are still in the experimental stage")
   :visibility :internal
   :export?    false
-  :default    (not config/is-prod?)
+  ;; TODO disable by default again in the 52 Gold release
+  :default    true #_(not config/is-prod?)
   :type       :boolean)
 
 (defsetting experimental-search-weight-overrides
