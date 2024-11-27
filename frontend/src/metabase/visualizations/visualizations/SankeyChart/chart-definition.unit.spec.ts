@@ -22,6 +22,7 @@ const columns = [
     name: "Amount",
     display_name: "Amount",
     base_type: "type/Number",
+    semantic_type: "type/Number",
   }),
 ];
 
