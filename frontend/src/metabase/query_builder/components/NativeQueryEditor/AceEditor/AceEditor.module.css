@@ -1,5 +1,11 @@
 :global {
   :local(.editor) {
+    --hl-blue: var(--mb-base-color-ocean-50);
+    --hl-green: var(--mb-base-color-palm-40);
+    --hl-purple: var(--mb-base-color-octopus-60);
+    --hl-red: var(--mb-base-color-lobster-50);
+    --hl-yellow: var(--mb-base-color-dubloon-30);
+
     height: 100%;
     width: 100%;
     flex-shrink: 1;
@@ -41,22 +47,22 @@
 
     .ace_line {
       .ace_keyword {
-        color: var(--mb-color-saturated-purple);
+        color: var(--hl-purple);
       }
 
       .ace_identifier,
       .ace_function,
       .ace_variable {
-        color: var(--mb-color-saturated-blue);
+        color: var(--hl-blue);
       }
 
       .ace_constant,
       .ace_type {
-        color: var(--mb-color-saturated-red);
+        color: var(--hl-red);
       }
 
       .ace_string {
-        color: var(--mb-color-saturated-green);
+        color: var(--hl-green);
       }
 
       .ace_templateTag {
