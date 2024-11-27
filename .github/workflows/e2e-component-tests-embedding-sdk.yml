@@ -32,7 +32,7 @@ jobs:
   get-build-requirements:
     if: |
       !cancelled() &&
-      contains(github.ref, 'release-x')
+      contains(github.base_ref || github.ref, 'release-x')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
