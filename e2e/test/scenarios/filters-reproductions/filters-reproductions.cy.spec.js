@@ -255,7 +255,8 @@ describe("issue 18770", () => {
     popover().within(() => {
       cy.findByText("Filter by this value").should("be.visible");
       cy.findAllByRole("button")
-        .should("have.length", 4)
+        .should("have.length", 5)
+        .and("contain", "See these Orders")
         .and("contain", "<")
         .and("contain", ">")
         .and("contain", "=")
