@@ -114,7 +114,7 @@ export function matchTagAtCursor(
     }
   }
 
-  let end = null;
+  let end = allowOpenEnded ? doc.length : null;
 
   // look for the closing tag to the right of the cursor
   for (let idx = cursor; idx < doc.length; idx++) {
@@ -148,7 +148,7 @@ export function matchTagAtCursor(
   const text = doc.slice(start, end);
   const prefix = text.match(/^\{\{\s*/)?.[0];
   const suffix = text.match(/\s*(\}\})?$/)?.[0];
-  if (!prefix || !suffix) {
+  if (prefix === undefined || suffix === undefined) {
     return null;
   }
 
