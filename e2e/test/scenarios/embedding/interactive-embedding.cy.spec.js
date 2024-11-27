@@ -326,13 +326,54 @@ describeEE("scenarios > embedding > full app", () => {
 
     describe("tables", () => {
       it("should select a table in the only database", () => {
+        cy.log("select a table");
         startNewEmbeddingQuestion();
         popover().within(() => {
           cy.findByText("Raw Data").click();
           cy.findByText("Products").click();
         });
         getNotebookStep("data").findByText("Products").should("be.visible");
+
+        cy.log("make sure it is selected in the picker when opened again");
+        getNotebookStep("data").findByText("Products").click();
+        popover().within(() => {
+          cy.findByText("Sample Database").should("be.visible");
+          cy.findByLabelText("Products").should(
+            "have.attr",
+            "aria-selected",
+            "true",
+          );
+        });
       });
+
+      it(
+        "should select a table when there are multiple databases",
+        { tags: "@external" },
+        () => {
+          restore("postgres-12");
+          cy.signInAsAdmin();
+
+          cy.log("select a table");
+          startNewEmbeddingQuestion();
+          popover().within(() => {
+            cy.findByText("Raw Data").click();
+            cy.findByText("QA Postgres12").click();
+            cy.findByText("Orders").click();
+          });
+          getNotebookStep("data").findByText("Orders").should("be.visible");
+
+          cy.log("make sure it is selected in the picker when opened again");
+          getNotebookStep("data").findByText("Orders").click();
+          popover().within(() => {
+            cy.findByText("QA Postgres12").should("be.visible");
+            cy.findByLabelText("Orders").should(
+              "have.attr",
+              "aria-selected",
+              "true",
+            );
+          });
+        },
+      );
     });
   });
 
