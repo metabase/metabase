@@ -1,6 +1,12 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import type * as React from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import {
   GOAL_LINE_SERIES_ID,
@@ -79,7 +85,7 @@ export const useChartEvents = (
     [chartModel.seriesModels, hovered],
   );
 
-  useEffect(
+  useLayoutEffect(
     function updateYAxisVisibility() {
       const hasSingleYAxis = !(
         chartModel.leftAxisModel != null && chartModel.rightAxisModel != null
