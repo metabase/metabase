@@ -16,6 +16,7 @@ import {
   type FlexibleSizeProps,
 } from "../../public/FlexibleSizeComponent";
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
+import { shouldShowSaveButton } from "../InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
@@ -64,6 +65,11 @@ export const InteractiveQuestionResult = ({
     return <SdkError message={t`Question not found`} />;
   }
 
+  const showSaveButton =
+    shouldShowSaveButton({ question, originalQuestion }) &&
+    isSaveEnabled &&
+    !isSaveModalOpen;
+
   return (
     <FlexibleSizeComponent
       height={height}
@@ -81,7 +87,7 @@ export const InteractiveQuestionResult = ({
               withTitle={withTitle}
             />
           </Group>
-          {isSaveEnabled && !isSaveModalOpen && (
+          {showSaveButton && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
           )}
         </Group>
