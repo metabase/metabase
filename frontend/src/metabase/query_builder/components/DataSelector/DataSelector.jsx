@@ -168,6 +168,8 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
+    canSelectQuestion: PropTypes.bool,
+    canSelectModel: PropTypes.bool,
     canSelectMetric: PropTypes.bool,
 
     // from search entity list loader
@@ -200,6 +202,8 @@ export class UnconnectedDataSelector extends Component {
     hasTriggerExpandControl: true,
     isPopover: true,
     isMantine: false,
+    canSelectQuestion: true,
+    canSelectModel: true,
     canSelectMetric: false,
   };
 
@@ -445,8 +449,8 @@ export class UnconnectedDataSelector extends Component {
   }
 
   hasModels = () => {
-    const { models, loaded } = this.props;
-    return loaded && models && models.length > 0;
+    const { models, loaded, canSelectModel } = this.props;
+    return loaded && models && models.length > 0 && canSelectModel;
   };
 
   hasUsableModels = () => {
@@ -469,7 +473,12 @@ export class UnconnectedDataSelector extends Component {
   };
 
   hasSavedQuestions = () => {
-    return this.state.databases.some(database => database.is_saved_questions);
+    const { canSelectQuestion } = this.props;
+    const { databases } = this.state;
+    return (
+      databases.some(database => database.is_saved_questions) &&
+      canSelectQuestion
+    );
   };
 
   getDatabases = () => {

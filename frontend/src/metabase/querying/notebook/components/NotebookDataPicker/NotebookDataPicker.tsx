@@ -19,6 +19,10 @@ import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
+import {
+  type NotebookContextType,
+  useNotebookContext,
+} from "../Notebook/context";
 import { NotebookCell } from "../NotebookCell";
 
 import { getUrl } from "./utils";
@@ -72,6 +76,7 @@ export function NotebookDataPicker({
         stageIndex={stageIndex}
         table={table}
         placeholder={placeholder}
+        hasMetrics={hasMetrics}
         isDisabled={isDisabled}
         onChange={handleChange}
       />
@@ -117,6 +122,8 @@ function ModernDataPicker({
   onChange,
 }: ModernDataPickerProps) {
   const [isOpened, setIsOpened] = useState(!table);
+  const context = useNotebookContext();
+  const modelList = getModelFilterList(context, hasMetrics);
 
   const tableInfo = table
     ? Lib.displayInfo(query, stageIndex, table)
@@ -172,11 +179,7 @@ function ModernDataPicker({
           title={title}
           value={tableValue}
           databaseId={databaseId}
-          models={
-            hasMetrics
-              ? ["table", "card", "dataset", "metric"]
-              : ["table", "card", "dataset"]
-          }
+          models={modelList}
           onChange={onChange}
           onClose={() => setIsOpened(false)}
         />
@@ -190,6 +193,7 @@ type LegacyDataPickerProps = {
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
+  hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
 };
@@ -199,9 +203,12 @@ function LegacyDataPicker({
   stageIndex,
   table,
   placeholder,
+  hasMetrics,
   isDisabled,
   onChange,
 }: LegacyDataPickerProps) {
+  const context = useNotebookContext();
+  const modelList = getModelFilterList(context, hasMetrics);
   const databaseId = Lib.databaseID(query);
   const tableInfo = table
     ? Lib.displayInfo(query, stageIndex, table)
@@ -213,6 +220,9 @@ function LegacyDataPicker({
       isInitiallyOpen={!table}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
+      canSelectQuestion={modelList.includes("card")}
+      canSelectModel={modelList.includes("dataset")}
+      canSelectMetric={modelList.includes("metric")}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}
@@ -270,5 +280,16 @@ function getTableIcon(tableInfo: Lib.TableDisplayInfo): IconName {
       return "metric";
     default:
       return "table";
+  }
+}
+
+function getModelFilterList(
+  { modelsFilterList }: NotebookContextType,
+  hasMetrics: boolean,
+) {
+  if (hasMetrics) {
+    return modelsFilterList;
+  } else {
+    return modelsFilterList.filter(model => model !== "metric");
   }
 }
