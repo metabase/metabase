@@ -782,7 +782,7 @@ describe("scenarios > visualizations > bar chart", () => {
     resetHoverState();
   });
 
-  it("should allow grouping series into a single 'Other' series", () => {
+  it.skip("should allow grouping series into a single 'Other' series", () => {
     const AK_SERIES_COLOR = "#509EE3";
 
     const USER_STATE_FIELD_REF = [

@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { FieldList } from "metabase/admin/datamodel/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import SelectButton from "metabase/core/components/SelectButton";
 import { alpha, color } from "metabase/lib/colors";
@@ -23,10 +22,6 @@ export interface FieldSelectButtonProps {
 export const FieldSelectButton = styled(SelectButton)<FieldSelectButtonProps>`
   border-color: ${props =>
     props.hasError ? color("error") : alpha("accent2", 0.2)};
-`;
-
-export const ForeignKeyList = styled(FieldList)`
-  color: var(--mb-color-filter);
 `;
 
 export const FieldValueMappingInput = styled(InputBlurChange)`

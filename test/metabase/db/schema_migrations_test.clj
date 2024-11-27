@@ -40,6 +40,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
@@ -51,6 +52,11 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+;; Disable the search index, as older schemas may not be compatible with ingestion.
+(use-fixtures :each (fn [thunk]
+                      (binding [search.ingestion/*disable-updates* true]
+                        (thunk))))
 
 (deftest rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"

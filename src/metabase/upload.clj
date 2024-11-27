@@ -807,7 +807,9 @@
 
           (invalidate-cached-models! table)
 
-          (events/publish-event! :event/upload-append
+          (events/publish-event! (if replace-rows?
+                                   :event/upload-replace
+                                   :event/upload-append)
                                  {:user-id  (:id @api/*current-user*)
                                   :model-id (:id table)
                                   :model    :model/Table
