@@ -62,10 +62,6 @@ export function useExtensions({
       language({ engine, matchStyle, databaseId, snippets }),
       highlighting(),
       tagDecorator(),
-      autocompletion({
-        closeOnBlur: false,
-        activateOnTyping: true,
-      }),
     ]
       .flat()
       .filter(isNotNull);
@@ -110,129 +106,152 @@ type LanguageOptions = {
   snippets?: NativeQuerySnippet[];
 };
 
+function source(engine?: string) {
+  switch (engine) {
+    case "mongo":
+    case "druid":
+      return json();
+
+    case "bigquery-cloud-sdk":
+    case "mysql":
+    case "oracle":
+    case "postgres":
+    case "presto-jdbc":
+    case "redshift":
+    case "snowflake":
+    case "sparksql":
+    default: {
+      const dialect =
+        engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
+      return sql({
+        dialect,
+        upperCaseKeywords: true,
+      });
+    }
+  }
+}
+
 function language({
   engine,
   matchStyle,
   databaseId,
   snippets = [],
 }: LanguageOptions) {
-  switch (engine) {
-    case "mongo":
-    case "druid":
-      return [
-        json(),
-        // TODO: custom completions
-      ];
-    default: {
-      const dialect =
-        engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
-      const lang = sql({
-        dialect,
-        upperCaseKeywords: true,
-      });
-      return [
-        lang,
-        lang.language.data.of({
-          async autocomplete(context: CompletionContext) {
-            if (matchStyle === "off" || databaseId == null) {
-              return null;
-            }
+  const lang = source(engine);
 
-            const tag = matchTagAtCursor(context.state, {
-              allowOpenEnded: true,
-              position: context.pos,
-            });
-
-            if (!tag) {
-              // the cursor is not inside in a variable, card or snippet tag
-              // just complete using the database schema
-
-              const word = context.matchBefore(/\w+/);
-              if (!word) {
-                return null;
-              }
-
-              const results: [string, string][] =
-                await MetabaseApi.db_autocomplete_suggestions({
-                  dbId: databaseId,
-                  query: word.text.trim(),
-                  matchStyle,
-                });
-
-              return {
-                from: word.from,
-                validFor(text: string) {
-                  return text.startsWith(word.text);
-                },
-                options: results.map(([value, meta]) => ({
-                  label: value,
-                  detail: meta,
-                  boost: 50,
-                })),
-              };
-            }
-
-            if (tag.type === "snippet") {
-              const query = tag.content.text;
-              const results = snippets.filter(snippet =>
-                snippet.name.toLowerCase().includes(query.toLowerCase()),
-              );
-
-              return {
-                from: tag.content.from,
-                validFor(text: string) {
-                  return text.startsWith(query);
-                },
-                options: results.map(snippet => ({
-                  label: snippet.name,
-                  apply: tag.hasClosingTag
-                    ? snippet.name
-                    : `${snippet.name} }}`,
-                  detail: t`Snippet`,
-                  boost: 50,
-                })),
-              };
-            }
-
-            if (tag.type === "card") {
-              const query = tag.content.text.replace(/^#/, "").trim();
-              if (!query) {
-                return null;
-              }
-
-              const results: {
-                id: number;
-                name: string;
-                type: CardType;
-                collection_name: string;
-              }[] = await MetabaseApi.db_card_autocomplete_suggestions({
-                dbId: databaseId,
-                query,
-              });
-
-              return {
-                // -1 because we want to include the # in the autocomplete
-                from: tag.content.from - 1,
-                validFor(text: string) {
-                  return text.startsWith(`#${query}`);
-                },
-                options: results.map(({ id, name, type, collection_name }) => ({
-                  label: `#${id}-${slugg(name)}`,
-                  detail: getCardAutocompleteResultMeta(type, collection_name),
-                  apply: tag.hasClosingTag
-                    ? `#${id}-${slugg(name)}`
-                    : `#${id}-${slugg(name)} }}`,
-                  boost: 50,
-                })),
-              };
-            }
-
-            return null;
-          },
-        }),
-      ];
-    }
+  if (!lang) {
+    return [];
   }
+
+  async function autocomplete(context: CompletionContext) {
+    if (matchStyle === "off" || databaseId == null) {
+      return null;
+    }
+
+    const tag = matchTagAtCursor(context.state, {
+      allowOpenEnded: true,
+      position: context.pos,
+    });
+
+    if (!tag) {
+      // the cursor is not inside in a variable, card or snippet tag
+      // just complete using the database schema
+
+      const word = context.matchBefore(/\w+/);
+      if (!word) {
+        return null;
+      }
+
+      const results: [string, string][] =
+        await MetabaseApi.db_autocomplete_suggestions({
+          dbId: databaseId,
+          query: word.text.trim(),
+          matchStyle,
+        });
+
+      return {
+        from: word.from,
+        validFor(text: string) {
+          return text.startsWith(word.text);
+        },
+        options: results.map(([value, meta]) => ({
+          label: value,
+          detail: meta,
+          boost: 50,
+        })),
+      };
+    }
+
+    if (tag.type === "snippet") {
+      const query = tag.content.text;
+      const results = snippets.filter(snippet =>
+        snippet.name.toLowerCase().includes(query.toLowerCase()),
+      );
+
+      return {
+        from: tag.content.from,
+        validFor(text: string) {
+          return text.startsWith(query);
+        },
+        options: results.map(snippet => ({
+          label: snippet.name,
+          apply: tag.hasClosingTag ? snippet.name : `${snippet.name} }}`,
+          detail: t`Snippet`,
+          boost: 50,
+        })),
+      };
+    }
+
+    if (tag.type === "card") {
+      const query = tag.content.text.replace(/^#/, "").trim();
+      if (!query) {
+        return null;
+      }
+
+      const results: {
+        id: number;
+        name: string;
+        type: CardType;
+        collection_name: string;
+      }[] = await MetabaseApi.db_card_autocomplete_suggestions({
+        dbId: databaseId,
+        query,
+      });
+
+      return {
+        // -1 because we want to include the # in the autocomplete
+        from: tag.content.from - 1,
+        validFor(text: string) {
+          return text.startsWith(`#${query}`);
+        },
+        options: results.map(({ id, name, type, collection_name }) => ({
+          label: `#${id}-${slugg(name)}`,
+          detail: getCardAutocompleteResultMeta(type, collection_name),
+          apply: tag.hasClosingTag
+            ? `#${id}-${slugg(name)}`
+            : `#${id}-${slugg(name)} }}`,
+          boost: 50,
+        })),
+      };
+    }
+
+    return null;
+  }
+
+  if (!lang) {
+    return [];
+  }
+
+  return [
+    lang,
+    lang.language.data.of({
+      autocomplete,
+    }),
+    autocompletion({
+      closeOnBlur: false,
+      activateOnTyping: true,
+    }),
+  ];
 }
 
 const metabaseStyle = HighlightStyle.define(
