@@ -84,11 +84,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         visitQuestion(ORDERS_QUESTION_ID);
         tableInteractive().should("be.visible");
         openSharingMenu();
-        sharingMenu()
-          .findByRole("menuitem", {
-            name: "Ask your admin to create a public link",
-          })
-          .should("be.disabled");
+        sharingMenu().findByText(/alert/i).should("not.exist");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {

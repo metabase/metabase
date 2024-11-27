@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -26,7 +28,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
       expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
     });
 
-    it('should not show the "Subscriptions" menu item if public sharing is enabled and the user lacks alerts permissions', async () => {
+    it("clicking the public link menu item should open the public link popover", async () => {
       setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isPublicSharingEnabled: true,
@@ -36,9 +38,19 @@ describe("QuestionSharingMenu > Enterprise", () => {
       await openMenu();
 
       expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "Public link" }),
+      );
+      expect(
+        screen.getByTestId("public-link-popover-content"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
+        "http://localhost:3000/public/question/1337bad801",
+      );
     });
 
-    it('should not show the "Subscriptions" menu item if public sharing is disabled', async () => {
+    it("should show a disabled 'ask your admin to create a public link' menu item if public sharing is disabled", async () => {
       setupQuestionSharingMenu({
         isPublicSharingEnabled: false,
         hasPublicLink: true,
@@ -48,9 +60,14 @@ describe("QuestionSharingMenu > Enterprise", () => {
       await openMenu();
 
       expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", {
+          name: "Ask your admin to create a public link",
+        }),
+      ).toBeDisabled();
     });
 
-    it('should not show the "Subscriptions" menu item if public sharing is enabled, but there is no existing public link', async () => {
+    it("should show a disabled 'ask your admin to create a public link' menu item if public sharing is enabled, but there is no existing public link", async () => {
       setupQuestionSharingMenu({
         isPublicSharingEnabled: true,
         canManageSubscriptions: false,
@@ -59,6 +76,11 @@ describe("QuestionSharingMenu > Enterprise", () => {
       await openMenu();
 
       expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", {
+          name: "Ask your admin to create a public link",
+        }),
+      ).toBeDisabled();
     });
   });
 
