@@ -56,7 +56,7 @@ By default, dashboard components take full page height (100vh). You can override
 import React from "react";
 import {MetabaseProvider, InteractiveDashboard} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
@@ -66,7 +66,7 @@ export default function App() {
     const hiddenParameters = ["location", "city"]
 
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <InteractiveDashboard
                 dashboardId={dashboardId}
                 initialParameterValues={initialParameterValues}

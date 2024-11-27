@@ -38,7 +38,7 @@ export const EmbeddingProvider = ({children}) => {
   const theme = useMemo(() => THEMES[themeKey], [themeKey])
 
   return (
-    <MetabaseProvider config={config} theme={theme}>
+    <MetabaseProvider authConfig={authConfig} theme={theme}>
       {children}
     </MetabaseProvider>
   )

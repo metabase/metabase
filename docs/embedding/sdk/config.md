@@ -69,7 +69,7 @@ const theme = defineEmbeddingSdkTheme({
 
 export default function App() {
   return (
-    <MetabaseProvider config={config} theme={theme} className="optional-class">
+    <MetabaseProvider authConfig={authConfig} theme={theme} className="optional-class">
       Hello World!
     </MetabaseProvider>
   );
