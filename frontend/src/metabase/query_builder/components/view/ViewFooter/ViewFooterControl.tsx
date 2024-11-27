@@ -10,7 +10,6 @@ import {
 } from "metabase/query_builder/actions";
 import {
   getIsActionListVisible,
-  getIsShowingRawTable,
   getIsVisualized,
   getViewFooterControlState,
 } from "metabase/query_builder/selectors";
@@ -35,19 +34,13 @@ const ViewFooterControl = ({
   const shouldShowEditorButton =
     !isNative && isEditable && !question.isArchived() && isActionListVisible;
   const vizIcon = getIconForVisualizationType(question.display());
-  const isShowingRawTable = useSelector(getIsShowingRawTable);
   const isVisualized = useSelector(getIsVisualized);
   const viewFooterControlState: "editor" | "results" | "visualization" =
     useSelector(getViewFooterControlState);
 
   const dispatch = useDispatch();
 
-  const initialValue = isNotebook
-    ? "editor"
-    : isShowingRawTable
-      ? "results"
-      : "visualization";
-  const value = viewFooterControlState ?? initialValue;
+  const value = viewFooterControlState;
 
   const handleValueChange = (value: "editor" | "results" | "visualization") => {
     if (value === "editor") {
