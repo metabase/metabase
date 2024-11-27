@@ -143,6 +143,27 @@ function language({
     return [];
   }
 
+  // wrap the language completer so that it does not trigger when we're inside of a tag
+  async function fromLanguage(context: CompletionContext) {
+    const facets = context.state.facet(lang.language.data.reader);
+
+    const complete = facets.find(
+      facet => facet.autocomplete && facet.autocomplete !== autocomplete,
+    )?.autocomplete;
+
+    const tag = matchTagAtCursor(context.state, {
+      allowOpenEnded: true,
+      position: context.pos,
+    });
+
+    if (tag) {
+      return null;
+    }
+
+    return complete?.(context);
+  }
+
+  // add custom tag completions
   async function autocomplete(context: CompletionContext) {
     if (matchStyle === "off" || databaseId == null) {
       return null;
@@ -250,6 +271,7 @@ function language({
     autocompletion({
       closeOnBlur: false,
       activateOnTyping: true,
+      override: [autocomplete, fromLanguage],
     }),
   ];
 }
