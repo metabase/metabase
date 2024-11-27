@@ -153,10 +153,12 @@ export const SANKEY_CHART_DEFINITION = {
     rawSeries: RawSeries,
     settings: ComputedVisualizationSettings,
   ) => {
-    const sankeyColumns = getSankeyChartColumns(
-      rawSeries[0].data.cols,
-      settings,
-    );
+    const { rows, cols } = rawSeries[0].data;
+
+    if (rows.length === 0) {
+      return;
+    }
+    const sankeyColumns = getSankeyChartColumns(cols, settings);
     if (!sankeyColumns) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
@@ -172,7 +174,7 @@ export const SANKEY_CHART_DEFINITION = {
 
     if (
       hasCyclicFlow(
-        rawSeries[0].data.rows,
+        rows,
         sankeyColumns.source.index,
         sankeyColumns.target.index,
       )
