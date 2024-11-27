@@ -176,7 +176,7 @@ describe("issue 49529", () => {
 
     visitQuestionAdhoc(question);
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     cy.findAllByTestId("select-button").eq(0).as("dimensionSelect").click();
     popover().findByText("ID").click();
