@@ -77,7 +77,6 @@ export function matchTagAtCursor(
   state: EditorState,
   options: MatchTagOptions,
 ): TagMatch | null {
-  const doc = state.doc.toString();
   const { position, allowOpenEnded } = options;
 
   if (
@@ -87,6 +86,7 @@ export function matchTagAtCursor(
     return null;
   }
 
+  const doc = state.doc.toString();
   const cursor = position ?? state.selection.main.from;
 
   let start = null;
