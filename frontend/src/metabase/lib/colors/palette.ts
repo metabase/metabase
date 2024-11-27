@@ -46,13 +46,6 @@ export const colors = {
   "bg-error": "#ED6E6E55",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
-
-  /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
-  "saturated-blue": "#2D86D4",
-  "saturated-green": "#70A63A",
-  "saturated-purple": "#885AB1",
-  "saturated-red": "#ED6E6E",
-  "saturated-yellow": "#F9CF48",
 };
 /* eslint-enable no-color-literals */
 
