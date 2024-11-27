@@ -2,6 +2,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
@@ -332,10 +333,68 @@ describeEE("scenarios > embedding > full app", () => {
       },
     };
 
+    const cardTypeToLabel = {
+      question: "Saved Questions",
+    };
+
     function startNewEmbeddingQuestion() {
       visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
       cy.button("New").click();
       popover().findByText("Question").click();
+    }
+
+    function selectTable({ tableName, schemaName, databaseName }) {
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        if (databaseName) {
+          cy.findByText(databaseName).click();
+        }
+        if (schemaName) {
+          cy.findByText(schemaName).click();
+        }
+        cy.findByText(tableName).click();
+      });
+    }
+
+    function selectCard({ cardName, cardType, collectionNames }) {
+      popover().within(() => {
+        cy.findByText(cardTypeToLabel[cardType]).click();
+        collectionNames.forEach(collectionName =>
+          cy.findByText(collectionName).click(),
+        );
+        cy.findByText(cardName).click();
+      });
+    }
+
+    function clickOnDataSource(sourceName) {
+      getNotebookStep("data").findByText(sourceName).click();
+    }
+
+    function verifyTableSelected({ tableName, schemaName, databaseName }) {
+      popover().within(() => {
+        cy.findByLabelText(tableName).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        if (schemaName) {
+          cy.findByText(schemaName).should("be.visible");
+        }
+        if (databaseName) {
+          cy.findByText(databaseName).should("be.visible");
+        }
+      });
+    }
+
+    function verifyCardSelected({ cardName, collectionName }) {
+      popover().within(() => {
+        cy.findByText(collectionName).should("be.visible");
+        cy.findByLabelText(cardName).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+      });
     }
 
     beforeEach(() => {
@@ -345,23 +404,11 @@ describeEE("scenarios > embedding > full app", () => {
     describe("tables", () => {
       it("should select a table in the only database", () => {
         startNewEmbeddingQuestion();
-
-        cy.log("select a table");
-        popover().within(() => {
-          cy.findByText("Raw Data").click();
-          cy.findByText("Products").click();
-        });
-        getNotebookStep("data").findByText("Products").should("be.visible");
-
-        cy.log("make sure it is selected in the picker when opened again");
-        getNotebookStep("data").findByText("Products").click();
-        popover().within(() => {
-          cy.findByText("Sample Database").should("be.visible");
-          cy.findByLabelText("Products").should(
-            "have.attr",
-            "aria-selected",
-            "true",
-          );
+        selectTable({ tableName: "Products" });
+        clickOnDataSource("Products");
+        verifyTableSelected({
+          tableName: "Products",
+          databaseName: "Sample Database",
         });
       });
 
@@ -372,24 +419,11 @@ describeEE("scenarios > embedding > full app", () => {
           restore("postgres-12");
           cy.signInAsAdmin();
           startNewEmbeddingQuestion();
-
-          cy.log("select a table");
-          popover().within(() => {
-            cy.findByText("Raw Data").click();
-            cy.findByText("QA Postgres12").click();
-            cy.findByText("Orders").click();
-          });
-          getNotebookStep("data").findByText("Orders").should("be.visible");
-
-          cy.log("make sure it is selected in the picker when opened again");
-          getNotebookStep("data").findByText("Orders").click();
-          popover().within(() => {
-            cy.findByText("QA Postgres12").should("be.visible");
-            cy.findByLabelText("Orders").should(
-              "have.attr",
-              "aria-selected",
-              "true",
-            );
+          selectTable({ tableName: "Orders", databaseName: "QA Postgres12" });
+          clickOnDataSource("Orders");
+          verifyTableSelected({
+            tableName: "Orders",
+            databaseName: "QA Postgres12",
           });
         },
       );
@@ -401,24 +435,11 @@ describeEE("scenarios > embedding > full app", () => {
           restore("mysql-8");
           cy.signInAsAdmin();
           startNewEmbeddingQuestion();
-
-          cy.log("select a table");
-          popover().within(() => {
-            cy.findByText("Raw Data").click();
-            cy.findByText("QA MySQL8").click();
-            cy.findByText("Reviews").click();
-          });
-          getNotebookStep("data").findByText("Reviews").should("be.visible");
-
-          cy.log("make sure it is selected in the picker when opened again");
-          getNotebookStep("data").findByText("Reviews").click();
-          popover().within(() => {
-            cy.findByText("QA MySQL8").should("be.visible");
-            cy.findByLabelText("Reviews").should(
-              "have.attr",
-              "aria-selected",
-              "true",
-            );
+          selectTable({ tableName: "Reviews", databaseName: "QA MySQL8" });
+          clickOnDataSource("Reviews");
+          verifyTableSelected({
+            tableName: "Reviews",
+            databaseName: "QA MySQL8",
           });
         },
       );
@@ -431,110 +452,100 @@ describeEE("scenarios > embedding > full app", () => {
           cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID });
           startNewEmbeddingQuestion();
-
-          cy.log("select a table");
-          popover().within(() => {
-            cy.findByText("Raw Data").click();
-            cy.findByText("Writable Postgres12").click();
-            cy.findByText("Domestic").click();
-            cy.findByText("Animals").click();
+          selectTable({
+            tableName: "Animals",
+            schemaName: "Domestic",
+            databaseName: "Writable Postgres12",
           });
-          getNotebookStep("data").findByText("Animals").should("be.visible");
-
-          cy.log("make sure it is selected in the picker when opened again");
-          getNotebookStep("data").findByText("Animals").click();
-          popover().within(() => {
-            cy.findByText("Writable Postgres12").should("be.visible");
-            cy.findByText("Domestic").should("be.visible");
-            cy.findByLabelText("Animals").should(
-              "have.attr",
-              "aria-selected",
-              "true",
-            );
+          clickOnDataSource("Animals");
+          verifyTableSelected({
+            tableName: "Animals",
+            schemaName: "Domestic",
+            databaseName: "Writable Postgres12",
           });
         },
       );
     });
 
-    describe("questions", () => {
+    describe("cards", () => {
       it("should select a question in the root collection", () => {
-        createQuestion({
+        const questionDetails = {
           ...cardDetails,
           type: "question",
-        });
+          collection_id: null,
+        };
+        createQuestion(questionDetails);
         startNewEmbeddingQuestion();
-
-        cy.log("select a question");
-        popover().within(() => {
-          cy.findByText("Saved Questions").click();
-          cy.findByText(cardDetails.name).click();
+        selectCard({
+          cardName: questionDetails.name,
+          cardType: questionDetails.type,
+          collectionNames: [],
         });
-        getNotebookStep("data")
-          .findByText(cardDetails.name)
-          .should("be.visible");
-
-        cy.log("make sure it is selected in the picker when opened again");
-        getNotebookStep("data").findByText(cardDetails.name).click();
-        cy.findByLabelText(cardDetails.name).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        clickOnDataSource(cardDetails.name);
+        verifyCardSelected({
+          cardName: questionDetails.name,
+          collectionName: "Our analytics",
+        });
       });
 
       it("should select a question in a regular collection", () => {
-        createQuestion({
+        const questionDetails = {
           ...cardDetails,
           type: "question",
           collection_id: FIRST_COLLECTION_ID,
-        });
+        };
+        createQuestion(questionDetails);
         startNewEmbeddingQuestion();
-
-        cy.log("select a question");
-        popover().within(() => {
-          cy.findByText("Saved Questions").click();
-          cy.findByText("First collection").click();
-          cy.findByText(cardDetails.name).click();
+        selectCard({
+          cardName: questionDetails.name,
+          cardType: questionDetails.type,
+          collectionNames: ["First collection"],
         });
-        getNotebookStep("data")
-          .findByText(cardDetails.name)
-          .should("be.visible");
-
-        cy.log("make sure it is selected in the picker when opened again");
-        getNotebookStep("data").findByText(cardDetails.name).click();
-        cy.findByLabelText(cardDetails.name).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        clickOnDataSource(cardDetails.name);
+        verifyCardSelected({
+          cardName: questionDetails.name,
+          collectionName: "First collection",
+        });
       });
 
       it("should select a question in a nested collection", () => {
-        createQuestion({
+        const questionDetails = {
           ...cardDetails,
           type: "question",
           collection_id: SECOND_COLLECTION_ID,
-        });
+        };
+        createQuestion(questionDetails);
         startNewEmbeddingQuestion();
-
-        cy.log("select a question");
-        popover().within(() => {
-          cy.findByText("Saved Questions").click();
-          cy.findByText("First collection").click();
-          cy.findByText("Second collection").click();
-          cy.findByText(cardDetails.name).click();
+        selectCard({
+          cardName: questionDetails.name,
+          cardType: questionDetails.type,
+          collectionNames: ["First collection", "Second collection"],
         });
-        getNotebookStep("data")
-          .findByText(cardDetails.name)
-          .should("be.visible");
+        clickOnDataSource(cardDetails.name);
+        verifyCardSelected({
+          cardName: questionDetails.name,
+          collectionName: "Second collection",
+        });
+      });
 
-        cy.log("make sure it is selected in the picker when opened again");
-        getNotebookStep("data").findByText(cardDetails.name).click();
-        cy.findByLabelText(cardDetails.name).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+      it("should select a question in a personal collection", () => {
+        const questionDetails = {
+          ...cardDetails,
+          type: "question",
+          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+        };
+        createQuestion(questionDetails);
+        startNewEmbeddingQuestion();
+        selectCard({
+          cardName: questionDetails.name,
+          cardType: questionDetails.type,
+          collectionNames: ["Your personal collection"],
+        });
+        clickOnDataSource(cardDetails.name);
+        verifyCardSelected({
+          cardName: questionDetails.name,
+          collectionName: "Your personal collection",
+        });
       });
     });
   });
