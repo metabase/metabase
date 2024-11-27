@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement, ReactNode } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -119,14 +118,11 @@ export const InteractiveQuestionResult = ({
 
       <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>
-          {match<boolean>(isEditorOpen)
-            .with(true, () => (
-              <InteractiveQuestion.Editor onApply={closeEditor} />
-            ))
-            .with(false, () => (
-              <InteractiveQuestion.QuestionVisualization height="100%" />
-            ))
-            .exhaustive()}
+          {isEditorOpen ? (
+            <InteractiveQuestion.Editor onApply={closeEditor} />
+          ) : (
+            <InteractiveQuestion.QuestionVisualization height="100%" />
+          )}
         </Box>
       </Box>
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}

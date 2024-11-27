@@ -60,7 +60,9 @@ export const ResultTitle = ({
   const originalName = originalQuestion?.displayName();
 
   const titleText =
-    !customTitle && question ? getQuestionTitle({ question }) : customTitle;
+    typeof customTitle === "string"
+      ? customTitle
+      : getQuestionTitle({ question });
 
   return (
     <ResultTitleText
