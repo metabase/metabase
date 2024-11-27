@@ -423,7 +423,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Total: 50 bins",
         });
         assertTableData({
-          columns: ["Total", "Total", "Count"],
+          columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
             ["140  –  160", "140  –  145", "306"],
             ["140  –  160", "145  –  150", "308"],
@@ -437,7 +437,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Latitude: 10°",
         });
         assertTableData({
-          columns: ["Latitude", "Latitude", "Count"],
+          columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
             ["60° N  –  80° N", "60° N  –  70° N", "51"],
             ["60° N  –  80° N", "70° N  –  80° N", "1"],
