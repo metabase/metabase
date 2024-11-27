@@ -158,7 +158,7 @@
   the text match, if there is one. If there is no match, the score is 0."
   [search-native-query weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column (let [search-columns-fn (requiring-resolve 'metabase.search.legacy/searchable-columns)]
+  (let [scores (for [column (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
                               (search-columns-fn (:model search-result) search-native-query))
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers

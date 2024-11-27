@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
-  assertEChartsTooltip,
   createDashboardWithQuestions,
   createNativeQuestion,
   createQuestionAndDashboard,
@@ -11,7 +10,6 @@ import {
   getIframeBody,
   modal,
   openStaticEmbeddingModal,
-  otherSeriesChartPaths,
   popover,
   queryBuilderMain,
   restore,
@@ -1064,8 +1062,6 @@ describeEE("issue 8490", () => {
           visualization_settings: {
             "graph.dimensions": ["CREATED_AT", "CATEGORY"],
             "graph.metrics": ["count"],
-            "graph.max_categories_enabled": true,
-            "graph.max_categories": 2,
           },
           display: "bar",
           enable_embedding: true,
@@ -1138,7 +1134,7 @@ describeEE("issue 8490", () => {
     });
   });
 
-  it("static embeddings should respect `#locale` hash in the URL (metabase#8490)", () => {
+  it("static embeddings should respect `#locale` hash parameter (metabase#8490, metabase#50182)", () => {
     cy.log("test a static embedded dashboard");
     cy.get("@dashboardId").then(dashboardId => {
       visitEmbeddedPage(
@@ -1164,26 +1160,7 @@ describeEE("issue 8490", () => {
         cy.findByText("1월 2024").should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
-        // "Other" bar tooltip
-        otherSeriesChartPaths().first().realHover();
       });
-    });
-
-    assertEChartsTooltip({
-      rows: [
-        {
-          name: "Gizmo",
-          value: "4",
-        },
-        {
-          name: "Widget",
-          value: "2",
-        },
-        {
-          name: "합계",
-          value: "6",
-        },
-      ],
     });
 
     cy.findByTestId("embed-frame").within(() => {

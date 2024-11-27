@@ -66,13 +66,6 @@ function canHaveDataLabels(series, vizSettings) {
   return vizSettings["stackable.stack_type"] !== "normalized" || !areAllAreas;
 }
 
-const areAllBars = (series, settings) =>
-  getSeriesDisplays(series, settings).every(display => display === "bar");
-
-const canHaveMaxCategoriesSetting = (series, settings) => {
-  return Boolean(series && areAllBars(series, settings) && series.length >= 2);
-};
-
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
     getColumns: ([
@@ -103,18 +96,12 @@ export const GRAPH_DATA_SETTINGS = {
     getDefault: (series, vizSettings) =>
       getDefaultDimensions(series, vizSettings),
     persistDefault: true,
-    getProps: ([{ card, data }], vizSettings, _, { transformedSeries }) => {
+    getProps: ([{ card, data }], vizSettings) => {
       const addedDimensions = vizSettings["graph.dimensions"];
       const maxDimensionsSupported = getMaxDimensionsSupported(card.display);
       const options = data.cols
         .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
-      const fieldSettingWidgets = canHaveMaxCategoriesSetting(
-        transformedSeries,
-        vizSettings,
-      )
-        ? [null, "graph.max_categories"] // We want to show "graph.max_categories" setting for the breakout dimension (2nd)
-        : [];
       return {
         options,
         addAnother:
@@ -127,7 +114,7 @@ export const GRAPH_DATA_SETTINGS = {
             ? t`Add series breakout`
             : null,
         columns: data.cols,
-        fieldSettingWidgets,
+        fieldSettingWidgets: [],
       };
     },
     writeDependencies: ["graph.metrics"],
@@ -169,10 +156,10 @@ export const GRAPH_DATA_SETTINGS = {
         truncateAfter: 10,
       };
     },
-    getHidden: (series, settings, { transformedSeries }) => {
+    getHidden: (_series, settings, extra) => {
+      const seriesCount = extra.transformedSeries?.length ?? 0;
       return (
-        settings["graph.dimensions"]?.length < 2 ||
-        transformedSeries.length > MAX_SERIES
+        settings["graph.dimensions"]?.length < 2 || seriesCount > MAX_SERIES
       );
     },
     dashboard: false,
@@ -461,19 +448,17 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   },
   "graph.max_categories_enabled": {
     hidden: true,
-    getDefault: () => false,
-    isValid: (series, settings) => {
-      return canHaveMaxCategoriesSetting(series, settings);
-    },
+    // temporarily hiding the setting (metabase#50510)
+    default: false,
+    isValid: () => false,
     readDependencies: ["series_settings"],
   },
   "graph.max_categories": {
     widget: ChartSettingMaxCategories,
     hidden: true,
-    default: 8,
-    isValid: (series, settings) => {
-      return canHaveMaxCategoriesSetting(series, settings);
-    },
+    // temporarily hiding the setting (metabase#50510)
+    default: Number.MAX_SAFE_INTEGER,
+    isValid: () => false,
     getProps: ([{ card }], settings) => {
       return {
         isEnabled: settings["graph.max_categories_enabled"],

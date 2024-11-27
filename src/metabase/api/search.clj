@@ -6,10 +6,12 @@
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search :as search]
    [metabase.search.config :as search.config]
+   [metabase.search.core :as search.core]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
@@ -53,8 +55,8 @@
     (not (public-settings/experimental-fulltext-search-enabled))
     (throw (ex-info "Search index is not enabled." {:status-code 501}))
 
-    (search/supports-index?)
-    (do (search/init-index! {:force-reset? true}) {:message "done"})
+    (search.core/supports-index?)
+    (do (search.core/init-index! {:force-reset? true}) {:message "done"})
 
     :else
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
@@ -67,8 +69,9 @@
     (not (public-settings/experimental-fulltext-search-enabled))
     (throw (ex-info "Search index is not enabled." {:status-code 501}))
 
-    (search/supports-index?)
-    (if (task/job-exists? task.search-index/reindex-job-key)
+    (search.core/supports-index?)
+    ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
+    (if (and (task/job-exists? task.search-index/reindex-job-key) (not config/is-test?))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (task.search-index/reindex!) {:message "done"}))
 
