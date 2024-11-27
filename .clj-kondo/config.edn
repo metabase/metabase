@@ -477,7 +477,6 @@
     clojure.tools.namespace.parse                                 ns.parse
     colorize.core                                                 colorize
     environ.core                                                  env
-    hf.depstar.api                                                depstar
     hiccup.core                                                   hiccup
     hiccup.util                                                   hiccup.util
     honey.sql                                                     sql
@@ -807,6 +806,8 @@
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
   metabase.util.ssh/with-ssh-tunnel                                                     clojure.core/let
   metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
+  metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
+  metabuild-common.files/with-open-jar-file-system                                      clojure.core/let
   monger.operators/defoperator                                                          clojure.core/def
   potemkin.types/defprotocol+                                                           clojure.core/defprotocol
   potemkin.types/defrecord+                                                             clojure.core/defrecord
