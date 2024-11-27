@@ -23,11 +23,11 @@ export const EXCLUDE_UNIT_OPTIONS: ExcludeUnitOption[] = [
 
 export const EXCLUDE_OPERATOR_OPTIONS: ExcludeOperatorOption[] = [
   {
-    operator: "not-null",
+    operator: "is-null",
     label: t`Is empty`,
   },
   {
-    operator: "is-null",
+    operator: "not-null",
     label: t`Is not empty`,
   },
 ];
