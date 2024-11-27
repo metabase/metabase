@@ -1,6 +1,4 @@
 (ns metabase.models
-  ;; metabase.search.postgres.ingestion has not been exposed publicly yet, it needs a higher level API
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.string :as str]
    [environ.core :as env]
@@ -59,8 +57,7 @@
    [metabase.models.view-log :as view-log]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.search :as search]
-   [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -208,8 +205,7 @@
 
 (t2/define-after-insert :hook/search-index
   [instance]
-  (when (search/supports-index?)
-    (search.ingestion/update-index! instance true))
+  (search/update! instance true)
   instance)
 
 ;; Hidden behind an obscure environment variable, as it may cause performance problems.
@@ -224,8 +220,7 @@
 (when (update-hook-enabled?)
   (t2/define-after-update :hook/search-index
     [instance]
-    (when (search/supports-index?)
-      (search.ingestion/update-index! instance))
+    (search/update! instance)
     nil))
 
 ;; Too much of a performance risk.
