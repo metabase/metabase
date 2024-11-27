@@ -281,7 +281,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     getSdkRoot().within(() => {
       // Open the default summarization view in the sdk
-      cy.findByText("Summarize").click();
+      cy.findByText("1 summary").click();
 
       // Expect the default summarization view to be there.
       cy.findByTestId("summarize-aggregation-item-list").should("be.visible");
