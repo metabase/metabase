@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { updateIn } from "icepick";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,6 +22,8 @@ import {
 import {
   compose,
   createThunkAction,
+  useDispatch,
+  useSelector,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
@@ -47,6 +50,41 @@ export const FETCH_TABLE_FOREIGN_KEYS =
 export const UPDATE_TABLE_FIELD_ORDER =
   "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
+const useGetMetadataAndForeignTables = (entityQuery, options) => {
+  const dispatch = useDispatch();
+  const table = useSelector(state =>
+    Tables.selectors[options.selectorName || "getObjectUnfiltered"](state, {
+      entityId: entityQuery.id,
+    }),
+  );
+
+  const result = useGetTableQueryMetadataQuery(entityQuery, options);
+
+  const tableForeignKeyTableIds = useMemo(
+    () => getTableForeignKeyTableIds(table),
+    [table],
+  );
+  const tableForeignKeyFieldIds = useMemo(
+    () => getTableForeignKeyFieldIds(table),
+    [table],
+  );
+
+  // fetch foreign key linked table's metadata as well
+  useEffect(() => {
+    for (const id of tableForeignKeyTableIds) {
+      dispatch(Tables.actions.fetchMetadataDeprecated({ id }, options));
+    }
+  }, [dispatch, options, tableForeignKeyTableIds]);
+
+  useEffect(() => {
+    for (const id of tableForeignKeyFieldIds) {
+      dispatch(Fields.actions.fetch({ id }, options));
+    }
+  }, [dispatch, options, tableForeignKeyFieldIds]);
+
+  return result;
+};
+
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -71,7 +109,9 @@ const Tables = createEntity({
       }
 
       if (fetchType === "fetchMetadataAndForeignTables") {
-        throw new Error("Deprecated, use 'metabase/api' instead");
+        return {
+          useGetQuery: useGetMetadataAndForeignTables,
+        };
       }
 
       return {
