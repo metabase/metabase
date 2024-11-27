@@ -40,6 +40,8 @@
 
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
+(use-fixtures :each (fn [thunk] (search.tu/with-new-search-if-available (thunk))))
+
 (def ^:private default-search-row
   {:archived                   false
    :effective_location         nil
