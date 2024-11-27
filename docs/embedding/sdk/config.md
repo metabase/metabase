@@ -31,6 +31,11 @@ You can also pass additional props to `MetabaseProvider`:
 - `theme` (Optional) See [Appearance](./appearance.md).
 - `pluginsConfig` (Optional). See [Plugins](./plugins.md).
 - `eventHandlers` (Optional). See [Global event handlers](#global-event-handlers).
+- `className` (Optional). Classes to be added to the wrapper element.
+- `locale` (Optional). Defines the display language. Accepts an ISO language code such as `en` or `de`.
+- `loaderComponent` (Optional). A custom loader component to display while the SDK is loading.
+- `errorComponent` (Optional). A custom error component to display when the SDK encounters an error.
+- `allowConsoleLog` (Optional). If `true`, log messages will be printed to the console.
 
 ## Example `config` object passed to `MetabaseProvider`
 
