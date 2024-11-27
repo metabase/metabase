@@ -220,8 +220,6 @@ function LegacyDataPicker({
       isInitiallyOpen={!table}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
-      canSelectQuestion={modelList.includes("card")}
-      canSelectModel={modelList.includes("dataset")}
       canSelectMetric={modelList.includes("metric")}
       triggerElement={
         <DataPickerTarget
