@@ -84,6 +84,7 @@
       .cm-completionMatchedText {
         text-decoration: none;
         font-weight: bold;
+        color: var(--mb-color-brand);
       }
 
       .cm-completionLabel {
@@ -91,6 +92,7 @@
         max-width: 18rem;
         overflow: hidden;
         text-overflow: ellipsis;
+        font-weight: bold;
       }
 
       .cm-completionDetail {
