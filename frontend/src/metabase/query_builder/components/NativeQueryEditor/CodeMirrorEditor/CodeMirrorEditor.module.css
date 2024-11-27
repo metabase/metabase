@@ -75,6 +75,7 @@
           margin-bottom: 4px;
         }
 
+        &:hover,
         &[aria-selected="true"] {
           color: inherit;
           background-color: var(--mb-color-focus);
