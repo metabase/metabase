@@ -23,3 +23,8 @@ export interface NavigateToNewCardParams {
   objectId: ObjectId;
   cancelDeferred?: Deferred;
 }
+
+export interface QuestionStateParams {
+  question: Question;
+  updateQuestion: (question: Question, opts: { run: boolean }) => void;
+}

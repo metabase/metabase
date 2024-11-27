@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
@@ -7,58 +7,49 @@ import type Question from "metabase-lib/v1/Question";
 import {
   type CardDisplayType,
   type Dataset,
-  type VisualizationDisplay,
   isCardDisplayType,
 } from "metabase-types/api";
 
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
-export type UseChartTypeVisualizationsProps = {
+export type UseQuestionVisualizationStateProps = {
   question?: Question;
   onUpdateQuestion: (question: Question) => void;
-} & GetSensibleVisualizationsProps;
+};
 
-export const useChartTypeVisualizations = ({
+export const useQuestionVisualizationState = ({
   question,
   onUpdateQuestion,
-  result,
-}: UseChartTypeVisualizationsProps) => {
+}: UseQuestionVisualizationStateProps) => {
   const selectedVisualization = question?.display() ?? "table";
 
   const updateQuestionVisualization = useCallback(
     (display: CardDisplayType) => {
-      if (question) {
-        let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
-        const visualization = visualizations.get(display);
-        if (visualization?.onDisplayUpdate) {
-          const updatedSettings = visualization.onDisplayUpdate(
-            newQuestion.settings(),
-          );
-          newQuestion = newQuestion.setSettings(updatedSettings);
-        }
-
-        onUpdateQuestion(newQuestion);
+      if (!question || selectedVisualization === display) {
+        return;
       }
+      let newQuestion = question.setDisplay(display).lockDisplay();
+      const visualization = visualizations.get(display);
+      if (visualization?.onDisplayUpdate) {
+        const updatedSettings = visualization.onDisplayUpdate(
+          newQuestion.settings(),
+        );
+        newQuestion = newQuestion.setSettings(updatedSettings);
+      }
+      onUpdateQuestion(newQuestion);
     },
-    [onUpdateQuestion, question],
-  );
-
-  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
-    () => getSensibleVisualizations({ result }),
-    [result],
+    [onUpdateQuestion, question, selectedVisualization],
   );
 
   return {
     selectedVisualization,
     updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
   };
 };
 
 type IsSensibleVisualizationProps = {
   result: Dataset | null;
-  vizType: VisualizationDisplay;
+  vizType: CardDisplayType;
 };
 
 const isSensibleVisualization = ({

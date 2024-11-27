@@ -15,7 +15,6 @@ import styles from "./AccordionListCell.module.css";
 import {
   Content,
   EmptyStateContainer,
-  FilterContainer,
   IconWrapper,
   ListCellItem,
 } from "./AccordionListCell.styled";
@@ -222,17 +221,16 @@ export const AccordionListCell = ({
   } else if (type === "search") {
     borderBottom = true;
     content = (
-      <FilterContainer>
-        <ListSearchField
-          fullWidth
-          autoFocus
-          onChange={e => onChangeSearchText(e.target.value)}
-          onResetClick={() => onChangeSearchText("")}
-          value={searchText}
-          placeholder={searchPlaceholder}
-          {...searchInputProps}
-        />
-      </FilterContainer>
+      <ListSearchField
+        fullWidth
+        autoFocus
+        onChange={e => onChangeSearchText(e.target.value)}
+        onResetClick={() => onChangeSearchText("")}
+        value={searchText}
+        placeholder={searchPlaceholder}
+        p="sm"
+        {...searchInputProps}
+      />
     );
   } else if (type === "item") {
     const isSelected = itemIsSelected(item, itemIndex);
