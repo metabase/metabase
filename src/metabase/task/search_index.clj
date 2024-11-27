@@ -35,22 +35,25 @@
 
 (defn reindex!
   "Reindex the whole AppDB"
-  []
-  (when (search/supports-index?)
-    (let [timer  (u/start-timer)
-          report (if (not @recreated?)
-                   (do (log/info "Recreating search index from the latest schema")
-                       ;; Each instance in a multi-instance deployment will recreate the table the first time it is
-                       ;; selected to run the job, resulting in a momentary lack of search results.  One solution to
-                       ;; this would be to store metadata about the index in another table, which we can use to
-                       ;; determine whether it was built by another version of Metabase and should be rebuilt.
-
-                       (u/prog1 (search/init-index! {:force-reset? (not @recreated?)})
-                         (reset! recreated? true)))
-                   (do (log/info "Reindexing searchable entities")
-                       (search/reindex!)))]
-      (report->prometheus! report)
-      (log/infof "Done indexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report)))))
+  ([]
+   (let [recreate? (not @recreated?)]
+     (u/prog1 (reindex! recreate?)
+       (when recreate?
+         (reset! recreated? true)))))
+  ([recreate?]
+   (when (search/supports-index?)
+     (let [timer  (u/start-timer)
+           report (if recreate?
+                    (do (log/info "Recreating search index from the latest schema")
+                        ;; Each instance in a multi-instance deployment will recreate the table the first time it is
+                        ;; selected to run the job, resulting in a momentary lack of search results.  One solution to
+                        ;; this would be to store metadata about the index in another table, which we can use to
+                        ;; determine whether it was built by another version of Metabase and should be rebuilt.
+                        (search/init-index! {:force-reset? recreate?}))
+                    (do (log/info "Reindexing searchable entities")
+                        (search/reindex!)))]
+       (report->prometheus! report)
+       (log/infof "Done indexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report))))))
 
 (defn- update-index! []
   (when (search/supports-index?)
