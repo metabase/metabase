@@ -161,8 +161,9 @@
   "Create the given search index entries in bulk"
   [documents]
   (let [entries          (map document->entry documents)
-        ;; Ideally, we would reset these atoms if the corresponding tables don't exist.
-        ;; We're about to rework this area, so just leaving this as a note for now.
+        ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
+        ;;                    this should give a close to 2x speed-up as insertion is the bottleneck, and most of the
+        ;;                    updates will be no-ops in any case.
         active-updated?  (safe-batch-upsert! (active-table) entries)
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
