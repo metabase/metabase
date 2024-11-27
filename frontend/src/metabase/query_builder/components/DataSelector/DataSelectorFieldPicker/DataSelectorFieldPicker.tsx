@@ -27,12 +27,12 @@ type DataSelectorFieldPickerProps = {
   isLoading?: boolean;
   selectedField?: Field;
   selectedTable?: Table;
-  onBack: () => void;
+  onBack?: () => void;
   onChangeField: (field: Field) => void;
 };
 
 type HeaderProps = {
-  onBack: DataSelectorFieldPickerProps["onBack"];
+  onBack?: DataSelectorFieldPickerProps["onBack"];
   selectedTable: DataSelectorFieldPickerProps["selectedTable"];
 };
 
@@ -109,7 +109,7 @@ function renderItemWrapper(content: ReactNode) {
 
 const Header = ({ onBack, selectedTable }: HeaderProps) => (
   <HeaderContainer onClick={onBack}>
-    <Icon name="chevronleft" size={18} />
+    {onBack && <Icon name="chevronleft" size={18} />}
     <HeaderName>{selectedTable?.display_name || t`Fields`}</HeaderName>
   </HeaderContainer>
 );

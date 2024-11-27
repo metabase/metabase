@@ -752,7 +752,7 @@ export class FieldDimension extends Dimension {
     const identifierProp = this._getIdentifierProp();
     const fieldIdentifier = this.fieldIdOrName();
     if (this._query) {
-      const queryTableFields = this._query.table()?.fields;
+      const queryTableFields = this._query.table?.()?.fields;
       return _.findWhere(queryTableFields, {
         [identifierProp]: fieldIdentifier,
       });
@@ -1166,7 +1166,7 @@ export class ExpressionDimension extends Dimension {
   field() {
     try {
       const query = this._query;
-      const table = query ? query.table() : null;
+      const table = query ? query.table?.() : null;
 
       // fallback
       const baseTypeOption = this.getOption("base-type");
