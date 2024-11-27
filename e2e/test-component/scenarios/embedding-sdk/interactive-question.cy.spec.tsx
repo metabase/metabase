@@ -22,7 +22,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
-import { Box, Button, Flex, Modal, Popover } from "metabase/ui";
+import { Box, Button, Modal } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -152,38 +152,16 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    const TestSuiteComponent = ({ questionId }: { questionId: string }) => {
-      const [isOpen, { close, toggle }] = useDisclosure();
-
-      return (
-        <Box p="lg">
-          <InteractiveQuestion questionId={questionId}>
-            <Box>
-              <Flex justify="space-between" w="100%">
-                <Box>
-                  <InteractiveQuestion.FilterBar />
-                </Box>
-
-                <Popover position="bottom-end" opened={isOpen} onClose={close}>
-                  <Popover.Target>
-                    <Button onClick={toggle}>Filter</Button>
-                  </Popover.Target>
-
-                  <Popover.Dropdown>
-                    <InteractiveQuestion.FilterPicker
-                      onClose={close}
-                      withIcon
-                    />
-                  </Popover.Dropdown>
-                </Popover>
-              </Flex>
-
-              <InteractiveQuestion.QuestionVisualization />
-            </Box>
-          </InteractiveQuestion>
-        </Box>
-      );
-    };
+    const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
+      <Box p="lg">
+        <InteractiveQuestion questionId={questionId}>
+          <Box>
+            <InteractiveQuestion.FilterDropdown />
+            <InteractiveQuestion.QuestionVisualization />
+          </Box>
+        </InteractiveQuestion>
+      </Box>
+    );
 
     cy.get<string>("@questionId").then(questionId => {
       mountSdkContent(<TestSuiteComponent questionId={questionId} />);
@@ -199,9 +177,10 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText("User ID").click();
       cy.findByPlaceholderText("Enter an ID").type("12");
       cy.findByText("Add filter").click();
-    });
 
-    getSdkRoot().contains("User ID is 12");
+      cy.findByText("User ID is 12").should("be.visible");
+      cy.findByText("Add another filter").should("be.visible");
+    });
   });
 
   it("can create questions via the SaveQuestionForm component", () => {
@@ -281,11 +260,13 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     getSdkRoot().within(() => {
       // Open the default summarization view in the sdk
-      cy.findByText("Summarize").click();
-
-      // Expect the default summarization view to be there.
-      cy.findByTestId("summarize-aggregation-item-list").should("be.visible");
+      cy.findByText("1 summary").click();
     });
+
+    popover().findByText("Add another summary").click();
+
+    // Expect the default summarization view to be there.
+    cy.findByTestId("aggregation-picker").should("be.visible");
 
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;

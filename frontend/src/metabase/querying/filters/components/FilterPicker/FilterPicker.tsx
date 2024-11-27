@@ -13,6 +13,7 @@ import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
 
 export type FilterPickerProps = {
+  className?: string;
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
@@ -26,6 +27,7 @@ export type FilterPickerProps = {
 >;
 
 export function FilterPicker({
+  className,
   query,
   stageIndex,
   filter: initialFilter,
@@ -99,6 +101,7 @@ export function FilterPicker({
   if (!column) {
     return (
       <FilterColumnPicker
+        className={className}
         query={query}
         stageIndex={stageIndex}
         checkItemIsSelected={checkItemIsSelected}
