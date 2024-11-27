@@ -374,6 +374,35 @@ describeEE("scenarios > embedding > full app", () => {
           });
         },
       );
+
+      it(
+        "should select a table in a schema-less database",
+        { tags: "@external" },
+        () => {
+          restore("mysql-8");
+          cy.signInAsAdmin();
+
+          cy.log("select a table");
+          startNewEmbeddingQuestion();
+          popover().within(() => {
+            cy.findByText("Raw Data").click();
+            cy.findByText("QA MySQL8").click();
+            cy.findByText("Reviews").click();
+          });
+          getNotebookStep("data").findByText("Reviews").should("be.visible");
+
+          cy.log("make sure it is selected in the picker when opened again");
+          getNotebookStep("data").findByText("Reviews").click();
+          popover().within(() => {
+            cy.findByText("QA MySQL8").should("be.visible");
+            cy.findByLabelText("Reviews").should(
+              "have.attr",
+              "aria-selected",
+              "true",
+            );
+          });
+        },
+      );
     });
   });
 
