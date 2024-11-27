@@ -664,10 +664,9 @@
 
    :extra-deps
    {com.bhauman/spell-spec            {:mvn/version "0.1.2"}                    ; used to find misspellings in YAML files
-    com.github.seancorfield/depstar   {:mvn/version "2.1.303"}
     expound/expound                   {:mvn/version "0.9.0"}                    ; better output of spec validation errors
     io.github.borkdude/grasp          {:mvn/version "0.1.4"}
-    io.github.clojure/tools.build     {:mvn/version "0.10.0"}
+    io.github.clojure/tools.build     {:mvn/version "0.10.5"}
     org.clojure/data.xml              {:mvn/version "0.2.0-alpha8"}
     org.clojure/tools.deps.alpha      {:mvn/version "0.15.1254"}
     org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}}
