@@ -13,6 +13,7 @@ import {
   getDashboardCard,
   getDashboardCardMenu,
   getNextUnsavedDashboardCardId,
+  getNotebookStep,
   getTextCardDetails,
   goToTab,
   navigationSidebar,
@@ -312,6 +313,25 @@ describeEE("scenarios > embedding > full app", () => {
         cy.findByTestId("main-logo").should("not.exist");
         cy.icon("sidebar_closed").should("not.exist");
         cy.button("Toggle sidebar").should("not.exist");
+      });
+    });
+  });
+
+  describe("notebook", () => {
+    function startNewEmbeddingQuestion() {
+      visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
+      cy.button("New").click();
+      popover().findByText("Question").click();
+    }
+
+    describe("tables", () => {
+      it("should select a table in the only database", () => {
+        startNewEmbeddingQuestion();
+        popover().within(() => {
+          cy.findByText("Raw Data").click();
+          cy.findByText("Products").click();
+        });
+        getNotebookStep("data").findByText("Products").should("be.visible");
       });
     });
   });
