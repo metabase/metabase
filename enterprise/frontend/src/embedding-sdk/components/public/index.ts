@@ -3,7 +3,10 @@ import type { MetabaseTheme } from "embedding-sdk/types/theme";
 
 export { StaticQuestion } from "./StaticQuestion";
 export { InteractiveQuestion } from "./InteractiveQuestion";
-export { MetabaseProvider } from "./MetabaseProvider";
+export {
+  MetabaseProvider,
+  type MetabaseProviderProps,
+} from "./MetabaseProvider";
 export { StaticDashboard } from "./StaticDashboard";
 export { CollectionBrowser } from "./CollectionBrowser";
 export { InteractiveDashboard } from "./InteractiveDashboard";
