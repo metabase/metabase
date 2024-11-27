@@ -17,7 +17,7 @@ import type {
 } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";
 import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
-import { Group, Icon, List, Stack, Text } from "metabase/ui";
+import { Flex, Group, Icon, List, Stack, Text } from "metabase/ui";
 
 import { PublicEmbedCard } from "./PublicEmbedCard";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
@@ -88,6 +88,9 @@ export function SelectEmbedTypePane({
     }
   };
 
+  const isInteractiveEmbeddingEnabled = useSelector(
+    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
+  );
   const isStaticEmbeddingDisabled =
     useSetting("enable-embedding-static") === false;
   const isInteractiveEmbeddingDisabled =
@@ -136,6 +139,13 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Let people can click on to explore.`}</List.Item>
               <List.Item>{t`Customize appearance with your logo, font, and colors.`}</List.Item>
             </List>
+            {!isInteractiveEmbeddingEnabled && (
+              <ExternalLink>
+                <Flex align="center">
+                  {t`Learn more`} <Icon name="share" ml="xs" />
+                </Flex>
+              </ExternalLink>
+            )}
           </SharingPaneButton>
         </MaybeLink>
 
