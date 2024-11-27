@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactElement, type ReactNode, useState } from "react";
-import { match } from "ts-pattern";
+import type { ReactElement, ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -9,39 +8,24 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Group } from "metabase/ui";
+import { Box, Divider, Group, Stack } from "metabase/ui";
 
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../../public/FlexibleSizeComponent";
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
+import { shouldShowSaveButton } from "../InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
+import { ResultTitle } from "./ResultTitle";
 
 export interface InteractiveQuestionResultProps {
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: ReactNode;
 }
-
-type QuestionView = "editor" | "visualization";
-
-const ContentView = ({
-  questionView,
-  onReturnToVisualization,
-}: {
-  questionView: QuestionView;
-  onReturnToVisualization: () => void;
-}) =>
-  match<QuestionView>(questionView)
-    .with("editor", () => (
-      <InteractiveQuestion.Editor onApply={onReturnToVisualization} />
-    ))
-    .otherwise(() => (
-      <InteractiveQuestion.QuestionVisualization height="100%" />
-    ));
 
 export const InteractiveQuestionResult = ({
   height,
@@ -52,8 +36,8 @@ export const InteractiveQuestionResult = ({
   customTitle,
   withResetButton,
 }: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
-  const [questionView, setQuestionView] =
-    useState<QuestionView>("visualization");
+  const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
+    useDisclosure(false);
 
   const {
     question,
@@ -80,6 +64,11 @@ export const InteractiveQuestionResult = ({
     return <SdkError message={t`Question not found`} />;
   }
 
+  const showSaveButton =
+    shouldShowSaveButton({ question, originalQuestion }) &&
+    isSaveEnabled &&
+    !isSaveModalOpen;
+
   return (
     <FlexibleSizeComponent
       height={height}
@@ -87,39 +76,55 @@ export const InteractiveQuestionResult = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Group className={InteractiveQuestionS.TopBar} position="apart" p="md">
-        <InteractiveQuestion.BackButton />
-        {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
-        <Group spacing="xs">
-          {withResetButton && <InteractiveQuestion.ResetButton />}
-          <InteractiveQuestion.ChartTypeDropdown />
-          <InteractiveQuestion.FilterDropdown />
-          <InteractiveQuestion.SummarizeDropdown />
-          <InteractiveQuestion.BreakoutDropdown />
-          <InteractiveQuestion.EditorButton
-            isOpen={questionView === "editor"}
-            onClick={() =>
-              setQuestionView(
-                questionView === "editor" ? "visualization" : "editor",
-              )
-            }
-          />
-
-          {isSaveEnabled && !isSaveModalOpen && (
+      <Stack className={InteractiveQuestionS.TopBar} spacing="sm" p="md">
+        <Group position="apart" align="flex-end">
+          <Group spacing="xs">
+            <InteractiveQuestion.BackButton />
+            <ResultTitle
+              withResetButton={withResetButton}
+              customTitle={customTitle}
+              withTitle={withTitle}
+            />
+          </Group>
+          {showSaveButton && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
           )}
         </Group>
-      </Group>
 
-      <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
-        <Box className={InteractiveQuestionS.Content}>
-          <ContentView
-            questionView={questionView}
-            onReturnToVisualization={() => setQuestionView("visualization")}
+        <Group
+          position="apart"
+          p="sm"
+          bg="var(--mb-color-background-disabled)"
+          style={{ borderRadius: "0.5rem" }}
+        >
+          <Group spacing="xs">
+            <InteractiveQuestion.ChartTypeDropdown />
+            <Divider
+              mx="xs"
+              orientation="vertical"
+              // we have to do this for now because Mantine's divider overrides this color no matter what
+              color="var(--mb-color-border) !important"
+            />
+            <InteractiveQuestion.FilterDropdown />
+            <InteractiveQuestion.SummarizeDropdown />
+            <InteractiveQuestion.BreakoutDropdown />
+          </Group>
+          <InteractiveQuestion.EditorButton
+            isOpen={isEditorOpen}
+            onClick={toggleEditor}
           />
+        </Group>
+      </Stack>
+
+      <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
+        <Box className={InteractiveQuestionS.Content}>
+          {isEditorOpen ? (
+            <InteractiveQuestion.Editor onApply={closeEditor} />
+          ) : (
+            <InteractiveQuestion.QuestionVisualization height="100%" />
+          )}
         </Box>
       </Box>
-
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
       {isSaveEnabled && isSaveModalOpen && question && (
         <SaveQuestionModal
