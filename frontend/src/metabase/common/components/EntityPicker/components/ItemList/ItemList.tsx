@@ -78,22 +78,12 @@ export const ItemList = <
         const isSelected = isSelectedItem(item, selectedItem);
         const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
 
-        const folderChevronColor = isSelected
-          ? "currentcolor"
-          : "var(--mb-color-text-primary)";
-
         return (
           <div data-testid="picker-item" key={`${item.model}-${item.id}`}>
             <NavLink
               disabled={shouldDisableItem?.(item)}
               rightSection={
-                isFolder(item) ? (
-                  <Icon
-                    name="chevronright"
-                    size={10}
-                    fill={folderChevronColor}
-                  />
-                ) : null
+                isFolder(item) ? <Icon name="chevronright" size={10} /> : null
               }
               label={
                 <Flex align="center">
