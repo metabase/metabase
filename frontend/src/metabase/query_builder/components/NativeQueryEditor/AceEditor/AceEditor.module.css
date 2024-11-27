@@ -44,6 +44,7 @@
         color: var(--mb-color-saturated-purple);
       }
 
+      .ace_identifier,
       .ace_function,
       .ace_variable {
         color: var(--mb-color-saturated-blue);
