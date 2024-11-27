@@ -6,7 +6,8 @@ import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { getIsLocalhost } from "./is-localhost";
 
 interface SdkProblemOptions {
-  config: MetabaseAuthConfig;
+  authConfig: MetabaseAuthConfig;
+  allowConsoleLog: boolean;
 
   isEnabled: boolean;
   hasTokenFeature: boolean;
@@ -35,13 +36,13 @@ export const SDK_SSO_DOCS_LINK =
 export function getSdkUsageProblem(
   options: SdkProblemOptions,
 ): SdkUsageProblem | null {
-  const { isEnabled, hasTokenFeature, config } = options;
-  const { authProviderUri, apiKey } = config;
+  const { isEnabled, hasTokenFeature, authConfig } = options;
+  const { authProviderUri, apiKey } = authConfig;
 
   const isSSO = !!authProviderUri;
   const isApiKey = !!apiKey;
   const isLocalhost = getIsLocalhost();
-  const hasJwtProviderUriProperty = "jwtProviderUri" in config;
+  const hasJwtProviderUriProperty = "jwtProviderUri" in authConfig;
 
   /**
    * TODO: these checks for non-localhost environments are pending on

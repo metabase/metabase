@@ -7,11 +7,15 @@ import { SdkUsageProblemBanner } from "./SdkUsageProblemBanner";
 import S from "./SdkUsageProblemBanner.module.css";
 
 interface Props {
-  config: MetabaseAuthConfig;
+  authConfig: MetabaseAuthConfig;
+  allowConsoleLog?: boolean;
 }
 
-export const SdkUsageProblemDisplay = ({ config }: Props) => {
-  const usageProblem = useSdkUsageProblem(config);
+export const SdkUsageProblemDisplay = ({
+  authConfig,
+  allowConsoleLog,
+}: Props) => {
+  const usageProblem = useSdkUsageProblem({ authConfig, allowConsoleLog });
 
   if (!usageProblem) {
     return null;

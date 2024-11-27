@@ -133,9 +133,9 @@ export function renderWithProviders(
     storeMiddleware,
   ) as unknown as Store<State>;
 
-  if (sdkProviderProps?.authConfig) {
-    // Prevent spamming the console during tests
-    sdkProviderProps.authConfig.allowConsoleLog = false;
+  // Prevent spamming the console during tests
+  if (sdkProviderProps) {
+    sdkProviderProps.allowConsoleLog = false;
   }
 
   const wrapper = (props: any) => {

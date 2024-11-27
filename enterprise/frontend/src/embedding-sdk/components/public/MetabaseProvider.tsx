@@ -106,7 +106,10 @@ export const MetabaseProviderInternal = ({
         <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
         <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
           <LocaleProvider locale={locale}>{children}</LocaleProvider>
-          <SdkUsageProblemDisplay config={authConfig} />
+          <SdkUsageProblemDisplay
+            authConfig={authConfig}
+            allowConsoleLog={allowConsoleLog}
+          />
           <PortalContainer />
           <FullPagePortalContainer />
         </Box>
