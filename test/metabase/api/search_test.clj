@@ -36,6 +36,8 @@
 
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
+(use-fixtures :each (fn [thunk] (search.tu/with-legacy-search (thunk))))
+
 (def ^:private default-search-row
   {:archived                   false
    :dashboard_id               false
