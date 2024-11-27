@@ -185,7 +185,7 @@ export type MetabaseComponentTheme = {
     /** Tooltip text color. */
     textColor?: string;
 
-    /** Tooltip text color for muted rows. */
+    /** Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes. */
     secondaryTextColor?: string;
 
     /** Tooltip background color. */

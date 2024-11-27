@@ -118,7 +118,7 @@ const theme = defineEmbeddingSdkTheme({
       // Tooltip text color.
       textColor: "#FFFFFF",
 
-      // Tooltip text color for muted rows.
+      // Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes.
       secondaryTextColor: "#949AAB",
 
       // Tooltip background color.
