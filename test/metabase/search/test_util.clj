@@ -28,7 +28,7 @@
   "Create a temporary index table for the duration of the body."
   [& body]
   `(if (search/supports-index?)
-     (mt/with-dynamic-redefs [search.impl/default-engine (constantly :search.engine/fulltext)]
+     (mt/with-dynamic-redefs [search.impl/default-engine (constantly :search.engine/appdb)]
        (with-temp-index-table
          (search/reindex!)
          ~@body))
