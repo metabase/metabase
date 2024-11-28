@@ -4,9 +4,6 @@ import promise from "redux-promise";
 import { combineEntities, createEntity } from "metabase/lib/entities";
 import requestsReducer from "metabase/redux/requests";
 
-/**
- * @deprecated use "metabase/api" instead
- */
 const widgets = createEntity({
   name: "widgets",
   api: {
