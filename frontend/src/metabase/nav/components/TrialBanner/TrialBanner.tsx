@@ -30,8 +30,6 @@ export const TrialBanner = ({
     tokenExpiry: tokenExpiryTimestamp,
   });
 
-  const lastDay = daysRemaining === 0;
-
   const showBanner = useMemo(
     () =>
       shouldShowBanner({
@@ -46,6 +44,7 @@ export const TrialBanner = ({
     return null;
   }
 
+  const lastDay = daysRemaining === 0;
   const href = getStoreUrl("account/manage/plans");
 
   const handleBannerClose = () => {
