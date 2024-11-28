@@ -20,14 +20,13 @@ import { ExpressionWidgetHeader } from "metabase/query_builder/components/expres
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
   ColumnPickerHeaderContainer,
-  ColumnPickerHeaderTitle,
   ColumnPickerHeaderTitleContainer,
 } from "./AggregationPicker.styled";
 
@@ -386,7 +385,9 @@ function ColumnPickerHeader({
     <ColumnPickerHeaderContainer>
       <ColumnPickerHeaderTitleContainer onClick={onClick} aria-label={t`Back`}>
         <Icon name="chevronleft" size={18} />
-        <ColumnPickerHeaderTitle>{children}</ColumnPickerHeaderTitle>
+        <Text fz="lg" fw="bold" lh="normal" c="inherit">
+          {children}
+        </Text>
       </ColumnPickerHeaderTitleContainer>
     </ColumnPickerHeaderContainer>
   );
