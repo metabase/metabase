@@ -62,9 +62,8 @@ describe("scenarios > notebook > data source", () => {
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
-        H.entityPickerModalTab("Models").should("exist");
         H.entityPickerModalTab("Tables").should("exist");
-        H.entityPickerModalTab("Saved questions").should("not.exist");
+        H.entityPickerModalTab("Collections").should("exist");
       });
     });
 
@@ -78,8 +77,7 @@ describe("scenarios > notebook > data source", () => {
       H.startNewQuestion();
 
       H.entityPickerModal().within(() => {
-        H.shouldDisplayTabs(["Tables", "Saved questions"]);
-        H.entityPickerModalTab("Models").should("not.exist");
+        H.shouldDisplayTabs(["Tables", "Collections"]);
       });
     });
   });
@@ -232,7 +230,7 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       H.entityPickerModal().within(() => {
-        H.shouldDisplayTabs(["Models", "Tables", "Saved questions"]);
+        H.shouldDisplayTabs(["Models", "Tables", "Collections"]);
 
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
@@ -251,7 +249,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Models").should(
+        H.entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -266,7 +264,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Models").should(
+        H.entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -301,7 +299,7 @@ describe("scenarios > notebook > data source", () => {
       H.openNotebook();
       openDataSelector();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").should(
+        H.entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -323,7 +321,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").should(
+        H.entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -354,8 +352,7 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
     H.entityPickerModal().within(() => {
       cy.findAllByRole("tab").should("have.length", 2);
       H.entityPickerModalTab("Tables").should("be.visible");
-      H.entityPickerModalTab("Models").should("be.visible");
-      H.entityPickerModalTab("Saved questions").should("not.exist");
+      H.entityPickerModalTab("Collections").should("be.visible");
     });
   });
 });

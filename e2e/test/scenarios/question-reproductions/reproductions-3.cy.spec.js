@@ -713,7 +713,7 @@ describe("issue 42957", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalTab("Collections").click();
 
       cy.findByText("Collection without models").should("not.exist");
     });
@@ -866,12 +866,12 @@ describe("issue 32020", () => {
 
     cy.log("create joined question manually");
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(question1Details.name).click();
     });
     H.join();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(question2Details.name).click();
     });
     H.popover().findByText("ID").click();
@@ -920,7 +920,7 @@ describe("issue 44071", () => {
     cy.visit("/");
     H.newButton("Question").click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(/Personal Collection/).click();
       cy.findByText(questionDetails.name).click();
     });
@@ -1581,7 +1581,7 @@ describe("issue 44974", () => {
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Recents").should("not.exist");
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText(questionDetails.name).should("not.exist");
       });
     });

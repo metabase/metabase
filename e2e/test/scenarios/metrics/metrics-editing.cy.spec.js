@@ -194,7 +194,7 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a saved question", () => {
       H.startNewMetric();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("Orders").click();
       });
       addStringCategoryFilter({
@@ -210,7 +210,7 @@ describe("scenarios > metrics > editing", () => {
       H.createQuestion(ORDERS_MULTI_STAGE_QUESTION);
       H.startNewMetric();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
       });
       addNumberBetweenFilter({
@@ -225,7 +225,7 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a model", () => {
       H.startNewMetric();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Models").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("Orders Model").click();
       });
       addStringCategoryFilter({
@@ -241,7 +241,7 @@ describe("scenarios > metrics > editing", () => {
       H.createQuestion({ ...ORDERS_MULTI_STAGE_QUESTION, type: "model" });
       H.startNewMetric();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Models").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
       });
       addNumberBetweenFilter({
@@ -256,7 +256,7 @@ describe("scenarios > metrics > editing", () => {
     it("should not allow to create a multi-stage metric", () => {
       H.startNewMetric();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Models").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("Orders Model").click();
       });
       getActionButton("Summarize").should("not.exist");
