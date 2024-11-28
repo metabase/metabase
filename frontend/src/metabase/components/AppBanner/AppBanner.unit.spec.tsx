@@ -27,7 +27,6 @@ const TEST_DB = createSampleDatabase();
 const DATA_WAREHOUSE_DB = createMockDatabase({ id: 2 });
 
 function setup({
-  bannerDismissalTimestamp,
   isAdmin,
   isHosted = false,
   isReadOnly = false,
@@ -41,7 +40,6 @@ function setup({
       "is-hosted?": isHosted,
       "read-only-mode": isReadOnly,
       "token-status": createMockTokenStatus(tokenStatus ?? {}),
-      "trial-banner-dismissal-timestamp": bannerDismissalTimestamp,
     }),
   });
 
@@ -165,27 +163,6 @@ describe("AppBanner", () => {
       trial: true,
     };
 
-    const getTokenExpiryDate = (daysRemaining: number) => {
-      return (
-        dayjs()
-          .add(daysRemaining, "days")
-          // Safety buffer - even a second would do but we want to
-          // account for the slower testing environments, like CI.
-          .add(1, "minute")
-          .toISOString()
-      );
-    };
-
-    const getCopy = (daysRemaining: number) => {
-      if (daysRemaining === 0) {
-        return "Today is the last day of your trial.";
-      }
-
-      return `${daysRemaining} ${daysRemaining === 1 ? "day" : "days"} left in your trial.`;
-    };
-
-    const copyRegex = new RegExp("days? left in your trial.$");
-
     it("should not render if there is no information about the token", () => {
       setup({
         isAdmin: true,
@@ -193,8 +170,7 @@ describe("AppBanner", () => {
         tokenStatus: null,
       });
 
-      expect(screen.queryByText(copyRegex)).not.toBeInTheDocument();
-      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
     });
 
     it("should not render for self-hosted instances", () => {
@@ -204,8 +180,7 @@ describe("AppBanner", () => {
         tokenStatus: token,
       });
 
-      expect(screen.queryByText(copyRegex)).not.toBeInTheDocument();
-      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
     });
 
     it("should not render if token is not in trial", () => {
@@ -215,111 +190,36 @@ describe("AppBanner", () => {
         tokenStatus: { ...token, trial: false },
       });
 
-      expect(screen.queryByText(copyRegex)).not.toBeInTheDocument();
-      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
     });
 
-    it.each([11, 3, 2, 1, 0])(
-      "should render if the banner was never dismissed with %s day(s) remaining in the trial",
-      daysRemaining => {
-        const tokenExpiryDate = getTokenExpiryDate(daysRemaining);
+    it("should not render if token expiry date is not present", () => {
+      setup({
+        isAdmin: true,
+        isHosted: true,
+        tokenStatus: { ...token, "valid-thru": undefined },
+      });
 
-        setup({
-          bannerDismissalTimestamp: undefined,
-          isAdmin: true,
-          isHosted: true,
-          tokenStatus: {
-            ...token,
-            "valid-thru": tokenExpiryDate,
-          },
-        });
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
 
-        expect(screen.getByText(getCopy(daysRemaining))).toBeInTheDocument();
-        expect(
-          screen.getByRole("link", { name: "Manage your subscription." }),
-        ).toBeInTheDocument();
-      },
-    );
+    it("should render if it is a qualifying instance in a valid trial", () => {
+      // We need to ensure that the current timestamp is always the same
+      jest
+        .spyOn(dayjs.prototype, "toISOString")
+        .mockImplementation(() => "2024-12-28T23:00:00.000Z");
 
-    it.each(["before", "after"])(
-      "should not render if the banner was dismissed at any point with more than 3 days remaining in the trial",
-      dismissed => {
-        const daysRemaining = 5;
-        const now = dayjs();
-        const tokenExpiryDate = getTokenExpiryDate(daysRemaining);
-        const dismissalTimestampBefore = now.subtract(15, "minutes").unix();
-        const dismissalTimestampAfter = now.add(15, "minutes").unix();
-
-        setup({
-          bannerDismissalTimestamp:
-            dismissed === "before"
-              ? dismissalTimestampBefore
-              : dismissalTimestampAfter,
-          isAdmin: true,
-          isHosted: true,
-          tokenStatus: {
-            ...token,
-            "valid-thru": tokenExpiryDate,
-          },
-        });
-
-        expect(screen.queryByText(copyRegex)).not.toBeInTheDocument();
-        expect(screen.queryByRole("link")).not.toBeInTheDocument();
-      },
-    );
-
-    describe("with 3 days or less remaining in the trial", () => {
-      it.each([3, 2, 1, 0])(
-        "%s day(s) remaining: should render if the banner dismissal is stale",
-        daysRemaining => {
-          const now = dayjs();
-          const tokenExpiryDate = now
-            .add(daysRemaining, "days")
-            .add(1, "minute")
-            .toISOString();
-          const staleDismissalTimestamp = now.subtract(15, "minutes").unix();
-
-          setup({
-            bannerDismissalTimestamp: staleDismissalTimestamp,
-            isAdmin: true,
-            isHosted: true,
-            tokenStatus: {
-              ...token,
-              "valid-thru": tokenExpiryDate,
-            },
-          });
-
-          expect(screen.getByText(getCopy(daysRemaining))).toBeInTheDocument();
-          expect(
-            screen.getByRole("link", { name: "Manage your subscription." }),
-          ).toBeInTheDocument();
+      setup({
+        isAdmin: true,
+        isHosted: true,
+        tokenStatus: {
+          ...token,
+          "valid-thru": "2024-12-31T23:00:00.000Z",
         },
-      );
+      });
 
-      it.each([3, 2, 1, 0])(
-        "should not render if the banner was dismissed after it reappeared on the %s day mark",
-        daysRemaining => {
-          const now = dayjs();
-          const tokenExpiryDate = now
-            .add(daysRemaining, "days")
-            .add(1, "minute")
-            .toISOString();
-          const freshDismissalTimestamp = now.add(15, "minutes").unix();
-
-          setup({
-            bannerDismissalTimestamp: freshDismissalTimestamp,
-            isAdmin: true,
-            isHosted: true,
-            tokenStatus: {
-              ...token,
-              "valid-thru": tokenExpiryDate,
-            },
-          });
-
-          expect(screen.queryByText(copyRegex)).not.toBeInTheDocument();
-          expect(screen.queryByRole("link")).not.toBeInTheDocument();
-        },
-      );
+      expect(screen.getByTestId("app-banner")).toBeInTheDocument();
+      jest.clearAllMocks();
     });
   });
 });
