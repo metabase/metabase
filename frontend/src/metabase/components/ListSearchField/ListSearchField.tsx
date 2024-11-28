@@ -24,6 +24,7 @@ export default function ListSearchField({
 
   return (
     <TextInput
+      data-testid="list-search-field"
       ref={inputRef}
       icon={<Icon name="search" />}
       rightSection={
@@ -33,7 +34,6 @@ export default function ListSearchField({
           </ActionIcon>
         ) : null
       }
-      data-testid="list-search-field"
       {...props}
     />
   );
