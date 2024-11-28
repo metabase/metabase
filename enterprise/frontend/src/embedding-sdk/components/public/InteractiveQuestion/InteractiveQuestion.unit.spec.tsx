@@ -53,29 +53,24 @@ const TEST_DATASET = createMockDataset({
 });
 
 // Provides a button to re-run the query
-function InteractiveQuestionTestResult({
-  withChartTypeSelector,
-}: {
-  withChartTypeSelector: boolean;
-}) {
+function InteractiveQuestionTestResult() {
   const { resetQuestion } = useInteractiveQuestionContext();
 
   return (
     <div>
       <button onClick={resetQuestion}>Run Query</button>
-      <InteractiveQuestionResult
-        withTitle
-        withChartTypeSelector={withChartTypeSelector}
-      />
+      <InteractiveQuestionResult withTitle />
     </div>
   );
 }
 
 const setup = ({
   isValidCard = true,
+  withCustomLayout = true,
   withChartTypeSelector = true,
 }: {
   isValidCard?: boolean;
+  withCustomLayout?: boolean;
   withChartTypeSelector?: boolean;
 } = {}) => {
   const { state } = setupSdkState({
@@ -102,10 +97,11 @@ const setup = ({
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
   return renderWithProviders(
-    <InteractiveQuestion questionId={TEST_CARD.id}>
-      <InteractiveQuestionTestResult
-        withChartTypeSelector={withChartTypeSelector}
-      />
+    <InteractiveQuestion
+      questionId={TEST_CARD.id}
+      withChartTypeSelector={withChartTypeSelector}
+    >
+      {withCustomLayout ? <InteractiveQuestionTestResult /> : undefined}
     </InteractiveQuestion>,
     {
       mode: "sdk",
@@ -185,7 +181,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should show a chart type selector button if withChartTypeSelector is true", async () => {
-    setup({ withChartTypeSelector: true });
+    setup({ withCustomLayout: false, withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
 
     expect(
@@ -194,7 +190,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should not show a chart type selector button if withChartTypeSelector is false", async () => {
-    setup({ withChartTypeSelector: false });
+    setup({ withCustomLayout: false, withChartTypeSelector: false });
     await waitForLoaderToBeRemoved();
 
     expect(
