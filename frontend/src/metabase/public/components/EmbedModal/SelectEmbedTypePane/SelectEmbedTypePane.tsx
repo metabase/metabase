@@ -88,7 +88,7 @@ export function SelectEmbedTypePane({
     }
   };
 
-  const isInteractiveEmbeddingEnabled = useSelector(
+  const isInteractiveEmbeddingAvailable = useSelector(
     PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
   );
   const isStaticEmbeddingDisabled =
@@ -126,7 +126,9 @@ export function SelectEmbedTypePane({
           to={interactiveEmbeddingCta.url}
           target={interactiveEmbeddingCta.target}
           rel="noreferrer"
-          shouldRender={!isInteractiveEmbeddingDisabled}
+          shouldRender={
+            !isInteractiveEmbeddingAvailable || !isInteractiveEmbeddingDisabled
+          }
           aria-label={t`Interactive embedding`}
         >
           <SharingPaneButton
@@ -144,7 +146,7 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Let people can click on to explore.`}</List.Item>
               <List.Item>{t`Customize appearance with your logo, font, and colors.`}</List.Item>
             </List>
-            {!isInteractiveEmbeddingEnabled && (
+            {!isInteractiveEmbeddingAvailable && (
               <ExternalLink>
                 <Flex align="center">
                   {t`Learn more`} <Icon name="share" ml="xs" />

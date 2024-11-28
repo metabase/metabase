@@ -14,9 +14,9 @@ describe("EmbedModalContent", () => {
         expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
       });
 
-      describe("when static embedding is disabled", () => {});
+      describe("when Static Embedding is disabled", () => {});
 
-      describe("when static embedding is enabled", () => {
+      describe("when Static Embedding is enabled", () => {
         it("should switch to StaticEmbedSetupPane", async () => {
           const { goToNextStep } = setup({
             enableEmbedding: {
@@ -47,7 +47,59 @@ describe("EmbedModalContent", () => {
       });
     });
 
-    describe("Interactive Embedding", () => {});
+    describe("Interactive Embedding", () => {
+      const INTERACTIVE_EMBED_TITLE = "Interactive embedding";
+
+      describe("when Interactive Embedding is disabled", () => {
+        it("should mention Interactive Embedding and lead users to learn more link", () => {
+          setup();
+
+          // The card is clickable
+          expect(
+            screen.queryByRole("link", { name: INTERACTIVE_EMBED_TITLE }),
+          ).toHaveProperty(
+            "href",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+          );
+
+          // We show the learn more link
+          const withinInteractiveEmbedCard = within(
+            screen.getByRole("article", { name: INTERACTIVE_EMBED_TITLE }),
+          );
+          expect(
+            withinInteractiveEmbedCard.getByText("Learn more"),
+          ).toBeInTheDocument();
+        });
+      });
+
+      describe("when Interactive Embedding is enabled", () => {
+        it("should mention Interactive Embedding and lead users to learn more link", () => {
+          setup({
+            enableEmbedding: {
+              static: false,
+              interactive: true,
+              sdk: false,
+            },
+          });
+
+          // The card is clickable
+          expect(
+            screen.queryByRole("link", { name: INTERACTIVE_EMBED_TITLE }),
+          ).toHaveProperty(
+            "href",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+          );
+
+          // We show the learn more link
+          const withinInteractiveEmbedCard = within(
+            screen.getByRole("article", { name: INTERACTIVE_EMBED_TITLE }),
+          );
+          expect(
+            withinInteractiveEmbedCard.getByText("Learn more"),
+          ).toBeInTheDocument();
+        });
+      });
+    });
 
     describe("Embedding SDK", () => {
       const SDK_TITLE = "Embedded analytics SDK";
