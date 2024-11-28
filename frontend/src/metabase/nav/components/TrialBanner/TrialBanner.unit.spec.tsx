@@ -6,6 +6,10 @@ import { useUserSetting } from "metabase/common/hooks";
 
 import { TrialBanner } from "./TrialBanner";
 
+jest.mock("metabase/common/hooks", () => ({
+  useUserSetting: jest.fn(),
+}));
+
 describe("TrialBanner", () => {
   const getCopy = (daysRemaining: number) => {
     if (daysRemaining === 0) {
@@ -16,10 +20,6 @@ describe("TrialBanner", () => {
   };
 
   const mockCurrentTimestamp = jest.fn();
-
-  jest.mock("metabase/common/hooks", () => ({
-    useUserSetting: jest.fn(),
-  }));
 
   beforeEach(() => {
     jest
