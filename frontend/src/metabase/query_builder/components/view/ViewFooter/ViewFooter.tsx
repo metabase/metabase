@@ -12,7 +12,7 @@ import {
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Button, Group, rem } from "metabase/ui";
+import { Button, Flex, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -125,7 +125,7 @@ export const ViewFooter = ({
       className={cx(className, CS.textMedium, CS.borderTop, CS.fullWidth)}
       data-testid="view-footer"
     >
-      <Group position="apart" pos="relative" noWrap w="100%">
+      <Flex mih="xl" pos="relative" justify="flex-end" w="100%">
         {/* {isNotebook && hasVisualizeButton && isResultDirty ? ( */}
         <CSSTransition in={showButton} key="visualize-button" timeout={300}
           unmountOnExit
@@ -193,7 +193,7 @@ export const ViewFooter = ({
         ) : (
           <RightViewFooterButtonGroup />
         )}
-      </Group>
+      </Flex>
     </ViewFooterRoot>
   );
 };

@@ -45,7 +45,7 @@ export const LeftViewFooterButtonGroup = forwardRef<HTMLDivElement, LeftViewFoot
     isResultLoaded;
 
   return (
-    <Flex gap="0.75rem" ref={ref}>
+    <Flex gap="0.75rem" ref={ref} pos="absolute" left={0}>
       <ViewFooterControl
         question={question}
         isNotebook={isNotebook}
