@@ -810,6 +810,28 @@ describeEE("scenarios > embedding > full app", () => {
           databaseName: "Sample Database",
         });
       });
+
+      it("should not be able to join a metric", () => {
+        const cardDetails = {
+          ...ordersCardDetails,
+          type: "metric",
+          collection_id: null,
+        };
+        createQuestion(cardDetails);
+        startNewEmbeddingQuestion();
+        selectTable({
+          tableName: "Orders",
+        });
+        getNotebookStep("data").button("Join data").click();
+        popover().within(() => {
+          cy.icon("chevronleft").click();
+          cy.icon("chevronleft").click();
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Saved Questions").should("be.visible");
+          cy.findByText("Models").should("be.visible");
+          cy.findByText("Metrics").should("not.exist");
+        });
+      });
     });
   });
 
