@@ -324,13 +324,11 @@ describeEE("scenarios > embedding > full app", () => {
   });
 
   describe("notebook", () => {
-    const cardTypes = ["question", "model", "metric"];
     const baseCardDetails = {
       name: "Card",
       type: "question",
       query: {
         "source-table": ORDERS_ID,
-        aggregation: [["count"]],
       },
     };
 
@@ -411,7 +409,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.signInAsNormalUser();
     });
 
-    describe("tables", () => {
+    describe("table", () => {
       it("should select a table in the only database", () => {
         startNewEmbeddingQuestion();
         selectTable({ tableName: "Products" });
@@ -494,6 +492,7 @@ describeEE("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion();
         selectCard({
           cardName: "Orders",
+          collectionNames: [],
         });
         getNotebookStep("data").button("Join data").click();
         popover().within(() => {
@@ -511,9 +510,9 @@ describeEE("scenarios > embedding > full app", () => {
       });
     });
 
-    describe("cards", () => {
-      cardTypes.forEach(cardType => {
-        it(`should select a ${cardType} in the root collection`, () => {
+    ["question", "model"].forEach(cardType => {
+      describe(cardType, () => {
+        it("should select a data source in the root collection", () => {
           const cardDetails = {
             ...baseCardDetails,
             type: cardType,
@@ -523,7 +522,7 @@ describeEE("scenarios > embedding > full app", () => {
           startNewEmbeddingQuestion();
           selectCard({
             cardName: cardDetails.name,
-            cardType: cardDetails.type,
+            cardType,
             collectionNames: [],
           });
           clickOnDataSource(baseCardDetails.name);
@@ -533,7 +532,7 @@ describeEE("scenarios > embedding > full app", () => {
           });
         });
 
-        it(`should select a ${cardType} in a regular collection`, () => {
+        it("should select a data source in a regular collection", () => {
           const cardDetails = {
             ...baseCardDetails,
             type: cardType,
@@ -543,7 +542,7 @@ describeEE("scenarios > embedding > full app", () => {
           startNewEmbeddingQuestion();
           selectCard({
             cardName: cardDetails.name,
-            cardType: cardDetails.type,
+            cardType,
             collectionNames: ["First collection"],
           });
           clickOnDataSource(baseCardDetails.name);
@@ -553,7 +552,7 @@ describeEE("scenarios > embedding > full app", () => {
           });
         });
 
-        it(`should select a ${cardType} in a nested collection`, () => {
+        it("should select a data source in a nested collection", () => {
           const cardDetails = {
             ...baseCardDetails,
             type: cardType,
@@ -563,7 +562,7 @@ describeEE("scenarios > embedding > full app", () => {
           startNewEmbeddingQuestion();
           selectCard({
             cardName: cardDetails.name,
-            cardType: cardDetails.type,
+            cardType,
             collectionNames: ["First collection", "Second collection"],
           });
           clickOnDataSource(baseCardDetails.name);
@@ -573,7 +572,7 @@ describeEE("scenarios > embedding > full app", () => {
           });
         });
 
-        it(`should select a ${cardType} in a personal collection`, () => {
+        it("should select a data source in a personal collection", () => {
           const cardDetails = {
             ...baseCardDetails,
             type: cardType,
@@ -583,7 +582,7 @@ describeEE("scenarios > embedding > full app", () => {
           startNewEmbeddingQuestion();
           selectCard({
             cardName: cardDetails.name,
-            cardType: cardDetails.type,
+            cardType,
             collectionNames: ["Your personal collection"],
           });
           clickOnDataSource(baseCardDetails.name);
@@ -593,7 +592,7 @@ describeEE("scenarios > embedding > full app", () => {
           });
         });
 
-        it(`should select a ${cardType} in another user personal collection`, () => {
+        it("should select a data source in another user personal collection", () => {
           cy.signInAsAdmin();
           const cardDetails = {
             ...baseCardDetails,
@@ -604,7 +603,7 @@ describeEE("scenarios > embedding > full app", () => {
           startNewEmbeddingQuestion();
           selectCard({
             cardName: cardDetails.name,
-            cardType: cardDetails.type,
+            cardType,
             collectionNames: [
               "All personal collections",
               "Robert Tableton's Personal Collection",
@@ -614,6 +613,66 @@ describeEE("scenarios > embedding > full app", () => {
           verifyCardSelected({
             cardName: cardDetails.name,
             collectionName: "Robert Tableton's Personal Collection",
+          });
+        });
+
+        it("should be able to join a card when the data source is a table", () => {
+          const cardDetails = {
+            ...baseCardDetails,
+            type: cardType,
+            collection_id: FIRST_COLLECTION_ID,
+          };
+          createQuestion(cardDetails);
+          startNewEmbeddingQuestion();
+          selectTable({
+            tableName: "Products",
+          });
+          getNotebookStep("data").button("Join data").click();
+          popover().within(() => {
+            cy.icon("chevronleft").click();
+            cy.icon("chevronleft").click();
+          });
+          selectCard({
+            cardName: cardDetails.name,
+            cardType,
+            collectionNames: ["First collection"],
+          });
+          clickOnJoinDataSource(cardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "First collection",
+          });
+        });
+
+        it("should be able to join a card when the data source is a question", () => {
+          const cardDetails = {
+            ...baseCardDetails,
+            type: cardType,
+            collection_id: FIRST_COLLECTION_ID,
+          };
+          createQuestion(cardDetails);
+          startNewEmbeddingQuestion();
+          selectCard({
+            cardName: "Orders",
+            cardType: "question",
+            collectionNames: [],
+          });
+          getNotebookStep("data").button("Join data").click();
+          popover().within(() => {
+            cy.icon("chevronleft").click();
+            cy.icon("chevronleft").click();
+          });
+          selectCard({
+            cardName: cardDetails.name,
+            cardType,
+            collectionNames: ["First collection"],
+          });
+          popover().findByText("ID").click();
+          popover().findByText("ID").click();
+          clickOnJoinDataSource(cardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "First collection",
           });
         });
       });
