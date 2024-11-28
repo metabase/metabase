@@ -1,8 +1,11 @@
+import { t } from "ttag";
+
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
 } from "metabase/query_builder/hooks";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
+import { Button, Divider, Icon, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../../context";
@@ -25,18 +28,35 @@ export const BreakoutPickerInner = ({
   });
 
   return (
-    <BreakoutPopover
-      query={query}
-      stageIndex={stageIndex}
-      breakout={breakoutItem?.breakout}
-      breakoutIndex={breakoutItem?.breakoutIndex}
-      onAddBreakout={onAddBreakout}
-      onUpdateBreakoutColumn={(_, column) =>
-        breakoutItem?.updateBreakout(column)
-      }
-      onClose={() => onClose?.()}
-      isMetric={false}
-    />
+    <Stack spacing={0} w="18.75rem">
+      <Button
+        py="md"
+        px="md"
+        fz="lg"
+        color="text-dark"
+        variant="subtle"
+        leftIcon={<Icon size={12} name="chevronleft" />}
+        onClick={() => onClose?.()}
+        styles={{
+          inner: { display: "flex", justifyContent: "flex-start" },
+        }}
+      >
+        {breakoutItem?.displayName ?? t`New breakout`}
+      </Button>
+      <Divider />
+      <BreakoutPopover
+        query={query}
+        stageIndex={stageIndex}
+        breakout={breakoutItem?.breakout}
+        breakoutIndex={breakoutItem?.breakoutIndex}
+        onAddBreakout={onAddBreakout}
+        onUpdateBreakoutColumn={(_, column) =>
+          breakoutItem?.updateBreakout(column)
+        }
+        onClose={() => onClose?.()}
+        isMetric={false}
+      />
+    </Stack>
   );
 };
 
