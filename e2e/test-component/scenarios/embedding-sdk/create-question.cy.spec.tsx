@@ -38,6 +38,7 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     getSdkRoot().contains("Pick your starting data");
 
     popover().within(() => {
+      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
