@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 
@@ -44,16 +44,13 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
     );
   }
 
-  const daysRemaining = moment(tokenStatus["valid-thru"]).diff(
-    moment(),
-    "days",
-  );
+  const daysRemaining = dayjs(tokenStatus["valid-thru"]).diff(dayjs(), "days");
 
   if (tokenStatus.valid && tokenStatus.trial) {
     return t`Your trial ends in ${daysRemaining} days. If you already have a license, please enter it below.`;
   }
 
-  const validUntil = moment(tokenStatus["valid-thru"]).format("MMM D, YYYY");
+  const validUntil = dayjs(tokenStatus["valid-thru"]).format("MMM D, YYYY");
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
@@ -137,9 +134,7 @@ const LicenseAndBillingSettings = ({
       {shouldShowLicenseInput && (
         <>
           <SectionHeader>{t`License`}</SectionHeader>
-
           <SectionDescription>{description}</SectionDescription>
-
           <LicenseInput
             disabled={is_env_setting}
             placeholder={is_env_setting ? t`Using ${env_name}` : undefined}
