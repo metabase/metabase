@@ -69,7 +69,7 @@ function _AddEditSlackSidebar({
             "schedule_type",
           )}
           scheduleOptions={channelSpec.schedules}
-          textBeforeInterval={t`Sent`}
+          textBeforeInterval={t`Send`}
           textBeforeSendTime={t`${
             CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`
           } will be sent at`}
