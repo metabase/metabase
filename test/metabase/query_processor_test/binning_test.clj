@@ -9,7 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
-(deftest binning-in-result-cols-display-name-test
+(deftest ^:parallel binning-in-result-cols-display-name-test
   (doseq [[table-key field-key binning-name expected-display-name]
           [[:orders :tax "50 bins" "Tax: 50 bins"]
            [:venues :longitude "Bin every 1 degree" "Longitude: 1°"]]]
@@ -25,6 +25,6 @@
         (is expected-display-name
             (-> (qp/process-query query) mt/cols first :display_name)))
       (testing "Binning is visible on cards"
-        (mt/with-temp [:model/Card {card-id :id} {:creator_id 1 :dataset_query (lib.convert/->legacy-MBQL query)}]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib.convert/->legacy-MBQL query)}]
           (is expected-display-name
               (qp/process-query (lib/query mp (lib.metadata/card mp card-id)))))))))
