@@ -54,7 +54,9 @@ export const ViewFooter = ({
 
   const { isShowingNotebookNativePreview } = useSelector(getUiControls);
   const [showViewControl, setShowViewControl] = useState(!isNotebook);
+  const [enableOpacity, setEnableOpacity] = useState(false);
   const [showButton, setShowButton] = useState(isNotebook);
+
   useEffect(() => {
     if (isNotebook && hasVisualizeButton && isResultDirty) {
       if (!showButton) {
@@ -122,9 +124,15 @@ export const ViewFooter = ({
     >
       <Group position="apart" pos="relative" noWrap w="100%">
         {/* {isNotebook && hasVisualizeButton && isResultDirty ? ( */}
-        <CSSTransition in={showButton} key="visualize-button" timeout={300} nodeRef={buttonRef} unmountOnExit
+        <CSSTransition in={showButton} key="visualize-button" timeout={300} nodeRef={buttonRef}
+          unmountOnExit
           onEnter={() => console.log("on enter")}
+          onEntered={() => {
+            console.log("enable opacity");
+          }}
           onExited={() => {
+            console.log("on Exited");
+            // setEnableOpacity(false);
             setShowViewControl(true);
           }}
           classNames={{
@@ -132,6 +140,7 @@ export const ViewFooter = ({
             enterActive: S.buttonEnterActive,
             exit: S.buttonExit,
             exitActive: S.buttonExitActive,
+            enterDone: S.buttonEnterDone
           }}>
           <Button
             ref={buttonRef}
@@ -141,14 +150,14 @@ export const ViewFooter = ({
             pb={rem(7)}
             miw={190}
             onClick={() => {
-              visualize();
+              // visualize();
               setShowButton(false);
             }}
           >
             {t`Visualize`}
           </Button>
         </CSSTransition>
-        <CSSTransition nodeRef={viewControlRef} timeout={300} key="view-footer-control" unmountOnExit in={showViewControl} onExited={() => { console.log("on exited") }} onEnter={() => { console.log("on enter") }}>
+        {/* <CSSTransition nodeRef={viewControlRef} timeout={300} key="view-footer-control" unmountOnExit in={showViewControl} onExited={() => { console.log("on exited") }} onEnter={() => { console.log("on enter") }}>
           <LeftViewFooterButtonGroup
             ref={viewControlRef}
             question={question}
@@ -157,7 +166,7 @@ export const ViewFooter = ({
             isRunning={isRunning}
             isNotebook={isNotebook}
           />
-        </CSSTransition>
+        </CSSTransition> */}
         {isNotebook ? (
           isShowingNotebookNativePreview ? (
             <ConvertToNativeQuestionButton />

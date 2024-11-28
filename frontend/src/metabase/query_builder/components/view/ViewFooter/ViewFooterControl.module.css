@@ -1,34 +1,17 @@
 .buttonEnter {
-  /* background-color: red !important; */
-  opacity: 0;
+  min-width: 0 !important; /* override default style */
+  border-radius: 50% !important; /* override default border-radius */
+  transition:
+    transform 0.2s ease-out,
+    color 0.1s ease-out,
+    border-radius 0.1s ease-out,
+    opacity 0.3s ease-out,
+    min-width 0.3s ease-out;
 }
 
 .buttonEnterActive {
-  /* background-color: purple !important; */
-  transition:
-    opacity 300ms,
-    transform 300ms;
-  opacity: 1;
-}
-
-.buttonExit {
-  /* background-color: green !important; */
-  /* border-radius: 2rem; */
-  color: transparent;
-  transform-origin: center;
-  /* opacity: 0; */
-  /* width: 2rem; */
-  /* transition: transform 150ms; */
-}
-
-.buttonExitActive {
-  min-width: 2rem;
-  width: 2rem;
-  /* transform: scaleX(0.5); */
-  opacity: 0.5;
-  color: transparent;
-  border-radius: 9999px;
-  transition:
-    width 300ms,
-    opacity 300ms;
+  color: transparent !important; /* to hide text */
+  width: 2rem !important; /* to match height of the button */
+  transform: translateX(60px);
+  opacity: 0.7;
 }
