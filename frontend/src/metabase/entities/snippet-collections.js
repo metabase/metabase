@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import NormalCollections, {
   getExpandedCollectionsById,
@@ -18,6 +19,12 @@ const SnippetCollections = createEntity({
 
   displayNameOne: t`snippet collection`,
   displayNameMany: t`snippet collections`,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+  },
 
   api: _.mapObject(
     NormalCollections.api,
@@ -64,5 +71,12 @@ const SnippetCollections = createEntity({
     return undefined; // not tracking
   },
 });
+
+const useGetQuery = opts => {
+  return useGetCollectionQuery({
+    namespace: "snippets",
+    ...opts,
+  });
+};
 
 export default SnippetCollections;
