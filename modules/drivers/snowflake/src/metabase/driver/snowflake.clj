@@ -184,7 +184,7 @@
                      (update :db quote-name))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
-                   (update :schema upcase-not-nil)
+                   (m/update-existing :schema upcase-not-nil)
                    resolve-private-key
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options details)
@@ -326,6 +326,10 @@
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]
   (extract :dayofweek expr))
+
+(defmethod sql.qp/date [:snowflake :day-of-week-iso]
+  [_driver _unit expr]
+  (extract :dayofweekiso expr))
 
 (defn- time-zoned-datediff
   "Same as snowflake's `datediff` but converts the args to the results time zone

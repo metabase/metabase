@@ -198,24 +198,42 @@ describe("scenarios > embedding > questions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("October 7, 2023, 1:34 AM");
   });
+});
 
-  it("should display according to `locale` parameter metabase#22561", () => {
+describeEE("scenarios [EE] > embedding > questions", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+
+    // Remap Product ID -> Product Title
+    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+      name: "Product ID as Title",
+      type: "external",
+      human_readable_field_id: PRODUCTS.TITLE,
+    });
+
+    // Do not include Subtotal anywhere
+    cy.request("PUT", `/api/field/${ORDERS.SUBTOTAL}`, {
+      visibility_type: "sensitive",
+    });
+  });
+
+  it("should display according to `#locale` hash parameter (metabase#22561, metabase#50182)", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       enable_embedding: true,
     });
 
     visitQuestion(ORDERS_QUESTION_ID);
 
-    openStaticEmbeddingModal({ activeTab: "parameters" });
+    openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
 
     visitIframe();
 
     cy.url().then(url => {
       cy.visit({
-        url,
-        qs: {
-          locale: "de",
-        },
+        // there is already a `#` in the URL from other static embed display options e.g. `#bordered=true&titled=true&downloads=true`
+        url: url + "&locale=de",
       });
     });
 

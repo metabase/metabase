@@ -413,24 +413,6 @@ export default class Field extends Base {
     });
   }
 
-  remappingOptions = () => {
-    const table = this.table;
-    if (!table) {
-      return [];
-    }
-
-    const { fks } = table
-      .legacyQuery({ useStructuredQuery: true })
-      .fieldOptions();
-    return fks
-      .filter(({ field }) => field.id === this.id)
-      .map(({ field, dimension, dimensions }) => ({
-        field,
-        dimension,
-        dimensions: dimensions.filter(d => d.isValidFKRemappingTarget()),
-      }));
-  };
-
   clone(fieldMetadata?: FieldMetadata) {
     if (fieldMetadata instanceof Field) {
       throw new Error("`fieldMetadata` arg must be a plain object");

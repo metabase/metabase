@@ -1,16 +1,16 @@
-import type { ComponentProps } from "react";
+import type { ReactNode } from "react";
 
-import { MetabaseProvider, defineEmbeddingSdkTheme } from "embedding-sdk";
+import {
+  MetabaseProvider,
+  type MetabaseTheme,
+  defineEmbeddingSdkTheme,
+} from "embedding-sdk";
 import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box } from "metabase/ui";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
-
-type InteractiveQuestionComponentProps = ComponentProps<
-  typeof InteractiveQuestion
->;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/Themed",
@@ -20,7 +20,7 @@ export default {
   },
 };
 
-const colors = {
+const darkColors = {
   primary: "#DF75E9",
   filter: "#7ABBF9",
   lighterGrey: "#E3E7E4",
@@ -30,24 +30,24 @@ const colors = {
 };
 
 const darkTheme = defineEmbeddingSdkTheme({
-  fontFamily: "Inter",
+  fontFamily: "Lato",
   fontSize: "14px",
   colors: {
-    brand: colors.primary,
-    "brand-hover": colors.darkGrey,
-    "brand-hover-light": colors.darkGrey,
-    filter: colors.filter,
-    "text-primary": colors.lighterGrey,
-    "text-secondary": colors.lighterGrey,
-    "text-tertiary": colors.lighterGrey,
-    border: colors.darkGrey,
-    background: colors.background,
-    "background-secondary": colors.darkGrey,
-    "background-hover": colors.background,
-    "background-disabled": colors.darkGrey,
+    brand: darkColors.primary,
+    "brand-hover": darkColors.darkGrey,
+    "brand-hover-light": darkColors.darkGrey,
+    filter: darkColors.filter,
+    "text-primary": darkColors.lighterGrey,
+    "text-secondary": darkColors.lighterGrey,
+    "text-tertiary": darkColors.lighterGrey,
+    border: darkColors.darkGrey,
+    background: darkColors.background,
+    "background-secondary": darkColors.darkGrey,
+    "background-hover": darkColors.background,
+    "background-disabled": darkColors.darkGrey,
     charts: [
-      colors.primary,
-      colors.filter,
+      darkColors.primary,
+      darkColors.filter,
       "#ED6A5A",
       "#FED18C",
       "#82A74B",
@@ -64,7 +64,7 @@ const darkTheme = defineEmbeddingSdkTheme({
     },
     dashboard: {
       card: {
-        border: `"1px solid ${colors.darkGrey}"`,
+        border: `"1px solid ${darkColors.darkGrey}"`,
         backgroundColor: "#212426",
       },
     },
@@ -77,44 +77,53 @@ const darkTheme = defineEmbeddingSdkTheme({
   },
 });
 
-const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MetabaseProvider config={storybookSdkDefaultConfig} theme={darkTheme}>
-    <Box p="xl" bg={colors.background}>
+const Wrapper = ({
+  children,
+  theme,
+}: {
+  children: ReactNode;
+  theme: MetabaseTheme;
+}) => (
+  <MetabaseProvider config={storybookSdkDefaultConfig} theme={theme}>
+    <Box p="xl" bg={theme.colors?.background}>
       {children}
     </Box>
   </MetabaseProvider>
 );
 
-export const DarkTheme = {
-  render(args: InteractiveQuestionComponentProps) {
-    return (
-      <Wrapper>
-        <InteractiveQuestion {...args} />;
-      </Wrapper>
-    );
-  },
+const DefaultTemplate = (theme: MetabaseTheme) => (
+  <Wrapper theme={theme}>
+    <InteractiveQuestion questionId={QUESTION_ID} isSaveEnabled />
+  </Wrapper>
+);
 
-  args: {
-    questionId: QUESTION_ID,
-    isSaveEnabled: true,
-    saveToCollectionId: undefined,
-  },
+export const DarkTheme = {
+  render: DefaultTemplate,
+  args: darkTheme,
 };
 
 export const DarkThemeEditor = {
-  render(args: InteractiveQuestionComponentProps) {
-    return (
-      <Wrapper>
-        <InteractiveQuestion {...args}>
-          <InteractiveQuestion.Editor />
-        </InteractiveQuestion>
-      </Wrapper>
-    );
-  },
+  render: (theme: MetabaseTheme) => (
+    <Wrapper theme={theme}>
+      <InteractiveQuestion questionId={QUESTION_ID} isSaveEnabled>
+        <InteractiveQuestion.Editor />
+      </InteractiveQuestion>
+    </Wrapper>
+  ),
+  args: darkTheme,
+};
 
-  args: {
-    questionId: QUESTION_ID,
-    isSaveEnabled: true,
-    saveToCollectionId: undefined,
-  },
+export const WithWhiteTooltip = {
+  render: DefaultTemplate,
+
+  args: defineEmbeddingSdkTheme({
+    components: {
+      tooltip: {
+        textColor: "#2f3542",
+        secondaryTextColor: "#57606f",
+        backgroundColor: "#ffffff",
+        focusedBackgroundColor: "#f1f2f6",
+      },
+    },
+  }),
 };

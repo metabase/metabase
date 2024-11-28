@@ -12,8 +12,10 @@
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [cheshire.core :as json]
+   [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
+   [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -336,6 +338,62 @@
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                         (apply concat))))))))))
 
+(deftest simple-pivot-with-sum-and-average-export-test
+  (testing "Pivot table exports look pivoted and can have multiple measures aggregated properly."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CATEGORY"]
+                                                :columns ["CREATED_AT"]
+                                                :values  ["sum" "avg"]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                      :currency_in_header false}}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:avg [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+        (testing "formatted"
+          (is (= [[["Category" "2016" "2016" "2017" "2017" "2018" "2018" "2019" "2019" "Row totals" "Row totals"]
+                   ["Category"
+                    "Sum of Price"
+                    "Average of Price"
+                    "Sum of Price"
+                    "Average of Price"
+                    "Sum of Price"
+                    "Average of Price"
+                    "Sum of Price"
+                    "Average of Price"
+                    ""
+                    ""]
+                   ["Doohickey" "$632.14" "48.63" "$854.19" "50.25" "$496.43" "62.05" "$203.13" "50.78" "$2,185.89" "52.93"]
+                   ["Gadget" "$679.83" "52.29" "$1,059.11" "55.74" "$844.51" "60.32" "$435.75" "62.25" "$3,019.20" "57.65"]
+                   ["Gizmo" "$529.70" "58.86" "$1,080.18" "51.44" "$997.94" "58.7" "$227.06" "56.77" "$2,834.88" "56.44"]
+                   ["Widget" "$987.39" "51.97" "$1,014.68" "56.37" "$912.20" "65.16" "$195.04" "65.01" "$3,109.31" "59.63"]
+                   ["Grand totals"
+                    "$2,829.06"
+                    "52.94"
+                    "$4,008.16"
+                    "53.45"
+                    "$3,251.08"
+                    "61.56"
+                    "$1,060.98"
+                    "58.7"
+                    "$11,149.28"
+                    "56.66"]]
+                  #{:unsaved-card-download :card-download :dashcard-download
+                    :alert-attachment :subscription-attachment
+                    :public-question-download :public-dashcard-download}]
+                 (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
+                      (group-by second)
+                      ((fn [m] (update-vals m #(into #{} (mapv first %)))))
+                      (apply concat)))))))))
+
 (deftest simple-pivot-export-row-col-totals-test
   (testing "Pivot table csv exports respect row/column totals viz-settings"
     (doseq [row-totals? [#_true false]
@@ -379,6 +437,53 @@
                         (group-by second)
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                         (apply concat))))))))))
+
+(deftest ^:parallel simple-pivot-export-works-even-with-table-column-ordering-test
+  (testing "Pivot table exports are not affected by table sort settings"
+    (testing "Try some permutations with csv"
+      (doseq [col-order   (math.combo/permutations [{:name "CATEGORY"}
+                                                    {:name "CREATED_AT"}
+                                                    {:name "sum"}])
+              col-enabled [true false]]
+        (mt/dataset test-data
+          (mt/with-temp [:model/Card card
+                         {:display                :pivot
+                          :visualization_settings {:table.columns
+                                                   ;; the :table.columns key specifies order/enabled status of columns for regular table viz
+                                                   ;; and should not cause pivot exports to fail.
+                                                   (mapv #(assoc % :enabled col-enabled) col-order)
+                                                   :pivot_table.column_split
+                                                   {:rows    ["CATEGORY"]
+                                                    :columns ["CREATED_AT"]
+                                                    :values  ["sum"]}
+                                                   :column_settings
+                                                   {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                          :currency_in_header false}}}
+                          :dataset_query          {:database (mt/id)
+                                                   :type     :query
+                                                   :query
+                                                   {:source-table (mt/id :products)
+                                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                                   [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+            (testing "they work regardless of the table.columns setting"
+              (is (= [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                      ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                      ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                      ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                      ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                      ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
+                     (card-download card {:export-format :csv :format-rows true :pivot true}))))
+            (testing "the xlsx export has a pivot table"
+              (let [result (mt/user-http-request :crowberto :post 200
+                                                 (format "card/%d/query/xlsx" (:id card))
+                                                 :format_rows   true
+                                                 :pivot_results true)
+                    pivot  (with-open [in (io/input-stream result)]
+                             (->> (spreadsheet/load-workbook in)
+                                  (spreadsheet/select-sheet "pivot")
+                                  ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
+                (is (some? pivot))))))))))
 
 (deftest ^:parallel pivot-export-test
   []
@@ -515,6 +620,53 @@
                    "Sum of Price" "Average of Rating"
                    "" ""]]
                  (take 2 result))))))))
+
+(deftest ^:parallel pivot-export-aggregations-test
+  (testing "Row and Column Values that collide with indices don't break (#50207)"
+    (testing "Other aggregations will produce the correct values in Totals rows."
+      (let [pivot-rows-query "SELECT *
+         FROM (SELECT    4 AS A UNION ALL SELECT 3)
+   CROSS JOIN (SELECT 'BA' AS B)
+   CROSS JOIN (SELECT    3 AS C UNION ALL SELECT 4)
+   CROSS JOIN (SELECT 1 AS MEASURE)"]
+        (mt/dataset test-data
+          (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                         {:dataset_query {:database (mt/id)
+                                          :type     :native
+                                          :native
+                                          {:template-tags {}
+                                           :query         pivot-rows-query}}
+                          :result_metadata
+                          (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                     {:name         field-name
+                                      :display_name field-name
+                                      :field_ref    [:field field-name {:base-type base-type}]
+                                      :base_type    base-type}))}
+                         :model/Card pivot-card
+                         {:display                :pivot
+                          :visualization_settings {:pivot_table.column_split
+                                                   {:rows    ["B" "C"]
+                                                    :columns ["A"]
+                                                    :values  ["MEASURE"]}}
+                          :dataset_query          {:database (mt/id)
+                                                   :type     :query
+                                                   :query
+                                                   {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
+                                                    :breakout
+                                                    [[:field "A" {:base-type :type/Integer}]
+                                                     [:field "B" {:base-type :type/Text}]
+                                                     [:field "C" {:base-type :type/Integer}]]
+                                                    :source-table (format "card__%s" pivot-data-card-id)}}}]
+            (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+              (is
+               (= [["B" "C" "3" "4" "Row totals"]
+                   ["BA" "3" "1" "1" "2"]
+                   ["BA" "4" "1" "1" "2"]
+                   ;; Without the fix in pr#50380, this would incorrectly look like:
+                   ;; ["Totals for BA"  "" "2" "[4 {:result 1}]"]
+                   ["Totals for BA"  "" "2" "2"]
+                   ["Grand totals" "" "2" "2" "4"]]
+                  result)))))))))
 
 (deftest ^:parallel zero-column-pivot-tables-test
   (testing "Pivot tables with zero columns download correctly."
@@ -1236,3 +1388,48 @@
                     :dashcard-download        expected-header
                     :public-dashcard-download expected-header}
                    (update-vals formatted-results first)))))))))
+
+(defn- pivot-card-with-scalar [scalar]
+  {:display                :pivot
+   :visualization_settings {:pivot_table.column_split
+                            {:rows    ["CATEGORY"]
+                             :columns ["CREATED_AT"]
+                             :values  ["sum"]}
+                            :column_settings
+                            {"[\"name\",\"sum\"]" (merge {:number_style       "currency"
+                                                          :currency_in_header false}
+                                                         (when scalar {:scale scalar}))}}
+   :dataset_query          {:database (mt/id)
+                            :type     :query
+                            :query {:source-table (mt/id :products)
+                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                   [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}})
+
+(deftest pivot-with-scale-test
+  (testing "Pivot table exports work with \"Multiply by a number\" (scale)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {:keys [created_at] :as no-scale-card}  (pivot-card-with-scalar nil)
+                     :model/Card one-scale-card (assoc (pivot-card-with-scalar 1) :created_at created_at)
+                     :model/Card zero-scale-card (assoc (pivot-card-with-scalar 0) :created_at created_at)]
+        (let [named-cards {:one-scale-card one-scale-card
+                           :two-scale-card zero-scale-card
+                           :no-scale-card no-scale-card}]
+          (doseq [[c1-name c2-name export-format expected] [[:one-scale-card  :no-scale-card  :csv  true]
+                                                            [:one-scale-card  :two-scale-card :csv  false]
+                                                            [:no-scale-card   :two-scale-card :csv  false]
+                                                            [:one-scale-card  :no-scale-card  :xlsx true]
+                                                            [:one-scale-card  :two-scale-card :xlsx false]
+                                                            [:no-scale-card   :two-scale-card :xlsx false]
+                                                            ;; TODO: We don't support JSON for pivot tables, once we
+                                                            ;; do, we should add them here
+                                                            ]]
+            (testing (str "> " (name c1-name) " and " (name c2-name) " with export-format: '" (name export-format) "' should be " expected)
+              (let [c1 (get named-cards c1-name)
+                    c2 (get named-cards c2-name)
+                    [unique-to-a unique-to-b _both]
+                    (data/diff (all-outputs! c1 {:export-format export-format :format-rows true :pivot true})
+                               (all-outputs! c2 {:export-format export-format :format-rows true :pivot true}))]
+                (if expected
+                  (is (= [nil nil] [unique-to-a unique-to-b]))
+                  (is (or (some? unique-to-a) (some? unique-to-b))))))))))))
