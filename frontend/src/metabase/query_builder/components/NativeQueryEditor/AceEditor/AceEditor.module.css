@@ -64,19 +64,19 @@
       }
     }
 
-    .ace_gutter-cell {
-      padding-top: 2px;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--mb-color-text-light);
-      padding-left: 0;
-      padding-right: 7px;
-      display: block;
-      text-align: center;
-    }
-
     .ace_gutter {
       background-color: var(--mb-color-bg-light);
+
+      .ace_gutter-cell {
+        padding-top: 2px;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--mb-color-text-light);
+        padding-left: 0;
+        padding-right: 7px;
+        display: block;
+        text-align: center;
+      }
     }
 
     &.read-only .ace_cursor {
