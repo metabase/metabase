@@ -1,4 +1,5 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { P, match } from "ts-pattern";
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn, TemporalUnit } from "metabase-types/api";
@@ -373,40 +374,40 @@ export function relativeDateFilterParts(
   );
 }
 
-export function excludeDateFilterClause({
-  operator,
-  column,
-  values,
-  bucket: bucketName,
-}: ExcludeDateFilterParts): ExpressionClause {
-  if (!bucketName) {
-    const columnWithoutBucket = withTemporalBucket(column, null);
-    return expressionClause(operator, [columnWithoutBucket]);
-  }
+export function excludeDateFilterClause(
+  filterParts: ExcludeDateFilterParts,
+): ExpressionClause {
+  const column = withTemporalBucket(filterParts.column, null);
 
-  const columnWithoutBucket = withTemporalBucket(column, null);
-  switch (bucketName) {
-    case "hour-of-day":
-      return expressionClause("!=", [
-        expressionClause("get-hour", [columnWithoutBucket]),
+  return match(filterParts)
+    .with({ bucket: P.nullish }, ({ operator }) =>
+      expressionClause(operator, [column]),
+    )
+    .with({ bucket: "hour-of-day" }, ({ operator, values }) =>
+      expressionClause(operator, [
+        expressionClause("get-hour", [column]),
         ...values,
-      ]);
-    case "day-of-week":
-      return expressionClause("!=", [
-        expressionClause("get-day-of-week", [columnWithoutBucket, "iso"]),
+      ]),
+    )
+    .with({ bucket: "day-of-week" }, ({ operator, values }) =>
+      expressionClause(operator, [
+        expressionClause("get-day-of-week", [column, "iso"]),
         ...values,
-      ]);
-    case "month-of-year":
-      return expressionClause("!=", [
-        expressionClause("get-month", [columnWithoutBucket]),
+      ]),
+    )
+    .with({ bucket: "month-of-year" }, ({ operator, values }) =>
+      expressionClause(operator, [
+        expressionClause("get-month", [column]),
         ...values,
-      ]);
-    case "quarter-of-year":
-      return expressionClause("!=", [
-        expressionClause("get-quarter", [columnWithoutBucket]),
+      ]),
+    )
+    .with({ bucket: "quarter-of-year" }, ({ operator, values }) =>
+      expressionClause(operator, [
+        expressionClause("get-quarter", [column]),
         ...values,
-      ]);
-  }
+      ]),
+    )
+    .exhaustive();
 }
 
 export function excludeDateFilterParts(
@@ -420,68 +421,83 @@ export function excludeDateFilterParts(
   );
 }
 
+function isDateOrDateTimeColumnMetadata(arg: unknown): arg is ColumnMetadata {
+  return isColumnMetadata(arg) && isDateOrDateTime(arg);
+}
+
 function expressionExcludeDateFilterParts(
   query: Query,
   stageIndex: number,
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isExcludeDateOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  if (operator === "is-null" || operator === "not-null") {
-    const [column] = args;
-    if (!isColumnMetadata(column) || !isDateOrDateTime(column)) {
-      return null;
-    }
-
-    return { operator, column, values: [], bucket: null };
-  } else {
-    const [expression, ...values] = args;
-    if (!isExpression(expression) || !isNumberLiteralArray(values)) {
-      return null;
-    }
-
-    const { operator: expressionOperator, args: expressionArgs } = expression;
-    if (expressionArgs.length < 1) {
-      return null;
-    }
-
-    const [column] = expressionArgs;
-    if (!isColumnMetadata(column) || !isDateOrDateTime(column)) {
-      return null;
-    }
-
-    switch (expressionOperator) {
-      case "get-hour":
-        if (expressionArgs.length === 1) {
-          return { operator, column, values, bucket: "hour-of-day" };
-        } else {
-          return null;
-        }
-      case "get-day-of-week":
-        if (expressionArgs.length === 2 && expressionArgs[1] === "iso") {
-          return { operator, column, values, bucket: "day-of-week" };
-        } else {
-          return null;
-        }
-      case "get-month":
-        if (expressionArgs.length === 1) {
-          return { operator, column, values, bucket: "month-of-year" };
-        } else {
-          return null;
-        }
-      case "get-quarter":
-        if (expressionArgs.length === 1) {
-          return { operator, column, values, bucket: "quarter-of-year" };
-        } else {
-          return null;
-        }
-      default:
-        return null;
-    }
-  }
+  const filterParts = expressionParts(query, stageIndex, filterClause);
+  return match(filterParts)
+    .returnType<ExcludeDateFilterParts | null>()
+    .with(
+      {
+        operator: P.union("is-null", "not-null"),
+        args: [P.when(isDateOrDateTimeColumnMetadata)],
+      },
+      ({ operator, args: [column] }) => ({
+        operator,
+        column,
+        values: [],
+        bucket: null,
+      }),
+    )
+    .with(
+      {
+        operator: "!=",
+        args: [
+          {
+            operator: P.union("get-hour", "get-month", "get-quarter"),
+            args: [P.when(isDateOrDateTimeColumnMetadata)],
+          },
+          ...P.array(P.number),
+        ],
+      },
+      ({
+        args: [
+          {
+            operator,
+            args: [column],
+          },
+          ...values
+        ],
+      }) => ({
+        operator: "!=",
+        column,
+        values,
+        bucket: match(operator)
+          .returnType<ExcludeDateBucketName>()
+          .with("get-hour", () => "hour-of-day")
+          .with("get-month", () => "month-of-year")
+          .with("get-quarter", () => "quarter-of-year")
+          .exhaustive(),
+      }),
+    )
+    .with(
+      {
+        operator: "!=",
+        args: [
+          {
+            operator: "get-day-of-week",
+            args: [P.when(isDateOrDateTimeColumnMetadata), "iso"],
+          },
+          ...P.array(P.number),
+        ],
+      },
+      ({
+        operator,
+        args: [
+          {
+            args: [column],
+          },
+          ...values
+        ],
+      }) => ({ operator, column, values, bucket: "day-of-week" }),
+    )
+    .otherwise(() => null);
 }
 
 function legacyTemporalBucketExcludeDateFilterParts(
@@ -995,7 +1011,7 @@ type UpdateLatLonFilterBounds = {
 
 /**
  * Add or update a filter against latitude and longitude columns. Used to power the 'brush filter' for map
-   visualizations.
+ visualizations.
  */
 export function updateLatLonFilter(
   query: Query,
