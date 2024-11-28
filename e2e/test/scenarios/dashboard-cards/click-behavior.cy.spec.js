@@ -2123,7 +2123,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       // 1st stage - Custom columns
       getClickMapping("Net").click();
-      popover().findByText("User → Longitude").click();
+      popover().findByText("User → Longitude: 10°").click();
 
       // 1st stage - Reviews #1 (explicit join)
       getClickMapping("Reviews - Product → Reviewer").click();
@@ -2135,7 +2135,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       // 1st stage - People (implicit join with Orders)
       getClickMapping("User → Longitude").click();
-      popover().findByText("User → Longitude").click();
+      popover().findByText("User → Longitude: 10°").click();
 
       // 1st stage - Products (implicit join with Reviews)
       getClickMapping("Product → Vendor").last().click();
@@ -2155,7 +2155,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       // 2nd stage - Aggregations & breakouts
       getClickMapping("Count").last().click();
-      popover().findByText("User → Longitude").click();
+      popover().findByText("User → Longitude: 10°").click();
 
       customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`);
 
