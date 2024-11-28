@@ -453,7 +453,7 @@ function expressionExcludeDateFilterParts(
             operator: P.union("get-hour", "get-month", "get-quarter"),
             args: [P.when(isDateOrDateTimeColumnMetadata)],
           },
-          ...P.array(P.number),
+          ...P.array(P.number.int()),
         ],
       },
       ({
@@ -484,7 +484,7 @@ function expressionExcludeDateFilterParts(
             operator: "get-day-of-week",
             args: [P.when(isDateOrDateTimeColumnMetadata), "iso"],
           },
-          ...P.array(P.number),
+          ...P.array(P.number.int()),
         ],
       },
       ({
