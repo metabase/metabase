@@ -393,10 +393,19 @@
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation        normalize-ag-clause-tokens
-                     :aggregation-idents identity
-                     :breakout-idents    identity
+                     :aggregation-idents (fn [m]
+                                           (update-keys m #(cond-> %
+                                                             (string? %) parse-long
+                                                             (keyword? %) (-> name parse-long))))
+                     :breakout-idents    (fn [m]
+                                           (update-keys m #(cond-> %
+                                                             (string? %) parse-long
+                                                             (keyword? %) (-> name parse-long))))
                      :expressions        normalize-expressions-tokens
-                     :expression-idents  identity
+                     :expression-idents  (fn [m]
+                                           (update-keys m #(if (keyword? %)
+                                                             (name %)
+                                                             %)))
                      :order-by           normalize-order-by-tokens
                      :source-query       normalize-source-query
                      :source-metadata    {::sequence normalize-source-metadata}

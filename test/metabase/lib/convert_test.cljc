@@ -69,6 +69,7 @@
                        :joins       [{:lib/type    :mbql/join
                                       :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
+                                      :ident       string?
                                       :conditions  [[:=
                                                      {:lib/uuid string?}
                                                      [:field
@@ -87,6 +88,7 @@
             :query    {:source-table (meta/id :categories)
                        :fields [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                                 :ident        (u/generate-nano-id)
                                  :source-table (meta/id :venues)
                                  :condition    [:=
                                                 [:field (meta/id :venues :category-id) nil]
@@ -118,11 +120,13 @@
                   :type     :query
                   :query    {:source-table (meta/id :categories)
                              :joins        [{:source-table (meta/id :venues)
+                                             :ident        "lc83lcERitfJeaWZ_KIjl"
                                              :condition    [:=
                                                             [:field (meta/id :venues :category-id) nil]
                                                             [:field (meta/id :categories :id) nil]]
                                              :strategy     :left-join}
                                             {:source-table (meta/id :checkins)
+                                             :ident        "SaMKTxObUc0lg3ea4MTlK"
                                              :condition    [:=
                                                             [:field (meta/id :venues :id) nil]
                                                             [:field (meta/id :checkins :venue-id) nil]]
@@ -133,6 +137,7 @@
                          :joins    [{:lib/type    :mbql/join
                                      :lib/options {:lib/uuid string?}
                                      :alias       "__join"
+                                     :ident       "lc83lcERitfJeaWZ_KIjl"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
                                                     [:field
@@ -147,6 +152,7 @@
                                     {:lib/type    :mbql/join
                                      :lib/options {:lib/uuid string?}
                                      :alias       "__join_2"
+                                     :ident       "SaMKTxObUc0lg3ea4MTlK"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
                                                     [:field
@@ -167,6 +173,7 @@
     (is (=? {:lib/type :mbql/query
              :stages   [{:lib/type     :mbql.stage/mbql
                          :joins        [{:alias       "Cat"
+                                         :ident       "wVMxAr29_-JXf2hByuPOt"
                                          :fields      [[:field {:lib/uuid string?, :join-alias "Cat"} 1]]
                                          :conditions  [[:=
                                                         {:lib/uuid string?}
@@ -184,6 +191,7 @@
               :type     :query
               :query    {:joins        [{:source-table 3
                                          :alias        "Cat"
+                                         :ident        "wVMxAr29_-JXf2hByuPOt"
                                          :condition    [:= [:field 2 nil] [:field 2 nil]]
                                          :fields       [[:field 1 {:join-alias "Cat"}]]}]
                          :limit        1
@@ -417,16 +425,16 @@
              :aggregation-idents {0 (u/generate-nano-id)}}}))
 
 (deftest ^:parallel round-trip-segments-test
-  (is (test-round-trip {:database 282
-                        :type :query
-                        :query {:source-table 661
-                                :filter [:and
-                                         [:segment 42]
-                                         [:= [:field 1972 nil] "Run Query"]
-                                         [:time-interval [:field 1974 nil] -30 :day]
-                                         [:!= [:field 1973 nil] "(not set)" "url"]]
-                                :breakout [[:field 1973 nil]]
-                                :breakout-idents {0 (u/generate-nano-id)}}})))
+  (test-round-trip {:database 282
+                    :type :query
+                    :query {:source-table 661
+                            :filter [:and
+                                     [:segment 42]
+                                     [:= [:field 1972 nil] "Run Query"]
+                                     [:time-interval [:field 1974 nil] -30 :day]
+                                     [:!= [:field 1973 nil] "(not set)" "url"]]
+                            :breakout [[:field 1973 nil]]
+                            :breakout-idents {0 (u/generate-nano-id)}}}))
 
 (deftest ^:parallel round-trip-aggregation-options-test
   (testing ":aggregation-options on a non-aggregate expression with an inner aggregate"
@@ -772,6 +780,7 @@
   (is (nil? (-> {:database 5
                  :type :query
                  :query {:joins [{:source-table 3
+                                  :ident        "9GV0U_XzEn3x6ukpT-SGW"
                                   ;; Invalid condition makes the join invalid
                                   :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
                          :source-table 4}}
@@ -780,6 +789,7 @@
   (is (nil? (-> {:database 5
                  :type :query
                  :query {:joins [{:source-table 3
+                                  :ident        "9GV0U_XzEn3x6ukpT-SGW"
                                   :condition [:= [:field 2 nil] [:field 2 nil]]
                                   ;; Invalid field, the join is still valid
                                   :fields [[:xfield 2 nil]]}]

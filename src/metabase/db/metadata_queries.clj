@@ -94,14 +94,16 @@
 (defn field-distinct-count
   "Return the distinct count of `field`."
   [field & [limit]]
-  (-> (table-query (:table_id field) {:aggregation [[:distinct [:field (u/the-id field) nil]]]
-                                      :limit       limit})
+  (-> (table-query (:table_id field) {:aggregation        [[:distinct [:field (u/the-id field) nil]]]
+                                      :aggregation-idents {0 (u/generate-nano-id)}
+                                      :limit              limit})
       :data :rows first first int))
 
 (defn field-count
   "Return the count of `field`."
   [field]
-  (-> (table-query (:table_id field) {:aggregation [[:count [:field (u/the-id field) nil]]]})
+  (-> (table-query (:table_id field) {:aggregation        [[:count [:field (u/the-id field) nil]]]
+                                      :aggregation-idents {0 (u/generate-nano-id)}})
       :data :rows first first int))
 
 (def max-sample-rows

@@ -272,13 +272,10 @@
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category
+                                                               !year.created_at]})}]
         (testing "formatted"
           (is (= [[["Category" "2016" "2017" "2018" "2019" "Row totals"]
                    ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
@@ -350,14 +347,11 @@
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
-                                                               [:avg [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]
+                                                               [:avg $price]]
+                                                 :breakout    [$category
+                                                               !year.created_at]})}]
         (testing "formatted"
           (is (= [[["Category" "2016" "2016" "2017" "2017" "2018" "2018" "2019" "2019" "Row totals" "Row totals"]
                    ["Category"
@@ -410,13 +404,10 @@
                                                  :column_settings
                                                  {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                         :currency_in_header false}}}
-                        :dataset_query          {:database (mt/id)
-                                                 :type     :query
-                                                 :query
-                                                 {:source-table (mt/id :products)
-                                                  :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                  :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                                 [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+                        :dataset_query          (mt/mbql-query products
+                                                  {:aggregation [[:sum $price]]
+                                                   :breakout    [$category
+                                                                 !year.created_at]})}]
           (testing (format "formatted with row-totals: %s and col-totals: %s" row-totals? col-totals?)
             (is (= [(keep
                      (fn [row]
@@ -459,13 +450,10 @@
                                                    :column_settings
                                                    {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                           :currency_in_header false}}}
-                          :dataset_query          {:database (mt/id)
-                                                   :type     :query
-                                                   :query
-                                                   {:source-table (mt/id :products)
-                                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                                   [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+                          :dataset_query          (mt/mbql-query products
+                                                    {:aggregation [[:sum $price]]
+                                                     :breakout    [$category
+                                                                   !year.created_at]})}]
             (testing "they work regardless of the table.columns setting"
               (is (= [["Category" "2016" "2017" "2018" "2019" "Row totals"]
                       ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
@@ -506,16 +494,14 @@
                                              {:rows    ["C" "D"]
                                               :columns ["A" "B"]
                                               :values  ["sum"]}}
-                    :dataset_query          {:database (mt/id)
-                                             :type     :query
-                                             :query
-                                             {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
-                                              :breakout
-                                              [[:field "A" {:base-type :type/Text}]
-                                               [:field "B" {:base-type :type/Text}]
-                                               [:field "C" {:base-type :type/Text}]
-                                               [:field "D" {:base-type :type/Text}]]
-                                              :source-table (format "card__%s" pivot-data-card-id)}}}]
+                    :dataset_query          (mt/mbql-query nil
+                                              {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
+                                               :breakout
+                                               [[:field "A" {:base-type :type/Text}]
+                                                [:field "B" {:base-type :type/Text}]
+                                                [:field "C" {:base-type :type/Text}]
+                                                [:field "D" {:base-type :type/Text}]]
+                                               :source-table (format "card__%s" pivot-data-card-id)})}]
       (let [result (card-download pivot-card {:export-format :csv :pivot true})]
         (testing "Pivot CSV Exports look like a Pivoted Table"
           (testing "The Headers Properly indicate the pivot rows names."
@@ -594,14 +580,10 @@
                                                {:rows    ["CREATED_AT"]
                                                 :columns ["CATEGORY"]
                                                 :values  ["sum" "avg"]}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
-                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]
+                                                               [:avg $rating]]
+                                                 :breakout    [$category !year.created_at]})}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 :format_rows   true
@@ -648,15 +630,13 @@
                                                    {:rows    ["B" "C"]
                                                     :columns ["A"]
                                                     :values  ["MEASURE"]}}
-                          :dataset_query          {:database (mt/id)
-                                                   :type     :query
-                                                   :query
-                                                   {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
-                                                    :breakout
-                                                    [[:field "A" {:base-type :type/Integer}]
-                                                     [:field "B" {:base-type :type/Text}]
-                                                     [:field "C" {:base-type :type/Integer}]]
-                                                    :source-table (format "card__%s" pivot-data-card-id)}}}]
+                          :dataset_query          (mt/mbql-query nil
+                                                    {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
+                                                     :breakout
+                                                     [[:field "A" {:base-type :type/Integer}]
+                                                      [:field "B" {:base-type :type/Text}]
+                                                      [:field "C" {:base-type :type/Integer}]]
+                                                     :source-table (format "card__%s" pivot-data-card-id)})}]
             (let [result (card-download pivot-card {:export-format :csv :pivot true})]
               (is
                (= [["B" "C" "3" "4" "Row totals"]
@@ -677,13 +657,9 @@
                                                {:rows    ["CREATED_AT" "CATEGORY"]
                                                 :columns []
                                                 :values  ["sum"]}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category !month.created_at]})}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 :format_rows   true
@@ -709,12 +685,9 @@
                                                {:rows    []
                                                 :columns ["CATEGORY"]
                                                 :values  ["sum"]}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category]})}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 :format_rows   false
@@ -734,15 +707,10 @@
                                                {:rows    ["CATEGORY" "CREATED_AT"]
                                                 :columns []
                                                 :values  ["sum" "count"]}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]
                                                                [:count]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type     :type/DateTime
-                                                                                                      :temporal-unit :year}]]}}}]
+                                                 :breakout    [$category !year.created_at]})}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 :format_rows   true
@@ -781,14 +749,11 @@
                                                {:rows    ["CREATED_AT"],
                                                 :columns ["CATEGORY"],
                                                 :values  ["sum" "avg"]}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
-                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]
+                                                               [:avg $rating]]
+                                                 :breakout    [$category
+                                                               !month.created_at]})}]
         (let [result (mt/user-http-request :crowberto :post 200
                                            (format "card/%d/query/xlsx" pivot-card-id)
                                            :format_rows   true
@@ -821,13 +786,10 @@
                                                {:rows    ["CREATED_AT" "CATEGORY"]
                                                 :columns []
                                                 :values  ["sum"]}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category
+                                                               !month.created_at]})}]
         (let [result       (mt/user-http-request :crowberto :post 200
                                                  (format "card/%d/query/xlsx" pivot-card-id)
                                                  :format_rows   true
@@ -858,12 +820,9 @@
                                                {:rows    []
                                                 :columns ["CATEGORY"]
                                                 :values  ["sum"]}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category]})}]
         (let [result       (mt/user-http-request :crowberto :post 200
                                                  (format "card/%d/query/xlsx" pivot-card-id)
                                                  :format_rows   true
@@ -894,13 +853,10 @@
                                                  {:rows    ["CREATED_AT" "CATEGORY"]
                                                   :columns []
                                                   :values  ["sum"]}}
-                        :dataset_query          {:database (mt/id)
-                                                 :type     :query
-                                                 :query
-                                                 {:source-table (mt/id :products)
-                                                  :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                  :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                                 [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+                        :dataset_query          (mt/mbql-query products
+                                                  {:aggregation [[:sum $price]]
+                                                   :breakout    [$category
+                                                                 !month.created_at]})}]
           (let [result (->> (mt/user-http-request :crowberto :post 200
                                                   (format "card/%d/query/csv" pivot-card-id)
                                                   :format_rows true)
@@ -920,12 +876,9 @@
                                                  {:rows    []
                                                   :columns ["CATEGORY"]
                                                   :values  ["sum"]}}
-                        :dataset_query          {:database (mt/id)
-                                                 :type     :query
-                                                 :query
-                                                 {:source-table (mt/id :products)
-                                                  :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                  :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+                        :dataset_query          (mt/mbql-query products
+                                                  {:aggregation [[:sum $price]]
+                                                   :breakout    [$category]})}]
           (let [result (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
                 data   (with-open [in (io/input-stream result)]
                          (let [wb   (spreadsheet/load-workbook in)
@@ -1072,12 +1025,10 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Card card  {:display                :table
                                         :type                   :model
-                                        :dataset_query          {:database (mt/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table (mt/id :products)
-                                                                            :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                                            :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                                            :limit        10}}
+                                        :dataset_query          (mt/mbql-query products
+                                                                  {:aggregation [[:sum $price]]
+                                                                   :breakout    [$category]
+                                                                   :limit       10})
                                         :visualization_settings {:column_settings
                                                                  {"[\"name\",\"sum\"]"
                                                                   {:number_style       "currency"
@@ -1096,11 +1047,9 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Card card  {:display                :table
                                         :type                   :model
-                                        :dataset_query          {:database (mt/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table (mt/id :orders)
-                                                                            :filter       [:not-null [:field (mt/id :orders :discount) {:base-type :type/Float}]]
-                                                                            :limit        1}}
+                                        :dataset_query          (mt/mbql-query orders
+                                                                  {:filter [:not-null $discount]
+                                                                   :limit  1})
                                         :visualization_settings {:table.columns
                                                                  [{:name "ID" :enabled false}
                                                                   {:name "USER_ID" :enabled false}
@@ -1172,12 +1121,9 @@
                                                    {:rows    []
                                                     :columns ["CATEGORY"]
                                                     :values  ["sum"]}}
-                          :dataset_query          {:database (mt/id)
-                                                   :type     :query
-                                                   :query
-                                                   {:source-table (mt/id :products)
-                                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+                          :dataset_query          (mt/mbql-query products
+                                                    {:aggregation [[:sum $price]]
+                                                     :breakout    [$category]})}]
             (let [result (mt/user-http-request :crowberto :post 200
                                                (format "card/%d/query/%s?format_rows=false" pivot-card-id export-format)
                                                {})
@@ -1197,12 +1143,9 @@
                                                 :columns ["CATEGORY"]
                                                 :values  ["count"]}
                                                :column_settings {"[\"name\",\"count\"]" {:number_style "percent"}}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:count] #_[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:count] #_[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                 :breakout    [$category]})}]
         (let [result   (mt/user-http-request :crowberto :post 200
                                              (format "card/%d/query/xlsx?format_rows=true" pivot-card-id)
                                              {})
@@ -1221,13 +1164,10 @@
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category
+                                                               !year.created_at]})}]
         (is (= [["Category" "Created At: Year" "Sum of Price"]
                 ["Doohickey" "2016" "[$$]632.14"]
                 ["Doohickey" "2017" "[$$]854.19"]]
@@ -1280,14 +1220,11 @@
   (testing "A pivot download will use the user-configured measures order (#48442)."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display                :pivot
-                                       :dataset_query          {:database (mt/id)
-                                                                :type     :query
-                                                                :query
-                                                                {:source-table (mt/id :products)
-                                                                 :aggregation  [[:count]
-                                                                                [:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
-                                                                                [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
-                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}
+                                       :dataset_query          (mt/mbql-query products
+                                                                 {:aggregation [[:count]
+                                                                                [:sum $price]
+                                                                                [:avg $rating]]
+                                                                  :breakout    [$category]})
                                        :visualization_settings {:pivot_table.column_split
                                                                 {:rows    ["CATEGORY"]
                                                                  :columns []
@@ -1318,13 +1255,10 @@
   (testing "A pivot download will use the user-configured rows order."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display                :pivot
-                                       :dataset_query          {:database (mt/id)
-                                                                :type     :query
-                                                                :query
-                                                                {:source-table (mt/id :products)
-                                                                 :aggregation  [[:count]]
-                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}
+                                       :dataset_query          (mt/mbql-query products
+                                                                 {:aggregation  [[:count]]
+                                                                  :breakout     [$category
+                                                                                 !year.created_at]})
                                        :visualization_settings {:pivot_table.column_split
                                                                 {:rows    ["CREATED_AT" "CATEGORY"]
                                                                  :columns []
@@ -1353,17 +1287,11 @@
   (testing "A pivot table with an aggegation that results in non-numeric values (eg. Dates) will still worl (#49353)."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display                :pivot
-                                       :dataset_query          {:database (mt/id)
-                                                                :type     :query
-                                                                :query
-                                                                {:source-table (mt/id :products)
-                                                                 :aggregation  [[:count]
-                                                                                [:min
-                                                                                 [:field (mt/id :products :created_at)
-                                                                                  {:base-type :type/DateTime :temporal-unit :year}]]]
-                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                                                [:field (mt/id :products :created_at)
-                                                                                 {:base-type :type/DateTime :temporal-unit :year}]]}}
+                                       :dataset_query          (mt/mbql-query products
+                                                                 {:aggregation [[:count]
+                                                                                [:min !year.created_at]]
+                                                                  :breakout    [$category
+                                                                                !year.created_at]})
                                        :visualization_settings {:pivot_table.column_split
                                                                 {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]
                                                                            [:field (mt/id :products :category) {:base-type :type/Text}]]
@@ -1399,12 +1327,10 @@
                             {"[\"name\",\"sum\"]" (merge {:number_style       "currency"
                                                           :currency_in_header false}
                                                          (when scalar {:scale scalar}))}}
-   :dataset_query          {:database (mt/id)
-                            :type     :query
-                            :query {:source-table (mt/id :products)
-                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                   [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}})
+   :dataset_query          (mt/mbql-query products
+                             {:aggregation [[:sum $price]]
+                              :breakout    [$category
+                                            !year.created_at]})})
 
 (deftest pivot-with-scale-test
   (testing "Pivot table exports work with \"Multiply by a number\" (scale)"

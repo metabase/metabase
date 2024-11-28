@@ -57,6 +57,11 @@
                                   nil))
       (lib/with-binning nil)))
 
+(defn- copy-ident [to from]
+  (if-let [ident (lib.options/ident from)]
+    (lib.options/update-options to assoc :ident ident)
+    to))
+
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
@@ -66,7 +71,8 @@
                    (lib.equality/find-matching-column &match first-stage-cols))]
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
-          lib/ref)
+          lib/ref
+          (cond-> (some #{:breakout} &parents) (copy-ident &match)))
       (lib.util/fresh-uuids &match))))
 
 (def ^:private granularity
