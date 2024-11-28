@@ -3785,7 +3785,8 @@
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))
               (testing "Should handle errors"
-                (is (= {:remote-status 400}
+                (is (= {:remote-status 400
+                        :message       "oops"}
                        (mt/user-http-request :crowberto :post 400 execute-path
                                              {:parameters {"id" 1 "fail" "true"}}))))
               (testing "Extra parameter should fail gracefully"
@@ -3794,11 +3795,11 @@
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
                 (is (has-valid-action-execution-error-message?
-                     (mt/user-http-request :crowberto :post 500 execute-path
+                     (mt/user-http-request :crowberto :post 400 execute-path
                                            {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
                 (is (has-valid-action-execution-error-message?
-                     (mt/user-http-request :crowberto :post 500 execute-path
+                     (mt/user-http-request :crowberto :post 400 execute-path
                                            {:parameters {"id" "BAD"}})))))))))))
 
 (deftest dashcard-implicit-action-execution-insert-test
