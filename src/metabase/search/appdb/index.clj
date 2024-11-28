@@ -41,7 +41,7 @@
   []
   @*pending-table*)
 
-(comment
+(defmethod search.engine/reset-tracking! :search.engine/fulltext [_]
   (reset! *active-table* nil)
   (reset! *pending-table* nil))
 
@@ -183,6 +183,11 @@
 (defn- batch-update!
   "Create the given search index entries in bulk"
   [documents]
+  (when (and config/is-test?
+             (and (active-table) (not (exists? (active-table))))
+             (and (pending-table) (not (exists? (pending-table)))))
+    (search.engine/reset-tracking! :search.engine/fulltext))
+
   (let [entries          (map document->entry documents)
         ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
         ;;                    this should give a close to 2x speed-up as insertion is the bottleneck, and most of the
@@ -191,10 +196,6 @@
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (->> entries (map :model) frequencies))))
-
-(defmethod search.engine/reset-tracking! :search.engine/fulltext [_]
-  (reset! *active-table* nil)
-  (reset! *pending-table* nil))
 
 (defmethod search.engine/consume! :search.engine/fulltext [_engine document-reducible]
   (transduce (comp (partition-all insert-batch-size)
