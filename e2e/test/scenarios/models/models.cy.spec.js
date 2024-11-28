@@ -326,14 +326,9 @@ describe("scenarios > models", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("Orders").should("exist");
         cy.findByText("Orders Model").should("exist");
-        cy.findByText("Orders, Count").should("not.exist");
-
-        entityPickerModalTab("Saved questions").click();
-        cy.findByText("Orders").should("not.exist");
-        cy.findByText("Orders Model").should("not.exist");
         cy.findByText("Orders, Count").should("exist");
         cy.findByText("Orders, Count, Grouped by Created At (year)").should(
           "exist",
@@ -390,7 +385,7 @@ describe("scenarios > models", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("Orders").click();
       });
 

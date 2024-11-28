@@ -211,7 +211,7 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a saved question", () => {
       startNewMetric();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("Orders").click();
       });
       addStringCategoryFilter({
@@ -227,7 +227,7 @@ describe("scenarios > metrics > editing", () => {
       createQuestion(ORDERS_MULTI_STAGE_QUESTION);
       startNewMetric();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
       });
       addNumberBetweenFilter({
@@ -242,7 +242,7 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a model", () => {
       startNewMetric();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("Orders Model").click();
       });
       addStringCategoryFilter({
@@ -258,7 +258,7 @@ describe("scenarios > metrics > editing", () => {
       createQuestion({ ...ORDERS_MULTI_STAGE_QUESTION, type: "model" });
       startNewMetric();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
       });
       addNumberBetweenFilter({
@@ -273,7 +273,7 @@ describe("scenarios > metrics > editing", () => {
     it("should not allow to create a multi-stage metric", () => {
       startNewMetric();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("Orders Model").click();
       });
       getActionButton("Summarize").should("not.exist");

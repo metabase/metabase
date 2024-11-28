@@ -197,7 +197,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     newButton("Question").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Collections").should("exist");
       entityPickerModalItem(2, "Orders").click();
     });
 
@@ -206,7 +206,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     newButton("Question").click();
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").should("be.visible").click();
+      entityPickerModalTab("Collections").should("be.visible").click();
       entityPickerModalItem(1, "Orders question").should("be.visible");
     });
   });
@@ -233,7 +233,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     newButton("Question").click();
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Models").should("be.visible").click();
+      entityPickerModalTab("Collections").should("be.visible").click();
       entityPickerModalItem(1, "Orders model").should("be.visible");
     });
   });
@@ -672,7 +672,7 @@ describe("issue 43216", () => {
     cy.log("Create target question");
     newButton("Question").click();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText("Source question").click();
     });
     saveQuestion("Target question");
@@ -711,7 +711,7 @@ function removeSourceColumns() {
 function createAdHocQuestion(questionName) {
   startNewQuestion();
   entityPickerModal().within(() => {
-    entityPickerModalTab("Saved questions").click();
+    entityPickerModalTab("Collections").click();
     cy.findByText(questionName).click();
   });
   cy.findByTestId("fields-picker").click();

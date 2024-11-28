@@ -90,9 +90,8 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
-        entityPickerModalTab("Models").should("exist");
         entityPickerModalTab("Tables").should("exist");
-        entityPickerModalTab("Saved questions").should("not.exist");
+        entityPickerModalTab("Collections").should("exist");
       });
     });
 
@@ -106,8 +105,7 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        shouldDisplayTabs(["Tables", "Saved questions"]);
-        entityPickerModalTab("Models").should("not.exist");
+        shouldDisplayTabs(["Tables", "Collections"]);
       });
     });
   });
@@ -260,7 +258,7 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       entityPickerModal().within(() => {
-        shouldDisplayTabs(["Models", "Tables", "Saved questions"]);
+        shouldDisplayTabs(["Models", "Tables", "Collections"]);
 
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
@@ -279,7 +277,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -294,7 +292,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -329,7 +327,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       openDataSelector();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -351,7 +349,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -382,8 +380,7 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
     entityPickerModal().within(() => {
       cy.findAllByRole("tab").should("have.length", 2);
       entityPickerModalTab("Tables").should("be.visible");
-      entityPickerModalTab("Models").should("be.visible");
-      entityPickerModalTab("Saved questions").should("not.exist");
+      entityPickerModalTab("Collections").should("be.visible");
     });
   });
 });

@@ -81,7 +81,7 @@ describe("scenarios > question > download", () => {
       it(`downloads ${fileType} file`, () => {
         startNewQuestion();
         entityPickerModal().within(() => {
-          entityPickerModalTab("Saved questions").click();
+          entityPickerModalTab("Collections").click();
           cy.findByText("Orders, Count").click();
         });
 
