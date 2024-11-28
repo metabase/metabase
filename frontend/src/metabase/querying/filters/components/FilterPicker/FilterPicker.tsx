@@ -21,6 +21,7 @@ export type FilterPickerProps = {
 
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
+  onBack?: () => void;
 } & Pick<
   FilterColumnPickerProps,
   "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
@@ -34,6 +35,7 @@ export function FilterPicker({
   filterIndex,
   onSelect,
   onClose,
+  onBack,
   withColumnItemIcon,
   withColumnGroupIcon,
   withCustomExpression,
@@ -58,6 +60,11 @@ export function FilterPicker({
   const handleChange = (filter: Lib.Filterable) => {
     onSelect(filter);
     onClose?.();
+  };
+
+  const handleBack = () => {
+    setColumn(undefined);
+    onBack?.();
   };
 
   const handleColumnSelect = (column: Lib.ColumnMetadata) => {
@@ -123,7 +130,7 @@ export function FilterPicker({
       filter={filter}
       isNew={isNewFilter}
       onChange={handleChange}
-      onBack={() => setColumn(undefined)}
+      onBack={handleBack}
     />
   );
 }

@@ -77,6 +77,7 @@ const FilterDropdownInner = ({
           filterItem={selectedFilter}
           withIcon={withColumnItemIcon}
           onClose={() => setStep("list")}
+          onBack={() => setStep("list")}
         />
       </MultiStepPopover.Step>
     </MultiStepPopover>
