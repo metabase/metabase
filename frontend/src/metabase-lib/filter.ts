@@ -377,6 +377,10 @@ export function relativeDateFilterParts(
 export function excludeDateFilterClause(
   filterParts: ExcludeDateFilterParts,
 ): ExpressionClause {
+  // As there are still filter expressions with inline bucketed columns,
+  // we need to remove temporal bucketing manually. When all filter expressions
+  // are migrated to use MBQL functions instead of bucketing we can drop this.
+  // See (metabase#50238) for details.
   const column = withTemporalBucket(filterParts.column, null);
 
   return match(filterParts)
