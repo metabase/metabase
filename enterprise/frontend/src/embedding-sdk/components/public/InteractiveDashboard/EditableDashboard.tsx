@@ -20,7 +20,7 @@ import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 export type EditableDashboardProps = {
-  questionHeight?: number;
+  drillThroughQuestionHeight?: number;
   plugins?: SdkPluginsConfig;
   className?: string;
   style?: CSSProperties;
@@ -31,7 +31,7 @@ export const EditableDashboard = ({
   dashboardId,
   initialParameterValues = {},
   withDownloads = false,
-  questionHeight,
+  drillThroughQuestionHeight,
   plugins,
   onLoad,
   onLoadWithoutCards,
@@ -73,7 +73,7 @@ export const EditableDashboard = ({
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
           withTitle
-          height={questionHeight}
+          height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
         />

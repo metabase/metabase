@@ -23,7 +23,7 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = {
-  questionHeight?: number;
+  drillThroughQuestionHeight?: number;
   plugins?: SdkPluginsConfig;
   className?: string;
   style?: CSSProperties;
@@ -46,7 +46,7 @@ const InteractiveDashboardInner = ({
   withCardTitle = true,
   withDownloads = false,
   hiddenParameters = [],
-  questionHeight,
+  drillThroughQuestionHeight,
   plugins,
   onLoad,
   onLoadWithoutCards,
@@ -88,7 +88,7 @@ const InteractiveDashboardInner = ({
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
           withTitle={withTitle}
-          height={questionHeight}
+          height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
         >
