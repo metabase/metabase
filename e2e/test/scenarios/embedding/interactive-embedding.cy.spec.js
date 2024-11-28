@@ -485,7 +485,7 @@ describeEE("scenarios > embedding > full app", () => {
           resetTestTable({ type: "postgres", table: "multi_schema" });
           restore("postgres-writable");
           cy.signInAsAdmin();
-          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "multi_schema" });
+          resyncDatabase({ dbId: WRITABLE_DB_ID });
           startNewEmbeddingQuestion();
           selectTable({
             tableName: "Animals",
