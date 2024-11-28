@@ -30,6 +30,7 @@ export const SharingPaneButton = ({
 }: SharingOptionProps) => {
   return (
     <Paper
+      component="article"
       className={cx(S.Container, { [S.Disabled]: isDisabled })}
       p={24}
       pt={52}
@@ -39,6 +40,7 @@ export const SharingPaneButton = ({
       mih="100%"
       pos="relative"
       w={"22rem"}
+      aria-label={title}
     >
       <Stack pb={isDisabled ? "md" : undefined}>
         <Center mb={32}>{illustration}</Center>

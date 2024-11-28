@@ -127,6 +127,7 @@ export function SelectEmbedTypePane({
           target={interactiveEmbeddingCta.target}
           rel="noreferrer"
           shouldRender={!isInteractiveEmbeddingDisabled}
+          aria-label={t`Interactive embedding`}
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
@@ -157,6 +158,7 @@ export function SelectEmbedTypePane({
         <MaybeLink
           to="/admin/settings/embedding-in-other-applications/sdk"
           shouldRender={!isEmbeddingSdkDisabled}
+          aria-label={t`Embedded analytics SDK`}
         >
           <SharingPaneButton
             title={t`Embedded analytics SDK`}

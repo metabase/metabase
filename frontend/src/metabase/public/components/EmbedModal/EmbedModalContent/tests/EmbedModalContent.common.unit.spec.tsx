@@ -1,110 +1,113 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders } from "__support__/ui";
-import type { EmbedResource } from "metabase/public/lib/types";
-import { createMockUser } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
-
-import type { EmbedModalContentProps } from "../EmbedModalContent";
-import { EmbedModalContent } from "../EmbedModalContent";
+import { setup } from "./setup";
 
 describe("EmbedModalContent", () => {
-  describe("Select Embed Type phase", () => {
-    it("should render", () => {
-      setup();
+  describe("Static Embedding", () => {
+    describe("Select Embed Type phase", () => {
+      it("should render", () => {
+        setup();
 
-      expect(screen.getByText("Static embedding")).toBeInTheDocument();
-      expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
-      expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
-    });
-
-    it("should switch to StaticEmbedSetupPane", async () => {
-      const { goToNextStep } = setup();
-
-      expect(goToNextStep).toHaveBeenCalledTimes(0);
-
-      await userEvent.click(screen.getByText("Static embedding"));
-
-      expect(goToNextStep).toHaveBeenCalledTimes(1);
-    });
-
-    it("should render StaticEmbedSetupPane when embedType=application", () => {
-      setup({
-        props: {
-          embedType: "application",
-        },
+        expect(screen.getByText("Static embedding")).toBeInTheDocument();
+        expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
+        expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Setting up a static embed")).toBeInTheDocument();
+      describe("when static embedding is disabled", () => {});
+
+      describe("when static embedding is enabled", () => {
+        it("should switch to StaticEmbedSetupPane", async () => {
+          const { goToNextStep } = setup({
+            enableEmbedding: {
+              static: true,
+              interactive: false,
+              sdk: false,
+            },
+          });
+
+          expect(goToNextStep).toHaveBeenCalledTimes(0);
+
+          await userEvent.click(screen.getByText("Static embedding"));
+
+          expect(goToNextStep).toHaveBeenCalledTimes(1);
+        });
+
+        it("should render StaticEmbedSetupPane when embedType=application", () => {
+          setup({
+            props: {
+              embedType: "application",
+            },
+          });
+
+          expect(
+            screen.getByText("Setting up a static embed"),
+          ).toBeInTheDocument();
+        });
+      });
     });
 
-    it("should mention the sdk and link to metaba.se/sdk", () => {
-      setup();
+    describe("Interactive Embedding", () => {});
 
-      expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
+    describe("Embedding SDK", () => {
+      const SDK_TITLE = "Embedded analytics SDK";
 
-      expect(
-        screen.getByRole("link", { name: /Embedded analytics SDK/ }),
-      ).toHaveAttribute(
-        "href",
-        "https://metaba.se/sdk?utm_source=product&utm_content=embed-modal&source_plan=oss",
-      );
+      describe("when the SDK is disabled", () => {
+        it("should mention the sdk and tell admin to enable the SDK in the setting", () => {
+          setup();
+
+          // The card is not clickable
+          expect(
+            screen.queryByRole("link", { name: SDK_TITLE }),
+          ).not.toBeInTheDocument();
+
+          // We show the link at the bottom of the card
+          const withinSdkCard = within(
+            screen.getByRole("article", { name: SDK_TITLE }),
+          );
+          expect(withinSdkCard.getByText("Disabled.")).toBeInTheDocument();
+          expect(
+            withinSdkCard.getByRole("link", {
+              name: "Enable in admin settings",
+            }),
+          ).toHaveAttribute(
+            "href",
+            "/admin/settings/embedding-in-other-applications/sdk",
+          );
+        });
+      });
+
+      describe("when the SDK is enabled", () => {
+        it("should mention the sdk and link to its admin settings page", () => {
+          setup({
+            enableEmbedding: {
+              static: false,
+              interactive: false,
+              sdk: true,
+            },
+          });
+
+          // The card is clickable
+          expect(screen.getByRole("link", { name: SDK_TITLE })).toHaveProperty(
+            "href",
+            // I have no idea why only this URL is absolute in the test, it is relative in the markup 🤷
+            "http://localhost/admin/settings/embedding-in-other-applications/sdk",
+          );
+
+          // We don't show the link at the bottom of the card
+          const withinSdkCard = within(
+            screen.getByRole("article", { name: SDK_TITLE }),
+          );
+          expect(
+            withinSdkCard.queryByText("Disabled."),
+          ).not.toBeInTheDocument();
+          expect(
+            withinSdkCard.queryByRole("link", {
+              name: "Enabled in admin settings",
+            }),
+          ).not.toBeInTheDocument();
+        });
+      });
     });
   });
 });
-
-function setup(
-  {
-    props: {
-      embedType = null,
-      resource = {} as EmbedResource,
-      resourceType = "dashboard",
-      resourceParameters = [],
-      goToNextStep = jest.fn(),
-      getPublicUrl = jest.fn(_resource => "some URL"),
-      onUpdateEmbeddingParams = jest.fn(),
-      onUpdateEnableEmbedding = jest.fn(),
-      onCreatePublicLink = jest.fn(),
-      onDeletePublicLink = jest.fn(),
-    },
-  }: {
-    props: Partial<EmbedModalContentProps>;
-  } = {
-    props: {},
-  },
-) {
-  const view = renderWithProviders(
-    <EmbedModalContent
-      embedType={embedType}
-      goToNextStep={goToNextStep}
-      resource={resource}
-      resourceType={resourceType}
-      resourceParameters={resourceParameters}
-      getPublicUrl={getPublicUrl}
-      onUpdateEmbeddingParams={onUpdateEmbeddingParams}
-      onUpdateEnableEmbedding={onUpdateEnableEmbedding}
-      onCreatePublicLink={onCreatePublicLink}
-      onDeletePublicLink={onDeletePublicLink}
-    />,
-    {
-      storeInitialState: {
-        currentUser: createMockUser({ is_superuser: true }),
-        settings: createMockSettingsState({
-          "enable-embedding": true,
-          "embedding-secret-key": "my_super_secret_key",
-        }),
-      },
-    },
-  );
-
-  return {
-    ...view,
-    goToNextStep,
-    getPublicUrl,
-    onUpdateEmbeddingParams,
-    onUpdateEnableEmbedding,
-    onCreatePublicLink,
-    onDeletePublicLink,
-  };
-}
