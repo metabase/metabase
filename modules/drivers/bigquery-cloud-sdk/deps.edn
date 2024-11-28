@@ -3,12 +3,12 @@
 
  :deps
  ;; TODO: figure out how to be able to leave off this version string and use the version from the BOM
- {com.google.cloud/google-cloud-bigquery      {:mvn/version "2.42.3"
-                                               ;; this appears to be dual licensed EPL, GPL2.0 but it's not super
-                                               ;; clear so we're excluding it
-                                               :exclusions [javax.annotation/javax.annotation-api]}
-  com.google.guava/guava                      {:mvn/version "33.3.1-jre"} ; specified separately so that Snyk is happy
-  com.google.code.gson/gson                   {:mvn/version "2.11.0"}
-  com.google.oauth-client/google-oauth-client {:mvn/version "1.36.0"}
-  com.google.protobuf/protobuf-java           {:mvn/version "3.25.5"} ; specified separately so that Snyk is happy
-  com.google.protobuf/protobuf-java-util      {:mvn/version "3.25.5"}}}
+ {com.google.cloud/google-cloud-bigquery {:mvn/version "2.44.0"
+                                          ;; this appears to be dual licensed EPL, GPL2.0 but it's not super
+                                          ;; clear so we're excluding it
+                                          :exclusions  [javax.annotation/javax.annotation-api
+                                                        ;; netty is updated because of CVE
+                                                        io.netty/netty-common
+                                                        io.netty/netty-buffer]}
+  io.netty/netty-common                  {:mvn/version "4.1.115.Final"}
+  io.netty/netty-buffer                  {:mvn/version "4.1.115.Final"}}}
