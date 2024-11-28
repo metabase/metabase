@@ -2,7 +2,11 @@ import { assocIn, updateIn } from "icepick";
 import { normalize } from "normalizr";
 import { t } from "ttag";
 
-import { fieldApi } from "metabase/api";
+import {
+  fieldApi,
+  useGetFieldQuery,
+  useGetFieldValuesQuery,
+} from "metabase/api";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -50,6 +54,20 @@ const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
+
+  rtk: {
+    getUseGetQuery: fetchType => {
+      if (fetchType === "fetchFieldValues") {
+        return {
+          useGetQuery: useGetFetchFieldValuesQuery,
+        };
+      }
+
+      return {
+        useGetQuery: useGetFieldQuery,
+      };
+    },
+  },
 
   api: {
     get: (entityQuery, options, dispatch) =>
@@ -220,5 +238,9 @@ const Fields = createEntity({
     {},
   ),
 });
+
+const useGetFetchFieldValuesQuery = ({ id }) => {
+  return useGetFieldValuesQuery(id);
+};
 
 export default Fields;
