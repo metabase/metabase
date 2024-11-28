@@ -111,7 +111,7 @@
                                  (lib/visible-columns
                                   (as-> query $
                                     (lib/breakout $ (lib/with-binning
-                                                      first-stage-binned-column
-                                                      (m/find-first (comp #{"50 bins"} :display-name)
-                                                                    (lib/available-binning-strategies
-                                                                     $ first-stage-binned-column)))))))))))))
+                                                     first-stage-binned-column
+                                                     (m/find-first (comp #{"50 bins"} :display-name)
+                                                                   (lib/available-binning-strategies
+                                                                    $ first-stage-binned-column)))))))))))))
