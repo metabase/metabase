@@ -2,18 +2,8 @@ import cx from "classnames";
 import type { MouseEventHandler, ReactNode } from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  Center,
-  Flex,
-  Group,
-  Icon,
-  Paper,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from "metabase/ui";
+import Link from "metabase/core/components/Link";
+import { Box, Center, Group, Paper, Stack, Text, Title } from "metabase/ui";
 
 import S from "./SharingPaneButton.module.css";
 
@@ -25,6 +15,7 @@ type SharingOptionProps = {
   onClick?: MouseEventHandler;
   "data-testid"?: string;
   isDisabled?: boolean;
+  disabledLink: string;
 };
 
 export const SharingPaneButton = ({
@@ -35,6 +26,7 @@ export const SharingPaneButton = ({
   badge,
   "data-testid": dataTestId,
   isDisabled,
+  disabledLink,
 }: SharingOptionProps) => {
   return (
     <Paper
@@ -71,16 +63,11 @@ export const SharingPaneButton = ({
             py="sm"
             lh="1"
           >
-            <Flex align="center" justify="center">
-              {t`Disabled`}
-              <Tooltip
-                maw="20rem"
-                multiline
-                label={t`This option was disabled by an admin`}
-              >
-                <Icon name="info_filled" ml="xs" />
-              </Tooltip>
-            </Flex>
+            {t`Disabled.`}{" "}
+            <Link
+              variant="brand"
+              to={disabledLink}
+            >{t`Enable in admin settings`}</Link>
           </Text>
         </Box>
       )}

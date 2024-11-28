@@ -112,6 +112,7 @@ export function SelectEmbedTypePane({
           illustration={<StaticEmbeddingIllustration />}
           onClick={isStaticEmbeddingDisabled ? undefined : goToNextStep}
           isDisabled={isStaticEmbeddingDisabled}
+          disabledLink="/admin/settings/embedding-in-other-applications/standalone"
         >
           <List>
             <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
@@ -132,6 +133,9 @@ export function SelectEmbedTypePane({
             badge={<Badge color="brand">{t`Pro`}</Badge>}
             illustration={<InteractiveEmbeddingIllustration />}
             isDisabled={isInteractiveEmbeddingDisabled}
+            disabledLink={
+              "/admin/settings/embedding-in-other-applications/full-app"
+            }
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
@@ -164,6 +168,7 @@ export function SelectEmbedTypePane({
             }
             illustration={<SdkIllustration />}
             isDisabled={isEmbeddingSdkDisabled}
+            disabledLink={"/admin/settings/embedding-in-other-applications/sdk"}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- visible only to admin */}
