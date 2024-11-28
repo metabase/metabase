@@ -2,7 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import NormalCollections, {
   getExpandedCollectionsById,
@@ -72,11 +72,15 @@ const SnippetCollections = createEntity({
   },
 });
 
-const useGetQuery = opts => {
-  return useGetCollectionQuery({
-    namespace: "snippets",
-    ...opts,
-  });
+const useGetQuery = query => {
+  return useGetCollectionQuery(
+    query === skipToken
+      ? skipToken
+      : {
+          namespace: "snippets",
+          ...query,
+        },
+  );
 };
 
 export default SnippetCollections;
