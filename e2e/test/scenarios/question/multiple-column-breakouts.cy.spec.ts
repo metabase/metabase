@@ -1326,7 +1326,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: 50,
         });
         assertTableData({
-          columns: ["Latitude", "Latitude", "Count"],
+          columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
             ["20.00000000° N", "20.00000000° N", "87"],
             ["20.00000000° N", "30.00000000° N", "1,176"],
