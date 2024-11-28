@@ -22,7 +22,6 @@ export const BreakoutPickerMainComponent = {
         <InteractiveQuestion questionId={QUESTION_ID}>
           <Box>
             <BreakoutPicker />
-
             <InteractiveQuestion.QuestionVisualization />
           </Box>
         </InteractiveQuestion>

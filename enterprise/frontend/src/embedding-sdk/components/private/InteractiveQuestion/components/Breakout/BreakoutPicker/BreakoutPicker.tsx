@@ -33,15 +33,15 @@ export const BreakoutPickerInner = ({
         py="md"
         px="md"
         fz="lg"
-        color="text-dark"
+        color="text-medium"
         variant="subtle"
-        leftIcon={<Icon size={12} name="chevronleft" />}
+        leftIcon={<Icon name="chevronleft" />}
         onClick={() => onClose?.()}
         styles={{
           inner: { display: "flex", justifyContent: "flex-start" },
         }}
       >
-        {breakoutItem?.displayName ?? t`New breakout`}
+        {breakoutItem?.displayName ?? t`Back`}
       </Button>
       <Divider />
       <BreakoutPopover
