@@ -93,9 +93,9 @@
                 (lib/query $ (meta/table-metadata :orders))
                 (lib/aggregate $ (lib/count))
                 (lib/breakout $ (lib/with-binning
-                                  (meta/field-metadata :orders :total)
-                                  (m/find-first (comp #{"50 bins"} :display-name)
-                                                (lib/available-binning-strategies $ (meta/field-metadata :orders :total)))))
+                                 (meta/field-metadata :orders :total)
+                                 (m/find-first (comp #{"50 bins"} :display-name)
+                                               (lib/available-binning-strategies $ (meta/field-metadata :orders :total)))))
                 (lib.stage/append-stage $))]
     (testing "Binning is present in next stage display-name"
       (is (some? (m/find-first (comp #{"Total: 50 bins"} :display-name)
