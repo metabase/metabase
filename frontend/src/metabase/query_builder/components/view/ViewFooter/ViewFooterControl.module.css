@@ -15,15 +15,20 @@
     transform 0.2s ease-out,
     color 0.1s ease-out,
     border-radius 0.1s ease-out,
-    opacity 0.3s ease-out,
-    min-width 0.3s ease-out;
+    opacity 0.3s ease-out;
+  /* min-width 0.3s ease-out; */
+  transition: all 0.3s ease-out;
+  transform-origin: center;
 }
 
 .buttonExitActive {
   color: transparent !important; /* to hide text */
-  width: 2rem !important; /* to match height of the button */
-  transform: translateX(60px);
-  opacity: 0.7;
+  width: 2rem !important;
+  /* transform: translateX(60px); */
+  left: 60px !important;
+  /* transform: scaleX(0.2); */
+  /* border-radius: 50% !important; */
+  /* opacity: 0.7; */
 }
 
 .controlEnter {

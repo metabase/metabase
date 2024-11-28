@@ -127,7 +127,10 @@ export const ViewFooter = ({
     >
       <Flex mih="xl" pos="relative" justify="flex-end" w="100%">
         {/* {isNotebook && hasVisualizeButton && isResultDirty ? ( */}
-        <CSSTransition in={showButton} key="visualize-button" timeout={300}
+        <CSSTransition in={showButton} key="visualize-button" timeout={{
+          exit: 400,
+          enter: 300
+        }}
           unmountOnExit
           // unmountOnExit
           // onEnter={() => console.log("on enter")}
@@ -150,6 +153,8 @@ export const ViewFooter = ({
             exitActive: S.buttonExitActive,
           }}>
           <Button
+            pos='absolute'
+            left={0}
             variant="filled"
             radius="xl"
             pt={rem(7)}
