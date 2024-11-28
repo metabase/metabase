@@ -129,12 +129,52 @@ export type LoadingMessage =
 
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
+const tokenStatusFeatures = [
+  "advanced-config",
+  "advanced-permissions",
+  "audit-app",
+  "cache-granular-controls",
+  "collection-cleanup",
+  "config-text-file",
+  "content-management",
+  "content-verification",
+  "dashboard-subscription-filters",
+  "database-auth-providers",
+  "disable-password-login",
+  "email-allow-list",
+  "email-restrict-recipients",
+  "embedding-sdk",
+  "embedding",
+  "hosting",
+  "metabase-store-managed",
+  "metabot-v3",
+  "no-upsell",
+  "official-collections",
+  "query-reference-validation",
+  "question-error-logs",
+  "sandboxes",
+  "scim",
+  "serialization",
+  "session-timeout-config",
+  "snippet-collections",
+  "sso-google",
+  "sso-jwt",
+  "sso-ldap",
+  "sso-saml",
+  "sso",
+  "upload-management",
+  "whitelabel",
+] as const;
+
+export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
+
 export interface TokenStatus {
   status?: TokenStatusStatus;
   valid: boolean;
   "valid-thru"?: string;
   "error-details"?: string;
   trial: boolean;
+  features: TokenStatusFeature[];
 }
 
 export type DayOfWeekId =
