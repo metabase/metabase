@@ -96,6 +96,7 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
     return (
       <CodeMirror
         ref={editor}
+        data-testid="native-query-editor"
         className={S.editor}
         extensions={extensions}
         value={query.queryText()}
