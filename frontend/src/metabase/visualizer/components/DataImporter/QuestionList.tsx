@@ -4,8 +4,12 @@ import _ from "underscore";
 import { useListCardsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import { getVisualizationType } from "metabase/visualizer/selectors";
-import { createDataSource } from "metabase/visualizer/utils";
+import {
+  getVisualizationType,
+  getVisualizerComputedSettings,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/selectors";
+import { canCombineCard, createDataSource } from "metabase/visualizer/utils";
 import { isCategory, isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Card } from "metabase-types/api";
 import type {
@@ -22,18 +26,34 @@ interface QuestionListProps {
 
 export function QuestionList({ dataSourceIds, onSelect }: QuestionListProps) {
   const { data: cards = [], isLoading } = useListCardsQuery({ f: "all" });
-  const display = useSelector(getVisualizationType);
 
-  const sortedCards = useMemo(() => {
-    const calcScore = getScoreFn(display);
-    const cardsWithScores = cards.map(card => ({
-      card,
-      score: calcScore(card),
-    }));
-    return _.sortBy(cardsWithScores, "score")
-      .reverse()
-      .map(({ card }) => card);
-  }, [cards, display]);
+  const display = useSelector(getVisualizationType);
+  const columns = useSelector(getVisualizerDatasetColumns);
+  const settings = useSelector(getVisualizerComputedSettings);
+
+  const items = useMemo(() => {
+    const isEmpty = columns.length === 0;
+    const calcBaseScore = getScoreFn(display);
+    return _.chain(cards)
+      .map(card => {
+        const dataSource = createDataSource("card", card.id, card.name);
+        const isSelected = dataSourceIds.has(dataSource.id);
+        const canCombine =
+          isEmpty ||
+          Boolean(
+            display &&
+              ["line", "area", "bar"].includes(display) &&
+              canCombineCard(display, columns, settings, card),
+          );
+        let score = calcBaseScore(card);
+        if (canCombine || isSelected) {
+          score += 1000;
+        }
+        return { card, dataSource, score: -score, canCombine, isSelected };
+      })
+      .sortBy("score")
+      .value();
+  }, [cards, columns, dataSourceIds, display, settings]);
 
   if (isLoading) {
     return null;
@@ -41,46 +61,62 @@ export function QuestionList({ dataSourceIds, onSelect }: QuestionListProps) {
 
   return (
     <Box component="ul">
-      {sortedCards.map(card => {
-        const dataSource = createDataSource("card", card.id, card.name);
-        return (
-          <Box
-            key={dataSource.id}
-            component="li"
-            px={14}
-            py={10}
-            mb={4}
-            style={{
-              border: "1px solid var(--mb-color-border)",
-              borderRadius: 5,
-              cursor: "pointer",
-              backgroundColor: dataSourceIds.has(dataSource.id)
-                ? "var(--mb-color-bg-medium)"
-                : "transparent",
-            }}
-            onClick={() => onSelect(dataSource)}
-          >
-            <Flex
-              direction="row"
-              align="center"
-              justify="space-between"
-              w="100%"
-            >
-              <Stack spacing="xs" maw="75%">
-                <Text truncate fw="bold">
-                  {card.name}
-                </Text>
-                {!!card.collection && (
-                  <Text truncate c="text-medium" size="sm">
-                    {card.collection.name}
-                  </Text>
-                )}
-              </Stack>
-              <DataTypeStack columns={card.result_metadata} />
-            </Flex>
-          </Box>
-        );
-      })}
+      {items.map(({ card, dataSource, canCombine, isSelected }) => (
+        <QuestionListItem
+          key={dataSource.id}
+          card={card}
+          isMuted={!canCombine && !isSelected}
+          isSelected={isSelected}
+          onSelect={() => onSelect(dataSource)}
+        />
+      ))}
+    </Box>
+  );
+}
+
+type QuestionListItemProps = {
+  card: Card;
+  isSelected: boolean;
+  isMuted?: boolean;
+  onSelect: () => void;
+};
+
+function QuestionListItem({
+  card,
+  isSelected,
+  isMuted = false,
+  onSelect,
+}: QuestionListItemProps) {
+  return (
+    <Box
+      component="li"
+      px={14}
+      py={10}
+      mb={4}
+      style={{
+        border: "1px solid var(--mb-color-border)",
+        borderRadius: 5,
+        cursor: "pointer",
+        backgroundColor: isSelected
+          ? "var(--mb-color-bg-medium)"
+          : "transparent",
+        opacity: isMuted ? 0.5 : 1,
+      }}
+      onClick={onSelect}
+    >
+      <Flex direction="row" align="center" justify="space-between" w="100%">
+        <Stack spacing="xs" maw="75%">
+          <Text truncate fw="bold">
+            {card.name}
+          </Text>
+          {!!card.collection && (
+            <Text truncate c="text-medium" size="sm">
+              {card.collection.name}
+            </Text>
+          )}
+        </Stack>
+        <DataTypeStack columns={card.result_metadata} />
+      </Flex>
     </Box>
   );
 }
