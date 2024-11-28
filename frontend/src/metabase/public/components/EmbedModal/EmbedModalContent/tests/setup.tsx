@@ -1,22 +1,26 @@
 import { Route } from "react-router";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { EmbedResource } from "metabase/public/lib/types";
+import type { TokenFeatures } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type { EmbedModalContentProps } from "../EmbedModalContent";
 import { EmbedModalContent } from "../EmbedModalContent";
 
 type EnableEmbedding = {
-  static: boolean;
-  interactive: boolean;
-  sdk: boolean;
+  static?: boolean;
+  interactive?: boolean;
+  sdk?: boolean;
 };
 
-interface SetupOpts {
+export interface SetupOpts {
   enableEmbedding?: EnableEmbedding;
   props?: Partial<EmbedModalContentProps>;
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: TokenFeatures;
 }
 
 export function setup(
@@ -42,10 +46,24 @@ export function setup(
       onCreatePublicLink = jest.fn(),
       onDeletePublicLink = jest.fn(),
     } = {},
+    hasEnterprisePlugins,
+    tokenFeatures,
   }: SetupOpts = {
     props: {},
   },
 ) {
+  const settings = mockSettings({
+    "token-features": tokenFeatures,
+    "enable-embedding-static": enableEmbeddingStatic,
+    "enable-embedding-interactive": enableEmbeddingInteractive,
+    "enable-embedding-sdk": enableEmbeddingSdk,
+    "embedding-secret-key": "my_super_secret_key",
+  });
+
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
+
   const view = renderWithProviders(
     <Route
       path="*"
@@ -69,12 +87,7 @@ export function setup(
     {
       storeInitialState: {
         currentUser: createMockUser({ is_superuser: true }),
-        settings: createMockSettingsState({
-          "enable-embedding-static": enableEmbeddingStatic,
-          "enable-embedding-interactive": enableEmbeddingInteractive,
-          "enable-embedding-sdk": enableEmbeddingSdk,
-          "embedding-secret-key": "my_super_secret_key",
-        }),
+        settings,
       },
       withRouter: true,
     },

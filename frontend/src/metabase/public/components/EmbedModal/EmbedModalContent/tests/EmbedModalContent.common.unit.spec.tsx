@@ -18,7 +18,7 @@ describe("EmbedModalContent", () => {
     describe("when Static Embedding is disabled", () => {
       const STATIC_EMBEDDING_TITLE = "Static embedding";
 
-      it("should mention Static Embedding and tell admin to enable the SDK in the setting", () => {
+      it("should mention Static Embedding and tell admin to enable Static Embedding in the setting", () => {
         setup();
 
         // The card is not clickable
@@ -49,8 +49,6 @@ describe("EmbedModalContent", () => {
         const { goToNextStep } = setup({
           enableEmbedding: {
             static: true,
-            interactive: false,
-            sdk: false,
           },
         });
 
@@ -76,7 +74,7 @@ describe("EmbedModalContent", () => {
   });
 
   describe("Interactive Embedding", () => {
-    const INTERACTIVE_EMBED_TITLE = "Interactive embedding";
+    const INTERACTIVE_EMBEDDING_TITLE = "Interactive embedding";
 
     describe("when Interactive Embedding is disabled", () => {
       it("should mention Interactive Embedding and lead users to learn more link", () => {
@@ -84,18 +82,18 @@ describe("EmbedModalContent", () => {
 
         // The card is clickable
         expect(
-          screen.queryByRole("link", { name: INTERACTIVE_EMBED_TITLE }),
+          screen.queryByRole("link", { name: INTERACTIVE_EMBEDDING_TITLE }),
         ).toHaveProperty(
           "href",
           "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
         );
 
         // We show the learn more link
-        const withinInteractiveEmbedCard = within(
-          screen.getByRole("article", { name: INTERACTIVE_EMBED_TITLE }),
+        const withinInteractiveEmbeddingCard = within(
+          screen.getByRole("article", { name: INTERACTIVE_EMBEDDING_TITLE }),
         );
         expect(
-          withinInteractiveEmbedCard.getByText("Learn more"),
+          withinInteractiveEmbeddingCard.getByText("Learn more"),
         ).toBeInTheDocument();
       });
     });
@@ -104,15 +102,13 @@ describe("EmbedModalContent", () => {
       it("should mention Interactive Embedding and lead users to learn more link", () => {
         setup({
           enableEmbedding: {
-            static: false,
             interactive: true,
-            sdk: false,
           },
         });
 
         // The card is clickable
         expect(
-          screen.queryByRole("link", { name: INTERACTIVE_EMBED_TITLE }),
+          screen.queryByRole("link", { name: INTERACTIVE_EMBEDDING_TITLE }),
         ).toHaveProperty(
           "href",
           "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
@@ -120,7 +116,7 @@ describe("EmbedModalContent", () => {
 
         // We show the learn more link
         const withinInteractiveEmbedCard = within(
-          screen.getByRole("article", { name: INTERACTIVE_EMBED_TITLE }),
+          screen.getByRole("article", { name: INTERACTIVE_EMBEDDING_TITLE }),
         );
         expect(
           withinInteractiveEmbedCard.getByText("Learn more"),
@@ -161,8 +157,6 @@ describe("EmbedModalContent", () => {
       it("should mention the sdk and link to its admin settings page", () => {
         setup({
           enableEmbedding: {
-            static: false,
-            interactive: false,
             sdk: true,
           },
         });
