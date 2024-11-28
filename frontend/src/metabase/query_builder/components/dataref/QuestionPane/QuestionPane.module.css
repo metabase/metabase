@@ -1,0 +1,10 @@
+.questionPaneDetailLink {
+  display: flex;
+  align-items: center;
+  color: var(--mb-color-brand);
+}
+
+.questionPaneIcon {
+  margin-top: 1px;
+  width: 12px;
+}

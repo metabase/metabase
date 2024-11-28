@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { type ButtonProps, Button as MantineButton } from "metabase/ui";
@@ -78,38 +78,6 @@ export const SavedQuestionHeaderButtonContainer = styled.div<{
   right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
 `;
 
-export const HeaderButton = styled(Button)<{
-  active: boolean;
-}>`
-  font-size: 0.875rem;
-  background-color: ${({ active, color = getDefaultColor() }) =>
-    active ? color : "transparent"};
-  color: ${({ active }) => (active ? color("text-white") : color("text-dark"))};
-
-  &:hover {
-    background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
-    color: ${({ color }) => color};
-  }
-
-  transition:
-    background 300ms linear,
-    border 300ms linear;
-
-  > .Icon {
-    opacity: 0.6;
-  }
-
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
-`;
-
-export const IconHeaderButton = styled(HeaderButton)`
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-`;
-
-const getDefaultColor = () => color("brand");
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: var(--mb-color-text-light);
 
