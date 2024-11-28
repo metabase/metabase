@@ -24,6 +24,7 @@ interface LeftViewFooterButtonGroupProps {
   isRunning: boolean;
 }
 
+// eslint-disable-next-line react/display-name
 export const LeftViewFooterButtonGroup = forwardRef<HTMLDivElement, LeftViewFooterButtonGroupProps>(({
   question,
   hideChartSettings = false,

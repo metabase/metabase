@@ -61,13 +61,13 @@ const ViewFooterControl = ({
       [
         shouldShowEditorButton
           ? {
-              value: "editor",
-              label: (
-                <Tooltip label={t`Editor`}>
-                  <Icon aria-label={t`Switch to editor`} name="notebook" />
-                </Tooltip>
-              ),
-            }
+            value: "editor",
+            label: (
+              <Tooltip label={t`Editor`}>
+                <Icon aria-label={t`Switch to editor`} name="notebook" />
+              </Tooltip>
+            ),
+          }
           : null,
         {
           value: "results",
@@ -115,6 +115,7 @@ const ViewFooterControl = ({
         value={value}
         data={data}
         onChange={handleValueChange}
+        transitionDuration={0}
       />
     )
   );

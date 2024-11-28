@@ -57,9 +57,12 @@ export const ViewFooter = ({
   const [enableOpacity, setEnableOpacity] = useState(false);
   const [showButton, setShowButton] = useState(isNotebook);
 
+  console.log({ showButton })
+
   useEffect(() => {
     if (isNotebook && hasVisualizeButton && isResultDirty) {
       if (!showButton) {
+        console.log("show button")
         setShowButton(true);
         setShowViewControl(false);
       }
@@ -124,40 +127,56 @@ export const ViewFooter = ({
     >
       <Group position="apart" pos="relative" noWrap w="100%">
         {/* {isNotebook && hasVisualizeButton && isResultDirty ? ( */}
-        <CSSTransition in={showButton} key="visualize-button" timeout={300} nodeRef={buttonRef}
+        <CSSTransition in={showButton} key="visualize-button" timeout={300}
           unmountOnExit
-          onEnter={() => console.log("on enter")}
-          onEntered={() => {
-            console.log("enable opacity");
-          }}
+          // unmountOnExit
+          // onEnter={() => console.log("on enter")}
+          // onEntered={() => {
+          //   console.log("enable opacity");
+          // }}
           onExited={() => {
             console.log("on Exited");
             // setEnableOpacity(false);
+            // setShowButton(false);
             setShowViewControl(true);
+          }}
+          onExit={() => {
+            console.log("on exit");
           }}
           classNames={{
             enter: S.buttonEnter,
             enterActive: S.buttonEnterActive,
             exit: S.buttonExit,
             exitActive: S.buttonExitActive,
-            enterDone: S.buttonEnterDone
           }}>
           <Button
-            ref={buttonRef}
             variant="filled"
             radius="xl"
             pt={rem(7)}
             pb={rem(7)}
             miw={190}
             onClick={() => {
-              // visualize();
+              visualize();
               setShowButton(false);
             }}
           >
             {t`Visualize`}
           </Button>
         </CSSTransition>
-        {/* <CSSTransition nodeRef={viewControlRef} timeout={300} key="view-footer-control" unmountOnExit in={showViewControl} onExited={() => { console.log("on exited") }} onEnter={() => { console.log("on enter") }}>
+        <CSSTransition
+          timeout={300}
+          key="view-footer-control"
+          unmountOnExit
+          in={showViewControl}
+          onExited={() => { setShowButton(true); }}
+          onEnter={() => { console.log("on enter") }}
+          classNames={{
+            enter: S.controlEnter,
+            enterActive: S.controlEnterActive,
+            exit: S.controlExit,
+            exitActive: S.controlExitActive
+          }}
+        >
           <LeftViewFooterButtonGroup
             ref={viewControlRef}
             question={question}
@@ -166,7 +185,7 @@ export const ViewFooter = ({
             isRunning={isRunning}
             isNotebook={isNotebook}
           />
-        </CSSTransition> */}
+        </CSSTransition>
         {isNotebook ? (
           isShowingNotebookNativePreview ? (
             <ConvertToNativeQuestionButton />
