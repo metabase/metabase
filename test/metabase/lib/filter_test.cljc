@@ -523,15 +523,7 @@
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)]
     (check-display-names
-     [{:clause [:!= (created-at-with :day-of-week) "2023-10-02"],
-       :name "Created At excludes Mondays"}
-      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 1],
-       :name "Created At excludes Mondays"}
-      {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
-       :name "Created At excludes 3 day of week selections"}
-      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 1 2 3],
-       :name "Created At excludes 3 day of week selections"}
-      {:clause [:!= (created-at-with :month-of-year) "2023-01-01"],
+     [{:clause [:!= (created-at-with :month-of-year) "2023-01-01"],
        :name "Created At excludes each Jan"}
       {:clause [:!= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"],
        :name "Created At excludes 3 month of year selections"}
@@ -553,6 +545,27 @@
        :name "Created At is empty"}
       {:clause [:not-null created-at],
        :name "Created At is not empty"}])))
+
+(deftest ^:parallel day-of-week-frontend-filter-display-names-test
+  (let [created-at (meta/field-metadata :products :created-at)
+        created-at-with #(lib/with-temporal-bucket created-at %1)]
+    (check-display-names
+     [{:clause [:= (created-at-with :day-of-week) "2023-10-02"],
+       :name "Created At: Day of week is Monday"}
+      {:clause [:= (lib.expression/get-day-of-week created-at :iso) 1],
+       :name "Created At is Monday"}
+      {:clause [:= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
+       :name "Created At: Day of week is 3 selections"}
+      {:clause [:= (lib.expression/get-day-of-week created-at :iso) 1 2 3],
+       :name "Created At is 3 selections"}
+      {:clause [:!= (created-at-with :day-of-week) "2023-10-05"],
+       :name "Created At excludes Thursdays"}
+      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 4],
+       :name "Created At excludes Thursdays"}
+      {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
+       :name "Created At excludes 3 day of week selections"}
+      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 1 2 3],
+       :name "Created At excludes 3 day of week selections"}])))
 
 (deftest ^:parallel time-frontend-filter-display-names-test
   (check-display-names
