@@ -6,8 +6,8 @@ import type { EmbedResource } from "metabase/public/lib/types";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import type { EmbedModalContentProps } from "./EmbedModalContent";
-import { EmbedModalContent } from "./EmbedModalContent";
+import type { EmbedModalContentProps } from "../EmbedModalContent";
+import { EmbedModalContent } from "../EmbedModalContent";
 
 describe("EmbedModalContent", () => {
   describe("Select Embed Type phase", () => {
