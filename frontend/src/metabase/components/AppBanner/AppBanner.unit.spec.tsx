@@ -16,7 +16,6 @@ import { createMockState } from "metabase-types/store/mocks";
 import { AppBanner } from "./AppBanner";
 
 interface SetupOpts {
-  bannerDismissalTimestamp?: number;
   isAdmin: boolean;
   isHosted?: boolean;
   isReadOnly?: boolean;
