@@ -1,3 +1,15 @@
+## [0.51.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.9...embedding-sdk-0.51.10) (2024-11-28)
+
+
+### Bug Fixes
+
+* **sdk:** entity picker theming fixes ([#50449](https://github.com/metabase/metabase/issues/50449)) ([#50591](https://github.com/metabase/metabase/issues/50591)) ([7319d9d](https://github.com/metabase/metabase/commit/7319d9d474fbee0fd1b628e6af7fd9d03d6386e3))
+* **sdk:** Fix branch name for SDK e2e tests workflow ([#50464](https://github.com/metabase/metabase/issues/50464)) ([d72706b](https://github.com/metabase/metabase/commit/d72706bb1a30dfaae32541512728d4e4fd8e253a))
+* **sdk:** make modals use the correct portal ([#50565](https://github.com/metabase/metabase/issues/50565)) ([#50571](https://github.com/metabase/metabase/issues/50571)) ([d3a6533](https://github.com/metabase/metabase/commit/d3a6533d18de6f0c61cefa16f45306283fc9d0e7))
+* **sdk:** show loader right after visualizing in notebook editor for the first time ([#50411](https://github.com/metabase/metabase/issues/50411)) ([#50472](https://github.com/metabase/metabase/issues/50472)) ([2da7c1b](https://github.com/metabase/metabase/commit/2da7c1b598cf77bac73494c7d3157cae6e44bf90))
+
+
+
 ## [0.51.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.8...embedding-sdk-0.51.9) (2024-11-22)
 
 
