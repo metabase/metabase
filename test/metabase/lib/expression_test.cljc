@@ -435,8 +435,8 @@
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
                 (lib.options/uuid agg)))
-      (is (= (lib.options/options orig-expr)
-             (lib.options/options expr))))
+      (is (= (lib.options/ident orig-expr)
+             (lib.options/ident expr))))
     (testing "filter expressions can be renamed"
       (is (= "my filter"
              (lib/display-name query new-filter)))
