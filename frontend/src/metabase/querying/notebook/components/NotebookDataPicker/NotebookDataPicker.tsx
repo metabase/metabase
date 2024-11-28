@@ -219,6 +219,7 @@ function LegacyDataPicker({
 
   return (
     <DataSourceSelector
+      key={pickerInfo?.tableId}
       isInitiallyOpen={!table}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}

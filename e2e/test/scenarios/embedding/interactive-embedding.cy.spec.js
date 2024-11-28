@@ -1,4 +1,4 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -6,6 +6,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
@@ -35,6 +36,7 @@ import {
 } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -376,7 +378,9 @@ describeEE("scenarios > embedding > full app", () => {
         cy.findByText(cardName).click();
       });
       cy.wait("@getTableMetadata");
-      cy.wait("@getCard");
+      if (cardType !== "metric") {
+        cy.wait("@getCard");
+      }
     }
 
     function clickOnDataSource(sourceName) {
@@ -419,7 +423,7 @@ describeEE("scenarios > embedding > full app", () => {
 
     function verifyMetricClause(metricName) {
       getNotebookStep("summarize")
-        .findByTestId("aggregation-step")
+        .findByTestId("aggregate-step")
         .findByText(metricName)
         .should("be.visible");
     }
@@ -636,6 +640,64 @@ describeEE("scenarios > embedding > full app", () => {
           verifyCardSelected({
             cardName: cardDetails.name,
             collectionName: "Robert Tableton's Personal Collection",
+          });
+        });
+
+        it("should select a data source when there is no access to the root collection", () => {
+          const cardDetails = {
+            ...ordersCardDetails,
+            type: cardType,
+            collection_id: FIRST_COLLECTION_ID,
+          };
+
+          cy.signInAsAdmin();
+          createQuestion(cardDetails);
+          cy.log("grant `nocollection` user access to `First collection`");
+          cy.updateCollectionGraph({
+            [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
+          });
+
+          cy.signIn("nocollection");
+          startNewEmbeddingQuestion();
+          selectCard({
+            cardName: cardDetails.name,
+            cardType,
+            collectionNames: ["First collection"],
+          });
+          clickOnDataSource(ordersCardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "First collection",
+          });
+        });
+
+        it("should select a data source when there is no access to the immediate parent collection", () => {
+          const cardDetails = {
+            ...ordersCardDetails,
+            type: cardType,
+            collection_id: THIRD_COLLECTION_ID,
+          };
+
+          cy.signInAsAdmin();
+          createQuestion(cardDetails);
+          cy.updateCollectionGraph({
+            [ALL_USERS_GROUP]: {
+              [FIRST_COLLECTION_ID]: "read",
+              [THIRD_COLLECTION_ID]: "read",
+            },
+          });
+
+          cy.signIn("nocollection");
+          startNewEmbeddingQuestion();
+          selectCard({
+            cardName: cardDetails.name,
+            cardType,
+            collectionNames: ["Third collection"],
+          });
+          clickOnDataSource(ordersCardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "Third collection",
           });
         });
 
