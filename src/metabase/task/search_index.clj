@@ -92,6 +92,7 @@
 (defmethod task/init! ::SearchIndexInit [_]
   (let [job (jobs/build
              (jobs/of-type SearchIndexInit)
+             (jobs/store-durably)
              (jobs/with-identity init-job-key))]
     (task/add-job! job)
     (task/trigger-now! init-job-key)))
