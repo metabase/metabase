@@ -16,26 +16,30 @@ describe("EmbedModalContent", () => {
     });
 
     describe("when Static Embedding is disabled", () => {
+      const STATIC_EMBEDDING_TITLE = "Static embedding";
+
       it("should mention Static Embedding and tell admin to enable the SDK in the setting", () => {
         setup();
 
         // The card is not clickable
         expect(
-          screen.queryByRole("link", { name: SDK_TITLE }),
+          screen.queryByRole("link", { name: STATIC_EMBEDDING_TITLE }),
         ).not.toBeInTheDocument();
 
         // We show the link at the bottom of the card
-        const withinSdkCard = within(
-          screen.getByRole("article", { name: SDK_TITLE }),
+        const withinStaticEmbeddingCard = within(
+          screen.getByRole("article", { name: STATIC_EMBEDDING_TITLE }),
         );
-        expect(withinSdkCard.getByText("Disabled.")).toBeInTheDocument();
         expect(
-          withinSdkCard.getByRole("link", {
+          withinStaticEmbeddingCard.getByText("Disabled."),
+        ).toBeInTheDocument();
+        expect(
+          withinStaticEmbeddingCard.getByRole("link", {
             name: "Enable in admin settings",
           }),
         ).toHaveAttribute(
           "href",
-          "/admin/settings/embedding-in-other-applications/sdk",
+          "/admin/settings/embedding-in-other-applications/standalone",
         );
       });
     });
