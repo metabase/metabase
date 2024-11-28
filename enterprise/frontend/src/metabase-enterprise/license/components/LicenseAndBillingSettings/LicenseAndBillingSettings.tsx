@@ -16,9 +16,8 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
-import type { TokenStatus } from "metabase-enterprise/settings/hooks/use-license";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
-import type { SettingDefinition } from "metabase-types/api";
+import type { SettingDefinition, TokenStatus } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { BillingInfo } from "../BillingInfo";
@@ -32,7 +31,7 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
     return t`Bought a license to unlock advanced functionality? Please enter it below.`;
   }
 
-  if (!tokenStatus || !tokenStatus.isValid) {
+  if (!tokenStatus || !tokenStatus.valid) {
     return (
       <>
         {jt`Your license isn’t valid anymore. If you have a new license, please
@@ -45,13 +44,16 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
     );
   }
 
-  const daysRemaining = moment(tokenStatus.validUntil).diff(moment(), "days");
+  const daysRemaining = moment(tokenStatus["valid-thru"]).diff(
+    moment(),
+    "days",
+  );
 
-  if (tokenStatus.isValid && tokenStatus.isTrial) {
+  if (tokenStatus.valid && tokenStatus.trial) {
     return t`Your trial ends in ${daysRemaining} days. If you already have a license, please enter it below.`;
   }
 
-  const validUntil = moment(tokenStatus.validUntil).format("MMM D, YYYY");
+  const validUntil = moment(tokenStatus["valid-thru"]).format("MMM D, YYYY");
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
@@ -88,10 +90,10 @@ const LicenseAndBillingSettings = ({
   } = useLicense(showLicenseAcceptedToast);
 
   const isInvalidToken =
-    !!licenseError || (tokenStatus != null && !tokenStatus.isValid);
+    !!licenseError || (tokenStatus != null && !tokenStatus.valid);
 
   const isStoreManagedBilling =
-    tokenStatus?.features?.has(STORE_MANAGED_FEATURE_KEY) ?? false;
+    tokenStatus?.features?.includes(STORE_MANAGED_FEATURE_KEY) ?? false;
   const shouldFetchBillingInfo =
     !licenseLoading && !isInvalidToken && isStoreManagedBilling;
 
@@ -119,9 +121,9 @@ const LicenseAndBillingSettings = ({
   const description = getDescription(tokenStatus, hasToken);
 
   const shouldShowLicenseInput =
-    !tokenStatus?.features?.has(HOSTING_FEATURE_KEY);
+    !tokenStatus?.features?.includes(HOSTING_FEATURE_KEY);
 
-  const shouldUpsell = !tokenStatus?.features?.has(NO_UPSELL_FEATURE_HEY);
+  const shouldUpsell = !tokenStatus?.features?.includes(NO_UPSELL_FEATURE_HEY);
 
   return (
     <SettingsLicenseContainer data-testid="license-and-billing-content">
@@ -150,7 +152,7 @@ const LicenseAndBillingSettings = ({
         </>
       )}
 
-      {tokenStatus?.isValid && shouldUpsell && (
+      {tokenStatus?.valid && shouldUpsell && (
         <>
           <SectionHeader>{t`Looking for more?`}</SectionHeader>
           <SectionDescription>
