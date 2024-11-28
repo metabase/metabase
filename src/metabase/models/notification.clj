@@ -37,6 +37,7 @@
   "Set of valid notification types."
   #{:notification/system-event
     :notification/dashboard-subscription
+    :notification/alert
     ;; for testing only
     :notification/testing})
 
