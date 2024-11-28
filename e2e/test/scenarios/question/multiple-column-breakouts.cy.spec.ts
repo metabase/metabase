@@ -1307,7 +1307,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: 50,
         });
         assertTableData({
-          columns: ["Total", "Total", "Count"],
+          columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
             ["20", "20", "214"],
             ["20", "25", "396"],
