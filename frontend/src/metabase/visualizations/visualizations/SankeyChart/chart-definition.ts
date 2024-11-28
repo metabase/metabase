@@ -27,6 +27,7 @@ export const SETTINGS_DEFINITIONS = {
     section: t`Data`,
     title: t`Source`,
     showColumnSetting: true,
+    persistDefault: true,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.source,
   }),
@@ -34,6 +35,7 @@ export const SETTINGS_DEFINITIONS = {
     section: t`Data`,
     title: t`Target`,
     showColumnSetting: true,
+    persistDefault: true,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.target,
   }),
@@ -41,6 +43,7 @@ export const SETTINGS_DEFINITIONS = {
     section: t`Data`,
     title: t`Value`,
     showColumnSetting: true,
+    persistDefault: true,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.metric,
   }),
@@ -153,10 +156,12 @@ export const SANKEY_CHART_DEFINITION = {
     rawSeries: RawSeries,
     settings: ComputedVisualizationSettings,
   ) => {
-    const sankeyColumns = getSankeyChartColumns(
-      rawSeries[0].data.cols,
-      settings,
-    );
+    const { rows, cols } = rawSeries[0].data;
+
+    if (rows.length === 0) {
+      return;
+    }
+    const sankeyColumns = getSankeyChartColumns(cols, settings);
     if (!sankeyColumns) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
@@ -172,7 +177,7 @@ export const SANKEY_CHART_DEFINITION = {
 
     if (
       hasCyclicFlow(
-        rawSeries[0].data.rows,
+        rows,
         sankeyColumns.source.index,
         sankeyColumns.target.index,
       )
