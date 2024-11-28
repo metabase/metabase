@@ -128,7 +128,6 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
-  searchExtraButtons = [],
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchScope, setSearchScope] =
@@ -250,7 +249,6 @@ export function EntityPickerModal<
         folderModels: [],
         displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
-        extraButtons: searchExtraButtons,
         render: ({ onItemSelect }) => (
           <SearchTab
             folder={selectedFolder}
@@ -381,6 +379,7 @@ export function EntityPickerModal<
           {hydratedOptions.showSearch && (
             <Box px="2.5rem" mb="1.5rem">
               <TextInput
+                data-autofocus
                 type="search"
                 icon={<Icon name="search" size={16} />}
                 miw={400}

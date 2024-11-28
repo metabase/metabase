@@ -8,8 +8,6 @@ import type {
   Database,
   DatabaseId,
   SchemaName,
-  SearchModel,
-  SearchResult,
   Table,
   TableId,
 } from "metabase-types/api";
@@ -155,10 +153,10 @@ export const isFolderItem = (
 };
 
 export const createShouldShowItem = (
-  models: (CollectionItemModel | SearchModel)[],
+  models: CollectionItemModel[],
   databaseId?: DatabaseId,
 ) => {
-  return (item: QuestionPickerItem | SearchResult) => {
+  return (item: QuestionPickerItem & { database_id?: DatabaseId }) => {
     if (item.model === "collection") {
       const below = item.below ?? [];
       const here = item.here ?? [];

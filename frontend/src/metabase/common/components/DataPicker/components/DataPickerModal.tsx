@@ -29,8 +29,6 @@ import type {
 import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
-  // isMetricItem,
-  // isModelItem,
   isQuestionItem,
   isTableItem,
   isValueItem,
@@ -160,50 +158,6 @@ export const DataPickerModal = ({
       DataPickerItem
     >[] = [];
 
-    // if (hasModels && hasNestedQueriesEnabled && models.includes("dataset")) {
-    //   computedTabs.push({
-    //     id: "models-tab",
-    //     displayName: t`Models`,
-    //     model: "dataset" as const,
-    //     folderModels: ["collection" as const],
-    //     icon: "model",
-    //     render: ({ onItemSelect }) => (
-    //       <QuestionPicker
-    //         initialValue={isModelItem(value) ? value : undefined}
-    //         models={MODEL_PICKER_MODELS}
-    //         options={options}
-    //         path={modelsPath}
-    //         shouldShowItem={modelsShouldShowItem}
-    //         onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
-    //         onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
-    //         onPathChange={setModelsPath}
-    //       />
-    //     ),
-    //   });
-    // }
-
-    // if (hasMetrics && hasNestedQueriesEnabled && models.includes("metric")) {
-    //   computedTabs.push({
-    //     id: "metrics-tab",
-    //     displayName: t`Metrics`,
-    //     model: "metric" as const,
-    //     folderModels: ["collection" as const],
-    //     icon: "metric",
-    //     render: ({ onItemSelect }) => (
-    //       <QuestionPicker
-    //         initialValue={isMetricItem(value) ? value : undefined}
-    //         models={METRIC_PICKER_MODELS}
-    //         options={options}
-    //         path={metricsPath}
-    //         shouldShowItem={metricsShouldShowItem}
-    //         onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
-    //         onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
-    //         onPathChange={setMetricsPath}
-    //       />
-    //     ),
-    //   });
-    // }
-
     if (models.includes("table")) {
       computedTabs.push({
         id: "tables-tab",
@@ -269,7 +223,6 @@ export const DataPickerModal = ({
       onItemSelect={handleItemSelect}
       isLoadingTabs={isLoadingAvailableData}
       searchExtraButtons={[filterButton]}
-      searchResultFilter={items => items.filter(shouldShowItem)}
     />
   );
 };
