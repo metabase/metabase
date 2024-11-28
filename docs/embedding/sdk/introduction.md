@@ -27,7 +27,7 @@ To give you and idea of what's possible with the SDK, we've put together example
 
 ## Embedded analytics SDK on NPM
 
-Check out the Metabase Embedded analytics SDK on NPM: [metaba.se/sdk](https://metaba.se/sdk).
+Check out the Metabase Embedded analytics SDK on NPM: [https://www.npmjs.com/package/@metabase/embedding-sdk-react](https://www.npmjs.com/package/@metabase/embedding-sdk-react).
 
 ## Quickstart with CLI
 
