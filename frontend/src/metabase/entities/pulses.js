@@ -27,7 +27,7 @@ const Pulses = createEntity({
 
   rtk: {
     getUseGetQuery: () => ({
-      useGetQuery: useGetSubscriptionQuery,
+      useGetQuery,
     }),
   },
 
@@ -96,5 +96,9 @@ const Pulses = createEntity({
     return type && `collection=${type}`;
   },
 });
+
+const useGetQuery = ({ id }) => {
+  return useGetSubscriptionQuery(id);
+};
 
 export default Pulses;
