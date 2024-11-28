@@ -66,7 +66,7 @@ export const SummarizeDropdown = () => {
           /* Called when a new aggregation is selected */
           onClose={() => setStep("list")}
           /* Called when the back button is clicked */
-          onBack={() => setStep("list")}
+          onBack={() => setStep(aggregationItems.length > 0 ? "list" : null)}
         />
       </MultiStepPopover.Step>
       <MultiStepPopover.Step value="list">
