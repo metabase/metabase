@@ -324,11 +324,20 @@ describeEE("scenarios > embedding > full app", () => {
   });
 
   describe("notebook", () => {
-    const baseCardDetails = {
+    const ordersCardDetails = {
       name: "Card",
       type: "question",
       query: {
         "source-table": ORDERS_ID,
+      },
+    };
+
+    const ordersCountCardDetails = {
+      name: "Card",
+      type: "question",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
       },
     };
 
@@ -355,6 +364,7 @@ describeEE("scenarios > embedding > full app", () => {
         }
         cy.findByText(tableName).click();
       });
+      cy.wait("@getTableMetadata");
     }
 
     function selectCard({ cardName, cardType, collectionNames }) {
@@ -365,6 +375,8 @@ describeEE("scenarios > embedding > full app", () => {
         );
         cy.findByText(cardName).click();
       });
+      cy.wait("@getTableMetadata");
+      cy.wait("@getCard");
     }
 
     function clickOnDataSource(sourceName) {
@@ -405,8 +417,17 @@ describeEE("scenarios > embedding > full app", () => {
       });
     }
 
+    function verifyMetricClause(metricName) {
+      getNotebookStep("summarize")
+        .findByTestId("aggregation-step")
+        .findByText(metricName)
+        .should("be.visible");
+    }
+
     beforeEach(() => {
       cy.signInAsNormalUser();
+      cy.intercept("GET", "/api/card/*").as("getCard");
+      cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
     describe("table", () => {
@@ -492,6 +513,7 @@ describeEE("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion();
         selectCard({
           cardName: "Orders",
+          cardType: "question",
           collectionNames: [],
         });
         getNotebookStep("data").button("Join data").click();
@@ -501,6 +523,7 @@ describeEE("scenarios > embedding > full app", () => {
         });
         selectTable({
           tableName: "Products",
+          databaseName: "Sample Database",
         });
         clickOnJoinDataSource("Products");
         verifyTableSelected({
@@ -514,7 +537,7 @@ describeEE("scenarios > embedding > full app", () => {
       describe(cardType, () => {
         it("should select a data source in the root collection", () => {
           const cardDetails = {
-            ...baseCardDetails,
+            ...ordersCardDetails,
             type: cardType,
             collection_id: null,
           };
@@ -525,7 +548,7 @@ describeEE("scenarios > embedding > full app", () => {
             cardType,
             collectionNames: [],
           });
-          clickOnDataSource(baseCardDetails.name);
+          clickOnDataSource(ordersCardDetails.name);
           verifyCardSelected({
             cardName: cardDetails.name,
             collectionName: "Our analytics",
@@ -534,7 +557,7 @@ describeEE("scenarios > embedding > full app", () => {
 
         it("should select a data source in a regular collection", () => {
           const cardDetails = {
-            ...baseCardDetails,
+            ...ordersCardDetails,
             type: cardType,
             collection_id: FIRST_COLLECTION_ID,
           };
@@ -545,7 +568,7 @@ describeEE("scenarios > embedding > full app", () => {
             cardType,
             collectionNames: ["First collection"],
           });
-          clickOnDataSource(baseCardDetails.name);
+          clickOnDataSource(ordersCardDetails.name);
           verifyCardSelected({
             cardName: cardDetails.name,
             collectionName: "First collection",
@@ -554,7 +577,7 @@ describeEE("scenarios > embedding > full app", () => {
 
         it("should select a data source in a nested collection", () => {
           const cardDetails = {
-            ...baseCardDetails,
+            ...ordersCardDetails,
             type: cardType,
             collection_id: SECOND_COLLECTION_ID,
           };
@@ -565,7 +588,7 @@ describeEE("scenarios > embedding > full app", () => {
             cardType,
             collectionNames: ["First collection", "Second collection"],
           });
-          clickOnDataSource(baseCardDetails.name);
+          clickOnDataSource(ordersCardDetails.name);
           verifyCardSelected({
             cardName: cardDetails.name,
             collectionName: "Second collection",
@@ -574,7 +597,7 @@ describeEE("scenarios > embedding > full app", () => {
 
         it("should select a data source in a personal collection", () => {
           const cardDetails = {
-            ...baseCardDetails,
+            ...ordersCardDetails,
             type: cardType,
             collection_id: NORMAL_PERSONAL_COLLECTION_ID,
           };
@@ -585,7 +608,7 @@ describeEE("scenarios > embedding > full app", () => {
             cardType,
             collectionNames: ["Your personal collection"],
           });
-          clickOnDataSource(baseCardDetails.name);
+          clickOnDataSource(ordersCardDetails.name);
           verifyCardSelected({
             cardName: cardDetails.name,
             collectionName: "Your personal collection",
@@ -595,7 +618,7 @@ describeEE("scenarios > embedding > full app", () => {
         it("should select a data source in another user personal collection", () => {
           cy.signInAsAdmin();
           const cardDetails = {
-            ...baseCardDetails,
+            ...ordersCardDetails,
             type: cardType,
             collection_id: NORMAL_PERSONAL_COLLECTION_ID,
           };
@@ -609,7 +632,7 @@ describeEE("scenarios > embedding > full app", () => {
               "Robert Tableton's Personal Collection",
             ],
           });
-          clickOnDataSource(baseCardDetails.name);
+          clickOnDataSource(ordersCardDetails.name);
           verifyCardSelected({
             cardName: cardDetails.name,
             collectionName: "Robert Tableton's Personal Collection",
@@ -618,7 +641,7 @@ describeEE("scenarios > embedding > full app", () => {
 
         it("should be able to join a card when the data source is a table", () => {
           const cardDetails = {
-            ...baseCardDetails,
+            ...ordersCardDetails,
             type: cardType,
             collection_id: FIRST_COLLECTION_ID,
           };
@@ -646,7 +669,7 @@ describeEE("scenarios > embedding > full app", () => {
 
         it("should be able to join a card when the data source is a question", () => {
           const cardDetails = {
-            ...baseCardDetails,
+            ...ordersCardDetails,
             type: cardType,
             collection_id: FIRST_COLLECTION_ID,
           };
@@ -674,6 +697,117 @@ describeEE("scenarios > embedding > full app", () => {
             cardName: cardDetails.name,
             collectionName: "First collection",
           });
+        });
+      });
+    });
+
+    describe("metric", () => {
+      it("should select a data source in the root collection", () => {
+        const cardDetails = {
+          ...ordersCountCardDetails,
+          type: "metric",
+          collection_id: null,
+        };
+        createQuestion(cardDetails);
+        startNewEmbeddingQuestion();
+        selectCard({
+          cardName: cardDetails.name,
+          cardType: cardDetails.type,
+          collectionNames: [],
+        });
+        verifyMetricClause(cardDetails.name);
+        clickOnDataSource("Orders");
+        verifyTableSelected({
+          tableName: "Orders",
+          databaseName: "Sample Database",
+        });
+      });
+
+      it("should select a data source in a regular collection", () => {
+        const cardDetails = {
+          ...ordersCardDetails,
+          type: "metric",
+          collection_id: FIRST_COLLECTION_ID,
+        };
+        createQuestion(cardDetails);
+        startNewEmbeddingQuestion();
+        selectCard({
+          cardName: cardDetails.name,
+          cardType: cardDetails.type,
+          collectionNames: ["First collection"],
+        });
+        verifyMetricClause(cardDetails.name);
+        clickOnDataSource("Orders");
+        verifyTableSelected({
+          tableName: "Orders",
+          databaseName: "Sample Database",
+        });
+      });
+
+      it("should select a data source in a nested collection", () => {
+        const cardDetails = {
+          ...ordersCardDetails,
+          type: "metric",
+          collection_id: SECOND_COLLECTION_ID,
+        };
+        createQuestion(cardDetails);
+        startNewEmbeddingQuestion();
+        selectCard({
+          cardName: cardDetails.name,
+          cardType: cardDetails.type,
+          collectionNames: ["First collection", "Second collection"],
+        });
+        verifyMetricClause(cardDetails.name);
+        clickOnDataSource("Orders");
+        verifyTableSelected({
+          tableName: "Orders",
+          databaseName: "Sample Database",
+        });
+      });
+
+      it("should select a data source in a personal collection", () => {
+        const cardDetails = {
+          ...ordersCardDetails,
+          type: "metric",
+          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+        };
+        createQuestion(cardDetails);
+        startNewEmbeddingQuestion();
+        selectCard({
+          cardName: cardDetails.name,
+          cardType: cardDetails.type,
+          collectionNames: ["Your personal collection"],
+        });
+        verifyMetricClause(cardDetails.name);
+        clickOnDataSource("Orders");
+        verifyTableSelected({
+          tableName: "Orders",
+          databaseName: "Sample Database",
+        });
+      });
+
+      it("should select a data source in another user personal collection", () => {
+        cy.signInAsAdmin();
+        const cardDetails = {
+          ...ordersCardDetails,
+          type: "metric",
+          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+        };
+        createQuestion(cardDetails);
+        startNewEmbeddingQuestion();
+        selectCard({
+          cardName: cardDetails.name,
+          cardType: cardDetails.type,
+          collectionNames: [
+            "All personal collections",
+            "Robert Tableton's Personal Collection",
+          ],
+        });
+        verifyMetricClause(cardDetails.name);
+        clickOnDataSource("Orders");
+        verifyTableSelected({
+          tableName: "Orders",
+          databaseName: "Sample Database",
         });
       });
     });
