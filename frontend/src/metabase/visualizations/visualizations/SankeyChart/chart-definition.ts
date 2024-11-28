@@ -28,6 +28,7 @@ export const SETTINGS_DEFINITIONS = {
     title: t`Source`,
     showColumnSetting: true,
     persistDefault: true,
+    dashboard: false,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.source,
   }),
@@ -36,6 +37,7 @@ export const SETTINGS_DEFINITIONS = {
     title: t`Target`,
     showColumnSetting: true,
     persistDefault: true,
+    dashboard: false,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.target,
   }),
@@ -44,6 +46,7 @@ export const SETTINGS_DEFINITIONS = {
     title: t`Value`,
     showColumnSetting: true,
     persistDefault: true,
+    dashboard: false,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.metric,
   }),
