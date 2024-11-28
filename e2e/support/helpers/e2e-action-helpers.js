@@ -1,6 +1,6 @@
 import { capitalize } from "inflection";
 
-import { nativeEditor } from "e2e/support/helpers/e2e-native-editor-helpers";
+import { nativeEditor } from "./e2e-native-editor-helpers";
 
 export function setActionsEnabledForDB(dbId, enabled = true) {
   return cy.request("PUT", `/api/database/${dbId}`, {

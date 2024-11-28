@@ -1,6 +1,7 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
-import { runNativeQuery } from "e2e/support/helpers/e2e-misc-helpers";
-import { nativeEditor } from "e2e/support/helpers/e2e-native-editor-helpers";
+
+import { runNativeQuery } from "./e2e-misc-helpers";
+import { nativeEditor } from "./e2e-native-editor-helpers";
 
 const {
   STATIC_ORDERS_ID,
