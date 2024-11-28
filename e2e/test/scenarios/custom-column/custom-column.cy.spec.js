@@ -59,7 +59,7 @@ describe("scenarios > question > custom column", () => {
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModalTab("Collections").click();
       cy.findByText(name).click();
     });
     cy.button("Custom column").click();

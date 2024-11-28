@@ -79,7 +79,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModalTab("Search").should("not.exist");
         H.tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
 
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("Orders, Count").click();
       });
 
@@ -97,7 +97,7 @@ describe("scenarios > question > new", () => {
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
       H.entityPickerModal().within(() => {
         // It is now possible to choose another saved question
-        H.entityPickerModalTab("Saved questions").should(
+        H.entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -130,7 +130,7 @@ describe("scenarios > question > new", () => {
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         // Note: collection name's first letter is capitalized
         cy.findByText(/foo:bar/i).click();
         cy.findByText("Orders");
@@ -146,7 +146,7 @@ describe("scenarios > question > new", () => {
       H.startNewQuestion();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         assertDataPickerEntitySelected(0, "Our analytics");
         cy.findByText("First collection").should("exist");
         cy.findByText("Second collection").should("not.exist");
@@ -178,7 +178,7 @@ describe("scenarios > question > new", () => {
       cy.signInAsAdmin();
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText("All personal collections").click();
         cy.findByText(H.getPersonalCollectionName(USERS.nocollection)).click();
         cy.findByText("Personal question").click();
@@ -263,7 +263,7 @@ describe("scenarios > question > new", () => {
     );
 
     cy.findByRole("button", { name: /Orders/ }).click();
-    H.shouldDisplayTabs(["Recents", "Models", "Tables", "Saved questions"]);
+    H.shouldDisplayTabs(["Recents", "Tables", "Collections"]);
     H.entityPickerModalTab("Recents").click();
     cy.findByRole("dialog", { name: "Pick your starting data" })
       .findByRole("button", { name: /Orders/ })
@@ -585,8 +585,7 @@ describe(
       cy.visit("/question/new");
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").should("be.visible");
-        H.entityPickerModalTab("Models").should("not.exist");
+        H.entityPickerModalTab("Collections").should("be.visible");
         H.entityPickerModalTab("Tables").click();
 
         H.entityPickerModalItem(2, "Products").click();
@@ -604,7 +603,7 @@ describe(
       cy.visit("/question/new");
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").click();
+        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(1, "Orders").click();
       });
 
@@ -628,8 +627,7 @@ describe(
       cy.visit("/question/notebook");
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Saved questions").should("be.visible");
-        H.entityPickerModalTab("Models").should("be.visible");
+        H.entityPickerModalTab("Collections").should("be.visible");
         H.entityPickerModalTab("Tables").should("be.visible");
         H.entityPickerModalItem(1, "Orders Model").click();
       });
@@ -639,12 +637,7 @@ describe(
       cy.button(/Orders Model/).click();
 
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Models", [
-          "Recents",
-          "Models",
-          "Tables",
-          "Saved questions",
-        ]);
+        H.tabsShouldBe("Collections", ["Recents", "Tables", "Collections"]);
         H.entityPickerModalTab("Recents").click();
         cy.findByTestId("result-item").should("contain.text", "Orders Model");
       });
