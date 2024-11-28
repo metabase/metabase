@@ -376,8 +376,9 @@
   [field]
   (try
     (let [result          (metadata-queries/table-query (:table_id field)
-                                                        {:breakout [[:field (u/the-id field) nil]]
-                                                         :limit    *absolute-max-distinct-values-limit*}
+                                                        {:breakout        [[:field (u/the-id field) nil]]
+                                                         :breakout-idents {0 (u/generate-nano-id)}
+                                                         :limit           *absolute-max-distinct-values-limit*}
                                                         (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
           distinct-values (-> result :data :rows)]
       {:values          distinct-values

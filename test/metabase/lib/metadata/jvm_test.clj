@@ -30,15 +30,11 @@
     (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
 (deftest ^:parallel saved-question-metadata-test
-  (let [query  {:database (mt/id)
-                :type     :query
-                :query    {:source-table (mt/id :venues)
-                           :joins        [{:fields       :all
-                                           :source-table (mt/id :categories)
-                                           :condition    [:=
-                                                          [:field (mt/id :venues :category_id) nil]
-                                                          [:field (mt/id :categories :id) {:join-alias "Cat"}]]
-                                           :alias        "Cat"}]}}
+  (let [query  (mt/mbql-query venues
+                 {:joins [{:fields       :all
+                           :source-table $$categories
+                           :condition    [:= $category_id &Cat.categories.id]
+                           :alias        "Cat"}]})
         query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)]
     (is (=? [{:lib/desired-column-alias "ID"}
              {:lib/desired-column-alias "NAME"}

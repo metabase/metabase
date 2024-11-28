@@ -455,13 +455,9 @@
 (deftest render-funnel-text-row-labels-test
   (testing "Static-viz Funnel Chart with text keys in viz-settings renders without error (#26944)."
     (mt/dataset test-data
-      (let [funnel-query {:database (mt/id)
-                          :type     :query
-                          :query
-                          {:source-table (mt/id :orders)
-                           :aggregation  [[:count]]
-                           :breakout     [[:field (mt/id :orders :created_at)
-                                           {:base-type :type/DateTime :temporal-unit :month-of-year}]]}}
+      (let [funnel-query (mt/mbql-query orders
+                           {:aggregation [[:count]]
+                            :breakout    [!month-of-year.created_at]})
             funnel-card  {:display       :funnel
                           :dataset_query funnel-query
                           :visualization_settings
@@ -533,12 +529,9 @@
 (deftest render-pie-chart-test
   (testing "The static-viz pie chart renders correctly."
     (mt/dataset test-data
-      (let [q       {:database (mt/id)
-                     :type     :query
-                     :query
-                     {:source-table (mt/id :products)
-                      :aggregation  [[:count]]
-                      :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}
+      (let [q       (mt/mbql-query products
+                      {:aggregation [[:count]]
+                       :breakout    [$category]})
             colours {:Doohickey "#AAAAAA"
                      :Gadget    "#BBBBBB"
                      :Gizmo     "#CCCCCC"
@@ -622,13 +615,10 @@
                        :model/Card {dataset-query :dataset_query
                                     :as           card} {:name          "Dashboard Test Card"
                                                          :collection_id collection-id
-                                                         :dataset_query {:type     :query,
-                                                                         :database (mt/id)
-                                                                         :query    {:source-table (mt/id :orders)
-                                                                                    :breakout     [[:field (mt/id :orders :created_at)
-                                                                                                    {:temporal-unit :month}]],
-                                                                                    :aggregation  [[:sum [:field (mt/id :orders :subtotal) nil]]
-                                                                                                   [:avg [:field (mt/id :orders :subtotal) nil]]]}}
+                                                         :dataset_query (mt/mbql-query orders
+                                                                          {:breakout    [!month.created_at],
+                                                                           :aggregation [[:sum $subtotal]
+                                                                                         [:avg $subtotal]]})
                                                          :creator_id    (mt/user->id :crowberto)}]
           (let [data                   (qp/process-query dataset-query)
                 combined-cards-results [(notification.execute/execute-card (:creator_id card) (:id card) nil)]
@@ -645,14 +635,10 @@
 (deftest unknown-column-settings-test
   (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
     (mt/dataset test-data
-      (let [q   {:database (mt/id)
-                 :type     :query
-                 :query
-                 {:source-table (mt/id :reviews)
-                  :aggregation  [[:sum [:field (mt/id :reviews :rating) {:base-type :type/Integer}]]],
-                  :breakout     [[:field (mt/id :reviews :created_at) {:base-type :type/DateTime, :temporal-unit :week}]
-                                 [:field (mt/id :reviews :reviewer) {:base-type :type/Text}]],
-                  :filter       [:between [:field (mt/id :reviews :product_id) {:base-type :type/Integer}] 0 10]}}
+      (let [q   (mt/mbql-query reviews
+                  {:aggregation [[:sum $rating]],
+                   :breakout    [!week.created_at $reviewer],
+                   :filter      [:between $product_id 0 10]})
             viz {:pivot_table.column_split
                  {:rows    ["REVIEWER"],
                   :columns ["CREATED_AT"],
@@ -670,12 +656,9 @@
 (deftest trend-chart-renders-in-alerts-test
   (testing "Trend charts render successfully in Alerts. (#39854)"
     (mt/dataset test-data
-      (let [q {:database (mt/id)
-               :type     :query
-               :query
-               {:source-table (mt/id :orders)
-                :aggregation  [[:count]]
-                :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
+      (let [q (mt/mbql-query orders
+                {:aggregation [[:count]]
+                 :breakout    [!month.created_at]})]
         ;; Alerts are set on Questions. They run through the 'pulse' code the same as subscriptions,
         ;; But will not have any Dashcard data associated, which caused an error in the static-viz render code
         ;; which implicitly expected a DashCard to exist
@@ -708,14 +691,11 @@
 (deftest axis-selection-for-series-test
   (testing "When the user specifies all series to be on left or right, it will render. (#38839)"
     (mt/dataset test-data
-      (let [q   {:database (mt/id)
-                 :type     :query
-                 :query
-                 {:source-table (mt/id :products)
-                  :aggregation  [[:count]]
-                  :breakout
-                  [[:field (mt/id :products :category) {:base-type :type/Text}]
-                   [:field (mt/id :products :price) {:base-type :type/Float, :binning {:strategy :default}}]]}}
+      (let [q   (mt/mbql-query products
+                  {:aggregation [[:count]]
+                   :breakout    [$category
+                                 [:field (mt/id :products :price)
+                                  {:base-type :type/Float, :binning {:strategy :default}}]]})
             viz (fn [dir]
                   {:series_settings
                    {:Doohickey {:axis dir}
@@ -759,13 +739,9 @@
 (deftest multiseries-dashcard-render-test
   (testing "Multi-series dashcards render with every series. (#42730)"
     (mt/dataset test-data
-      (let [q {:database (mt/id)
-               :type     :query
-               :query
-               {:source-table (mt/id :products)
-                :aggregation  [[:count]]
-                :breakout
-                [[:field (mt/id :products :category) {:base-type :type/Text}]]}}]
+      (let [q (mt/mbql-query products
+                {:aggregation [[:count]]
+                 :breakout    [$category]})]
         (mt/with-temp [:model/Card {card-a-id :id} {:display       :bar
                                                     :dataset_query q}
                        :model/Card {card-b-id :id} {:display       :bar
@@ -792,13 +768,9 @@
 (deftest multiseries-dashcard-render-filters-test
   (testing "Multi-series dashcards render with every series properly filtered (#39083)"
     (mt/dataset test-data
-      (let [q {:database (mt/id)
-               :type     :query
-               :query
-               {:source-table (mt/id :orders)
-                :aggregation  [[:count]]
-                :breakout
-                [[:field (mt/id :orders :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}]
+      (let [q (mt/mbql-query orders
+                {:aggregation [[:count]]
+                 :breakout    [!month.created_at]})]
         (mt/with-temp [:model/Card {card-a-id :id} {:name          "series_a"
                                                     :display       :bar
                                                     :dataset_query q}
@@ -987,13 +959,9 @@
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:source-table (mt/id :products)
-                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category !year.created_at]})}]
         (mt/with-current-user (mt/user->id :rasta)
           (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
                 card-header-els (hik.s/select (hik.s/tag :th) card-doc)]
@@ -1003,13 +971,11 @@
 (deftest render-sankey-chart-test
   (testing "The static-viz sankey chart renders correctly."
     (mt/dataset test-data
-      (let [q       {:database (mt/id)
-                     :type     :query
-                     :query    {:source-table (mt/id :products)
-                                :aggregation  [[:count]]
-                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                               [:field (mt/id :products :price) {:base-type :type/Float
-                                                                                 :binning    {:strategy :default}}]]}}
+      (let [q       (mt/mbql-query products
+                      {:aggregation  [[:count]]
+                       :breakout     [$category
+                                      [:field (mt/id :products :price) {:base-type :type/Float
+                                                                        :binning    {:strategy :default}}]]})
             card    {:name           "sankey-test"
                      :display        :sankey
                      :dataset_query  q

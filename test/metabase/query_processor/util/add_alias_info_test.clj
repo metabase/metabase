@@ -859,6 +859,7 @@
                                   :query    {:joins
                                              [{:fields :all,
                                                :alias "Model B - A1",
+                                               :ident "t3Nz_yY5hISIlmxaJlSsm"
                                                :strategy :inner-join,
                                                :condition
                                                [:=

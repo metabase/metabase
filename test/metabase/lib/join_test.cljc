@@ -12,6 +12,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.util :as u]))
 
@@ -195,6 +196,7 @@
                                  :joins        [{:lib/type    :mbql/join
                                                  :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
                                                  :alias       "CATEGORIES__via__CATEGORY_ID"
+                                                 :ident       "dJbULfDmVAyTENMCo7q1q"
                                                  :conditions  [[:=
                                                                 {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
                                                                 (lib.tu/field-clause :venues :category-id)
@@ -222,16 +224,15 @@
 (deftest ^:parallel join-against-source-card-metadata-test
   (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                            meta/metadata-provider
-                           [{:database (meta/id)
-                             :type     :query
-                             :query    {:source-table (meta/id :checkins)
-                                        :aggregation  [[:count]]
-                                        :breakout     [[:field (meta/id :checkins :user-id) nil]]}}])
+                           [(lib.tu.macros/mbql-query checkins
+                              {:aggregation  [[:count]]
+                               :breakout     [$user-id]})])
         join              {:lib/type    :mbql/join
                            :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
                            :stages      [{:lib/type    :mbql.stage/mbql
                                           :source-card 1}]
                            :alias       "checkins_by_user"
+                           :ident       "t3Xq_zGttWJ3xht4ROnWv"
                            :conditions  [[:=
                                           {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
                                           [:field
@@ -343,6 +344,7 @@
                                     :joins        [{:lib/type    :mbql/join
                                                     :lib/options {:lib/uuid "10ee93eb-6749-41ed-a48b-93c66427eb49"}
                                                     :alias       join-alias
+                                                    :ident       "AMaECnokvRTFgTVDTbrKG"
                                                     :fields      [[:field
                                                                    {:join-alias join-alias
                                                                     :lib/uuid   "87ad4bf3-a00b-462a-b9cc-3dde44945d66"}

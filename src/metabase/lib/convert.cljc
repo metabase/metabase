@@ -62,6 +62,10 @@
                                      ;; if `error-type` is missing, which seems to happen sometimes,
                                      ;; fall back to humanizing the entire error.
                                      (me/humanize (mr/explain ::lib.schema/stage.mbql almost-stage))))]
+          (when (= (last error-location) :ident)
+            (throw (ex-info "Ident error" {:loc error-location
+                                           :error-desc error-desc
+                                           :diff (first (data/diff almost-stage new-stage))})))
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
              :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
@@ -183,26 +187,22 @@
      [aggregations & body]
      `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
 
+(defn- from-indexed-idents [stage list-key idents-key]
+  (let [idents (get stage idents-key)]
+    (->> (get stage list-key)
+         ->pMBQL
+         (map-indexed (fn [i x]
+                        (if-let [ident (or (get idents i)
+                                           ;; Conversion from JSON keywordizes all keys, including these numbers!
+                                           (get idents (keyword (str i))))]
+                          (lib.options/update-options x assoc :ident ident)
+                          x)))
+         vec
+         not-empty)))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [agg-idents   (:aggregation-idents stage)
-        aggregations (->> (:aggregation stage)
-                          ->pMBQL
-                          (map-indexed (fn [i agg]
-                                         (if-let [ident (get agg-idents i)]
-                                           (lib.options/update-options agg assoc :ident ident)
-                                           agg)))
-                          vec
-                          not-empty)
-        brk-idents   (:breakout-idents stage)
-        breakouts    (->> (:breakout stage)
-                          ->pMBQL
-                          (map-indexed (fn [i breakout]
-                                         (if-let [ident (get brk-idents i)]
-                                           (lib.options/update-options breakout assoc :ident ident)
-                                           breakout)))
-                          vec
-                          not-empty)
+  (let [aggregations (from-indexed-idents stage :aggregation :aggregation-idents)
         expr-idents  (:expression-idents stage)
         expressions  (->> stage
                           :expressions
@@ -217,7 +217,9 @@
     (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
-                      (m/assoc-some :aggregation aggregations :breakout breakouts :expressions expressions))
+                      (m/assoc-some :expressions expressions
+                                    :aggregation aggregations
+                                    :breakout    (from-indexed-idents stage :breakout :breakout-idents)))
             stage (reduce
                    (fn [stage k]
                      (if-not (get stage k)
@@ -358,15 +360,16 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (defn- metabase-lib-keyword?
-  "Does keyword `k` have a`:lib/` or a `:metabase.lib.*/` namespace?"
+  "Does keyword `k` have a`:lib/`, `:lib.columns/` or a `:metabase.lib.*/` namespace?"
   [k]
   (and (qualified-keyword? k)
        (when-let [symb-namespace (namespace k)]
          (or (= symb-namespace "lib")
+             (= symb-namespace "lib.columns")
              (str/starts-with? symb-namespace "metabase.lib.")))))
 
 (defn- disqualify
-  "Remove any keys starting with the `:lib/` `:metabase.lib.*/` namespaces from map `m`.
+  "Remove any keys starting with the `:lib/` or `:metabase.lib.*/` namespaces from map `m`.
 
   No args = return transducer to remove keys from a map. One arg = update a map `m`."
   ([]
@@ -586,10 +589,10 @@
              legacy-clause)])))
 
 (defn- idents-by-index [clause-list]
-  (->> clause-list
-       (into {} (map-indexed (fn [i clause]
-                               [i (lib.options/ident clause)])))
-       not-empty))
+  (when (seq clause-list)
+    (into {} (map-indexed (fn [i clause]
+                            [i (lib.options/ident clause)]))
+          clause-list)))
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
