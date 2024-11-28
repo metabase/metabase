@@ -1,7 +1,7 @@
 import type { Active } from "@dnd-kit/core";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
-import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isCategory, isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
@@ -251,14 +251,12 @@ function areAreaBarLineSeriesCompatible(
   const [primaryInitialDimension] = initialDimensions;
   const [primaryNewDimension] = newDimensions;
 
-  // both or neither primary dimension must be dates
-  // both or neither primary dimension must be numeric
-  // TODO handle 👇
-  // a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
+  if (!primaryNewDimension || !primaryInitialDimension) {
+    return false;
+  }
+
   return (
-    primaryNewDimension &&
-    primaryInitialDimension &&
-    (isDate(primaryInitialDimension) === isDate(primaryNewDimension) ||
-      isNumeric(primaryInitialDimension) !== isNumeric(primaryNewDimension))
+    (isDate(primaryInitialDimension) && isDate(primaryNewDimension)) ||
+    (isCategory(primaryInitialDimension) && isCategory(primaryNewDimension))
   );
 }
