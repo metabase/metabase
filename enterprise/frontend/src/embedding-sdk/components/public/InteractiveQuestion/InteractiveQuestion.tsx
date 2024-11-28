@@ -46,8 +46,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
 export const _InteractiveQuestion = ({
   questionId,
   withResetButton = true,
-  withTitle = false,
-  customTitle,
+  title,
   plugins,
   height,
   width,
@@ -77,9 +76,8 @@ export const _InteractiveQuestion = ({
         width={width}
         className={className}
         style={style}
-        customTitle={customTitle}
+        title={title}
         withResetButton={withResetButton}
-        withTitle={withTitle}
       />
     )}
   </InteractiveQuestionProvider>

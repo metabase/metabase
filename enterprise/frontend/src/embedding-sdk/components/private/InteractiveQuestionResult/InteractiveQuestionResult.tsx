@@ -23,7 +23,7 @@ import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
 
 export interface InteractiveQuestionResultProps {
   withResetButton?: boolean;
-  title: SdkQuestionTitleProps;
+  title?: SdkQuestionTitleProps;
 }
 
 type QuestionView = "editor" | "filter" | "summarize" | "visualization";
