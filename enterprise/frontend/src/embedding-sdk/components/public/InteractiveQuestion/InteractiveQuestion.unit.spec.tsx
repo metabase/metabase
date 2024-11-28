@@ -53,7 +53,7 @@ const TEST_DATASET = createMockDataset({
 });
 
 // Provides a button to re-run the query
-function InteractiveQuestionTestResult() {
+function InteractiveQuestionCustomLayout() {
   const { resetQuestion } = useInteractiveQuestionContext();
 
   return (
@@ -66,7 +66,7 @@ function InteractiveQuestionTestResult() {
 
 const setup = ({
   isValidCard = true,
-  withCustomLayout = true,
+  withCustomLayout = false,
   withChartTypeSelector = true,
 }: {
   isValidCard?: boolean;
@@ -101,7 +101,7 @@ const setup = ({
       questionId={TEST_CARD.id}
       withChartTypeSelector={withChartTypeSelector}
     >
-      {withCustomLayout ? <InteractiveQuestionTestResult /> : undefined}
+      {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
     </InteractiveQuestion>,
     {
       mode: "sdk",
@@ -123,7 +123,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should render loading state when rerunning the query", async () => {
-    setup();
+    setup({ withCustomLayout: true });
 
     await waitForLoaderToBeRemoved();
 
@@ -181,7 +181,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should show a chart type selector button if withChartTypeSelector is true", async () => {
-    setup({ withCustomLayout: false, withChartTypeSelector: true });
+    setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
 
     expect(
@@ -190,7 +190,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should not show a chart type selector button if withChartTypeSelector is false", async () => {
-    setup({ withCustomLayout: false, withChartTypeSelector: false });
+    setup({ withChartTypeSelector: false });
     await waitForLoaderToBeRemoved();
 
     expect(
