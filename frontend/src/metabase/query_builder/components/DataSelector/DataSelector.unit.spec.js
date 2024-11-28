@@ -186,7 +186,7 @@ describe("DataSelector", () => {
     // on initial load, we fetch databases
     await delay(1);
     expect(fetchDatabases).toHaveBeenCalled();
-    rerender(<DataSelector {...props} loading />);
+    rerender(<DataSelector {...props} allLoading />);
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
     // select a db

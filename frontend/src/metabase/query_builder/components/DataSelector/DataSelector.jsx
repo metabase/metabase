@@ -345,7 +345,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTableId: sourceId,
     } = this.props;
 
-    if (!this.isLoadingDatasets() && !activeStep) {
+    if (!this.isSearchLoading() && !activeStep) {
       await this.hydrateActiveStep();
     }
 
@@ -427,7 +427,10 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  isLoadingDatasets = () => this.props.allLoading;
+  isSearchLoading = () => {
+    const { models, metrics, allLoading } = this.props;
+    return models == null || metrics == null || allLoading;
+  };
 
   getCardType() {
     const { selectedDataBucketId, savedEntityType } = this.state;
@@ -555,7 +558,7 @@ export class UnconnectedDataSelector extends Component {
   getPreviousStep() {
     const { steps } = this.props;
     const { activeStep } = this.state;
-    if (this.isLoadingDatasets() || activeStep === null) {
+    if (this.isSearchLoading() || activeStep === null) {
       return null;
     }
 
@@ -1017,7 +1020,7 @@ export class UnconnectedDataSelector extends Component {
     const isPickerOpen =
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
-    if (this.isLoadingDatasets()) {
+    if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
     }
 
