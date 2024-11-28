@@ -25,7 +25,7 @@ import type { CardEntityId, CardId, Dataset } from "metabase-types/api";
 
 export type StaticQuestionProps = {
   questionId: CardId | CardEntityId;
-  showVisualizationSelector?: boolean;
+  withVisualizationSelector?: boolean;
   height?: string | number;
   parameterValues?: Record<string, string | number>;
 };
@@ -66,7 +66,7 @@ const StaticQuestionVisualizationSelector = ({
 
 const StaticQuestionInner = ({
   questionId: initId,
-  showVisualizationSelector,
+  withVisualizationSelector,
   height,
   parameterValues,
 }: StaticQuestionProps): JSX.Element | null => {
@@ -105,7 +105,7 @@ const StaticQuestionInner = ({
       bg="var(--mb-color-bg-question)"
     >
       <Group h="100%" pos="relative" align="flex-start">
-        {showVisualizationSelector && (
+        {withVisualizationSelector && (
           <StaticQuestionVisualizationSelector
             question={question}
             result={result}
