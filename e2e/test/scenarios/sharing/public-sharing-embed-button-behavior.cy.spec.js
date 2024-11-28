@@ -194,7 +194,7 @@ describe("embed modal display", () => {
   });
 
   describeEE("when the user has a paid instance", () => {
-    it("should display a link to the Interactive embedding settings", () => {
+    it("should display a disabled state and a link to the Interactive embedding settings", () => {
       setTokenFeatures("all");
       visitDashboard("@dashboardId");
 
@@ -204,12 +204,17 @@ describe("embed modal display", () => {
         cy.findByText("Static embedding").should("be.visible");
         cy.findByText("Interactive embedding").should("be.visible");
 
-        cy.findByText("Interactive embedding").click();
-
-        cy.url().should(
-          "equal",
-          Cypress.config().baseUrl +
-            "/admin/settings/embedding-in-other-applications/full-app",
+        cy.findByRole("article", { name: "Interactive embedding" }).within(
+          () => {
+            cy.findByText("Disabled.").should("be.visible");
+            cy.findByText("Enable in admin settings")
+              .should("be.visible")
+              .and(
+                "have.attr",
+                "href",
+                "/admin/settings/embedding-in-other-applications/full-app",
+              );
+          },
         );
       });
     });
@@ -225,10 +230,18 @@ describe("embed modal display", () => {
         cy.findByText("Static embedding").should("be.visible");
         cy.findByText("Interactive embedding").should("be.visible");
 
-        cy.findByRole("link", { name: /Interactive embedding/ }).should(
+        cy.findByRole("link", { name: "Interactive embedding" }).should(
           "have.attr",
           "href",
           "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+        );
+
+        cy.findByRole("article", { name: "Interactive embedding" }).within(
+          () => {
+            cy.findByText("Learn more").should("be.visible");
+            cy.findByText("Disabled.").should("not.exist");
+            cy.findByText("Enable in admin settings").should("not.exist");
+          },
         );
       });
     });

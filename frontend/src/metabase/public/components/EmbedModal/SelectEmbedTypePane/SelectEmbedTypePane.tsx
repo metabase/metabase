@@ -91,11 +91,11 @@ export function SelectEmbedTypePane({
   const isInteractiveEmbeddingAvailable = useSelector(
     PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
   );
-  const isStaticEmbeddingDisabled =
-    useSetting("enable-embedding-static") === false;
-  const isInteractiveEmbeddingDisabled =
-    useSetting("enable-embedding-interactive") === false;
-  const isEmbeddingSdkDisabled = useSetting("enable-embedding-sdk") === false;
+  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
+  const isInteractiveEmbeddingEnabled = useSetting(
+    "enable-embedding-interactive",
+  );
+  const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
   return (
     <Stack
@@ -110,8 +110,8 @@ export function SelectEmbedTypePane({
         <SharingPaneButton
           title={t`Static embedding`}
           illustration={<StaticEmbeddingIllustration />}
-          onClick={isStaticEmbeddingDisabled ? undefined : goToNextStep}
-          isDisabled={isStaticEmbeddingDisabled}
+          onClick={isStaticEmbeddingEnabled ? goToNextStep : undefined}
+          isDisabled={!isStaticEmbeddingEnabled}
           disabledLink="/admin/settings/embedding-in-other-applications/standalone"
         >
           <List>
@@ -127,7 +127,7 @@ export function SelectEmbedTypePane({
           target={interactiveEmbeddingCta.target}
           rel="noreferrer"
           shouldRender={
-            !isInteractiveEmbeddingAvailable || !isInteractiveEmbeddingDisabled
+            !isInteractiveEmbeddingAvailable || isInteractiveEmbeddingEnabled
           }
           aria-label={t`Interactive embedding`}
         >
@@ -135,7 +135,9 @@ export function SelectEmbedTypePane({
             title={t`Interactive embedding`}
             badge={<Badge color="brand">{t`Pro`}</Badge>}
             illustration={<InteractiveEmbeddingIllustration />}
-            isDisabled={isInteractiveEmbeddingDisabled}
+            isDisabled={
+              isInteractiveEmbeddingAvailable && !isInteractiveEmbeddingEnabled
+            }
             disabledLink={
               "/admin/settings/embedding-in-other-applications/full-app"
             }
@@ -159,7 +161,7 @@ export function SelectEmbedTypePane({
         {/* REACT SDK */}
         <MaybeLink
           to="/admin/settings/embedding-in-other-applications/sdk"
-          shouldRender={!isEmbeddingSdkDisabled}
+          shouldRender={isEmbeddingSdkEnabled}
           aria-label={t`Embedded analytics SDK`}
         >
           <SharingPaneButton
@@ -171,7 +173,7 @@ export function SelectEmbedTypePane({
               </>
             }
             illustration={<SdkIllustration />}
-            isDisabled={isEmbeddingSdkDisabled}
+            isDisabled={!isEmbeddingSdkEnabled}
             disabledLink={"/admin/settings/embedding-in-other-applications/sdk"}
           >
             <List>

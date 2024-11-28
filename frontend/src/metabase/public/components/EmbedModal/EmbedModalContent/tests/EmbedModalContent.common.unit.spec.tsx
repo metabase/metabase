@@ -95,6 +95,14 @@ describe("EmbedModalContent", () => {
         expect(
           withinInteractiveEmbeddingCard.getByText("Learn more"),
         ).toBeInTheDocument();
+        expect(
+          withinInteractiveEmbeddingCard.queryByText("Disabled."),
+        ).not.toBeInTheDocument();
+        expect(
+          withinInteractiveEmbeddingCard.queryByText(
+            "Enable in admin settings",
+          ),
+        ).not.toBeInTheDocument();
       });
     });
 
