@@ -70,7 +70,7 @@ const VISUALIZATION_TYPES: Record<
 };
 
 const setup = ({
-  withVisualizationSelector = false,
+  withChartTypeSelector = false,
   isValidCard = true,
   card = createMockCard(),
   initialSqlParameters,
@@ -89,7 +89,7 @@ const setup = ({
   return renderWithProviders(
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
-      withVisualizationSelector={withVisualizationSelector}
+      withChartTypeSelector={withChartTypeSelector}
       initialSqlParameters={initialSqlParameters}
     />,
     {
@@ -130,20 +130,20 @@ describe("StaticQuestion", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render a visualization selector if withVisualizationSelector is true", async () => {
-    setup({ withVisualizationSelector: true });
+  it("should render a visualization selector if withChartTypeSelector is true", async () => {
+    setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
     expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
   });
 
-  it("should not render a visualization selector if withVisualizationSelector is false", async () => {
+  it("should not render a visualization selector if withChartTypeSelector is false", async () => {
     setup();
     await waitForLoaderToBeRemoved();
     expect(screen.queryByTestId("chart-type-settings")).not.toBeInTheDocument();
   });
 
   it("should change the visualization if a different visualization is selected", async () => {
-    setup({ withVisualizationSelector: true });
+    setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
     expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
 
