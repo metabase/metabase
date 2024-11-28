@@ -29,7 +29,7 @@ export type EditableDashboardProps = {
 
 export const EditableDashboard = ({
   dashboardId,
-  initialParameterValues = {},
+  initialParameters = {},
   withDownloads = false,
   drillThroughQuestionHeight,
   plugins,
@@ -50,7 +50,7 @@ export const EditableDashboard = ({
     withDownloads,
     withTitle: true,
     hiddenParameters: undefined,
-    initialParameterValues,
+    initialParameters,
   });
 
   const {
@@ -85,7 +85,7 @@ export const EditableDashboard = ({
         >
           <ConnectedDashboard
             dashboardId={dashboardId}
-            parameterQueryParams={initialParameterValues}
+            parameterQueryParams={initialParameters}
             refreshPeriod={refreshPeriod}
             onRefreshPeriodChange={onRefreshPeriodChange}
             setRefreshElapsedHook={setRefreshElapsedHook}

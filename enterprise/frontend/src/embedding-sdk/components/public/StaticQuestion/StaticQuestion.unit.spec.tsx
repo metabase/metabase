@@ -73,7 +73,7 @@ const setup = ({
   withVisualizationSelector = false,
   isValidCard = true,
   card = createMockCard(),
-  parameterValues,
+  initialSqlParameters,
 }: Partial<StaticQuestionProps> & {
   card?: Card;
   isValidCard?: boolean;
@@ -90,7 +90,7 @@ const setup = ({
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
       withVisualizationSelector={withVisualizationSelector}
-      parameterValues={parameterValues}
+      initialSqlParameters={initialSqlParameters}
     />,
     {
       mode: "sdk",
@@ -160,7 +160,7 @@ describe("StaticQuestion", () => {
 
   it("should query with the parameters in a parameterized question", async () => {
     const card = createMockCard({ parameters: [TEST_PARAM] });
-    setup({ card, parameterValues: { product_id: 1024 } });
+    setup({ card, initialSqlParameters: { product_id: 1024 } });
 
     await waitForLoaderToBeRemoved();
 

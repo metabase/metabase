@@ -27,7 +27,7 @@ export type StaticQuestionProps = {
   questionId: CardId | CardEntityId;
   withVisualizationSelector?: boolean;
   height?: string | number;
-  parameterValues?: Record<string, string | number>;
+  initialSqlParameters?: Record<string, string | number>;
 };
 
 type StaticQuestionVisualizationSelectorProps = {
@@ -68,7 +68,7 @@ const StaticQuestionInner = ({
   questionId: initId,
   withVisualizationSelector,
   height,
-  parameterValues,
+  initialSqlParameters,
 }: StaticQuestionProps): JSX.Element | null => {
   const { isLoading: isValidatingEntityId, id: questionId } =
     useValidatedEntityId({
@@ -79,7 +79,7 @@ const StaticQuestionInner = ({
   const metadata = useSelector(getMetadata);
 
   const { card, loading, result, error, updateQuestion } =
-    useLoadStaticQuestion(questionId, parameterValues);
+    useLoadStaticQuestion(questionId, initialSqlParameters);
 
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
 

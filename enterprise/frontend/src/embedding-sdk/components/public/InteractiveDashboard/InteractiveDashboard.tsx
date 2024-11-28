@@ -41,7 +41,7 @@ export type InteractiveDashboardProps = {
 
 const InteractiveDashboardInner = ({
   dashboardId,
-  initialParameterValues = {},
+  initialParameters = {},
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
@@ -67,7 +67,7 @@ const InteractiveDashboardInner = ({
     withDownloads,
     withTitle,
     hiddenParameters,
-    initialParameterValues,
+    initialParameters,
   });
 
   const {
@@ -102,7 +102,7 @@ const InteractiveDashboardInner = ({
         >
           <PublicOrEmbeddedDashboard
             dashboardId={dashboardId}
-            parameterQueryParams={initialParameterValues}
+            parameterQueryParams={initialParameters}
             hideParameters={displayOptions.hideParameters}
             background={displayOptions.background}
             titled={displayOptions.titled}
