@@ -1,0 +1,54 @@
+.root {
+  position: relative;
+  height: 2rem;
+  min-width: 4rem;
+
+  .iconContainer:nth-child(1) {
+    right: 0;
+  }
+
+  .iconContainer:nth-child(2) {
+    right: 4px;
+  }
+
+  .iconContainer:nth-child(3) {
+    right: 8px;
+  }
+
+  &:hover {
+    .iconContainer {
+      transform: scale(1.1);
+    }
+
+    .iconContainer:nth-child(1) {
+      right: 0;
+    }
+
+    .iconContainer:nth-child(2) {
+      right: 2.25rem;
+    }
+
+    .iconContainer:nth-child(3) {
+      right: 4.5rem;
+    }
+  }
+}
+
+.iconContainer {
+  position: absolute;
+  transition: all 0.2s ease;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background-color: var(--mb-color-bg-medium);
+  border: 1px solid var(--mb-color-bg-light);
+  border-radius: var(--default-border-radius);
+}
+
+.popoverListItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}

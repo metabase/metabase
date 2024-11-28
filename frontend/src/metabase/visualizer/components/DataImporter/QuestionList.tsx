@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { useListCardsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
-import { Box } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import { getVisualizationType } from "metabase/visualizer/selectors";
 import { createDataSource } from "metabase/visualizer/utils";
 import { isCategory, isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
@@ -12,6 +12,8 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/store/visualizer";
+
+import { DataTypeStack } from "./DataTypeStack";
 
 interface QuestionListProps {
   dataSourceIds: Set<VisualizerDataSourceId>;
@@ -22,7 +24,7 @@ export function QuestionList({ dataSourceIds, onSelect }: QuestionListProps) {
   const { data: cards = [], isLoading } = useListCardsQuery({ f: "all" });
   const display = useSelector(getVisualizationType);
 
-  const items = useMemo(() => {
+  const sortedCards = useMemo(() => {
     const calcScore = getScoreFn(display);
     const cardsWithScores = cards.map(card => ({
       card,
@@ -30,7 +32,7 @@ export function QuestionList({ dataSourceIds, onSelect }: QuestionListProps) {
     }));
     return _.sortBy(cardsWithScores, "score")
       .reverse()
-      .map(({ card }) => createDataSource("card", card.id, card.name));
+      .map(({ card }) => card);
   }, [cards, display]);
 
   if (isLoading) {
@@ -39,26 +41,46 @@ export function QuestionList({ dataSourceIds, onSelect }: QuestionListProps) {
 
   return (
     <Box component="ul">
-      {items.map(item => (
-        <Box
-          key={item.id}
-          component="li"
-          px={14}
-          py={10}
-          mb={4}
-          style={{
-            border: "1px solid var(--mb-color-border)",
-            borderRadius: 5,
-            cursor: "pointer",
-            backgroundColor: dataSourceIds.has(item.id)
-              ? "var(--mb-color-bg-light)"
-              : "transparent",
-          }}
-          onClick={() => onSelect(item)}
-        >
-          {item.name}
-        </Box>
-      ))}
+      {sortedCards.map(card => {
+        const dataSource = createDataSource("card", card.id, card.name);
+        return (
+          <Box
+            key={dataSource.id}
+            component="li"
+            px={14}
+            py={10}
+            mb={4}
+            style={{
+              border: "1px solid var(--mb-color-border)",
+              borderRadius: 5,
+              cursor: "pointer",
+              backgroundColor: dataSourceIds.has(dataSource.id)
+                ? "var(--mb-color-bg-medium)"
+                : "transparent",
+            }}
+            onClick={() => onSelect(dataSource)}
+          >
+            <Flex
+              direction="row"
+              align="center"
+              justify="space-between"
+              w="100%"
+            >
+              <Stack spacing="xs" maw="75%">
+                <Text truncate fw="bold">
+                  {card.name}
+                </Text>
+                {!!card.collection && (
+                  <Text truncate c="text-medium" size="sm">
+                    {card.collection.name}
+                  </Text>
+                )}
+              </Stack>
+              <DataTypeStack columns={card.result_metadata} />
+            </Flex>
+          </Box>
+        );
+      })}
     </Box>
   );
 }
