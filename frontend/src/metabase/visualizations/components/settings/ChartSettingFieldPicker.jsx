@@ -91,7 +91,6 @@ const ChartSettingFieldPicker = ({
         onChange={onChange}
         placeholder={t`Select a field`}
         placeholderNoOptions={t`No valid fields`}
-        isInitiallyOpen={value === undefined}
         hiddenIcons
       />
       {menuWidgetInfo && (

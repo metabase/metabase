@@ -54,7 +54,7 @@ export function fieldSetting(
       getProps: ([{ card, data }], vizSettings) => ({
         options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: data.cols,
-        showColumnSetting: showColumnSetting,
+        showColumnSetting,
       }),
       ...def,
     },
