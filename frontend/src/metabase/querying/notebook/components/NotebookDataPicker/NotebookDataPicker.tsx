@@ -1,4 +1,4 @@
-import { type MouseEvent, useState } from "react";
+import { type MouseEvent, type Ref, forwardRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -246,15 +246,19 @@ type DataPickerTargetProps = {
   onAuxClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
-function DataPickerTarget({
-  tableInfo,
-  placeholder,
-  isDisabled,
-  onClick,
-  onAuxClick,
-}: DataPickerTargetProps) {
+const DataPickerTarget = forwardRef(function DataPickerTarget(
+  {
+    tableInfo,
+    placeholder,
+    isDisabled,
+    onClick,
+    onAuxClick,
+  }: DataPickerTargetProps,
+  ref: Ref<HTMLButtonElement>,
+) {
   return (
     <UnstyledButton
+      ref={ref}
       c="inherit"
       fz="inherit"
       fw="inherit"
@@ -271,7 +275,7 @@ function DataPickerTarget({
       </Flex>
     </UnstyledButton>
   );
-}
+});
 
 function getTableIcon(tableInfo: Lib.TableDisplayInfo): IconName {
   switch (true) {
