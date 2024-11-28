@@ -339,8 +339,11 @@
       :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
              [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
              [:pg_catalog.pg_type :pt] [:= :pt.oid :pa.atttypid]]
-      :where [:and [:= :pc.relkind [:inline "m"]]
-              [:>= :pa.attnum 1]]}]
+      :where [:and
+              [:= :pc.relkind [:inline "m"]]
+              [:>= :pa.attnum 1]
+              (when schema-names [:in :pn.nspname schema-names])
+              (when table-names [:in :pc.relname table-names])]}]
     :order-by [:table-schema :table-name :database-position]}
    :dialect (sql.qp/quote-style driver)))
 

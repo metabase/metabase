@@ -89,6 +89,7 @@
    :week-of-year-instance
    :day-of-month
    :day-of-week
+   :day-of-week-iso
    :hour-of-day
    :minute-of-hour
    :second-of-minute])
@@ -658,7 +659,8 @@
   date DateTimeExpressionArg)
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day-of-week
-  date DateTimeExpressionArg)
+  date DateTimeExpressionArg
+  mode (optional [:ref ::ExtractWeekMode]))
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-hour
   datetime DateTimeExpressionArg)
