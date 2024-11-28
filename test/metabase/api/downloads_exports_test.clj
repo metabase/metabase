@@ -15,6 +15,7 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
+   [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -267,7 +268,7 @@
                       :visualization_settings {:pivot_table.column_split
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
-                                                :values  ["sum" "avg"]}
+                                                :values  ["sum"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -436,6 +437,53 @@
                         (group-by second)
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                         (apply concat))))))))))
+
+(deftest ^:parallel simple-pivot-export-works-even-with-table-column-ordering-test
+  (testing "Pivot table exports are not affected by table sort settings"
+    (testing "Try some permutations with csv"
+      (doseq [col-order   (math.combo/permutations [{:name "CATEGORY"}
+                                                    {:name "CREATED_AT"}
+                                                    {:name "sum"}])
+              col-enabled [true false]]
+        (mt/dataset test-data
+          (mt/with-temp [:model/Card card
+                         {:display                :pivot
+                          :visualization_settings {:table.columns
+                                                   ;; the :table.columns key specifies order/enabled status of columns for regular table viz
+                                                   ;; and should not cause pivot exports to fail.
+                                                   (mapv #(assoc % :enabled col-enabled) col-order)
+                                                   :pivot_table.column_split
+                                                   {:rows    ["CATEGORY"]
+                                                    :columns ["CREATED_AT"]
+                                                    :values  ["sum"]}
+                                                   :column_settings
+                                                   {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                          :currency_in_header false}}}
+                          :dataset_query          {:database (mt/id)
+                                                   :type     :query
+                                                   :query
+                                                   {:source-table (mt/id :products)
+                                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                                   [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+            (testing "they work regardless of the table.columns setting"
+              (is (= [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                      ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                      ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                      ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                      ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                      ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
+                     (card-download card {:export-format :csv :format-rows true :pivot true}))))
+            (testing "the xlsx export has a pivot table"
+              (let [result (mt/user-http-request :crowberto :post 200
+                                                 (format "card/%d/query/xlsx" (:id card))
+                                                 :format_rows   true
+                                                 :pivot_results true)
+                    pivot  (with-open [in (io/input-stream result)]
+                             (->> (spreadsheet/load-workbook in)
+                                  (spreadsheet/select-sheet "pivot")
+                                  ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
+                (is (some? pivot))))))))))
 
 (deftest ^:parallel pivot-export-test
   []
