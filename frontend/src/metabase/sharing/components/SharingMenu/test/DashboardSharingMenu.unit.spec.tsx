@@ -240,22 +240,22 @@ describe("DashboardSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      it("should show the 'Embed' menu item if embedding is enabled", async () => {
+      it("should not show the 'Embed' menu item if embedding is enabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: true,
         });
         await openMenu();
-        expect(screen.getByText("Embed")).toBeInTheDocument();
+        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
 
-      it("should show the 'Embed' menu item if embedding is disabled", async () => {
+      it("should not show the 'Embed' menu item if embedding is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: false,
         });
         await openMenu();
-        expect(screen.getByText("Embed")).toBeInTheDocument();
+        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
     });
   });

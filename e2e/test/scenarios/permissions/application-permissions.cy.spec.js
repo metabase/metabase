@@ -14,6 +14,7 @@ import {
   setTokenFeatures,
   setupSMTP,
   sharingMenu,
+  sharingMenuButton,
   sidebar,
   tableInteractive,
   undoToast,
@@ -83,8 +84,7 @@ describeEE("scenarios > admin > permissions > application", () => {
 
         visitQuestion(ORDERS_QUESTION_ID);
         tableInteractive().should("be.visible");
-        openSharingMenu();
-        sharingMenu().findByText(/alert/i).should("not.exist");
+        sharingMenuButton().should("be.disabled");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {

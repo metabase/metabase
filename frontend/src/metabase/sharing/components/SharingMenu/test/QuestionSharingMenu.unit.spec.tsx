@@ -225,28 +225,22 @@ describe("QuestionSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      describe("when embedding is disabled", () => {
-        it("should open the embed modal when the 'Embed' menu item is clicked", async () => {
-          setupQuestionSharingMenu({
-            isAdmin: false,
-            isEmbeddingEnabled: false,
-          });
-          await openMenu();
-          await userEvent.click(screen.getByText("Embed"));
-          expect(await screen.findByText("Embed Metabase")).toBeInTheDocument();
+      it("should not show the 'Embed' menu item if embedding is enabled", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: false,
+          isEmbeddingEnabled: true,
         });
+        await openMenu();
+        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
 
-      describe("when embedding is enabled", () => {
-        it("should open the embed modal when the 'Embed' menu item is clicked", async () => {
-          setupQuestionSharingMenu({
-            isAdmin: false,
-            isEmbeddingEnabled: true,
-          });
-          await openMenu();
-          await userEvent.click(screen.getByText("Embed"));
-          expect(await screen.findByText("Embed Metabase")).toBeInTheDocument();
+      it("should not show the 'Embed' menu item if embedding is disabled", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: false,
+          isEmbeddingEnabled: false,
         });
+        await openMenu();
+        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
     });
   });

@@ -55,7 +55,7 @@ import {
       });
 
       describe("when user is non-admin", () => {
-        it(`should always show the embed button for ${resource}`, () => {
+        it(`should not show embed button for ${resource}`, () => {
           cy.signInAsNormalUser();
 
           cy.get("@resourceId").then(id => {
@@ -63,10 +63,7 @@ import {
           });
 
           openSharingMenu();
-          sharingMenu()
-            .findByRole("menuitem", { name: "Embed" })
-            .should("be.visible")
-            .and("be.enabled");
+          sharingMenu().findByText(/embed/i).should("not.exist");
         });
       });
     });

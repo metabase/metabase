@@ -11,37 +11,47 @@ describe("QuestionSharingMenu > Enterprise", () => {
       canManageSubscriptions: true,
       isEmailSetup: true,
       isEnterprise: true,
+      isAdmin: false,
     });
     await openMenu();
     expect(screen.getByText("Create alert")).toBeInTheDocument();
   });
 
   describe("alerts permission disabled", () => {
-    it('should not show the "Subscriptions" menu item to non-admins if the user lacks alerts permissions', async () => {
-      setupQuestionSharingMenu({
+    it('Should not show the "Subscriptions" menu item to non-admins if the user lacks subscriptions/alerts permissions', async () => {
+      await setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isEmailSetup: true,
         isEnterprise: true,
       });
       await openMenu();
-
       expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
     });
 
-    it("clicking the public link menu item should open the public link popover", async () => {
+    it('should show a "Public link" button item if public sharing is enabled and the user lacks alerts permissions', async () => {
       setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isPublicSharingEnabled: true,
         hasPublicLink: true,
         isEnterprise: true,
       });
-      await openMenu();
+      const sharingButton = screen.getByTestId("sharing-menu-button");
 
-      expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
+      expect(sharingButton).toBeEnabled();
+      expect(sharingButton).toHaveAttribute("aria-label", "Public link");
+    });
 
-      await userEvent.click(
-        screen.getByRole("menuitem", { name: "Public link" }),
-      );
+    it("clicking the sharing button should open the public link popover", async () => {
+      setupQuestionSharingMenu({
+        canManageSubscriptions: false,
+        isAdmin: false,
+        isPublicSharingEnabled: true,
+        hasPublicLink: true,
+        isEnterprise: true,
+      });
+
+      await userEvent.click(screen.getByTestId("sharing-menu-button"));
+
       expect(
         screen.getByTestId("public-link-popover-content"),
       ).toBeInTheDocument();
@@ -50,37 +60,36 @@ describe("QuestionSharingMenu > Enterprise", () => {
       );
     });
 
-    it("should show a disabled 'ask your admin to create a public link' menu item if public sharing is disabled", async () => {
+    it("should show a 'ask your admin to create a public link' tooltip if public sharing is disabled", async () => {
       setupQuestionSharingMenu({
         isPublicSharingEnabled: false,
         hasPublicLink: true,
         canManageSubscriptions: false,
         isEnterprise: true,
       });
-      await openMenu();
+      const sharingButton = screen.getByTestId("sharing-menu-button");
 
-      expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("menuitem", {
-          name: "Ask your admin to create a public link",
-        }),
-      ).toBeDisabled();
+      expect(sharingButton).toBeDisabled();
+      expect(sharingButton).toHaveAttribute(
+        "aria-label",
+        "Ask your admin to create a public link",
+      );
     });
 
-    it("should show a disabled 'ask your admin to create a public link' menu item if public sharing is enabled, but there is no existing public link", async () => {
+    it("should show a 'ask your admin to create a public link' menu item if public sharing is enabled, but there is no existing public link", async () => {
       setupQuestionSharingMenu({
+        isAdmin: false,
         isPublicSharingEnabled: true,
         canManageSubscriptions: false,
         hasPublicLink: false,
       });
-      await openMenu();
+      const sharingButton = screen.getByTestId("sharing-menu-button");
 
-      expect(screen.queryByText("Create alert")).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("menuitem", {
-          name: "Ask your admin to create a public link",
-        }),
-      ).toBeDisabled();
+      expect(sharingButton).toBeDisabled();
+      expect(sharingButton).toHaveAttribute(
+        "aria-label",
+        "Ask your admin to create a public link",
+      );
     });
   });
 
