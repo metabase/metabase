@@ -324,7 +324,8 @@ describeEE("scenarios > embedding > full app", () => {
   });
 
   describe("notebook", () => {
-    const cardDetails = {
+    const cardTypes = ["question", "model", "metric"];
+    const baseCardDetails = {
       name: "Card",
       type: "question",
       query: {
@@ -335,6 +336,8 @@ describeEE("scenarios > embedding > full app", () => {
 
     const cardTypeToLabel = {
       question: "Saved Questions",
+      model: "Models",
+      metric: "Metrics",
     };
 
     function startNewEmbeddingQuestion() {
@@ -473,7 +476,7 @@ describeEE("scenarios > embedding > full app", () => {
         },
       );
 
-      it("should be able to join a table", () => {
+      it("should be able to join a table when the data source is a table", () => {
         startNewEmbeddingQuestion();
         selectTable({
           tableName: "Orders",
@@ -487,131 +490,131 @@ describeEE("scenarios > embedding > full app", () => {
         });
       });
 
-      it("should be able to join a question", () => {
+      it("should be able to join a table when the data source is a question", () => {
         startNewEmbeddingQuestion();
-        selectTable({
-          tableName: "Products",
+        selectCard({
+          cardName: "Orders",
         });
         getNotebookStep("data").button("Join data").click();
         popover().within(() => {
           cy.icon("chevronleft").click();
           cy.icon("chevronleft").click();
         });
-        selectCard({
-          cardName: "Orders",
-          cardType: "question",
-          collectionNames: [],
+        selectTable({
+          tableName: "Products",
         });
-        clickOnJoinDataSource("Orders");
-        verifyCardSelected({
-          cardName: "Orders",
-          collectionName: "Our analytics",
+        clickOnJoinDataSource("Products");
+        verifyTableSelected({
+          tableName: "Products",
+          databaseName: "Sample Database",
         });
       });
     });
 
-    describe("questions", () => {
-      it("should select a question in the root collection", () => {
-        const questionDetails = {
-          ...cardDetails,
-          type: "question",
-          collection_id: null,
-        };
-        createQuestion(questionDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: questionDetails.name,
-          cardType: questionDetails.type,
-          collectionNames: [],
+    describe("cards", () => {
+      cardTypes.forEach(cardType => {
+        it(`should select a ${cardType} in the root collection`, () => {
+          const cardDetails = {
+            ...baseCardDetails,
+            type: cardType,
+            collection_id: null,
+          };
+          createQuestion(cardDetails);
+          startNewEmbeddingQuestion();
+          selectCard({
+            cardName: cardDetails.name,
+            cardType: cardDetails.type,
+            collectionNames: [],
+          });
+          clickOnDataSource(baseCardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "Our analytics",
+          });
         });
-        clickOnDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: questionDetails.name,
-          collectionName: "Our analytics",
-        });
-      });
 
-      it("should select a question in a regular collection", () => {
-        const questionDetails = {
-          ...cardDetails,
-          type: "question",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        createQuestion(questionDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: questionDetails.name,
-          cardType: questionDetails.type,
-          collectionNames: ["First collection"],
+        it(`should select a ${cardType} in a regular collection`, () => {
+          const cardDetails = {
+            ...baseCardDetails,
+            type: cardType,
+            collection_id: FIRST_COLLECTION_ID,
+          };
+          createQuestion(cardDetails);
+          startNewEmbeddingQuestion();
+          selectCard({
+            cardName: cardDetails.name,
+            cardType: cardDetails.type,
+            collectionNames: ["First collection"],
+          });
+          clickOnDataSource(baseCardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "First collection",
+          });
         });
-        clickOnDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: questionDetails.name,
-          collectionName: "First collection",
-        });
-      });
 
-      it("should select a question in a nested collection", () => {
-        const questionDetails = {
-          ...cardDetails,
-          type: "question",
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        createQuestion(questionDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: questionDetails.name,
-          cardType: questionDetails.type,
-          collectionNames: ["First collection", "Second collection"],
+        it(`should select a ${cardType} in a nested collection`, () => {
+          const cardDetails = {
+            ...baseCardDetails,
+            type: cardType,
+            collection_id: SECOND_COLLECTION_ID,
+          };
+          createQuestion(cardDetails);
+          startNewEmbeddingQuestion();
+          selectCard({
+            cardName: cardDetails.name,
+            cardType: cardDetails.type,
+            collectionNames: ["First collection", "Second collection"],
+          });
+          clickOnDataSource(baseCardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "Second collection",
+          });
         });
-        clickOnDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: questionDetails.name,
-          collectionName: "Second collection",
-        });
-      });
 
-      it("should select a question in a personal collection", () => {
-        const questionDetails = {
-          ...cardDetails,
-          type: "question",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        createQuestion(questionDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: questionDetails.name,
-          cardType: questionDetails.type,
-          collectionNames: ["Your personal collection"],
+        it(`should select a ${cardType} in a personal collection`, () => {
+          const cardDetails = {
+            ...baseCardDetails,
+            type: cardType,
+            collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+          };
+          createQuestion(cardDetails);
+          startNewEmbeddingQuestion();
+          selectCard({
+            cardName: cardDetails.name,
+            cardType: cardDetails.type,
+            collectionNames: ["Your personal collection"],
+          });
+          clickOnDataSource(baseCardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "Your personal collection",
+          });
         });
-        clickOnDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: questionDetails.name,
-          collectionName: "Your personal collection",
-        });
-      });
 
-      it("should select a question in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const questionDetails = {
-          ...cardDetails,
-          type: "question",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        createQuestion(questionDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: questionDetails.name,
-          cardType: questionDetails.type,
-          collectionNames: [
-            "All personal collections",
-            "Robert Tableton's Personal Collection",
-          ],
-        });
-        clickOnDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: questionDetails.name,
-          collectionName: "Robert Tableton's Personal Collection",
+        it(`should select a ${cardType} in another user personal collection`, () => {
+          cy.signInAsAdmin();
+          const cardDetails = {
+            ...baseCardDetails,
+            type: cardType,
+            collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+          };
+          createQuestion(cardDetails);
+          startNewEmbeddingQuestion();
+          selectCard({
+            cardName: cardDetails.name,
+            cardType: cardDetails.type,
+            collectionNames: [
+              "All personal collections",
+              "Robert Tableton's Personal Collection",
+            ],
+          });
+          clickOnDataSource(baseCardDetails.name);
+          verifyCardSelected({
+            cardName: cardDetails.name,
+            collectionName: "Robert Tableton's Personal Collection",
+          });
         });
       });
     });
