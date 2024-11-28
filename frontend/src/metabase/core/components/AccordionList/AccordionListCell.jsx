@@ -123,6 +123,7 @@ export const AccordionListCell = ({
           )}
           {name && (
             <Text
+              role="heading"
               data-element-id="list-section-title"
               className={cx(ListS.ListSectionTitle, CS.textWrap)}
               fz="lg"
@@ -289,6 +290,7 @@ export const AccordionListCell = ({
           <div>
             {name && (
               <Text
+                role="heading"
                 lh="normal"
                 fw="bold"
                 data-element-id="list-item-title"
