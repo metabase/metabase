@@ -427,7 +427,7 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  isLoadingDatasets = () => this.props.loading;
+  isLoadingDatasets = () => this.props.allLoading;
 
   getCardType() {
     const { selectedDataBucketId, savedEntityType } = this.state;
