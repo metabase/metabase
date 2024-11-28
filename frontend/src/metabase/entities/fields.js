@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import {
   fieldApi,
+  skipToken,
   useGetFieldQuery,
   useGetFieldValuesQuery,
 } from "metabase/api";
@@ -239,8 +240,8 @@ const Fields = createEntity({
   ),
 });
 
-const useGetFetchFieldValuesQuery = ({ id }) => {
-  return useGetFieldValuesQuery(id);
+const useGetFetchFieldValuesQuery = query => {
+  return useGetFieldValuesQuery(query === skipToken ? skipToken : query.id);
 };
 
 export default Fields;
