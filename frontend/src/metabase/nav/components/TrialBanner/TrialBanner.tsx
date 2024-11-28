@@ -20,6 +20,9 @@ export const TrialBanner = ({
     "trial-banner-dismissal-timestamp",
   );
 
+  // Both `daysRemaining` and `showBanner` are supposed to share this same timestamp as an input.
+  // We could've calculated the current timestamp from within each of these functions,
+  // but that would've made them impure and harder to test.
   const currentTimestamp = dayjs().toISOString();
 
   const daysRemaining = calculateDaysUntilTokenExpiry({
@@ -46,7 +49,9 @@ export const TrialBanner = ({
   const href = getStoreUrl("account/manage/plans");
 
   const handleBannerClose = () => {
-    setLastDismissed(dayjs().toISOString());
+    // We need a fresh timestamp here
+    const now = dayjs().toISOString();
+    setLastDismissed(now);
   };
 
   return (
