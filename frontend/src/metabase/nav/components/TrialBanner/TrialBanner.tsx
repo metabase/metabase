@@ -8,45 +8,46 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { getStoreUrl } from "metabase/selectors/settings";
 import { Flex, Text } from "metabase/ui";
-import type { TokenStatus } from "metabase-types/api";
-export const TrialBanner = ({ tokenStatus }: { tokenStatus: TokenStatus }) => {
+
+import { calculateDaysUntilTokenExpiry, shouldShowBanner } from "./utils";
+
+export const TrialBanner = ({
+  tokenExpiryTimestamp,
+}: {
+  tokenExpiryTimestamp: string;
+}) => {
   const [lastDismissed, setLastDismissed] = useUserSetting(
     "trial-banner-dismissal-timestamp",
   );
 
-  const now = dayjs();
-  const tokenExpiryDate = dayjs(tokenStatus["valid-thru"]);
+  const currentTimestamp = dayjs().toISOString();
 
-  const daysRemaining = tokenExpiryDate.diff(now, "day");
+  const daysRemaining = calculateDaysUntilTokenExpiry({
+    currentTime: currentTimestamp,
+    tokenExpiry: tokenExpiryTimestamp,
+  });
+
   const lastDay = daysRemaining === 0;
 
-  const shouldShowBanner = useMemo(() => {
-    // No banner if the trial already expired
-    if (daysRemaining < 0) {
-      return false;
-    }
+  const showBanner = useMemo(
+    () =>
+      shouldShowBanner({
+        now: currentTimestamp,
+        daysRemaining,
+        lastDismissed,
+      }),
+    [currentTimestamp, daysRemaining, lastDismissed],
+  );
 
-    // In the last 3 days, check dismissal logic daily
-    if (daysRemaining <= 3) {
-      const wasDismissedToday =
-        !!lastDismissed && dayjs().isSame(lastDismissed, "day");
-
-      return !wasDismissedToday;
-    }
-
-    // Otherwise, just check if it was ever dismissed
-    return !lastDismissed;
-  }, [daysRemaining, lastDismissed]);
+  if (!showBanner) {
+    return null;
+  }
 
   const href = getStoreUrl("account/manage/plans");
 
   const handleBannerClose = () => {
     setLastDismissed(dayjs().toISOString());
   };
-
-  if (!shouldShowBanner) {
-    return null;
-  }
 
   return (
     <Banner

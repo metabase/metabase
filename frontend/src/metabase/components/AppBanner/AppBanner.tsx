@@ -12,7 +12,8 @@ export const AppBanner = () => {
   const tokenStatus = useSetting("token-status");
   const readOnly = useSetting("read-only-mode");
 
-  const shouldRenderTrialBanner = tokenStatus?.trial && isHosted;
+  const tokenExpiryTimestamp = tokenStatus?.["valid-thru"];
+  const isValidTrial = tokenExpiryTimestamp && tokenStatus?.trial && isHosted;
 
   const paymentStatuses = ["past-due", "unpaid", "invalid"];
   const shouldRenderPaymentBanner =
@@ -31,8 +32,8 @@ export const AppBanner = () => {
     return <ReadOnlyBanner />;
   }
 
-  if (shouldRenderTrialBanner) {
-    return <TrialBanner tokenStatus={tokenStatus} />;
+  if (isValidTrial) {
+    return <TrialBanner tokenExpiryTimestamp={tokenExpiryTimestamp} />;
   }
 
   if (shouldRenderPaymentBanner) {
