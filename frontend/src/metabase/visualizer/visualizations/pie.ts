@@ -3,7 +3,6 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
-  checkColumnMappingExists,
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
@@ -49,14 +48,11 @@ export const pieDropHandler = (
   }
 
   if (over.id === DROPPABLE_ID.PIE_DIMENSION) {
-    const isInUse = Object.values(state.columnValuesMapping).some(
-      valueSources => checkColumnMappingExists(valueSources, columnRef),
-    );
+    const dimensions = state.settings["pie.dimension"] ?? [];
+    const isInUse = dimensions.includes(columnRef.name);
     if (isInUse) {
       return;
     }
-
-    const dimensions = state.settings["pie.dimension"] ?? [];
 
     const newDimension = copyColumn(columnRef.name, column);
     state.columns.push(newDimension);

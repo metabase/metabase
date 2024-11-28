@@ -64,7 +64,7 @@ export function compareColumnReferences(
   return r1.sourceId === r2.sourceId && r1.originalName === r2.originalName;
 }
 
-export function checkColumnMappingExists(
+function checkColumnMappingExists(
   columnValueSources: VisualizerColumnValueSource[],
   valueSource: VisualizerColumnValueSource,
 ) {

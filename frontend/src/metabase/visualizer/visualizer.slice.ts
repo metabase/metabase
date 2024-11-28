@@ -216,17 +216,45 @@ const visualizerHistoryItemSlice = createSlice({
       })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
+
+        const columnsToRemove: string[] = [];
+        const columnVizSettings = state.display
+          ? getColumnVizSettings(state.display)
+          : [];
+
         state.columnValuesMapping = _.mapObject(
           state.columnValuesMapping,
-          valueSources =>
-            valueSources.filter(valueSource => {
+          (valueSources, columnName) => {
+            const nextValueSources = valueSources.filter(valueSource => {
               if (typeof valueSource === "string") {
                 const dataSourceId = getDataSourceIdFromNameRef(valueSource);
                 return dataSourceId !== source.id;
               }
               return valueSource.sourceId !== source.id;
-            }),
+            });
+            if (nextValueSources.length === 0) {
+              columnsToRemove.push(columnName);
+            }
+            return nextValueSources;
+          },
         );
+
+        state.columns = state.columns.filter(
+          column => !columnsToRemove.includes(column.name),
+        );
+        columnsToRemove.forEach(columName => {
+          delete state.columnValuesMapping[columName];
+        });
+        columnVizSettings.forEach(setting => {
+          const value = state.settings[setting];
+          if (columnsToRemove.includes(value)) {
+            delete state.settings[setting];
+          } else if (Array.isArray(value)) {
+            state.settings[setting] = value.filter(
+              v => !columnsToRemove.includes(v),
+            );
+          }
+        });
       })
       .addCase(fetchCardQuery.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;

@@ -2,7 +2,6 @@ import type { DragEndEvent } from "@dnd-kit/core";
 
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  checkColumnMappingExists,
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
@@ -69,10 +68,7 @@ export const cartesianDropHandler = (
 
   if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
     const dimensions = state.settings["graph.dimensions"] ?? [];
-
-    const isInUse = Object.values(state.columnValuesMapping).some(
-      valueSources => checkColumnMappingExists(valueSources, columnRef),
-    );
+    const isInUse = dimensions.includes(columnRef.name);
     if (isInUse) {
       return;
     }
@@ -109,10 +105,7 @@ export function addMetricColumnToCartesianChart(
   columnRef: VisualizerColumnReference,
 ) {
   const metrics = state.settings["graph.metrics"] ?? [];
-
-  const isInUse = Object.values(state.columnValuesMapping).some(valueSources =>
-    checkColumnMappingExists(valueSources, columnRef),
-  );
+  const isInUse = metrics.includes(columnRef.name);
   if (isInUse) {
     return;
   }
