@@ -59,7 +59,7 @@ function InteractiveQuestionTestResult() {
   return (
     <div>
       <button onClick={resetQuestion}>Run Query</button>
-      <InteractiveQuestionResult withTitle />
+      <InteractiveQuestionResult withTitle withVisualizationSelector />
     </div>
   );
 }
