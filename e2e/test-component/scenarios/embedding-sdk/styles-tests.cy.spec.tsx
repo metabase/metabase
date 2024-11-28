@@ -1,10 +1,12 @@
 import {
+  CreateDashboardModal,
+  InteractiveQuestion,
   MetabaseProvider,
   StaticQuestion,
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, updateSetting } from "e2e/support/helpers";
+import { describeEE, modal, updateSetting } from "e2e/support/helpers";
 import {
   DEFAULT_SDK_PROVIDER_CONFIG,
   mockAuthProviderAndJwtSignIn,
@@ -12,7 +14,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+describeEE("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -218,6 +220,55 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       getSdkRoot()
         .findByText("Product ID")
         .should("have.css", "font-family", "Custom, sans-serif");
+    });
+  });
+
+  describe("modals and tooltips", () => {
+    it("legacy WindowModal modals should render with our styles", () => {
+      // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
+      cy.mount(
+        <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+          <CreateDashboardModal />
+        </MetabaseProvider>,
+      );
+
+      modal()
+        .findByText("New dashboard")
+        .should("exist")
+        .and("have.css", "font-family", "Lato, sans-serif");
+
+      // TODO: good place for a visual regression test
+    });
+
+    it("mantine modals should render with our styles", () => {
+      cy.mount(
+        <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot().findByText("Summarize").click();
+      getSdkRoot().findByText("Add a function or metric").click();
+      getSdkRoot().findByText("Count of rows").click();
+      getSdkRoot().findByText("Apply").click();
+      getSdkRoot().findByText("Save").click();
+
+      getSdkRoot()
+        .findByText("Save question")
+        .should("exist")
+        .and("have.css", "font-family", "Lato, sans-serif");
+
+      // TODO: good place for a visual regression test
+
+      getSdkRoot().findByText("Save as new question").click();
+      getSdkRoot().findByText("Our analytics").click();
+
+      getSdkRoot()
+        .findByText("Select a collection")
+        .should("exist")
+        .and("have.css", "font-family", "Lato, sans-serif");
+
+      // TODO: good place for a visual regression test
     });
   });
 });
