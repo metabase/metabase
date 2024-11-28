@@ -53,21 +53,30 @@ const TEST_DATASET = createMockDataset({
 });
 
 // Provides a button to re-run the query
-function InteractiveQuestionTestResult() {
+function InteractiveQuestionTestResult({
+  withChartTypeSelector,
+}: {
+  withChartTypeSelector: boolean;
+}) {
   const { resetQuestion } = useInteractiveQuestionContext();
 
   return (
     <div>
       <button onClick={resetQuestion}>Run Query</button>
-      <InteractiveQuestionResult withTitle withVisualizationSelector />
+      <InteractiveQuestionResult
+        withTitle
+        withChartTypeSelector={withChartTypeSelector}
+      />
     </div>
   );
 }
 
 const setup = ({
   isValidCard = true,
+  withChartTypeSelector = true,
 }: {
   isValidCard?: boolean;
+  withChartTypeSelector?: boolean;
 } = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
@@ -94,7 +103,9 @@ const setup = ({
 
   return renderWithProviders(
     <InteractiveQuestion questionId={TEST_CARD.id}>
-      <InteractiveQuestionTestResult />
+      <InteractiveQuestionTestResult
+        withChartTypeSelector={withChartTypeSelector}
+      />
     </InteractiveQuestion>,
     {
       mode: "sdk",
@@ -171,5 +182,23 @@ describe("InteractiveQuestion", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Question not found")).toBeInTheDocument();
+  });
+
+  it("should show a chart type selector button if withChartTypeSelector is true", async () => {
+    setup({ withChartTypeSelector: true });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.getByTestId("chart-type-selector-button"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show a chart type selector button if withChartTypeSelector is false", async () => {
+    setup({ withChartTypeSelector: false });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.queryByTestId("chart-type-selector-button"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -59,7 +59,7 @@ export const _InteractiveQuestion = ({
   entityTypeFilter,
   isSaveEnabled,
   saveToCollectionId,
-  withVisualizationSelector = true,
+  withChartTypeSelector = true,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
@@ -81,7 +81,7 @@ export const _InteractiveQuestion = ({
         customTitle={customTitle}
         withResetButton={withResetButton}
         withTitle={withTitle}
-        withVisualizationSelector={withVisualizationSelector}
+        withChartTypeSelector={withChartTypeSelector}
       />
     )}
   </InteractiveQuestionProvider>

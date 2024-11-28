@@ -42,7 +42,7 @@ export const InteractiveAdHocQuestion = ({
         <InteractiveQuestionResult
           height={height}
           withTitle={withTitle}
-          withVisualizationSelector
+          withChartTypeSelector
         />
       )}
     </InteractiveQuestionProviderWithLocation>
