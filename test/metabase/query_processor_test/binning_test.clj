@@ -17,10 +17,10 @@
           query (as-> (lib/query mp (lib.metadata/table mp (mt/id table-key))) $
                   (lib/aggregate $ (lib/count))
                   (lib/breakout $ (lib/with-binning (lib.metadata/field mp (mt/id table-key field-key))
-                                    (m/find-first (comp #{binning-name} :display-name)
-                                                  (lib/available-binning-strategies
-                                                   $
-                                                   (lib.metadata/field mp (mt/id table-key field-key)))))))]
+                                                    (m/find-first (comp #{binning-name} :display-name)
+                                                                  (lib/available-binning-strategies
+                                                                   $
+                                                                   (lib.metadata/field mp (mt/id table-key field-key)))))))]
       (testing "Binning is suffixed to columns display name"
         (is expected-display-name
             (-> (qp/process-query query) mt/cols first :display_name)))
