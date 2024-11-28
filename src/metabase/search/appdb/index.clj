@@ -3,11 +3,13 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.config :as config]
    [metabase.models.setting :refer [defsetting]]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
+   [metabase.search.util :as search.util]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -15,6 +17,12 @@
 
 (comment
   postgres/keep-me)
+
+(def ^:private ^:dynamic *index-version-id*
+  "Dynamic for testing"
+  (if config/is-prod?
+    (:hash config/mb-version-info)
+    (str (random-uuid))))
 
 (def ^:private insert-batch-size 150)
 
@@ -58,19 +66,22 @@
                   :from   :information_schema.tables
                   :where  [:like :table_name "search_index__%"]})))
 
-(defn- sync-tables [old-metadata new-metadata]
+(defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by no keywordizing the keys.
-  (let [old-metadata                         (json/parse-string old-metadata)
-        {:strs [active-table pending-table]} (json/parse-string new-metadata)
+  (let [new-setting                          (json/parse-string new-setting-raw)
+        this-index-metadata                  #(get-in % ["versions" *index-version-id*])
+        {:strs [active-table pending-table]} (this-index-metadata new-setting)
         ;; implicitly clear the pending table if we just activated it
         pending-table                        (when (not= active-table pending-table) pending-table)]
     (reset! *active-table* (some-> active-table keyword))
     (reset! *pending-table* (some-> pending-table keyword))
     ;; Clean up any tables not referenced by the previous or current configuration
-    (let [keep-table? (->> (map (or old-metadata {}) ["active-table" "pending-table"])
-                           (list* active-table pending-table)
-                           (into #{} (comp (filter some?) (map keyword))))
-          to-drop (remove keep-table? (existing-indexes))]
+    (let [keep-table? (set (for [[_ index-metadata] (get new-setting "versions")
+                                 k ["active-table" "pending-table"]
+                                 :let [table-name (get index-metadata k)]
+                                 :when table-name]
+                             table-name))
+          to-drop     (remove keep-table? (existing-indexes))]
       (when (seq to-drop)
         (log/infof "Dropping %d stale indexes" (count to-drop))
         (t2/query (apply sql.helpers/drop-table to-drop))))))
@@ -82,12 +93,18 @@
   :export?    false
   :default    nil
   :type       :json
-  :on-change sync-tables)
+  :on-change sync-metadata)
 
 (defn- update-metadata! [new-metadata]
   (when-not *mocking-tables*
     (search-engine-appdb-index-state!
-     (merge (search-engine-appdb-index-state) new-metadata))))
+     (let [existing-state  (search-engine-appdb-index-state)
+           active-versions (search.util/cycle-recent-versions (:recent-versions existing-state) *index-version-id*)]
+       (-> existing-state
+           (assoc :recent-versions active-versions)
+           ;; Settings hydration parses all keys as keywords
+           (update :versions select-keys (map keyword active-versions))
+           (update-in [:versions *index-version-id*] merge new-metadata))))))
 
 (comment
   (search-engine-appdb-index-state! nil))
