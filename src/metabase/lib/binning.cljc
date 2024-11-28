@@ -1,6 +1,7 @@
 (ns metabase.lib.binning
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -209,11 +210,17 @@
       u/kebab-keys
       (set/rename-keys {:binning-strategy :strategy})))
 
+(defn ends-with-binning?
+  "Decide whether string `s` has binning suffix based on `binning-options`."
+  [s binning-options semantic-type]
+  (str/ends-with? s (str ": " (binning-display-name binning-options semantic-type))))
+
 (defn ensure-ends-with-binning
   "Ensure that `s` is suffixed by appropriate binning info."
   [s binning-options semantic-type]
   (if (or (not (string? s))
-          (not (:strategy binning-options)))
+          (not (:strategy binning-options))
+          (ends-with-binning? s binning-options semantic-type))
     s
     (lib.util/format "%s: %s" s (binning-display-name binning-options semantic-type))))
 

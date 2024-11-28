@@ -283,9 +283,10 @@
                        qp.store/->legacy-metadata)))))
 
       (:binning opts)
-      (assoc :binning_info (-> (:binning opts)
-                               (set/rename-keys {:strategy :binning-strategy})
-                               u/snake-keys))
+      (-> (assoc :binning_info (-> (:binning opts)
+                                   (set/rename-keys {:strategy :binning-strategy})
+                                   u/snake-keys))
+          (assoc :was_binned true))
 
       (:temporal-unit opts)
       (assoc :unit (:temporal-unit opts))
