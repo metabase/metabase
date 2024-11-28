@@ -81,5 +81,8 @@
       (b/uber
        {:class-dir (c/compiled-source-target-dir driver)
         :uber-file (c/driver-jar-destination-path driver)
-        :basis     (uberjar-basis driver edition)})
+        :basis     (uberjar-basis driver edition)
+        ;; we need to skip this file since on MacOS it conflicts with other licenses, see:
+        ;; https://ask.clojure.org/index.php/13231/switch-tools-build-pull-from-jars-rather-than-exploding-onto
+        :exclude   ["META-INF/LICENSE"]})
       (u/announce "Created uberjar in %d ms." (- (System/currentTimeMillis) start-time-ms)))))
