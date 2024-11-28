@@ -58,6 +58,7 @@ describe("createSankeyClickData", () => {
         level: 0,
         hasInputs: false,
         hasOutputs: true,
+        origin: "both" as const,
         inputColumnValues: {
           [getColumnKey(columns[0])]: "A",
           [getColumnKey(columns[1])]: "B",
@@ -97,6 +98,7 @@ describe("createSankeyClickData", () => {
         level: 1,
         hasInputs: true,
         hasOutputs: false,
+        origin: "target" as const,
         inputColumnValues: {
           [getColumnKey(columns[0])]: "A",
           [getColumnKey(columns[1])]: "B",

@@ -26,10 +26,10 @@ const ChartItemTooltip = ({
   let header = "";
   let value = null;
   if (params.dataType === "edge") {
-    header = `${formatters.node(data.source)} → ${formatters.node(data.target)}`;
+    header = `${formatters.source(data.source)} → ${formatters.target(data.target)}`;
     value = params.value;
   } else if (params.dataType === "node") {
-    header = formatters.node(data.name);
+    header = formatters.node(data);
     value = Math.max(
       data.inputColumnValues[metricColumnKey] ?? 0,
       data.outputColumnValues[metricColumnKey] ?? 0,
