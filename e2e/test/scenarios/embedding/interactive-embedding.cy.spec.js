@@ -24,6 +24,7 @@ import {
   goToTab,
   navigationSidebar,
   popover,
+  resetTestTable,
   restore,
   resyncDatabase,
   setTokenFeatures,
@@ -481,9 +482,10 @@ describeEE("scenarios > embedding > full app", () => {
         "should select a table when there are multiple schemas",
         { tags: "@external" },
         () => {
+          resetTestTable({ type: "postgres", table: "multi_schema" });
           restore("postgres-writable");
           cy.signInAsAdmin();
-          resyncDatabase({ dbId: WRITABLE_DB_ID });
+          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "multi_schema" });
           startNewEmbeddingQuestion();
           selectTable({
             tableName: "Animals",
