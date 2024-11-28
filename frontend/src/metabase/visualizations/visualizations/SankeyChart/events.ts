@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 import type {
   ColumnKey,
-  SankeyChartModel,
+  SankeyChartColumns,
   SankeyLink,
   SankeyNode,
 } from "metabase/visualizations/echarts/graph/sankey/model/types";
@@ -44,9 +44,49 @@ const isSankeyNodeEvent = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
 ): event is EChartsSeriesMouseEvent<SankeyNode> => event.dataType === "node";
 
+export const createSankeyClickData = (
+  event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
+  sankeyColumns: SankeyChartColumns,
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+): ClickObject => {
+  const clickData: ClickObject = {
+    event: event.event.event,
+    settings,
+  };
+
+  if (isSankeyNodeEvent(event)) {
+    const source = sankeyColumns.source;
+    const target = sankeyColumns.target;
+
+    clickData.column = event.data.hasInputs ? target.column : source.column;
+    clickData.value = event.data.rawName;
+
+    clickData.data = getSankeyClickData(
+      rawSeries,
+      event.data.inputColumnValues,
+      (_col, index) => index === source.index || index === target.index,
+    );
+  } else if (isSankeyEdgeEvent(event)) {
+    clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);
+    clickData.dimensions = [
+      {
+        column: sankeyColumns.source.column,
+        value: event.data.source,
+      },
+      {
+        column: sankeyColumns.target.column,
+        value: event.data.target,
+      },
+    ];
+  }
+
+  return clickData;
+};
+
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
-  chartModel: SankeyChartModel,
+  sankeyColumns: SankeyChartColumns,
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   onVisualizationClick: VisualizationProps["onVisualizationClick"],
@@ -57,36 +97,17 @@ export const useChartEvents = (
       {
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>) => {
-          const clickData: ClickObject = {
-            event: event.event.event,
+          const clickData = createSankeyClickData(
+            event,
+            sankeyColumns,
+            rawSeries,
             settings,
-          };
-
-          if (isSankeyNodeEvent(event)) {
-            const source = chartModel.sankeyColumns.source;
-            const target = chartModel.sankeyColumns.target;
-
-            clickData.column = target.column;
-            clickData.value =
-              event.data.inputColumnValues[getColumnKey(target.column)];
-
-            clickData.data = getSankeyClickData(
-              rawSeries,
-              event.data.inputColumnValues,
-              (_col, index) => index === source.index || index === target.index,
-            );
-          } else if (isSankeyEdgeEvent(event)) {
-            clickData.data = getSankeyClickData(
-              rawSeries,
-              event.data.columnValues,
-            );
-          }
-
+          );
           onVisualizationClick?.(clickData);
         },
       },
     ],
-    [chartModel, onVisualizationClick, rawSeries, settings],
+    [sankeyColumns, onVisualizationClick, rawSeries, settings],
   );
 
   useClickedStateTooltipSync(chartRef.current, clicked);

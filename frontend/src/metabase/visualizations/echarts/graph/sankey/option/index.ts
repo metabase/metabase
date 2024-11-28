@@ -20,10 +20,10 @@ export const getSankeyChartOption = (
   const { data, formatters } = chartModel;
   const nodes = data.nodes.map(node => ({
     ...node,
-    name: formatters.node(node.value),
-    value: formatters.node(node.value),
+    name: formatters.node(node.rawName),
+    value: formatters.node(node.rawName),
     itemStyle: {
-      color: chartModel.nodeColors[String(node.value)],
+      color: chartModel.nodeColors[String(node.rawName)],
     },
   }));
   const links = data.links.map(link => ({

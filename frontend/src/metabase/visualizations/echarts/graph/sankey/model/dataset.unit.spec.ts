@@ -118,7 +118,7 @@ describe("getSankeyData", () => {
     expect(result).toEqual({
       nodes: [
         {
-          value: "A",
+          rawName: "A",
           level: 0,
           hasInputs: false,
           hasOutputs: true,
@@ -131,7 +131,7 @@ describe("getSankeyData", () => {
           },
         },
         {
-          value: "B",
+          rawName: "B",
           level: 1,
           hasInputs: true,
           hasOutputs: true,
@@ -149,7 +149,7 @@ describe("getSankeyData", () => {
           },
         },
         {
-          value: "C",
+          rawName: "C",
           level: 2,
           hasInputs: true,
           hasOutputs: false,
@@ -166,7 +166,7 @@ describe("getSankeyData", () => {
         {
           source: "A",
           target: "B",
-          value: 11,
+          rawName: 11,
           columnValues: {
             [getColumnKey(columns[0])]: "A",
             [getColumnKey(columns[1])]: "B",
@@ -177,7 +177,7 @@ describe("getSankeyData", () => {
         {
           source: "B",
           target: "C",
-          value: 20,
+          rawName: 20,
           columnValues: {
             [getColumnKey(columns[0])]: "B",
             [getColumnKey(columns[1])]: "C",
@@ -188,7 +188,7 @@ describe("getSankeyData", () => {
         {
           source: "A",
           target: "C",
-          value: 2,
+          rawName: 2,
           columnValues: {
             [getColumnKey(columns[0])]: "A",
             [getColumnKey(columns[1])]: "C",

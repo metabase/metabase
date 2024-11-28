@@ -10,7 +10,7 @@ export interface SankeyChartColumns {
 }
 
 export interface SankeyNode {
-  value: RowValue;
+  rawName: RowValue;
   level: number;
   hasInputs: boolean;
   hasOutputs: boolean;

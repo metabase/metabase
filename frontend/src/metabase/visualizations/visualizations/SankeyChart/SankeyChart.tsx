@@ -58,7 +58,7 @@ export const SankeyChart = ({
 
   const { eventHandlers } = useChartEvents(
     chartRef,
-    chartModel,
+    chartModel.sankeyColumns,
     rawSeriesWithRemappings,
     settings,
     onVisualizationClick,
