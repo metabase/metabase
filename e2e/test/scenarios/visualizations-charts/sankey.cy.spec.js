@@ -1,11 +1,16 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
+  addOrUpdateDashboardCard,
   assertEChartsTooltip,
   chartPathWithFillColor,
+  createDashboard,
+  createNativeQuestion,
   echartsContainer,
   modal,
+  popover,
   restore,
   sankeyEdge,
+  visitDashboard,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
@@ -121,5 +126,50 @@ describe("scenarios > visualizations > sankey", () => {
     );
     cy.findByTestId("save-question-modal").findByText("Save").click();
     modal().findByText("Saved! Add this to a dashboard?");
+  });
+
+  it("should render sankey charts in dashboard context", () => {
+    createDashboard({
+      name: "Sankey Dashboard",
+    }).then(({ body: dashboard }) => {
+      createNativeQuestion({
+        name: "Sankey Question",
+        native: {
+          query: SANKEY_QUERY,
+        },
+        display: "sankey",
+        visualization_settings: {
+          "graph.show_values": true,
+          "graph.label_value_formatting": "compact",
+        },
+      }).then(({ body: card }) => {
+        addOrUpdateDashboardCard({
+          card_id: card.id,
+          dashboard_id: dashboard.id,
+          card: {
+            size_x: 12,
+            size_y: 8,
+          },
+        });
+
+        visitDashboard(dashboard.id);
+      });
+    });
+
+    echartsContainer().findByText("Social Media");
+
+    // Ensure drill-through works
+    chartPathWithFillColor("#ED8535").first().click();
+    popover().within(() => {
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
+
+      cy.findByText("Is Paid Subscription").click();
+    });
+
+    cy.findAllByTestId("filter-pill").should("have.length", 1);
+    cy.findByTestId("filter-pill").within(() => {
+      cy.findByText("TARGET is Paid Subscription").should("be.visible");
+    });
   });
 });
