@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
-   [metabase.db :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -25,14 +24,14 @@
 (defmacro with-index
   "Ensure a clean, small index."
   [& body]
-  `(when (= :postgres (mdb/db-type))
+  `(search.tu/with-temp-index-table
      (binding [search.ingestion/*force-sync* true]
        (mt/dataset ~(symbol "test-data")
-         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction" :collection_id 1}
+         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction"          :collection_id 1}
                         :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
-                        :model/Card     {}           {:name "Projected Revenue" :collection_id 1}
-                        :model/Card     {}           {:name "Employee Satisfaction" :collection_id 1}
-                        :model/Card     {}           {:name "Projected Satisfaction" :collection_id 1}
+                        :model/Card     {}           {:name "Projected Revenue"              :collection_id 1}
+                        :model/Card     {}           {:name "Employee Satisfaction"          :collection_id 1}
+                        :model/Card     {}           {:name "Projected Satisfaction"         :collection_id 1}
                         :model/Database {db-id# :id} {:name "Indexed Database"}
                         :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
            (search.index/reset-index!)
@@ -41,7 +40,7 @@
 
 (deftest idempotent-test
   (with-index
-    (let [count-rows  (fn [] (t2/count @#'search.index/*active-table*))
+    (let [count-rows  (fn [] (t2/count (search.index/active-table)))
           rows-before (count-rows)]
       (search.ingestion/populate-index! :search.engine/fulltext)
       (is (= rows-before (count-rows))))))
@@ -66,7 +65,7 @@
 #_(deftest related-update-test
     (with-index
       (testing "The index is updated when model dependencies change"
-        (let [index-table    @#'search.index/*active-table*
+        (let [index-table    (search.index/active-table)
               table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
               legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
                                   :legacy_input
@@ -141,7 +140,7 @@
   [model entity-name]
   (ingest! model [:= :this.name entity-name])
   (t2/query-one {:select [:*]
-                 :from   [search.index/*active-table*]
+                 :from   [(search.index/active-table)]
                  :where  [:and
                           [:= :name entity-name]
                           [:= :model model]]}))
