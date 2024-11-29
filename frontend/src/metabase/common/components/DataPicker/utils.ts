@@ -19,6 +19,7 @@ import type {
   DataPickerItem,
   DataPickerValue,
   DataPickerValueItem,
+  MetricItem,
   ModelItem,
   QuestionItem,
   TablePickerValue,
@@ -116,7 +117,9 @@ export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
   return titleize(humanize(schemaName));
 };
 
-export const isCollectionItem = (value: DataPickerValue | undefined) => {
+export const isCollectionItem = (
+  value: DataPickerValue | undefined,
+): value is QuestionItem | ModelItem | MetricItem => {
   return isQuestionItem(value) || isModelItem(value) || isMetricItem(value);
 };
 
@@ -134,7 +137,7 @@ export const isModelItem = (
 
 export const isMetricItem = (
   value: DataPickerValue | undefined,
-): value is ModelItem => {
+): value is MetricItem => {
   return value?.model === "metric";
 };
 
