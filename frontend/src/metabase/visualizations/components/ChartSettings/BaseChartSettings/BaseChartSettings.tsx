@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -217,7 +218,7 @@ export const BaseChartSettings = ({
             </Tabs.List>
           </Tabs>
         )}
-        <Box pos="relative" py="lg" className={CS.scrollShow}>
+        <Box pos="relative" py="lg" className={cx(CS.scrollY, CS.scrollShow)}>
           {isChartPicker ? (
             chartTypeSettings
           ) : (
