@@ -1,7 +1,6 @@
 (ns metabase.api.tiles
   "`/api/tiles` endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
@@ -11,6 +10,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
   (:import
    (java.awt Color)
@@ -179,7 +179,7 @@
         lon-field-ref (field-ref lon-field)
 
         query
-        (mbql.normalize/normalize (json/parse-string query keyword))
+        (mbql.normalize/normalize (json/decode+kw query))
 
         updated-query (query->tiles-query query {:zoom zoom :x x :y y
                                                  :lat-field lat-field-ref

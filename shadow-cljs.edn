@@ -35,6 +35,7 @@
                 metabase.xrays.domain-entities.queries.util]}
 
   :test
-  {:target    :node-test
-   :output-to "target/node-tests.js"
-   :ns-regexp "-test$"}}}
+  {:target           :node-test
+   :output-to        "target/node-tests.js"
+   :ns-regexp        "-test$"
+   :compiler-options {:reader-features #{:cljs-test}}}}}

@@ -328,6 +328,7 @@
    [:get-week        :instance] :week-of-year-instance
    [:get-day         nil]       :day-of-month
    [:get-day-of-week nil]       :day-of-week
+   [:get-day-of-week :iso]      :day-of-week-iso
    [:get-hour        nil]       :hour-of-day
    [:get-minute      nil]       :minute-of-hour
    [:get-second      nil]       :second-of-minute})

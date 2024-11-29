@@ -23,7 +23,7 @@
   "Populate the index with the given appdb agnostic entity shapes."
   [entities & body]
   `(search.tu/with-temp-index-table
-     (#'specialization/batch-upsert! search.index/*active-table*
+     (#'specialization/batch-upsert! (search.index/active-table)
                                      (map (comp #'search.index/document->entry
                                                 #'search.ingestion/->document)
                                           ~entities))
@@ -49,6 +49,12 @@
         "sanity check: search-no-weights should be different")
     result))
 
+(defn indifferent?
+  "Check that the results and their order do not depend on the given ranker."
+  [ranker-key search-string & {:as raw-ctx}]
+  (= (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
+     (with-weights {ranker-key -1} (search-results* search-string raw-ctx))))
+
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
 
@@ -72,6 +78,24 @@
               ;; If the match is only in a secondary field, it is less preferred.
               ["card" 3 "classified"]]
              (search-results :text "order"))))))
+
+(deftest ^:parallel exact-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "the any most of stop words very"}
+     {:model "card" :id 2 :name "stop words"}]
+    (testing "Preferences according to exact name matches, including stop words"
+      (is (= [["card" 1 "the any most of stop words very"]
+              ["card" 2 "stop words"]]
+             (search-results :exact "the any most of stop words very"))))))
+
+(deftest ^:parallel prefix-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "this is a prefix of something longer"}
+     {:model "card" :id 2 :name "a prefix this is not, unfortunately"}]
+    (testing "We can boost exact prefix matches"
+      (is (= [["card" 1 "this is a prefix of something longer"]
+              ["card" 2 "a prefix this is not, unfortunately"]]
+             (search-results :prefix "this is a prefix"))))))
 
 (deftest ^:parallel model-test
   (with-index-contents
@@ -128,27 +152,25 @@
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
     (when (search/supports-index?)
-      (let [table-name (search.tu/random-table-name)]
-        (binding [search.index/*active-table* table-name]
-          (search.index/ensure-ready! table-name)
-          (mt/with-model-cleanup [:model/Card]
-            (let [search-term    "view-count-edge-case"
-                  card-with-view #(merge (mt/with-temp-defaults :model/Card)
-                                         {:name search-term
-                                          :view_count %})
-                  ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
-                  outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 100000))
-                  _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
-                                                                  (for [i (range 1 81)]
-                                                                    (card-with-view i))))
-                  _               (search.ingestion/consume!
-                                   (#'search.ingestion/query->documents
-                                    (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term])))
-                  first-result-id (-> (search-results* search-term) first second)]
-              (is (some? first-result-id))
-              ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
-              ;; but we can solve this later if it actually becomes a flake
-              (is (not= outlier-card-id first-result-id)))))))))
+      (search.tu/with-temp-index-table
+        (mt/with-model-cleanup [:model/Card]
+          (let [search-term     "view-count-edge-case"
+                card-with-view  #(merge (mt/with-temp-defaults :model/Card)
+                                        {:name       search-term
+                                         :view_count %})
+               ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
+                outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 100000))
+                _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
+                                                                (for [i (range 1 81)]
+                                                                  (card-with-view i))))
+                _               (search.ingestion/consume!
+                                 (#'search.ingestion/query->documents
+                                  (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term])))
+                first-result-id (-> (search-results* search-term) first second)]
+            (is (some? first-result-id))
+           ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
+           ;; but we can solve this later if it actually becomes a flake
+            (is (not= outlier-card-id first-result-id))))))))
 
 (deftest ^:parallel dashboard-count-test
   (testing "cards used in dashboard have higher rank"
@@ -161,11 +183,9 @@
 
   (testing "it has a ceiling, more than the ceiling is considered to be equal"
     (with-index-contents
-      [{:model "card" :id 1 :name "card popular" :dashboardcard_count 22}
-       {:model "card" :id 2 :name "card" :dashboardcard_count 11}]
-      (is (= [["card" 1 "card popular"]
-              ["card" 2 "card"]]
-             (search-results* "card"))))))
+      [{:model "card" :id 1 :name "card popular" :dashboardcard_count 200}
+       {:model "card" :id 2 :name "card" :dashboardcard_count 201}]
+      (is (indifferent? :dashboard "card")))))
 
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
@@ -239,3 +259,15 @@
                   ["card"    c1 "card ancient"]
                   ["dataset" c3 "card unseen"]]
                  (search-results :user-recency "card" {:current-user-id user-id}))))))))
+
+(deftest ^:parallel mine-test
+  (let [crowberto (mt/user->id :crowberto)
+        rasta     (mt/user->id :rasta)]
+    (with-index-contents [{:model "card" :id 1 :name "crow's fly card" :creator_id crowberto}
+                          {:model "card" :id 2 :name "this card is aerie mon" :creator_id rasta}]
+      (is (= [["card" 1 "crow's fly card"]
+              ["card" 2 "this card is aerie mon"]]
+             (search-results :mine "card" {:current-user-id crowberto})))
+      (is (= [["card" 2 "this card is aerie mon"]
+              ["card" 1 "crow's fly card"]]
+             (search-results :mine "card" {:current-user-id rasta}))))))

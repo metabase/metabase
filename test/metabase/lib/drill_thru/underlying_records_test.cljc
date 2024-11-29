@@ -87,6 +87,42 @@
       :column-name "max"
       :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
 
+(deftest ^:parallel returns-underlying-records-for-multi-stage-queries
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/underlying-records
+    :click-type   :cell
+    :query-type   :aggregated
+    :query-kinds  [:mbql]
+    :column-name  "count"
+    :custom-query (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                       (lib/aggregate (lib/count))
+                                       (lib/breakout (meta/field-metadata :orders :product-id))
+                                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                                         (lib/with-temporal-bucket :month)))
+                                       lib/append-stage)
+                        count-col  (m/find-first #(= (:name %) "count")
+                                                 (lib/returned-columns base-query))
+                        _          (is (some? count-col))
+                        query      (lib/filter base-query (lib/> count-col 0))]
+                    query)
+    :custom-row   {"PRODUCT_ID" 3
+                   "CREATED_AT" "2023-12-01"
+                   "count"      77}
+    :expected     {:type       :drill-thru/underlying-records
+                   :row-count  77
+                   :table-name "Orders"
+                   ;; the "underlying" aggregation ref is reconstructed.
+                   :column-ref [:aggregation {:lib/source-name "count"} string?]
+                   ;; the "underyling" dimensions are reconstructed from the row.
+                   :dimensions [{:column     {:name       "PRODUCT_ID"
+                                              :lib/source :source/previous-stage}
+                                 :column-ref [:field {} "PRODUCT_ID"]
+                                 :value      3}
+                                {:column     {:name       "CREATED_AT"
+                                              :lib/source :source/previous-stage}
+                                 :column-ref [:field {} "CREATED_AT"]
+                                 :value      "2023-12-01"}]}}))
+
 (def ^:private last-month
   #?(:cljs (let [now    (js/Date.)
                  year   (.getFullYear now)
@@ -416,4 +452,57 @@
       (is (=? {:stages [{:filters [[:is-null
                                     {}
                                     [:field {:binning (symbol "nil #_\"key is not present.\"")} (meta/id :orders :discount)]]]}]}
+              (lib/drill-thru query drill))))))
+
+(deftest ^:parallel multi-stage-query-test
+  (testing "sum_where(subtotal, products.category = \"Doohickey\") over time with appended filter stage"
+    (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                             (lib/aggregate (lib/sum-where
+                                             (meta/field-metadata :orders :subtotal)
+                                             (lib/= (meta/field-metadata :products :category)
+                                                    "Doohickey")))
+                             (lib/breakout (lib/with-temporal-bucket
+                                             (meta/field-metadata :orders :created-at)
+                                             :month))
+                             lib/append-stage)
+          sum-where-col  (m/find-first #(= (:name %) "sum_where_SUBTOTAL")
+                                       (lib/returned-columns base-query))
+          _              (is (some? sum-where-col))
+          created-at-col (m/find-first #(= (:name %) "CREATED_AT")
+                                       (lib/returned-columns base-query))
+          _              (is (some? created-at-col))
+          query          (lib/filter base-query (lib/> sum-where-col 0))
+          context        {:column     sum-where-col
+                          :column-ref (lib/ref sum-where-col)
+                          :value      16845
+                          :row        [{:column     sum-where-col
+                                        :column-ref (lib/ref sum-where-col)
+                                        :value      16845}
+                                       {:column     created-at-col
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-12-01"}]}
+          drill          (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                       (lib/available-drill-thrus query context))]
+      (is (=? {:lib/type   :metabase.lib.drill-thru/drill-thru
+               :type       :drill-thru/underlying-records
+               :row-count  16845
+               :table-name "Orders"
+               :dimensions [{:column     {:name "CREATED_AT"}
+                             :column-ref [:field {} "CREATED_AT"]
+                             :value      "2023-12-01"}]
+               :column-ref [:aggregation {:lib/source-name "sum_where_SUBTOTAL"} string?]}
+              drill))
+      (is (=? {:lib/type :mbql/query
+               :stages   [{:filters     [[:= {}
+                                          (-> (meta/field-metadata :orders :created-at)
+                                              lib/ref
+                                              (lib.options/with-options {}))
+                                          "2023-12-01"]
+                                         [:= {} (-> (meta/field-metadata :products :category)
+                                                    lib/ref
+                                                    (lib.options/with-options {}))
+                                          "Doohickey"]]
+                           :aggregation (symbol "nil #_\"key is not present.\"")
+                           :breakout    (symbol "nil #_\"key is not present.\"")
+                           :fields      (symbol "nil #_\"key is not present.\"")}]}
               (lib/drill-thru query drill))))))

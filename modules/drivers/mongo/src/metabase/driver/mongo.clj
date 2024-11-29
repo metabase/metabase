@@ -1,8 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require
-   [cheshire.core :as json]
-   [cheshire.generate :as json.generate]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
@@ -22,6 +20,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [taoensso.nippy :as nippy])
@@ -36,7 +35,7 @@
 ;; JSON Encoding (etc.)
 
 ;; Encode BSON undefined like `nil`
-(json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
+(json/add-encoder org.bson.BsonUndefined json/generate-nil)
 
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
   [^ObjectId oid data-output]
@@ -302,7 +301,7 @@
         data  (:data (qp/process-query {:database (:id db)
                                         :type     "native"
                                         :native   {:collection (:name table)
-                                                   :query      (json/generate-string query)}}))
+                                                   :query      (json/encode query)}}))
         cols  (map (comp keyword :name) (:cols data))]
     (map #(zipmap cols %) (:rows data))))
 

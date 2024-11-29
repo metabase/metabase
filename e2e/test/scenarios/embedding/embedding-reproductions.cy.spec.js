@@ -1,7 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
-  assertEChartsTooltip,
   createDashboardWithQuestions,
   createNativeQuestion,
   createQuestionAndDashboard,
@@ -11,7 +11,6 @@ import {
   getIframeBody,
   modal,
   openStaticEmbeddingModal,
-  otherSeriesChartPaths,
   popover,
   queryBuilderMain,
   restore,
@@ -1064,8 +1063,6 @@ describeEE("issue 8490", () => {
           visualization_settings: {
             "graph.dimensions": ["CREATED_AT", "CATEGORY"],
             "graph.metrics": ["count"],
-            "graph.max_categories_enabled": true,
-            "graph.max_categories": 2,
           },
           display: "bar",
           enable_embedding: true,
@@ -1164,26 +1161,7 @@ describeEE("issue 8490", () => {
         cy.findByText("1월 2024").should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
-        // "Other" bar tooltip
-        otherSeriesChartPaths().first().realHover();
       });
-    });
-
-    assertEChartsTooltip({
-      rows: [
-        {
-          name: "Gizmo",
-          value: "4",
-        },
-        {
-          name: "Widget",
-          value: "2",
-        },
-        {
-          name: "합계",
-          value: "6",
-        },
-      ],
     });
 
     cy.findByTestId("embed-frame").within(() => {
@@ -1227,5 +1205,32 @@ describeEE("issue 8490", () => {
       // Aggregation "count"
       cy.findByText("카운트").should("be.visible");
     });
+  });
+});
+
+describe("issue 50373", () => {
+  it("should return cache headers in production for js bundle", () => {
+    cy.intercept(
+      {
+        method: "GET",
+        url: /^\/app\/dist\/(.*)\.js$/,
+      },
+      req => {
+        // When running in development (e.g. with `yarn dev`),
+        // the *.hot.bundle.js hot-reloaded file is served by the dev server.
+        if (req.url.includes("hot.bundle.js")) {
+          return;
+        }
+
+        req.on("response", res => {
+          expect(
+            res.headers["cache-control"],
+            `Invalid Cache-Control header for ${req.url}`,
+          ).to.equal("public, max-age=31536000");
+        });
+      },
+    );
+
+    visitEmbeddedPage({ resource: { dashboard: ORDERS_DASHBOARD_ID } });
   });
 });

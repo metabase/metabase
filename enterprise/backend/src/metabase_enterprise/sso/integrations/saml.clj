@@ -236,11 +236,11 @@
     (walk/postwalk
      (fn [x]
        (when (and (map? x)
-                  (= (:tag x) :StatusCode)
+                  (= (:tag x) :samlp:StatusCode)
                   (= (get-in x [:attrs :Value]) saml2-success-status))
          (reset! *success? true))
        x)
-     (xml/parse-str xml-str))
+     (xml/parse-str xml-str {:namespace-aware false}))
     @*success?))
 
 (defmethod sso.i/sso-handle-slo :saml
