@@ -135,8 +135,17 @@ describe("issue 16914", () => {
       FAILING_PIECE.length,
     );
 
-    openNativeEditor().type("SELECT 'a' as hidden, 'b' as visible");
-    runNativeQuery();
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: {
+          query: "SELECT 'a' as hidden, 'b' as visible",
+        },
+      },
+      visualization_settings: {},
+    });
 
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left")
@@ -145,10 +154,10 @@ describe("issue 16914", () => {
       .click();
     cy.button("Done").click();
 
-    cy.get("@editor").type(FAILING_PIECE);
+    focusNativeEditor().type(FAILING_PIECE);
     runNativeQuery();
 
-    cy.get("@editor").type(
+    focusNativeEditor().type(
       "{movetoend}" + highlightSelectedText + "{backspace}",
     );
     runNativeQuery();
@@ -189,20 +198,26 @@ describe("issue 17060", () => {
 
     restore();
     cy.signInAsAdmin();
-
-    openNativeEditor().type(ORIGINAL_QUERY);
-
-    runQuery();
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: {
+          query: ORIGINAL_QUERY,
+        },
+      },
+      visualization_settings: {},
+    });
 
     cy.findByTestId("viz-settings-button").click();
-
     cy.findByTestId("sidebar-left").within(() => {
       rearrangeColumns();
     });
   });
 
   it("should not render duplicated columns (metabase#17060)", () => {
-    cy.get("@editor").type(
+    focusNativeEditor().type(
       moveCursorToBeginning +
         moveCursorAfterSection +
         highlightSelectedText +
