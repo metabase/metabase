@@ -13,10 +13,11 @@
       "types": "./dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
       "default": "./dist/main.bundle.js"
     },
-    "./next": {
-      "types": "./dist/next.d.ts",
-      "require": "./dist/next.cjs",
-      "import": "./dist/next.js"
+    "./next": "./dist/next.js"
+  },
+  "typesVersions": {
+    "*": {
+      "next": ["./dist/next.d.ts"]
     }
   },
   "types": "./dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
