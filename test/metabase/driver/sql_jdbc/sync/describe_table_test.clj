@@ -800,8 +800,8 @@
                   table-name "orders"]]
       (try
         (testing (if materialized? "Materialized View" "View")
-          (tx/drop-view! driver/*driver* (mt/db) view-name materialized?)
-          (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name materialized?)
+          (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})
+          (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
           (sync/sync-database! (mt/db) {:scan :schema})
           (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
                 orders-m-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db)))
@@ -823,4 +823,4 @@
           (is (nil? e) "This should not happen")
           (log/error e "Exception occurred."))
         (finally
-          (tx/drop-view! driver/*driver* (mt/db) view-name materialized?))))))
+          (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?}))))))

@@ -45,13 +45,13 @@
   (load-data/destroy-db! driver dbdef))
 
 (defmethod tx/create-view-of-table! :sql-jdbc/test-extensions
-  [driver database view-name table-name materialized?]
+  [driver database view-name table-name options]
   (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
-                 (sql.tx/create-view-of-table-sql driver database view-name table-name materialized?)
+                 (sql.tx/create-view-of-table-sql driver database view-name table-name options)
                  {:transaction? false}))
 
 (defmethod tx/drop-view! :sql-jdbc/test-extensions
-  [driver database view-name materialized?]
+  [driver database view-name options]
   (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
-                 (sql.tx/drop-view-sql driver database view-name materialized?)
+                 (sql.tx/drop-view-sql driver database view-name options)
                  {:transaction? false}))

@@ -145,14 +145,14 @@
             {:base_type :type/Integer}))))
 
 (defmethod tx/create-view-of-table! :mongo
-  [_driver database view-name table-name materialized?]
+  [_driver database view-name table-name {:keys [materialized?]}]
   (when materialized?
     (throw (Exception. "Material Views not supported.")))
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     (.createView db view-name table-name [])))
 
 (defmethod tx/drop-view! :mongo
-  [_driver database view-name materialized?]
+  [_driver database view-name {:keys [materialized?]}]
   (when materialized?
     (throw (Exception. "Material Views not supported.")))
   (mongo.connection/with-mongo-database [^MongoDatabase db database]

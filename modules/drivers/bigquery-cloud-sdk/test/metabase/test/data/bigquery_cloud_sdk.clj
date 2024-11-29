@@ -395,9 +395,9 @@
       {:base_type :type/Integer}))))
 
 (defmethod tx/create-view-of-table! :bigquery-cloud-sdk
-  [driver database view-name table-name materialized?]
-  (apply execute! (sql.tx/create-view-of-table-sql driver database view-name table-name materialized?)))
+  [driver database view-name table-name options]
+  (apply execute! (sql.tx/create-view-of-table-sql driver database view-name table-name options)))
 
 (defmethod tx/drop-view! :bigquery-cloud-sdk
-  [driver database view-name materialized?]
-  (apply execute! (sql.tx/drop-view-sql driver database view-name materialized?)))
+  [driver database view-name options]
+  (apply execute! (sql.tx/drop-view-sql driver database view-name options)))

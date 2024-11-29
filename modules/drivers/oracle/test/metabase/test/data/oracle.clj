@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.test.data.oracle
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -308,15 +307,13 @@
                      (:tables (driver/describe-database :oracle (mt/db))))))))))
 
 (defmethod tx/drop-view! :oracle
-  [driver database view-name materialized?]
+  [driver database view-name {:keys [materialized?]}]
   (let [database-name (get-in database [:settings :database-source-dataset-name])
         qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
     (u/ignore-exceptions
       ;; If exists does not exist in oracle
       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
                      (sql/format
-                      (cond->
-                       {:drop-view [[[:raw qualified-view]]]}
-                        materialized? (set/rename-keys {:drop-view :drop-materialized-view}))
+                       {(if materialized? :drop-materialized-view :drop-view) [[[:raw qualified-view]]]}
                       :dialect (sql.qp/quote-style driver))
                      {:transaction? false}))))
