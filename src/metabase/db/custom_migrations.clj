@@ -8,7 +8,6 @@
 
    If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code changing behaviour."
   (:require
-   [cheshire.core :as json]
    [clojure.core.match :refer [match]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -27,6 +26,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
@@ -112,12 +112,12 @@
   [obj]
   (if (string? obj)
     obj
-    (json/generate-string obj)))
+    (json/encode obj)))
 
 (defn- json-out [s keywordize-keys?]
   (if (string? s)
     (try
-      (json/parse-string s keywordize-keys?)
+      (json/decode s keywordize-keys?)
       (catch Throwable e
         (log/error e "Error parsing JSON")
         s))
@@ -132,7 +132,7 @@
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
-      (json/parse-string decrypted true)
+      (json/decode+kw decrypted)
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
@@ -232,7 +232,7 @@
                                   ;; so we need to remove databases that have it set to false
                                   (filter (fn [{:keys [details]}]
                                             (when details
-                                              (false? (:json-unfolding (json/parse-string details true))))))
+                                              (false? (:json-unfolding (json/decode+kw details))))))
                                   (map :id))
         field-ids-to-update  (->> (t2/query {:select [:f.id]
                                              :from   [[:metabase_field :f]]
@@ -266,10 +266,10 @@
     (m/update-existing viz-settings "column_settings" update-keys
                        (fn [k]
                          (-> k
-                             json/parse-string
+                             json/decode
                              vec
                              old-to-new
-                             json/generate-string)))))
+                             json/encode)))))
 
 (define-migration MigrateLegacyColumnSettingsFieldRefs
   (let [update! (fn [{:keys [id visualization_settings]}]
@@ -277,11 +277,11 @@
                                  :set    {:visualization_settings visualization_settings}
                                  :where  [:= :id id]}))]
     (run! update! (eduction (keep (fn [{:keys [id visualization_settings]}]
-                                    (let [parsed  (json/parse-string visualization_settings)
+                                    (let [parsed  (json/decode visualization_settings)
                                           updated (update-legacy-field-refs-in-viz-settings parsed)]
                                       (when (not= parsed updated)
                                         {:id                     id
-                                         :visualization_settings (json/generate-string updated)}))))
+                                         :visualization_settings (json/encode updated)}))))
                             (t2/reducible-query {:select [:id :visualization_settings]
                                                  :from   [:report_card]
                                                  :where  [:or
@@ -308,9 +308,9 @@
                                       ["field" y {:source-field x}])
                        _ ref))]
     (->> result-metadata
-         json/parse-string
+         json/decode
          (map #(m/update-existing % "field_ref" old-to-new))
-         json/generate-string)))
+         json/encode)))
 
 (define-migration MigrateLegacyResultMetadataFieldRefs
   (let [update! (fn [{:keys [id result_metadata]}]
@@ -341,33 +341,33 @@
           (fn [column_settings]
             (into {}
                   (map (fn [[k v]]
-                         (match (vec (json/parse-string k))
+                         (match (vec (json/decode k))
                            ["ref" ["field" id opts]]
-                           [(json/generate-string ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
+                           [(json/encode ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
                            _ [k v]))
                        column_settings)))))
 
 (defn- add-join-alias-to-column-settings-refs [{:keys [visualization_settings result_metadata]}]
-  (let [result_metadata        (json/parse-string result_metadata)
-        visualization_settings (json/parse-string visualization_settings)
+  (let [result_metadata        (json/decode result_metadata)
+        visualization_settings (json/decode visualization_settings)
         column-key->metadata   (group-by #(-> (get % "field_ref")
                                               ;; like the FE's `getColumnKey` function, remove "join-alias",
                                               ;; "temporal-unit" and "binning" options from the field_ref
                                               (remove-opts "join-alias" "temporal-unit" "binning"))
                                          result_metadata)]
-    (json/generate-string
+    (json/encode
      (update visualization_settings "column_settings"
              (fn [column_settings]
                (into {}
                      (mapcat (fn [[k v]]
-                               (match (vec (json/parse-string k))
+                               (match (vec (json/decode k))
                                  ["ref" ["field" id opts]]
                                  (for [column-metadata (column-key->metadata ["field" id opts])
                                        ;; remove "temporal-unit" and "binning" options from the matching field refs,
                                        ;; but not "join-alias" as before.
                                        :let [field-ref (-> (get column-metadata "field_ref")
                                                            (remove-opts "temporal-unit" "binning"))]]
-                                   [(json/generate-string ["ref" field-ref]) v])
+                                   [(json/encode ["ref" field-ref]) v])
                                  _ [[k v]]))
                              column_settings)))))))
 
@@ -391,9 +391,9 @@
                                                     [:like :result_metadata "%join-alias%"]]})))
   (let [update! (fn [{:keys [id visualization_settings]}]
                   (let [updated (-> visualization_settings
-                                    json/parse-string
+                                    json/decode
                                     remove-join-alias-from-column-settings-field-refs
-                                    json/generate-string)]
+                                    json/encode)]
                     (when (not= visualization_settings updated)
                       (t2/query-one {:update :report_card
                                      :set    {:visualization_settings updated}
@@ -492,19 +492,19 @@
 
 (define-reversible-migration RevisionDashboardMigrateGridFrom18To24
   (let [migrate! (fn [revision]
-                   (let [object (json/parse-string (:object revision) keyword)]
+                   (let [object (json/decode+kw (:object revision))]
                      (when (seq (:cards object))
                        (t2/query {:update :revision
-                                  :set {:object (json/generate-string (update object :cards #(map migrate-dashboard-grid-from-18-to-24 %)))}
+                                  :set {:object (json/encode (update object :cards #(map migrate-dashboard-grid-from-18-to-24 %)))}
                                   :where [:= :id (:id revision)]}))))]
     (run! migrate! (t2/reducible-query {:select [:*]
                                         :from   [:revision]
                                         :where  [:= :model "Dashboard"]})))
   (let [roll-back! (fn [revision]
-                     (let [object (json/parse-string (:object revision) keyword)]
+                     (let [object (json/decode+kw (:object revision))]
                        (when (seq (:cards object))
                          (t2/query {:update :revision
-                                    :set {:object (json/generate-string (update object :cards #(map migrate-dashboard-grid-from-24-to-18 %)))}
+                                    :set {:object (json/encode (update object :cards #(map migrate-dashboard-grid-from-24-to-18 %)))}
                                     :where [:= :id (:id revision)]}))))]
     (run! roll-back! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
@@ -512,11 +512,11 @@
 
 (define-migration RevisionMigrateLegacyColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id object]}]
-                      (let [object  (json/parse-string object)
+                      (let [object  (json/decode object)
                             updated (update object "visualization_settings" update-legacy-field-refs-in-viz-settings)]
                         (when (not= updated object)
                           (t2/query-one {:update :revision
-                                         :set    {:object (json/generate-string updated)}
+                                         :set    {:object (json/encode updated)}
                                          :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query {:select [:id :object]
                                            :from   [:revision]
@@ -547,10 +547,10 @@
                       (fn [column_settings]
                         (let [copies-with-join-alias (into {}
                                                            (mapcat (fn [[k v]]
-                                                                     (match (vec (json/parse-string k))
+                                                                     (match (vec (json/decode k))
                                                                        ["ref" ["field" id opts]]
                                                                        (for [alias join-aliases]
-                                                                         [(json/generate-string ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
+                                                                         [(json/encode ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
                                                                        _ '()))
                                                                    column_settings))]
                           ;; existing column settings should take precedence over the copies in case there is a conflict
@@ -558,12 +558,12 @@
               card)))
         update-one!
         (fn [revision]
-          (let [card (json/parse-string (:object revision))]
+          (let [card (json/decode (:object revision))]
             (when (not= (get card "query_type") "native") ; native queries won't have join aliases, so we can exclude them straight away
               (let [updated (add-join-aliases card)]
                 (when (not= updated (get "visualization_settings" card))
                   (t2/query {:update :revision
-                             :set {:object (json/generate-string (assoc card "visualization_settings" updated))}
+                             :set {:object (json/encode (assoc card "visualization_settings" updated))}
                              :where [:= :id (:id revision)]}))))))]
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
@@ -578,13 +578,13 @@
   ;; Reverse migration
   (let [update-one!
         (fn [revision]
-          (let [card (json/parse-string (:object revision))]
+          (let [card (json/decode (:object revision))]
             (when (not= (get card "query_type") "native")
               (let [viz-settings (get card "visualization_settings")
                     updated      (remove-join-alias-from-column-settings-field-refs viz-settings)]
                 (when (not= updated viz-settings)
                   (t2/query {:update :revision
-                             :set {:object (json/generate-string (assoc card "visualization_settings" updated))}
+                             :set {:object (json/encode (assoc card "visualization_settings" updated))}
                              :where [:= :id (:id revision)]}))))))]
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
@@ -597,11 +597,11 @@
 
 (define-migration MigrateLegacyDashboardCardColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id visualization_settings]}]
-                      (let [parsed  (json/parse-string visualization_settings)
+                      (let [parsed  (json/decode visualization_settings)
                             updated (update-legacy-field-refs-in-viz-settings parsed)]
                         (when (not= parsed updated)
                           (t2/query-one {:update :report_dashboardcard
-                                         :set    {:visualization_settings (json/generate-string updated)}
+                                         :set    {:visualization_settings (json/encode updated)}
                                          :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query
                        {:select [:id :visualization_settings]
@@ -639,11 +639,11 @@
                                                      [:like :dc.visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
                                                     [:like :c.result_metadata "%join-alias%"]]})))
   (let [update! (fn [{:keys [id visualization_settings]}]
-                  (let [parsed  (json/parse-string visualization_settings)
+                  (let [parsed  (json/decode visualization_settings)
                         updated (remove-join-alias-from-column-settings-field-refs parsed)]
                     (when (not= parsed updated)
                       (t2/query-one {:update :report_dashboardcard
-                                     :set    {:visualization_settings (json/generate-string updated)}
+                                     :set    {:visualization_settings (json/encode updated)}
                                      :where  [:= :id id]}))))]
     (run! update! (t2/reducible-query {:select [:dc.id :dc.visualization_settings]
                                        :from   [[:report_card :c]]
@@ -659,12 +659,12 @@
 
 (define-migration RevisionMigrateLegacyDashboardCardColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id object]}]
-                      (let [object  (json/parse-string object)
+                      (let [object  (json/decode object)
                             updated (update object "cards" (fn [cards]
                                                              (map #(update % "visualization_settings" update-legacy-field-refs-in-viz-settings) cards)))]
                         (when (not= updated object)
                           (t2/query-one {:update :revision
-                                         :set    {:object (json/generate-string updated)}
+                                         :set    {:object (json/encode updated)}
                                          :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query {:select [:id :object]
                                            :from   [:revision]
@@ -693,7 +693,7 @@
                                                                    [:= :id (get dashcard "card_id")]
                                                                    ;; only include cards with joins
                                                                    [:like :dataset_query "%joins%"]]})]
-            (if-let [join-aliases (->> (get-in (json/parse-string dataset_query) ["query" "joins"])
+            (if-let [join-aliases (->> (get-in (json/decode dataset_query) ["query" "joins"])
                                        (map #(get % "alias"))
                                        set
                                        seq)]
@@ -701,10 +701,10 @@
                                     (fn [column_settings]
                                       (let [copies-with-join-alias (into {}
                                                                          (mapcat (fn [[k v]]
-                                                                                   (match (vec (json/parse-string k))
+                                                                                   (match (vec (json/decode k))
                                                                                      ["ref" ["field" id opts]]
                                                                                      (for [alias join-aliases]
-                                                                                       [(json/generate-string ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
+                                                                                       [(json/encode ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
                                                                                      _ '()))
                                                                                  column_settings))]
                                         ;; existing column settings should take precedence over the copies in case there is a conflict
@@ -713,12 +713,12 @@
             dashcard))
         update-one!
         (fn [revision]
-          (let [dashboard (json/parse-string (:object revision))
+          (let [dashboard (json/decode (:object revision))
                 updated   (update dashboard "cards" (fn [dashcards]
                                                       (map add-join-aliases dashcards)))]
             (when (not= updated dashboard)
               (t2/query {:update :revision
-                         :set    {:object (json/generate-string updated)}
+                         :set    {:object (json/encode updated)}
                          :where  [:= :id (:id revision)]}))))]
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
@@ -731,14 +731,14 @@
   ;; Reverse migration
   (let [update-one!
         (fn [revision]
-          (let [dashboard (json/parse-string (:object revision))
+          (let [dashboard (json/decode (:object revision))
                 updated   (update dashboard "cards"
                                   (fn [dashcards]
                                     (map #(update % "visualization_settings" remove-join-alias-from-column-settings-field-refs)
                                          dashcards)))]
             (when (not= updated dashboard)
               (t2/query {:update :revision
-                         :set    {:object (json/generate-string updated)}
+                         :set    {:object (json/encode updated)}
                          :where  [:= :id (:id revision)]}))))]
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
@@ -768,7 +768,7 @@
                               options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
-                                       :set    {:options (json/generate-string (select-keys settings [:persist-models-enabled]))
+                                       :set    {:options (json/encode (select-keys settings [:persist-models-enabled]))
                                                 :settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
                                        :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
@@ -863,7 +863,7 @@
 
 (defn- parse-to-json [& ks]
   (fn [x]
-    (reduce #(update %1 %2 json/parse-string)
+    (reduce #(update %1 %2 json/decode)
             x
             ks)))
 
@@ -880,7 +880,7 @@
              (completing
               (fn [_ {:keys [id visualization_settings]}]
                 (t2/update! :report_dashboardcard id
-                            {:visualization_settings (json/generate-string visualization_settings)})))
+                            {:visualization_settings (json/encode visualization_settings)})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
@@ -915,7 +915,7 @@
   [mapping-setting-key]
   (let [admin-group-id (t2/select-one-pk :permissions_group :name "Administrators")
         mapping        (try
-                         (json/parse-string (raw-setting mapping-setting-key))
+                         (json/decode (raw-setting mapping-setting-key))
                          (catch Exception _e
                            {}))]
     (when-not (empty? mapping)
@@ -924,7 +924,7 @@
                    (->> mapping
                         (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
                         (into {})
-                        json/generate-string)}))))
+                        json/encode)}))))
 
 (defn- migrate-remove-admin-from-group-mapping-if-needed
   {:author "qnkhuat"
@@ -1076,12 +1076,12 @@
     ;; So we do this in clojure land for mariadb
     (:h2 :mariadb)
     (let [migrate! (fn [revision]
-                     (let [object     (json/parse-string (:object revision) keyword)
+                     (let [object     (json/decode+kw (:object revision))
                            new-object (assoc object :type (if (:dataset object)
                                                             "model"
                                                             "question"))]
                        (t2/query {:update :revision
-                                  :set    {:object (json/generate-string new-object)}
+                                  :set    {:object (json/encode new-object)}
                                   :where  [:= :id (:id revision)]})))]
       (run! migrate! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
@@ -1117,12 +1117,12 @@
 
     (:h2 :mariadb)
     (let [rollback! (fn [revision]
-                      (let [object     (json/parse-string (:object revision) keyword)
+                      (let [object     (json/decode+kw (:object revision))
                             new-object (-> object
                                            (assoc :dataset (= (:type object) "model"))
                                            (dissoc :type))]
                         (t2/query {:update :revision
-                                   :set    {:object (json/generate-string new-object)}
+                                   :set    {:object (json/encode new-object)}
                                    :where  [:= :id (:id revision)]})))]
       (run! rollback! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
@@ -1415,7 +1415,7 @@
                                           :display                display}
                                  :where  [:= :id id]}))]
     (run! update! (eduction (keep (fn [{:keys [id display visualization_settings]}]
-                                    (let [parsed-viz           (json/parse-string visualization_settings keyword)
+                                    (let [parsed-viz           (json/decode+kw visualization_settings)
                                           partial-card         {:display display :visualization_settings parsed-viz}
                                           updated-partial-card (update-stacked-viz-cards partial-card)]
                                       (when (not= partial-card updated-partial-card)
@@ -1423,7 +1423,7 @@
                                                updated-viz     :visualization_settings} updated-partial-card]
                                           {:id                     id
                                            :display                (name updated-display)
-                                           :visualization_settings (json/generate-string updated-viz)})))))
+                                           :visualization_settings (json/encode updated-viz)})))))
                             (t2/reducible-query {:select [:id :display :visualization_settings]
                                                  :from   [:report_card]
                                                  :where  [:like :visualization_settings "%stackable%"]})))))
@@ -1472,7 +1472,7 @@
   "Computes a modern viz setting column key for a `column`. The modern format is [\"name\",`name`]."
   [{name "name"}]
   (when name
-    (json/generate-string ["name" name])))
+    (json/encode ["name" name])))
 
 (defn- column->legacy-column-key
   "Computes a legacy viz setting column key for a `column`.
@@ -1491,7 +1491,7 @@
       (column->column-key column)
 
       field-ref
-      (json/generate-string ["ref" field-ref]))))
+      (json/encode ["ref" field-ref]))))
 
 (defn- update-legacy-column-keys-in-viz-settings
   "Updates `:column_settings` keys. Unmatched keys are retained."
@@ -1527,12 +1527,12 @@
   to find the deduplicated column name by the field reference and compute the new column key."
   [column-key-tag update-viz-settings-fn]
   (let [update-one! (fn [{id :id viz-settings :visualization_settings result-metadata :result_metadata}]
-                      (let [viz-settings         (json/parse-string viz-settings)
-                            result-metadata      (json/parse-string result-metadata)
+                      (let [viz-settings         (json/decode viz-settings)
+                            result-metadata      (json/decode result-metadata)
                             updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
                         (when (not= viz-settings updated-viz-settings)
                           (t2/query-one {:update :report_card
-                                         :set    {:visualization_settings (json/generate-string updated-viz-settings)}
+                                         :set    {:visualization_settings (json/encode updated-viz-settings)}
                                          :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
                                            :from   [:report_card]
@@ -1551,12 +1551,12 @@
   key."
   [column-key-tag update-viz-settings-fn]
   (let [update-one! (fn [{id :id viz-settings :visualization_settings result-metadata :result_metadata}]
-                      (let [viz-settings         (json/parse-string viz-settings)
-                            result-metadata      (json/parse-string result-metadata)
+                      (let [viz-settings         (json/decode viz-settings)
+                            result-metadata      (json/decode result-metadata)
                             updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
                         (when (not= viz-settings updated-viz-settings)
                           (t2/query-one {:update :report_dashboardcard
-                                         :set    {:visualization_settings (json/generate-string updated-viz-settings)}
+                                         :set    {:visualization_settings (json/encode updated-viz-settings)}
                                          :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
                                            :from   [[:report_card :c]]
@@ -1586,7 +1586,7 @@
 
 (defn- set-parameter-stage-numbers
   [record last-stage]
-  (when-let [orig-pmappings (some-> record :parameter_mappings (json/parse-string true))]
+  (when-let [orig-pmappings (some-> record :parameter_mappings json/decode+kw)]
     (let [pmappings (map #(set-target-stage-number % last-stage) orig-pmappings)]
       (when (not= pmappings orig-pmappings)
         pmappings))))
@@ -1599,7 +1599,7 @@
     ;; questions and metrics are
     (-> record
         :dataset_query
-        (json/parse-string true)
+        json/decode+kw
         last-stage-number)))
 
 (defn- add-stage-numbers-to-parameter-mapping-targets
@@ -1616,7 +1616,7 @@
                             ls))]
          (when-let [new-mappings (set-parameter-stage-numbers record last-stage)]
            (t2/query {:update :report_dashboardcard
-                      :set    {:parameter_mappings (json/generate-string new-mappings)}
+                      :set    {:parameter_mappings (json/encode new-mappings)}
                       :where  [:= :id (:dc_id record)]}))))
      (t2/reducible-query {:select     [[:c.id :c_id] [:c.type :c_type] :c.dataset_query
                                        [:dc.id :dc_id] :dc.parameter_mappings]
@@ -1635,7 +1635,7 @@
 
 (defn- remove-parameter-stage-numbers
   [record]
-  (when-let [orig-pmappings (some-> record :parameter_mappings (json/parse-string true))]
+  (when-let [orig-pmappings (some-> record :parameter_mappings json/decode+kw)]
     (let [pmappings (map remove-target-stage-number orig-pmappings)]
       (when (not= pmappings orig-pmappings)
         pmappings))))
@@ -1646,7 +1646,7 @@
    (fn [record]
      (when-let [new-mappings (remove-parameter-stage-numbers record)]
        (t2/query {:update :report_dashboardcard
-                  :set    {:parameter_mappings (json/generate-string new-mappings)}
+                  :set    {:parameter_mappings (json/encode new-mappings)}
                   :where  [:= :id (:id record)]})))
    (t2/reducible-query {:select [:id :parameter_mappings]
                         :from   [:report_dashboardcard]
@@ -1672,7 +1672,7 @@
                              (dimension? dimension))
                         update-fn)]
     (if (not= new-dimension dimension)
-      (let [new-dimension-str (json/generate-string new-dimension)
+      (let [new-dimension-str (json/encode new-dimension)
             new-dimension-key (keyword new-dimension-str)]
         [new-dimension-key (-> parameter-mapping
                                (assoc :id new-dimension-str)
@@ -1726,7 +1726,7 @@
   []
   (let [id-viz-settings                 ; based on Hosting Insights, a few hundred records are expected
         (into []
-              (map (juxt :id (comp #(json/parse-string % true) :visualization_settings)))
+              (map (juxt :id (comp json/decode+kw :visualization_settings)))
               (t2/reducible-query {:select [:id :visualization_settings]
                                    :from   [:report_dashboardcard]
                                    :where  [:and
@@ -1752,13 +1752,13 @@
      (fn [[id viz-settings]]
        (when-let [new-viz-settings (set-viz-settings-parameter-stage-numbers viz-settings card-id->last-stage)]
          (t2/query {:update :report_dashboardcard
-                    :set    {:visualization_settings (json/generate-string new-viz-settings)}
+                    :set    {:visualization_settings (json/encode new-viz-settings)}
                     :where  [:= :id id]})))
      id-viz-settings)))
 
 (defn- remove-viz-settings-parameter-stage-numbers
   [record]
-  (let [orig-viz-settings (some-> record :visualization_settings (json/parse-string true))
+  (let [orig-viz-settings (some-> record :visualization_settings json/decode+kw)
         remove-stage-numbers (constantly #(subvec % 0 2))
         viz-settings (-> orig-viz-settings
                          (update-viz-settings-target-dimensions remove-stage-numbers)
@@ -1772,7 +1772,7 @@
    (fn [record]
      (when-let [new-mappings (remove-viz-settings-parameter-stage-numbers record)]
        (t2/query {:update :report_dashboardcard
-                  :set    {:visualization_settings (json/generate-string new-mappings)}
+                  :set    {:visualization_settings (json/encode new-mappings)}
                   :where  [:= :id (:id record)]})))
    (t2/reducible-query {:select [:id :visualization_settings]
                         :from   [:report_dashboardcard]

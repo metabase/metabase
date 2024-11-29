@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard-card-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.models.card :refer [Card]]
    [metabase.models.card-test :as card-test]
@@ -14,6 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -284,13 +284,13 @@
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
     (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
            ((:out mi/transform-parameters-list)
-            (json/generate-string
+            (json/encode
              [{:target [:dimension [:fk-> 23 30]]}]))))
 
     (testing "...but parameter mappings we should not normalize things like :target"
       (is (= [{:card-id 123, :hash "abc", :target "foo"}]
              ((:out mi/transform-parameters-list)
-              (json/generate-string
+              (json/encode
                [{:card-id 123, :hash "abc", :target "foo"}])))))))
 
 (deftest ^:parallel keep-empty-parameter-mappings-empty-test
@@ -298,7 +298,7 @@
                 "them because they are empty) (I think this is to prevent NPEs on the FE? Not sure why we do this)")
     (is (= []
            ((:out mi/transform-parameters-list)
-            (json/generate-string []))))))
+            (json/encode []))))))
 
 (deftest ^:parallel normalize-card-parameter-mappings-test
   (doseq [parameters [[]
@@ -310,7 +310,7 @@
                         :temporal_units [:minute :quarter-of-year]}]]]
     (is (= parameters
            ((:out mi/transform-card-parameters-list)
-            (json/generate-string parameters))))))
+            (json/encode parameters))))))
 
 (deftest ^:parallel identity-hash-test
   (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"
@@ -347,8 +347,8 @@
       ;; transformed by `from-parsed-json`
       (let [dashcard     (dissoc (t2/select-one DashboardCard :id (u/the-id dashcard))
                                  :created_at :updated_at)
-            serialized   (json/generate-string dashcard)
-            deserialized (json/parse-string serialized true)
+            serialized   (json/encode dashcard)
+            deserialized (json/decode+kw serialized)
             transformed  (dashboard-card/from-parsed-json deserialized)]
         (is (= dashcard
                transformed))))))

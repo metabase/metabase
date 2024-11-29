@@ -53,7 +53,6 @@
     format distinguishes between `nil` and absence)"
   (:refer-clojure :exclude [descendants])
   (:require
-   [cheshire.core :as json]
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -65,6 +64,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -1325,18 +1325,18 @@
   Returns a new JSON string with the IDs converted inside."
   [json-str]
   (-> json-str
-      (json/parse-string true)
+      json/decode+kw
       ids->fully-qualified-names
-      json/generate-string))
+      json/encode))
 
 (defn- json-mbql-fully-qualified-names->ids
   "Converts fully qualified names to IDs in MBQL embedded inside a JSON string.
   Returns a new JSON string with teh IDs converted inside."
   [json-str]
   (-> json-str
-      (json/parse-string true)
+      json/decode+kw
       mbql-fully-qualified-names->ids
-      json/generate-string))
+      json/encode))
 
 (defn- export-viz-click-behavior-link
   [{:keys [linkType type] old-target-id :targetId :as click-behavior}]
@@ -1447,7 +1447,7 @@
   [settings]
   (when settings
     (-> settings
-        (update-keys #(-> % json/parse-string export-visualizations json/generate-string))
+        (update-keys #(-> % json/decode export-visualizations json/encode))
         (update-vals export-viz-click-behavior))))
 
 (defn export-visualization-settings
@@ -1495,7 +1495,7 @@
 (defn- import-column-settings [settings]
   (when settings
     (-> settings
-        (update-keys #(-> % name json/parse-string import-visualizations json/generate-string))
+        (update-keys #(-> % name json/decode import-visualizations json/encode))
         (update-vals import-viz-click-behavior))))
 
 (defn import-visualization-settings
@@ -1536,7 +1536,7 @@
   (let [column-settings-keys-deps (some->> viz
                                            :column_settings
                                            keys
-                                           (map (comp mbql-deps json/parse-string name)))
+                                           (map (comp mbql-deps json/decode name)))
         column-settings-vals-deps (some->> viz
                                            :column_settings
                                            vals
