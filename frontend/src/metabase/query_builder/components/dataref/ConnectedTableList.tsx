@@ -5,12 +5,11 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import {
   NodeListContainer,
   NodeListIcon,
-  NodeListItemIcon,
-  NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-} from "./NodeList.styled";
+} from "./NodeList";
+import { NodeListItemIcon, NodeListItemLink } from "./NodeList.styled";
 
 interface ConnectedTableListProps {
   tables: Table[];

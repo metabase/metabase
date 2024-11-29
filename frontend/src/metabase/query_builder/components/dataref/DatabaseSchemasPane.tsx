@@ -10,13 +10,12 @@ import type { State } from "metabase-types/store";
 import {
   NodeListContainer,
   NodeListIcon,
-  NodeListItemIcon,
-  NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
   QuestionId,
-} from "./NodeList.styled";
+} from "./NodeList";
+import { NodeListItemIcon, NodeListItemLink } from "./NodeList.styled";
 import { PaneContent } from "./Pane.styled";
 
 interface DatabaseSchemasPaneProps {

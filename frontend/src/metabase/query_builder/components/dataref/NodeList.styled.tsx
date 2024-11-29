@@ -1,22 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import {
-  HoverParent,
-  TableColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
-
-export const NodeListItemName = styled.span`
-  font-weight: 700;
-  margin-left: ${space(1)};
-`;
-
-export const NodeListIcon = styled(Icon)`
-  margin-top: 1px;
-  width: ${space(2)};
-`;
 
 export const NodeListItemIcon = styled(Icon)`
   color: var(--mb-color-focus);
@@ -56,31 +43,6 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
         color: inherit;
       }
     `};
-`;
-
-export const NodeListContainer = styled.ul`
-  padding-top: ${space(2)};
-`;
-
-export const NodeListTitle = styled.div`
-  display: flex;
-  align-items: center;
-  font-weight: 700;
-  padding: ${space(1)} ${space(1)} ${space(1)} 6px;
-`;
-
-export const NodeListTitleText = styled.span`
-  margin-left: ${space(1)};
-`;
-
-export const QuestionId = styled.span`
-  font-size: 0.75rem;
-  color: var(--mb-color-text-medium);
-  margin-left: ${space(0)};
-`;
-
-export const NodeListInfoIcon = styled(TableColumnInfoIcon)`
-  margin-left: auto;
 `;
 
 export const NodeListItem = styled(HoverParent)`
