@@ -2,7 +2,12 @@ import { t } from "ttag";
 
 import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
 
-import { MBQL_CLAUSES, getMBQLName, hasOptions, unescapeString } from "./index";
+import {
+  MBQL_CLAUSES,
+  getMBQLName,
+  isOptionsObject,
+  unescapeString,
+} from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,
@@ -322,14 +327,14 @@ export const adjustOffset = tree =>
 export const adjustMultiArgOptions = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
-      const [operator] = node;
+      const [operator, ...args] = node;
       const clause = MBQL_CLAUSES[operator];
       if (clause != null && clause.multiple && clause.hasOptions) {
-        if (hasOptions(node) && node.length > 4) {
-          return withAST([operator, node.at(-1), ...node.slice(1, -1)], node);
+        if (isOptionsObject(args.at(-1)) && args.length > 3) {
+          return withAST([operator, args.at(-1), ...args.slice(0, -1)], node);
         }
-        if (node.length > 3) {
-          return withAST([operator, {}, ...node.slice(1)], node);
+        if (args.length > 2) {
+          return withAST([operator, {}, ...args], node);
         }
       }
     }

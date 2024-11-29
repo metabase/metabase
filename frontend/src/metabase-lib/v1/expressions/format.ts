@@ -12,7 +12,6 @@ import {
   formatSegmentName,
   formatStringLiteral,
   getExpressionName,
-  hasOptions,
   isBooleanLiteral,
   isCase,
   isDimension,
@@ -21,6 +20,7 @@ import {
   isNumberLiteral,
   isOffset,
   isOperator,
+  isOptionsObject,
   isSegment,
   isStringLiteral,
 } from "./index";
@@ -159,11 +159,13 @@ function formatFunctionOptions(fnOptions: Record<string, any>) {
   }
 }
 
-function formatFunction([fn, ...args]: any[], options: Options) {
-  if (hasOptions(args)) {
-    const fnOptions = formatFunctionOptions(args.pop());
-    if (fnOptions) {
-      args = [...args, fnOptions];
+function formatFunction([fn, ...operands]: any[], options: Options) {
+  const args = operands.filter(arg => !isOptionsObject(arg));
+  const fnOptions = operands.find(isOptionsObject);
+  if (fnOptions) {
+    const formattedOptions = formatFunctionOptions(fnOptions);
+    if (formattedOptions) {
+      args.push(formattedOptions);
     }
   }
   const formattedName = getExpressionName(fn) ?? "";
@@ -173,12 +175,8 @@ function formatFunction([fn, ...args]: any[], options: Options) {
     : `${formattedName}(${formattedArgs.join(", ")})`;
 }
 
-function formatOperator([op, ...args]: any[], options: Options) {
-  if (hasOptions(args)) {
-    // FIXME: how should we format args?
-    args = args.slice(0, -1);
-  }
-
+function formatOperator([op, ...operands]: any[], options: Options) {
+  const args = operands.filter(arg => !isOptionsObject(arg));
   const formattedOperator = getExpressionName(op) || op;
   const formattedArgs = args.map((arg, index) => {
     const argOp = isOperator(arg) && arg[0];
