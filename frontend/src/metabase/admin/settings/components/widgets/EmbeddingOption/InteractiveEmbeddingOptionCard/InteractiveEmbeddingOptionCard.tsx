@@ -16,6 +16,13 @@ import type { EmbeddingOptionCardProps } from "../types";
 
 import { InteractiveEmbeddingIcon } from "./InteractiveEmbeddingIcon";
 
+const interactiveEmbeddingUtmTags = {
+  utm_source: "product",
+  utm_medium: "docs",
+  utm_campaign: "embedding-interactive",
+  utm_content: "embedding-admin",
+};
+
 export const InteractiveEmbeddingOptionCard = ({
   onToggle,
 }: EmbeddingOptionCardProps) => {
@@ -29,10 +36,9 @@ export const InteractiveEmbeddingOptionCard = ({
   const quickStartUrl = useSelector(state =>
     getDocsUrl(state, {
       page: "embedding/interactive-embedding-quick-start-guide",
+      utm: interactiveEmbeddingUtmTags,
     }),
   );
-
-  const quickStartLinkWithUtm = `${quickStartUrl}?utm_source=${plan}&utm_media=embed-settings`;
 
   return (
     <EmbeddingOption
@@ -65,7 +71,7 @@ export const InteractiveEmbeddingOptionCard = ({
         color="brand"
         component="a"
         pos="relative"
-        href={quickStartLinkWithUtm}
+        href={quickStartUrl}
         target="_blank"
       >
         {t`Check out our Quick Start`}{" "}
