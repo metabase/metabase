@@ -190,20 +190,28 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- reschedule-task!
+  "Assuming that [[job]] is already registered, ensure that [[new-trigger]] is scheduled to trigger it."
   [job         :- (ms/InstanceOfClass JobDetail)
    new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
-      (let [job-key     (.getKey ^JobDetail job)
-            trigger-key (.getKey ^Trigger new-trigger)
-            old-trigger ^Trigger (->> (qs/get-triggers-of-job scheduler job-key)
-                                      (filter (comp #{trigger-key} #(.getKey ^Trigger %)))
-                                      first)]
-        (if old-trigger
-          (do (log/debugf "Rescheduling job %s" (.getName job-key))
-              (.rescheduleJob scheduler (.getKey ^Trigger old-trigger) new-trigger))
-          ;; can't find the old trigger, removed by another process? try again.
-          (qs/schedule scheduler job new-trigger))))
+      (let [job-key          (.getKey ^JobDetail job)
+            new-trigger-key  (.getKey ^Trigger new-trigger)
+            triggers         (qs/get-triggers-of-job scheduler job-key)
+            matching-trigger (first (filter (comp #{new-trigger-key} #(.getKey ^Trigger %)) triggers))
+            replaced-trigger (or matching-trigger (first triggers))]
+        (when replaced-trigger
+          (log/debugf "Rescheduling job %s" (.getName job-key))
+          (let [replaced-key (.getKey ^Trigger replaced-trigger)]
+            (when-not matching-trigger
+              (log/warnf "Replacing trigger %s with trigger %s%s"
+                         (.getName replaced-key)
+                         (.getName new-trigger-key)
+                         (when (> (count triggers) 1)
+                           ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
+                           (str " (chosen randomly from " (count triggers) " existing ones)")))
+              matching-trigger)
+            (.rescheduleJob scheduler (.getKey ^Trigger matching-trigger) new-trigger)))))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
 
