@@ -68,8 +68,17 @@ describe("scenarios > question > native", () => {
   });
 
   it("displays an error", () => {
-    openNativeEditor().type("select * from not_a_table");
-    runQuery();
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: {
+          query: "select * from not_a_table",
+        },
+      },
+      visualization_settings: {},
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
