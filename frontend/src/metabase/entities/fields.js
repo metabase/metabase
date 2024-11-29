@@ -258,7 +258,7 @@ const useGetFetchFieldValuesQuery = query => {
   );
 };
 
-function transformResponse(data, table_id) {
+const transformResponse = (data, table_id) => {
   if (!data) {
     return data;
   }
@@ -267,6 +267,6 @@ function transformResponse(data, table_id) {
 
   // table_id is required for uniqueFieldId as it's a way to know if field is virtual
   return { id: field_id, ...rest, ...(table_id && { table_id }) };
-}
+};
 
 export default Fields;
