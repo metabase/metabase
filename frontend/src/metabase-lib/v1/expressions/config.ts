@@ -547,7 +547,6 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "now",
   "convert-timezone",
   // boolean
-  "if",
   "contains",
   "ends-with",
   "starts-with",
@@ -561,6 +560,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "not-empty",
   "does-not-contain",
   // other
+  "if",
   "coalesce",
 ]);
 
