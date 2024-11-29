@@ -63,7 +63,7 @@
 
 (defmethod search.engine/results :search.engine/fulltext
   [{:keys [search-string] :as search-ctx}]
-  (when-not @#'search.index/initialized?
+  (when-not (search.index/active-table)
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (let [weights (search.config/weights search-ctx)
@@ -96,4 +96,4 @@
   (search.index/ensure-ready! false)
   (search.index/maybe-create-pending!)
   (u/prog1 (search.ingestion/populate-index! :search.engine/fulltext)
-    (search.index/activate-pending!)))
+    (search.index/activate-table!)))
