@@ -127,7 +127,8 @@
    ;; ignore module-info files inside META-INF because we don't have a modular JAR and they can break tools like `jar
    ;; tf` -- see Slacc thread
    ;; https://metaboat.slack.com/archives/C5XHN8GLW/p1731633690703149?thread_ts=1731504670.951389&cid=C5XHN8GLW
-   #".*module-info\.class"])
+   #".*module-info\.class"
+   #"^LICENSE$"])
 
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
