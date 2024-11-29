@@ -1,6 +1,7 @@
 (ns metabase.util.json
   "Functions for encoding and decoding JSON that abstract away the underlying implementation."
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as cheshire]
    [cheshire.factory]
    [cheshire.generate :as json.generate]
