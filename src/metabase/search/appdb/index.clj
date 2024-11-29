@@ -3,23 +3,26 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
-  (:import (org.postgresql.util PSQLException)))
+  (:import
+   (org.postgresql.util PSQLException)))
 
 (comment
   postgres/keep-me)
 
-(set! *warn-on-reflection* true)
-
 (def ^:private insert-batch-size 150)
 
-(def ^:dynamic ^:private *active-table* (atom nil))
+(defonce ^:dynamic ^:private *active-table* (atom nil))
 
-(def ^:dynamic ^:private *pending-table* (atom nil))
+(defonce ^:dynamic ^:private *pending-table* (atom nil))
+
+(def ^:private ^:dynamic *mocking-tables* false)
 
 (defn active-table
   "The table against which we should currently make search queries."
@@ -31,10 +34,14 @@
   []
   @*pending-table*)
 
+(comment
+  (reset! *active-table* nil)
+  (reset! *pending-table* nil))
+
 (defn gen-table-name
   "Generate a unique table name to use as a search index table."
   []
-  (keyword (str/replace (str "search_index_" (random-uuid)) #"-" "_")))
+  (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
 
 (defn- exists? [table-name]
   (when table-name
@@ -44,6 +51,46 @@
   (boolean
    (when (and table-name (exists? table-name))
      (t2/query (sql.helpers/drop-table table-name)))))
+
+(defn- existing-indexes []
+  (map (comp keyword :table_name)
+       (t2/query {:select [:table_name]
+                  :from   :information_schema.tables
+                  :where  [:like :table_name "search_index__%"]})))
+
+(defn- sync-tables [old-metadata new-metadata]
+  ;; Oh dear, we get the raw setting. Save a little bit of overhead by no keywordizing the keys.
+  (let [old-metadata                         (json/parse-string old-metadata)
+        {:strs [active-table pending-table]} (json/parse-string new-metadata)
+        ;; implicitly clear the pending table if we just activated it
+        pending-table                        (when (not= active-table pending-table) pending-table)]
+    (reset! *active-table* (some-> active-table keyword))
+    (reset! *pending-table* (some-> pending-table keyword))
+    ;; Clean up any tables not referenced by the previous or current configuration
+    (let [keep-table? (->> (map (or old-metadata {}) ["active-table" "pending-table"])
+                           (list* active-table pending-table)
+                           (into #{} (comp (filter some?) (map keyword))))
+          to-drop (remove keep-table? (existing-indexes))]
+      (when (seq to-drop)
+        (log/infof "Dropping %d stale indexes" (count to-drop))
+        (t2/query (apply sql.helpers/drop-table to-drop))))))
+
+(defsetting search-engine-appdb-index-state
+  "Internation state used to maintain the AppDb Search Index"
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :default    nil
+  :type       :json
+  :on-change sync-tables)
+
+(defn- update-metadata! [new-metadata]
+  (when-not *mocking-tables*
+    (search-engine-appdb-index-state!
+     (merge (search-engine-appdb-index-state) new-metadata))))
+
+(comment
+  (search-engine-appdb-index-state! nil))
 
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
@@ -62,7 +109,11 @@
     (let [table-name (gen-table-name)]
       (when-not (exists? table-name)
         (create-table! table-name))
-      (reset! *pending-table* table-name))))
+      ;; This is a bit shaky - another server part-way through populating the pending table maybe pick up this table
+      ;; and then activate it prematurely.
+      ;; This issue also existed with the fixed table name approach too, however.
+      ;; TODO improve coordination around re-indexing
+      (update-metadata! {:pending-table table-name}))))
 
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
@@ -71,16 +122,7 @@
   ([table-name]
    (boolean
     (when (exists? table-name)
-      (let [active (active-table)]
-        (when (not= active table-name)
-          (reset! *active-table* table-name)
-          (swap! *pending-table* #(when (not= % table-name) %))
-          (when active
-            ;; TODO we need more graceful way to drop these
-            (-> (Thread. (fn []
-                           (Thread/sleep 1000)
-                           (drop-table! active)))
-                (.run)))))))))
+      (update-metadata! {:active-table table-name})))))
 
 (defn- document->entry [entity]
   (-> entity
@@ -119,8 +161,9 @@
   "Create the given search index entries in bulk"
   [documents]
   (let [entries          (map document->entry documents)
-        ;; Ideally, we would reset these atoms if the corresponding tables don't exist.
-        ;; We're about to rework this area, so just leaving this as a note for now.
+        ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
+        ;;                    this should give a close to 2x speed-up as insertion is the bottleneck, and most of the
+        ;;                    updates will be no-ops in any case.
         active-updated?  (safe-batch-upsert! (active-table) entries)
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
@@ -169,8 +212,9 @@
   "Create a temporary index table for the duration of the body."
   [& body]
   `(let [table-name# (gen-table-name)]
-     (binding [*pending-table* (atom nil)
-               *active-table*  (atom table-name#)]
+     (binding [*mocking-tables* true
+               *pending-table*  (atom nil)
+               *active-table*   (atom table-name#)]
        (try
          (create-table! table-name#)
          ~@body
