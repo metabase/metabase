@@ -8,7 +8,7 @@ import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { type ButtonProps, Button as MantineButton } from "metabase/ui";
 
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
-import ViewSection, { ViewHeading, ViewSubHeading } from "../ViewSection";
+import ViewSection, { ViewSubHeading } from "../ViewSection";
 
 import { QuestionDataSource } from "./components/QuestionDataSource";
 
@@ -28,12 +28,6 @@ export const ViewHeaderContainer = styled(ViewSection)<{
   }
 `;
 
-export const ViewHeaderMainLeftContentContainer = styled.div`
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-`;
-
 export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   display: flex;
   align-items: center;
@@ -43,21 +37,6 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
     flex-direction: column;
     align-items: start;
   }
-`;
-
-export const AdHocViewHeading = styled(ViewHeading)`
-  margin-bottom: ${space(0)};
-  margin-top: ${space(0)};
-  margin-right: ${space(2)};
-`;
-
-export const BackButton = styled(Button)`
-  color: var(--mb-color-brand);
-  padding: 0.75rem;
-`;
-
-export const BackButtonContainer = styled.span`
-  margin-right: 0.75rem;
 `;
 
 export const SaveButton = styled(MantineButton)<ButtonProps>`
@@ -139,15 +118,6 @@ export const SavedQuestionLeftSideRoot = styled.div<{
       opacity: 1;
     }
   }
-`;
-
-export const HeaderDivider = styled.span`
-  font-size: 1.25rem;
-  line-height: 1.5rem;
-  font-weight: 700;
-  color: var(--mb-color-text-medium);
-  padding-left: 0.5rem;
-  padding-right: 0.25rem;
 `;
 
 export const ViewHeaderActionPanel = styled.div`

@@ -3,17 +3,16 @@ import { useCallback, useEffect, useState } from "react";
 
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 import {
-  HeaderDivider,
   SavedQuestionHeaderButtonContainer,
   SavedQuestionLeftSideRoot,
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
   ViewHeaderLeftSubHeading,
-  ViewHeaderMainLeftContentContainer,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 import { HeaderCollectionBadge } from "../HeaderCollectionBadge";
 import { QuestionDataSource } from "../QuestionDataSource";
@@ -69,11 +68,13 @@ export function SavedQuestionLeftSide({
       data-testid="qb-header-left-side"
       showSubHeader={showSubHeader}
     >
-      <ViewHeaderMainLeftContentContainer>
+      <Flex align="center" wrap="nowrap">
         <SavedQuestionHeaderButtonContainer isModelOrMetric={isModelOrMetric}>
           <Flex align="center" gap="sm">
             <HeadBreadcrumbs
-              divider={<HeaderDivider>/</HeaderDivider>}
+              divider={
+                <span className={ViewTitleHeaderS.headerDivider}>/</span>
+              }
               parts={[
                 ...(isAdditionalInfoVisible && isModelOrMetric
                   ? [
@@ -95,7 +96,7 @@ export function SavedQuestionLeftSide({
             <ViewOnlyTag question={question} />
           </Flex>
         </SavedQuestionHeaderButtonContainer>
-      </ViewHeaderMainLeftContentContainer>
+      </Flex>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
           {QuestionDataSource.shouldRender({ question, isObjectDetail }) &&

@@ -3,15 +3,16 @@ import { t } from "ttag";
 
 import {
   AdHocLeftSideRoot,
-  AdHocViewHeading,
   ViewHeaderLeftSubHeading,
-  ViewHeaderMainLeftContentContainer,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { ViewHeading } from "../../../ViewSection";
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
 
@@ -46,8 +47,11 @@ export function AdHocQuestionLeftSide(
 
   return (
     <AdHocLeftSideRoot>
-      <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading color="medium">
+      <Flex align="center" wrap="nowrap">
+        <ViewHeading
+          className={ViewTitleHeaderS.adHocViewHeading}
+          color="medium"
+        >
           {isNative ? (
             t`New question`
           ) : (
@@ -59,8 +63,8 @@ export function AdHocQuestionLeftSide(
               onClick={handleTitleClick}
             />
           )}
-        </AdHocViewHeading>
-      </ViewHeaderMainLeftContentContainer>
+        </ViewHeading>
+      </Flex>
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource

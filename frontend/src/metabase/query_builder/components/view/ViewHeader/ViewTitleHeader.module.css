@@ -63,3 +63,23 @@
     background-color: color-mix(in srgb, var(--mb-color-summarize) 15%, white);
   }
 }
+
+.backButton {
+  color: var(--mb-color-brand);
+  padding: 0.75rem;
+}
+
+.headerDivider {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 700;
+  color: var(--mb-color-text-medium);
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.adHocViewHeading {
+  margin-bottom: 0.25rem;
+  margin-top: 0.25rem;
+  margin-right: 1rem;
+}
