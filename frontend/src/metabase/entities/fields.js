@@ -1,5 +1,6 @@
 import { assocIn, updateIn } from "icepick";
 import { normalize } from "normalizr";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -241,7 +242,30 @@ const Fields = createEntity({
 });
 
 const useGetFetchFieldValuesQuery = query => {
-  return useGetFieldValuesQuery(query === skipToken ? skipToken : query.id);
+  const tableId = query.table_id;
+  const result = useGetFieldValuesQuery(
+    query === skipToken ? skipToken : query.id,
+  );
+
+  return useMemo(() => {
+    const { data } = result;
+
+    return {
+      ...result,
+      data: data ? transformResponse(data, tableId) : data,
+    };
+  }, [result, tableId]);
 };
+
+function transformResponse(data, table_id) {
+  if (!data) {
+    return data;
+  }
+
+  const { field_id, ...rest } = data;
+
+  // table_id is required for uniqueFieldId as it's a way to know if field is virtual
+  return { id: field_id, ...rest, ...(table_id && { table_id }) };
+}
 
 export default Fields;
