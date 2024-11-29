@@ -183,10 +183,12 @@
 (defn- batch-update!
   "Create the given search index entries in bulk"
   [documents]
-  (when (and config/is-test?
-             (and (active-table) (not (exists? (active-table))))
-             (and (pending-table) (not (exists? (pending-table)))))
-    (search.engine/reset-tracking! :search.engine/fulltext))
+  ;; Protect against tests that nuke the appdb
+  (when config/is-test?
+    (when (and (active-table) (not (exists? (active-table))))
+      (reset! *active-table* nil))
+    (when (and (pending-table) (not (exists? (pending-table))))
+      (reset! *pending-table* nil)))
 
   (let [entries          (map document->entry documents)
         ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
