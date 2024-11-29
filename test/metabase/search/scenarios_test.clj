@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.config :as config]
-   [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
@@ -11,8 +11,9 @@
   "Ingest any objects with name contains `search-term`"
   [search-term]
   (doseq [model (keys (methods search.spec/spec))]
-    (#'search.ingestion/batch-update!
-     (#'search.ingestion/spec-index-reducible model [:like :this.name (str "%" search-term "%")]))))
+    (-> (#'search.ingestion/spec-index-reducible model [:like :this.name (str "%" search-term "%")])
+        (#'search.ingestion/query->documents)
+        search.ingestion/consume!)))
 
 (defn fulltext-search
   [search-string]
