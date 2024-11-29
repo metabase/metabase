@@ -125,6 +125,7 @@ export default _.compose(
     query: (_state: State, props: DatabaseTablesPaneProps) => ({
       models: ["dataset", "table"],
       table_db_id: props.database.id,
+      context: "query-builder",
     }),
     listName: "searchResults",
   }),

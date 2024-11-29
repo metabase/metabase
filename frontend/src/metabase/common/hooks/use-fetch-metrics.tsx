@@ -3,8 +3,8 @@ import type { SearchRequest } from "metabase-types/api";
 
 export const useFetchMetrics = (
   req:
-    | (Partial<SearchRequest> & Required<Pick<SearchRequest, "context">>)
-    | typeof skipToken = { context: "skip-token" },
+    | (Partial<SearchRequest> & Pick<SearchRequest, "context">)
+    | typeof skipToken,
 ) => {
   const modelsResult = useSearchQuery(
     req === skipToken

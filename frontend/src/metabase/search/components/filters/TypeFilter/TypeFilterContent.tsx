@@ -7,10 +7,10 @@ import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFil
 import { enabledSearchTypes } from "metabase/search/constants";
 import type { SearchFilterDropdown } from "metabase/search/types";
 import { Checkbox, Stack } from "metabase/ui";
-import type { EnabledSearchModel, SearchContext } from "metabase-types/api";
+import type { EnabledSearchModel, SearchRequest } from "metabase-types/api";
 
-const EMPTY_SEARCH_QUERY = {
-  context: "search-model-filter" as SearchContext,
+const EMPTY_SEARCH_QUERY: SearchRequest = {
+  context: "available-models",
   models: ["dataset" as const],
   limit: 1,
   calculate_available_models: true as const,

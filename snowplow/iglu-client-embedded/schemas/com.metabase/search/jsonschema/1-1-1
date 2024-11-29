@@ -47,7 +47,8 @@
         "search-app",
         "search-bar",
         "strategy-editor",
-        "search-model-filter"
+        "query-builder",
+        "action-picker"
       ],
       "maxLength": 1024
     },

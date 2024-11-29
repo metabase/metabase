@@ -110,7 +110,9 @@ export type SearchContext =
   | "search-app"
   | "search-bar"
   | "skip-token" // never sent to the backend, used in a sentinel payload
-  | "strategy-editor";
+  | "strategy-editor"
+  | "query-builder"
+  | "action-picker";
 
 export type SearchRequest = {
   q?: string;

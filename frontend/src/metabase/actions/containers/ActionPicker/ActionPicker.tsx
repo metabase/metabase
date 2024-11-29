@@ -157,6 +157,7 @@ export const ConnectedActionPicker = _.compose(
   Search.loadList({
     query: () => ({
       models: ["dataset"],
+      context: "action-picker",
     }),
     listName: "models",
   }),

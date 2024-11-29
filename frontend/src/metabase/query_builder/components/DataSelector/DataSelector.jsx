@@ -1112,6 +1112,7 @@ const DataSelector = _.compose(
     query: {
       models: ["dataset"],
       limit: 1,
+      context: "available-models",
     },
     listName: "models",
     loadingAndErrorWrapper: false,
@@ -1120,6 +1121,7 @@ const DataSelector = _.compose(
     query: {
       models: ["metric"],
       limit: 1,
+      context: "available-models",
     },
     listName: "metrics",
     loadingAndErrorWrapper: false,

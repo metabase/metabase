@@ -125,6 +125,7 @@ function useHasVerifiedModels() {
           model_ancestors: false,
           limit: 0,
           verified: true,
+          context: "model-browser",
         }
       : skipToken,
   );
@@ -157,6 +158,7 @@ function useFilteredModels(modelFilters: ModelFilterSettings) {
       : {
           filter_items_in_personal_collection: "exclude",
           model_ancestors: false,
+          context: "model-browser",
           ...filters,
         },
   );
