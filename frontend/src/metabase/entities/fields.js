@@ -249,7 +249,7 @@ const useGetFetchFieldValuesQuery = query => {
 
   const { data } = result;
   const transformedData = useMemo(() => {
-    return data ? transformResponse(data, tableId) : data;
+    return data ? transformFieldValuesData(data, tableId) : data;
   }, [data, tableId]);
 
   return useMemo(
@@ -258,7 +258,7 @@ const useGetFetchFieldValuesQuery = query => {
   );
 };
 
-const transformResponse = (data, table_id) => {
+const transformFieldValuesData = (data, table_id) => {
   if (!data) {
     return data;
   }
