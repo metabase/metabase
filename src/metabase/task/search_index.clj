@@ -43,7 +43,6 @@
           report (search/init-index! {:force-reset? false, :re-populate? false})]
       (if (seq report)
         (do (report->prometheus! report)
-            (log/info "Recreated search index from the latest schema")
             (log/infof "Done indexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report))
             true)
         (log/info "Found existing search index, and using it.")))))

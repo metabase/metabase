@@ -13,7 +13,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (org.postgresql.util PSQLException ServerErrorMessage)))
+   (org.postgresql.util PSQLException)))
 
 (comment
   postgres/keep-me)
@@ -175,10 +175,8 @@
       (specialization/batch-upsert! table-name entries)
       (catch Exception e
         ;; ignore database errors, the table likely doesn't exist, or has a stale schema.
-        (let [cause (ex-cause e)]
-          (when-not (or (instance? PSQLException cause)
-                        (instance? ServerErrorMessage cause))
-            (throw e)))))))
+        (when-not (instance? PSQLException (ex-cause e))
+          (throw e))))))
 
 (defn- batch-update!
   "Create the given search index entries in bulk"
