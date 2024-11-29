@@ -7,8 +7,8 @@ import { OPERATOR as OP } from "./tokenizer";
 import {
   MBQL_CLAUSES,
   getMBQLName,
+  isCaseOrIfOperator,
   isOptionsObject,
-  isSameOperatorOrAlias,
 } from "./index";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
@@ -125,15 +125,15 @@ export function resolve({
           expression.node,
         );
       }
-    } else if (isSameOperatorOrAlias(op, "concat")) {
+    } else if (op === "concat") {
       operandType = "expression";
-    } else if (isSameOperatorOrAlias(op, "coalesce")) {
+    } else if (op === "coalesce") {
       operandType = type;
-    } else if (isSameOperatorOrAlias(op, "case")) {
+    } else if (isCaseOrIfOperator(op)) {
       const [pairs, options] = operands;
       if (pairs.length < 1) {
         throw new ResolverError(
-          t`${op} expects 2 arguments or more`,
+          t`${op.toUpperCase()} expects 2 arguments or more`,
           expression.node,
         );
       }

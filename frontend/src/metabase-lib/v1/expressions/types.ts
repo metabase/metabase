@@ -41,7 +41,6 @@ export type MBQLClauseFunctionConfig = {
   multiple?: boolean;
   tokenName?: string;
   name?: string;
-  aliases?: string[];
 
   validator?: (...args: any) => string | undefined;
 };

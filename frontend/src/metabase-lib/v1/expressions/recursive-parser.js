@@ -5,8 +5,8 @@ import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
 import {
   MBQL_CLAUSES,
   getMBQLName,
+  isCaseOrIfOperator,
   isOptionsObject,
-  isSameOperatorOrAlias,
   unescapeString,
 } from "./index";
 
@@ -291,11 +291,11 @@ export const adjustOptions = tree =>
   });
 
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
-export const adjustCase = tree =>
+export const adjustCaseOrIf = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;
-      if (isSameOperatorOrAlias(operator, "case")) {
+      if (isCaseOrIfOperator(operator)) {
         const pairs = [];
         const pairCount = operands.length >> 1;
         for (let i = 0; i < pairCount; ++i) {
@@ -317,7 +317,7 @@ export const adjustOffset = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
       const [operator, expr, n] = node;
-      if (isSameOperatorOrAlias(operator, "offset")) {
+      if (operator === "offset") {
         const opts = {};
         return withAST([operator, opts, expr, n], node);
       }
@@ -358,7 +358,7 @@ export const adjustMultiArgOptions = tree =>
 export const adjustBooleans = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
-      if (isSameOperatorOrAlias(node[0], "case")) {
+      if (isCaseOrIfOperator(node[0])) {
         const [operator, pairs, options] = node;
         return [
           operator,
@@ -409,6 +409,6 @@ export const parse = pipe(
   adjustOptions,
   useShorthands,
   adjustOffset,
-  adjustCase,
+  adjustCaseOrIf,
   adjustMultiArgOptions,
 );

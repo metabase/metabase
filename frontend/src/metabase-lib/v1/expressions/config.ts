@@ -294,7 +294,6 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "expression",
     args: ["expression", "expression"], // ideally we'd alternate boolean/expression
     multiple: true,
-    aliases: ["if"],
   },
   if: {
     displayName: `if`,
@@ -548,6 +547,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "now",
   "convert-timezone",
   // boolean
+  "if",
   "contains",
   "ends-with",
   "starts-with",

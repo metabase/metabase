@@ -1,8 +1,6 @@
 import { MBQL_CLAUSES } from "./config";
 import { OPERATOR as OP } from "./tokenizer";
 
-import { isSameOperatorOrAlias } from "./index";
-
 export const MONOTYPE = {
   Undefined: "undefined",
   Number: "number",
@@ -37,11 +35,12 @@ export function infer(mbql, env) {
   }
 
   switch (true) {
-    case isSameOperatorOrAlias(op, "case"):
+    case "case":
+    case "if":
       return infer(mbql[1][0][1], env);
-    case isSameOperatorOrAlias(op, "coalesce"):
+    case "coalesce":
       return infer(mbql[1], env);
-    case isSameOperatorOrAlias(op, "offset"):
+    case "offset":
       return infer(mbql[2], env);
   }
 
