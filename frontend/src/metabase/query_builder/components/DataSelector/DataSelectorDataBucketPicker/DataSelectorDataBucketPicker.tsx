@@ -1,13 +1,14 @@
+import SelectList from "metabase/components/SelectList";
+import { Box, Flex } from "metabase/ui";
+
 import type { DataTypeInfoItem } from "../types";
 
+import DataSelectorDataBucketPickerS from "./DataSelectorDataBucketPicker.module.css";
 import {
   DataBucketListItemContainer as ItemContainer,
   DataBucketListItemDescription as ItemDescription,
-  DataBucketListItemDescriptionContainer as ItemDescriptionContainer,
   DataBucketListItemIcon as ItemIcon,
   DataBucketListItemTitle as ItemTitle,
-  DataBucketList as List,
-  DataBucketTitleContainer as TitleContainer,
 } from "./DataSelectorDataBucketPicker.styled";
 
 type DataSelectorDataBucketPickerProps = {
@@ -19,7 +20,7 @@ const DataSelectorDataBucketPicker = ({
   dataTypes,
   onChangeDataBucket,
 }: DataSelectorDataBucketPickerProps) => (
-  <List>
+  <SelectList className={DataSelectorDataBucketPickerS.DataBucketList}>
     {dataTypes.map(({ id, icon, name, description }) => (
       <DataBucketListItem
         description={description}
@@ -30,7 +31,7 @@ const DataSelectorDataBucketPicker = ({
         onSelect={() => onChangeDataBucket(id)}
       />
     ))}
-  </List>
+  </SelectList>
 );
 
 type DataBucketListItemProps = DataTypeInfoItem & {
@@ -50,13 +51,13 @@ const DataBucketListItem = ({
     name={name}
     onSelect={onSelect}
   >
-    <TitleContainer>
+    <Flex align="center">
       <ItemIcon name={icon} size={18} />
       <ItemTitle>{name}</ItemTitle>
-    </TitleContainer>
-    <ItemDescriptionContainer>
+    </Flex>
+    <Box mt="xs">
       <ItemDescription>{description}</ItemDescription>
-    </ItemDescriptionContainer>
+    </Box>
   </ItemContainer>
 );
 

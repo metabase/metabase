@@ -28,18 +28,3 @@ export const MainFormContainer = styled(FormContainer)`
 export const SecondaryFormContainer = styled(FormContainer)`
   padding: 0 ${CONTENT_PADDING} ${CONTENT_PADDING} ${CONTENT_PADDING};
 `;
-
-export const ViewAsFieldContainer = styled.div`
-  font-weight: bold;
-`;
-
-export const FormTabsContainer = styled.div`
-  padding-left: ${CONTENT_PADDING};
-  padding-right: ${CONTENT_PADDING};
-`;
-
-export const Divider = styled.div`
-  height: 1px;
-  width: 100%;
-  background-color: var(--mb-color-bg-medium);
-`;

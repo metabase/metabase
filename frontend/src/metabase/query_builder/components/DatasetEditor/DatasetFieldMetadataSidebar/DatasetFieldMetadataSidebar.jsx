@@ -31,11 +31,8 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
-import {
-  Divider,
-  MainFormContainer,
-  ViewAsFieldContainer,
-} from "./DatasetFieldMetadataSidebar.styled";
+import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
+import { MainFormContainer } from "./DatasetFieldMetadataSidebar.styled";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
@@ -317,7 +314,7 @@ function DatasetFieldMetadataSidebar({
                     ))}
                   </Tabs.List>
                 ) : (
-                  <Divider />
+                  <Box className={DatasetFieldMetadataSidebarS.Divider} />
                 )}
                 <Tabs.Panel value={TAB.SETTINGS} p="1.5rem">
                   <Box mb="1.5rem">
@@ -345,12 +342,12 @@ function DatasetFieldMetadataSidebar({
                       ))}
                     </FormRadioGroup>
                   </Box>
-                  <ViewAsFieldContainer>
+                  <Box fw="bold">
                     <ColumnSettings
                       {...columnSettingsProps}
                       allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
                     />
-                  </ViewAsFieldContainer>
+                  </Box>
                 </Tabs.Panel>
                 <Tabs.Panel value={TAB.FORMATTING} p="1.5rem">
                   <ColumnSettings
