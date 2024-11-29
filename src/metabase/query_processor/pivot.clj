@@ -362,7 +362,7 @@
         returned-columns   (lib/returned-columns query)
         {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
         column-name->index (into {}
-                                 (map-indexed (fn [i column] [(:name column) i]))
+                                 (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
                                  (concat breakouts aggregations))
         process-columns    (fn process-columns [column-names]
                              (when (seq column-names)

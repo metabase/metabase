@@ -1433,3 +1433,95 @@
                 (if expected
                   (is (= [nil nil] [unique-to-a unique-to-b]))
                   (is (or (some? unique-to-a) (some? unique-to-b))))))))))))
+
+(deftest ^:parallel pivot-exports-handle-nil-in-breakout-column
+  (testing "Pivot Exports will still work if the breakout column contains `nil` values."
+    (let [q "SELECT A,
+           CASE
+             WHEN A = 2 THEN NULL
+             ELSE A
+           END AS MEASURE
+         FROM ( SELECT 1 AS A UNION ALL SELECT 2 UNION ALL SELECT 3 )"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native
+                                        {:template-tags {}
+                                         :query         q}}
+                        :result_metadata
+                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                   {:name         field-name
+                                    :display_name field-name
+                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :base_type    base-type}))}
+                       :model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["MEASURE"]
+                                                  :columns []
+                                                  :values  ["count" "sum"]}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
+                                                  :aggregation
+                                                  [[:count]
+                                                   [:sum [:field "A" {:base-type :type/Integer}]]]
+                                                  :source-table (format "card__%s" pivot-data-card-id)}}}]
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+            (is (= [["MEASURE" "Count" "Sum of A"]
+                    ["" "1" "2"]
+                    ["1" "1" "1"]
+                    ["3" "1" "3"]
+                    ["Grand totals" "3" "6"]]
+                   result))))))))
+
+(deftest ^:parallel pivot-exports-handle-aggregations-with-the-same-base-name
+  (testing "Pivot Exports with multiple of the same kind of aggregation will include all of the data."
+    (let [q "SELECT A, B, MEASURE
+               FROM (
+                  SELECT 1 as A, 1 as B, 1 as MEASURE UNION ALL
+                  SELECT 2, 2, 2 UNION ALL
+                  SELECT 3, 3, 3 UNION ALL
+                  SELECT 4, 4, 4  UNION ALL
+                  SELECT 5, 5, 5
+               )"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native
+                                        {:template-tags {}
+                                         :query         q}}
+                        :result_metadata
+                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                   {:name         field-name
+                                    :display_name field-name
+                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :base_type    base-type}))}
+                       :model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["MEASURE"]
+                                                  :columns []
+                                                  :values  ["count" "sum" "sum_2"]}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
+                                                  :aggregation
+                                                  [[:count]
+                                                   [:sum [:field "A" {:base-type :type/Integer}]]
+                                                   [:sum [:field "B" {:base-type :type/Integer}]]]
+                                                  :source-table (format "card__%s" pivot-data-card-id)}}}]
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+            ;; Both Sums are correctly included.
+            (is (= [["MEASURE" "Count" "Sum of A" "Sum of B"]
+                    ["1" "1" "1" "1"]
+                    ["2" "1" "2" "2"]
+                    ["3" "1" "3" "3"]
+                    ["4" "1" "4" "4"]
+                    ["5" "1" "5" "5"]
+                    ["Grand totals" "5" "15" "15"]]
+                   result))))))))
