@@ -2,13 +2,13 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
-   [metabase.db :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
+   ;;[metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -25,14 +25,14 @@
 (defmacro with-index
   "Ensure a clean, small index."
   [& body]
-  `(when (= :postgres (mdb/db-type))
+  `(search.tu/with-temp-index-table
      (binding [search.ingestion/*force-sync* true]
        (mt/dataset ~(symbol "test-data")
-         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction" :collection_id 1}
+         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction"          :collection_id 1}
                         :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
-                        :model/Card     {}           {:name "Projected Revenue" :collection_id 1}
-                        :model/Card     {}           {:name "Employee Satisfaction" :collection_id 1}
-                        :model/Card     {}           {:name "Projected Satisfaction" :collection_id 1}
+                        :model/Card     {}           {:name "Projected Revenue"              :collection_id 1}
+                        :model/Card     {}           {:name "Employee Satisfaction"          :collection_id 1}
+                        :model/Card     {}           {:name "Projected Satisfaction"         :collection_id 1}
                         :model/Database {db-id# :id} {:name "Indexed Database"}
                         :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
            (search.index/reset-index!)
@@ -41,7 +41,7 @@
 
 (deftest idempotent-test
   (with-index
-    (let [count-rows  (fn [] (t2/count @#'search.index/*active-table*))
+    (let [count-rows  (fn [] (t2/count (search.index/active-table)))
           rows-before (count-rows)]
       (search.ingestion/populate-index! :search.engine/fulltext)
       (is (= rows-before (count-rows))))))
@@ -66,11 +66,11 @@
 #_(deftest related-update-test
     (with-index
       (testing "The index is updated when model dependencies change"
-        (let [index-table    @#'search.index/*active-table*
+        (let [index-table    (search.index/active-table)
               table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
               legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
                                   :legacy_input
-                                  (json/parse-string true))
+                                  json/decode+kw)
               db-id          (t2/select-one-fn :db_id :model/Table table-id)
               db-name-fn     (comp :database_name legacy-input)
               alternate-name (str (random-uuid))]
@@ -141,7 +141,7 @@
   [model entity-name]
   (ingest! model [:= :this.name entity-name])
   (t2/query-one {:select [:*]
-                 :from   [search.index/*active-table*]
+                 :from   [(search.index/active-table)]
                  :where  [:and
                           [:= :name entity-name]
                           [:= :model model]]}))
@@ -438,3 +438,29 @@
                   :database_id      (mt/id)
                   :collection_id    coll-id})
                 (ingest-then-fetch! "indexed-entity" entity-name)))))))
+
+(deftest ^:synchronized update-metadata!-test
+  (mt/with-temporary-setting-values [search-engine-appdb-index-state nil]
+    (testing "Clearing the setting clears the tracking atoms"
+      (is (nil? (search.index/active-table)))
+      (is (nil? (#'search.index/pending-table))))
+    (testing "Updating the setting updates the tracking atoms"
+      (#'search.index/update-metadata! {:active-table :active, :pending-table :pending})
+      (is (= :active (search.index/active-table)))
+      (is (= :pending (#'search.index/pending-table))))
+    (testing "We can update to a newer version"
+      (binding [search.index/*index-version-id* "newer-version"]
+        (#'search.index/update-metadata! {:active-table :activer, :pending-table :pendinger})
+        (is (= :activer (search.index/active-table)))
+        (is (= :pendinger (#'search.index/pending-table)))))
+    (testing "We keep the previous version around"
+      (is (= #{:newer-version (keyword @#'search.index/*index-version-id*)}
+             (set (keys (:versions (search.index/search-engine-appdb-index-state)))))))
+    (testing "We can update to an ever newer version"
+      (binding [search.index/*index-version-id* "newest-version"]
+        (#'search.index/update-metadata! {:active-table :activest, :pending-table :pendingest})
+        (is (= :activest (search.index/active-table)))
+        (is (= :pendingest (#'search.index/pending-table)))))
+    (testing "We only keep the two most recent versions around"
+      (is (= #{:newer-version :newest-version}
+             (set (keys (:versions (search.index/search-engine-appdb-index-state)))))))))

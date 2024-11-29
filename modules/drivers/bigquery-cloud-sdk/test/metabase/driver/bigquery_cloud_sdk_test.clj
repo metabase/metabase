@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk-test
   (:require
-   [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -19,6 +18,7 @@
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -534,7 +534,7 @@
                                        :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
                                        :where  [:and [:in :field.table_id table-ids]
                                                 [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
-                            (map #(update % :values (comp set json/parse-string)))
+                            (map #(update % :values (comp set json/decode)))
                             (map (juxt :field-name :values))
                             (into {}))))))
 
