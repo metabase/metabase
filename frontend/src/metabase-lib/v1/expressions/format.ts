@@ -159,17 +159,17 @@ function formatFunctionOptions(fnOptions: Record<string, any>) {
   }
 }
 
-function formatFunction([fn, ...operands]: any[], options: Options) {
+function formatFunction([fn, ...operands]: any[], formatOptions: Options) {
   const args = operands.filter(arg => !isOptionsObject(arg));
-  const fnOptions = operands.find(isOptionsObject);
-  if (fnOptions) {
-    const formattedOptions = formatFunctionOptions(fnOptions);
+  const options = operands.find(isOptionsObject);
+  if (options) {
+    const formattedOptions = formatFunctionOptions(options);
     if (formattedOptions) {
       args.push(formattedOptions);
     }
   }
   const formattedName = getExpressionName(fn) ?? "";
-  const formattedArgs = args.map(arg => format(arg, options));
+  const formattedArgs = args.map(arg => format(arg, formatOptions));
   return args.length === 0
     ? formattedName
     : `${formattedName}(${formattedArgs.join(", ")})`;
