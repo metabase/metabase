@@ -163,17 +163,21 @@
            {:source-query {:source-table $$venues
                            :filter       [:= $price 1]}
             :aggregation  [[:count]]
+             :aggregation-idents {0 "fcHrdmKTHk2_pmRge_aLi"}
             :joins        [{:source-query {:source-table $$categories
                                            :filter       [:= $categories.name "BBQ"]}
                             :alias        "c"
+                            :ident        "CQprRMwYjfH3TyyKZJ74n"
                             :condition    [:= $category_id &c.categories.id]}]})
          (substitute-params
           (mt/mbql-query venues
             {:source-query {:source-table $$venues
                             :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
              :aggregation  [[:count]]
+             :aggregation-idents {0 "fcHrdmKTHk2_pmRge_aLi"}
              :joins        [{:source-table $$categories
                              :alias        "c"
+                             :ident        "CQprRMwYjfH3TyyKZJ74n"
                              :condition    [:= $category_id &c.categories.id]
                              :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
 
@@ -183,6 +187,7 @@
   (testing "can we expand multiple sets of MBQL params with params in a join and the join's source query?"
     (is (=? (mt/mbql-query venues
               {:aggregation [[:count]]
+               :aggregation-idents {0 "hfecn5xfBcIC8D1AvEQOO"}
                :joins       [{:source-query {:source-table $$categories
                                              :filter       [:and
                                                             [:= $categories.name "BBQ"]

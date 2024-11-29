@@ -449,6 +449,7 @@
                                                        :source-field %user-id}]]]
                :breakout     [$id]
                :joins        [{:alias        "u"
+                               :ident        "lpYPY_TMzbmwLCCR4bjbo"
                                :source-table $$users
                                :condition    [:= *user-id &u.users.id]}
                               {:source-table $$users
@@ -483,6 +484,7 @@
                                                 :fk-field-id  %checkins.user-id
                                                 :fields       :none}]}
                  :joins        [{:alias        "u"
+                                 :ident        "4g4xKA9VNGEWBgMT1aXn8"
                                  :source-table $$users
                                  :condition    [:= *user-id &u.users.id]}]
                  :limit        10})
@@ -602,9 +604,11 @@
                                                     %products.category
                                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID"
                                                      :source-field %product-id}]]
-                                    :aggregation  [[:count]]}
+                                    :aggregation  [[:count]]
+                                    :aggregation-idents {0 "lHXWx5Ha3XAGR2AMTsEUo"}}
                      :joins        [{:source-table $$products
                                      :alias        "Products"
+                                     :ident        "LTHWfGU553_lHhAJACB_N"
                                      :condition    [:=
                                                     [:field
                                                      %products.category
@@ -620,9 +624,11 @@
                    (lib.tu.macros/mbql-query orders
                      {:source-query {:source-table $$orders
                                      :breakout     [$product-id->products.category]
-                                     :aggregation  [[:count]]}
+                                     :aggregation  [[:count]]
+                                     :aggregation-idents {0 "lHXWx5Ha3XAGR2AMTsEUo"}}
                       :joins        [{:source-table $$products
                                       :alias        "Products"
+                                      :ident        "LTHWfGU553_lHhAJACB_N"
                                       :condition    [:=
                                                      $product-id->products.category
                                                      &Products.products.category]
@@ -696,6 +702,7 @@
                               :strategy :left-join
                               :source-query {:source-table $$orders
                                              :aggregation [[:count]]
+                                             :aggregation-idents {0 "P8KJFcgU0t1ebn5Hk6Kcp"}
                                              :breakout [&PRODUCTS__via__PRODUCT_ID.$orders.product-id->category]
                                              :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
                                                       :fields :none
@@ -713,5 +720,6 @@
                                :strategy :left-join
                                :source-query {:source-table $$orders
                                               :aggregation [[:count]]
+                                              :aggregation-idents {0 "P8KJFcgU0t1ebn5Hk6Kcp"}
                                               :breakout [$orders.product-id->category]}
                                :source-metadata [{:field_ref $orders.product-id->category}]}]})))))))

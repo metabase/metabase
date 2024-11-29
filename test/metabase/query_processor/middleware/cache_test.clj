@@ -470,7 +470,9 @@
         (mt/with-test-user :rasta
           (with-mock-cache! [save-chan]
             (letfn [(run-forbidden-query []
-                      (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                      (qp/process-query (assoc (mt/mbql-query checkins
+                                                 {:aggregation        [[:count]]
+                                                  :aggregation-idents {0 "47tUjtglivpCHXkHb6x9z"}})
                                                :cache-strategy (ttl-strategy))))]
               (testing "Shouldn't be allowed to run a query if we don't have perms for it"
                 (is (thrown-with-msg?

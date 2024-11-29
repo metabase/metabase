@@ -83,6 +83,8 @@
                             :dataset_query (mt/mbql-query venues
                                              {:aggregation [[:distinct $name]
                                                             [:distinct $price]]
+                                              :aggregation-idents {0 "agg1"
+                                                                   1 "agg2"}
                                               :limit       5})}
                    Card c2 {:dataset_query (let [tag-name (str "#" (:id c1) "-some-card")]
                                              (mt/native-query {:query         (format "SELECT * FROM t JOIN {{%s}} ON true" tag-name)
@@ -99,6 +101,10 @@
                                                    :state_change_at :%now
                                                    :refresh_end :%now}))
 
+      ;(println "\n\n TOP =======================================================")
+      ;(clojure.pprint/pprint (t2/select-one-fn :dataset_query :model/Card :id (:id c1)))
+      ;(clojure.pprint/pprint ['field-id-references (field-id-references c2)])
+      ;(println "\n\n BOTTOM ====================================================")
       (is (= [{:table "t"}]
              (:tables (field-id-references c2)))))))
 

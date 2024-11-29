@@ -133,7 +133,8 @@
       (let [{:keys [remaps query]} (#'qp.add-dimension-projections/add-fk-remaps
                                     (lib.tu.macros/mbql-query venues
                                       {:breakout    [$category-id]
-                                       :aggregation [[:count]]}))]
+                                       :aggregation [[:count]]
+                                       :aggregation-idents {0 "RlbNdzZKiTWvHrUt9348T"}}))]
         (is (=? [remapped-field]
                 remaps))
         (is (=? (lib.tu.macros/mbql-query venues
@@ -144,7 +145,8 @@
                                  [:field
                                   %category-id
                                   {::qp.add-dimension-projections/original-field-dimension-id integer?}]]
-                   :aggregation [[:count]]})
+                   :aggregation [[:count]]
+                   :aggregation-idents {0 "RlbNdzZKiTWvHrUt9348T"}})
                 query))))))
 
 (deftest ^:parallel add-fk-remaps-nested-queries-test

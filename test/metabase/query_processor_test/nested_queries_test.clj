@@ -304,6 +304,7 @@
                    (query-with-source-card 1
                                            (mt/mbql-query venues
                                              {:aggregation [:count]
+                                              :aggregation-idents {0 "Bw1J97euPTDVuy8mgoo-i"}
                                               :breakout    [$price]})))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::grouped-expression-in-card-test]
@@ -347,6 +348,7 @@
                 (qp/process-query
                  (query-with-source-card 1 (mt/mbql-query venues
                                              {:aggregation [:count]
+                                              :aggregation-idents {0 "ust_Ayl8jsqV1KItGKcyb"}
                                               :breakout    [*price]})))))))]
       (is (=? (breakout-results :has-source-metadata? false :native-source? true)
               (run-native-query native-sub-query))
@@ -628,6 +630,7 @@
                   (query-with-source-card 1
                                           (mt/mbql-query venues
                                             {:aggregation [[:count]]
+                                             :aggregation-idents {0 "YUjZLg010UJ3XVWXbq67A"}
                                              :breakout    [$price]}))))))))))
 
 (deftest ^:parallel correct-column-metadata-test-3
@@ -725,6 +728,7 @@
                (-> (query-with-source-card 1
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
+                                              :aggregation-idents {0 "wbKuCKOulARRSj0a1yg55"}
                                               :breakout    [!week.*date]
                                               :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))
                    (qp/process-query)

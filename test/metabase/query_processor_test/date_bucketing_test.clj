@@ -1633,6 +1633,7 @@
                          {:type       :query
                           :query      {:source-table $$orders
                                        :aggregation  [[:sum $subtotal]]
+                                       :aggregation-idents {0 "GwTfpII57DRIsU2PX0RV2"}
                                        :breakout     [!month.created_at]
                                        :filter       [:between $created_at "2018-01-01T00:00:00Z" "2018-12-31T23:59:59Z"]}
                           ;; The value for this parameter gets overridden below.

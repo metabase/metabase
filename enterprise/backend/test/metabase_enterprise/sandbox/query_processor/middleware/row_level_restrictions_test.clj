@@ -143,7 +143,8 @@
   (mt/format-rows-by
    [int]
    (mt/rows
-    (mt/run-mbql-query venues {:aggregation [[:count]]}))))
+    (mt/run-mbql-query venues {:aggregation [[:count]]
+                               :aggregation-idents {0 "FbLLcQvCkfqEy1Y3ZvjsB"}}))))
 
 (defn- run-checkins-count-broken-out-by-price-query []
   (mt/format-rows-by
@@ -151,6 +152,7 @@
    (mt/rows
     (mt/run-mbql-query checkins
       {:aggregation [[:count]]
+       :aggregation-idents {0 "UIBt7EK6JQL44iCQCiH2e"}
        :order-by    [[:asc $venue_id->venues.price]]
        :breakout    [$venue_id->venues.price]}))))
 
@@ -221,9 +223,11 @@
                                                                                        :name              "PRICE"}]]
                                             ::row-level-restrictions/gtap? true}
                                            :alias     "v"
+                                           :ident     "zHzypwaMTR9MaWtd1RL6H"
                                            :strategy  :left-join
                                            :condition [:= $venue_id &v.venues.id]}]
-                           :aggregation  [[:count]]}
+                           :aggregation  [[:count]]
+                           :aggregation-idents {0 "1xKGHQ0Yp8tGWHM5REeQV"}}
 
                    ::row-level-restrictions/original-metadata [{:base_type     :type/Integer
                                                                 :semantic_type :type/Quantity
@@ -237,8 +241,10 @@
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
+                    :aggregation-idents {0  "1xKGHQ0Yp8tGWHM5REeQV"}
                     :joins       [{:source-table $$venues
                                    :alias        "v"
+                                   :ident     "zHzypwaMTR9MaWtd1RL6H"
                                    :strategy     :left-join
                                    :condition    [:= $venue_id &v.venues.id]}]}))))))))
 
@@ -251,6 +257,7 @@
                   {:database (mt/id)
                    :type     :query
                    :query    {:aggregation  [[:count]]
+                              :aggregation-idents {0 "qObYiItxDDWQGoe8iQgm6"}
                               :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                           "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
                                                           "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
@@ -265,7 +272,8 @@
                    ::query-perms/perms                        {:gtaps {:perms/create-queries :query-builder-and-native}}})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
-                   {:aggregation [[:count]]}))))))))
+                   {:aggregation [[:count]]
+                    :aggregation-idents {0 "qObYiItxDDWQGoe8iQgm6"}}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
@@ -498,7 +506,9 @@
       (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash>" (mt/user->id :rasta))
              (run-query-returning-remark!
               (fn []
-                (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
+                (mt/user-http-request :rasta :post "dataset"
+                                      (mt/mbql-query venues {:aggregation [[:count]]
+                                                             :aggregation-idents {0 "HCkwY184tXhAKwbxEpfBk"}})))))))))
 
 (deftest breakouts-test
   (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
@@ -752,7 +762,8 @@
     (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
       (letfn [(run-query []
-                (qp/process-query (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                (qp/process-query (assoc (mt/mbql-query venues {:aggregation [[:count]]
+                                                                :aggregation-idents {0 "oKZhB2D-SNM3cNmhBXZsM"}})
                                          :cache-strategy {:type             :ttl
                                                           :multiplier       60
                                                           :avg-execution-ms 10
