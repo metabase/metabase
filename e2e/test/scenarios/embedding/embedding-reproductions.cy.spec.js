@@ -1216,6 +1216,12 @@ describe("issue 50373", () => {
         url: /^\/app\/dist\/(.*)\.js$/,
       },
       req => {
+        // When running in development (e.g. with `yarn dev`),
+        // the *.hot.bundle.js hot-reloaded file is served by the dev server.
+        if (req.url.includes("hot.bundle.js")) {
+          return;
+        }
+
         req.on("response", res => {
           expect(
             res.headers["cache-control"],
