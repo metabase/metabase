@@ -387,7 +387,7 @@
 
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
     :host :domain :subdomain :month-name :quarter-name :day-name})
 
 (def ^:private StringExpression
@@ -412,7 +412,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :datetime-diff
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -918,13 +918,27 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+(def ^:private IfClause
+  [:tuple {:error/message ":if subclause"} Filter ExpressionArg])
+
+(def ^:private IfClauses
+  [:maybe [:sequential IfClause]])
+
+(def ^:private IfOptions
+  [:map
+   {:error/message ":if options"}
+   [:default {:optional true} ExpressionArg]])
+
+(defclause ^{:requires-features #{:basic-aggregations}} if
+  clauses IfClauses, options (optional IfOptions))
+
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case if datetime-diff
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 
 (mr/def ::StringExpression
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case host domain subdomain
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case if host domain subdomain
           month-name quarter-name day-name))
 
 (mr/def ::FieldOrExpressionDef
@@ -940,6 +954,7 @@
                        (is-clause? boolean-functions x)  :boolean
                        (is-clause? datetime-functions x) :datetime
                        (is-clause? :case x)              :case
+                       (is-clause? :if x)                :if
                        (is-clause? :offset x)            :offset
                        :else                             :else))}
    [:numeric  NumericExpression]
@@ -947,6 +962,7 @@
    [:boolean  BooleanExpression]
    [:datetime DatetimeExpression]
    [:case     case]
+   [:if       if]
    [:offset   offset]
    [:else     Field]])
 
