@@ -313,7 +313,8 @@
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                       (apply concat)))))
         (testing "only when `public-settings/enable-pivoted-exports` is true (true by default)."
-          (is (= [[["Doohickey" "2016" "$632.14"]
+          (is (= [[["Category" "Created At: Year" "Sum of Price"]
+                   ["Doohickey" "2016" "$632.14"]
                    ["Doohickey" "2017" "$854.19"]
                    ["Doohickey" "2018" "$496.43"]
                    ["Doohickey" "2019" "$203.13"]
@@ -1514,14 +1515,39 @@
                                                   [[:count]
                                                    [:sum [:field "A" {:base-type :type/Integer}]]
                                                    [:sum [:field "B" {:base-type :type/Integer}]]]
+                                                  :source-table (format "card__%s" pivot-data-card-id)}}}
+                       :model/Card reordered-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["MEASURE"]
+                                                  :columns []
+                                                  :values  ["sum_2" "count" "sum"]}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
+                                                  :aggregation
+                                                  [[:count]
+                                                   [:sum [:field "A" {:base-type :type/Integer}]]
+                                                   [:sum [:field "B" {:base-type :type/Integer}]]]
                                                   :source-table (format "card__%s" pivot-data-card-id)}}}]
-          (let [result (card-download pivot-card {:export-format :csv :pivot true})]
-            ;; Both Sums are correctly included.
-            (is (= [["MEASURE" "Count" "Sum of A" "Sum of B"]
-                    ["1" "1" "1" "1"]
-                    ["2" "1" "2" "2"]
-                    ["3" "1" "3" "3"]
-                    ["4" "1" "4" "4"]
-                    ["5" "1" "5" "5"]
-                    ["Grand totals" "5" "15" "15"]]
-                   result))))))))
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})
+                reordered-result (card-download reordered-card {:export-format :csv :pivot true})]
+            (testing "Both Sums are correctly included."
+              (is (= [["MEASURE" "Count" "Sum of A" "Sum of B"]
+                      ["1" "1" "1" "1"]
+                      ["2" "1" "2" "2"]
+                      ["3" "1" "3" "3"]
+                      ["4" "1" "4" "4"]
+                      ["5" "1" "5" "5"]
+                      ["Grand totals" "5" "15" "15"]]
+                     result)))
+            (testing "and different order still works."
+              (is (= [["MEASURE" "Sum of B" "Count" "Sum of A"]
+                      ["1" "1" "1" "1"]
+                      ["2" "2" "1" "2"]
+                      ["3" "3" "1" "3"]
+                      ["4" "4" "1" "4"]
+                      ["5" "5" "1" "5"]
+                      ["Grand totals" "15" "5" "15"]]
+                     reordered-result)))))))))
