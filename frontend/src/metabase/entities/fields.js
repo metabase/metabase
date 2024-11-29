@@ -247,14 +247,15 @@ const useGetFetchFieldValuesQuery = query => {
     query === skipToken ? skipToken : query.id,
   );
 
-  return useMemo(() => {
-    const { data } = result;
+  const { data } = result;
+  const transformedData = useMemo(() => {
+    return data ? transformResponse(data, tableId) : data;
+  }, [data, tableId]);
 
-    return {
-      ...result,
-      data: data ? transformResponse(data, tableId) : data,
-    };
-  }, [result, tableId]);
+  return useMemo(
+    () => ({ ...result, data: transformedData }),
+    [result, transformedData],
+  );
 };
 
 function transformResponse(data, table_id) {
