@@ -6,7 +6,6 @@ import { Center, Flex, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  getDatasets,
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
@@ -17,23 +16,20 @@ import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
 
 export function VisualizationCanvas() {
-  const datasets = useSelector(getDatasets);
   const display = useSelector(getVisualizationType);
   const rawSeries = useSelector(getVisualizerRawSeries);
 
   const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.CANVAS_MAIN });
 
-  const hasDatasets = Object.entries(datasets).length > 0;
-  const hasSeriesToShow = rawSeries.length > 0 && display;
-
-  if (!hasDatasets && !display) {
+  if (!display) {
     return (
       <Center h="100%" w="100%" mx="auto">
         <StartFromViz />
       </Center>
     );
   }
-  if (!hasSeriesToShow) {
+
+  if (rawSeries.length === 0) {
     return (
       <Center h="100%" w="100%" mx="auto">
         <Text>{t`Visualization will appear here`}</Text>
