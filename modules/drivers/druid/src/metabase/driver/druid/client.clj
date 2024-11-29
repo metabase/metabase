@@ -1,12 +1,12 @@
 (ns metabase.driver.druid.client
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh]))
 
@@ -29,7 +29,7 @@
   ;; this is the way the `Content-Type` header is formatted in requests made by the Druid web interface
   (let [{:keys [auth-enabled auth-username auth-token-value]} options
         options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
-                  (:body options) (update :body json/generate-string)
+                  (:body options) (update :body json/encode)
                   auth-enabled (assoc :basic-auth (str auth-username ":" auth-token-value)))]
 
     (try
@@ -38,7 +38,7 @@
           (throw (ex-info (tru "Druid request error [{0}]: {1}" status (pr-str body))
                           {:type qp.error-type/db})))
         (try
-          (json/parse-string body keyword)
+          (json/decode+kw body)
           (catch Throwable e
             (throw (ex-info (tru "Failed to parse Druid response body: {0}" (pr-str body))
                             {:type qp.error-type/db}
@@ -46,7 +46,7 @@
       (catch Throwable e
         (let [response (u/ignore-exceptions
                          (when-let [body (:body (ex-data e))]
-                           (json/parse-string body keyword)))]
+                           (json/decode+kw body)))]
           (throw (ex-info (or (:errorMessage response)
                               (.getMessage e))
                           (merge
