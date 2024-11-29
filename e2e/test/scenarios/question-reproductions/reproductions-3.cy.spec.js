@@ -56,6 +56,7 @@ import {
   visualize,
   withDatabase,
 } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -1452,21 +1453,21 @@ describe("issue 19894", () => {
 
     startNewQuestion();
 
-    modal().findByText("Saved questions").click();
-    modal().findByText("Q1").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q1").click();
 
     cy.button("Join data").click();
 
-    modal().findByText("Saved questions").click();
-    modal().findByText("Q2").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q2").click();
 
     popover().findByText("Category").click();
     popover().findByText("Category").click();
 
     cy.button("Join data").click();
 
-    modal().findByText("Saved questions").click();
-    modal().findByText("Q3").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q3").click();
 
     popover().findByText("Category").should("be.visible");
     popover().findByText("Count").should("be.visible");

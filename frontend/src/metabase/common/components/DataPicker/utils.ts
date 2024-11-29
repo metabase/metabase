@@ -116,6 +116,10 @@ export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
   return titleize(humanize(schemaName));
 };
 
+export const isCollectionItem = (value: DataPickerValue | undefined) => {
+  return isQuestionItem(value) || isModelItem(value) || isMetricItem(value);
+};
+
 export const isQuestionItem = (
   value: DataPickerValue | undefined,
 ): value is QuestionItem => {

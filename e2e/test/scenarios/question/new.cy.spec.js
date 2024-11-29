@@ -33,6 +33,7 @@ import {
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -66,9 +67,10 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Tables", ["Tables", "Collections"]);
 
         entityPickerModalTab("Search").should("not.exist");
+        entityPickerModalTab("Collections").click();
 
         cy.findByPlaceholderText("Search this collection or everywhere…")
           .type("  ")
@@ -103,9 +105,8 @@ describe("scenarios > question > new", () => {
           .clear()
           .blur();
         entityPickerModalTab("Search").should("not.exist");
-        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Collections", ["Tables", "Collections"]);
 
-        entityPickerModalTab("Collections").click();
         cy.findByText("Orders, Count").click();
       });
 
@@ -652,19 +653,21 @@ describe(
 
       cy.visit("/question/notebook");
 
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Collections").should("be.visible");
-        entityPickerModalTab("Tables").should("be.visible");
-        entityPickerModalItem(1, "Orders Model").click();
+      H.entityPickerModal().within(() => {
+        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
+        H.entityPickerModalTab("Collections").should("be.visible");
+        H.entityPickerModalTab("Tables").should("be.visible");
+        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(1, "Orders Model").click();
       });
 
       cy.wait("@recents");
 
       cy.button(/Orders Model/).click();
 
-      entityPickerModal().within(() => {
-        tabsShouldBe("Collections", ["Recents", "Tables", "Collections"]);
-        entityPickerModalTab("Recents").click();
+      H.entityPickerModal().within(() => {
+        H.tabsShouldBe("Collections", ["Recents", "Tables", "Collections"]);
+        H.entityPickerModalTab("Recents").click();
         cy.findByTestId("result-item").should("contain.text", "Orders Model");
       });
     });

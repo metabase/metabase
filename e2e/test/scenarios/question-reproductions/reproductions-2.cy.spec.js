@@ -30,6 +30,7 @@ import {
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -197,7 +198,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     newButton("Question").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Collections").should("exist");
+      cy.findByText("Collections").should("not.exist");
       entityPickerModalItem(2, "Orders").click();
     });
 
@@ -585,6 +586,7 @@ describe("issue 36669", () => {
     });
 
     entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
       cy.findByPlaceholderText("Search this collection or everywhere…").type(
         "Orders 36669",
       );
@@ -596,8 +598,8 @@ describe("issue 36669", () => {
 
     getNotebookStep("data").findByText("Orders 36669").click();
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
 
       cy.log("verify Tables are listed");
       cy.findByRole("tabpanel").should("contain", "Orders");

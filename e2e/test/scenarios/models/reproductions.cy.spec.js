@@ -856,7 +856,7 @@ describe("issue 25537", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText(/Modelle/i).click();
+      entityPickerModalTab("Sammlungen").click();
       cy.wait("@getCollectionContent");
       cy.findByText(questionDetails.name).should("exist");
     });
