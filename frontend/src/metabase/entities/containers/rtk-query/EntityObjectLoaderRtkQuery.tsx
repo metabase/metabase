@@ -237,7 +237,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     dispatchApiErrorEvent,
     error,
     fetched,
-    loading,
+    loading: loading || isLoading,
     object: wrappedObject,
     [entityAlias || entityDefinition.nameOne]: wrappedObject,
     reload: refetch,
