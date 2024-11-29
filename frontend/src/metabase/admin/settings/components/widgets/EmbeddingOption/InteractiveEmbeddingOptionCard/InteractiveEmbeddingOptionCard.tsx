@@ -44,7 +44,7 @@ export const InteractiveEmbeddingOptionCard = ({
     <EmbeddingOption
       icon={
         <InteractiveEmbeddingIcon
-          disabled={isEE && !isInteractiveEmbeddingEnabled}
+          disabled={!isEE || !isInteractiveEmbeddingEnabled}
         />
       }
       title={t`Interactive embedding`}
