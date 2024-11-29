@@ -27,7 +27,7 @@ export const SaveButton = ({
 } = {}) => {
   const { question, originalQuestion } = useInteractiveQuestionContext();
 
-  const isSaveButtonDisabled = shouldShowSaveButton({
+  const isSaveButtonEnabled = shouldShowSaveButton({
     question,
     originalQuestion,
   });
@@ -35,7 +35,7 @@ export const SaveButton = ({
   return (
     <ToolbarButton
       label="Save"
-      disabled={isSaveButtonDisabled}
+      disabled={!isSaveButtonEnabled}
       onClick={onClick}
     />
   );
