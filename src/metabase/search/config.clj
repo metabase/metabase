@@ -1,12 +1,12 @@
 (ns metabase.search.config
   (:require
-   [cheshire.core :as json]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -263,7 +263,7 @@
 
 (defmethod column->string [:card :dataset_query]
   [value _ _]
-  (let [query (json/parse-string value true)]
+  (let [query (json/decode+kw value)]
     (if (= "native" (:type query))
       (-> query :native :query)
       "")))

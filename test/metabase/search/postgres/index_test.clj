@@ -8,6 +8,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
+   ;;[metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -69,7 +70,7 @@
               table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
               legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
                                   :legacy_input
-                                  (json/parse-string true))
+                                  json/decode+kw)
               db-id          (t2/select-one-fn :db_id :model/Table table-id)
               db-name-fn     (comp :database_name legacy-input)
               alternate-name (str (random-uuid))]
