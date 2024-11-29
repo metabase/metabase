@@ -72,7 +72,7 @@ export const SlackChannelField = ({
         data={channelField?.options || []}
         value={value}
         placeholder={t`Pick a user or channel...`}
-        limit={10}
+        limit={1000}
         onBlur={handleBlur}
         onChange={handleChange}
       />
