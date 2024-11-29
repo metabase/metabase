@@ -98,8 +98,7 @@
         job     (jobs/build
                  (jobs/of-type SweepQueryAnalysis)
                  (jobs/with-identity job-key)
-                 (jobs/store-durably)
-                 (jobs/request-recovery))
+                 (jobs/store-durably))
         trigger (triggers/build
                  (triggers/with-identity (triggers/key "metabase.task.backfill-query-fields.trigger"))
                  (triggers/start-now)
@@ -109,7 +108,4 @@
                        ;; run every 4 hours at a random minute:
                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
                    (cron/with-misfire-handling-instruction-ignore-misfires))))]
-    ;; Schedule the repeats
-    (task/schedule-task! job trigger)
-    ;; Don't wait, try to kick it off immediately
-    (task/trigger-now! job-key)))
+    (task/schedule-task! job trigger)))

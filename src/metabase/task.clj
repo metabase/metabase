@@ -22,7 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -194,11 +194,16 @@
    new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
-      ;; TODO: a job could have multiple triggers, so the first trigger is not guaranteed to be the one we want to
-      ;; replace. Should we check that the key name is matching?
-      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey ^JobDetail job)))]
-        (log/debugf "Rescheduling job %s" (-> ^JobDetail job .getKey .getName))
-        (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
+      (let [job-key     (.getKey ^JobDetail job)
+            trigger-key (.getKey ^Trigger new-trigger)
+            old-trigger ^Trigger (->> (qs/get-triggers-of-job scheduler job-key)
+                                      (filter (comp #{trigger-key} #(.getKey ^Trigger %)))
+                                      first)]
+        (if old-trigger
+          (do (log/debugf "Rescheduling job %s" (.getName job-key))
+              (.rescheduleJob scheduler (.getKey ^Trigger old-trigger) new-trigger))
+          ;; can't find the old trigger, removed by another process? try again.
+          (qs/schedule scheduler job new-trigger))))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
 
@@ -216,12 +221,12 @@
   (when-let [scheduler (scheduler)]
     (try
       (qs/schedule scheduler job trigger)
-      (catch org.quartz.ObjectAlreadyExistsException _
+      (catch ObjectAlreadyExistsException _
         (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
         (reschedule-task! job trigger)))))
 
 (mu/defn trigger-now!
-  "Immediatley trigger exeuction of task"
+  "Immediately trigger execution of task"
   [job-key :- (ms/InstanceOfClass JobKey)]
   (try
     (when-let [scheduler (scheduler)]
