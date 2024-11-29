@@ -844,7 +844,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "case",
     structure: "case",
     description: () =>
-      t`Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
+      t`Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     args: [
       {
         name: t`condition`,
