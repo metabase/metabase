@@ -83,7 +83,7 @@ describe("issue 15029", () => {
   });
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
-    openNativeEditor().realType(
+    openNativeEditor().type(
       "select * from products where RATING = {{number.of.stars}}",
       {
         parseSpecialCharSequences: false,
@@ -109,7 +109,7 @@ describe("issue 16886", () => {
   });
 
   it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
-    openNativeEditor().realType(
+    openNativeEditor().type(
       ORIGINAL_QUERY + moveCursorToBeginning + highlightSelectedText,
       { delay: 50 },
     );
@@ -135,7 +135,7 @@ describe("issue 16914", () => {
       FAILING_PIECE.length,
     );
 
-    openNativeEditor().realType("SELECT 'a' as hidden, 'b' as visible");
+    openNativeEditor().type("SELECT 'a' as hidden, 'b' as visible");
     runNativeQuery();
 
     cy.findByTestId("viz-settings-button").click();
@@ -145,10 +145,10 @@ describe("issue 16914", () => {
       .click();
     cy.button("Done").click();
 
-    focusNativeEditor().realType(FAILING_PIECE);
+    cy.get("@editor").type(FAILING_PIECE);
     runNativeQuery();
 
-    focusNativeEditor().realType(
+    cy.get("@editor").type(
       "{movetoend}" + highlightSelectedText + "{backspace}",
     );
     runNativeQuery();
@@ -190,7 +190,7 @@ describe("issue 17060", () => {
     restore();
     cy.signInAsAdmin();
 
-    openNativeEditor().realType(ORIGINAL_QUERY);
+    openNativeEditor().type(ORIGINAL_QUERY);
 
     runQuery();
 
@@ -202,7 +202,7 @@ describe("issue 17060", () => {
   });
 
   it("should not render duplicated columns (metabase#17060)", () => {
-    focusNativeEditor().realType(
+    cy.get("@editor").type(
       moveCursorToBeginning +
         moveCursorAfterSection +
         highlightSelectedText +
@@ -245,7 +245,7 @@ describe("issue 18148", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(dbName).click();
 
-    focusNativeEditor().realType("select foo");
+    cy.get(".ace_content").should("be.visible").type("select foo");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -374,7 +374,7 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
 
   // realpress messes with cypress 13
   it("should continue to request more prefix matches (metabase#20625)", () => {
-    openNativeEditor().realType("s");
+    openNativeEditor().type("s");
 
     // autocomplete_suggestions?prefix=s
     cy.wait("@autocomplete");
@@ -400,7 +400,7 @@ describe("issue 21034", () => {
   });
 
   it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    focusNativeEditor().realType("p");
+    cy.get(".ace_content").should("be.visible").type("p");
 
     // Wait until another explicit autocomplete is triggered
     // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -469,7 +469,10 @@ describe("issue 21597", { tags: "@external" }, () => {
     // Create a native query and run it
     openNativeEditor({
       databaseName,
-    }).realType("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
+    }).type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}", {
+      delay: 0,
+      parseSpecialCharSequences: false,
+    });
 
     cy.findByTestId("variable-type-select").click();
     popover().within(() => {
@@ -589,7 +592,7 @@ describe("issue 34330", () => {
 
     // can't use cy.type because it does not simulate the bug
     // Delay needed for React 18. TODO: fix shame
-    editor.realType("USER").realType("_", { delay: 1000 });
+    editor.type("USER").type("_", { delay: 1000 });
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -604,7 +607,7 @@ describe("issue 34330", () => {
     const editor = openNativeEditor();
 
     // can't use cy.type because it does not simulate the bug
-    editor.realType("U");
+    editor.type("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -619,7 +622,7 @@ describe("issue 34330", () => {
     const editor = openNativeEditor();
 
     // can't use cy.type because it does not simulate the bug
-    editor.realType("SE{backspace}");
+    editor.type("SE{backspace}");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -648,14 +651,14 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    focusNativeEditor().realType("--");
+    focusNativeEditor().type("--");
     expect(focusNativeEditor().findByText("--")).to.exist;
 
-    focusNativeEditor().realType("{meta}z");
+    focusNativeEditor().type("{meta}z");
     focusNativeEditor().findByText("--").should("not.exist");
 
     // more undoing does not change to empty editor
-    focusNativeEditor().realType("{meta}z");
+    focusNativeEditor().type("{meta}z");
     expect(focusNativeEditor().findByText("select")).to.exist;
   });
 });
@@ -701,7 +704,7 @@ describe("issue 35785", () => {
     cy.findByTestId("native-query-editor-container")
       .findByTestId("visibility-toggler")
       .click();
-    cy.findByTestId("native-query-editor").realType("{backspace}4");
+    cy.findByTestId("native-query-editor").type("{backspace}4");
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
 
@@ -755,7 +758,7 @@ describe("issue 22991", () => {
 
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
-      editor.realType(`select * from {{#${questionId}`);
+      editor.type(`select * from {{#${questionId}`);
     });
 
     cy.get("main").should(
