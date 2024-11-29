@@ -1209,17 +1209,22 @@ describeEE("issue 8490", () => {
 });
 
 describe("issue 50373", () => {
-  it("should return cache headers for js bundle", () => {
-    cy.intercept({
-      method: "GET",
-      url: /^\/app\/dist\/.+\.[a-f0-9]\.js$/,
-    }).as("staticAssets");
+  it("should return cache headers in production for js bundle", () => {
+    cy.intercept(
+      {
+        method: "GET",
+        url: /^\/app\/dist\/(.*)\.js$/,
+      },
+      req => {
+        req.on("response", res => {
+          expect(
+            res.headers["cache-control"],
+            `Invalid Cache-Control header for ${req.url}`,
+          ).to.equal("public, max-age=31536000");
+        });
+      },
+    );
 
-    visitEmbeddedPage({
-      resource: { dashboard: ORDERS_DASHBOARD_ID },
-      params: {},
-    });
-
-    cy.wait("@staticAssets").then(interception => {});
+    visitEmbeddedPage({ resource: { dashboard: ORDERS_DASHBOARD_ID } });
   });
 });
