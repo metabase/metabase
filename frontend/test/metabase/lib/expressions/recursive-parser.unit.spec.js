@@ -126,6 +126,18 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
       expression: ["contains", { "case-sensitive": false }, B, C, D],
     },
     {
+      source: "doesNotContain(B, C, D, 'case-insensitive')",
+      expression: ["does-not-contain", { "case-sensitive": false }, B, C, D],
+    },
+    {
+      source: "startsWith(B, C, D, 'case-insensitive')",
+      expression: ["starts-with", { "case-sensitive": false }, B, C, D],
+    },
+    {
+      source: "endsWith(B, C, D, 'case-insensitive')",
+      expression: ["ends-with", { "case-sensitive": false }, B, C, D],
+    },
+    {
       source: "interval(B, -1, 'days', 'include-current')",
       expression: ["time-interval", B, -1, "days", { "include-current": true }],
     },
