@@ -95,9 +95,10 @@
     :text                5
     :mine                1
     :exact               5
-    :prefix              5}
+    :prefix              0}
    :command-palette
-   {:model/collection     1
+   {:prefix               5
+    :model/collection     1
     :model/dashboard      1
     :model/metric         1
     :model/dataset        0.8

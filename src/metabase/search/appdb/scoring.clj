@@ -156,6 +156,8 @@
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [search-ctx]
+  ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
+  ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
   {:text         [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
    :view-count   (view-count-expr search.config/view-count-scaling-percentile)
    :pinned       (truthy :pinned)
@@ -166,9 +168,7 @@
    :model        (model-rank-exp search-ctx)
    :mine         (equal :search_index.creator_id (:current-user-id search-ctx))
    :exact        (equal [:lower :search_index.name] [:lower (:search-string search-ctx)])
-   :prefix       (if (= :command-palette (:context search-ctx))
-                   (prefix [:lower :search_index.name] (u/lower-case-en (:search-string search-ctx)))
-                   [:inline 0])})
+   :prefix       (prefix [:lower :search_index.name] (u/lower-case-en (:search-string search-ctx)))})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
