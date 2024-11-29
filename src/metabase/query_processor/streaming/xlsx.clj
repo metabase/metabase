@@ -1,7 +1,5 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require
-   [cheshire.core :as json]
-   [cheshire.generate :as json.generate]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -17,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json])
   (:import
    (java.io OutputStream)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -379,7 +378,7 @@
   ;; For simplicity, we'll assume objects are exported as some kind of string, and the value can be parsed
   ;; by the user later somehow
   (let [encoded-obj (cond-> (json/encode value)
-                      (contains? (:impls json.generate/JSONable) (type value)) json/parse-string)]
+                      (json/has-custom-encoder? value) json/decode)]
     (.setCellValue cell (str encoded-obj))))
 
 (defmethod set-cell! nil [^Cell cell _value _styles _typed-styles]

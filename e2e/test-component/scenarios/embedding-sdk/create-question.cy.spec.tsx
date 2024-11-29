@@ -1,6 +1,6 @@
 import { CreateQuestion } from "@metabase/embedding-sdk-react";
 
-import { describeEE, entityPickerModal, modal } from "e2e/support/helpers";
+import { describeEE, modal, popover } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -29,8 +29,8 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     // Wait until the entity picker modal is visible
     getSdkRoot().contains("Pick your starting data");
 
-    entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
