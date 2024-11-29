@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
@@ -466,23 +467,24 @@
              (set (keys (:versions (search.index/search-engine-appdb-index-state)))))))))
 
 (deftest ^:synchronized table-cleanup-test
-  ;; this test destroys the actual current index, regrettably
-  (let [related-table :search_index_related_table_that_is_important
-        obsolete-tables [:search_index :search_index_next :search_index_retired :search_index__oh_so_random]]
-    (try
-      (doseq [tn (cons related-table obsolete-tables)]
-        (try
-          (search.index/create-table! tn)
-          ;; They might already exist
-          (catch Exception _)))
-      (testing "Given various obsolete search indexes"
-        (is (every? #'search.index/exists? (cons related-table obsolete-tables))))
-      (search.index/reset-index!)
-      (testing "We can create new one"
-        (is (#'search.index/exists? (search.index/active-table))))
-      (testing "... without destroying any related non-index tables"
-        (is (#'search.index/exists? related-table)))
-      (testing "... and we clear out all the obsolete tables"
-        (is (every? (comp not #'search.index/exists?) obsolete-tables)))
-      (finally
-        (#'search.index/drop-table! related-table)))))
+  (when (search/supports-index?)
+    ;; this test destroys the actual current index, regrettably
+    (let [related-table   :search_index_related_table_that_is_important
+          obsolete-tables [:search_index :search_index_next :search_index_retired :search_index__oh_so_random]]
+      (try
+        (doseq [tn (cons related-table obsolete-tables)]
+          (try
+            (search.index/create-table! tn)
+            ;; They might already exist
+            (catch Exception _)))
+        (testing "Given various obsolete search indexes"
+          (is (every? #'search.index/exists? (cons related-table obsolete-tables))))
+        (search.index/reset-index!)
+        (testing "We can create new one"
+          (is (#'search.index/exists? (search.index/active-table))))
+        (testing "... without destroying any related non-index tables"
+          (is (#'search.index/exists? related-table)))
+        (testing "... and we clear out all the obsolete tables"
+          (is (every? (comp not #'search.index/exists?) obsolete-tables)))
+        (finally
+          (#'search.index/drop-table! related-table))))))
