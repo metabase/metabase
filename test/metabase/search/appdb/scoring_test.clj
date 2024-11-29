@@ -49,6 +49,12 @@
         "sanity check: search-no-weights should be different")
     result))
 
+(defn indifferent?
+  "Check that the results and their order do not depend on the given ranker."
+  [ranker-key search-string & {:as raw-ctx}]
+  (= (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
+     (with-weights {ranker-key -1} (search-results* search-string raw-ctx))))
+
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
 
@@ -177,11 +183,9 @@
 
   (testing "it has a ceiling, more than the ceiling is considered to be equal"
     (with-index-contents
-      [{:model "card" :id 1 :name "card popular" :dashboardcard_count 22}
-       {:model "card" :id 2 :name "card" :dashboardcard_count 11}]
-      (is (= [["card" 1 "card popular"]
-              ["card" 2 "card"]]
-             (search-results* "card"))))))
+      [{:model "card" :id 1 :name "card popular" :dashboardcard_count 200}
+       {:model "card" :id 2 :name "card" :dashboardcard_count 201}]
+      (is (indifferent? :dashboard "card")))))
 
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
