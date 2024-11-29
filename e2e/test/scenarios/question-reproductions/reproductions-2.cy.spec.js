@@ -169,7 +169,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     H.newButton("Question").click();
 
     H.entityPickerModal().within(() => {
-      cy.findByText("Collections").should("exist");
+      cy.findByText("Collections").should("not.exist");
       H.entityPickerModalItem(2, "Orders").click();
     });
 
@@ -551,6 +551,7 @@ describe("issue 36669", () => {
     });
 
     H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
       cy.findByPlaceholderText("Search this collection or everywhere…").type(
         "Orders 36669",
       );

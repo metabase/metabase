@@ -41,9 +41,10 @@ describe("scenarios > question > new", () => {
       H.startNewQuestion();
 
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
 
         H.entityPickerModalTab("Search").should("not.exist");
+        H.entityPickerModalTab("Collections").click();
 
         cy.findByPlaceholderText("Search this collection or everywhere…")
           .type("  ")
@@ -78,9 +79,8 @@ describe("scenarios > question > new", () => {
           .clear()
           .blur();
         H.entityPickerModalTab("Search").should("not.exist");
-        H.tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+        H.tabsShouldBe("Collections", ["Tables", "Collections"]);
 
-        H.entityPickerModalTab("Collections").click();
         cy.findByText("Orders, Count").click();
       });
 
@@ -641,8 +641,10 @@ describe(
       cy.visit("/question/notebook");
 
       H.entityPickerModal().within(() => {
+        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
         H.entityPickerModalTab("Collections").should("be.visible");
         H.entityPickerModalTab("Tables").should("be.visible");
+        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(1, "Orders Model").click();
       });
 

@@ -29,7 +29,7 @@ import type {
 import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
-  isQuestionItem,
+  isCollectionItem,
   isTableItem,
   isValueItem,
 } from "../utils";
@@ -191,7 +191,7 @@ export const DataPickerModal = ({
         extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
           <QuestionPicker
-            initialValue={isQuestionItem(value) ? value : undefined}
+            initialValue={isCollectionItem(value) ? value : undefined}
             models={QUESTION_PICKER_MODELS}
             options={options}
             path={questionsPath}

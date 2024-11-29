@@ -1398,21 +1398,21 @@ describe("issue 19894", () => {
 
     H.startNewQuestion();
 
-    H.modal().findByText("Saved questions").click();
-    H.modal().findByText("Q1").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q1").click();
 
     cy.button("Join data").click();
 
-    H.modal().findByText("Saved questions").click();
-    H.modal().findByText("Q2").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q2").click();
 
     H.popover().findByText("Category").click();
     H.popover().findByText("Category").click();
 
     cy.button("Join data").click();
 
-    H.modal().findByText("Saved questions").click();
-    H.modal().findByText("Q3").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q3").click();
 
     H.popover().findByText("Category").should("be.visible");
     H.popover().findByText("Count").should("be.visible");
