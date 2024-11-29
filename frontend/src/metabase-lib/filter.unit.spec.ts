@@ -1401,6 +1401,71 @@ describe("filter", () => {
       },
     );
 
+    it.each([
+      {
+        filter: Lib.expressionClause("!=", [
+          Lib.withTemporalBucket(
+            column,
+            findTemporalBucket(query, column, "Hour of day"),
+          ),
+          1,
+          2,
+        ]),
+        expectedBucket: "hour-of-day",
+        expectedValues: [1, 2],
+      },
+      {
+        filter: Lib.expressionClause("!=", [
+          Lib.withTemporalBucket(
+            column,
+            findTemporalBucket(query, column, "Month of year"),
+          ),
+          "2020-01-01",
+          "2020-12-31",
+        ]),
+        expectedBucket: "month-of-year",
+        expectedValues: [1, 12],
+      },
+      {
+        filter: Lib.expressionClause("!=", [
+          Lib.withTemporalBucket(
+            column,
+            findTemporalBucket(query, column, "Day of week"),
+          ),
+          "2024-01-01",
+          "2024-03-15",
+          "2024-03-17",
+        ]),
+        expectedBucket: "day-of-week",
+        expectedValues: [1, 5, 7],
+      },
+      {
+        filter: Lib.expressionClause("!=", [
+          Lib.withTemporalBucket(
+            column,
+            findTemporalBucket(query, column, "Quarter of year"),
+          ),
+          "2020-01-01",
+          "2020-12-31",
+        ]),
+        expectedBucket: "quarter-of-year",
+        expectedValues: [1, 4],
+      },
+    ])(
+      "should support legacy exclude date filter expressions for $expectedBucket bucket",
+      ({ filter, expectedBucket, expectedValues }) => {
+        const { filterParts, columnInfo } = addExcludeDateFilter(query, filter);
+
+        expect(filterParts).toMatchObject({
+          operator: "!=",
+          column: expect.anything(),
+          bucket: expectedBucket,
+          values: expectedValues,
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
     it("should ignore expressions with not supported operators", () => {
       const { filterParts } = addExcludeDateFilter(
         query,
