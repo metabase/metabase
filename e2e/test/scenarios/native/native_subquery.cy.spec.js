@@ -1,11 +1,12 @@
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   createNativeQuestion,
   createQuestion,
-  entityPickerModal,
   focusNativeEditor,
   openNativeEditor,
-  openQuestionActions,
   restore,
   runNativeQuery,
   startNewNativeQuestion,
@@ -73,20 +74,10 @@ describe("scenarios > question > native subquery", () => {
           query: "SELECT id FROM PEOPLE",
         },
         type: "model",
+        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body: { id: questionId2 } }) => {
-        // Move question 2 to personal collection
-        cy.visit(`/question/${questionId2}`);
-        openQuestionActions();
-        cy.findByTestId("move-button").click();
-        entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
-          cy.findByText("Bobby Tables's Personal Collection").click();
-          cy.button("Move").click();
-        });
-
         openNativeEditor();
-        cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
-        cy.get(".ace_editor").should("be.visible").type(" ").type("{{#people");
+        cy.get(".ace_editor").should("be.visible").realType("{{#people");
 
         // Wait until another explicit autocomplete is triggered
         // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
