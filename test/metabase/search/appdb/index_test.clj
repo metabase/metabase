@@ -1,5 +1,6 @@
-(ns metabase.search.postgres.index-test
+(ns metabase.search.appdb.index-test
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.search.appdb.index :as search.index]
@@ -47,23 +48,23 @@
       (is (= rows-before (count-rows))))))
 
 ;; Disabled due to CI issue
-#_(deftest incremental-update-test
+(deftest incremental-update-test
     (with-index
-      (testing "The index is updated when models change"
-     ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
-        (is (= 1 #_2 (count (search.index/search "Projected Revenue"))))
-        (is (= 0 (count (search.index/search "Protected Avenue"))))
-        (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
-        (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
+     (testing "The index is updated when models change"
+       ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
+       (is (= 2 (count (search.index/search "Projected Revenue"))))
+       (is (= 0 (count (search.index/search "Protected Avenue"))))
+       (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+       (is (= 1 (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
-     ;; Delete hooks are disabled, for now, over performance concerns.
-     ;(t2/delete! :model/Card :name "Protected Avenue")
-        (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
-        (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
-        (is (= 0 (count (search.index/search "Protected Avenue")))))))
+
+       ;; Delete hooks are remove for now, over performance concerns.
+       ;(t2/delete! :model/Card :name "Protected Avenue")
+        #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
+        #_(is (= 0 (count (search.index/search "Protected Avenue")))))))
 
 ;; Disabled due to CI issue
-#_(deftest related-update-test
+(deftest related-update-test
     (with-index
       (testing "The index is updated when model dependencies change"
         (let [index-table    (search.index/active-table)
@@ -464,3 +465,25 @@
     (testing "We only keep the two most recent versions around"
       (is (= #{:newer-version :newest-version}
              (set (keys (:versions (search.index/search-engine-appdb-index-state)))))))))
+
+(deftest ^:synchronized table-cleanup-test
+  ;; this test destroys the actual current index, regrettably
+  (let [related-table :search_index_related_table_that_is_important
+        obsolete-tables [:search_index :search_index_next :search_index_retired :search_index__oh_so_random]]
+    (try
+      (doseq [tn (cons related-table obsolete-tables)]
+        (try
+          (search.index/create-table! tn)
+          ;; They might already exist
+          (catch Exception _)))
+      (testing "Given various obsolete search indexes"
+        (is (every? #'search.index/exists? (cons related-table obsolete-tables))))
+      (search.index/reset-index!)
+      (testing "We can create new one"
+        (is (#'search.index/exists? (search.index/active-table))))
+      (testing "... without destroying any related non-index tables"
+        (is (#'search.index/exists? related-table)))
+      (testing "... and we clear out all the obsolete tables"
+        (is (every? (comp not #'search.index/exists?) obsolete-tables)))
+      (finally
+        (#'search.index/drop-table! related-table)))))
