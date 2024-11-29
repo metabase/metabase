@@ -311,11 +311,12 @@ export function specificDateFilterParts(
     return null;
   }
 
+  const columnWithoutBucket = withTemporalBucket(column, null);
   const dateValues = serializedValues.map(deserializeDate);
   if (isDefinedArray(dateValues)) {
     return {
       operator,
-      column,
+      column: columnWithoutBucket,
       values: dateValues,
       hasTime: false,
     };
@@ -325,7 +326,7 @@ export function specificDateFilterParts(
   if (isDefinedArray(dateTimeValues)) {
     return {
       operator,
-      column,
+      column: columnWithoutBucket,
       values: dateTimeValues,
       hasTime: true,
     };
@@ -342,18 +343,12 @@ export function relativeDateFilterClause({
   offsetBucket,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
-  const columnWithoutBucket = withTemporalBucket(column, null);
-
   if (offsetValue == null || offsetBucket == null) {
-    return expressionClause(
-      "time-interval",
-      [columnWithoutBucket, value, bucket],
-      options,
-    );
+    return expressionClause("time-interval", [column, value, bucket], options);
   }
 
   return expressionClause("relative-time-interval", [
-    columnWithoutBucket,
+    column,
     value,
     bucket,
     offsetValue,
@@ -377,35 +372,29 @@ export function relativeDateFilterParts(
 export function excludeDateFilterClause(
   filterParts: ExcludeDateFilterParts,
 ): ExpressionClause {
-  // As there are still filter expressions with inline bucketed columns,
-  // we need to remove temporal bucketing manually. When all filter expressions
-  // are migrated to use MBQL functions instead of bucketing we can drop this.
-  // See (metabase#50238) for details.
-  const column = withTemporalBucket(filterParts.column, null);
-
   return match(filterParts)
-    .with({ bucket: P.nullish }, ({ operator }) =>
+    .with({ bucket: P.nullish }, ({ operator, column }) =>
       expressionClause(operator, [column]),
     )
-    .with({ bucket: "hour-of-day" }, ({ operator, values }) =>
+    .with({ bucket: "hour-of-day" }, ({ operator, column, values }) =>
       expressionClause(operator, [
         expressionClause("get-hour", [column]),
         ...values,
       ]),
     )
-    .with({ bucket: "day-of-week" }, ({ operator, values }) =>
+    .with({ bucket: "day-of-week" }, ({ operator, column, values }) =>
       expressionClause(operator, [
         expressionClause("get-day-of-week", [column, "iso"]),
         ...values,
       ]),
     )
-    .with({ bucket: "month-of-year" }, ({ operator, values }) =>
+    .with({ bucket: "month-of-year" }, ({ operator, column, values }) =>
       expressionClause(operator, [
         expressionClause("get-month", [column]),
         ...values,
       ]),
     )
-    .with({ bucket: "quarter-of-year" }, ({ operator, values }) =>
+    .with({ bucket: "quarter-of-year" }, ({ operator, column, values }) =>
       expressionClause(operator, [
         expressionClause("get-quarter", [column]),
         ...values,
