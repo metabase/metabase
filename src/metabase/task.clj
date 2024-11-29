@@ -209,6 +209,8 @@
                          (.getName new-trigger-key)
                          (when (> (count triggers) 1)
                            ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
+                           ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
+                           ;; The current behavior is especially confounding if replacing N triggers with M ones.
                            (str " (chosen randomly from " (count triggers) " existing ones)")))
               matching-trigger)
             (.rescheduleJob scheduler (.getKey ^Trigger matching-trigger) new-trigger)))))
