@@ -62,13 +62,6 @@ export const RelativeSizeIcon = styled(Icon)`
   width: 1em;
 `;
 
-export const InvertedColorRelativeSizeIcon = styled(RelativeSizeIcon)`
-  background-color: var(--mb-color-brand);
-  color: var(--mb-color-text-white);
-  border-radius: 0.3em;
-  padding: 0.3em;
-`;
-
 type FadeProps = {
   visible?: boolean;
 };

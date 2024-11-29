@@ -1,15 +1,15 @@
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { Box } from "metabase/ui";
 
-import { DataSelectorSection } from "../DataSelector.styled";
 import type { DataSelectorSectionHeaderProps } from "../DataSelectorSectionHeader";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
 const DataSelectorLoading = ({ header }: DataSelectorSectionHeaderProps) =>
   header ? (
-    <DataSelectorSection>
+    <Box component="section" w={300}>
       <DataSelectorSectionHeader header={header} />
       <LoadingAndErrorWrapper loading />
-    </DataSelectorSection>
+    </Box>
   ) : (
     <LoadingAndErrorWrapper loading />
   );

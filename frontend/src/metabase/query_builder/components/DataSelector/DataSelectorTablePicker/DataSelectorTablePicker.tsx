@@ -18,7 +18,6 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
 
-import { DataSelectorSection as Section } from "../DataSelector.styled";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
 type DataSelectorTablePickerProps = {
@@ -137,10 +136,10 @@ const DataSelectorTablePicker = ({
     );
   } else {
     return (
-      <Section>
+      <Box component="section" w={300}>
         <DataSelectorSectionHeader header={header} />
         <Box p="4rem" ta="center">{t`No tables found in this database.`}</Box>
-      </Section>
+      </Box>
     );
   }
 };

@@ -1,8 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { breakpointMaxSmall } from "metabase/styled-components/theme";
-
 export const ViewSidebarAside = styled.aside<{
   isOpen: boolean;
   side: string;
@@ -23,7 +21,7 @@ export const ViewSidebarAside = styled.aside<{
           border-left: ${isOpen ? "1px solid var(--mb-color-border)" : "none"};
           right: 0;
 
-          ${breakpointMaxSmall} {
+          @media screen and (max-width: 40em) {
             margin-left: auto;
           }
         `}

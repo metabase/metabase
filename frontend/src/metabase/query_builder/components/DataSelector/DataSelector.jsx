@@ -19,6 +19,7 @@ import Tables from "metabase/entities/tables";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
@@ -26,10 +27,7 @@ import {
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
-import {
-  EmptyStateContainer,
-  TableSearchContainer,
-} from "./DataSelector.styled";
+import DataSelectorS from "./DataSelector.module.css";
 import DataBucketPicker from "./DataSelectorDataBucketPicker";
 import DatabasePicker from "./DataSelectorDatabasePicker";
 import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
@@ -121,6 +119,18 @@ export function FieldDataSelector(props) {
       getTriggerElementContent={FieldTrigger}
       {...props}
     />
+  );
+}
+
+export function RawDataBackButton() {
+  return (
+    <Flex align="center" className={CS.cursorPointer}>
+      <Icon name="chevronleft" size={16} />
+      <Text
+        component="span"
+        className={DataSelectorS.backButtonLabel}
+      >{t`Raw Data`}</Text>
+    </Flex>
   );
 }
 
@@ -1025,7 +1035,7 @@ export class UnconnectedDataSelector extends Component {
       return (
         <>
           {this.showTableSearch() && (
-            <TableSearchContainer>
+            <Box className={DataSelectorS.tableSearchContainer}>
               <ListSearchField
                 fullWidth
                 autoFocus
@@ -1034,7 +1044,7 @@ export class UnconnectedDataSelector extends Component {
                 onChange={e => this.handleSearchTextChange(e.target.value)}
                 onResetClick={() => this.handleSearchTextChange("")}
               />
-            </TableSearchContainer>
+            </Box>
           )}
           {isSearchActive && (
             <SearchResults
@@ -1066,12 +1076,12 @@ export class UnconnectedDataSelector extends Component {
     }
 
     return (
-      <EmptyStateContainer>
+      <Box w="300px" p="80px 60px">
         <EmptyState
           message={t`To pick some data, you'll need to add some first`}
           icon="database"
         />
-      </EmptyStateContainer>
+      </Box>
     );
   };
 

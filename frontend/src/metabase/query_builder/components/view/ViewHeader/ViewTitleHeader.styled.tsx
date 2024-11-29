@@ -4,7 +4,7 @@ import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
-import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+import { space } from "metabase/styled-components/theme";
 import { type ButtonProps, Button as MantineButton } from "metabase/ui";
 
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
@@ -19,7 +19,7 @@ export const ViewHeaderContainer = styled(ViewSection)<{
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     flex-direction: column;
     align-items: start;
     padding: ${space(1)} 0;
@@ -33,7 +33,7 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   align-items: center;
   flex-wrap: wrap;
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     flex-direction: column;
     align-items: start;
   }
@@ -60,7 +60,7 @@ export const SavedQuestionHeaderButtonContainer = styled.div<{
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: var(--mb-color-text-light);
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     margin-left: 0;
     margin-top: 2px;
     margin-bottom: 4px;
@@ -70,14 +70,14 @@ export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
 export const StyledQuestionDataSource = styled(QuestionDataSource)`
   padding-right: 1rem;
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     margin-left: 0;
     padding-right: 0;
   }
 `;
 
 export const AdHocLeftSideRoot = styled.div`
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     padding: 0 1.25rem;
   }
 `;
@@ -107,7 +107,7 @@ export const SavedQuestionLeftSideRoot = styled.div<{
     }
   }
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     padding: 0 1.25rem;
 
     ${SavedQuestionHeaderButtonContainer} {
@@ -126,7 +126,7 @@ export const ViewHeaderActionPanel = styled.div`
   margin-left: auto;
   gap: 0.5rem;
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     margin-left: 0;
     width: 100%;
     justify-content: space-between;

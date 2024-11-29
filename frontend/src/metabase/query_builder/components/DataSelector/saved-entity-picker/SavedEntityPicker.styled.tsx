@@ -1,14 +1,12 @@
 import styled from "@emotion/styled";
 
-import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
-
 export const SavedEntityPickerRoot = styled.div`
   display: flex;
   width: 620px;
   overflow: hidden;
   border-top: 1px solid var(--mb-color-border);
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     flex-direction: column;
     width: 300px;
     overflow: auto;
@@ -22,7 +20,7 @@ export const CollectionsContainer = styled.div`
   background-color: var(--mb-color-bg-light);
   overflow: auto;
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     min-height: 220px;
     border-bottom: 1px solid var(--mb-color-border);
   }

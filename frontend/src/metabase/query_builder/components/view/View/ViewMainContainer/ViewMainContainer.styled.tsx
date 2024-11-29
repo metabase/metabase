@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
-import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const QueryBuilderMain = styled.main<{
   isSidebarOpen: boolean;
@@ -13,7 +12,7 @@ export const QueryBuilderMain = styled.main<{
   flex: 1 0 auto;
   flex-basis: 0;
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     ${props =>
       props.isSidebarOpen &&
       css`

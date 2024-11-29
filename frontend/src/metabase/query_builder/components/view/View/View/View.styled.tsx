@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
-
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
@@ -15,7 +13,7 @@ export const QueryBuilderContentContainer = styled.div`
   flex: 1 0 auto;
   position: relative;
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     justify-content: end;
   }
 `;
