@@ -24,16 +24,17 @@
       "name": "Embedding",
       "label": ".Team/Embedding",
       "projectUrl": "https://github.com/orgs/metabase/projects/88/views/1",
-      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto", "heypoom"]
+      "members": ["WiNloSt", "oisincoveney", "npretto", "heypoom"]
     },
     {
-      "name": "BEC",
-      "label": ".Team/BackendComponents",
+      "name": "Workflows",
+      "label": ".Team/Workflows",
       "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
       "members": [
         "qnkhuat",
         "piranha",
-        "crisptrutski"
+        "crisptrutski",
+        "deniskaber"
       ]
     },
     {
