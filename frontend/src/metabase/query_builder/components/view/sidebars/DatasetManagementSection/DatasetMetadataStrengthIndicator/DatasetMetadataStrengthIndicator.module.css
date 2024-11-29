@@ -1,0 +1,4 @@
+.label {
+  user-select: none;
+  transition: all 0.4s;
+}

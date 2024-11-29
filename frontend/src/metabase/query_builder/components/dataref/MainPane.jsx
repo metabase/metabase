@@ -7,11 +7,8 @@ import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-import {
-  NodeListItemIcon,
-  NodeListItemLink,
-  NodeListItemName,
-} from "./NodeList.styled";
+import { NodeListItemName } from "./NodeList";
+import { NodeListItemIcon, NodeListItemLink } from "./NodeList.styled";
 
 const MainPane = ({ databases, onClose, onItemClick }) => (
   <SidebarContent title={t`Data Reference`} onClose={onClose}>

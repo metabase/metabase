@@ -2,14 +2,14 @@ import { useRef } from "react";
 import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { Tooltip } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 
+import DatasetMetadataStrengthIndicatorS from "./DatasetMetadataStrengthIndicator.module.css";
 import {
-  PercentageLabel,
-  Root,
   TooltipContent,
   TooltipParagraph,
 } from "./DatasetMetadataStrengthIndicator.styled";
@@ -67,22 +67,31 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const indicationColor = getIndicationColor(percentage, isHovering);
 
   return (
-    <Root {...props} ref={rootRef}>
+    <Box
+      display="inline-block"
+      className={CS.floatRight}
+      {...props}
+      ref={rootRef}
+    >
       <Tooltip
         label={getTooltipMessage(percentage)}
         openDelay={TOOLTIP_DELAY}
         position="bottom"
       >
-        <PercentageLabel
+        <Box
+          component="span"
+          fz="0.8rem"
+          fw="bold"
+          className={DatasetMetadataStrengthIndicatorS.label}
           color={indicationColor}
           data-testid="tooltip-component-wrapper"
         >
           {formatPercentage(percentage)}
-        </PercentageLabel>
+        </Box>
       </Tooltip>
-    </Root>
+    </Box>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(DatasetMetadataStrengthIndicator, { Root });
+export default DatasetMetadataStrengthIndicator;
