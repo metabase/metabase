@@ -17,8 +17,7 @@ export const useChartSettingsSections = ({
   shouldShowChartTypeSelector: boolean;
 }) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
-    initial?.section ??
-      (shouldShowChartTypeSelector ? DEFAULT_TAB_PRIORITY[0] : null),
+    initial?.section ?? null,
   );
 
   useEffect(() => {

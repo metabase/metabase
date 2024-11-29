@@ -194,7 +194,6 @@ export const BaseChartSettings = ({
           <Tabs
             value={chartSettingCurrentSection}
             radius={0}
-            defaultValue={chartSettingCurrentSection}
             onTabChange={handleShowSection}
             styles={{
               tab: {
