@@ -23,7 +23,7 @@
   "Populate the index with the given appdb agnostic entity shapes."
   [entities & body]
   `(search.tu/with-temp-index-table
-     (#'specialization/batch-upsert! search.index/*active-table*
+     (#'specialization/batch-upsert! (search.index/active-table)
                                      (map (comp #'search.index/document->entry
                                                 #'search.ingestion/->document)
                                           ~entities))
@@ -128,27 +128,25 @@
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
     (when (search/supports-index?)
-      (let [table-name (search.tu/random-table-name)]
-        (binding [search.index/*active-table* table-name]
-          (search.index/ensure-ready! table-name)
-          (mt/with-model-cleanup [:model/Card]
-            (let [search-term    "view-count-edge-case"
-                  card-with-view #(merge (mt/with-temp-defaults :model/Card)
-                                         {:name search-term
-                                          :view_count %})
-                  ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
-                  outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 100000))
-                  _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
-                                                                  (for [i (range 1 81)]
-                                                                    (card-with-view i))))
-                  _               (search.ingestion/consume!
-                                   (#'search.ingestion/query->documents
-                                    (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term])))
-                  first-result-id (-> (search-results* search-term) first second)]
-              (is (some? first-result-id))
-              ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
-              ;; but we can solve this later if it actually becomes a flake
-              (is (not= outlier-card-id first-result-id)))))))))
+      (search.tu/with-temp-index-table
+        (mt/with-model-cleanup [:model/Card]
+          (let [search-term     "view-count-edge-case"
+                card-with-view  #(merge (mt/with-temp-defaults :model/Card)
+                                        {:name       search-term
+                                         :view_count %})
+               ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
+                outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 100000))
+                _               (t2/insert! :model/Card (concat (repeat 20 (card-with-view 0))
+                                                                (for [i (range 1 81)]
+                                                                  (card-with-view i))))
+                _               (search.ingestion/consume!
+                                 (#'search.ingestion/query->documents
+                                  (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term])))
+                first-result-id (-> (search-results* search-term) first second)]
+            (is (some? first-result-id))
+           ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
+           ;; but we can solve this later if it actually becomes a flake
+            (is (not= outlier-card-id first-result-id))))))))
 
 (deftest ^:parallel dashboard-count-test
   (testing "cards used in dashboard have higher rank"

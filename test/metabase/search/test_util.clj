@@ -1,6 +1,5 @@
 (ns metabase.search.test-util
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
@@ -16,26 +15,12 @@
 
 (def ^:dynamic *user-ctx* nil)
 
-(defn- random-prefix []
-  (str/replace (str (name search.index/*active-table*) "_" (random-uuid)) #"-" "_"))
-
-(defn random-table-name
-  "Generate a random name for a search index table."
-  []
-  (keyword (random-prefix)))
-
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body."
   [& body]
   `(when (search/supports-index?)
-     (let [table-name# (random-table-name)]
-       (binding [search.index/*active-table* table-name#]
-         (try
-           (search.index/create-table! search.index/*active-table*)
-           ~@body
-           (finally
-             (#'search.index/drop-table! search.index/*active-table*)))))))
+     (search.index/with-temp-index-table ~@body)))
 
 (defmacro with-api-user [raw-ctx & body]
   `(let [raw-ctx# ~raw-ctx]
