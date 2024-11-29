@@ -106,6 +106,6 @@
                    (cron/cron-schedule
                     ;; run every 4 hours at a random minute:
                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
-                   (cron/with-misfire-handling-instruction-ignore-misfires))))]
+                   (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)
     (task/trigger-now! job-key)))
