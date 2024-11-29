@@ -94,7 +94,8 @@
     :view-count          2
     :text                5
     :mine                1
-    :exact               5}
+    :exact               5
+    :prefix              5}
    :command-palette
    {:model/collection     1
     :model/dashboard      1

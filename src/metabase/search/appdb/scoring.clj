@@ -1,6 +1,7 @@
 (ns metabase.search.appdb.scoring
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -17,9 +18,14 @@
   [:coalesce [:cast column :integer] [:inline 0]])
 
 (defn equal
-  "Prefer it when it matches a specific (non null) value"
+  "Prefer it when it matches a specific (non-null) value"
   [column value]
   [:coalesce [:case [:= column value] [:inline 1] :else [:inline 0]] [:inline 0]])
+
+(defn prefix
+  "Prefer it when the given value is a completion of a specific (non-null) value"
+  [column value]
+  [:coalesce [:case [:like column (str (str/replace value "%" "%%") "%")] [:inline 1] :else [:inline 0]] [:inline 0]])
 
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
@@ -159,7 +165,10 @@
    :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
    :model        (model-rank-exp search-ctx)
    :mine         (equal :search_index.creator_id (:current-user-id search-ctx))
-   :exact        (equal [:lower :search_index.name] [:lower (:search-string search-ctx)])})
+   :exact        (equal [:lower :search_index.name] [:lower (:search-string search-ctx)])
+   :prefix       (if (= :command-palette (:context search-ctx))
+                   (prefix [:lower :search_index.name] (u/lower-case-en (:search-string search-ctx)))
+                   [:inline 0])})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
