@@ -5,7 +5,6 @@ import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { space } from "metabase/styled-components/theme";
-import { type ButtonProps, Button as MantineButton } from "metabase/ui";
 
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
 import ViewSection, { ViewSubHeading } from "../ViewSection";
@@ -36,18 +35,6 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   @media screen and (max-width: 40em) {
     flex-direction: column;
     align-items: start;
-  }
-`;
-
-export const SaveButton = styled(MantineButton)<ButtonProps>`
-  border-radius: 8px;
-
-  &[data-disabled="true"] {
-    pointer-events: all;
-  }
-
-  :hover {
-    background-color: var(--mb-color-bg-light);
   }
 `;
 
@@ -117,22 +104,6 @@ export const SavedQuestionLeftSideRoot = styled.div<{
     ${ViewHeaderLeftSubHeading} {
       opacity: 1;
     }
-  }
-`;
-
-export const ViewHeaderActionPanel = styled.div`
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  gap: 0.5rem;
-
-  @media screen and (max-width: 40em) {
-    margin-left: 0;
-    width: 100%;
-    justify-content: space-between;
-    border-top: 1px solid var(--mb-color-border);
-    margin-top: 1rem;
-    padding: 0.5rem 2.5rem 0 2rem;
   }
 `;
 

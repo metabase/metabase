@@ -83,3 +83,31 @@
   margin-top: 0.25rem;
   margin-right: 1rem;
 }
+
+.SaveButton {
+  border-radius: 8px;
+
+  &[data-disabled="true"] {
+    pointer-events: all;
+  }
+
+  :hover {
+    background-color: var(--mb-color-bg-light);
+  }
+}
+
+.ViewHeaderActionPanel {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 0.5rem;
+
+  @media screen and (max-width: 40em) {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--mb-color-border);
+    margin-top: 1rem;
+    padding: 0.5rem 2.5rem 0 2rem;
+  }
+}
