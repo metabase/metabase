@@ -324,6 +324,19 @@ export const adjustOffset = tree =>
     return node;
   });
 
+/*
+ MBQL clause for an operator that supports multiple arguments *requires* an
+ option object after the operator when there are more than 2 arguments. Compare:
+
+ ["contains", ["field", 1, null], "A"]
+ ["contains", ["field", 1, null], "A", {"case-sensitive": false}]
+ ["contains", {}, ["field", 1, null], "A", "B"]
+ ["contains", {"case-sensitive": false}, ["field", 1, null], "A", "B"]
+
+ By default, the expression parser adds the options object as the last operand,
+ so we need to adjust its position here or insert an empty options object if
+ there is none.
+*/
 export const adjustMultiArgOptions = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
