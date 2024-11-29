@@ -34,7 +34,7 @@ export function infer(mbql, env) {
       return MONOTYPE.Boolean;
   }
 
-  switch (true) {
+  switch (op) {
     case "case":
     case "if":
       return infer(mbql[1][0][1], env);
