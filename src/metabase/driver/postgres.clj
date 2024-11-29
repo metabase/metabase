@@ -63,6 +63,7 @@
 (doseq [[feature supported?] {:connection-impersonation true
                               :describe-fields          true
                               :describe-fks             true
+                              :describe-indexes         true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -359,7 +360,7 @@
   ;; From https://github.com/pgjdbc/pgjdbc/blob/master/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L2662
   (sql/format {:select [:tmp.table-schema
                         :tmp.table-name
-                        [[:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false] :field-name]]
+                        [[:trim :!both [:inline "\""] :!from [:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false]] :field-name]]
                :from [[{:select [[:n.nspname :table-schema]
                                  [:ct.relname :table-name]
                                  [:ci.oid :ci_oid]
@@ -372,8 +373,8 @@
                                 ;; No filtered indexes
                                 [:= [:pg_catalog.pg_get_expr :i.indpred :i.indrelid] nil]
                                 [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
-                                (when (seq schema-names) [:in :table-schema schema-names])
-                                (when (seq table-names) [:in :table-name table-names])]}
+                                (when (seq schema-names) [:in :n.nspname schema-names])
+                                (when (seq table-names) [:in :ct.relname table-names])]}
                        :tmp]]
                ;; The only column or the first column in a composite index
                :where [:= :tmp.pos 1]}
