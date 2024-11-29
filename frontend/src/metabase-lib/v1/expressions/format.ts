@@ -13,7 +13,7 @@ import {
   formatStringLiteral,
   getExpressionName,
   isBooleanLiteral,
-  isCase,
+  isCaseOrIf,
   isDimension,
   isFunction,
   isMetric,
@@ -59,7 +59,7 @@ export function format(mbql: any, options: Options): string {
     return formatMetric(mbql, options);
   } else if (isSegment(mbql)) {
     return formatSegment(mbql, options);
-  } else if (isCase(mbql)) {
+  } else if (isCaseOrIf(mbql)) {
     return formatCaseOrIf(mbql, options);
   } else if (isNegativeFilter(mbql)) {
     return formatNegativeFilter(mbql, options);
