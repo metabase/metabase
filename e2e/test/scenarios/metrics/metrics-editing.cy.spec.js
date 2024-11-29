@@ -316,7 +316,7 @@ describe("scenarios > metrics > editing", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Metrics").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
       H.getNotebookStep("data").within(() => {
@@ -397,7 +397,7 @@ describe("scenarios > metrics > editing", () => {
       H.startNewMetric();
       cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Metrics").click();
+        H.entityPickerModalTab("Collections").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
       cy.wait("@queryMetadata");
