@@ -21,6 +21,8 @@ import type { DatasetData, RawSeries, Series } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
+const MAX_SANKEY_NODES = 150;
+
 export const SETTINGS_DEFINITIONS = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
@@ -188,6 +190,19 @@ export const SANKEY_CHART_DEFINITION = {
       throw new ChartSettingsError(
         t`Selected columns create circular flows. Try picking different columns that flow in one direction.`,
         { section: "Data" },
+      );
+    }
+
+    const nodesCount = new Set(
+      rows.flatMap(row => [
+        row[sankeyColumns.source.index],
+        row[sankeyColumns.target.index],
+      ]),
+    ).size;
+
+    if (nodesCount > MAX_SANKEY_NODES) {
+      throw new ChartSettingsError(
+        t`This chart type doesn't support more than ${MAX_SANKEY_NODES} sankey nodes.`,
       );
     }
   },
