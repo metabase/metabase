@@ -112,28 +112,25 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
     expect(process("regexextract(B,C)")).toEqual(["regex-match-first", B, C]);
   });
 
-  it("should handle function options", () => {
-    expect(filter("contains(B, C, 'case-insensitive')")).toEqual([
-      "contains",
-      B,
-      C,
-      { "case-sensitive": false },
-    ]);
-    expect(filter("contains(B, C, D)")).toEqual(["contains", {}, B, C, D]);
-    expect(filter("contains(B, C, D, 'case-insensitive')")).toEqual([
-      "contains",
-      { "case-sensitive": false },
-      B,
-      C,
-      D,
-    ]);
-    expect(filter("interval(B, -1, 'days', 'include-current')")).toEqual([
-      "time-interval",
-      B,
-      -1,
-      "days",
-      { "include-current": true },
-    ]);
+  it.each([
+    {
+      source: "contains(B, C, 'case-insensitive')",
+      expression: ["contains", B, C, { "case-sensitive": false }],
+    },
+    {
+      source: "contains(B, C, D)",
+      expression: ["contains", {}, B, C, D],
+    },
+    {
+      source: "contains(B, C, D, 'case-insensitive')",
+      expression: ["contains", { "case-sensitive": false }, B, C, D],
+    },
+    {
+      source: "interval(B, -1, 'days', 'include-current')",
+      expression: ["time-interval", B, -1, "days", { "include-current": true }],
+    },
+  ])("should handle function options: $source", ({ source, expression }) => {
+    expect(filter(source)).toEqual(expression);
   });
 
   it("should use MBQL negative shorthands", () => {
