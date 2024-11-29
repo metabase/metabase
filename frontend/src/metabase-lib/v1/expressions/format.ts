@@ -60,7 +60,7 @@ export function format(mbql: any, options: Options): string {
   } else if (isSegment(mbql)) {
     return formatSegment(mbql, options);
   } else if (isCase(mbql)) {
-    return formatCase(mbql, options);
+    return formatCaseOrIf(mbql, options);
   } else if (isNegativeFilter(mbql)) {
     return formatNegativeFilter(mbql, options);
   }
@@ -207,7 +207,7 @@ function formatOperator([op, ...operands]: any[], options: Options) {
   return options.parens ? `(${formatted})` : formatted;
 }
 
-function formatCase(
+function formatCaseOrIf(
   [operator, clauses, caseOptions = {}]: any[],
   options: Options,
 ) {
