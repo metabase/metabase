@@ -195,6 +195,30 @@ const expression = [
     ],
     "should handle priority for addition and subtraction with parenthesis",
   ],
+
+  [
+    'contains([Product → Ean], "A", "B")',
+    [
+      "contains",
+      {},
+      ["field", PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID }],
+      "A",
+      "B",
+    ],
+    "should handle contains with multiple arguments and empty options",
+  ],
+
+  [
+    'contains([Product → Ean], "A", "B", "case-insensitive")',
+    [
+      "contains",
+      { "case-sensitive": false },
+      ["field", PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID }],
+      "A",
+      "B",
+    ],
+    "should handle contains with multiple arguments and non-empty options",
+  ],
 ];
 
 const aggregation = [
