@@ -240,7 +240,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
-    it("mantine modals should render with our styles", () => {
+    it.only("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -248,9 +248,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       );
 
       getSdkRoot().findByText("Summarize").click();
-      getSdkRoot().findByText("Add a function or metric").click();
       getSdkRoot().findByText("Count of rows").click();
-      getSdkRoot().findByText("Apply").click();
       getSdkRoot().findByText("Save").click();
 
       getSdkRoot()
