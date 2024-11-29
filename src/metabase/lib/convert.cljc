@@ -262,11 +262,11 @@
 
 (doseq [tag [:case :if]]
   (defmethod ->pMBQL tag
-  [[_tag pred-expr-pairs options]]
-  (let [default (:default options)]
-    (cond-> [tag (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
-      :always lib.options/ensure-uuid
-      (some? default) (conj (->pMBQL default))))))
+    [[_tag pred-expr-pairs options]]
+    (let [default (:default options)]
+      (cond-> [tag (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
+        :always lib.options/ensure-uuid
+        (some? default) (conj (->pMBQL default))))))
 
 (defmethod ->pMBQL :expression
   [[tag value opts]]
