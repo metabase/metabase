@@ -129,15 +129,19 @@
     :min
     (fn [prev v]
       (if (number? v)
-        (-> (merge {:min 0} prev)
-            (update :min #(min % v)))
+        (update prev :min
+                (fn [x] (if x
+                          (min x v)
+                          v)))
         v))
 
     :max
     (fn [prev v]
       (if (number? v)
-        (-> (merge {:min 0} prev)
-            (update :min #(max % v)))
+        (update prev :max
+                (fn [x] (if x
+                          (max x v)
+                          v)))
         v))
 
     ;; else

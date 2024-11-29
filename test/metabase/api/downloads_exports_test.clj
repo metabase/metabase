@@ -1551,3 +1551,73 @@
                       ["5" "5" "1" "5"]
                       ["Grand totals" "15" "5" "15"]]
                      reordered-result)))))))))
+
+(deftest ^:parallel pivot-exports-aggregations-work
+  (testing "Pivot Exports have correct aggregations."
+    (let [q "SELECT A, B
+               FROM (
+                  SELECT 1 as A, 1 as B UNION ALL
+                  SELECT 1, 2 UNION ALL
+                  SELECT 1, 3 UNION ALL
+                  SELECT 1, 4 UNION ALL
+                  SELECT 1, 5 UNION ALL
+                  SELECT 2, 10 UNION ALL
+                  SELECT 2, 20 UNION ALL
+                  SELECT 2, 30 UNION ALL
+                  SELECT 2, 40 UNION ALL
+                  SELECT 2, 50 UNION ALL
+                  SELECT 3, -1 UNION ALL
+                  SELECT 3, -2 UNION ALL
+                  SELECT 3, -3 UNION ALL
+                  SELECT 3, -4 UNION ALL
+                  SELECT 3, -5 UNION ALL
+                  SELECT 4, 15 UNION ALL
+                  SELECT 4, 25 UNION ALL
+                  SELECT 4, 35 UNION ALL
+                  SELECT 4, 45 UNION ALL
+                  SELECT 4, 55 UNION ALL
+                  SELECT 5, 11 UNION ALL
+                  SELECT 5, 22 UNION ALL
+                  SELECT 5, 33 UNION ALL
+                  SELECT 5, 44 UNION ALL
+                  SELECT 5, 55
+               )"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native
+                                        {:template-tags {}
+                                         :query         q}}
+                        :result_metadata
+                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                   {:name         field-name
+                                    :display_name field-name
+                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :base_type    base-type}))}
+                       :model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["A"]
+                                                  :columns []
+                                                  :values  ["count" "sum" "avg" "min" "max"]}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:breakout     [[:field "A" {:base-type :type/Integer}]],
+                                                  :aggregation
+                                                  [[:count]
+                                                   [:sum [:field "B" {:base-type :type/Integer}]]
+                                                   [:avg [:field "B" {:base-type :type/Integer}]]
+                                                   [:min [:field "B" {:base-type :type/Integer}]]
+                                                   [:max [:field "B" {:base-type :type/Integer}]]]
+                                                  :source-table (format "card__%s" pivot-data-card-id)}}}]
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+            (is (= [["A" "Count" "Sum of B" "Average of B" "Min of B" "Max of B"]
+                    ["1" "5" "15" "3.0" "1" "5"]
+                    ["2" "5" "150" "30.0" "10" "50"]
+                    ["3" "5" "-15" "-3.0" "-5" "-1"]
+                    ["4" "5" "175" "35.0" "15" "55"]
+                    ["5" "5" "165" "33.0" "11" "55"]
+                    ["Grand totals" "25" "490" "19.6" "-5" "55"]]
+                   result))))))))
