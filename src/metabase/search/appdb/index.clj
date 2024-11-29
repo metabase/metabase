@@ -3,11 +3,13 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.config :as config]
+   [metabase.models.setting :as settings :refer [defsetting]]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
+   [metabase.search.util :as search.util]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -17,6 +19,11 @@
   postgres/keep-me)
 
 (def ^:private insert-batch-size 150)
+
+(defonce ^:dynamic ^:private *index-version-id*
+  (if config/is-prod?
+    (:hash config/mb-version-info)
+    (str (random-uuid))))
 
 (defonce ^:dynamic ^:private *active-table* (atom nil))
 
@@ -34,7 +41,7 @@
   []
   @*pending-table*)
 
-(comment
+(defmethod search.engine/reset-tracking! :search.engine/fulltext [_]
   (reset! *active-table* nil)
   (reset! *pending-table* nil))
 
@@ -58,19 +65,22 @@
                   :from   :information_schema.tables
                   :where  [:like :table_name "search_index__%"]})))
 
-(defn- sync-tables [old-metadata new-metadata]
+(defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by no keywordizing the keys.
-  (let [old-metadata                         (json/parse-string old-metadata)
-        {:strs [active-table pending-table]} (json/parse-string new-metadata)
+  (let [new-setting                          (json/parse-string new-setting-raw)
+        this-index-metadata                  #(get-in % ["versions" *index-version-id*])
+        {:strs [active-table pending-table]} (this-index-metadata new-setting)
         ;; implicitly clear the pending table if we just activated it
         pending-table                        (when (not= active-table pending-table) pending-table)]
     (reset! *active-table* (some-> active-table keyword))
     (reset! *pending-table* (some-> pending-table keyword))
-    ;; Clean up any tables not referenced by the previous or current configuration
-    (let [keep-table? (->> (map (or old-metadata {}) ["active-table" "pending-table"])
-                           (list* active-table pending-table)
-                           (into #{} (comp (filter some?) (map keyword))))
-          to-drop (remove keep-table? (existing-indexes))]
+    ;; Clean up any tables not referenced by any active versions.
+    (let [keep-table? (set (for [[_ index-metadata] (get new-setting "versions")
+                                 k ["active-table" "pending-table"]
+                                 :let [table-name (get index-metadata k)]
+                                 :when table-name]
+                             (keyword table-name)))
+          to-drop     (remove keep-table? (existing-indexes))]
       (when (seq to-drop)
         (log/infof "Dropping %d stale indexes" (count to-drop))
         (t2/query (apply sql.helpers/drop-table to-drop))))))
@@ -82,12 +92,23 @@
   :export?    false
   :default    nil
   :type       :json
-  :on-change sync-tables)
+  :on-change sync-metadata)
 
 (defn- update-metadata! [new-metadata]
-  (when-not *mocking-tables*
+  (if *mocking-tables*
+    (do (when-let [[_ table] (find new-metadata :active-table)]
+          (reset! *active-table* table))
+        (when-let [[_ table] (find new-metadata :pending-table)]
+          (reset! *pending-table* table)))
     (search-engine-appdb-index-state!
-     (merge (search-engine-appdb-index-state) new-metadata))))
+     (let [existing-state  (search-engine-appdb-index-state)
+           active-versions (search.util/cycle-recent-versions (:recent-versions existing-state) *index-version-id*)]
+       (-> existing-state
+           (assoc :recent-versions active-versions)
+           ;; Settings hydration parses all keys as keywords
+           (update :versions select-keys (map keyword active-versions))
+           (update-in [:versions *index-version-id*] merge new-metadata)))))
+  true)
 
 (comment
   (search-engine-appdb-index-state! nil))
@@ -105,7 +126,7 @@
 (defn maybe-create-pending!
   "Create a search index table."
   []
-  (when (not (pending-table))
+  (when (not (exists? (pending-table)))
     (let [table-name (gen-table-name)]
       (when-not (exists? table-name)
         (create-table! table-name))
@@ -160,6 +181,13 @@
 (defn- batch-update!
   "Create the given search index entries in bulk"
   [documents]
+  ;; Protect against tests that nuke the appdb
+  (when config/is-test?
+    (when (and (active-table) (not (exists? (active-table))))
+      (reset! *active-table* nil))
+    (when (and (pending-table) (not (exists? (pending-table))))
+      (reset! *pending-table* nil)))
+
   (let [entries          (map document->entry documents)
         ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
         ;;                    this should give a close to 2x speed-up as insertion is the bottleneck, and most of the
@@ -168,10 +196,6 @@
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (->> entries (map :model) frequencies))))
-
-(defmethod search.engine/reset-tracking! :search.engine/fulltext [_]
-  (reset! *active-table* nil)
-  (reset! *pending-table* nil))
 
 (defmethod search.engine/consume! :search.engine/fulltext [_engine document-reducible]
   (transduce (comp (partition-all insert-batch-size)
@@ -203,9 +227,14 @@
 (defn ensure-ready!
   "Ensure the index is ready to be populated. Return false if it was already ready."
   [force-recreation?]
-  (if (or force-recreation? (not (exists? (active-table))))
-    (reset-index!)
-    true))
+  (when-not *mocking-tables*
+    (when (nil? (active-table))
+      ;; double check that we're initialized from the current shared metadata
+      (when-let [raw-state (settings/get-raw-value :search-engine-appdb-index-state)]
+        (sync-metadata raw-state raw-state))))
+
+  (when (or force-recreation? (not (exists? (active-table))))
+    (reset-index!)))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
