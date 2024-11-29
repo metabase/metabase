@@ -180,7 +180,9 @@ export const DataPickerModal = ({
     if (
       (hasQuestions || hasMetrics || hasModels) &&
       hasNestedQueriesEnabled &&
-      models.includes("card")
+      (models.includes("card") ||
+        models.includes("dataset") ||
+        models.includes("metric"))
     ) {
       computedTabs.push({
         id: "questions-tab",
