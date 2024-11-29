@@ -1,12 +1,15 @@
 (ns metabase.server.middleware.json
   "Middleware related to parsing JSON requests and generating JSON responses."
   (:require
+   [clojure.java.io :as io]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.util.io :as rui]
+   [ring.util.request :as req]
    [ring.util.response :as response])
   (:import
+   (com.fasterxml.jackson.core JsonParseException)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)
    (java.time.temporal Temporal)))
@@ -73,9 +76,54 @@
   :pretty            - true if the JSON should be pretty-printed
   :escape-non-ascii  - true if non-ASCII characters should be escaped with \\u"
   [handler & [{:as opts}]]
-  (fn [request respond raise]
-    (handler
-     request
-     (fn respond* [response]
-       (respond (wrap-streamed-json-response* opts response)))
-     raise)))
+  (fn
+    ([request]
+     (wrap-streamed-json-response* opts (handler request)))
+    ([request respond raise]
+     (handler
+      request
+      (fn respond* [response]
+        (respond (wrap-streamed-json-response* opts response)))
+      raise))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                JSON Requests                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- parse-json-or-exc [{:keys [body headers] :as req}]
+  (if (and body
+           (some->> (get headers "content-type")
+                    (re-find #"^application/(.+?\+)?json")))
+    (let [encoding (or (req/character-encoding req) "UTF-8")
+          rdr      (io/reader body :encoding encoding)]
+      (try
+        [true (assoc req :body (json/decode+kw rdr))]
+        (catch JsonParseException e
+          [false e])))
+    [true req]))
+
+(defn- json-exc->res [^JsonParseException e]
+  (let [loc (.getLocation e)]
+    {:status  400
+     :headers {"Content-Type" "application/json"}
+     :body    {:error (format "%s at %s:%s"
+                              (.getOriginalMessage e)
+                              (.getLineNr loc)
+                              (.getColumnNr loc))}}))
+
+(defn wrap-json-body
+  "Parses JSON with keywords if it's valid, gives understandable error back otherwise.
+
+  Original wrap-json-body just returns 'Malformed JSON in request body.'"
+  [handler]
+  (fn
+    ([req]
+     (let [[valid? req-or-exc] (parse-json-or-exc req)]
+       (if valid?
+         (handler req-or-exc)
+         (json-exc->res req-or-exc))))
+    ([req respond raise]
+     (let [[valid? req-or-exc] (parse-json-or-exc req)]
+       (if valid?
+         (handler req-or-exc respond raise)
+         (respond (json-exc->res req-or-exc)))))))
