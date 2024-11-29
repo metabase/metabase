@@ -11,12 +11,11 @@ import { formatChange } from "metabase/visualizations/visualizations/SmartScalar
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
-export function computeTrend(series, insights, settings, { getColor }) {
+export function computeTrend(series, settings, { getColor }) {
   try {
     const comparisons = settings["scalar.comparisons"] || [];
     const currentMetricData = getCurrentMetricData({
       series,
-      insights,
       settings,
     });
 
@@ -142,12 +141,9 @@ function computeComparison({ comparison, currentMetricData, series }) {
   throw Error("Invalid comparison type specified.");
 }
 
-function getCurrentMetricData({ series, insights, settings }) {
+function getCurrentMetricData({ series, settings }) {
   const [
     {
-      card: {
-        dataset_query: { type: queryType },
-      },
       data: { rows, cols },
     },
   ] = series;
@@ -183,18 +179,14 @@ function getCurrentMetricData({ series, insights, settings }) {
 
   // get metric column metadata
   const metricColumn = cols[metricColIndex];
-  const metricInsight = insights?.find(
-    insight => insight.col === metricColumn.name,
-  );
-  const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
+  const dateUnit = dateColumn?.unit;
   const dateColumnSettings = settings?.column?.(dateColumn) ?? {};
 
   const dateUnitSettings = {
     dateColumn,
     dateColumnSettings,
     dateUnit,
-    queryType,
   };
 
   const formatOptions = {
@@ -509,10 +501,9 @@ function computeComparisonStrPreviousValue({
 }
 
 function formatDateStr({ date, dateUnitSettings, options }) {
-  const { dateColumn, dateColumnSettings, dateUnit, queryType } =
-    dateUnitSettings;
+  const { dateColumn, dateColumnSettings, dateUnit } = dateUnitSettings;
 
-  if (isEmpty(dateUnit) || queryType === "native") {
+  if (isEmpty(dateUnit)) {
     return formatValue(date, {
       ...dateColumnSettings,
       column: dateColumn,

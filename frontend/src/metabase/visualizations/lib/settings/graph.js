@@ -346,7 +346,7 @@ export const GRAPH_TREND_SETTINGS = {
     title: t`Trend line`,
     widget: "toggle",
     default: false,
-    getHidden: (series, vizSettings) => {
+    getHidden: series => {
       const { insights } = series[0].data;
       return !insights || insights.length === 0;
     },
