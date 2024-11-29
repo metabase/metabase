@@ -23,7 +23,11 @@ import type {
 } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { formatIdentifier, getDisplayNameWithSeparator } from "./";
+import {
+  formatIdentifier,
+  getDisplayNameWithSeparator,
+  isSameOperatorOrAlias,
+} from "./";
 
 export type Suggestion = {
   type: string;
@@ -196,7 +200,8 @@ export function suggest({
           clause => clause && database?.hasFeature(clause.requiresFeature),
         )
         .filter(function disableOffsetInFilterExpressions(clause) {
-          const isOffset = clause.name === "offset";
+          const isOffset =
+            clause.name != null && isSameOperatorOrAlias(clause.name, "offset");
           const isFilterExpression = startRule === "boolean";
           const isOffsetInFilterExpression = isOffset && isFilterExpression;
           return !isOffsetInFilterExpression;

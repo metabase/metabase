@@ -8,6 +8,7 @@ import {
   EDITOR_FK_SYMBOLS,
   EDITOR_QUOTES,
   FUNCTIONS,
+  MBQL_CLAUSES,
   OPERATORS,
   getMBQLName,
 } from "./config";
@@ -342,10 +343,20 @@ export function isSegment(expr: unknown): boolean {
   );
 }
 
+export function isSameOperatorOrAlias(operator1: string, operator2: string) {
+  const aliases1 = MBQL_CLAUSES[operator1]?.aliases ?? [];
+  const aliases2 = MBQL_CLAUSES[operator2]?.aliases ?? [];
+  return (
+    operator1 === operator2 ||
+    aliases1.includes(operator2) ||
+    aliases2.includes(operator1)
+  );
+}
+
 export function isCase(expr: unknown): boolean {
-  return Array.isArray(expr) && expr[0] === "case"; // && _.all(expr.slice(1), isValidArg)
+  return Array.isArray(expr) && isSameOperatorOrAlias(expr[0], "case"); // && _.all(expr.slice(1), isValidArg)
 }
 
 export function isOffset(expr: unknown): boolean {
-  return Array.isArray(expr) && expr[0] === "offset";
+  return Array.isArray(expr) && isSameOperatorOrAlias(expr[0], "offset");
 }

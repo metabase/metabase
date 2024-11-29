@@ -6,6 +6,7 @@ import {
   MBQL_CLAUSES,
   getMBQLName,
   isOptionsObject,
+  isSameOperatorOrAlias,
   unescapeString,
 } from "./index";
 
@@ -294,7 +295,7 @@ export const adjustCase = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;
-      if (operator === "case") {
+      if (isSameOperatorOrAlias(operator, "case")) {
         const pairs = [];
         const pairCount = operands.length >> 1;
         for (let i = 0; i < pairCount; ++i) {
@@ -315,10 +316,10 @@ export const adjustCase = tree =>
 export const adjustOffset = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
-      const [tag, expr, n] = node;
-      if (tag === "offset") {
+      const [operator, expr, n] = node;
+      if (isSameOperatorOrAlias(operator, "offset")) {
         const opts = {};
-        return withAST([tag, opts, expr, n], node);
+        return withAST([operator, opts, expr, n], node);
       }
     }
     return node;
@@ -357,7 +358,7 @@ export const adjustMultiArgOptions = tree =>
 export const adjustBooleans = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
-      if (node?.[0] === "case") {
+      if (isSameOperatorOrAlias(node[0], "case")) {
         const [operator, pairs, options] = node;
         return [
           operator,

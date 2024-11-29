@@ -207,8 +207,11 @@ function formatOperator([op, ...operands]: any[], options: Options) {
   return options.parens ? `(${formatted})` : formatted;
 }
 
-function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
-  const formattedName = getExpressionName("case");
+function formatCase(
+  [operator, clauses, caseOptions = {}]: any[],
+  options: Options,
+) {
+  const formattedName = getExpressionName(operator);
   const formattedClauses = clauses
     .map(
       ([filter, mbql]: any[]) =>

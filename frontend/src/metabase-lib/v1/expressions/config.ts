@@ -294,6 +294,13 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "expression",
     args: ["expression", "expression"], // ideally we'd alternate boolean/expression
     multiple: true,
+    aliases: ["if"],
+  },
+  if: {
+    displayName: `if`,
+    type: "expression",
+    args: ["expression", "expression"],
+    multiple: true,
   },
   offset: {
     displayName: `Offset`,

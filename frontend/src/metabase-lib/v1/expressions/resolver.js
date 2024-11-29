@@ -4,7 +4,12 @@ import { ResolverError } from "metabase-lib/v1/expressions/pratt/types";
 
 import { OPERATOR as OP } from "./tokenizer";
 
-import { MBQL_CLAUSES, getMBQLName, isOptionsObject } from "./index";
+import {
+  MBQL_CLAUSES,
+  getMBQLName,
+  isOptionsObject,
+  isSameOperatorOrAlias,
+} from "./index";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
 export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
@@ -120,15 +125,15 @@ export function resolve({
           expression.node,
         );
       }
-    } else if (op === "concat") {
+    } else if (isSameOperatorOrAlias(op, "concat")) {
       operandType = "expression";
-    } else if (op === "coalesce") {
+    } else if (isSameOperatorOrAlias(op, "coalesce")) {
       operandType = type;
-    } else if (op === "case") {
+    } else if (isSameOperatorOrAlias(op, "case")) {
       const [pairs, options] = operands;
       if (pairs.length < 1) {
         throw new ResolverError(
-          t`CASE expects 2 arguments or more`,
+          t`${op} expects 2 arguments or more`,
           expression.node,
         );
       }
