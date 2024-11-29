@@ -11,7 +11,6 @@
   - Alert attachments"
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
-   [cheshire.core :as json]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
@@ -24,7 +23,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.json :as json])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
    (org.apache.poi.xssf.usermodel XSSFSheet)))
@@ -73,9 +73,9 @@
   [card {:keys [export-format format-rows pivot]}]
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
-                             :visualization_settings (json/generate-string
+                             :visualization_settings (json/encode
                                                       (:visualization_settings card))
-                             :query (json/generate-string
+                             :query (json/encode
                                      (assoc (:dataset_query card)
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}

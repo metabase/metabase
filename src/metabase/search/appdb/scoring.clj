@@ -105,7 +105,7 @@
 (defn- view-count-percentile-query [p-value]
   (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
     {:select   [:search_index.model [expr :vcp]]
-     :from     [[search.index/*active-table* :search_index]]
+     :from     [[(search.index/active-table) :search_index]]
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
