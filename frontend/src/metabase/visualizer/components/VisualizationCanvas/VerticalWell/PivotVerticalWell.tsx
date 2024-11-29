@@ -10,7 +10,10 @@ import {
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
-import { isDraggedColumnItem } from "metabase/visualizer/utils";
+import {
+  isDraggedColumnItem,
+  isDraggedWellItem,
+} from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import type { DatasetColumn, RawSeries } from "metabase-types/api";
 
@@ -199,5 +202,9 @@ function isWellBoxHighlighted({
   isOver: boolean;
   active?: Active | null;
 }) {
-  return Boolean(isOver && active && isDraggedColumnItem(active));
+  return Boolean(
+    isOver &&
+      active &&
+      (isDraggedColumnItem(active) || isDraggedWellItem(active)),
+  );
 }

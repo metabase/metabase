@@ -7,6 +7,7 @@ import {
   isDraggedColumnItem,
   isDraggedWellItem,
 } from "metabase/visualizer/utils";
+import type { VisualizationSettings } from "metabase-types/api";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 export const pivotDropHandler = (
@@ -14,8 +15,6 @@ export const pivotDropHandler = (
   { active, over }: DragEndEvent,
 ) => {
   if (over && isDraggedColumnItem(active)) {
-    let shouldAddColumn = false;
-
     const { column, dataSource } = active.data.current;
     const columnRef = createVisualizerColumnReference(
       dataSource,
@@ -23,60 +22,44 @@ export const pivotDropHandler = (
       extractReferencedColumns(state.columnValuesMapping),
     );
 
-    if (over.id === DROPPABLE_ID.PIVOT_COLUMNS_WELL) {
-      const columns = state.settings["pivot_table.column_split"]?.columns ?? [];
-      if (!columns.includes(columnRef.name)) {
-        state.settings = {
-          ...state.settings,
-          "pivot_table.column_split": {
-            ...(state.settings["pivot_table.column_split"] ?? {
-              rows: [],
-              values: [],
-            }),
-            columns: [...columns, columnRef.name],
-          },
-        };
-        shouldAddColumn = true;
-      }
-    } else if (over.id === DROPPABLE_ID.PIVOT_ROWS_WELL) {
-      const rows = state.settings["pivot_table.column_split"]?.rows ?? [];
-      if (!rows.includes(columnRef.name)) {
-        state.settings = {
-          ...state.settings,
-          "pivot_table.column_split": {
-            ...(state.settings["pivot_table.column_split"] ?? {
-              columns: [],
-              values: [],
-            }),
-            rows: [...rows, columnRef.name],
-          },
-        };
-        shouldAddColumn = true;
-      }
-    } else if (over.id === DROPPABLE_ID.PIVOT_VALUES_WELL) {
-      const values = state.settings["pivot_table.column_split"]?.values ?? [];
-      if (!values.includes(columnRef.name)) {
-        state.settings = {
-          ...state.settings,
-          "pivot_table.column_split": {
-            ...(state.settings["pivot_table.column_split"] ?? {
-              columns: [],
-              rows: [],
-            }),
-            values: [...values, columnRef.name],
-          },
-        };
-        shouldAddColumn = true;
+    const columnType = getColumnTypeFromWellId(over.id);
+    if (columnType) {
+      const nextSettings = addColumnToVizSettings(
+        state.settings,
+        columnRef.name,
+        columnType,
+      );
+      if (nextSettings) {
+        state.settings = nextSettings;
+        state.columns.push({
+          ...column,
+          name: columnRef.name,
+          source: column.source === "breakout" ? "breakout" : "artificial",
+        });
+        state.columnValuesMapping[columnRef.name] = [columnRef];
       }
     }
+  }
 
-    if (shouldAddColumn) {
-      state.columns.push({
-        ...column,
-        name: columnRef.name,
-        source: column.source === "breakout" ? "breakout" : "artificial",
-      });
-      state.columnValuesMapping[columnRef.name] = [columnRef];
+  if (over && isDraggedWellItem(active) && isPivotWell(over.id)) {
+    const { column, wellId } = active.data.current;
+
+    const previousColumnType = getColumnTypeFromWellId(wellId);
+    const nextColumnType = getColumnTypeFromWellId(over.id);
+
+    if (previousColumnType && nextColumnType) {
+      const nextSettings = addColumnToVizSettings(
+        removeColumnFromVizSettings(
+          state.settings,
+          column.name,
+          previousColumnType,
+        ),
+        column.name,
+        nextColumnType,
+      );
+      if (nextSettings) {
+        state.settings = nextSettings;
+      }
     }
   }
 
@@ -94,49 +77,83 @@ export function removeColumnFromPivotTable(
   columnName: string,
   wellId: string,
 ) {
-  if (wellId === DROPPABLE_ID.PIVOT_COLUMNS_WELL) {
-    const columns = state.settings["pivot_table.column_split"]?.columns ?? [];
-    state.settings = {
-      ...state.settings,
-      "pivot_table.column_split": {
-        ...(state.settings["pivot_table.column_split"] ?? {
-          rows: [],
-          values: [],
-        }),
-        columns: columns.filter(col => col !== columnName),
-      },
-    };
+  const columnType = getColumnTypeFromWellId(wellId);
+  if (columnType) {
+    state.settings = removeColumnFromVizSettings(
+      state.settings,
+      columnName,
+      columnType,
+    );
     state.columns = state.columns.filter(col => col.name !== columnName);
     delete state.columnValuesMapping[columnName];
+  }
+}
+
+function addColumnToVizSettings(
+  settings: VisualizationSettings,
+  columnName: string,
+  columnType: "columns" | "rows" | "values",
+): VisualizationSettings | null {
+  const columnSplit = settings["pivot_table.column_split"] ?? {
+    columns: [],
+    rows: [],
+    values: [],
+  };
+  const list = columnSplit[columnType];
+
+  if (list.includes(columnName)) {
+    return null;
+  }
+
+  return {
+    ...settings,
+    "pivot_table.column_split": {
+      ...columnSplit,
+      [columnType]: [...list, columnName],
+    },
+  };
+}
+
+function removeColumnFromVizSettings(
+  settings: VisualizationSettings,
+  columnName: string,
+  columnType: "columns" | "rows" | "values",
+) {
+  const columnSplit = settings["pivot_table.column_split"] ?? {
+    columns: [],
+    rows: [],
+    values: [],
+  };
+  const list = columnSplit[columnType];
+  return {
+    ...settings,
+    "pivot_table.column_split": {
+      ...columnSplit,
+      [columnType]: list.filter(col => col !== columnName),
+    },
+  };
+}
+
+function getColumnTypeFromWellId(wellId: string | number) {
+  if (wellId === DROPPABLE_ID.PIVOT_COLUMNS_WELL) {
+    return "columns";
   }
   if (wellId === DROPPABLE_ID.PIVOT_ROWS_WELL) {
-    const rows = state.settings["pivot_table.column_split"]?.rows ?? [];
-    state.settings = {
-      ...state.settings,
-      "pivot_table.column_split": {
-        ...(state.settings["pivot_table.column_split"] ?? {
-          columns: [],
-          values: [],
-        }),
-        rows: rows.filter(col => col !== columnName),
-      },
-    };
-    state.columns = state.columns.filter(col => col.name !== columnName);
-    delete state.columnValuesMapping[columnName];
+    return "rows";
   }
   if (wellId === DROPPABLE_ID.PIVOT_VALUES_WELL) {
-    const values = state.settings["pivot_table.column_split"]?.values ?? [];
-    state.settings = {
-      ...state.settings,
-      "pivot_table.column_split": {
-        ...(state.settings["pivot_table.column_split"] ?? {
-          columns: [],
-          rows: [],
-        }),
-        values: values.filter(col => col !== columnName),
-      },
-    };
-    state.columns = state.columns.filter(col => col.name !== columnName);
-    delete state.columnValuesMapping[columnName];
+    return "values";
   }
+  return null;
+}
+
+function isPivotWell(wellId: string | number) {
+  return (
+    typeof wellId === "string" &&
+    [
+      DROPPABLE_ID.PIVOT_COLUMNS_WELL,
+      DROPPABLE_ID.PIVOT_ROWS_WELL,
+      DROPPABLE_ID.PIVOT_VALUES_WELL,
+    ].includes(wellId)
+  );
 }
