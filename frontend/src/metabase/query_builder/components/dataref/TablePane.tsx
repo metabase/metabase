@@ -22,7 +22,6 @@ import {
   QuestionId,
 } from "./NodeList";
 import { NodeListItemIcon, NodeListItemLink } from "./NodeList.styled";
-import { PaneContent } from "./Pane.styled";
 import TableInfoLoader from "./TableInfoLoader";
 
 interface TablePaneProps {
@@ -44,7 +43,7 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
       onBack={onBack}
       onClose={onClose}
     >
-      <PaneContent>
+      <SidebarContent.Pane>
         <TableInfoLoader table={table}>
           <div className={CS.ml1}>
             {table.description ? (
@@ -100,7 +99,7 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
             ) : null}
           </div>
         </TableInfoLoader>
-      </PaneContent>
+      </SidebarContent.Pane>
     </SidebarContent>
   );
 }

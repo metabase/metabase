@@ -17,7 +17,6 @@ import {
   QuestionId,
 } from "./NodeList";
 import { NodeListItemIcon, NodeListItemLink } from "./NodeList.styled";
-import { PaneContent } from "./Pane.styled";
 
 export interface DatabaseTablesPaneProps {
   onBack: () => void;
@@ -55,7 +54,7 @@ export const DatabaseTablesPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <PaneContent>
+      <SidebarContent.Pane>
         <NodeListContainer>
           {models.length ? (
             <>
@@ -113,7 +112,7 @@ export const DatabaseTablesPane = ({
             ))}
           </ul>
         </NodeListContainer>
-      </PaneContent>
+      </SidebarContent.Pane>
     </SidebarContent>
   );
 };
