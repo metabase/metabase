@@ -114,7 +114,7 @@ const ${mainComponent} = dynamic(
     import("./main.bundle.js").then((m) => {
       return { default: m.${mainComponent} };
     }),
-  { ssr: false }
+  { ssr: false, loading: () => "Loading..." }
 );
 
 ${subComponents
@@ -124,7 +124,7 @@ ${subComponents
   import("./main.bundle.js").then((m) => {
     return { default: m.${mainComponent}.${subComponent} };
     }),
-  { ssr: false }
+  { ssr: false, loading: () => "Loading..." }
 );`,
   )
   .join("\n\n")}
