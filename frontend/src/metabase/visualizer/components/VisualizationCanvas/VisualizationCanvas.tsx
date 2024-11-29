@@ -45,7 +45,11 @@ export function VisualizationCanvas() {
     <Flex w="100%" h="100%" pos="relative" ref={setNodeRef}>
       <VerticalWell display={display} />
       <Flex direction="column" style={{ flex: 1 }}>
-        <Visualization rawSeries={rawSeries} />
+        <Visualization
+          rawSeries={rawSeries}
+          // TableInteractive crashes when trying to use metabase-lib
+          isDashboard={display === "table"}
+        />
         <HorizontalWell
           display={display}
           w="95%"
