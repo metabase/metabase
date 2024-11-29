@@ -49,6 +49,13 @@
         "sanity check: search-no-weights should be different")
     result))
 
+(defn unaffected-results
+  "Check that the results and their order do not depend on the given ranker."
+  [ranker-key search-string & {:as raw-ctx}]
+  (let [result   (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
+        inverted (with-weights {ranker-key -1} (search-results* search-string raw-ctx))]
+    (= inverted result)))
+
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
 
@@ -77,10 +84,21 @@
   (with-index-contents
     [{:model "card" :id 1 :name "the any most of stop words very"}
      {:model "card" :id 2 :name "stop words"}]
-    (testing "Preferences according to textual matches"
+    (testing "Preferences according to exact name matches, including stop words"
       (is (= [["card" 1 "the any most of stop words very"]
               ["card" 2 "stop words"]]
              (search-results :exact "the any most of stop words very"))))))
+
+(deftest ^:parallel prefix-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "this is a prefix of something longer"}
+     {:model "card" :id 2 :name "a prefix this is not, unfortunately"}]
+    (testing "Typically, we do not care"
+      (is (unaffected-results :prefix "this is a prefix")))
+    (testing "In the command palette we boost prefixes"
+      (is (= [["card" 1 "this is a prefix of something longer"]
+              ["card" 2 "a prefix this is not, unfortunately"]]
+             (search-results :prefix "this is a prefix" {:context :command-palette}))))))
 
 (deftest ^:parallel model-test
   (with-index-contents
