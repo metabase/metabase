@@ -240,7 +240,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
-    it.only("mantine modals should render with our styles", () => {
+    it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
