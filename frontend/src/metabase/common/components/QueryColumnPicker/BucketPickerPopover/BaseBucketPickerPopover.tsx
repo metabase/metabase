@@ -3,8 +3,9 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import SelectList from "metabase/components/SelectList";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { ColorName } from "metabase/lib/colors/types";
-import { Popover, Text } from "metabase/ui";
+import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
@@ -109,9 +110,9 @@ function _BaseBucketPickerPopover({
           color="white"
           styles={{ label: { display: "flex", gap: "0.5rem" } }}
         >
-          <Text truncate c="inherit">
+          <Ellipsified>
             {renderTriggerContent(triggerContentBucketDisplayInfo)}
-          </Text>
+          </Ellipsified>
           {hasArrowIcon && !hasChevronDown && (
             <TriggerIcon name="chevronright" />
           )}
