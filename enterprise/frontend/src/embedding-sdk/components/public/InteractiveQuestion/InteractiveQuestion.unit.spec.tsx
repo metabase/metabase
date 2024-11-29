@@ -67,7 +67,7 @@ function InteractiveQuestionCustomLayout() {
 const setup = ({
   isValidCard = true,
   withCustomLayout = false,
-  withChartTypeSelector = true,
+  withChartTypeSelector = false,
 }: {
   isValidCard?: boolean;
   withCustomLayout?: boolean;
