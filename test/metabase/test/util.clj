@@ -1,7 +1,6 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -45,6 +44,7 @@
    [metabase.test.util.public-settings]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -326,7 +326,7 @@
 
      (obj->json->obj {:type :query}) -> {:type \"query\"}"
   [obj]
-  (json/parse-string (json/generate-string obj) keyword))
+  (json/decode+kw (json/encode obj)))
 
 (defn- ->lisp-case-keyword [s]
   (-> (name s)

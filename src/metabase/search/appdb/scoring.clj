@@ -1,6 +1,7 @@
 (ns metabase.search.appdb.scoring
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -15,6 +16,16 @@
   "Prefer it when a (potentially nullable) boolean is true."
   [column]
   [:coalesce [:cast column :integer] [:inline 0]])
+
+(defn equal
+  "Prefer it when it matches a specific (non-null) value"
+  [column value]
+  [:coalesce [:case [:= column value] [:inline 1] :else [:inline 0]] [:inline 0]])
+
+(defn prefix
+  "Prefer it when the given value is a completion of a specific (non-null) value"
+  [column value]
+  [:coalesce [:case [:like column (str (str/replace value "%" "%%") "%")] [:inline 1] :else [:inline 0]] [:inline 0]])
 
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
@@ -105,7 +116,7 @@
 (defn- view-count-percentile-query [p-value]
   (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
     {:select   [:search_index.model [expr :vcp]]
-     :from     [[search.index/*active-table* :search_index]]
+     :from     [[(search.index/active-table) :search_index]]
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
@@ -145,6 +156,8 @@
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [search-ctx]
+  ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
+  ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
   {:text         [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
    :view-count   (view-count-expr search.config/view-count-scaling-percentile)
    :pinned       (truthy :pinned)
@@ -152,7 +165,10 @@
    :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
    :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
    :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model        (model-rank-exp search-ctx)})
+   :model        (model-rank-exp search-ctx)
+   :mine         (equal :search_index.creator_id (:current-user-id search-ctx))
+   :exact        (equal [:lower :search_index.name] [:lower (:search-string search-ctx)])
+   :prefix       (prefix [:lower :search_index.name] (u/lower-case-en (:search-string search-ctx)))})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

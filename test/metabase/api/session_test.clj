@@ -1,7 +1,6 @@
 (ns ^:mb/once metabase.api.session-test
   "Tests for /api/session"
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -17,6 +16,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -150,7 +150,7 @@
       (let [error (fn []
                     (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
                         :body
-                        json/parse-string
+                        json/decode
                         (get-in ["errors" "username"])))]
         (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (error)))
@@ -175,7 +175,7 @@
       (let [error (fn []
                     (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
                         :body
-                        json/parse-string
+                        json/decode
                         (get-in ["errors" "username"])))]
         (is (re= #"^Too many attempts! You must wait 1\d seconds before trying again\.$"
                  (error)))
@@ -328,7 +328,7 @@
                                       :content-type :json})
                           ::succeeded
                           (catch Exception e
-                            (or (some-> (ex-data e) :body (json/parse-string true))
+                            (or (some-> (ex-data e) :body json/decode+kw)
                                 ::unknown-error))))
             responses (into [] (repeatedly 30 try!))]
         (is (nil? (some #{::succeeded ::unknown-error} responses)))
@@ -575,7 +575,7 @@
     (testing "test that group sync works even if ldap doesn't return uid (#22014)"
       (t2.with-temp/with-temp [PermissionsGroup group {:name "Accounting"}]
         (mt/with-temporary-raw-setting-values
-          [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
+          [ldap-group-mappings (json/encode {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (testing "PermissionsGroupMembership should exist"

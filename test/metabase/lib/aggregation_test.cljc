@@ -12,7 +12,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -167,7 +168,8 @@
              (lib.tu/venues-query-with-last-stage
               {:expressions [[:*
                               {:lib/uuid (str (random-uuid))
-                               :lib/expression-name "double-price"}
+                               :lib/expression-name "double-price"
+                               :ident (u/generate-nano-id)}
                               (lib.tu/field-clause :venues :price {:base-type :type/Integer})
                               2]]})
              [:sum

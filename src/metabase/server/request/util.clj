@@ -1,7 +1,6 @@
 (ns metabase.server.request.util
   "Utility functions for Ring requests."
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -9,6 +8,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -167,7 +167,7 @@
                                             :socket-timeout     gecode-ip-address-timeout-ms
                                             :connection-timeout gecode-ip-address-timeout-ms})
                              :body
-                             (json/parse-string true))]
+                             json/decode+kw)]
             (into {} (for [info response]
                        [(:ip info) {:description (or (describe-location info)
                                                      "Unknown location")
