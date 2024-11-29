@@ -41,7 +41,6 @@ export const BaseChartSettings = ({
     setCurrentSection,
     showSectionPicker,
     visibleWidgets,
-    currentSection,
   } = useChartSettingsSections({
     initial,
     widgets,
@@ -193,7 +192,7 @@ export const BaseChartSettings = ({
       <ChartSettingsMenu data-testid="chartsettings-sidebar">
         {showSectionPicker && (
           <Tabs
-            value={currentSection}
+            value={chartSettingCurrentSection}
             radius={0}
             defaultValue={chartSettingCurrentSection}
             onTabChange={handleShowSection}

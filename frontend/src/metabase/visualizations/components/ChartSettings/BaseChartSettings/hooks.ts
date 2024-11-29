@@ -74,6 +74,7 @@ export const useChartSettingsSections = ({
 
   const chartSettingCurrentSection = useMemo(() => {
     const calculatedCurrentSection = currentSection ?? initial?.section;
+
     return calculatedCurrentSection && sections[calculatedCurrentSection]
       ? calculatedCurrentSection
       : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
@@ -106,7 +107,6 @@ export const useChartSettingsSections = ({
   );
 
   return {
-    currentSection,
     sectionNames,
     setCurrentSection,
     currentSectionHasColumnSettings,
