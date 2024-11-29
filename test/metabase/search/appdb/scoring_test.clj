@@ -73,6 +73,15 @@
               ["card" 3 "classified"]]
              (search-results :text "order"))))))
 
+(deftest ^:parallel exact-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "the any most of stop words very"}
+     {:model "card" :id 2 :name "stop words"}]
+    (testing "Preferences according to textual matches"
+      (is (= [["card" 1 "the any most of stop words very"]
+              ["card" 2 "stop words"]]
+             (search-results :exact "the any most of stop words very"))))))
+
 (deftest ^:parallel model-test
   (with-index-contents
     [{:model "dataset" :id 1 :name "card ancient"}
@@ -237,3 +246,15 @@
                   ["card"    c1 "card ancient"]
                   ["dataset" c3 "card unseen"]]
                  (search-results :user-recency "card" {:current-user-id user-id}))))))))
+
+(deftest ^:parallel mine-test
+  (let [crowberto (mt/user->id :crowberto)
+        rasta     (mt/user->id :rasta)]
+    (with-index-contents [{:model "card" :id 1 :name "crow's fly card" :creator_id crowberto}
+                          {:model "card" :id 2 :name "this card is aerie mon" :creator_id rasta}]
+      (is (= [["card" 1 "crow's fly card"]
+              ["card" 2 "this card is aerie mon"]]
+             (search-results :mine "card" {:current-user-id crowberto})))
+      (is (= [["card" 2 "this card is aerie mon"]
+              ["card" 1 "crow's fly card"]]
+             (search-results :mine "card" {:current-user-id rasta}))))))

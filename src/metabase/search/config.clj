@@ -92,7 +92,9 @@
     :official-collection 1
     :verified            1
     :view-count          2
-    :text                5}
+    :text                5
+    :mine                1
+    :exact               5}
    :command-palette
    {:model/collection     1
     :model/dashboard      1

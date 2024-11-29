@@ -16,6 +16,11 @@
   [column]
   [:coalesce [:cast column :integer] [:inline 0]])
 
+(defn equal
+  "Prefer it when it matches a specific (non null) value"
+  [column value]
+  [:coalesce [:case [:= column value] [:inline 1] :else [:inline 0]] [:inline 0]])
+
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
   [column ceiling]
@@ -152,7 +157,9 @@
    :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
    :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
    :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model        (model-rank-exp search-ctx)})
+   :model        (model-rank-exp search-ctx)
+   :mine         (equal :search_index.creator_id (:current-user-id search-ctx))
+   :exact        (equal [:lower :search_index.name] [:lower (:search-string search-ctx)])})
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
