@@ -217,7 +217,12 @@ export const BaseChartSettings = ({
             </Tabs.List>
           </Tabs>
         )}
-        <Box pos="relative" py="lg" className={cx(CS.scrollY, CS.scrollShow)}>
+        <Box
+          data-testid="chartsettings-sidebar-scrollable"
+          pos="relative"
+          py="lg"
+          className={cx(CS.scrollY, CS.scrollShow)}
+        >
           {isChartPicker ? (
             chartTypeSettings
           ) : (
