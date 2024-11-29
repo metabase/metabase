@@ -1,6 +1,4 @@
-import styled from "@emotion/styled";
-
-export const SavedEntityPickerRoot = styled.div`
+.savedEntityPickerRoot {
   display: flex;
   width: 620px;
   overflow: hidden;
@@ -11,9 +9,9 @@ export const SavedEntityPickerRoot = styled.div`
     width: 300px;
     overflow: auto;
   }
-`;
+}
 
-export const CollectionsContainer = styled.div`
+.collectionsContainer {
   display: flex;
   flex-direction: column;
   min-width: 310px;
@@ -24,9 +22,9 @@ export const CollectionsContainer = styled.div`
     min-height: 220px;
     border-bottom: 1px solid var(--mb-color-border);
   }
-`;
+}
 
-export const BackButton = styled.a`
+.backButton {
   font-weight: 700;
   font-size: 16px;
   display: flex;
@@ -38,8 +36,4 @@ export const BackButton = styled.a`
   &:hover {
     color: var(--mb-color-brand);
   }
-`;
-
-export const TreeContainer = styled.div`
-  margin: 0.5rem 0;
-`;
+}

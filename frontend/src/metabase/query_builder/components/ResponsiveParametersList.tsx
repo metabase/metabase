@@ -3,13 +3,13 @@ import { msgid, ngettext } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Parameter, ParameterId } from "metabase-types/api";
 
+import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import {
-  FilterButton,
   ParametersListContainer,
-  ParametersListHeader,
   ResponsiveParametersListRoot,
   StyledParametersList,
 } from "./ResponsiveParametersList.styled";
@@ -48,7 +48,8 @@ export const ResponsiveParametersList = ({
       isShowingMobile={mobileShowParameterList}
     >
       {isSmallScreen && (
-        <FilterButton
+        <Button
+          className={ResponsiveParametersListS.filterButton}
           borderless
           primary
           icon="filter"
@@ -61,14 +62,14 @@ export const ResponsiveParametersList = ({
                 activeFilters,
               )
             : `Filters`}
-        </FilterButton>
+        </Button>
       )}
       <ParametersListContainer
         isSmallScreen={isSmallScreen}
         isShowingMobile={mobileShowParameterList}
       >
         {isSmallScreen && (
-          <ParametersListHeader>
+          <Flex p="0.75rem 1rem" align="center" justify="space-between">
             <h3>Filters</h3>
             <Button
               onlyIcon
@@ -76,7 +77,7 @@ export const ResponsiveParametersList = ({
               icon="close"
               onClick={handleFilterButtonClick}
             />
-          </ParametersListHeader>
+          </Flex>
         )}
         <StyledParametersList
           question={question}

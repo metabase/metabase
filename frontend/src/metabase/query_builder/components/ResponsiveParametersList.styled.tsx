@@ -1,14 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
-
 import { SyncedParametersList } from "./SyncedParametersList";
-
-export const FilterButton = styled(Button)`
-  color: var(--mb-color-brand);
-  margin: 0.5rem;
-`;
 
 interface ResponsiveParametersListRootProps {
   isSmallScreen: boolean;
@@ -52,13 +45,6 @@ export const ParametersListContainer = styled.div<ParametersListContainerProps>`
         transition: top 250ms;
       }
     `}
-`;
-
-export const ParametersListHeader = styled.div`
-  padding: 0.75rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 `;
 
 export const StyledParametersList = styled(SyncedParametersList)`

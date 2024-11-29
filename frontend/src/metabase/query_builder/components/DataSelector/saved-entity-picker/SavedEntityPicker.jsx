@@ -14,15 +14,10 @@ import Collection, {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 
 import SavedEntityList from "./SavedEntityList";
-import {
-  BackButton,
-  CollectionsContainer,
-  SavedEntityPickerRoot,
-  TreeContainer,
-} from "./SavedEntityPicker.styled";
+import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
 import { findCollectionByName } from "./utils";
 
@@ -115,20 +110,24 @@ function SavedEntityPicker({
   }, []);
 
   return (
-    <SavedEntityPickerRoot>
-      <CollectionsContainer>
-        <BackButton onClick={onBack} data-testid="saved-entity-back-navigation">
+    <Box className={SavedEntityPickerS.savedEntityPickerRoot}>
+      <Box className={SavedEntityPickerS.collectionsContainer}>
+        <a
+          className={SavedEntityPickerS.backButton}
+          onClick={onBack}
+          data-testid="saved-entity-back-navigation"
+        >
           <Icon name="chevronleft" className={CS.mr1} />
           {CARD_INFO[type].title}
-        </BackButton>
-        <TreeContainer data-testid="saved-entity-collection-tree">
+        </a>
+        <Box m="0.5rem 0" data-testid="saved-entity-collection-tree">
           <Tree
             data={collectionTree}
             onSelect={handleSelect}
             selectedId={selectedCollection?.id}
           />
-        </TreeContainer>
-      </CollectionsContainer>
+        </Box>
+      </Box>
       <SavedEntityList
         type={type}
         collection={selectedCollection}
@@ -136,7 +135,7 @@ function SavedEntityPicker({
         databaseId={databaseId}
         onSelect={onSelect}
       />
-    </SavedEntityPickerRoot>
+    </Box>
   );
 }
 
