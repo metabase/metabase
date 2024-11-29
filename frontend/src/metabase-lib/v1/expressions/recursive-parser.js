@@ -346,7 +346,7 @@ export const adjustMultiArgOptions = tree =>
         if (isOptionsObject(args.at(-1)) && args.length > 3) {
           return withAST([operator, args.at(-1), ...args.slice(0, -1)], node);
         }
-        if (args.length > 2) {
+        if (args.length > 2 && !isOptionsObject(args.at(-1))) {
           return withAST([operator, {}, ...args], node);
         }
       }

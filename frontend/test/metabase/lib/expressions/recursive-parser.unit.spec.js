@@ -13,6 +13,7 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
   const A = ["segment", "A"];
   const B = ["dimension", "B"];
   const C = ["dimension", "C"];
+  const D = ["dimension", "D"];
 
   it("should parse numeric literals", () => {
     expect(process("0")).toEqual(0);
@@ -117,6 +118,14 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
       B,
       C,
       { "case-sensitive": false },
+    ]);
+    expect(filter("contains(B, C, D)")).toEqual(["contains", {}, B, C, D]);
+    expect(filter("contains(B, C, D, 'case-insensitive')")).toEqual([
+      "contains",
+      { "case-sensitive": false },
+      B,
+      C,
+      D,
     ]);
     expect(filter("interval(B, -1, 'days', 'include-current')")).toEqual([
       "time-interval",
