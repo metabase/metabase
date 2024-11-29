@@ -22,8 +22,9 @@ import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
 
 export interface InteractiveQuestionResultProps {
-  withResetButton?: boolean;
   title?: SdkQuestionTitleProps;
+  withResetButton?: boolean;
+  withChartTypeSelector?: boolean;
 }
 
 type QuestionView = "editor" | "filter" | "summarize" | "visualization";
@@ -56,6 +57,7 @@ export const InteractiveQuestionResult = ({
   style,
   title,
   withResetButton,
+  withChartTypeSelector,
 }: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
@@ -147,7 +149,7 @@ export const InteractiveQuestionResult = ({
       </Group>
 
       <Group className={InteractiveQuestionS.MidBar} py={0} px="md">
-        {questionView === "visualization" && (
+        {withChartTypeSelector && questionView === "visualization" && (
           <Button
             compact
             radius="xl"
@@ -156,6 +158,7 @@ export const InteractiveQuestionResult = ({
             variant="filled"
             color="brand"
             onClick={toggleChartTypeSelector}
+            data-testid="chart-type-selector-button"
           >
             <Group>
               <Icon
@@ -175,7 +178,9 @@ export const InteractiveQuestionResult = ({
       </Group>
       <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
         <Box className={InteractiveQuestionS.ChartTypeSelector}>
-          {isChartSelectorOpen && questionView === "visualization" ? (
+          {isChartSelectorOpen &&
+          withChartTypeSelector &&
+          questionView === "visualization" ? (
             <InteractiveQuestion.ChartTypeSelector />
           ) : null}
         </Box>

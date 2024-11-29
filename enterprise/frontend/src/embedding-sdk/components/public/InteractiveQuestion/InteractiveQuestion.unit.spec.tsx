@@ -54,7 +54,7 @@ const TEST_DATASET = createMockDataset({
 });
 
 // Provides a button to re-run the query
-function InteractiveQuestionTestResult({
+function InteractiveQuestionCustomLayout({
   title,
 }: {
   title?: SdkQuestionTitleProps;
@@ -72,9 +72,13 @@ function InteractiveQuestionTestResult({
 const setup = ({
   isValidCard = true,
   title,
+  withCustomLayout = false,
+  withChartTypeSelector = false,
 }: {
   isValidCard?: boolean;
   title?: SdkQuestionTitleProps;
+  withCustomLayout?: boolean;
+  withChartTypeSelector?: boolean;
 } = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
@@ -100,8 +104,12 @@ const setup = ({
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
   return renderWithProviders(
-    <InteractiveQuestion questionId={TEST_CARD.id}>
-      <InteractiveQuestionTestResult title={title} />
+    <InteractiveQuestion
+      questionId={TEST_CARD.id}
+      title={title}
+      withChartTypeSelector={withChartTypeSelector}
+    >
+      {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
     </InteractiveQuestion>,
     {
       mode: "sdk",
@@ -123,7 +131,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should render loading state when rerunning the query", async () => {
-    setup();
+    setup({ withCustomLayout: true });
 
     await waitForLoaderToBeRemoved();
 
@@ -208,4 +216,22 @@ describe("InteractiveQuestion", () => {
       expect(element?.textContent ?? null).toBe(expectedTitle);
     },
   );
+
+  it("should show a chart type selector button if withChartTypeSelector is true", async () => {
+    setup({ withChartTypeSelector: true });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.getByTestId("chart-type-selector-button"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show a chart type selector button if withChartTypeSelector is false", async () => {
+    setup({ withChartTypeSelector: false });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.queryByTestId("chart-type-selector-button"),
+    ).not.toBeInTheDocument();
+  });
 });
