@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.metadata :as lib.metadata]
@@ -518,35 +519,105 @@
       {:clause [:= (created-at-with :minute) "2023-10-02T00:00:00.000Z"]
        :name "Created At is Oct 2, 2023, 12:00 AM"}])))
 
-(deftest ^:parallel exclude-date-frontend-filter-display-names-test
+(deftest ^:parallel exclude+equal-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)]
     (check-display-names
-     [{:clause [:!= (created-at-with :day-of-week) "2023-10-02"],
-       :name "Created At excludes Mondays"}
-      {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
-       :name "Created At excludes 3 day of week selections"}
-      {:clause [:!= (created-at-with :month-of-year) "2023-01-01"],
-       :name "Created At excludes each Jan"}
-      {:clause [:!= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"],
-       :name "Created At excludes 3 month of year selections"}
-      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03"],
-       :name "Created At excludes Q1 each year"}
-      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"],
-       :name "Created At excludes 3 quarter of year selections"}
-      {:clause [:!= (created-at-with :hour-of-day) 0],
+     [{:clause [:= (created-at-with :hour-of-day) 0]
+       :name "Created At: Hour of day is on 12 AM"}
+      {:clause [:= (lib/get-hour created-at) 0]
+       :name "Created At is at 12 AM"}
+      {:clause [:= (created-at-with :hour-of-day) 4]
+       :name "Created At: Hour of day is on 4 AM"}
+      {:clause [:= (lib/get-hour created-at) 4]
+       :name "Created At is at 4 AM"}
+      {:clause [:= (created-at-with :hour-of-day) 12]
+       :name "Created At: Hour of day is on 12 PM"}
+      {:clause [:= (lib/get-hour created-at) 12]
+       :name "Created At is at 12 PM"}
+      {:clause [:= (created-at-with :hour-of-day) 16]
+       :name "Created At: Hour of day is on 4 PM"}
+      {:clause [:= (lib/get-hour created-at) 16]
+       :name "Created At is at 4 PM"}
+      {:clause [:= (created-at-with :hour-of-day) 0 1 2]
+       :name "Created At: Hour of day is 3 selections"}
+      {:clause [:= (lib/get-hour created-at) 0 1 2]
+       :name "Created At is one of 3 hour of day selections"}
+      {:clause [:!= (created-at-with :hour-of-day) 0]
        :name "Created At excludes the hour of 12 AM"}
-      {:clause [:!= (created-at-with :hour-of-day) 4],
+      {:clause [:!= (lib/get-hour created-at) 0]
+       :name "Created At excludes the hour of 12 AM"}
+      {:clause [:!= (created-at-with :hour-of-day) 4]
        :name "Created At excludes the hour of 4 AM"}
-      {:clause [:!= (created-at-with :hour-of-day) 12],
+      {:clause [:!= (lib/get-hour created-at) 4]
+       :name "Created At excludes the hour of 4 AM"}
+      {:clause [:!= (created-at-with :hour-of-day) 12]
        :name "Created At excludes the hour of 12 PM"}
-      {:clause [:!= (created-at-with :hour-of-day) 16],
+      {:clause [:!= (lib/get-hour created-at) 12]
+       :name "Created At excludes the hour of 12 PM"}
+      {:clause [:!= (created-at-with :hour-of-day) 16]
        :name "Created At excludes the hour of 4 PM"}
-      {:clause [:!= (created-at-with :hour-of-day) 0 1 2],
+      {:clause [:!= (lib/get-hour created-at) 16]
+       :name "Created At excludes the hour of 4 PM"}
+      {:clause [:!= (created-at-with :hour-of-day) 0 1 2]
        :name "Created At excludes 3 hour of day selections"}
-      {:clause [:is-null created-at],
+      {:clause [:!= (lib/get-hour created-at) 0 1 2]
+       :name "Created At excludes 3 hour of day selections"}
+
+      {:clause [:= (created-at-with :day-of-week) "2023-10-02"]
+       :name "Created At: Day of week is Monday"}
+      {:clause [:= (lib.expression/get-day-of-week created-at :iso) 1]
+       :name "Created At is on Monday"}
+      {:clause [:= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"]
+       :name "Created At: Day of week is 3 selections"}
+      {:clause [:= (lib.expression/get-day-of-week created-at :iso) 1 2 3]
+       :name "Created At is one of 3 day of week selections"}
+      {:clause [:!= (created-at-with :day-of-week) "2023-10-05"]
+       :name "Created At excludes Thursdays"}
+      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 4]
+       :name "Created At excludes Thursdays"}
+      {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"]
+       :name "Created At excludes 3 day of week selections"}
+      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 1 2 3]
+       :name "Created At excludes 3 day of week selections"}
+
+      {:clause [:= (created-at-with :month-of-year) "2023-01-01"]
+       :name "Created At: Month of year is on Jan"}
+      {:clause [:= (lib/get-month created-at) 1]
+       :name "Created At is in Jan"}
+      {:clause [:= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"]
+       :name "Created At: Month of year is 3 selections"}
+      {:clause [:= (lib/get-month created-at) 1 2 3]
+       :name "Created At is one of 3 month of year selections"}
+      {:clause [:!= (created-at-with :month-of-year) "2023-01-01"]
+       :name "Created At excludes each Jan"}
+      {:clause [:!= (lib/get-month created-at) 1]
+       :name "Created At excludes each Jan"}
+      {:clause [:!= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"]
+       :name "Created At excludes 3 month of year selections"}
+      {:clause [:!= (lib/get-month created-at) 1 2 3]
+       :name "Created At excludes 3 month of year selections"}
+
+      {:clause [:= (created-at-with :quarter-of-year) "2023-01-03"]
+       :name "Created At: Quarter of year is on Q1"}
+      {:clause [:= (lib/get-quarter created-at) 1]
+       :name "Created At is in Q1"}
+      {:clause [:= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"]
+       :name "Created At: Quarter of year is 3 selections"}
+      {:clause [:= (lib/get-quarter created-at) 1 2 3]
+       :name "Created At is one of 3 quarter of year selections"}
+      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03"]
+       :name "Created At excludes Q1 each year"}
+      {:clause [:!= (lib/get-quarter created-at) 1]
+       :name "Created At excludes Q1 each year"}
+      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"]
+       :name "Created At excludes 3 quarter of year selections"}
+      {:clause [:!= (lib/get-quarter created-at) 1 2 3]
+       :name "Created At excludes 3 quarter of year selections"}
+
+      {:clause [:is-null created-at]
        :name "Created At is empty"}
-      {:clause [:not-null created-at],
+      {:clause [:not-null created-at]
        :name "Created At is not empty"}])))
 
 (deftest ^:parallel time-frontend-filter-display-names-test
