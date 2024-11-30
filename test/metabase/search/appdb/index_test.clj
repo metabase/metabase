@@ -480,11 +480,13 @@
         (testing "Given various obsolete search indexes"
           (is (every? #'search.index/exists? (cons related-table obsolete-tables))))
         (search.index/reset-index!)
-        (testing "We can create new one"
+        (testing "We can create new index"
           (is (#'search.index/exists? (search.index/active-table))))
         (testing "... without destroying any related non-index tables"
           (is (#'search.index/exists? related-table)))
         (testing "... and we clear out all the obsolete tables"
           (is (every? (comp not #'search.index/exists?) obsolete-tables)))
+        (testing "... and there is no more pending table"
+          (is (not (#'search.index/exists? (#'search.index/pending-table)))))
         (finally
           (#'search.index/drop-table! related-table))))))
