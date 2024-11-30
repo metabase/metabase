@@ -128,10 +128,12 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
-     metabase.models.notification/create-notification!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.models.notification/create-notification!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
+     ;; Safe in tests, where we typically use a private, temporary index per thread.
+     metabase.search.core/reindex!
      metabase.util/run-count!
      next.jdbc/execute!}}
 
