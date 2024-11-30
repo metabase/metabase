@@ -22,8 +22,8 @@
   `(when (search/supports-index?)
      (search.index/with-temp-index-table
       ;; We need ingestion to happen on the same thread so that it uses the right search index.
-      (binding [metabase.search.ingestion/*force-sync* true]
-        ~@body))))
+       (binding [metabase.search.ingestion/*force-sync* true]
+         ~@body))))
 
 (defmacro with-api-user [raw-ctx & body]
   `(let [raw-ctx# ~raw-ctx]
