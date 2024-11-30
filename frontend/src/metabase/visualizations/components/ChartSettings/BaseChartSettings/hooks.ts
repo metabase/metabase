@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,6 +19,13 @@ export const useChartSettingsSections = ({
   const [currentSection, setCurrentSection] = useState<string | null>(
     initial?.section ?? null,
   );
+
+  useEffect(() => {
+    // it's a way to select some specific tab
+    if (initial?.section) {
+      setCurrentSection(initial.section);
+    }
+  }, [initial?.section]);
 
   const sections: Record<string, Widget[]> = useMemo(() => {
     const sectionObj: Record<string, Widget[]> = {};
@@ -66,6 +73,7 @@ export const useChartSettingsSections = ({
 
   const chartSettingCurrentSection = useMemo(() => {
     const calculatedCurrentSection = currentSection ?? initial?.section;
+
     return calculatedCurrentSection && sections[calculatedCurrentSection]
       ? calculatedCurrentSection
       : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||

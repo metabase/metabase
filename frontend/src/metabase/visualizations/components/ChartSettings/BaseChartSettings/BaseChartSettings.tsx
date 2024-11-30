@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -191,8 +192,8 @@ export const BaseChartSettings = ({
       <ChartSettingsMenu data-testid="chartsettings-sidebar">
         {showSectionPicker && (
           <Tabs
+            value={chartSettingCurrentSection}
             radius={0}
-            defaultValue={chartSettingCurrentSection}
             onTabChange={handleShowSection}
             styles={{
               tab: {
@@ -215,7 +216,12 @@ export const BaseChartSettings = ({
             </Tabs.List>
           </Tabs>
         )}
-        <Box pos="relative" py="lg" className={CS.scrollShow}>
+        <Box
+          data-testid="chartsettings-sidebar-scrollable"
+          pos="relative"
+          py="lg"
+          className={cx(CS.scrollY, CS.scrollShow)}
+        >
           {isChartPicker ? (
             chartTypeSettings
           ) : (
