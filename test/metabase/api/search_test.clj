@@ -150,8 +150,6 @@
                                           :type nil})
                    (default-search-results)))
 
-;; It is safe to call `search/reindex!` when we are in a `with-temp-index-table` scope.
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- do-with-search-items [search-string in-root-collection? f]
   (let [data-map      (fn [instance-name]
                         {:name (format instance-name search-string)})
@@ -180,7 +178,6 @@
                      Card        metric         (assoc (coll-data-map "metric %s metric" coll)
                                                        :type :metric)
                      Segment     segment        (data-map "segment %s segment")]
-        (search/reindex!)
         (f {:action     action
             :collection coll
             :card       card

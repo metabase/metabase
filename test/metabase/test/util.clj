@@ -767,6 +767,8 @@
     model
     [model (first (t2/primary-keys model))]))
 
+;; It is safe to call `search/reindex!` when we are in a `with-temp-index-table` scope.
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? #(or (isa? % :metabase/model)
                                            ;; to support [[:model/Model :updated_at]] syntax
@@ -789,7 +791,9 @@
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where       [:and max-id-condition additional-conditions]}))))))
+            :where       [:and max-id-condition additional-conditions]})
+          ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
+          (search/reindex!))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -841,8 +845,6 @@
           :moderated_item_type "card"
           :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
           :status              status})))
-    ;; This is only needed when running tests as dev, where index hooks are async
-    (search/reindex!)
     (thunk)))
 
 (defmacro with-verified-cards!
