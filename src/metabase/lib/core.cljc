@@ -191,7 +191,9 @@
   table-or-card-dependent-metadata
   expression-clause
   expression-parts
-  filter-args-display-name]
+  filter-args-display-name
+  exclude-date-filter-clause
+  exclude-date-filter-parts]
  [lib.field
   add-field
   fieldable-columns

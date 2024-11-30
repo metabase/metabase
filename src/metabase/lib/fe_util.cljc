@@ -6,6 +6,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -74,6 +75,14 @@
     (expand-temporal-expression expression-clause)
     expression-clause))
 
+(defn- column-metadata-from-ref
+  [query stage-number ref]
+  (lib.filter/add-column-operators
+   (lib.field/extend-column-metadata-from-ref
+    query stage-number
+    (lib.metadata.calculation/metadata query stage-number ref)
+    ref)))
+
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
   ([query expression-clause]
@@ -84,11 +93,7 @@
     expression-clause :- ::lib.schema.expression/expression]
    (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
          ->maybe-col #(when (lib.util/ref-clause? %)
-                        (lib.filter/add-column-operators
-                         (lib.field/extend-column-metadata-from-ref
-                          query stage-number
-                          (lib.metadata.calculation/metadata query stage-number %)
-                          %)))]
+                       (column-metadata-from-ref query stage-number %))]
      {:lib/type :mbql/expression-parts
       :operator op
       :options  options
@@ -173,6 +178,43 @@
 
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
+
+(def ^:private ExcludeDateFilterParts
+  [:map
+   [:operator [:enum :!= :is-null :not-null]
+    :column   :map
+    :unit     [:enum :hour-of-day :day-of-week :month-of-year :quarter-of-year]
+    :values   [:vector [:sequential int?]]]])
+
+(mu/defn exclude-date-filter-clause :- ::lib.schema.expression/expression
+  "TBD"
+  [operator column unit values]
+  (case operator
+    :!=       (case unit
+                :hour-of-day (apply lib.filter/!= (lib.expression/get-hour column) values)
+                :day-of-week (apply lib.filter/!= (lib.expression/get-day-of-week column :iso) values)
+                :month-of-year (apply lib.filter/!= (lib.expression/get-month column) values)
+                :quarter-of-year (apply lib.filter/!= (lib.expression/get-quarter column) values))
+    :is-null  (lib.filter/is-null column)
+    :not-null (lib.filter/not-null column)))
+
+(mu/defn exclude-date-filter-parts :- ExcludeDateFilterParts
+  "TBD"
+  [query stage-number filter-clause]
+  (let [temporal? #(lib.util/original-isa? % :type/Temporal)
+        ref->column #(column-metadata-from-ref query stage-number %)]
+    (lib.util.match/match-one filter-clause
+      [:!= _ [:get-hour _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      {:operator :!=, :column (ref->column a), :unit :hour-of-day, :values args}
+
+      [:!= _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard #(every? int? %))]
+      {:operator :!=, :column (ref->column a), :unit :day-of-week, :values args}
+
+      [:!= _ [:get-month _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      {:operator :!=, :column (ref->column a), :unit :month-of-year, :values args}
+
+      [:!= _ [:get-quarter _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      {:operator :!=, :column (ref->column a), :unit :quarter-of-year, :values args})))
 
 (defn- query-dependents-foreign-keys
   [metadata-providerable columns]

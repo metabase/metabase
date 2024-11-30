@@ -1031,6 +1031,24 @@
          node))
      parts)))
 
+(defn ^:export exclude-date-filter-clause
+  "TBD"
+  [operator column unit values]
+  (lib.core/exclude-date-filter-clause (keyword operator)
+                                       column
+                                       (some-> unit keyword)
+                                       (js->clj values)))
+
+(defn ^:export exclude-date-filter-parts
+  "TBD"
+  [query stage-number filter-clause]
+  (when-let [filter-parts (lib.core/exclude-date-filter-parts query stage-number filter-clause)]
+    (let [{:keys [operator column unit values]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :bucket   (some-> unit name)
+           :values   (to-array (map clj->js values))})))
+
 (defn ^:export is-column-metadata
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 

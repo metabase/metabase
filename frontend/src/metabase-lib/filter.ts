@@ -1,5 +1,4 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { P, match } from "ts-pattern";
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn, TemporalUnit } from "metabase-types/api";
@@ -369,38 +368,13 @@ export function relativeDateFilterParts(
   );
 }
 
-export function excludeDateFilterClause(
-  filterParts: ExcludeDateFilterParts,
-): ExpressionClause {
-  return match(filterParts)
-    .with({ bucket: P.nullish }, ({ operator, column }) =>
-      expressionClause(operator, [column]),
-    )
-    .with({ bucket: "hour-of-day" }, ({ operator, column, values }) =>
-      expressionClause(operator, [
-        expressionClause("get-hour", [column]),
-        ...values,
-      ]),
-    )
-    .with({ bucket: "day-of-week" }, ({ operator, column, values }) =>
-      expressionClause(operator, [
-        expressionClause("get-day-of-week", [column, "iso"]),
-        ...values,
-      ]),
-    )
-    .with({ bucket: "month-of-year" }, ({ operator, column, values }) =>
-      expressionClause(operator, [
-        expressionClause("get-month", [column]),
-        ...values,
-      ]),
-    )
-    .with({ bucket: "quarter-of-year" }, ({ operator, column, values }) =>
-      expressionClause(operator, [
-        expressionClause("get-quarter", [column]),
-        ...values,
-      ]),
-    )
-    .exhaustive();
+export function excludeDateFilterClause({
+  operator,
+  column,
+  bucket,
+  values,
+}: ExcludeDateFilterParts): ExpressionClause {
+  return ML.exclude_date_filter_clause(operator, column, bucket, values);
 }
 
 export function excludeDateFilterParts(
@@ -409,88 +383,9 @@ export function excludeDateFilterParts(
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
   return (
-    expressionExcludeDateFilterParts(query, stageIndex, filterClause) ??
+    ML.exclude_date_filter_parts(query, stageIndex, filterClause) ??
     legacyTemporalBucketExcludeDateFilterParts(query, stageIndex, filterClause)
   );
-}
-
-function isDateOrDateTimeColumnMetadata(arg: unknown): arg is ColumnMetadata {
-  return isColumnMetadata(arg) && isDateOrDateTime(arg);
-}
-
-function expressionExcludeDateFilterParts(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): ExcludeDateFilterParts | null {
-  const filterParts = expressionParts(query, stageIndex, filterClause);
-  return match(filterParts)
-    .returnType<ExcludeDateFilterParts | null>()
-    .with(
-      {
-        operator: P.union("is-null", "not-null"),
-        args: [P.when(isDateOrDateTimeColumnMetadata)],
-      },
-      ({ operator, args: [column] }) => ({
-        operator,
-        column,
-        values: [],
-        bucket: null,
-      }),
-    )
-    .with(
-      {
-        operator: "!=",
-        args: [
-          {
-            operator: P.union("get-hour", "get-month", "get-quarter"),
-            args: [P.when(isDateOrDateTimeColumnMetadata)],
-          },
-          ...P.array(P.number.int()),
-        ],
-      },
-      ({
-        args: [
-          {
-            operator,
-            args: [column],
-          },
-          ...values
-        ],
-      }) => ({
-        operator: "!=",
-        column,
-        values,
-        bucket: match(operator)
-          .returnType<ExcludeDateBucketName>()
-          .with("get-hour", () => "hour-of-day")
-          .with("get-month", () => "month-of-year")
-          .with("get-quarter", () => "quarter-of-year")
-          .exhaustive(),
-      }),
-    )
-    .with(
-      {
-        operator: "!=",
-        args: [
-          {
-            operator: "get-day-of-week",
-            args: [P.when(isDateOrDateTimeColumnMetadata), "iso"],
-          },
-          ...P.array(P.number.int()),
-        ],
-      },
-      ({
-        operator,
-        args: [
-          {
-            args: [column],
-          },
-          ...values
-        ],
-      }) => ({ operator, column, values, bucket: "day-of-week" }),
-    )
-    .otherwise(() => null);
 }
 
 function legacyTemporalBucketExcludeDateFilterParts(
