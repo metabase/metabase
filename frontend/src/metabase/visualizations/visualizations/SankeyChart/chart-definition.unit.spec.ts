@@ -295,7 +295,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         SANKEY_CHART_DEFINITION.checkRenderable(rawSeries, settings),
       ).toThrow(
         new ChartSettingsError(
-          "This chart type doesn't support more than 150 sankey nodes.",
+          "Sankey chart doesn't support more than 150 unique nodes.",
         ),
       );
     });

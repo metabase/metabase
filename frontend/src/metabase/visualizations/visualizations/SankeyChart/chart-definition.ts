@@ -202,7 +202,7 @@ export const SANKEY_CHART_DEFINITION = {
 
     if (nodesCount > MAX_SANKEY_NODES) {
       throw new ChartSettingsError(
-        t`This chart type doesn't support more than ${MAX_SANKEY_NODES} sankey nodes.`,
+        t`Sankey chart doesn't support more than ${MAX_SANKEY_NODES} unique nodes.`,
       );
     }
   },
