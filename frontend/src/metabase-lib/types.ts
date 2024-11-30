@@ -16,7 +16,6 @@ import type {
   COORDINATE_FILTER_OPERATORS,
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
-  EXCLUDE_DATE_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
@@ -328,8 +327,7 @@ export type BooleanFilterOperatorName =
 export type SpecificDateFilterOperatorName =
   (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
 
-export type ExcludeDateFilterOperatorName =
-  (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
+export type ExcludeDateFilterOperatorName = "!=" | "is-null" | "not-null";
 
 export type TimeFilterOperatorName = (typeof TIME_FILTER_OPERATORS)[number];
 

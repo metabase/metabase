@@ -48,12 +48,6 @@ export const SPECIFIC_DATE_FILTER_OPERATORS = [
   "between",
 ] as const;
 
-export const EXCLUDE_DATE_FILTER_OPERATORS = [
-  "!=",
-  "is-null",
-  "not-null",
-] as const;
-
 export const TIME_FILTER_OPERATORS = [
   ">",
   "<",
