@@ -33,6 +33,7 @@ const ORDERS_SCALAR_METRIC = {
   display: "scalar",
 };
 
+// cy.realType does not have an option to not parse special characters
 const LEFT_BRACKET = "{{}";
 const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
 
