@@ -35,6 +35,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.util :as qp.util]
+   [metabase.search.core :as search]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
@@ -840,6 +841,8 @@
           :moderated_item_type "card"
           :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
           :status              status})))
+    ;; This is only needed when running tests as dev, where index hooks are async
+    (search/reindex!)
     (thunk)))
 
 (defmacro with-verified-cards!
