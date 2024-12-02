@@ -299,6 +299,18 @@
   (let [date-col? #(or (lib.util/original-isa? % :type/Date) (lib.util/original-isa? % :type/DateTime))
         ref->col  #(column-metadata-from-ref query stage-number %)]
     (lib.util.match/match-one filter-clause
+      [:time-interval
+       opts
+       (col-ref :guard date-col?)
+       (value :guard #(or (number? %) (= :current %)))
+       (unit :guard keyword?)]
+      {:column       (ref->col col-ref)
+       :value        value
+       :unit         unit
+       :offset-value nil
+       :offset-unit  nil
+       :options      (select-keys opts [:include-current])}
+
       [:relative-time-interval
        _
        (col-ref :guard date-col?)
@@ -310,7 +322,24 @@
        :value value
        :unit unit
        :offset-value offset-value
-       :offset-unit offset-unit})))
+       :offset-unit offset-unit}
+
+      ;; legacy expression; replaced by :relative-time-interval; supported for backard compatibility
+      [:between _
+       [:+ _
+        (col-ref :guard date-col?)
+        [:internal _ (offset-value :guard number?) (offset-unit :guard keyword?)]]
+       [:relative-datetime _
+        (start-value :guard number?)
+        (start-unit (:guard keyword?))]
+       [:relative-datetime _
+        (end-value :guard number?)
+        (end-unit :guard keyword?)]]
+       {:column       (ref->col col-ref)
+        :value        (if (pos? offset-value) start-value end-value)
+        :unit         unit
+        :offset-value (- offset-value)
+        :offset-unit  offset-unit})))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
