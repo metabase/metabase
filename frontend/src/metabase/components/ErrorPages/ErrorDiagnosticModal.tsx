@@ -68,6 +68,7 @@ export const ErrorDiagnosticModal = ({
   const hiddenValues = {
     url: true,
     entityName: true,
+    browserInfo: true,
   };
 
   const handleSubmit = (values: PayloadSelection) => {
