@@ -1,4 +1,4 @@
-(ns metabase.db.custom-migrations.alert-to-notification
+(ns metabase.db.custom-migrations.pulse-to-notification
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
@@ -83,10 +83,14 @@
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [pulse alert-template-id]
-  (let [pulse-id          (:id pulse)
-        pcs               (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id))
-        pulse-card        (t2/select-one :pulse_card :pulse_id pulse-id {:order-by [[:id :desc]]})
-        notification      {:payload_type "notification/alert"
+  (let [pulse-id   (:id pulse)
+        pcs        (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id))
+        ;; alerts have one pulse-card, but to be safe we select the latest one by id
+        pulse-card (t2/select-one :pulse_card :pulse_id pulse-id {:order-by [[:id :desc]]})]
+    ;; the old schema allow one alert to have multiple pulse-channels. Practically they all have the same schedule
+    ;; but to be safe we group them by schedule and create a notification for each group
+    (doseq [pcs (vals (group-by (juxt :schedule_type :schedule_hour :schedule_day :schedule_frame) pcs))]
+      (let [notification  {:payload_type "notification/alert"
                            :payload      {:card_id        (:id pulse-card)
                                           :run_once       (:alert_first_only pulse)
                                           :skip_if_empty  (:skip_if_empty pulse)
@@ -101,12 +105,10 @@
                            :creator_id   (:creator_id pulse)
                            :created_at   :%now
                            :updated_at   :%now}
-        subscriptions     (map (fn [pc]
-                                 {:type          "notification-subscription/cron"
-                                  :cron_schedule (schedule-map->cron-string pc)
-                                  :created_at    :%now})
-                               pcs)
-        handlers          (map (fn [pc]
+            subscriptions [{:type          "notification-subscription/cron"
+                            :cron_schedule (schedule-map->cron-string (first pcs))
+                            :created_at    :%now}]
+            handlers      (map (fn [pc]
                                  (merge
                                   {:active (:enabled pc)}
                                   (case (:channel_type pc)
@@ -127,9 +129,10 @@
                                     "http"
                                     nil)))
                                pcs)]
-    (create-notification! notification subscriptions handlers)))
+        (create-notification! notification subscriptions handlers)))))
 
-(defn migrate!
+(defn migrate-alert!
+  "Migrate alerts from `pulse` to `notification`."
   []
   (let [alert-template-id (t2/insert-returning-pk! :channel_template
                                                    {:name         "Alert"
@@ -147,7 +150,7 @@
 
 (comment
   (t2/delete! :model/Notification)
-  (migrate!)
+  (migrate-alert!)
 
   (t2/hydrate (t2/select :model/Notification) :subscriptions
               [:handlers :recipients :template]))
