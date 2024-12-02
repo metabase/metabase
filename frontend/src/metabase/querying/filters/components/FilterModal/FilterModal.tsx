@@ -51,7 +51,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
     <Modal.Root opened size={getModalWidth()} onClose={onClose}>
       <Modal.Overlay />
 
-      <ModalContent>
+      <ModalContent className={S.content}>
         <ModalHeader px={48} pt="xl" pb="md">
           <Box w="100%">
             <Flex justify="space-between" mb="md" style={{ flex: 1 }}>

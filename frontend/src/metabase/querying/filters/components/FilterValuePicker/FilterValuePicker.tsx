@@ -58,8 +58,8 @@ function FilterValuePicker({
 
   if (isLoading) {
     return (
-      <Center h="2.5rem">
-        <Loader data-testid="loading-indicator" />
+      <Center h={32}>
+        <Loader size="xs" data-testid="loading-indicator" />
       </Center>
     );
   }

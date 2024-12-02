@@ -152,7 +152,6 @@ function DateFilterPopover({
           <MoreButton
             leftIcon={<Icon name="ellipsis" />}
             aria-label={t`More options`}
-            radius="xl"
             variant="subtle"
             onClick={handleOpen}
           />
