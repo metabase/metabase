@@ -1,10 +1,11 @@
 import { c } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Alert, Box, Icon } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
@@ -27,13 +28,23 @@ export const CollectionCleanupAlert = ({
   collection: Collection;
 }) => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const shouldFetchIfItemsExist =
+    isAdmin && PLUGIN_COLLECTIONS.canCleanUp(collection);
 
+  // fetch the count of items in the collection if we need it
+  const maybeCollectionItemCount =
+    useListCollectionItemsQuery(
+      shouldFetchIfItemsExist ? { id: collection.id, limit: 0 } : skipToken,
+    ).data?.total ?? 0;
+
+  const shouldFetchStaleItemCount = maybeCollectionItemCount > 0;
+  // TODO: check if this is the same request as the maybe stale items check...
   const {
     data: staleItems,
     isLoading,
     error,
   } = useListStaleCollectionItemsQuery(
-    isAdmin
+    shouldFetchStaleItemCount
       ? {
           id: collection.id,
           limit: 0, // only fetch pagination info
