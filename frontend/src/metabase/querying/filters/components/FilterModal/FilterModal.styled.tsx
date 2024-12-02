@@ -5,7 +5,6 @@ import { Flex, Modal } from "metabase/ui";
 
 export const ModalHeader = styled(Modal.Header)`
   flex: 0 0 auto;
-  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const ModalContent = styled(Modal.Content)`

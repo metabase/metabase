@@ -52,27 +52,27 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
       <Modal.Overlay />
 
       <ModalContent>
-        <ModalHeader p={48} pt="xl" pb="md">
+        <ModalHeader px={48} pt="xl" pb="md">
           <Box w="100%">
             <Flex justify="space-between" mb="md" style={{ flex: 1 }}>
               <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
               <Modal.CloseButton className={S.close} />
             </Flex>
 
-            <Box mb="md">
-              <FilterSearchInput
-                className={S.search}
-                searchText={searchText}
-                onChange={handleSearch}
-              />
-            </Box>
+            <FilterSearchInput
+              className={S.search}
+              searchText={searchText}
+              onChange={handleSearch}
+            />
 
             {groupItems.length > 1 && (
-              <FieldGroupPicker
-                groupItems={groupItems}
-                value={tab}
-                onChange={setTab}
-              />
+              <Box mt="md">
+                <FieldGroupPicker
+                  groupItems={groupItems}
+                  value={tab}
+                  onChange={setTab}
+                />
+              </Box>
             )}
           </Box>
         </ModalHeader>
@@ -90,7 +90,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
           />
         </ModalBody>
 
-        <ModalFooter p="md" direction="row" justify="space-between">
+        <ModalFooter px={48} py="lg" direction="row" justify="space-between">
           <FilterModalFooter
             canRemoveFilters={canRemoveFilters}
             onClearFilters={handleReset}

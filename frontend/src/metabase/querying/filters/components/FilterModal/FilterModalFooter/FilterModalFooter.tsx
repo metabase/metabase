@@ -18,7 +18,7 @@ export const FilterModalFooter = ({
   <>
     <Button
       variant="subtle"
-      color="text-medium"
+      color="text-dark"
       disabled={!canRemoveFilters}
       onClick={onClearFilters}
     >
