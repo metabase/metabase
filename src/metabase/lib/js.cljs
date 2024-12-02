@@ -1031,6 +1031,24 @@
          node))
      parts)))
 
+(defn ^:export boolean-filter-clause
+  "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[boolean-filter-parts]]."
+  [operator column values]
+  (lib.core/boolean-filter-clause (keyword operator)
+                                  column
+                                  (js->clj values)))
+
+(defn ^:export boolean-filter-parts
+  "Destructures a boolean filter clause created by [[boolean-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
+  [a-query stage-boolean a-filter-clause]
+  (when-let [filter-parts (lib.core/boolean-filter-parts a-query stage-boolean a-filter-clause)]
+    (let [{:keys [operator column values]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))})))
+
 (defn ^:export number-filter-clause
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[number-filter-parts]]."

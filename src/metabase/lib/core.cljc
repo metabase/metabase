@@ -191,6 +191,8 @@
   table-or-card-dependent-metadata
   expression-clause
   expression-parts
+  boolean-filter-clause
+  boolean-filter-parts
   number-filter-clause
   number-filter-parts
   filter-args-display-name]

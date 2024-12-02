@@ -12,7 +12,6 @@ import {
   isTime,
 } from "./column_types";
 import {
-  BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
@@ -33,7 +32,6 @@ import {
   withTemporalBucket,
 } from "./temporal_bucket";
 import type {
-  BooleanFilterOperatorName,
   BooleanFilterParts,
   Bucket,
   ColumnMetadata,
@@ -218,7 +216,7 @@ export function booleanFilterClause({
   column,
   values,
 }: BooleanFilterParts): ExpressionClause {
-  return expressionClause(operator, [column, ...values]);
+  return ML.boolean_filter_clause(operator, column, values);
 }
 
 export function booleanFilterParts(
@@ -226,25 +224,7 @@ export function booleanFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): BooleanFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isBooleanOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isBoolean(column) ||
-    !isBooleanLiteralArray(values)
-  ) {
-    return null;
-  }
-
-  return {
-    operator,
-    column,
-    values,
-  };
+  return ML.boolean_filter_parts(query, stageIndex, filterClause);
 }
 
 export function specificDateFilterClause(
@@ -573,14 +553,6 @@ function isNumberLiteralArray(arg: unknown): arg is number[] {
   return Array.isArray(arg) && arg.every(isNumberLiteral);
 }
 
-function isBooleanLiteral(arg: unknown): arg is boolean {
-  return typeof arg === "boolean";
-}
-
-function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
-  return Array.isArray(arg) && arg.every(isBooleanLiteral);
-}
-
 function isStringOperator(
   operator: ExpressionOperatorName,
 ): operator is StringFilterOperatorName {
@@ -601,13 +573,6 @@ function isCoordinateOperator(
   operator: ExpressionOperatorName,
 ): operator is CoordinateFilterOperatorName {
   const operators: ReadonlyArray<string> = COORDINATE_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
-function isBooleanOperator(
-  operator: ExpressionOperatorName,
-): operator is BooleanFilterOperatorName {
-  const operators: ReadonlyArray<string> = BOOLEAN_FILTER_OPERATORS;
   return operators.includes(operator);
 }
 
