@@ -56,7 +56,7 @@ export const createSankeyClickData = (
   sankeyColumns: SankeyChartColumns,
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-): ClickObject | null => {
+): ClickObject | undefined => {
   const clickData: ClickObject = {
     event: event.event.event,
     settings,
@@ -76,7 +76,7 @@ export const createSankeyClickData = (
     );
   } else if (isSankeyEdgeEvent(event)) {
     if (isNativeQuery(rawSeries[0].card)) {
-      return null;
+      return;
     }
 
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);

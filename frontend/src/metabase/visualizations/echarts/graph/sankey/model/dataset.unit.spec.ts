@@ -166,7 +166,7 @@ describe("getSankeyData", () => {
         {
           source: "A",
           target: "B",
-          rawName: 11,
+          value: 11,
           columnValues: {
             [getColumnKey(columns[0])]: "A",
             [getColumnKey(columns[1])]: "B",
@@ -177,7 +177,7 @@ describe("getSankeyData", () => {
         {
           source: "B",
           target: "C",
-          rawName: 20,
+          value: 20,
           columnValues: {
             [getColumnKey(columns[0])]: "B",
             [getColumnKey(columns[1])]: "C",
@@ -188,7 +188,7 @@ describe("getSankeyData", () => {
         {
           source: "A",
           target: "C",
-          rawName: 2,
+          value: 2,
           columnValues: {
             [getColumnKey(columns[0])]: "A",
             [getColumnKey(columns[1])]: "C",
