@@ -6,7 +6,12 @@ import { useFilterModal } from "../../hooks/use-filter-modal";
 
 import { FieldGroupPicker } from "./FieldGroupPicker";
 import S from "./FilterModal.module.css";
-import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
+import {
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "./FilterModal.styled";
 import { FilterModalBody } from "./FilterModalBody";
 import { FilterModalFooter } from "./FilterModalFooter";
 import { FilterSearchInput } from "./FilterModalHeader/FilterSearchInput";
@@ -45,7 +50,8 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
   return (
     <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
       <Modal.Overlay />
-      <Modal.Content>
+
+      <ModalContent>
         <ModalHeader p={48} pt="xl" pb="md">
           <Box w="100%">
             <Flex justify="space-between" mb="md" style={{ flex: 1 }}>
@@ -70,6 +76,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
             )}
           </Box>
         </ModalHeader>
+
         <ModalBody p={0}>
           <FilterModalBody
             groupItems={visibleItems}
@@ -82,6 +89,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
             onTabChange={setTab}
           />
         </ModalBody>
+
         <ModalFooter p="md" direction="row" justify="space-between">
           <FilterModalFooter
             canRemoveFilters={canRemoveFilters}
@@ -90,7 +98,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
             onApplyFilters={onSubmitFilters}
           />
         </ModalFooter>
-      </Modal.Content>
+      </ModalContent>
     </Modal.Root>
   );
 }
