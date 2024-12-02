@@ -4,9 +4,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.lib.ident :as lib.ident]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.query-processor :as qp]
    [metabase.task :as task]
    [toucan2.core :as t2])
   (:import
@@ -17,7 +15,6 @@
 (defn- select-ready-to-run
   "Fetch whatever cache configs for a given `strategy` are ready to be updated."
   [strategy]
-  (assert (#{:query :schedule} strategy))
   (t2/select :model/CacheConfig :strategy strategy {:where [:or
                                                             [:= :next_run_at nil]
                                                             [:<= :next_run_at (t/offset-date-time)]]}))
@@ -41,39 +38,10 @@
                    {:next_run_at     (calc-next-run (:schedule config) now)
                     :invalidated_at now})))))
 
-(defn- refresh-query-config! [db-id table-id field-id {:keys [id config state]}]
-  (let [query       {:database db-id
-                     :type     :query
-                     :query    {:source-table table-id
-                                :aggregation  [(:aggregation config) [:field field-id nil]]
-                                :aggregation-idents (lib.ident/indexed-idents 2)}}
-        result      (-> (qp/process-query query) :data :rows ffirst)
-        now         (t/offset-date-time)
-        next-run-at (calc-next-run (:schedule config) now)
-        marker      (:marker state)]
-    (t2/update! :model/CacheConfig {:id id}
-                (cond-> {:next_run_at next-run-at}
-                  (not= marker result) (assoc :state {:marker result}
-                                              :invalidated_at now)))))
-
-(defn- refresh-query-configs!
-  "Fetches `:query`-strategy configs wants to re-check their queries, runs those queries and updates `invalidated_at`
-  where `(:marker state)` is not equal to the result of the query."
-  []
-  (when-let [configs (seq (select-ready-to-run :query))]
-    (let [fields (t2/select-pk->fn identity :model/Field :id [:in (map #(-> % :config :field_id) configs)])
-          tables (t2/select-pk->fn identity :model/Table :id [:in (map :table_id (vals fields))])]
-      (count
-       (for [item configs
-             :let [field (get fields (:field_id (:config item)))
-                   table (get tables (:table_id field))]]
-         (refresh-query-config! (:db_id table) (:table_id field) (:id field) item))))))
-
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc                                   "Refresh 'schedule' caches"}
   Cache [_ctx]
-  (refresh-schedule-configs!)
-  (refresh-query-configs!))
+  (refresh-schedule-configs!))
 
 (def ^:private cache-job
   (jobs/build
