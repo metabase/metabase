@@ -640,6 +640,9 @@
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
                 [{:collection_id       (:id collection)
+                  :dashboard_count     0
+                  :dashboard           nil
+                  :dashboard_id        nil
                   :can_write           true
                   :can_delete          false
                   :can_restore         false
