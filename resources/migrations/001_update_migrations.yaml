@@ -10068,6 +10068,21 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
 
+  - changeSet:
+      id: v52.2024-12-02T16:21:15
+      author: noahmoss
+      comment: Add cache_config.refresh_automatically column
+      changes:
+        - addColumn:
+            tableName: cache_config
+            columns:
+              - column:
+                  name: refresh_automatically
+                  type: ${boolean.type}
+                  remarks: Whether or not we should automatically refresh cache results when a cache expires
+                  constraints:
+                    nullable: true
+
   # This migration should be changed to a no-op and a new migration inserted that does the load from edn whenever the
   # sample content is updated, so that it matches when the version that the sample content was updated from. See
   # metabase#50829 for an example where the content was updated.
