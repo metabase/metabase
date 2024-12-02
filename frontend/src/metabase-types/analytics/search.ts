@@ -57,6 +57,7 @@ const REGISTERED_SEARCH_CONTEXTS = [
   "skip-token", // never sent to the backend, used in a sentinel payload
   "strategy-editor",
   "search-model-filter",
+  "action-picker",
 ] as const;
 
 export function safeSearchContext(
@@ -65,7 +66,7 @@ export function safeSearchContext(
   if ((REGISTERED_SEARCH_CONTEXTS as readonly string[]).includes(value)) {
     return value as SnowplowSearchContext;
   } else {
-    throw new Error(`Unrecgonized search context "${value}"`);
+    throw new Error(`Unrecognized search context "${value}"`);
   }
 }
 
