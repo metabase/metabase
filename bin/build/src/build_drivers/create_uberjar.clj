@@ -78,7 +78,7 @@
   "Build a driver jar for `driver`, either an `:oss` or `:ee` `edition`."
   [driver edition]
   (u/step (format "Write %s %s uberjar -> %s" driver edition (c/driver-jar-destination-path driver))
-          (let [start-time-ms (System/currentTimeMillis)]
+    (let [start-time-ms (System/currentTimeMillis)]
       (b/uber
        {:class-dir         (c/compiled-source-target-dir driver)
         :uber-file         (c/driver-jar-destination-path driver)
