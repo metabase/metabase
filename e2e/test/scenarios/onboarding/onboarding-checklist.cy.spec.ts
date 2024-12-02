@@ -41,7 +41,7 @@ describe("Onboarding checklist page", () => {
   });
 });
 
-describeEE("Onboarding checklist main sidebar link", () => {
+describeEE("Inaccessible Onboarding checklist", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -57,7 +57,14 @@ describeEE("Onboarding checklist main sidebar link", () => {
       );
     });
 
+    cy.log("Redirects to the home page");
+    visitFullAppEmbeddingUrl({ url: "/getting-started", qs: {} });
+    cy.location("pathname").should("eq", "/");
+  });
+
+  it("should not render when the instance is whitelabelled", () => {
     updateSetting("application-name", "Acme, corp.");
+
     cy.visit("/");
     cy.findByTestId("main-navbar-root").within(() => {
       cy.findByRole("listitem", { name: "Home" }).should("be.visible");
@@ -65,6 +72,10 @@ describeEE("Onboarding checklist main sidebar link", () => {
         "not.exist",
       );
     });
+
+    cy.log("Redirects to the home page");
+    cy.visit("/getting-started");
+    cy.location("pathname").should("eq", "/");
   });
 });
 
