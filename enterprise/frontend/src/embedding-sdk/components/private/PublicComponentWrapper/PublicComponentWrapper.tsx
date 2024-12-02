@@ -7,12 +7,14 @@ import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapp
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
 
+import { useIsInSdkProvider } from "../SdkContext";
+
 type PublicComponentWrapperProps = {
   children: React.ReactNode;
   className?: string;
   style?: CSSProperties;
 };
-export const PublicComponentWrapper = React.forwardRef<
+const PublicComponentWrapperInner = React.forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps
 >(function PublicComponentWrapper({ children, className, style }, ref) {
@@ -43,4 +45,18 @@ export const PublicComponentWrapper = React.forwardRef<
       {content}
     </PublicComponentStylesWrapper>
   );
+});
+
+export const PublicComponentWrapper = React.forwardRef<
+  HTMLDivElement,
+  PublicComponentWrapperProps
+>(function PublicComponentWrapper(props, ref) {
+  // metabase##50736: make sure we don't break the host app if for a render the
+  // sdk components is rendered outside of the sdk provider
+  const isInSdkProvider = useIsInSdkProvider();
+  if (!isInSdkProvider) {
+    return "SDK component rendered outside of sdk provider";
+  }
+
+  return <PublicComponentWrapperInner ref={ref} {...props} />;
 });
