@@ -58,6 +58,12 @@
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
 
+(deftest ^:parallel no-search-string-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "orders"}]
+    (testing "For better or worse, we can omit a search query"
+      (is [{:model "card" 1 "orders"}] (search-results* nil)))))
+
 (deftest ^:parallel text-test
   (with-index-contents
     [{:model "card" :id 1 :name "orders"}
