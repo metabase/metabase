@@ -25,8 +25,8 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.interface :as qp.i]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
    (org.apache.poi.xssf.usermodel XSSFSheet)))
