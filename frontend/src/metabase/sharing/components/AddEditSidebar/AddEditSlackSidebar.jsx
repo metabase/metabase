@@ -12,7 +12,7 @@ import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 
-import SlackChannelField from "../SlackChannelField";
+import { SlackChannelField } from "../SlackChannelField";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
