@@ -241,7 +241,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.get("@dashboardId").then(dashboardId => {
         H.visitDashboard(dashboardId);
       });
-      //cy.visit("/");
+
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
       H.entityPickerModal().within(() => {
@@ -259,6 +259,28 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("edit-bar")
         .findByText("You're editing this dashboard.")
         .should("exist");
+    });
+
+    it("can create a question using a dashboard question as a data source", () => {
+      H.createQuestion({
+        name: "Total Orders Dashboard Question",
+        dashboard_id: S.ORDERS_DASHBOARD_ID,
+        database_id: SAMPLE_DATABASE.id,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      H.startNewQuestion();
+      H.entityPickerModalTab("Saved questions").click();
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal()
+        .findByText("Total Orders Dashboard Question")
+        .click();
+      H.visualize();
+      cy.findByTestId("query-visualization-root").findByText("18,760");
     });
 
     it("can find dashboard questions in the search", () => {
@@ -366,6 +388,11 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("sidebar-toggle").click();
       H.navigationSidebar().findByText("Collections").should("be.visible");
       H.navigationSidebar().findByText("Orders").should("not.exist");
+
+      // bookmark it again
+      H.queryBuilderHeader().icon("bookmark").click();
+      H.navigationSidebar().findByText("Collections").should("be.visible");
+      H.navigationSidebar().findByText("Orders").should("be.visible");
     });
 
     it("can delete a question from a dashboard without deleting all of the questions in metabase", () => {
@@ -414,54 +441,76 @@ describe("Dashboard > Dashboard Questions", () => {
       // check that we didn't accidentally delete everything
       H.dashboardCards().findByText("Total Orders").should("not.exist");
       H.dashboardCards().findByText("Orders").should("be.visible");
-
-      // FIXME: oops we deleted all the cards in the instance
     });
 
     it("can archive and unarchive a dashboard with cards saved inside it", () => {
-      H.createQuestion({
-        name: "Total Orders",
-        database_id: SAMPLE_DATABASE.id,
-        dashboard_id: S.ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
+      H.createDashboard(
+        {
+          name: "Dashboard with a title",
         },
-        display: "scalar",
+        { wrapId: true, idAlias: "dashboardWithTitleId" },
+      );
+
+      cy.get("@dashboardWithTitleId").then(dashboardId => {
+        // add a text card to the dashboard
+        H.visitDashboard(dashboardId);
+        H.editDashboard();
+        // note: we had a bug where archiving a dashboard with a text card first would crash
+        H.addHeadingWhileEditing("A section");
+        H.saveDashboard();
+
+        H.createQuestion({
+          name: "Total Orders",
+          database_id: SAMPLE_DATABASE.id,
+          dashboard_id: dashboardId,
+          query: {
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: "scalar",
+        });
+
+        H.createQuestion({
+          name: "More Total Orders",
+          database_id: SAMPLE_DATABASE.id,
+          dashboard_id: dashboardId,
+          query: {
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: "scalar",
+        });
+
+        H.visitDashboard(dashboardId);
+
+        // archive it
+        // archive it
+        H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+        // archive it
+        H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+        H.openDashboardMenu("Move to trash");
+        H.modal().button("Move to trash").click();
+        cy.findByText("Dashboard with a title").should("not.exist");
+        cy.findByText(/gone wrong/, { timeout: 0 }).should("not.exist");
+
+        cy.findByTestId("archive-banner").findByText(/is in the trash/);
+        cy.findByTestId("sidebar-toggle").click();
+
+        // restore it
+        H.navigationSidebar().findByText("Trash").click();
+        H.collectionTable().findByText("Dashboard with a title");
+        H.openCollectionItemMenu("Dashboard with a title");
+        H.popover().findByText("Restore").click();
+
+        // it's back
+        H.visitDashboard(dashboardId);
+        cy.findByTestId("archive-banner").should("not.exist");
+
+        // all the cards are there too
+        H.dashboardCards().findByText("Total Orders");
+        H.dashboardCards().findByText("More Total Orders");
+        H.dashboardCards().findByText("A section");
       });
-
-      H.createQuestion({
-        name: "More Total Orders",
-        database_id: SAMPLE_DATABASE.id,
-        dashboard_id: S.ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      });
-
-      // archive it
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-      H.openDashboardMenu("Move to trash");
-      H.modal().button("Move to trash").click();
-      cy.findByTestId("archive-banner").findByText(/is in the trash/);
-      cy.findByTestId("sidebar-toggle").click();
-
-      // restore it
-      H.navigationSidebar().findByText("Trash").click();
-      H.collectionTable().findByText("Orders in a dashboard");
-      H.openCollectionItemMenu("Orders in a dashboard");
-      H.popover().findByText("Restore").click();
-
-      // it's back
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-      cy.findByTestId("archive-banner").should("not.exist");
-
-      // all the cards are there too
-      H.dashboardCards().findByText("Total Orders");
-      H.dashboardCards().findByText("More Total Orders");
-      H.dashboardCards().findByText("Orders");
     });
 
     it("can archive and unarchive a card within a dashboard", () => {
@@ -493,8 +542,20 @@ describe("Dashboard > Dashboard Questions", () => {
       H.openQuestionActions("Move to trash");
       H.modal().button("Move to trash").click();
 
+      // check that it got removed
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Total Orders").should("not.exist");
+
+      // restore it
       cy.visit("/trash");
       H.collectionTable().findByText("Total Orders");
+      H.openCollectionItemMenu("Total Orders");
+      H.popover().findByText("Restore").click();
+      H.undoToast().findByText("Total Orders has been restored.");
+
+      // check that it got restored
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Total Orders");
     });
   });
 
@@ -559,10 +620,7 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.editDashboard();
-      H.openAddQuestionMenu();
-      H.popover()
-        .findByText(/Existing Question/)
-        .click();
+      H.openAddQuestionMenu("Existing Question");
       H.sidebar()
         .findByText(/our analyt/i)
         .click();
