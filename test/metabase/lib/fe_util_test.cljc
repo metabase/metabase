@@ -126,7 +126,17 @@
   (let [query lib.tu/venues-query
         column (meta/field-metadata :venues :price)]
     (are [expected clause] (=? expected (lib.fe-util/number-filter-parts query -1 clause))
-      {:operator :=, :column column, :values [10]} (lib.filter/= column 10))))
+      {:operator :is-null, :column column, :values []}      (lib.filter/is-null column)
+      {:operator :not-null, :column column, :values []}     (lib.filter/not-null column)
+      {:operator :=, :column column, :values [10]}          (lib.filter/= column 10)
+      {:operator :=, :column column, :values [10 20]}       (lib.filter/= column 10 20)
+      {:operator :!=, :column column, :values [10]}         (lib.filter/!= column 10)
+      {:operator :!=, :column column, :values [10 20]}      (lib.filter/!= column 10 20)
+      {:operator :>, :column column, :values [10]}          (lib.filter/> column 10)
+      {:operator :>=, :column column, :values [10]}         (lib.filter/>= column 10)
+      {:operator :<, :column column, :values [10]}          (lib.filter/< column 10)
+      {:operator :<=, :column column, :values [10]}         (lib.filter/<= column 10)
+      {:operator :between, :column column, :values [10 20]} (lib.filter/between column 10 20))))
 
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
