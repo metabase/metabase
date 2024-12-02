@@ -22,7 +22,7 @@ export function setDefaultOffset(value: DateIntervalValue): DateIntervalValue {
 }
 
 export function getIncludeCurrent(value: DateIntervalValue): boolean {
-  return value.options?.["includeCurrent"] ?? false;
+  return value.options?.includeCurrent ?? false;
 }
 
 export function getIncludeCurrentLabel(unit: DatePickerTruncationUnit): string {
