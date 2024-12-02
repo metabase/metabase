@@ -2,7 +2,6 @@
   "There are a lot more tests around search in [[metabase.api.search-test]]. TODO: we should move more of those tests
   into this namespace."
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -13,6 +12,7 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -281,7 +281,7 @@
                   :database 1}
           result {:name          "card"
                   :model         "card"
-                  :dataset_query (json/generate-string query)
+                  :dataset_query (json/encode query)
                   :all-scores {}
                   :relevant-scores {}}]
       (is (= query (-> result search.impl/serialize :dataset_query)))))
