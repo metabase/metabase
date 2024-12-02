@@ -123,9 +123,9 @@
                                                               1)))))
 
 (deftest ^:parallel number-filter-parts-test
-  (testing "roundtrip"
-    (let [query lib.tu/venues-query
-          column (meta/field-metadata :venues :price)]
+  (let [query lib.tu/venues-query
+        column (meta/field-metadata :venues :price)]
+    (testing "clause to parts rountrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column, :values []}
                               (lib.filter/not-null column)      {:operator :not-null, :column column, :values []}
                               (lib.filter/= column 10)          {:operator :=, :column column, :values [10]}
@@ -141,7 +141,11 @@
           (is (=? parts (lib.fe-util/number-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/number-filter-parts query -1 (lib.fe-util/number-filter-clause operator
                                                                                                     column
-                                                                                                    values)))))))))
+                                                                                                    values)))))))
+  (testing "unsupported clauses"
+    (are [clause] (= nil (lib.fe-util/number-filter-parts query -1 clause))
+      (lib.expression/+ column 10)
+      (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
