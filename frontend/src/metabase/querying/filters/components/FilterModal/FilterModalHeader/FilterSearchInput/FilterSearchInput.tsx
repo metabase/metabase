@@ -7,11 +7,13 @@ import { Icon, TextInput } from "metabase/ui";
 const SEARCH_TIMEOUT = 200;
 
 interface FilterSearchInputProps {
+  className?: string;
   searchText: string;
   onChange: (searchText: string) => void;
 }
 
 export function FilterSearchInput({
+  className,
   searchText,
   onChange,
 }: FilterSearchInputProps) {
@@ -26,6 +28,7 @@ export function FilterSearchInput({
   return (
     <TextInput
       autoFocus
+      className={className}
       type="search"
       value={inputText}
       icon={<Icon name="search" />}

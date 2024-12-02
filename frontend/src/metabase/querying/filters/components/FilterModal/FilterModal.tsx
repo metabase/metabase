@@ -1,13 +1,15 @@
-import { Flex, Modal } from "metabase/ui";
+import { Box, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { useFilterModal } from "../../hooks/use-filter-modal";
 
+import { FieldGroupPicker } from "./FieldGroupPicker";
+import S from "./FilterModal.module.css";
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
 import { FilterModalBody } from "./FilterModalBody";
 import { FilterModalFooter } from "./FilterModalFooter";
-import { FilterModalHeader } from "./FilterModalHeader";
+import { FilterSearchInput } from "./FilterModalHeader/FilterSearchInput";
 import { getModalTitle, getModalWidth } from "./utils";
 
 export interface FilterModalProps {
@@ -44,12 +46,27 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
     <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
-        <ModalHeader p="lg">
-          <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <Flex mx="md" justify="end" style={{ flex: 1 }}>
-            <FilterModalHeader value={searchText} onChange={handleSearch} />
-          </Flex>
-          <Modal.CloseButton />
+        <ModalHeader p={48} pt="xl" pb="md">
+          <Box w="100%">
+            <Flex justify="space-between" mb="md" style={{ flex: 1 }}>
+              <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
+              <Modal.CloseButton />
+            </Flex>
+
+            <Box mb="md">
+              <FilterSearchInput
+                className={S.search}
+                searchText={searchText}
+                onChange={handleSearch}
+              />
+            </Box>
+
+            <FieldGroupPicker
+              groupItems={groupItems}
+              value={tab}
+              onChange={setTab}
+            />
+          </Box>
         </ModalHeader>
         <ModalBody p={0}>
           <FilterModalBody
