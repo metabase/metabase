@@ -133,7 +133,7 @@
   [[number-filter-parts]]."
   [operator :- NumberFilterOperator
    column   :- ::lib.schema.metadata/column
-   values   :- [:vector [:sequential number?]]]
+   values   :- [:sequential number?]]
   (case operator
     :is-null  (lib.filter/is-null column)
     :not-null (lib.filter/not-null column)
