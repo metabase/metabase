@@ -13,6 +13,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (clojure.lang ExceptionInfo)
    (org.postgresql.util PSQLException)))
 
 (comment
@@ -63,7 +64,10 @@
   (map (comp keyword :table_name)
        (t2/query {:select [:table_name]
                   :from   :information_schema.tables
-                  :where  [:like :table_name "search_index__%"]})))
+                  :where  [:or
+                           [:like :table_name "search\\_index\\_\\_%"]
+                           ;; legacy table names
+                           [:in :table_name ["search_index" "search_index_next" "search_index_retired"]]]})))
 
 (defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by no keywordizing the keys.
@@ -82,8 +86,13 @@
                              (keyword table-name)))
           to-drop     (remove keep-table? (existing-indexes))]
       (when (seq to-drop)
-        (log/infof "Dropping %d stale indexes" (count to-drop))
-        (t2/query (apply sql.helpers/drop-table to-drop))))))
+        (let [dropped (volatile! 0)]
+          (try
+            (t2/query (apply sql.helpers/drop-table to-drop))
+            (vswap! dropped inc)
+            ;; Deletion could fail if it races with other instances
+            (catch ExceptionInfo _))
+          (log/infof "Dropped %d stale indexes" @dropped))))))
 
 (defsetting search-engine-appdb-index-state
   "Internation state used to maintain the AppDb Search Index"
@@ -143,7 +152,7 @@
   ([table-name]
    (boolean
     (when (exists? table-name)
-      (update-metadata! {:active-table table-name})))))
+      (update-metadata! {:active-table table-name :pending-table nil})))))
 
 (defn- document->entry [entity]
   (-> entity
