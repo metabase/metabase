@@ -1,6 +1,5 @@
 (ns metabase.models.action
   (:require
-   [cheshire.core :as json]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -9,6 +8,7 @@
    [metabase.search :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -55,7 +55,7 @@
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
    :parameter_mappings     mi/transform-parameters-list
-   :parameters             mi/transform-parameters-list
+   :parameters             mi/transform-card-parameters-list
    :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction

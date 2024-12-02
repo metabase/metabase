@@ -5,10 +5,12 @@ import {
   getEnterpriseVersion,
   getGenericVersion,
   getLastReleaseFromTags,
+  getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
   getNextVersions,
   getOSSVersion,
   getReleaseBranch,
+  getSdkVersionFromReleaseTagName,
   getVersionFromReleaseBranch,
   getVersionType,
   isEnterpriseVersion,
@@ -74,7 +76,12 @@ describe("version-helpers", () => {
     });
 
     it("should recognize RC versions as valid", () => {
-      const cases = ["v0.75.0-RC", "v0.75.0-rc", "v1.75.0-beta", "v0.3.4-alpha"];
+      const cases = [
+        "v0.75.0-RC",
+        "v0.75.0-rc",
+        "v1.75.0-beta",
+        "v0.3.4-alpha",
+      ];
 
       cases.forEach(input => {
         expect(isValidVersionString(input)).toEqual(true);
@@ -232,7 +239,13 @@ describe("version-helpers", () => {
     });
 
     it("should throw an error for invalid release branches", () => {
-      const cases = ["foo", "release-x.75", "release-x.75.0", "release-x.75.x-test", "refs/heads/release-x"];
+      const cases = [
+        "foo",
+        "release-x.75",
+        "release-x.75.0",
+        "release-x.75.x-test",
+        "refs/heads/release-x",
+      ];
       cases.forEach(input => {
         expect(() => getVersionFromReleaseBranch(input)).toThrow();
       });
@@ -397,144 +410,191 @@ describe("version-helpers", () => {
     });
   });
 
-  describe('getLastReleaseFromTags', () => {
-    it('should return the latest release tag for minor versions', () => {
-      const latest = getLastReleaseFromTags({ tags: [
-        { ref: 'refs/tags/v0.12.0' },
-        { ref: 'refs/tags/v0.12.2' },
-        { ref: 'refs/tags/v0.12.1' },
-      ] as Tag[]});
-      expect(latest).toBe('v0.12.2');
+  describe("getLastReleaseFromTags", () => {
+    it("should return the latest release tag for minor versions", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.12.0" },
+          { ref: "refs/tags/v0.12.2" },
+          { ref: "refs/tags/v0.12.1" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.12.2");
     });
 
-    it('should return the latest release tag for patch versions', () => {
-      const latest = getLastReleaseFromTags({ tags: [
-        { ref: 'refs/tags/v0.12.0' },
-        { ref: 'refs/tags/v0.11.2' },
-        { ref: 'refs/tags/v0.12.2' },
-        { ref: 'refs/tags/v0.12.1' },
-        { ref: 'refs/tags/v0.12.2.0' },
-        { ref: 'refs/tags/v0.12.2.3' },
-        { ref: 'refs/tags/v0.12.2.2' },
-      ] as Tag[]});
-      expect(latest).toBe('v0.12.2.3');
+    it("should return the latest release tag for patch versions", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.12.0" },
+          { ref: "refs/tags/v0.11.2" },
+          { ref: "refs/tags/v0.12.2" },
+          { ref: "refs/tags/v0.12.1" },
+          { ref: "refs/tags/v0.12.2.0" },
+          { ref: "refs/tags/v0.12.2.3" },
+          { ref: "refs/tags/v0.12.2.2" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.12.2.3");
     });
 
-    it('should ignore patches when the ignorePatches flag is passed', () => {
-      const latest = getLastReleaseFromTags({ tags: [
-        { ref: 'refs/tags/v0.12.0' },
-        { ref: 'refs/tags/v0.11.2' },
-        { ref: 'refs/tags/v0.12.2' },
-        { ref: 'refs/tags/v0.12.1' },
-        { ref: 'refs/tags/v0.12.2.1' },
-        { ref: 'refs/tags/v0.12.2.3' },
-        { ref: 'refs/tags/v0.12.3.2-beta' },
-      ] as Tag[], ignorePatches: true });
-      expect(latest).toBe('v0.12.2');
+    it("should ignore patches when the ignorePatches flag is passed", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.12.0" },
+          { ref: "refs/tags/v0.11.2" },
+          { ref: "refs/tags/v0.12.2" },
+          { ref: "refs/tags/v0.12.1" },
+          { ref: "refs/tags/v0.12.2.1" },
+          { ref: "refs/tags/v0.12.2.3" },
+          { ref: "refs/tags/v0.12.3.2-beta" },
+        ] as Tag[],
+        ignorePatches: true,
+      });
+      expect(latest).toBe("v0.12.2");
     });
 
-    it('should return the latest tag for major version', () => {
-      const latest = getLastReleaseFromTags({ tags: [
-        { ref: 'refs/tags/v0.12.9' },
-        { ref: 'refs/tags/v0.12.8' },
-        { ref: 'refs/tags/v0.13.0' },
-      ] as Tag[] });
-      expect(latest).toBe('v0.13.0');
+    it("should return the latest tag for major version", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.12.9" },
+          { ref: "refs/tags/v0.12.8" },
+          { ref: "refs/tags/v0.13.0" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.13.0");
     });
 
-    it('should not ignore pre releases by default', () => {
-      const latest = getLastReleaseFromTags({ tags: [
-        { ref: 'refs/tags/v0.12.0' },
-        { ref: 'refs/tags/v0.12.1' },
-        { ref: 'refs/tags/v0.12.2-RC99' },
-        { ref: 'refs/tags/v0.12.3-alpha' },
-        { ref: 'refs/tags/v0.12.4-beta' },
-      ] as Tag[]});
-      expect(latest).toBe('v0.12.4-beta');
+    it("should not ignore pre releases by default", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.12.0" },
+          { ref: "refs/tags/v0.12.1" },
+          { ref: "refs/tags/v0.12.2-RC99" },
+          { ref: "refs/tags/v0.12.3-alpha" },
+          { ref: "refs/tags/v0.12.4-beta" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.12.4-beta");
     });
 
-    it('should ignore pre releases with a flag passeed', () => {
-      const latest = getLastReleaseFromTags({ tags: [
-        { ref: 'refs/tags/v0.12.0' },
-        { ref: 'refs/tags/v0.12.1' },
-        { ref: 'refs/tags/v0.12.2-RC99' },
-        { ref: 'refs/tags/v0.12.3-alpha' },
-        { ref: 'refs/tags/v0.12.4-beta' },
-      ] as Tag[], ignorePreReleases: true });
-      expect(latest).toBe('v0.12.1');
+    it("should ignore pre releases with a flag passeed", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.12.0" },
+          { ref: "refs/tags/v0.12.1" },
+          { ref: "refs/tags/v0.12.2-RC99" },
+          { ref: "refs/tags/v0.12.3-alpha" },
+          { ref: "refs/tags/v0.12.4-beta" },
+        ] as Tag[],
+        ignorePreReleases: true,
+      });
+      expect(latest).toBe("v0.12.1");
     });
   });
 
-  describe('verisonSort', () => {
-    it('should sort major versions', () => {
-      const diff1 = versionSort('v0.50.9', 'v0.48.1');
+  describe("verisonSort", () => {
+    it("should sort major versions", () => {
+      const diff1 = versionSort("v0.50.9", "v0.48.1");
       expect(diff1).toBeGreaterThan(0);
 
-      const diff2 = versionSort('v0.40.9', 'v0.50.1');
+      const diff2 = versionSort("v0.40.9", "v0.50.1");
       expect(diff2).toBeLessThan(0);
 
-      const diff3 = versionSort('v0.50.0', 'v0.50.0');
+      const diff3 = versionSort("v0.50.0", "v0.50.0");
       expect(diff3).toBe(0);
     });
 
-    it('should sort minor versions', () => {
-      const diff1 = versionSort('v0.48.10', 'v0.48.1');
+    it("should sort minor versions", () => {
+      const diff1 = versionSort("v0.48.10", "v0.48.1");
       expect(diff1).toBeGreaterThan(0);
 
-      const diff2 = versionSort('v0.40.2', 'v0.40.4');
+      const diff2 = versionSort("v0.40.2", "v0.40.4");
       expect(diff2).toBeLessThan(0);
 
-      const diff3 = versionSort('v0.50.11', 'v0.50.11');
+      const diff3 = versionSort("v0.50.11", "v0.50.11");
       expect(diff3).toBe(0);
     });
 
     it.each([
-      [["v0.50.9.2", "v0.50.9.1"], ["v0.50.9.1", "v0.50.9.2"]],
-      [["v0.50.9.2", "v0.50.9.2"], ["v0.50.9.2", "v0.50.9.2"]],
-      [["v0.50.9.1", "v0.50.9.2"], ["v0.50.9.1", "v0.50.9.2"]],
-      [["v0.50.9.1", "v0.50.9.0"], ["v0.50.9.0", "v0.50.9.1"]],
-      [["v0.50.9", "v0.50.9.0"], ["v0.50.9", "v0.50.9.0"]],
-      [["v0.50.9.1", "v0.50.9"], ["v0.50.9", "v0.50.9.1"]],
-      [["v0.50.9.3", "v0.50.1"], ["v0.50.1", "v0.50.9.3"]],
-      [["v0.50.1.23", "v0.50.2"], ["v0.50.1.23", "v0.50.2"]],
-      [["v0.51.0", "v0.50.22.99"], ["v0.50.22.99", "v0.51.0"]],
-      [["v0.52.2.2", "v0.52.1"], ["v0.52.1", "v0.52.2.2"]],
-      [["v0.52.2.23", "v0.52.2.13"], ["v0.52.2.13", "v0.52.2.23"]],
+      [
+        ["v0.50.9.2", "v0.50.9.1"],
+        ["v0.50.9.1", "v0.50.9.2"],
+      ],
+      [
+        ["v0.50.9.2", "v0.50.9.2"],
+        ["v0.50.9.2", "v0.50.9.2"],
+      ],
+      [
+        ["v0.50.9.1", "v0.50.9.2"],
+        ["v0.50.9.1", "v0.50.9.2"],
+      ],
+      [
+        ["v0.50.9.1", "v0.50.9.0"],
+        ["v0.50.9.0", "v0.50.9.1"],
+      ],
+      [
+        ["v0.50.9", "v0.50.9.0"],
+        ["v0.50.9", "v0.50.9.0"],
+      ],
+      [
+        ["v0.50.9.1", "v0.50.9"],
+        ["v0.50.9", "v0.50.9.1"],
+      ],
+      [
+        ["v0.50.9.3", "v0.50.1"],
+        ["v0.50.1", "v0.50.9.3"],
+      ],
+      [
+        ["v0.50.1.23", "v0.50.2"],
+        ["v0.50.1.23", "v0.50.2"],
+      ],
+      [
+        ["v0.51.0", "v0.50.22.99"],
+        ["v0.50.22.99", "v0.51.0"],
+      ],
+      [
+        ["v0.52.2.2", "v0.52.1"],
+        ["v0.52.1", "v0.52.2.2"],
+      ],
+      [
+        ["v0.52.2.23", "v0.52.2.13"],
+        ["v0.52.2.13", "v0.52.2.23"],
+      ],
     ])("%s sorts to %s", (input, expected) => {
       const sorted = input.sort(versionSort);
       expect(sorted).toEqual(expected);
     });
 
-    it('should handle versions with or without Vs', () => {
-      const diff1 = versionSort('v0.48.10', 'v0.48.1');
+    it("should handle versions with or without Vs", () => {
+      const diff1 = versionSort("v0.48.10", "v0.48.1");
       expect(diff1).toBeGreaterThan(0);
 
-      const diff2 = versionSort('0.40.2', 'v0.40.4');
+      const diff2 = versionSort("0.40.2", "v0.40.4");
       expect(diff2).toBeLessThan(0);
 
-      const diff3 = versionSort('v0.50.11', '0.50.11');
+      const diff3 = versionSort("v0.50.11", "0.50.11");
       expect(diff3).toBe(0);
 
-      const diff4 = versionSort('0.50.12', '0.50.11');
+      const diff4 = versionSort("0.50.12", "0.50.11");
       expect(diff4).toBeGreaterThan(0);
     });
 
-    it('should ignore the ee/oss prefix', () => {
-      const diff1 = versionSort('v0.48.10', 'v1.48.1');
+    it("should ignore the ee/oss prefix", () => {
+      const diff1 = versionSort("v0.48.10", "v1.48.1");
       expect(diff1).toBeGreaterThan(0);
 
-      const diff2 = versionSort('1.40.2', 'v0.40.4');
+      const diff2 = versionSort("1.40.2", "v0.40.4");
       expect(diff2).toBeLessThan(0);
 
-      const diff3 = versionSort('v0.50.11', '1.50.11');
+      const diff3 = versionSort("v0.50.11", "1.50.11");
       expect(diff3).toBe(0);
 
-      const diff4 = versionSort('50.12', '1.50.11');
+      const diff4 = versionSort("50.12", "1.50.11");
       expect(diff4).toBeGreaterThan(0);
     });
   });
 
-  describe('findNextPatchVersion', () => {
+  describe("findNextPatchVersion", () => {
     it.each([
       ["v1.50.0", "v0.50.0.1"],
       ["v1.23.0", "v0.23.0.1"],
@@ -560,6 +620,35 @@ describe("version-helpers", () => {
       expect(() => findNextPatchVersion("v0.75.f")).toThrow();
       expect(() => findNextPatchVersion("v0.75.1.f")).toThrow();
       expect(() => findNextPatchVersion("v0.75.1.2.f")).toThrow();
+    });
+  });
+
+  describe("getMajorVersionNumberFromReleaseBranch", () => {
+    it("should resolve major version from a common release branch", () => {
+      expect(getMajorVersionNumberFromReleaseBranch("release-x.51.x")).toEqual(
+        "51",
+      );
+      expect(getMajorVersionNumberFromReleaseBranch("release-x.52.x")).toEqual(
+        "52",
+      );
+
+      expect(() => getMajorVersionNumberFromReleaseBranch("master")).toThrow();
+      expect(() =>
+        getMajorVersionNumberFromReleaseBranch("my-local-dev-branch"),
+      ).toThrow();
+    });
+  });
+
+  describe("getSdkVersionFromReleaseTagName", () => {
+    it("should resolve sdk package version from assigned release tag", () => {
+      expect(getSdkVersionFromReleaseTagName("embedding-sdk-0.51.9")).toEqual(
+        "0.51.9",
+      );
+      expect(
+        getSdkVersionFromReleaseTagName("embedding-sdk-0.52.2-nightly"),
+      ).toEqual("0.52.2-nightly");
+
+      expect(() => getSdkVersionFromReleaseTagName("v0.51.5.1")).toThrow();
     });
   });
 });

@@ -36,6 +36,12 @@ export interface MetabaseColors {
   /** Primary brand color used for buttons and links */
   brand?: string;
 
+  /** Lighter variation of the brand color. Used for hover and accented elements. */
+  "brand-hover"?: string;
+
+  /** Lightest variation of the brand color. Used for hover and accented elements. */
+  "brand-hover-light"?: string;
+
   /** Text color on dark elements. Should be a lighter color for readability. */
   "text-primary"?: string;
 
@@ -47,6 +53,9 @@ export interface MetabaseColors {
 
   /** Default background color. */
   background?: string;
+
+  /** Slightly muted background color. */
+  "background-secondary"?: string;
 
   /** Slightly darker background color used for hover and accented elements. */
   "background-hover"?: string;
@@ -169,6 +178,21 @@ export type MetabaseComponentTheme = {
         fontSize: string;
       };
     };
+  };
+
+  /** Tooltip */
+  tooltip?: {
+    /** Tooltip text color. */
+    textColor?: string;
+
+    /** Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes. */
+    secondaryTextColor?: string;
+
+    /** Tooltip background color. */
+    backgroundColor?: string;
+
+    /** Tooltip background color for focused rows. */
+    focusedBackgroundColor?: string;
   };
 
   /** Popover */

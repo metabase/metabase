@@ -60,6 +60,10 @@ export function chartPathWithFillColor(color) {
   return echartsContainer().find(`path[fill="${color}"]`);
 }
 
+export function sankeyEdge(color) {
+  return echartsContainer().find(`path[fill="${color}"][fill-opacity="0.2"]`);
+}
+
 export function chartPathsWithFillColors(colors) {
   return colors.map(color => chartPathWithFillColor(color));
 }

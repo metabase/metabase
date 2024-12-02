@@ -15,7 +15,7 @@
    :scatter     {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :waterfall   {:min {:width 4 :height 3} :default {:width 14 :height 6}}
    :combo       {:min {:width 4 :height 3} :default {:width 12 :height 6}}
-   :stacked     {:min {:width 4 :height 3} :default {:width 12 :height 6}}
+   :sankey      {:min {:width 4 :height 3} :default {:width 16 :height 10}}
    :scalar      {:min {:width 2 :height 2} :default {:width 6 :height 3}}
    :line        {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :link        {:min {:width 1 :height 1} :default {:width 8 :height 1}}

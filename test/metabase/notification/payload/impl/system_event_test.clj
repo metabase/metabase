@@ -175,13 +175,13 @@
 
         (doseq [[alert-condition condition-regex]
                 [[{:alert_condition "rows"}
-                  #"This alert will be sent whenever this question has any results"]
+                  #"This alert will be sent\s+whenever this question has any results"]
                  [{:alert_condition "goal"
                    :alert_above_goal true}
-                  #"This alert will be sent when this question meets its goal"]
+                  #"This alert will be sent\s+when this question meets its goal"]
                  [{:alert_condition "goal"
                    :alert_above_goal false}
-                  #"This alert will be sent when this question goes below its goal"]]]
+                  #"This alert will be sent\s+when this question goes below its goal"]]]
           (check alert-condition condition-regex))))))
 
 (deftest slack-error-token-email-test
