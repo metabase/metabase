@@ -23,12 +23,7 @@ export function SegmentFilterItem({
   };
 
   return (
-    <FilterTabItem
-      component="li"
-      px="2rem"
-      py="1rem"
-      data-testid="filter-column-segments"
-    >
+    <FilterTabItem component="li" p="1rem" data-testid="filter-column-segments">
       <SegmentFilterEditor
         segmentItems={segmentItems}
         onChange={handleChange}

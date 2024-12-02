@@ -1,8 +1,11 @@
+import { t } from "ttag";
+
 import type { GroupItem } from "metabase/querying/filters/types";
 import type * as Lib from "metabase-lib";
 
 import { ColumnFilterList } from "../ColumnFilterList";
 import { SegmentFilterItem } from "../SegmentFilterItem";
+import { SectionItems, SectionTitle } from "../poc.styled";
 
 import { TabPanelRoot } from "./FilterTabPanel.styled";
 
@@ -25,11 +28,16 @@ export function FilterTabPanel({
     <TabPanelRoot value={groupItem.key}>
       <ul>
         {groupItem.segmentItems.length > 0 && (
-          <SegmentFilterItem
-            query={query}
-            segmentItems={groupItem.segmentItems}
-            onChange={onChange}
-          />
+          <>
+            <SectionTitle>{t`Segments`}</SectionTitle>
+            <SectionItems>
+              <SegmentFilterItem
+                query={query}
+                segmentItems={groupItem.segmentItems}
+                onChange={onChange}
+              />
+            </SectionItems>
+          </>
         )}
         {groupItem.columnItems.length > 0 && (
           <ColumnFilterList

@@ -56,3 +56,84 @@ export function sortColumns(columnItems: ColumnItem[]): ColumnItem[] {
     .sort((a, b) => a.priority - b.priority)
     .map(({ columnItem }) => columnItem);
 }
+
+export type SectionId =
+  | "datetime"
+  | "boolean"
+  | "text"
+  | "location"
+  | "number"
+  | "id"
+  | "unknown";
+
+export function getSectionId(column: ColumnItem["column"]): SectionId {
+  if (isCreationDateOrTimestamp(column)) {
+    return "datetime";
+  }
+
+  if (Lib.isCreationTime(column)) {
+    return "datetime";
+  }
+
+  if (Lib.isTemporal(column)) {
+    return "datetime";
+  }
+
+  if (Lib.isBoolean(column)) {
+    return "boolean";
+  }
+
+  if (isCategoryAndNotNameOrAddress(column)) {
+    return "text";
+  }
+
+  if (Lib.isCurrency(column)) {
+    return "text";
+  }
+
+  if (Lib.isCity(column)) {
+    return "location";
+  }
+
+  if (Lib.isState(column)) {
+    return "location";
+  }
+
+  if (Lib.isZipCode(column)) {
+    return "location";
+  }
+
+  if (Lib.isCountry(column)) {
+    return "location";
+  }
+
+  if (isNumberAndNotCoordinate(column)) {
+    return "number";
+  }
+
+  if (isShortText(column)) {
+    return "text";
+  }
+
+  if (Lib.isPrimaryKey(column)) {
+    return "id";
+  }
+
+  if (Lib.isLatitude(column)) {
+    return "location";
+  }
+
+  if (Lib.isLongitude(column)) {
+    return "location";
+  }
+
+  if (isLongText(column)) {
+    return "text";
+  }
+
+  if (Lib.isForeignKey(column)) {
+    return "id";
+  }
+
+  return "unknown";
+}
