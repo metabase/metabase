@@ -56,7 +56,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
           <Box w="100%">
             <Flex justify="space-between" mb="md" style={{ flex: 1 }}>
               <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-              <Modal.CloseButton className={S.close} />
+              <Modal.CloseButton autoFocus={false} className={S.close} />
             </Flex>
 
             <FilterSearchInput

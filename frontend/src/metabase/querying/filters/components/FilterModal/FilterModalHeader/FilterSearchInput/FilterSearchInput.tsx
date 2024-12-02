@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -19,6 +19,7 @@ export function FilterSearchInput({
   searchText,
   onChange,
 }: FilterSearchInputProps) {
+  const ref = useRef<HTMLInputElement>(null);
   const [inputText, setInputText] = useState("");
 
   useDebounce(
@@ -26,6 +27,12 @@ export function FilterSearchInput({
     SEARCH_TIMEOUT,
     [inputText],
   );
+
+  useEffect(() => {
+    window.setTimeout(() => {
+      ref.current?.focus();
+    }, 10);
+  }, [ref]);
 
   return (
     <TextInput
@@ -35,6 +42,7 @@ export function FilterSearchInput({
       value={inputText}
       icon={<SearchIcon name="search" />}
       placeholder={t`Search for a column…`}
+      ref={ref}
       onChange={event => setInputText(event.currentTarget.value)}
     />
   );
