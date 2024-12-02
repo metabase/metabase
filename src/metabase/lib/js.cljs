@@ -1032,16 +1032,16 @@
      parts)))
 
 (defn ^:export number-filter-clause
-  "Creates a filter clause based on FE-friendly filter parts. It should be possible to destructure each expression with
-  [[number-filter-parts]]."
+  "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[number-filter-parts]]."
   [operator column values]
   (lib.core/number-filter-clause (keyword operator)
                                  column
                                  (js->clj values)))
 
 (defn ^:export number-filter-parts
-  "Destructures a filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match the
-  expected shape."
+  "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
   [a-query stage-number a-filter-clause]
   (when-let [filter-parts (lib.core/number-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [operator column values]} filter-parts]

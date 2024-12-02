@@ -117,7 +117,42 @@
    options  :- [:maybe :map]]
   (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
 
+(def ^:private BooleanFilterOperator
+  [:enum :is-null :not-null :=])
 
+(def ^:private BooleanFilterParts
+  [:map
+   [:operator BooleanFilterOperator]
+   [:column   ::lib.schema.metadata/column]
+   [:values   [:sequential :boolean]]])
+
+(mu/defn boolean-filter-clause :- ::lib.schema.expression/expression
+  "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[boolean-filter-parts]]."
+  [operator :- BooleanFilterOperator
+   column   :- ::lib.schema.metadata/column
+   values   :- [:sequential :boolean]]
+  (case operator
+    :is-null  (lib.filter/is-null column)
+    :not-null (lib.filter/not-null column)
+    :=        (lib.filter/= column (first values))))
+
+(mu/defn boolean-filter-parts :- [:maybe BooleanFilterParts]
+  "Destructures a boolean filter clause created by [[boolean-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [boolean-column? #(lib.util/original-isa? % :type/Boolean)
+        ref->column #(column-metadata-from-ref query stage-number %)]
+    (lib.util.match/match-one filter-clause
+      ;; no arguments
+      [(a :guard #{:is-null :not-null}) _ (b :guard boolean-column?)]
+      {:operator a, :column (ref->column b), :values [] }
+
+      ;; exactly 1 argument
+      [(a :guard #{:=}) _ (b :guard boolean-column?) (c :guard boolean?)]
+      {:operator a, :column (ref->column b), :values [c]})))
 
 (def ^:private NumberFilterOperator
   [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
@@ -129,8 +164,8 @@
    [:values   [:sequential number?]]])
 
 (mu/defn number-filter-clause :- ::lib.schema.expression/expression
-  "Creates a filter clause based on FE-friendly filter parts. It should be possible to destructure each expression with
-  [[number-filter-parts]]."
+  "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[number-filter-parts]]."
   [operator :- NumberFilterOperator
    column   :- ::lib.schema.metadata/column
    values   :- [:sequential number?]]
@@ -146,8 +181,8 @@
     :between  (lib.filter/between column (first values) (second values))))
 
 (mu/defn number-filter-parts :- [:maybe NumberFilterParts]
-  "Destructures a filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match the
-  expected shape."
+  "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]

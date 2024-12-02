@@ -122,6 +122,27 @@
           (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
                                                               1)))))
 
+(deftest ^:parallel boolean-filter-parts-test
+  (let [query  (-> lib.tu/venues-query
+                   (lib.expression/expression "Boolean"
+                                              (lib.filter/is-empty (meta/field-metadata :venues :name))))
+        column (m/find-first #(= (:name %) "Boolean") (lib.filter/filterable-columns query))]
+    (testing "clause to parts rountrip"
+      (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column, :values []}
+                              (lib.filter/not-null column)      {:operator :not-null, :column column, :values []}
+                              (lib.filter/= column true)        {:operator :=, :column column, :values [true]}
+                              (lib.filter/= column false)       {:operator :=, :column column, :values [false]}}]
+        (let [{:keys [operator column values]} parts
+              expected {:operator operator, :column (select-keys column [:name]), :values values}]
+          (is (=? expected (lib.fe-util/boolean-filter-parts query -1 clause)))
+          (is (=? expected (lib.fe-util/boolean-filter-parts query -1 (lib.fe-util/boolean-filter-clause operator
+                                                                                                         column
+                                                                                                         values)))))))
+  (testing "unsupported clauses"
+    (are [clause] (= nil (lib.fe-util/boolean-filter-parts query -1 clause))
+      (lib.filter/!= column true)
+      (lib.filter/is-null (meta/field-metadata :venues :name))))))
+
 (deftest ^:parallel number-filter-parts-test
   (let [query lib.tu/venues-query
         column (meta/field-metadata :venues :price)]
