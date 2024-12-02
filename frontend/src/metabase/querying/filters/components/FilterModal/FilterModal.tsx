@@ -51,7 +51,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
     <Modal.Root opened size={getModalWidth()} onClose={onClose}>
       <Modal.Overlay />
 
-      <ModalContent className={S.content}>
+      <ModalContent>
         <ModalHeader px={48} pt="xl" pb="md">
           <Box w="100%">
             <Flex justify="space-between" mb="md" style={{ flex: 1 }}>
@@ -77,7 +77,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
           </Box>
         </ModalHeader>
 
-        <ModalBody p={0}>
+        <ModalBody className={S.content} p={0}>
           <FilterModalBody
             groupItems={visibleItems}
             query={query}
