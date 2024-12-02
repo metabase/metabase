@@ -50,7 +50,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
           <Box w="100%">
             <Flex justify="space-between" mb="md" style={{ flex: 1 }}>
               <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-              <Modal.CloseButton />
+              <Modal.CloseButton className={S.close} />
             </Flex>
 
             <Box mb="md">
@@ -61,11 +61,13 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
               />
             </Box>
 
-            <FieldGroupPicker
-              groupItems={groupItems}
-              value={tab}
-              onChange={setTab}
-            />
+            {groupItems.length > 1 && (
+              <FieldGroupPicker
+                groupItems={groupItems}
+                value={tab}
+                onChange={setTab}
+              />
+            )}
           </Box>
         </ModalHeader>
         <ModalBody p={0}>

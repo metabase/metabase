@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { Icon, TextInput } from "metabase/ui";
+import { TextInput } from "metabase/ui";
+
+import { SearchIcon } from "./FilterSearchInput.styled";
 
 const SEARCH_TIMEOUT = 200;
 
@@ -31,7 +33,7 @@ export function FilterSearchInput({
       className={className}
       type="search"
       value={inputText}
-      icon={<Icon name="search" />}
+      icon={<SearchIcon name="search" />}
       placeholder={t`Search for a column…`}
       onChange={event => setInputText(event.currentTarget.value)}
     />

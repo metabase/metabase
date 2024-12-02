@@ -1,3 +1,12 @@
 .search {
   width: 100%;
 }
+
+.close {
+  width: 24px !important;
+  height: 24px !important;
+
+  svg {
+    color: var(--mb-color-text-dark);
+  }
+}
