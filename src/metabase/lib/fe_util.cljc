@@ -324,7 +324,7 @@
        :offset-value offset-value
        :offset-unit offset-unit}
 
-      ;; legacy expression; replaced by :relative-time-interval; supported for backard compatibility
+      ;; legacy expression; replaced by :relative-time-interval; supported for backward compatibility
       [:between _
        [:+ _
         (col-ref :guard date-col?)
