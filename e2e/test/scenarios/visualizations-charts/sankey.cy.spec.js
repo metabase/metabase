@@ -114,7 +114,7 @@ describe("scenarios > visualizations > sankey", () => {
       rows: [
         {
           name: "METRIC",
-          value: "0",
+          value: "30,000",
         },
       ],
     });
