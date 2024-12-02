@@ -48,7 +48,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
   };
 
   return (
-    <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
+    <Modal.Root opened size={getModalWidth()} onClose={onClose}>
       <Modal.Overlay />
 
       <ModalContent>
