@@ -9,6 +9,7 @@ import { Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { FilterColumnName } from "./FilterColumnName";
+import S from "./FilterTitle.module.css";
 
 type FilterTitleProps = {
   children?: ReactNode;
@@ -32,6 +33,7 @@ export function FilterTitle({
   return (
     <Flex h="100%" align="center" gap="sm" pl="md">
       <QueryColumnInfoIcon
+        className={S.icon}
         query={query}
         stageIndex={stageIndex}
         column={column}
