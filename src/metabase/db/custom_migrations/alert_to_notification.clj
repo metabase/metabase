@@ -55,13 +55,13 @@
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [notification subscriptions handlers+recipients]
-  (let [notification-card-id (t2/insert-returning-pk! :notification-card (:payload notification))
+  (let [notification-card-id (t2/insert-returning-pk! :notification_card (:payload notification))
         instance             (t2/insert-returning-instance! :notification (-> notification
                                                                               (dissoc :payload)
                                                                               (assoc :payload_id notification-card-id)))
         notification-id      (:id instance)]
     (when (seq subscriptions)
-      (t2/insert! :notification_recipient (map #(assoc % :notification_id notification-id) subscriptions)))
+      (t2/insert! :notification_subscription (map #(assoc % :notification_id notification-id) subscriptions)))
     (doseq [handler handlers+recipients]
       (let [recipients (:recipients handler)
             handler    (-> handler
@@ -86,37 +86,46 @@
   (let [pulse-id          (:id pulse)
         pcs               (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id))
         pulse-card        (t2/select-one :pulse_card :pulse_id pulse-id {:order-by [[:id :desc]]})
-        notification      {:payload_type :notification/alert
+        notification      {:payload_type "notification/alert"
                            :payload      {:card_id        (:id pulse-card)
                                           :run_once       (:alert_first_only pulse)
+                                          :skip_if_empty  (:skip_if_empty pulse)
                                           :send_condition (if (= "goal" (:alert_condition pulse))
                                                             (if (:alert_above_goal pulse)
-                                                              :above_goal
-                                                              :below_goal)
-                                                            :has_result)}
-                           :creator_id   (:creator_id pulse)}
+                                                              "above_goal"
+                                                              "below_goal")
+                                                            "has_result")
+                                          :created_at     :%now
+                                          :updated_at     :%now}
+                           :active       (not (:archived pulse))
+                           :creator_id   (:creator_id pulse)
+                           :created_at   :%now
+                           :updated_at   :%now}
         subscriptions     (map (fn [pc]
-                                 {:type         :notification-subscription/cron
-                                  :cron_schedule (schedule-map->cron-string pc)})
+                                 {:type          "notification-subscription/cron"
+                                  :cron_schedule (schedule-map->cron-string pc)
+                                  :created_at    :%now})
                                pcs)
         handlers          (map (fn [pc]
-                                 (case (:channel_type pc)
-                                   "email"
-                                   {:channel_type :channel/email
-                                    :template_id  alert-template-id
-                                    :recipients   (concat
-                                                   (map (fn [recipient]
-                                                          {:type :notification-recipient/user
-                                                           :user_id (:user_id recipient)})
-                                                        (:recipients pc))
-                                                   [])}
-                                   "slack"
-                                   {:channel_type :channel/slack
-                                    :template_id  nil
-                                    :recipients   [{:type :notification-recipient/slack-channel
-                                                    :details {:channel (get-in pc [:details :channel])}}]}
-                                   "http"
-                                   nil))
+                                 (merge
+                                  {:active (:enabled pc)}
+                                  (case (:channel_type pc)
+                                    "email"
+                                    {:channel_type "channel/email"
+                                     :template_id  alert-template-id
+                                     :recipients   (concat
+                                                    (map (fn [recipient]
+                                                           {:type "notification-recipient/user"
+                                                            :user_id (:user_id recipient)})
+                                                         (:recipients pc))
+                                                    [])}
+                                    "slack"
+                                    {:channel_type "channel/slack"
+                                     :template_id  nil
+                                     :recipients   [{:type "notification-recipient/slack-channel"
+                                                     :details {:channel (get-in pc [:details :channel])}}]}
+                                    "http"
+                                    nil)))
                                pcs)]
     (create-notification! notification subscriptions handlers)))
 
@@ -133,8 +142,12 @@
                                                     :updated_at   :%now})]
     (run! #(pulse->-notification! % alert-template-id)
           (t2/reducible-query {:select [:*]
-                               :from [:pulse]
-                               :where [:in :alert_condition ["rows" "goal"]]}))))
+                               :from   [:pulse]
+                               :where  [:in :alert_condition ["rows" "goal"]]}))))
 
-(ngoc/with-tc
-  (migrate!))
+(comment
+  (t2/delete! :model/Notification)
+  (migrate!)
+
+  (t2/hydrate (t2/select :model/Notification) :subscriptions
+              [:handlers :recipients :template]))
