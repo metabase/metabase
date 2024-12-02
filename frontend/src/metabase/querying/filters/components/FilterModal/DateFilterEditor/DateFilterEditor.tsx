@@ -18,7 +18,7 @@ import ItemGrid from "../FilterModalBody/poc.styled";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
-import { ClearIcon, ToggleButton } from "./DateFilterEditor.styled";
+import { ClearIcon, MoreButton, ToggleButton } from "./DateFilterEditor.styled";
 import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 
@@ -149,9 +149,11 @@ function DateFilterPopover({
             {title}
           </Button>
         ) : (
-          <Button
+          <MoreButton
             leftIcon={<Icon name="ellipsis" />}
             aria-label={t`More options`}
+            radius="xl"
+            variant="subtle"
             onClick={handleOpen}
           />
         )}

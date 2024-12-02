@@ -23,7 +23,16 @@ export const ToggleButton = styled<any>(Button)`
 
       &:hover {
         background-color: hsla(208, 95%, 42%, 0.07);
-        color: var(--mb-color-brand);
+        color: var(--mb-color-text-medium);
       }
     `};
+`;
+
+export const MoreButton = styled<any>(Button)`
+  color: var(--mb-color-text-medium);
+
+  &:hover {
+    background-color: hsla(208, 95%, 42%, 0.07);
+    color: var(--mb-color-text-medium);
+  }
 `;
