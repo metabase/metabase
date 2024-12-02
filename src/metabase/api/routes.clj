@@ -1,4 +1,5 @@
 (ns metabase.api.routes
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [compojure.core :refer [GET]]
    [compojure.route :as route]
