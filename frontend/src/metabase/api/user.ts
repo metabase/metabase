@@ -1,8 +1,10 @@
 import type {
   CreateUserRequest,
+  GetUserKeyValueRequest,
   ListUsersRequest,
   ListUsersResponse,
   UpdatePasswordRequest,
+  UpdateUserKeyValueRequest,
   UpdateUserRequest,
   User,
   UserId,
@@ -85,6 +87,40 @@ export const userApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
+    getKeyValue: builder.query<unknown, GetUserKeyValueRequest>({
+      query: params => ({
+        url: "/api/user-key-value",
+        params,
+      }),
+      providesTags: (_, __, { key, context }) => [
+        { type: "user-key-value", id: `${context}-${key}` },
+      ],
+    }),
+    updateKeyValue: builder.mutation<unknown, UpdateUserKeyValueRequest>({
+      query: body => ({
+        method: "PUT",
+        url: "/api/user-key-value",
+        body,
+      }),
+      async onQueryStarted(
+        { key, context, value },
+        { dispatch, queryFulfilled },
+      ) {
+        const result = dispatch(
+          userApi.util.updateQueryData(
+            "getKeyValue",
+            { key, context },
+            () => value,
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          console.error("Unable to update user key value");
+          result.undo();
+        }
+      },
+    }),
   }),
 });
 
@@ -97,4 +133,6 @@ export const {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
+  useGetKeyValueQuery,
+  useUpdateKeyValueMutation,
 } = userApi;

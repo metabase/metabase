@@ -114,3 +114,15 @@ export type UpdateUserRequest = {
   login_attributes?: Record<UserAttribute, UserAttribute> | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };
+
+type UserKeyValueKey = "browse-models";
+type UserKeyValueContext = "model-filter";
+
+export type GetUserKeyValueRequest = {
+  key: UserKeyValueKey;
+  context: UserKeyValueContext;
+};
+
+export type UpdateUserKeyValueRequest = GetUserKeyValueRequest & {
+  value: any;
+};

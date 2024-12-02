@@ -1,11 +1,10 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { skipToken, useListRecentsQuery } from "metabase/api";
+import { useUserValue } from "metabase/common/hooks";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -26,16 +25,18 @@ import { RecentModels } from "./RecentModels";
 import type { ModelFilterSettings, ModelResult } from "./types";
 import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
-const {
-  contentVerificationEnabled,
-  ModelFilterControls,
-  getDefaultModelFilters,
-} = PLUGIN_CONTENT_VERIFICATION;
+const { contentVerificationEnabled, ModelFilterControls } =
+  PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
-  const [modelFilters, setModelFilters] = useModelFilterSettings();
+  const { value: modelFilters, setValue: setModelFilters } = useUserValue({
+    key: "browse-models",
+    context: "model-filter",
+    defaultValue: false,
+  });
+
   const { isLoading, error, models, recentModels, hasVerifiedModels } =
-    useFilteredModels(modelFilters);
+    useFilteredModels({ verified: modelFilters });
 
   const isEmpty = !isLoading && models.length === 0;
 
@@ -62,8 +63,10 @@ export const BrowseModels = () => {
             </Title>
             {hasVerifiedModels && (
               <ModelFilterControls
-                modelFilters={modelFilters}
-                setModelFilters={setModelFilters}
+                modelFilters={{ verified: modelFilters }}
+                setModelFilters={val => {
+                  setModelFilters(val.verified);
+                }}
               />
             )}
           </Flex>
@@ -111,11 +114,6 @@ export const BrowseModels = () => {
     </BrowseContainer>
   );
 };
-
-function useModelFilterSettings() {
-  const defaultModelFilters = useSelector(getDefaultModelFilters);
-  return useState(defaultModelFilters);
-}
 
 function useHasVerifiedModels() {
   const result = useFetchModels(
