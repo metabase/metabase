@@ -273,7 +273,7 @@ describe("filter", () => {
           operator: "starts-with",
           column: expect.anything(),
           values: ["Gadget"],
-          options: { "case-sensitive": true },
+          options: { caseSensitive: true },
         });
         expect(columnInfo?.name).toBe(columnName);
       },

@@ -134,7 +134,8 @@
 (mu/defn string-filter-clause :- ::lib.schema.expression/expression
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[string-filter-parts]]. To avoid mistakes the function requires `options` for all operators even
-  though they might not be used. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
+  though they might not be used. Note that the FE does not support `:is-null` and `:not-null` operators with string
+  columns."
   [operator :- StringFilterOperator
    column   :- ::lib.schema.metadata/column
    values   :- [:sequential :string]
@@ -168,7 +169,7 @@
       {:operator a, :column (ref->column b), :values args, :options {}}
 
       ;; multiple arguments with options
-      [(a :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (b :guard string-column?) (c :guard number?)]
+      [(a :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (b :guard string-column?) (c :guard string?)]
       {:operator a, :column (ref->column b), :values [c], :options {:case-sensitive (get opts :case-sensitive true)}})))
 
 (def ^:private NumberFilterOperator

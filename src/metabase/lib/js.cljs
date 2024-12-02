@@ -347,6 +347,16 @@
                   key-str)]
     (u/->camelCaseEn key-str)))
 
+(defn- js-key->cljs-key
+  "Converts idiomatic JavaScript keys (`\"camelCaseStrings\"`) into idiomatic Clojure keys (`:kebab-case-keywords`).
+
+  A `\"is\"` prefix in JavaScript is replaced with a `?` suffix in Clojure , eg. `isManyPks` becomes `:many-pks?`."
+  [js-key]
+  (let [key-str (if (str/starts-with? js-key "is")
+                  (str (str/replace js-key #"^is" "") "?")
+                  js-key)]
+    (-> key-str u/->kebab-case-en keyword)))
+
 (defn- display-info-map->js* [x]
   (reduce (fn [obj [cljs-key cljs-val]]
             (let [js-key (cljs-key->js-key cljs-key)
@@ -1034,26 +1044,25 @@
 (defn ^:export string-filter-clause
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[string-filter-parts]]. To avoid mistakes the function requires `options` for all operators even
-  though they might not be used; `case-sensitive` is a required property because the default value is `true` when it is
-  not specified. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
+  though they might not be used. Note that the FE does not support `:is-null` and `:not-null` operators with string
+  columns."
   [operator column values options]
   (lib.core/string-filter-clause (keyword operator)
                                   column
                                   (js->clj values)
-                                  (js->clj options)))
+                                  (-> options js->clj (update-keys js-key->cljs-key))))
 
 (defn ^:export string-filter-parts
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape. To avoid mistakes the function returns `options` for all operators even though they might not be
-  used; `case-sensitive` is a required property because the default value is `true` when it is not specified. Note that
-  the FE does not support `:is-null` and `:not-null` operators with string columns."
+  used. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
   [a-query stage-string a-filter-clause]
   (when-let [filter-parts (lib.core/string-filter-parts a-query stage-string a-filter-clause)]
     (let [{:keys [operator column values options]} filter-parts]
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))
-           :options  (clj->js options)})))
+           :options  (-> options (update-keys cljs-key->js-key) clj->js)})))
 
 (defn ^:export number-filter-clause
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
