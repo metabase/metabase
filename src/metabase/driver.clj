@@ -351,7 +351,7 @@
 (defmulti describe-indexes
   "Returns a reducible collection of maps, each containing information about the indexes of a database.
   Currently we only sync single column indexes or the first column of a composite index. We currently only support
-   indexes on unnested fields (i.e. parent_id is null).
+   indexes on unnested fields (i.e., where parent_id is null).
 
   Takes keyword arguments to narrow down the results to a set of
   `schema-names` or `table-names`.
