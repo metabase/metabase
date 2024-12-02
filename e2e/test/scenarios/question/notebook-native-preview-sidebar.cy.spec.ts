@@ -408,7 +408,7 @@ describeWithSnowplow(
     it("should track `notebook_native_preview_shown|hidden` events", () => {
       cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
       openReviewsTable({ mode: "notebook", limit: 1 });
-      expectGoodSnowplowEvents(1); // page view
+      expectGoodSnowplowEvents(2); // page view and available-models
 
       cy.findByLabelText("View the SQL").click();
       cy.wait("@nativeDataset");

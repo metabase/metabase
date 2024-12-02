@@ -404,7 +404,7 @@ describe(
 );
 
 describeWithSnowplow("send snowplow question events", () => {
-  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION = 3;
+  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION = 4;
 
   beforeEach(() => {
     restore();

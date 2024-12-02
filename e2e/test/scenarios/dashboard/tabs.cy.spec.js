@@ -784,7 +784,7 @@ describe("scenarios > dashboard > tabs", () => {
 });
 
 describeWithSnowplow("scenarios > dashboard > tabs", () => {
-  const PAGE_VIEW_EVENT = 2; // One event is page view, one event is a search for the command palette
+  const PAGE_VIEW_EVENT = 3; // One event is page view, one event is a model search for command palette, one is model search for new button
 
   beforeEach(() => {
     restore();
