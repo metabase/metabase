@@ -60,9 +60,9 @@ Metabase will only export the following entities:
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
-- Database connection strings (only if specified through [export options](#customize-what-gets-exported).
+- Database connection strings (only if specified through [export options](#customize-what-gets-exported)).
 
-Any other entities - including users, groups, permissions, alerts, subscriptions - will not get exported.
+All other entities—including users, groups, permissions, alerts, subscriptions—won't get exported.
 
 Metabase will export its artifacts to a directory of YAML files. The export includes:
 
