@@ -8,6 +8,7 @@
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]))
@@ -199,6 +200,49 @@
       (are [clause] (= nil (lib.fe-util/number-filter-parts query -1 clause))
         (lib.expression/+ column 10)
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
+
+(deftest ^:parallel coordinate-filter-parts-test
+  (let [query  (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
+        lat-column (meta/field-metadata :people :latitude)
+        lon-column (meta/field-metadata :people :longitude)]
+    (testing "clause to parts rountrip"
+      (doseq [[clause parts] {(lib.filter/= lat-column 10)
+                              {:operator :=, :column lat-column, :values [10]}
+
+                              (lib.filter/!= lon-column 20)
+                              {:operator :!=, :column lon-column, :values [20]}
+
+                              (lib.filter/> lat-column 10)
+                              {:operator :>, :column lat-column, :values [10]}
+
+                              (lib.filter/>= lat-column 10)
+                              {:operator :>=, :column lat-column, :values [10]}
+
+                              (lib.filter/< lat-column 10)
+                              {:operator :<, :column lat-column, :values [10]}
+
+                              (lib.filter/<= lat-column 10)
+                              {:operator :<=, :column lat-column, :values [10]}
+
+                              (lib.filter/between lat-column 10 20)
+                              {:operator :between, :column lat-column, :values [10 20]}
+
+                              (lib.filter/inside lat-column lon-column 10 20 30 40)
+                              {:operator         :inside
+                               :column           lat-column
+                               :longitude-column lon-column
+                               :values           [10 20 30 40]}}]
+        (let [{:keys [operator column longitude-column values]} parts]
+          (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 clause)))
+          (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 (lib.fe-util/coordinate-filter-clause operator
+                                                                                                            column
+                                                                                                            longitude-column
+                                                                                                            values)))))))
+    (testing "unsupported clauses"
+      (are [clause] (= nil (lib.fe-util/coordinate-filter-parts query -1 clause))
+        (lib.expression/+ lat-column 10)
+        (lib.filter/is-null lat-column)
+        (lib.filter/= (meta/field-metadata :orders :total) 10)))))
 
 (deftest ^:parallel boolean-filter-parts-test
   (let [query  (-> lib.tu/venues-query

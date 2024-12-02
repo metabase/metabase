@@ -157,8 +157,8 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [string-col? #(or (lib.util/original-isa? % :type/Text) (lib.util/original-isa? % :type/TextLike))
-        ref->col    #(column-metadata-from-ref query stage-number %)]
+  (let [ref->col    #(column-metadata-from-ref query stage-number %)
+        string-col? #(or (lib.util/original-isa? % :type/Text) (lib.util/original-isa? % :type/TextLike))]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
@@ -204,8 +204,8 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [number-col? #(lib.util/original-isa? % :type/Number)
-        ref->col    #(column-metadata-from-ref query stage-number %)]
+  (let [ref->col    #(column-metadata-from-ref query stage-number %)
+        number-col? #(lib.util/original-isa? % :type/Number)]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
@@ -222,6 +222,60 @@
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number?) (end :guard number?)]
       {:operator op, :column (ref->col col-ref), :values [start end]})))
+
+(def ^:private CoordinateFilterOperator
+  [:enum := :!= :> :>= :< :<= :between :inside])
+
+(def ^:private CoordinateFilterParts
+  [:map
+   [:operator         CoordinateFilterOperator]
+   [:column           ::lib.schema.metadata/column]
+   [:longitude-column {:optional true} [:maybe ::lib.schema.metadata/column]]
+   [:values           [:sequential number?]]])
+
+(mu/defn coordinate-filter-clause :- ::lib.schema.expression/expression
+  "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
+  created expression with [[coordinate-filter-parts]]."
+  [operator         :- CoordinateFilterOperator
+   column           :- ::lib.schema.metadata/column
+   longitude-column :- [:maybe ::lib.schema.metadata/column]
+   values           :- [:sequential number?]]
+  (case operator
+    :=       (apply lib.filter/= column values)
+    :!=      (apply lib.filter/!= column values)
+    :>       (lib.filter/> column (first values))
+    :>=      (lib.filter/>= column (first values))
+    :<       (lib.filter/< column (first values))
+    :<=      (lib.filter/<= column (first values))
+    :between (lib.filter/between column (first values) (second values))
+    :inside  (apply lib.filter/inside column (or longitude-column column) values)))
+
+(mu/defn coordinate-filter-parts :- [:maybe CoordinateFilterParts]
+  "Destructures a coordinate filter clause created by [[coordinate-filter-clause]]. Returns `nil` if the clause does not
+  match the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col    #(column-metadata-from-ref query stage-number %)
+        coordinate-col? (fn [maybe-ref]
+                          (and (lib.util/original-isa? maybe-ref :type/Number)
+                               (lib.types.isa/coordinate? (ref->col maybe-ref))))]
+    (lib.util.match/match-one filter-clause
+      ;; multiple arguments
+      [(op :guard #{:= :!=}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
+      {:operator op, :column (ref->col col-ref), :values args}
+
+      ;; exactly 1 argument
+      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard coordinate-col?) (arg :guard number?)]
+      {:operator op, :column (ref->col col-ref), :values [arg]}
+
+      ;; exactly 2 arguments
+      [(op :guard #{:between}) _ (col-ref :guard coordinate-col?) & (args :guard #(and (every? number? %) (= (count %) 2)))]
+      {:operator op, :column (ref->col col-ref), :values args}
+
+      ;; exactly 4 arguments
+      [(op :guard #{:inside}) _ (col-ref :guard coordinate-col?) (lon-col-ref :guard coordinate-col?) & (args :guard #(and (every? number? %) (= (count %) 4)))]
+      {:operator op, :column (ref->col col-ref), :longitude-column (ref->col lon-col-ref), :values args})))
 
 (def ^:private BooleanFilterOperator
   [:enum :is-null :not-null :=])
@@ -249,15 +303,15 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [boolea-col? #(lib.util/original-isa? % :type/Boolean)
-        ref->col    #(column-metadata-from-ref query stage-number %)]
+  (let [ref->col    #(column-metadata-from-ref query stage-number %)
+        boolean-col? #(lib.util/original-isa? % :type/Boolean)]
     (lib.util.match/match-one filter-clause
       ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolea-col?)]
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?)]
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; exactly 1 argument
-      [(op :guard #{:=}) _ (col-ref :guard boolea-col?) (arg :guard boolean?)]
+      [(op :guard #{:=}) _ (col-ref :guard boolean-col?) (arg :guard boolean?)]
       {:operator op, :column (ref->col col-ref), :values [arg]})))
 
 (def ^:private RelativeDateFilterUnit
@@ -296,8 +350,8 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [date-col? #(or (lib.util/original-isa? % :type/Date) (lib.util/original-isa? % :type/DateTime))
-        ref->col  #(column-metadata-from-ref query stage-number %)]
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+        date-col? #(or (lib.util/original-isa? % :type/Date) (lib.util/original-isa? % :type/DateTime))]
     (lib.util.match/match-one filter-clause
       [:time-interval
        opts
