@@ -197,6 +197,8 @@
   number-filter-parts
   boolean-filter-clause
   boolean-filter-parts
+  relative-date-filter-clause
+  relative-date-filter-parts
   filter-args-display-name]
  [lib.field
   add-field

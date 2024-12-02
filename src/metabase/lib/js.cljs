@@ -1100,6 +1100,31 @@
            :column   column
            :values   (to-array (map clj->js values))})))
 
+(defn ^:export relative-date-filter-clause
+  "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[relative-date-filter-parts]]."
+  [column value unit offset-value offset-unit options]
+  (lib.core/relative-date-filter-clause column
+                                        (if (string? value) (keyword value) value)
+                                        (keyword unit)
+                                        offset-value
+                                        (some-> offset-unit keyword)
+                                        (-> options js->clj (update-keys js-key->cljs-key))))
+
+(defn ^:export relative-date-filter-parts
+  "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [a-query stage-string a-filter-clause]
+  (when-let [filter-parts (lib.core/relative-date-filter-parts a-query stage-string a-filter-clause)]
+    (let [{:keys [column value unit offset-value offset-unit options]} filter-parts]
+      #js {:column      column
+           :value       (if (keyword? value) (name value) value)
+           :unit        (name unit)
+           :offsetValue offset-value
+           :offsetUnit  (some-> offset-unit name)
+           :options     (-> options (update-keys cljs-key->js-key) clj->js)})))
+
+;; TODO remove once all filter-parts are migrated to MBQL lib
 (defn ^:export is-column-metadata
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 

@@ -1124,15 +1124,15 @@ describe("filter", () => {
       ["current", "year"],
     ])(
       "should be able to create and destructure a relative date filter without offset",
-      (value, bucket) => {
+      (value, unit) => {
         const { filterParts, columnInfo } = addRelativeDateFilter(
           query,
           Lib.relativeDateFilterClause({
             column,
             value,
-            bucket,
+            unit,
             offsetValue: null,
-            offsetBucket: null,
+            offsetUnit: null,
             options: {},
           }),
         );
@@ -1140,9 +1140,9 @@ describe("filter", () => {
         expect(filterParts).toMatchObject({
           column: expect.anything(),
           value,
-          bucket,
+          unit,
           offsetValue: null,
-          offsetBucket: null,
+          offsetUnit: null,
           options: {},
         });
         expect(columnInfo?.name).toBe(columnName);
@@ -1173,15 +1173,15 @@ describe("filter", () => {
       [7, "year", 70, "year"],
     ])(
       "should be able to create and destructure a relative date filter with an offset",
-      (value, bucket, offsetValue, offsetBucket) => {
+      (value, unit, offsetValue, offsetUnit) => {
         const { filterParts, columnInfo } = addRelativeDateFilter(
           query,
           Lib.relativeDateFilterClause({
             column,
             value,
-            bucket,
+            unit,
             offsetValue,
-            offsetBucket,
+            offsetUnit,
             options: {},
           }),
         );
@@ -1189,9 +1189,9 @@ describe("filter", () => {
         expect(filterParts).toMatchObject({
           column: expect.anything(),
           value,
-          bucket,
+          unit,
           offsetValue,
-          offsetBucket,
+          offsetUnit,
           options: {},
         });
         expect(columnInfo?.name).toBe(columnName);
@@ -1207,9 +1207,9 @@ describe("filter", () => {
             findTemporalBucket(query, column, "Year"),
           ),
           value: 1,
-          bucket: "day",
+          unit: "day",
           offsetValue: null,
-          offsetBucket: null,
+          offsetUnit: null,
           options: {},
         }),
       );
@@ -1227,9 +1227,9 @@ describe("filter", () => {
             findTemporalBucket(query, column, "Month"),
           ),
           value: 1,
-          bucket: "day",
+          unit: "day",
           offsetValue: 2,
-          offsetBucket: "month",
+          offsetUnit: "month",
           options: {},
         }),
       );
@@ -1287,9 +1287,9 @@ describe("filter", () => {
         Lib.relativeDateFilterClause({
           column: findColumn(query, tableName, "PRICE"),
           value: 1,
-          bucket: "day",
+          unit: "day",
           offsetValue: null,
-          offsetBucket: null,
+          offsetUnit: null,
           options: {},
         }),
       );
@@ -1303,9 +1303,9 @@ describe("filter", () => {
         Lib.relativeDateFilterClause({
           column: findColumn(query, tableName, "PRICE"),
           value: 1,
-          bucket: "day",
+          unit: "day",
           offsetValue: 1,
-          offsetBucket: "day",
+          offsetUnit: "day",
           options: {},
         }),
       );

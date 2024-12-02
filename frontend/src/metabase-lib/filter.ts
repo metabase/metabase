@@ -16,7 +16,6 @@ import {
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
   TIME_FILTER_OPERATORS,
 } from "./constants";
@@ -49,7 +48,6 @@ import type {
   FilterParts,
   NumberFilterParts,
   Query,
-  RelativeDateBucketName,
   RelativeDateFilterParts,
   SegmentMetadata,
   SpecificDateFilterOperatorName,
@@ -263,28 +261,19 @@ export function specificDateFilterParts(
 export function relativeDateFilterClause({
   column,
   value,
-  bucket,
+  unit,
   offsetValue,
-  offsetBucket,
+  offsetUnit,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
-  const columnWithoutBucket = withTemporalBucket(column, null);
-
-  if (offsetValue == null || offsetBucket == null) {
-    return expressionClause(
-      "time-interval",
-      [columnWithoutBucket, value, bucket],
-      options,
-    );
-  }
-
-  return expressionClause("relative-time-interval", [
-    columnWithoutBucket,
+  return ML.relative_date_filter_clause(
+    column,
     value,
-    bucket,
+    unit,
     offsetValue,
-    offsetBucket,
-  ]);
+    offsetUnit,
+    options,
+  );
 }
 
 export function relativeDateFilterParts(
@@ -292,12 +281,7 @@ export function relativeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
-  const filterParts = expressionParts(query, stageIndex, filterClause);
-  return (
-    relativeDateFilterPartsWithoutOffset(filterParts) ??
-    relativeDateFilterPartsWithOffset(filterParts) ??
-    relativeDateFilterPartsRelativeTimeInterval(filterParts)
-  );
+  return ML.relative_date_filter_parts(query, stageIndex, filterClause);
 }
 
 export function excludeDateFilterClause(
@@ -489,10 +473,6 @@ function findTemporalBucket(
   });
 }
 
-function isExpression(arg: unknown): arg is ExpressionParts {
-  return arg != null && typeof arg === "object";
-}
-
 function isDefined<T>(arg: T | undefined | null): arg is T {
   return arg != null;
 }
@@ -511,10 +491,6 @@ function isStringLiteralArray(arg: unknown): arg is string[] {
 
 function isNumberLiteral(arg: unknown): arg is number {
   return typeof arg === "number";
-}
-
-function isNumberOrCurrentLiteral(arg: unknown): arg is number | "current" {
-  return isNumberLiteral(arg) || arg === "current";
 }
 
 function isNumberLiteralArray(arg: unknown): arg is number[] {
@@ -554,13 +530,6 @@ function isDefaultOperator(
 ): operator is DefaultFilterOperatorName {
   const operators: ReadonlyArray<string> = DEFAULT_FILTER_OPERATORS;
   return operators.includes(operator);
-}
-
-function isRelativeDateBucket(
-  bucketName: string,
-): bucketName is RelativeDateBucketName {
-  const buckets: ReadonlyArray<string> = RELATIVE_DATE_BUCKETS;
-  return buckets.includes(bucketName);
 }
 
 function isExcludeDateBucket(
@@ -613,145 +582,6 @@ function deserializeTime(value: string): Date | null {
   }
 
   return time.toDate();
-}
-
-function relativeDateFilterPartsWithoutOffset({
-  operator,
-  args,
-  options,
-}: ExpressionParts): RelativeDateFilterParts | null {
-  if (operator !== "time-interval" || args.length !== 3) {
-    return null;
-  }
-
-  const [column, value, bucket] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isDateOrDateTime(column) ||
-    !isNumberOrCurrentLiteral(value) ||
-    !isStringLiteral(bucket) ||
-    !isRelativeDateBucket(bucket)
-  ) {
-    return null;
-  }
-
-  return {
-    column,
-    value,
-    bucket,
-    offsetValue: null,
-    offsetBucket: null,
-    options,
-  };
-}
-
-function relativeDateFilterPartsWithOffset({
-  operator,
-  args,
-  options,
-}: ExpressionParts): RelativeDateFilterParts | null {
-  if (operator !== "between" || args.length !== 3) {
-    return null;
-  }
-
-  const [offsetParts, startParts, endParts] = args;
-  if (
-    !isExpression(offsetParts) ||
-    !isExpression(startParts) ||
-    !isExpression(endParts) ||
-    offsetParts.operator !== "+" ||
-    offsetParts.args.length !== 2 ||
-    startParts.operator !== "relative-datetime" ||
-    startParts.args.length !== 2 ||
-    endParts.operator !== "relative-datetime" ||
-    endParts.args.length !== 2
-  ) {
-    return null;
-  }
-
-  const [column, intervalParts] = offsetParts.args;
-  if (
-    !isColumnMetadata(column) ||
-    !isDateOrDateTime(column) ||
-    !isExpression(intervalParts) ||
-    intervalParts.operator !== "interval"
-  ) {
-    return null;
-  }
-
-  const [offsetValue, offsetBucket] = intervalParts.args;
-  if (
-    !isNumberLiteral(offsetValue) ||
-    !isStringLiteral(offsetBucket) ||
-    !isRelativeDateBucket(offsetBucket)
-  ) {
-    return null;
-  }
-
-  const [startValue, startBucket] = startParts.args;
-  const [endValue, endBucket] = endParts.args;
-  if (
-    !isNumberLiteral(startValue) ||
-    !isStringLiteral(startBucket) ||
-    !isRelativeDateBucket(startBucket) ||
-    !isNumberLiteral(endValue) ||
-    !isStringLiteral(endBucket) ||
-    !isRelativeDateBucket(endBucket) ||
-    startBucket !== endBucket ||
-    (startValue !== 0 && endValue !== 0)
-  ) {
-    return null;
-  }
-
-  return {
-    column,
-    value: startValue < 0 ? startValue : endValue,
-    bucket: startBucket,
-    offsetValue: offsetValue * -1,
-    offsetBucket,
-    options,
-  };
-}
-
-function relativeDateFilterPartsRelativeTimeInterval({
-  operator,
-  args,
-  options,
-}: ExpressionParts): RelativeDateFilterParts | null {
-  if (operator !== "relative-time-interval" || args.length !== 5) {
-    return null;
-  }
-
-  const [column, value, bucket, offsetValue, offsetBucket] = args;
-
-  if (!isColumnMetadata(column) || !isDateOrDateTime(column)) {
-    return null;
-  }
-
-  if (
-    !isNumberLiteral(value) ||
-    !isStringLiteral(bucket) ||
-    !isRelativeDateBucket(bucket)
-  ) {
-    return null;
-  }
-
-  if (
-    !isNumberLiteral(offsetValue) ||
-    !isStringLiteral(offsetBucket) ||
-    !isRelativeDateBucket(offsetBucket)
-  ) {
-    return null;
-  }
-
-  return {
-    column,
-    bucket,
-    value,
-    offsetBucket,
-    offsetValue,
-    options,
-  };
 }
 
 function serializeExcludeDatePart(

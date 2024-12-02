@@ -393,9 +393,9 @@ export type SpecificDateFilterParts = {
 
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
-  bucket: RelativeDateBucketName;
+  unit: RelativeDateBucketName;
   value: number | "current";
-  offsetBucket: RelativeDateBucketName | null;
+  offsetUnit: RelativeDateBucketName | null;
   offsetValue: number | null;
   options: RelativeDateFilterOptions;
 };

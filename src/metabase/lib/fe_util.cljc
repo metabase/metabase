@@ -270,20 +270,20 @@
 (def ^:private RelativeDateFilterParts
   [:map
    [:column       ::lib.schema.metadata/column]
-   [:unit         RelativeDateFilterUnit]
    [:value        [:or number? [:enum :current]]]
-   [:offset-unit  [:maybe RelativeDateFilterUnit]]
+   [:unit         RelativeDateFilterUnit]
    [:offset-value [:maybe number?]]
+   [:offset-unit  [:maybe RelativeDateFilterUnit]]
    [:options      RelativeDateFilterOptions]])
 
 (mu/defn relative-date-filter-clause :- ::lib.schema.expression/expression
   "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[relative-date-filter-parts]]."
   [column       :- ::lib.schema.metadata/column
-   unit         :- RelativeDateFilterUnit
    value        :- [:or number? [:enum :current]]
-   offset-unit  :- [:maybe RelativeDateFilterUnit]
+   unit         :- RelativeDateFilterUnit
    offset-value :- [:maybe number?]
+   offset-unit  :- [:maybe RelativeDateFilterUnit]
    options      :- RelativeDateFilterOptions]
   (let [column (lib.temporal-bucket/with-temporal-bucket column nil)]
     (if (or (nil? offset-value) (nil? offset-unit))
@@ -331,13 +331,13 @@
         [:internal _ (offset-value :guard number?) (offset-unit :guard keyword?)]]
        [:relative-datetime _
         (start-value :guard number?)
-        (start-unit (:guard keyword?))]
+        (start-unit :guard keyword?)]
        [:relative-datetime _
         (end-value :guard number?)
         (end-unit :guard keyword?)]]
        {:column       (ref->col col-ref)
         :value        (if (pos? offset-value) start-value end-value)
-        :unit         unit
+        :unit         start-unit
         :offset-value (- offset-value)
         :offset-unit  offset-unit})))
 
