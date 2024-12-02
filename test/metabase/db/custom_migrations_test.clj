@@ -1,7 +1,6 @@
 (ns metabase.db.custom-migrations-test
   "Tests to make sure the custom migrations work as expected."
   (:require
-   [cheshire.core :as json]
    [clojure.math :as math]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
@@ -33,6 +32,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -73,7 +73,7 @@
                             :parameters "{}"})
       :pulse_channel     (with-timestamped
                            {:channel_type  "slack"
-                            :details       (json/generate-string {:channel "general"})
+                            :details       (json/encode {:channel "general"})
                             :schedule_type "daily"
                             :schedule_hour 15})
       {})))
@@ -123,7 +123,7 @@
                                     ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
                                     ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
                                     ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             expected
             {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
@@ -131,7 +131,7 @@
                                     ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
                                                    :last_name   "Hughes"
@@ -151,7 +151,7 @@
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
-                                                   :visualization_settings (json/generate-string visualization-settings)
+                                                   :visualization_settings (json/encode visualization-settings)
                                                    :database_id            database-id
                                                    :collection_id          nil})]
         (migrate!)
@@ -161,7 +161,7 @@
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     json/parse-string))))
+                     json/decode))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
@@ -171,7 +171,7 @@
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     json/parse-string))))
+                     json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
@@ -180,7 +180,7 @@
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     json/parse-string
+                     json/decode
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
@@ -221,7 +221,7 @@
                                                    :display                "table"
                                                    :dataset_query          "{}"
                                                    :visualization_settings "{}"
-                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :result_metadata        (json/encode result_metadata)
                                                    :database_id            database-id
                                                    :collection_id          nil})]
         (migrate!)
@@ -230,22 +230,22 @@
                                                                         :where  [:= :id card-id]}))]
           (testing "legacy result_metadata field refs are updated"
             (is (= expected
-                   (json/parse-string migrated-result-metadata))))
+                   (json/decode migrated-result-metadata))))
           (testing "legacy result_metadata are updated to the current format"
             (is (= (->> result_metadata
-                        json/generate-string
+                        json/encode
                         ((:out mi/transform-result-metadata))
-                        json/generate-string)
+                        json/encode)
                    migrated-result-metadata)))
           (testing "result_metadata is equivalent before and after migration"
             (is (= (->> result_metadata
-                        json/generate-string
+                        json/encode
                         ((:out mi/transform-result-metadata))
-                        json/generate-string)
+                        json/encode)
                    (-> migrated-result-metadata
-                       json/parse-string
+                       json/decode
                        ((:out mi/transform-result-metadata))
-                       json/generate-string)))))))))
+                       json/encode)))))))))
 
 (deftest add-join-alias-to-visualization-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
@@ -266,7 +266,7 @@
                                     ["ref" ["field" 4 nil]]                                   {"column_title" "4"}
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             expected
             {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
                                     ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
@@ -275,7 +275,7 @@
                                     ["ref" ["field" 4 {"join-alias" "Self-joined Table"}]]    {"column_title" "4"}
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
                                                    :last_name   "Hughes"
@@ -295,8 +295,8 @@
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
-                                                   :result_metadata        (json/generate-string result_metadata)
-                                                   :visualization_settings (json/generate-string visualization-settings)
+                                                   :result_metadata        (json/encode result_metadata)
+                                                   :visualization_settings (json/encode visualization-settings)
                                                    :database_id            database-id
                                                    :collection_id          nil})]
         (migrate!)
@@ -306,7 +306,7 @@
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     json/parse-string))))
+                     json/decode))))
         (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (migrate! :down 46)
           (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
@@ -315,7 +315,7 @@
                                       :from   [:report_card]
                                       :where  [:= :id card-id]})
                        :visualization_settings
-                       json/parse-string)))))))))
+                       json/decode)))))))))
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
@@ -436,7 +436,7 @@
                         {:row 36 :col 0  :size_x 17 :size_y 1}
                         {:row 36 :col 17 :size_x 1  :size_y 1}]
           revision-id (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
-                                                       {:object    (json/generate-string {:cards cards})
+                                                       {:object    (json/encode {:cards cards})
                                                         :model     "Dashboard"
                                                         :model_id  1
                                                         :user_id   user-id
@@ -458,11 +458,11 @@
                 {:row 36 :col 0  :size_x 23 :size_y 1}
                 {:row 36 :col 23 :size_x 1  :size_y 1}]
                (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
-                   :object (json/parse-string true) :cards))))
+                   :object json/decode+kw :cards))))
       (migrate! :down 46)
       (testing "downgrade works correctly"
         (is (= cards (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
-                         :object (json/parse-string true) :cards)))))))
+                         :object json/decode+kw :cards)))))))
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
@@ -479,7 +479,7 @@
                         {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}  ; string values need to be skipped
                         {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]  ; include keys other than size
           revision-id (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
-                                                       {:object    (json/generate-string {:cards cards})
+                                                       {:object    (json/encode {:cards cards})
                                                         :model     "Dashboard"
                                                         :model_id  1
                                                         :user_id   user-id
@@ -493,7 +493,7 @@
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 5 :size_y 4 :series [1 2 3]}]
                (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
-                   :object (json/parse-string true) :cards))))
+                   :object json/decode+kw :cards))))
       (migrate! :down 46)
       (testing "downgrade works correctly and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}
@@ -502,7 +502,7 @@
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]
                (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
-                   :object (json/parse-string true) :cards)))))))
+                   :object json/decode+kw :cards)))))))
 
 (defn two-cards-overlap? [box1 box2]
   (let [{col1    :col
@@ -591,7 +591,7 @@
                                     ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
                                     ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
                                     ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             expected
             {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
@@ -599,7 +599,7 @@
                                     ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
                                                    :last_name   "Hughes"
@@ -611,7 +611,7 @@
                                                   {:model     "Card"
                                                    :model_id  1 ;; TODO: this could be a foreign key in the future
                                                    :user_id   user-id
-                                                   :object    (json/generate-string card)
+                                                   :object    (json/encode card)
                                                    :timestamp :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
@@ -620,7 +620,7 @@
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get "visualization_settings")))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
@@ -631,7 +631,7 @@
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get "visualization_settings")))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
@@ -641,7 +641,7 @@
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get "visualization_settings")
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
@@ -655,7 +655,7 @@
                                     ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "3"}
                                     ["name" "column_name"]                                    {"column_title" "4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             expected
             {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]             {"column_title" "THIS SHOULD TAKE PRECENDCE"}
                                     ["ref" ["field" 1 nil]]                                       {"column_title" "THIS SHOULD NOT TAKE PRECEDENCE"}
@@ -666,7 +666,7 @@
                                     ["ref" ["field" "column_name" {"base-type"  "type/Text"
                                                                    "join-alias" "Joined table"}]] {"column_title" "3"}
                                     ["name" "column_name"]                                        {"column_title" "4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             card        {:visualization_settings visualization-settings
                          :dataset_query          {:database 1
                                                   :query    {:joins        [{:alias        "Joined table"
@@ -687,7 +687,7 @@
                                                   {:model     "Card"
                                                    :model_id  1 ;; TODO: this could be a foreign key in the future
                                                    :user_id   user-id
-                                                   :object    (json/generate-string card)
+                                                   :object    (json/encode card)
                                                    :timestamp :%now})]
         (migrate!)
         (testing "column_settings field refs are updated"
@@ -696,17 +696,17 @@
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get "visualization_settings")))))
         (migrate! :down 46)
         (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
           (is (= (m/dissoc-in visualization-settings
-                              ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
+                              ["column_settings" (json/encode ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get "visualization_settings")))))))))
 
 (deftest migrate-legacy-dashboard-card-column-settings-field-refs-test
@@ -719,7 +719,7 @@
                                     ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
                                     ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
                                     ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             expected
             {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
@@ -727,7 +727,7 @@
                                     ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
                                                    :last_name   "Hughes"
@@ -754,7 +754,7 @@
                                                                      :creator_id          user-id
                                                                      :parameters          []})
             dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                         :visualization_settings (json/generate-string visualization-settings)
+                                                                         :visualization_settings (json/encode visualization-settings)
                                                                          :card_id      card-id
                                                                          :size_x       4
                                                                          :size_y       4
@@ -767,7 +767,7 @@
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
-                     json/parse-string))))
+                     json/decode))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
@@ -777,7 +777,7 @@
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
-                     json/parse-string))))
+                     json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
@@ -786,7 +786,7 @@
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
-                     json/parse-string
+                     json/decode
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
@@ -809,7 +809,7 @@
                                     ["ref" ["field" 4 nil]]                                   {"column_title" "4"}
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             expected
             {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
                                     ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
@@ -818,7 +818,7 @@
                                     ["ref" ["field" 4 {"join-alias" "Self-joined Table"}]]    {"column_title" "4"}
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
                                                    :last_name   "Hughes"
@@ -838,7 +838,7 @@
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
-                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :result_metadata        (json/encode result_metadata)
                                                    :visualization_settings "{}"
                                                    :database_id            database-id
                                                    :collection_id          nil})
@@ -846,7 +846,7 @@
                                                                      :creator_id          user-id
                                                                      :parameters          []})
             dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                         :visualization_settings (json/generate-string visualization-settings)
+                                                                         :visualization_settings (json/encode visualization-settings)
                                                                          :card_id      card-id
                                                                          :size_x       4
                                                                          :size_y       4
@@ -859,7 +859,7 @@
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
-                     json/parse-string))))
+                     json/decode))))
         (migrate! :down 46)
         (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
           (is (= visualization-settings
@@ -867,7 +867,7 @@
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
-                     json/parse-string))))))))
+                     json/decode))))))))
 
 (deftest revision-migrate-legacy-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-045: update dashboard cards' visualization_settings.column_settings legacy field refs"
@@ -879,7 +879,7 @@
                                     ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
                                     ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
                                     ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             expected
             {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
@@ -887,7 +887,7 @@
                                     ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
                                                    :last_name   "Hughes"
@@ -899,7 +899,7 @@
                                                   {:model     "Dashboard"
                                                    :model_id  1
                                                    :user_id   user-id
-                                                   :object    (json/generate-string dashboard)
+                                                   :object    (json/encode dashboard)
                                                    :timestamp :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
@@ -908,7 +908,7 @@
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
@@ -919,7 +919,7 @@
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
@@ -929,7 +929,7 @@
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get-in ["cards" 0 "visualization_settings"])
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
@@ -943,7 +943,7 @@
                                     ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "3"}
                                     ["name" "column_name"]                                    {"column_title" "4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             expected
             {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]             {"column_title" "THIS SHOULD TAKE PRECENDCE"}
                                     ["ref" ["field" 1 nil]]                                       {"column_title" "THIS SHOULD NOT TAKE PRECEDENCE"}
@@ -954,7 +954,7 @@
                                     ["ref" ["field" "column_name" {"base-type"  "type/Text"
                                                                    "join-alias" "Joined table"}]] {"column_title" "3"}
                                     ["name" "column_name"]                                        {"column_title" "4"}}
-                                   (update-keys json/generate-string))}
+                                   (update-keys json/encode))}
             user-id            (t2/insert-returning-pks! (t2/table-name :model/User)
                                                          {:first_name  "Howard"
                                                           :last_name   "Hughes"
@@ -973,15 +973,15 @@
                                                           :updated_at             :%now
                                                           :creator_id             user-id
                                                           :display                "table"
-                                                          :dataset_query          (json/generate-string {:database 1
-                                                                                                         :query    {:joins [{:alias        "Joined table"
-                                                                                                                             :condition    [:=
-                                                                                                                                            [:field 43 nil]
-                                                                                                                                            [:field 46 {:join-alias "Joined table"}]]
-                                                                                                                             :fields       :all
-                                                                                                                             :source-table 5}]
-                                                                                                                    :source-table 2}
-                                                                                                         :type     :query})
+                                                          :dataset_query          (json/encode {:database 1
+                                                                                                :query    {:joins [{:alias        "Joined table"
+                                                                                                                    :condition    [:=
+                                                                                                                                   [:field 43 nil]
+                                                                                                                                   [:field 46 {:join-alias "Joined table"}]]
+                                                                                                                    :fields       :all
+                                                                                                                    :source-table 5}]
+                                                                                                           :source-table 2}
+                                                                                                :type     :query})
                                                           :result_metadata        "{}"
                                                           :visualization_settings "{}"
                                                           :database_id            database-id
@@ -992,7 +992,7 @@
                                                   {:model     "Dashboard"
                                                    :model_id  1
                                                    :user_id   user-id
-                                                   :object    (json/generate-string dashboard)
+                                                   :object    (json/encode dashboard)
                                                    :timestamp :%now})]
         (migrate!)
         (testing "column_settings field refs are updated"
@@ -1001,17 +1001,17 @@
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
         (migrate! :down 46)
         (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
           (is (= (m/dissoc-in visualization-settings
-                              ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
+                              ["column_settings" (json/encode ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
-                     json/parse-string
+                     json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))))))
 
 (deftest migrate-database-options-to-database-settings-test
@@ -1030,17 +1030,17 @@
                     success-id                (first (t2/insert-returning-pks!
                                                       :model/Database
                                                       (merge default-db
-                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                             {:options  (json/encode {:persist-models-enabled true})
                                                               :settings {:database-enable-actions true}})))
                     options-nil-settings-id   (first (t2/insert-returning-pks!
                                                       :model/Database
                                                       (merge default-db
-                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                             {:options  (json/encode {:persist-models-enabled true})
                                                               :settings nil})))
                     options-empty-settings-id (first (t2/insert-returning-pks!
                                                       :model/Database
                                                       (merge default-db
-                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                             {:options  (json/encode {:persist-models-enabled true})
                                                               :settings {}})))
                     nil-options-id            (first (t2/insert-returning-pks!
                                                       :model/Database
@@ -1377,7 +1377,7 @@
 (deftest migrate-click-through-test
   (let [expect-correct-settings!
         (fn [f]
-          (let [card-vis       (json/generate-string
+          (let [card-vis       (json/encode
                                 {"column_settings"
                                  {"[\"ref\",[\"field-id\",2]]"
                                   {"view_as"       "link",
@@ -1394,7 +1394,7 @@
                                  "graph.dimensions"    ["CREATED_AT"],
                                  "graph.metrics"       ["count"],
                                  "graph.show_values"   true})
-                dashcard-vis   (json/generate-string
+                dashcard-vis   (json/encode
                                 {"click"            "link",
                                  "click_link_template"
                                  "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
@@ -1470,13 +1470,13 @@
 
 (defn- get-json-setting
   [setting-k]
-  (json/parse-string (t2/select-one-fn :value :setting :key (name setting-k))))
+  (json/decode (t2/select-one-fn :value :setting :key (name setting-k))))
 
 (defn- call-with-ldap-and-sso-configured! [ldap-group-mappings sso-group-mappings f]
   (mt/with-temporary-raw-setting-values
-    [ldap-group-mappings    (json/generate-string ldap-group-mappings)
-     saml-group-mappings    (json/generate-string sso-group-mappings)
-     jwt-group-mappings     (json/generate-string sso-group-mappings)
+    [ldap-group-mappings    (json/encode ldap-group-mappings)
+     saml-group-mappings    (json/encode sso-group-mappings)
+     jwt-group-mappings     (json/encode sso-group-mappings)
      saml-enabled           "true"
      ldap-enabled           "true"
      jwt-enabled            "true"]
@@ -1616,23 +1616,23 @@
           model            (new-instance-with-default :report_card {:dataset true :creator_id user-id :database_id db-id})
           card-2           (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
           card-revision-id (:id (new-instance-with-default :revision
-                                                           {:object    (json/generate-string (dissoc card :type))
+                                                           {:object    (json/encode (dissoc card :type))
                                                             :model     "Card"
                                                             :model_id  (:id card)
                                                             :user_id   user-id}))
           model-revision-id (:id (new-instance-with-default :revision
-                                                            {:object    (json/generate-string (dissoc model :type))
+                                                            {:object    (json/encode (dissoc model :type))
                                                              :model     "Card"
                                                              :model_id  (:id card)
                                                              :user_id   user-id}))
           ;; this is only here to test that the migration doesn't break when there's a deep nested map on mariadb see #41924
           _                (:id (new-instance-with-default :revision
-                                                           {:object    (json/generate-string deep-nested-map)
+                                                           {:object    (json/encode deep-nested-map)
                                                             :model     "Card"
                                                             :model_id  (:id card-2)
                                                             :user_id   user-id}))]
       (testing "sanity check revision object"
-        (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
           (testing "doesn't have type"
             (is (not (contains? card-revision-object "type"))))
           (testing "has dataset"
@@ -1640,15 +1640,15 @@
 
       (testing "after migration card revisions should have type"
         (migrate!)
-        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)
-              model-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision model-revision-id)]
+        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
           (is (= "question" (get card-revision-object "type")))
           (is (= "model" (get model-revision-object "type")))))
 
       (testing "rollback should remove type and keep dataset"
         (migrate! :down 48)
-        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)
-              model-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision model-revision-id)]
+        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
           (is (contains? card-revision-object "dataset"))
           (is (contains? model-revision-object "dataset"))
           (is (not (contains? card-revision-object "type")))
@@ -1662,19 +1662,19 @@
           card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
           viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
           card-revision-id (:id (new-instance-with-default :revision
-                                                           {:object    (json/generate-string
+                                                           {:object    (json/encode
                                                                         (assoc (dissoc card :type)
                                                                                :visualization_settings viz-settings))
                                                             :model     "Card"
                                                             :model_id  (:id card)
                                                             :user_id   user-id}))]
       (testing "sanity check revision object"
-        (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
           (testing "doesn't have type"
             (is (not (contains? card-revision-object "type"))))))
       (testing "after migration card revisions should have type"
         (migrate!)
-        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
           (is (= "question" (get card-revision-object "type")))
           (testing "original visualization_settings should be preserved"
             (is (= viz-settings
@@ -1691,19 +1691,19 @@
                                                                            :is_full_sync                true
                                                                            :is_on_demand                false})
                         db-manual-schedule     (new-instance-with-default :metabase_database
-                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                          {:details                     (json/encode {:let-user-control-scheduling true})
                                                                            :is_full_sync                true
                                                                            :is_on_demand                false
                                                                            :metadata_sync_schedule      "0 0 * * * ? *"
                                                                            :cache_field_values_schedule "0 0 2 * * ? *"})
                         db-on-demand           (new-instance-with-default :metabase_database
-                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                          {:details                     (json/encode {:let-user-control-scheduling true})
                                                                            :is_full_sync                false
                                                                            :is_on_demand                true
                                                                            :metadata_sync_schedule      "0 0 * * * ? *"
                                                                            :cache_field_values_schedule "0 0 2 * * ? *"})
                         db-never-scan          (new-instance-with-default :metabase_database
-                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                          {:details                     (json/encode {:let-user-control-scheduling true})
                                                                            :is_full_sync                false
                                                                            :is_on_demand                false
                                                                            :metadata_sync_schedule      "0 0 * * * ? *"
@@ -1802,7 +1802,7 @@
 (def ^:private area-bar-combo-cards-test-data
   {"stack display takes priority"
    {:card     {:display                "area"
-               :visualization_settings (json/generate-string
+               :visualization_settings (json/encode
                                         {:stackable.stack_type    "stacked"
                                          :stackable.stack_display "bar"})}
     :expected {:display                "bar"
@@ -1810,7 +1810,7 @@
 
    "series settings have no display"
    {:card     {:display                "area"
-               :visualization_settings (json/generate-string
+               :visualization_settings (json/encode
                                         {:stackable.stack_type "normalized"
                                          :series_settings      {:A {:display :bar}}})}
     :expected {:display                "area"
@@ -1819,14 +1819,14 @@
 
    "combo display has no stack type"
    {:card     {:display                "combo"
-               :visualization_settings (json/generate-string
+               :visualization_settings (json/encode
                                         {:stackable.stack_type "stacked"})}
     :expected {:display                "combo"
                :visualization_settings {}}}
 
    "series settings display can override combo if all equal, and area or bar"
    {:card     {:display                "combo"
-               :visualization_settings (json/generate-string
+               :visualization_settings (json/encode
                                         {:stackable.stack_type "stacked"
                                          :series_settings      {:A {:display :bar}
                                                                 :B {:display :bar}
@@ -1839,7 +1839,7 @@
 
    "series settings display do not override combo if not equal"
    {:card     {:display                "combo"
-               :visualization_settings (json/generate-string
+               :visualization_settings (json/encode
                                         {:stackable.stack_type "stacked"
                                          :series_settings      {:A {:display :bar}
                                                                 :B {:display :area}
@@ -1851,7 +1851,7 @@
 
    "series settings display do not override combo if all equal, but not area or bar"
    {:card     {:display                "combo"
-               :visualization_settings (json/generate-string
+               :visualization_settings (json/encode
                                         {:stackable.stack_type "normalized"
                                          :series_settings      {:A {:display :line}
                                                                 :B {:display :line}
@@ -1863,7 +1863,7 @@
 
    "any card with stackable.stack_display should have that key removed"
    {:card     {:display                "table"
-               :visualization_settings (json/generate-string
+               :visualization_settings (json/encode
                                         {:stackable.stack_display :line})}
     :expected {:display                "table"
                :visualization_settings {}}}})
@@ -1898,7 +1898,7 @@
           (let [cards (->> (t2/query {:select [:name :display :visualization_settings]
                                       :from   [:report_card]
                                       :where  [:in :id card-ids]})
-                           (map (fn [card] (update card :visualization_settings #(json/parse-string % keyword)))))]
+                           (map (fn [card] (update card :visualization_settings json/decode+kw))))]
             (doseq [{:keys [name] :as card} cards]
               (testing (format "Migrating a card where: %s" name)
                 (is (= (-> (get-in area-bar-combo-cards-test-data [name :expected])
@@ -2070,7 +2070,7 @@
                          [:name "count"]                                                        {:column_title "8"}
                          ;; unmatched column
                          [:ref [:field 9 nil]]                                                  {:column_title "9"}}
-                        (update-keys json/generate-string))})
+                        (update-keys json/encode))})
 
 (def ^:private viz-settings-with-name-keys
   {:column_settings (-> {[:name "C1"]           {:column_title "1"}
@@ -2083,7 +2083,7 @@
                          [:name "count"]        {:column_title "8"}
                          ;; unmatched column
                          [:ref [:field 9 nil]]  {:column_title "9"}}
-                        (update-keys json/generate-string))})
+                        (update-keys json/encode))})
 
 (defn- keyword-except-column-key [key]
   (if (str/starts-with? key "[") key (keyword key)))
@@ -2110,8 +2110,8 @@
                                                :creator_id             user-id
                                                :display                "table"
                                                :dataset_query          "{}"
-                                               :result_metadata        (json/generate-string result-metadata-for-viz-settings)
-                                               :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
+                                               :result_metadata        (json/encode result-metadata-for-viz-settings)
+                                               :visualization_settings (json/encode viz-settings-with-field-ref-keys)
                                                :database_id            database-id
                                                :collection_id          nil})]
         (migrate!)
@@ -2121,7 +2121,7 @@
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     (json/parse-string keyword-except-column-key)))))
+                     (json/decode keyword-except-column-key)))))
         (migrate! :down 49)
         (testing "After reversing the migration, column_settings are restored to field ref-based keys"
           (is (= viz-settings-with-field-ref-keys
@@ -2129,7 +2129,7 @@
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     (json/parse-string keyword-except-column-key)))))))))
+                     (json/decode keyword-except-column-key)))))))))
 
 (deftest update-legacy-column-keys-in-dashboard-card-viz-settings-test
   (testing "v51.2024-08-07T11:00:00"
@@ -2153,7 +2153,7 @@
                                                :creator_id             user-id
                                                :display                "table"
                                                :dataset_query          "{}"
-                                               :result_metadata        (json/generate-string result-metadata-for-viz-settings)
+                                               :result_metadata        (json/encode result-metadata-for-viz-settings)
                                                :visualization_settings "{}"
                                                :database_id            database-id
                                                :collection_id          nil})
@@ -2161,7 +2161,7 @@
                                                                      :creator_id          user-id
                                                                      :parameters          []})
             dashcard-id (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                        :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
+                                                                        :visualization_settings (json/encode viz-settings-with-field-ref-keys)
                                                                         :card_id      card-id
                                                                         :size_x       4
                                                                         :size_y       4
@@ -2174,7 +2174,7 @@
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
-                     (json/parse-string keyword-except-column-key)))))
+                     (json/decode keyword-except-column-key)))))
         (migrate! :down 49)
         (testing "After reversing the migration, column_settings are restored to field ref-based keys"
           (is (= viz-settings-with-field-ref-keys
@@ -2182,7 +2182,7 @@
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
-                     (json/parse-string keyword-except-column-key)))))))))
+                     (json/decode keyword-except-column-key)))))))))
 
 (defn- insert-returning-pk!
   [table record]
@@ -2215,15 +2215,15 @@
         dashboard-id (insert-returning-pk! :model/Dashboard {:name                "My Dashboard"
                                                              :creator_id          user-id
                                                              :parameters          []})
-        single-stage-dataset-query (json/generate-string {:type "query"
-                                                          :database database-id
-                                                          :query single-stage-query})
-        multi-stage-dataset-query (json/generate-string {:type "query"
-                                                         :database database-id
-                                                         :query multi-stage-query})
-        native-dataset-query (json/generate-string {:type "native"
-                                                    :database database-id
-                                                    :native native-query})
+        single-stage-dataset-query (json/encode {:type "query"
+                                                 :database database-id
+                                                 :query single-stage-query})
+        multi-stage-dataset-query (json/encode {:type "query"
+                                                :database database-id
+                                                :query multi-stage-query})
+        native-dataset-query (json/encode {:type "native"
+                                           :database database-id
+                                           :native native-query})
         single-stage-question-id (insert-returning-pk! (t2/table-name :model/Card)
                                                        {:name                   "Single-stage Question"
                                                         :created_at             :%now
@@ -2356,7 +2356,7 @@
                                                                            multi-stage-dashcard3-id ; stage 2
                                                                            multi-stage-model-dashcard-id]] ; stage 0
                                                        :order-by [:id]})
-                                            (map #(-> % :parameter_mappings (json/parse-string true)))))]
+                                            (map #(-> % :parameter_mappings json/decode+kw))))]
         (migrate!)
         (testing "After the migration, dimension parameter_mappings have stage numbers"
           (is (=? [(stage-0-pattern single-stage-question-id)
@@ -2389,7 +2389,7 @@
             viz-settings-generator
             (fn [dimensions]             ; 4 dimensions are consumed
               ;; crazy as it sounds, the FE uses the JSON encoded form of the dimensions as IDs and keys
-              (let [dimension-strs (mapv json/generate-string dimensions)
+              (let [dimension-strs (mapv json/encode dimensions)
                     dimension-keys (mapv keyword dimension-strs)
                     click-behavior (fn [target-id & dimension-indices]
                                      {:targetId target-id
@@ -2469,7 +2469,7 @@
                                                                      multi-stage-dashcard-id
                                                                      no-vs-dashcard-id]]
                                                  :order-by [:id]})
-                                      (map #(-> % :visualization_settings (json/parse-string true)))))]
+                                      (map #(-> % :visualization_settings json/decode+kw))))]
         (migrate!)
         (testing "After the migration, dimension parameterMappings have stage numbers"
           (is (= [(viz-settings-with-stage-numbers [single-stage-question-id dashboard-id native-question-id]

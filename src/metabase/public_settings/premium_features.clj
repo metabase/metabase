@@ -1,7 +1,6 @@
 (ns metabase.public-settings.premium-features
   "Settings related to checking premium token validity and which premium features it allows."
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
@@ -16,6 +15,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -133,9 +133,9 @@
                                                                                 :mb-version (:tag config/mb-version-info)}
                                                              :throw-exceptions false}))]
        (cond
-         (http/success? resp) (some-> body (json/parse-string keyword))
+         (http/success? resp) (some-> body json/decode+kw)
 
-         (<= 400 status 499) (some-> body (json/parse-string keyword))
+         (<= 400 status 499) (some-> body json/decode+kw)
 
          ;; exceptions are not cached.
          :else (throw (ex-info "An unknown error occurred when validating token." {:status status
@@ -226,7 +226,7 @@
                       ;; complicated
                       (catch Exception e2
                         (log/errorf e2 "Error fetching token status from %s:" store-url)
-                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body json/decode+kw))]
                           (or
                            body
                            {:valid         false

@@ -2,7 +2,6 @@
   "Functions for denormalizing input, prompt input generation, and sql handing.
   If this grows much, we might want to split these out into separate nses."
   (:require
-   [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -16,6 +15,7 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -198,7 +198,7 @@
   "Convert a map of {:models ...} to a json string summary of these models.
   This is used as a summary of the database in prompt engineering."
   [{:keys [models]}]
-  (let [json-str (json/generate-string
+  (let [json-str (json/encode
                   {:tables
                    (for [{model-name :name model-id :id :keys [result_metadata] :as _model} models]
                      {:table-id     model-id
@@ -416,7 +416,7 @@
   (log/info "Refreshing metabot prompt templates.")
   (let [all-templates (-> (metabot-settings/metabot-get-prompt-templates-url)
                           slurp
-                          (json/parse-string keyword))]
+                          json/decode+kw)]
     (-> (group-by (comp keyword :prompt_template) all-templates)
         (update-vals
          (fn [templates]
