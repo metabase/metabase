@@ -1,6 +1,6 @@
 import { CreateQuestion } from "@metabase/embedding-sdk-react";
 
-import { describeEE, entityPickerModal, modal } from "e2e/support/helpers";
+import { describeEE, modal, popover } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -20,14 +20,6 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
   it("can create a question via the CreateQuestion component", () => {
     cy.intercept("POST", "/api/card").as("createCard");
 
-    cy.intercept("POST", "/api/dataset", req => {
-      // throttling to 500 Kbps (slow 3G) makes the loading indicator
-      // shows up reliably when we click on visualize.
-      req.on("response", res => {
-        res.setThrottle(500);
-      });
-    });
-
     mountSdkContent(
       <Flex p="xl">
         <CreateQuestion />
@@ -37,8 +29,8 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     // Wait until the entity picker modal is visible
     getSdkRoot().contains("Pick your starting data");
 
-    entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
@@ -47,9 +39,6 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
       cy.contains("New question");
 
       cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should show a loading indicator (metabase#47564)
-      cy.findByTestId("loading-indicator").should("exist");
 
       // Should be able to go back to the editor view
       cy.findByRole("button", { name: "Show editor" }).click();

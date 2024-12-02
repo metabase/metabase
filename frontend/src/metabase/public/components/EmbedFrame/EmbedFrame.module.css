@@ -19,12 +19,6 @@ body {
   border-color: var(--mb-color-border);
 }
 
-/* A temporary solution until we migrated all colors in visualization to use semantic colors
-   e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
-.EmbedFrame svg text {
-  fill: var(--mb-color-text-primary);
-}
-
 .EmbedFrameHeader,
 .EmbedFrameFooter {
   color: var(--mb-color-text-primary);
@@ -77,7 +71,10 @@ body {
     transition: color 1s linear;
   }
 
+  /* A temporary solution until we migrated all colors in visualization to use semantic colors
+   e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
   .EmbedFrame svg text {
+    fill: var(--mb-color-text-primary);
     stroke: none !important;
   }
 
