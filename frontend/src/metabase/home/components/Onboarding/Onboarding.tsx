@@ -261,7 +261,7 @@ export const Onboarding = () => {
                 <Accordion.Panel>
                   <Stack spacing="lg">
                     <img
-                      alt={`Admin panel with the "Invite someone" button`}
+                      alt={t`Admin panel with the "Invite someone" button`}
                       className={S.image}
                       loading="lazy"
                       src="app/assets/img/onboarding_invite.png"
