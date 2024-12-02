@@ -11,4 +11,5 @@ export const SectionItems = styled.div`
   margin-bottom: 24px;
   border: 1px solid hsla(0, 0%, 94%, 1);
   border-radius: 4px;
+  overflow: hidden;
 `;
