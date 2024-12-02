@@ -155,20 +155,28 @@
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [search-ctx]
-  ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
-  ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-  {:text         [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
-   :view-count   (view-count-expr search.config/view-count-scaling-percentile)
-   :pinned       (truthy :pinned)
-   :bookmarked   bookmark-score-expr
-   :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
-   :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
-   :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model        (model-rank-exp search-ctx)
-   :mine         (equal :search_index.creator_id (:current-user-id search-ctx))
-   :exact        (equal [:lower :search_index.name] [:lower (:search-string search-ctx)])
-   :prefix       (prefix [:lower :search_index.name] (u/lower-case-en (:search-string search-ctx)))})
+  [{:keys [search-string limit-int] :as search-ctx}]
+  (if (and limit-int (zero? limit-int))
+    {:model       [:inline 1]}
+    ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
+    ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
+    {:text         [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
+     :view-count   (view-count-expr search.config/view-count-scaling-percentile)
+     :pinned       (truthy :pinned)
+     :bookmarked   bookmark-score-expr
+     :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
+     :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
+     :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
+     :model        (model-rank-exp search-ctx)
+     :mine         (equal :search_index.creator_id (:current-user-id search-ctx))
+     :exact        (if search-string
+                     ;; perform the lower casing within the database, in case it behaves differently to our helper
+                     (equal [:lower :search_index.name] [:lower search-string])
+                     [:inline 0])
+     :prefix       (if search-string
+                     ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
+                     (prefix [:lower :search_index.name] (u/lower-case-en search-string))
+                     [:inline 0])}))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

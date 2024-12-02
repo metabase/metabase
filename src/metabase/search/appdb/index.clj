@@ -150,7 +150,7 @@
   ([table-name]
    (boolean
     (when (exists? table-name)
-      (update-metadata! {:active-table table-name})))))
+      (update-metadata! {:active-table table-name :pending-table nil})))))
 
 (defn- document->entry [entity]
   (-> entity
