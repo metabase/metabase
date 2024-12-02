@@ -270,17 +270,17 @@ export function createQueryWithRelativeDateFilter({
   query = createQuery(),
   column = findDateTimeColumn(query),
   value = -20,
-  bucket = "day",
+  unit = "day",
   offsetValue = null,
-  offsetBucket = null,
+  offsetUnit = null,
   options = {},
 }: RelativeDateFilterOpts = {}) {
   const clause = Lib.relativeDateFilterClause({
     column,
     value,
-    bucket,
+    unit,
     offsetValue,
-    offsetBucket,
+    offsetUnit,
     options,
   });
   return createFilteredQuery(query, clause);

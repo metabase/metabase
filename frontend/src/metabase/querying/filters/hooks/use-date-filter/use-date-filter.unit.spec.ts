@@ -193,9 +193,9 @@ function getTestCases(
       expression: Lib.relativeDateFilterClause({
         column,
         value: -10,
-        bucket: "month",
+        unit: "month",
         offsetValue: null,
-        offsetBucket: null,
+        offsetUnit: null,
         options: {},
       }),
       expectedDisplayName: "Created At is in the previous 10 months",
@@ -212,9 +212,9 @@ function getTestCases(
       expression: Lib.relativeDateFilterClause({
         column,
         value: 10,
-        bucket: "month",
+        unit: "month",
         offsetValue: null,
-        offsetBucket: null,
+        offsetUnit: null,
         options: {},
       }),
       expectedDisplayName: "Created At is in the next 10 months",
@@ -231,9 +231,9 @@ function getTestCases(
       expression: Lib.relativeDateFilterClause({
         column,
         value: -10,
-        bucket: "month",
+        unit: "month",
         offsetValue: -2,
-        offsetBucket: "year",
+        offsetUnit: "year",
         options: {},
       }),
       expectedDisplayName:
@@ -251,9 +251,9 @@ function getTestCases(
       expression: Lib.relativeDateFilterClause({
         column,
         value: 10,
-        bucket: "month",
+        unit: "month",
         offsetValue: 2,
-        offsetBucket: "year",
+        offsetUnit: "year",
         options: {},
       }),
       expectedDisplayName:
