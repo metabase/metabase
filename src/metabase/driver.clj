@@ -671,7 +671,7 @@
     :describe-fields
 
     ;; Does the driver support a faster `sync-indexes` step by fetching all index metadata in a single collection?
-    ;; if so, `metabase.driver/describe-indexes` must be implemented instead of `metabase.driver/describe-table-indexes`
+    ;; If true, `metabase.driver/describe-indexes` must be implemented instead of `metabase.driver/describe-table-indexes`
     :describe-indexes
 
     ;; Does the driver support automatically adding a primary key column to a table for uploads?
