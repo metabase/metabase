@@ -275,12 +275,12 @@
         (let [{:keys [column value unit offset-value offset-unit options]} parts]
           (is (=? parts (lib.fe-util/relative-date-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/relative-date-filter-parts
-                          query -1 (lib.fe-util/relative-date-filter-clause column
-                                                                            value
-                                                                            unit
-                                                                            offset-value
-                                                                            offset-unit
-                                                                            options)))))))
+                         query -1 (lib.fe-util/relative-date-filter-clause column
+                                                                           value
+                                                                           unit
+                                                                           offset-value
+                                                                           offset-unit
+                                                                           options)))))))
     (testing "unsupported clauses"
       (are [clause] (= nil (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)))))
