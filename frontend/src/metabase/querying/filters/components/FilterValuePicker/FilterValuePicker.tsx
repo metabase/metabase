@@ -8,7 +8,6 @@ import { checkNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ListValuePicker } from "./ListValuePicker";
 import { SearchValuePicker } from "./SearchValuePicker";
 import { StaticValuePicker } from "./StaticValuePicker";
 import {
@@ -42,7 +41,6 @@ function FilterValuePicker({
   values: selectedValues,
   placeholder,
   autoFocus = false,
-  compact = false,
   shouldCreate,
   onChange,
   onFocus,
@@ -66,15 +64,23 @@ function FilterValuePicker({
     );
   }
 
-  if (fieldData && canListFieldValues(fieldData)) {
+  if (
+    fieldData &&
+    canListFieldValues(fieldData) &&
+    fieldInfo.fieldId &&
+    fieldInfo.searchFieldId
+  ) {
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
     return (
-      <ListValuePicker
-        fieldValues={fieldData.values}
+      <SearchValuePicker
+        fieldId={checkNotNull(fieldInfo.fieldId)}
+        searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
+        fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
-        placeholder={t`Search the list`}
+        columnDisplayName={columnInfo.displayName}
         shouldCreate={shouldCreate}
         autoFocus={autoFocus}
-        compact={compact}
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
