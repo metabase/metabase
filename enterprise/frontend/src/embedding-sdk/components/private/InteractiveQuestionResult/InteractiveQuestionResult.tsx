@@ -99,13 +99,17 @@ export const InteractiveQuestionResult = ({
           style={{ borderRadius: "0.5rem" }}
         >
           <Group spacing="xs">
-            {withChartTypeSelector && (<> <InteractiveQuestion.ChartTypeDropdown />
-            <Divider
-              mx="xs"
-              orientation="vertical"
-              // we have to do this for now because Mantine's divider overrides this color no matter what
-              color="var(--mb-color-border) !important"
-            /> </>)}
+            {withChartTypeSelector && (
+              <>
+                <InteractiveQuestion.ChartTypeDropdown />
+                <Divider
+                  mx="xs"
+                  orientation="vertical"
+                  // we have to do this for now because Mantine's divider overrides this color no matter what
+                  color="var(--mb-color-border) !important"
+                />
+              </>
+            )}
             <InteractiveQuestion.FilterDropdown />
             <InteractiveQuestion.SummarizeDropdown />
             <InteractiveQuestion.BreakoutDropdown />
@@ -113,7 +117,6 @@ export const InteractiveQuestionResult = ({
           <InteractiveQuestion.EditorButton
             isOpen={isEditorOpen}
             onClick={toggleEditor}
-
           />
         </Group>
       </Stack>
