@@ -1042,7 +1042,7 @@
      parts)))
 
 (defn ^:export string-filter-clause
-  "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  "Creates a string filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[string-filter-parts]]. To avoid mistakes the function requires `options` for all operators even
   though they might not be used. Note that the FE does not support `:is-null` and `:not-null` operators with string
   columns."
