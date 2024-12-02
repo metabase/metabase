@@ -200,7 +200,6 @@
                                         ;; can_manage_db determines whether we should enable model persistence settings
                                         :can_manage_db)))))
 
-
 (defn get-card
   "Get `Card` with ID."
   [id]

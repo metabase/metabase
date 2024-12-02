@@ -4099,11 +4099,11 @@
   (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                  :model/Card {card-id :id} {:dashboard_id dash-id}
                  :model/ModerationReview {mr-id :id} {:moderated_item_id   dash-id
-                                            :moderated_item_type "dashboard"
-                                            :moderator_id        (mt/user->id :rasta)
-                                            :most_recent         true
-                                            :status              "verified"
-                                            :text                "lookin good"}]
+                                                      :moderated_item_type "dashboard"
+                                                      :moderator_id        (mt/user->id :rasta)
+                                                      :most_recent         true
+                                                      :status              "verified"
+                                                      :text                "lookin good"}]
     (is (= {:name "My Dashboard"
             :id dash-id
             :moderation_status "verified"}
