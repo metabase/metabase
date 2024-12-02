@@ -88,7 +88,7 @@ export function getSectionId(column: ColumnItem["column"]): SectionId {
   }
 
   if (Lib.isCurrency(column)) {
-    return "text";
+    return "number";
   }
 
   if (Lib.isCity(column)) {
