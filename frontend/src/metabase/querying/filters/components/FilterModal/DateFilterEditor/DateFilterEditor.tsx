@@ -76,8 +76,6 @@ export function DateFilterEditor({
             const isSelected = option.shortcut === selectedOption?.shortcut;
 
             return (
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-expect-error
               <ToggleButton
                 key={option.shortcut}
                 radius="xl"
