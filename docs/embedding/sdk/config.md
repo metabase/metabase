@@ -8,7 +8,7 @@ title: Embedded analytics SDK - config
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-To use the SDK in your app, you need to import the `MetabaseProvider` component with an `authConfig`, like so:
+To use the SDK in your app, you need to import the `MetabaseProvider` component and provide it with an `authConfig` object, like so:
 
 ```typescript
 const authConfig = defineEmbeddingSdkAuthConfig({
