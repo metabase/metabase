@@ -60,7 +60,7 @@ export function useStringFilter({
     isValid,
     getDefaultValues,
     getFilterClause: (
-      operator: Lib.StringFilterOperatorName,
+      operator: Lib.StringFilterOperator,
       values: string[],
       options: Lib.StringFilterOptions,
     ) => getFilterClause(operator, column, values, options),

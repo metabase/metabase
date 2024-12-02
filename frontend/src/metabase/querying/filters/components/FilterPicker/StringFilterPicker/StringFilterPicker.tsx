@@ -49,7 +49,7 @@ export function StringFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.StringFilterOperatorName) => {
+  const handleOperatorChange = (newOperator: Lib.StringFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };

@@ -153,14 +153,7 @@ describe("filter", () => {
     const columnName = "LATITUDE";
     const column = findColumn(query, tableName, columnName);
 
-    it.each<Lib.CoordinateFilterOperatorName>([
-      "=",
-      "!=",
-      ">",
-      ">",
-      ">=",
-      "<=",
-    ])(
+    it.each<Lib.CoordinateFilterOperator>(["=", "!=", ">", ">", ">=", "<="])(
       'should be able to create and destructure a coordinate filter with "%s" operator and 1 value',
       operator => {
         const { filterParts, columnInfo } = addCoordinateFilter(
@@ -181,7 +174,7 @@ describe("filter", () => {
       },
     );
 
-    it.each<Lib.CoordinateFilterOperatorName>(["=", "!="])(
+    it.each<Lib.CoordinateFilterOperator>(["=", "!="])(
       'should be able to create and destructure a coordinate filter with "%s" operator and multiple values',
       operator => {
         const { filterParts, columnInfo } = addCoordinateFilter(
@@ -202,7 +195,7 @@ describe("filter", () => {
       },
     );
 
-    it.each<Lib.CoordinateFilterOperatorName>(["between"])(
+    it.each<Lib.CoordinateFilterOperator>(["between"])(
       'should be able to create and destructure a coordinate filter with "%s" operator and exactly 2 values',
       operator => {
         const { filterParts, columnInfo } = addCoordinateFilter(

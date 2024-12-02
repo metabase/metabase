@@ -5,14 +5,12 @@ import type { CardId, DatasetColumn, TemporalUnit } from "metabase-types/api";
 
 import {
   isBoolean,
-  isCoordinate,
   isDateOrDateTime,
   isNumeric,
   isStringOrStringLike,
   isTime,
 } from "./column_types";
 import {
-  COORDINATE_FILTER_OPERATORS,
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
@@ -32,7 +30,6 @@ import type {
   BooleanFilterParts,
   Bucket,
   ColumnMetadata,
-  CoordinateFilterOperatorName,
   CoordinateFilterParts,
   DefaultFilterOperatorName,
   DefaultFilterParts,
@@ -136,11 +133,7 @@ export function coordinateFilterClause({
   longitudeColumn,
   values,
 }: CoordinateFilterParts): ExpressionClause {
-  const args =
-    operator === "inside"
-      ? [column, longitudeColumn ?? column, ...values]
-      : [column, ...values];
-  return expressionClause(operator, args);
+  return ML.coordinate_filter_clause(operator, column, longitudeColumn, values);
 }
 
 export function coordinateFilterParts(
@@ -148,33 +141,7 @@ export function coordinateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): CoordinateFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isCoordinateOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...otherArgs] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isNumeric(column) ||
-    !isCoordinate(column)
-  ) {
-    return null;
-  }
-
-  if (operator === "inside") {
-    const [longitudeColumn, ...values] = otherArgs;
-    if (isColumnMetadata(longitudeColumn) && isNumberLiteralArray(values)) {
-      return { operator, column, longitudeColumn, values };
-    }
-  } else {
-    const values = otherArgs;
-    if (isNumberLiteralArray(values)) {
-      return { operator, column, values };
-    }
-  }
-
-  return null;
+  return ML.coordinate_filter_parts(query, stageIndex, filterClause);
 }
 
 export function booleanFilterClause({
@@ -491,17 +458,6 @@ function isStringLiteralArray(arg: unknown): arg is string[] {
 
 function isNumberLiteral(arg: unknown): arg is number {
   return typeof arg === "number";
-}
-
-function isNumberLiteralArray(arg: unknown): arg is number[] {
-  return Array.isArray(arg) && arg.every(isNumberLiteral);
-}
-
-function isCoordinateOperator(
-  operator: ExpressionOperatorName,
-): operator is CoordinateFilterOperatorName {
-  const operators: ReadonlyArray<string> = COORDINATE_FILTER_OPERATORS;
-  return operators.includes(operator);
 }
 
 function isSpecificDateOperator(

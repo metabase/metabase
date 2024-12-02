@@ -1082,6 +1082,27 @@
            :column   column
            :values   (to-array (map clj->js values))})))
 
+(defn ^:export coordinate-filter-clause
+  "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
+  created expression with [[coordinate-filter-parts]]."
+  [operator column longitude-column values]
+  (lib.core/coordinate-filter-clause (keyword operator)
+                                     column
+                                     longitude-column
+                                     (js->clj values)))
+
+(defn ^:export coordinate-filter-parts
+  "Destructures a coordinate filter clause created by [[coordinate-filter-clause]]. Returns `nil` if the clause does not
+  match the expected shape. Unlike regular numeric filters, coordinate filters do not support `:is-null` and
+  `:not-null`. There is also a special `:inside` operator that requires both latitude and longitude columns."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/coordinate-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column longitude-column values]} filter-parts]
+      #js {:operator        (name operator)
+           :column          column
+           :longitudeColumn longitude-column
+           :values          (to-array (map clj->js values))})))
+
 (defn ^:export boolean-filter-clause
   "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[boolean-filter-parts]]."

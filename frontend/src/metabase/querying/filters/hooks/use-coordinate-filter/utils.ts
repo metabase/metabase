@@ -24,15 +24,13 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(
-  operator: Lib.CoordinateFilterOperatorName,
-) {
+export function getOptionByOperator(operator: Lib.CoordinateFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
-): Lib.CoordinateFilterOperatorName {
+): Lib.CoordinateFilterOperator {
   return getDefaultAvailableOperator(availableOptions, "between");
 }
 
@@ -58,14 +56,14 @@ export function getDefaultSecondColumn(
 }
 
 export function canPickColumns(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   columns: Lib.ColumnMetadata[],
 ) {
   return operator === "inside" && columns.length > 1;
 }
 
 export function getDefaultValues(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   values: NumberValue[],
 ): NumberValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
@@ -79,7 +77,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberValue[],
@@ -88,7 +86,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberValue[],
@@ -100,7 +98,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberValue[],
@@ -116,7 +114,7 @@ function getFilterParts(
 }
 
 function getSimpleFilterParts(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
 ): Lib.CoordinateFilterParts | undefined {
@@ -136,7 +134,7 @@ function getSimpleFilterParts(
 }
 
 function getBetweenFilterParts(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
 ): Lib.CoordinateFilterParts | undefined {
@@ -165,7 +163,7 @@ function getBetweenFilterParts(
 }
 
 function getInsideFilterParts(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberValue[],
