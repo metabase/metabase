@@ -136,7 +136,9 @@
       {:operator :>=, :column column, :values [10]}         (lib.filter/>= column 10)
       {:operator :<, :column column, :values [10]}          (lib.filter/< column 10)
       {:operator :<=, :column column, :values [10]}         (lib.filter/<= column 10)
-      {:operator :between, :column column, :values [10 20]} (lib.filter/between column 10 20))))
+      {:operator :between, :column column, :values [10 20]} (lib.filter/between column 10 20)
+      nil                                                   (lib.expression/+ column 10)
+      nil                                                   (lib.filter/is-null (meta/field-metadata :venues :name)))))
 
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
