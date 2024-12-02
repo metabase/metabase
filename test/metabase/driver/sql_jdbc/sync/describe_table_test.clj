@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-table-test
   (:require
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -25,6 +24,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- uses-default-describe-table? [driver]
@@ -414,7 +414,7 @@
 (mt/defdataset big-json
   [["big_json_table"
     [{:field-name "big_json" :base-type :type/JSON}]
-    [[(json/generate-string (into {} (for [x (range 300)] [x :dobbs])))]]]])
+    [[(json/encode (into {} (for [x (range 300)] [x :dobbs])))]]]])
 
 (deftest ^:parallel describe-big-nested-field-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
@@ -454,15 +454,15 @@
      ;; in the second row, both have a "b" key, except `long_json` has a longer value.
     [{:field-name "short_json", :base-type :type/JSON}
      {:field-name "long_json",  :base-type :type/JSON}]
-    [[(json/generate-string {:a "x"}) (json/generate-string {:a "x"})]
-     [(json/generate-string {:b "y"}) (json/generate-string {:b (apply str (repeat 10 "y"))})]]]])
+    [[(json/encode {:a "x"}) (json/encode {:a "x"})]
+     [(json/encode {:b "y"}) (json/encode {:b (apply str (repeat 10 "y"))})]]]])
 
 (deftest long-json-sample-json-query-test
   (testing "Long JSON values should be omitted from the sample for describe-table (#45163)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (when-not (mysql/mariadb? (mt/db))
         (mt/with-temporary-setting-values [sql-jdbc.describe-table/nested-field-columns-value-length-limit
-                                           (dec (count (json/generate-string {:b (apply str (repeat 10 "y"))})))]
+                                           (dec (count (json/encode {:b (apply str (repeat 10 "y"))})))]
           (mt/dataset long-json
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -471,7 +471,7 @@
                   pks         ["id"]
                   sample      (fn []
                                 (let [rows (#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks)]
-                                  (into #{} (map #(update-vals % json/parse-string)) rows)))]
+                                  (into #{} (map #(update-vals % json/decode)) rows)))]
               (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
                        {:short_json {"b" "y"}, :long_json nil}}
                      (sample)))

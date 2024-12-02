@@ -4,7 +4,6 @@
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
   (:require
-   [cheshire.core :as json]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -28,6 +27,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -390,7 +390,7 @@
             (::mb.viz/column-settings viz-settings))
         (update-keys (fn [k]
                        (if (string? k)
-                         (-> k json/parse-string last index-in-breakouts)
+                         (-> k json/decode last index-in-breakouts)
                          (->> k ::mb.viz/column-name index-in-breakouts))))
         (update-vals (comp keyword :pivot_table.column_sort_order)))))
 

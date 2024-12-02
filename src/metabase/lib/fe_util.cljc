@@ -1,5 +1,6 @@
 (ns metabase.lib.fe-util
   (:require
+   [inflections.core :as inflections]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
@@ -126,8 +127,23 @@
                       (clojure.core/and
                        (temporal? maybe-clause)
                        (lib.util/clause? maybe-clause)
-                       (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))]
+                       (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))
+        ->unit {:get-hour :hour-of-day
+                :get-month :month-of-year
+                :get-quarter :quarter-of-year}]
     (lib.util.match/match-one filter-clause
+      [:= _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
+      (inflections/plural (u.time/format-unit b :day-of-week-iso))
+
+      [:!= _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
+      (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit b :day-of-week-iso)))
+
+      [:= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
+      (u.time/format-unit b (->unit f))
+
+      [:!= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
+      (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
+
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 

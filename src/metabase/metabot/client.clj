@@ -1,7 +1,7 @@
 (ns metabase.metabot.client
   (:require
-   [cheshire.core :as json]
    [metabase.metabot.settings :as metabot-settings]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
 
@@ -19,7 +19,7 @@
           ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
          (if-some [status (:status (ex-data e))]
            (let [{:keys [body]} (ex-data e)
-                 {:keys [error]} (json/parse-string body keyword)
+                 {:keys [error]} (json/decode+kw body)
                  {error-type :type :keys [message code]} error]
              (case (int status)
                400 (do
