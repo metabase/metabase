@@ -92,7 +92,7 @@
     expression-clause :- ::lib.schema.expression/expression]
    (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
          ->maybe-col #(when (lib.util/ref-clause? %)
-                       (column-metadata-from-ref query stage-number %))]
+                        (column-metadata-from-ref query stage-number %))]
      {:lib/type :mbql/expression-parts
       :operator op
       :options  options
@@ -209,7 +209,7 @@
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
-      {:operator op, :column (ref->col col-ref), :values [] }
+      {:operator op, :column (ref->col col-ref), :values []}
 
       ;; multiple arguments
       [(op :guard #{:= :!=}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
@@ -254,7 +254,7 @@
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolea-col?)]
-      {:operator op, :column (ref->col col-ref), :values [] }
+      {:operator op, :column (ref->col col-ref), :values []}
 
       ;; exactly 1 argument
       [(op :guard #{:=}) _ (col-ref :guard boolea-col?) (arg :guard boolean?)]
@@ -336,12 +336,12 @@
        [:relative-datetime _
         (end-value :guard number?)
         (end-unit :guard keyword?)]]
-       {:column       (ref->col col-ref)
-        :value        (if (pos? offset-value) start-value end-value)
-        :unit         start-unit
-        :offset-value (- offset-value)
-        :offset-unit  offset-unit
-        :options      {}})))
+      {:column       (ref->col col-ref)
+       :value        (if (pos? offset-value) start-value end-value)
+       :unit         start-unit
+       :offset-value (- offset-value)
+       :offset-unit  offset-unit
+       :options      {}})))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.

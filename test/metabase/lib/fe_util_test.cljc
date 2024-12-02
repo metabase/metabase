@@ -170,10 +170,10 @@
                                                                                                     column
                                                                                                     values
                                                                                                     options)))))))
-  (testing "unsupported clauses"
-    (are [clause] (= nil (lib.fe-util/string-filter-parts query -1 clause))
-      (lib.expression/concat column "A")
-      (lib.filter/is-null column)))))
+    (testing "unsupported clauses"
+      (are [clause] (= nil (lib.fe-util/string-filter-parts query -1 clause))
+        (lib.expression/concat column "A")
+        (lib.filter/is-null column)))))
 
 (deftest ^:parallel number-filter-parts-test
   (let [query lib.tu/venues-query
@@ -195,10 +195,10 @@
           (is (=? parts (lib.fe-util/number-filter-parts query -1 (lib.fe-util/number-filter-clause operator
                                                                                                     column
                                                                                                     values)))))))
-  (testing "unsupported clauses"
-    (are [clause] (= nil (lib.fe-util/number-filter-parts query -1 clause))
-      (lib.expression/+ column 10)
-      (lib.filter/is-null (meta/field-metadata :venues :name))))))
+    (testing "unsupported clauses"
+      (are [clause] (= nil (lib.fe-util/number-filter-parts query -1 clause))
+        (lib.expression/+ column 10)
+        (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
 (deftest ^:parallel boolean-filter-parts-test
   (let [query  (-> lib.tu/venues-query
@@ -216,10 +216,10 @@
           (is (=? expected (lib.fe-util/boolean-filter-parts query -1 (lib.fe-util/boolean-filter-clause operator
                                                                                                          column
                                                                                                          values)))))))
-  (testing "unsupported clauses"
-    (are [clause] (= nil (lib.fe-util/boolean-filter-parts query -1 clause))
-      (lib.filter/!= column true)
-      (lib.filter/is-null (meta/field-metadata :venues :name))))))
+    (testing "unsupported clauses"
+      (are [clause] (= nil (lib.fe-util/boolean-filter-parts query -1 clause))
+        (lib.filter/!= column true)
+        (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
 (deftest ^:parallel relative-date-filter-parts-test
   (let [query lib.tu/venues-query

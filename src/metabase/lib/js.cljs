@@ -1048,9 +1048,9 @@
   columns."
   [operator column values options]
   (lib.core/string-filter-clause (keyword operator)
-                                  column
-                                  (js->clj values)
-                                  (-> options js->clj (update-keys js-key->cljs-key))))
+                                 column
+                                 (js->clj values)
+                                 (-> options js->clj (update-keys js-key->cljs-key))))
 
 (defn ^:export string-filter-parts
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
