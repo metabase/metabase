@@ -24,13 +24,15 @@
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
+   [metabase.util.polyfills]
+   [nano-id.core :as nano-id]
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.lang Reflector)
            (clojure.core.protocols CollReduce)
            (java.text Normalizer Normalizer$Form)
-           (java.util Locale)
+           (java.util Locale Random)
            (org.apache.commons.validator.routines RegexValidator UrlValidator)))
   #?(:cljs (:require-macros [camel-snake-kebab.internals.macros :as csk.macros]
                             [metabase.util])))
@@ -56,7 +58,6 @@
                         encode-base64
                         filtered-stacktrace
                         full-exception-chain
-                        generate-nano-id
                         host-port-up?
                         parse-currency
                         poll
@@ -1153,3 +1154,22 @@
   (let [cnt (volatile! 0)]
     (reduce (fn [_ item] (vswap! cnt inc) (proc item)) nil reducible)
     @cnt))
+
+(defn generate-nano-id
+  "Generates a random NanoID string. Usually these are used for the entity_id field of various models.
+
+  If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
+  producing the same value every time. This is only supported on the JVM!"
+  ([] (nano-id/nano-id))
+  ([seed-str]
+   #?(:clj  (let [seed (Long/parseLong seed-str 16)
+                  rnd  (Random. seed)
+                  gen  (nano-id/custom
+                        "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                        21
+                        (fn [len]
+                          (let [ba (byte-array len)]
+                            (.nextBytes rnd ba)
+                            ba)))]
+              (gen))
+      :cljs (throw (ex-info "Seeded NanoIDs are not supported in CLJS" {:seed-str seed-str})))))

@@ -3,6 +3,7 @@ import {
   assertSheetRowsCount,
   createNativeQuestion,
   createPublicQuestionLink,
+  describeEE,
   downloadAndAssert,
   filterWidget,
   main,
@@ -12,7 +13,9 @@ import {
   openSharingMenu,
   restore,
   saveQuestion,
+  setTokenFeatures,
   updateSetting,
+  visitPublicQuestion,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -197,8 +200,20 @@ describe("scenarios > public > question", () => {
       });
     });
   });
+});
 
-  it("should allow to set locale from the `locale` query parameter", () => {
+describeEE("scenarios [EE] > public > question", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
+
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+
+    updateSetting("enable-public-sharing", true);
+  });
+
+  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
     createNativeQuestion(
       {
         name: "Native question with a parameter",
@@ -220,13 +235,14 @@ describe("scenarios > public > question", () => {
     );
 
     cy.get("@questionId").then(id => {
-      cy.request("POST", `/api/card/${id}/public_link`).then(
-        ({ body: { uuid } }) => {
-          cy.visit(
-            `/public/question/${uuid}?locale=de&some_parameter=some_value`,
-          );
+      visitPublicQuestion(id, {
+        params: {
+          some_parameter: "some_value",
         },
-      );
+        hash: {
+          locale: "de",
+        },
+      });
     });
 
     main().findByText("Februar 11, 2025");

@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.models.database-test
   (:require
-   [cheshire.core :refer [decode encode]]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
@@ -19,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -59,7 +59,7 @@
                  (trigger-for-db db-id))))))))
 
 (deftest can-read-database-setting-test
-  (let [encode-decode (fn [obj] (decode (encode obj)))
+  (let [encode-decode (comp json/decode json/encode)
         pg-db         (mi/instance
                        Database
                        {:description nil
@@ -102,7 +102,7 @@
              (t2/update! Database (:id database) {:engine :sqlite})))))))
 
 (deftest ^:parallel sensitive-data-redacted-test
-  (let [encode-decode (fn [obj] (decode (encode obj)))
+  (let [encode-decode (comp json/decode json/encode)
         project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
         pg-db         (mi/instance

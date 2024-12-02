@@ -1,7 +1,6 @@
 (ns metabase.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
-   [cheshire.core :as json]
    [clojure.walk :as walk]
    [metabase.db :as mdb]
    [metabase.lib.core :as lib]
@@ -10,6 +9,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -63,7 +63,7 @@
      ;; new entries, so at some point in the future we can take this out, and save a DB call.
      (pos? (t2/update! Query
                        {:query_hash query-hash, :query nil}
-                       {:query                 (json/generate-string query)
+                       {:query                 (json/encode query)
                         :average_execution_time avg-execution-time}))
      ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
      ;; updating query on every single UPDATE)

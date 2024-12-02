@@ -5,6 +5,7 @@ export * from "./api";
 export * from "./api-key";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
+export * from "./bug-report";
 export * from "./card";
 export * from "./cloud-migration";
 export * from "./collection";

@@ -10,7 +10,7 @@ export const getMilestones = async ({
   owner,
   repo,
   state = "open",
-}: GithubProps & { state?: 'open' | 'closed' }) => {
+}: GithubProps & { state?: "open" | "closed" }) => {
   const milestones = await github.paginate(github.rest.issues.listMilestones, {
     owner,
     repo,
@@ -26,7 +26,7 @@ export const findMilestone = async ({
   owner,
   repo,
   state,
-}: ReleaseProps & { state?: 'open' | 'closed'}) => {
+}: ReleaseProps & { state?: "open" | "closed" }) => {
   const milestones = await getMilestones({ github, owner, repo, state });
   const expectedMilestoneName = getMilestoneName(version);
 
@@ -85,8 +85,17 @@ export const getMilestoneIssues = async ({
   repo,
   state = "closed",
   milestoneStatus,
-}: ReleaseProps & { state?: "closed" | "open"; milestoneStatus?: 'open' | 'closed' }): Promise<Issue[]> => {
-  const milestone = await findMilestone({ version, github, owner, repo, state: milestoneStatus });
+}: ReleaseProps & {
+  state?: "closed" | "open";
+  milestoneStatus?: "open" | "closed";
+}): Promise<Issue[]> => {
+  const milestone = await findMilestone({
+    version,
+    github,
+    owner,
+    repo,
+    state: milestoneStatus,
+  });
 
   if (!milestone) {
     return [];
@@ -143,7 +152,7 @@ export const tagRelease = async ({
 
 const _issueCache: Record<number, Issue> = {};
 
-export async function getIssueWithCache ({
+export async function getIssueWithCache({
   github,
   owner,
   repo,
@@ -153,14 +162,16 @@ export async function getIssueWithCache ({
     return _issueCache[issueNumber];
   }
 
-  const issue = await github.rest.issues.get({
-    owner,
-    repo,
-    issue_number: issueNumber,
-  }).catch((err) => {
-    console.log(err);
-    return null;
-  });
+  const issue = await github.rest.issues
+    .get({
+      owner,
+      repo,
+      issue_number: issueNumber,
+    })
+    .catch((err: Error) => {
+      console.log(err);
+      return null;
+    });
 
   if (issue?.data) {
     _issueCache[issueNumber] = issue.data as Issue;
@@ -174,19 +185,22 @@ function checksPassed(checks: GithubCheck[]) {
   // because only a few checks have triggered
   const MIN_TOTAL_CHECKS = 95; // v49 has 96 checks, v50 has 99 checks
 
-  const failedChecks = checks.filter((check) =>
-    !["success", "skipped"].includes(check.conclusion ?? ''));
+  const failedChecks = checks.filter(
+    check => !["success", "skipped"].includes(check.conclusion ?? ""),
+  );
 
-  const pendingChecks = checks.filter((check) => check.status === "in_progress");
+  const pendingChecks = checks.filter(check => check.status === "in_progress");
   const totalChecks = checks.length;
 
   const sha = checks[0]?.head_sha;
 
   console.log({ sha, totalChecks, failedChecks, pendingChecks });
 
-  return failedChecks.length === 0 &&
+  return (
+    failedChecks.length === 0 &&
     pendingChecks.length === 0 &&
-    totalChecks >= MIN_TOTAL_CHECKS;
+    totalChecks >= MIN_TOTAL_CHECKS
+  );
 }
 
 export async function getChecksForRef({
@@ -244,24 +258,26 @@ export async function hasCommitBeenReleased({
   repo,
   ref,
   majorVersion,
-}: GithubProps & { ref: string, majorVersion: number }) {
-    // TODO: a better approach would be to fetch the ref and see if it has any release tags
-    const lastTag = await getLastReleaseTag({
-      github, owner, repo,
-      version: `v0.${majorVersion}.0`,
-      ignorePatches: false,
-      ignorePreReleases: false,
-    });
+}: GithubProps & { ref: string; majorVersion: number }) {
+  // TODO: a better approach would be to fetch the ref and see if it has any release tags
+  const lastTag = await getLastReleaseTag({
+    github,
+    owner,
+    repo,
+    version: `v0.${majorVersion}.0`,
+    ignorePatches: false,
+    ignorePreReleases: false,
+  });
 
-    const tagDetail = await github.rest.git.getRef({
-      owner,
-      repo,
-      ref: `tags/${lastTag}`,
-    });
+  const tagDetail = await github.rest.git.getRef({
+    owner,
+    repo,
+    ref: `tags/${lastTag}`,
+  });
 
-    const lastTagSha = tagDetail.data.object.sha;
+  const lastTagSha = tagDetail.data.object.sha;
 
-    console.log({ lastTag, lastTagSha, ref });
+  console.log({ lastTag, lastTagSha, ref });
 
-    return lastTagSha === ref;
+  return lastTagSha === ref;
 }

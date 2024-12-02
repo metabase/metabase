@@ -13,7 +13,7 @@ const getConfig = baseUrl => {
 };
 
 const generateSnapshots = async (baseUrl, exitFunction) => {
-  // We only ever care about a broswer out of all possible user arguments,
+  // We only ever care about a browser out of all possible user arguments,
   // when it comes to the snapshot generation.
   // Anything else could result either in a failure or in a wrong database snapshot!
   const { browser } = await parseArguments(args);

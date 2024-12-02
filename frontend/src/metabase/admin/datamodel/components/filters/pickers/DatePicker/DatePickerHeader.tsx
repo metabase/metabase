@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import type { FilterMBQL } from "metabase-lib/v1/queries/structured/Filter";
 
 import type { DateOperator } from "./DatePicker";
 import { DATE_OPERATORS } from "./DatePicker";
@@ -11,7 +11,7 @@ type Props = {
   className?: string;
   isSidebar?: boolean;
 
-  filter: Filter;
+  filter: FilterMBQL;
   operators?: DateOperator[];
   onBack?: () => void;
   onFilterChange: (filter: any[]) => void;
@@ -25,24 +25,15 @@ export default function DatePickerHeader({
   onBack,
 }: Props) {
   const [_op, _field] = filter;
-  const dimension = filter.dimension?.();
   const operator = _.find(operators, o => o.test(filter));
   const tabs = operators.filter(o => o.group === operator?.group);
 
   if (operator?.name === "exclude") {
-    const hasTemporalUnit = dimension?.temporalUnit();
-    return onBack || hasTemporalUnit ? (
+    return onBack ? (
       <Container>
         <BackButton
           onClick={() => {
-            if (hasTemporalUnit) {
-              onFilterChange([
-                "!=",
-                dimension?.withoutTemporalBucketing().mbql(),
-              ]);
-            } else {
-              onBack?.();
-            }
+            onBack?.();
           }}
           icon="chevronleft"
         >

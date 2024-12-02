@@ -177,13 +177,13 @@ describe("(metabase#46714)", () => {
 
     cy.visit("/admin/datamodel/segment/create");
 
-    cy.findByTestId("gui-builder").findByText("Select a table").click();
+    cy.findByTestId("segment-editor").findByText("Select a table").click();
 
-    popover().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Orders").click();
     });
 
-    cy.findByTestId("gui-builder")
+    cy.findByTestId("segment-editor")
       .findByText("Add filters to narrow your answer")
       .click();
   });
@@ -191,13 +191,9 @@ describe("(metabase#46714)", () => {
   it("should allow users to apply relative date options in the segment date picker", () => {
     popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates...").click();
-      cy.findByRole("button", { name: "Previous" }).click();
-      cy.findByLabelText("Options").click();
-    });
-
-    cy.findByTestId("relative-date-picker-options").within(() => {
-      cy.findByText("Starting from...").click();
+      cy.findByText("Relative dates…").click();
+      cy.findByRole("tab", { name: "Previous" }).click();
+      cy.findByLabelText("Starting from…").click();
     });
 
     relativeDatePicker.setValue({ value: 68, unit: "day" });
@@ -209,9 +205,9 @@ describe("(metabase#46714)", () => {
 
     popover().findByText("Add filter").click();
 
-    cy.findByTestId("filter-widget-target").should(
+    cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At  Previous 68 Days, starting 70 days ago",
+      "Created At is in the previous 68 days, starting 70 days ago",
     );
   });
 
@@ -220,16 +216,15 @@ describe("(metabase#46714)", () => {
       cy.findByText("Total").click();
     });
 
-    cy.findByTestId("operator-select").should("have.value", "Equal to").click();
-    cy.findByTestId("select-dropdown")
-      .should("exist")
-      .findByText("Less than")
+    cy.findByLabelText("Filter operator")
+      .should("have.text", "Between")
       .click();
-    cy.findByTestId("operator-select").should("have.value", "Less than");
-    cy.findByTestId("field-values-widget").clear().type("1000");
+    popover().last().findByText("Less than").click();
+    cy.findByLabelText("Filter operator").should("have.text", "Less than");
+    popover().findByPlaceholderText("Enter a number").clear().type("1000");
     popover().findByText("Add filter").click();
 
-    cy.findByTestId("filter-widget-target").should(
+    cy.findByTestId("filter-pill").should(
       "have.text",
       "Total is less than 1000",
     );

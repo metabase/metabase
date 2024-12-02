@@ -24,7 +24,6 @@ import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import {
   EmptyStateContainer,
@@ -109,6 +108,16 @@ export function SchemaTableAndFieldDataSelector(props) {
       getTriggerElementContent={FieldTrigger}
       // We don't want to change styles when there's a different trigger element
       isMantine={!props.getTriggerElementContent}
+      {...props}
+    />
+  );
+}
+
+export function FieldDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[FIELD_STEP]}
+      getTriggerElementContent={FieldTrigger}
       {...props}
     />
   );
@@ -336,7 +345,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTableId: sourceId,
     } = this.props;
 
-    if (!this.isLoadingDatasets() && !activeStep) {
+    if (!this.isSearchLoading() && !activeStep) {
       await this.hydrateActiveStep();
     }
 
@@ -418,7 +427,10 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  isLoadingDatasets = () => this.props.loading;
+  isSearchLoading = () => {
+    const { models, metrics, allLoading } = this.props;
+    return models == null || metrics == null || allLoading;
+  };
 
   getCardType() {
     const { selectedDataBucketId, savedEntityType } = this.state;
@@ -546,7 +558,7 @@ export class UnconnectedDataSelector extends Component {
   getPreviousStep() {
     const { steps } = this.props;
     const { activeStep } = this.state;
-    if (this.isLoadingDatasets() || activeStep === null) {
+    if (this.isSearchLoading() || activeStep === null) {
       return null;
     }
 
@@ -943,7 +955,7 @@ export class UnconnectedDataSelector extends Component {
   handleClose = () => {
     const { onClose } = this.props;
     this.setState({ searchText: "" });
-    if (typeof onProps === "function") {
+    if (typeof onClose === "function") {
       onClose();
     }
   };
@@ -998,7 +1010,8 @@ export class UnconnectedDataSelector extends Component {
       selectedDataBucketId,
       selectedTable,
     } = this.state;
-    const { canChangeDatabase, selectedDatabaseId } = this.props;
+    const { canChangeDatabase, selectedDatabaseId, selectedCollectionId } =
+      this.props;
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
@@ -1007,7 +1020,7 @@ export class UnconnectedDataSelector extends Component {
     const isPickerOpen =
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
-    if (this.isLoadingDatasets()) {
+    if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
     }
 
@@ -1037,11 +1050,7 @@ export class UnconnectedDataSelector extends Component {
           {!isSearchActive &&
             (isPickerOpen ? (
               <SavedEntityPicker
-                collectionName={
-                  selectedTable &&
-                  selectedTable.schema &&
-                  getSchemaName(selectedTable.schema.id)
-                }
+                collectionId={selectedCollectionId}
                 type={this.getCardType()}
                 tableId={selectedTable?.id}
                 databaseId={currentDatabaseId}

@@ -1,12 +1,12 @@
 (ns metabase.search.config
   (:require
-   [cheshire.core :as json]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -84,15 +84,33 @@
 (def ^:private static-weights
   {:default
    {:pinned              0
-    :bookmarked          2
-    :recency             1.5
-    :user-recency        1.5
-    :dashboard           0.5
+    :bookmarked          1
+    :recency             1
+    :user-recency        5
+    :dashboard           0
     :model               2
-    :official-collection 2
-    :verified            2
+    :official-collection 1
+    :verified            1
     :view-count          2
-    :text                10}})
+    :text                5
+    :mine                1
+    :exact               5
+    :prefix              0}
+   :command-palette
+   {:prefix               5
+    :model/collection     1
+    :model/dashboard      1
+    :model/metric         1
+    :model/dataset        0.8
+    :model/table          0.8
+    :model/indexed-entity 0.5
+    :model/database       0.5
+    :model/question       0}
+   :entity-picker
+   {:model/table    1
+    :model/dataset  1
+    :model/metric   1
+    :model/question 0}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
@@ -143,6 +161,22 @@
     :native-query   {:type :native-query, :context-key :search-native-query}
     :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
 
+(def ^:private filter-defaults-by-context
+  {:default         {:archived               false
+                     ;; keys will typically those in [[filters]], but this is an atypical filter.
+                     ;; we plan to generify it, by precalculating it on the index.
+                     :personal-collection-id "all"}
+   :command-palette {:personal-collection-id "exclude-others"}})
+
+(defn filter-default
+  "Get the default value for the given filter in the given context. Is non-contextual for legacy search."
+  [engine context filter-key]
+  (let [fetch (fn [ctx] (when ctx (-> filter-defaults-by-context (get ctx) (get filter-key))))]
+    (if (= engine :search.engine/in-place)
+      (fetch :default)
+      (or (fetch context) (fetch :default)))))
+
+;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   [context]
@@ -150,7 +184,9 @@
         overrides (public-settings/experimental-search-weight-overrides)]
     (if (= :all context)
       (merge-with merge static-weights overrides)
-      (merge {}
+      (merge (get static-weights :default)
+             ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
+             (get overrides :default)
              (get static-weights context)
              (get overrides context)))))
 
@@ -231,7 +267,7 @@
 
 (defmethod column->string [:card :dataset_query]
   [value _ _]
-  (let [query (json/parse-string value true)]
+  (let [query (json/decode+kw value)]
     (if (= "native" (:type query))
       (-> query :native :query)
       "")))

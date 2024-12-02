@@ -1,4 +1,24 @@
-## [0.52.2-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-1.52.1...embedding-sdk-0.52.2-nightly) (2024-11-21)
+## [0.52.3-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.2-nightly...embedding-sdk-0.52.3-nightly) (2024-11-29)
+
+
+### Bug Fixes
+
+* **sdk:** entity picker theming fixes ([#50449](https://github.com/metabase/metabase/issues/50449)) ([90979e9](https://github.com/metabase/metabase/commit/90979e9abd35cc2310d289ff81438e94392b2169))
+* **sdk:** entity picker's hover and accent colors are not mappable via sdk theming ([#50299](https://github.com/metabase/metabase/issues/50299)) ([5f6b9ec](https://github.com/metabase/metabase/commit/5f6b9ecb17a504db891f1a3a868b98a763696307))
+* **sdk:** make modals use the correct portal ([#50565](https://github.com/metabase/metabase/issues/50565)) ([fb0cf74](https://github.com/metabase/metabase/commit/fb0cf744e771a233412e418d0c7e2790c01e642c))
+* **sdk:** show loader right after visualizing in notebook editor for the first time ([#50411](https://github.com/metabase/metabase/issues/50411)) ([7828b5e](https://github.com/metabase/metabase/commit/7828b5e2911b1779aa76e461cc05d36d107fc6c8))
+* **sdk:** summarize sdk component crashes with stage index errors ([#50400](https://github.com/metabase/metabase/issues/50400)) ([5317db6](https://github.com/metabase/metabase/commit/5317db6d60000ea3911537d56831f04ebb18507a))
+
+
+### Features
+
+* **sdk:** Add cross-version e2e tests using a published SDK package ([#50423](https://github.com/metabase/metabase/issues/50423)) ([1686e8a](https://github.com/metabase/metabase/commit/1686e8a6921cfe5280c56e48f4b42987a2c236ac))
+* **sdk:** make tooltips themeable ([#50457](https://github.com/metabase/metabase/issues/50457)) ([8c2b6e8](https://github.com/metabase/metabase/commit/8c2b6e8945a8a52f1212b5c4ee75d9ee1cddb3d9))
+* **sdk:** migrate existing sdk tests to cypress component testing ([0751632](https://github.com/metabase/metabase/commit/075163202f2bea781ae675bb1140ad12e462466e))
+
+
+
+## [0.52.2-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.1-nightly...embedding-sdk-0.52.2-nightly) (2024-11-21)
 
 
 ### Bug Fixes
@@ -30,7 +50,7 @@
 
 
 
-## [1.52.1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.38...embedding-sdk-1.52.1) (2024-11-07)
+## [0.52.1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.38...embedding-sdk-0.52.1-nightly) (2024-11-07)
 
 
 ### Bug Fixes
@@ -77,7 +97,7 @@
 
 
 
-# [1.51.0](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.37...embedding-sdk-1.51.0) (2024-10-08)
+# [0.51.0](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.37...embedding-sdk-0.51.0) (2024-10-08)
 
 
 ### Bug Fixes

@@ -96,6 +96,7 @@ export const createMockTokenStatus = (
   valid: true,
   trial: false,
   "valid-thru": "2022-12-30T23:00:00Z",
+  features: [],
   ...opts,
 });
 
@@ -157,6 +158,7 @@ export const createMockSettings = (
   "application-name": "Metabase",
   "available-fonts": [],
   "available-locales": null,
+  "bug-reporting-enabled": false,
   "bcc-enabled?": true,
   "cloud-gateway-ips": null,
   "custom-formatting": {},
@@ -202,7 +204,6 @@ export const createMockSettings = (
   "google-auth-configured": false,
   "google-auth-enabled": false,
   "is-hosted?": false,
-  "is-metabot-enabled": false,
   "jwt-enabled": false,
   "jwt-configured": false,
   "ldap-configured?": false,
@@ -233,6 +234,7 @@ export const createMockSettings = (
   "setup-token": null,
   "session-cookies": null,
   "session-cookie-samesite": "lax",
+  "slack-bug-report-channel": null,
   "snowplow-enabled": false,
   "show-database-syncing-modal": false,
   "show-homepage-data": false,
