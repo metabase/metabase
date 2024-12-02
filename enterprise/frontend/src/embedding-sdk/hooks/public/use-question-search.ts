@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getIsLoggedIn } from "embedding-sdk/store/selectors";
-import { useSearchListQuery } from "metabase/common/hooks";
+import { useSearchQuery } from "metabase/api";
 
 export const useQuestionSearch = (searchQuery?: string) => {
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
@@ -18,8 +18,5 @@ export const useQuestionSearch = (searchQuery?: string) => {
         };
   }, [searchQuery]);
 
-  return useSearchListQuery({
-    query,
-    enabled: isLoggedIn,
-  });
+  return useSearchQuery(query, { skip: !isLoggedIn });
 };
