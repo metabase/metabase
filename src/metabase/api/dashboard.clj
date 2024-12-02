@@ -519,6 +519,7 @@
                     {:select    (cond->
                                  [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                                   :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
+                                  :c.dashboard_id
                                   [nil :location]
                                   [(h2x/literal "card")  :model]
                                   [{:select   [:status]
