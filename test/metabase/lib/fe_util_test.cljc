@@ -221,6 +221,70 @@
       (lib.filter/!= column true)
       (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
+(deftest ^:parallel relative-date-filter-parts-test
+  (let [query lib.tu/venues-query
+        column (meta/field-metadata :checkins :date)]
+    (testing "clause to parts rountrip"
+      (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
+                              {:column column
+                               :value :current
+                               :unit :day
+                               :offset-value nil
+                               :offset-unit nil
+                               :options {}}
+
+                              (lib.filter/time-interval column -10 :month)
+                              {:column column
+                               :value -10
+                               :unit :month
+                               :offset-value nil
+                               :offset-unit nil
+                               :options {}}
+
+                              (lib.filter/time-interval column 10 :year)
+                              {:column column
+                               :value 10
+                               :unit :year
+                               :offset-value nil
+                               :offset-unit nil
+                               :options {}}
+
+                              (lib.fe-util/expression-clause :time-interval [column -10 :month] {:include-current true})
+                              {:column column
+                               :value -10
+                               :unit :month
+                               :offset-value nil
+                               :offset-unit nil
+                               :options {:include-current true}}
+
+                              (lib.filter/relative-time-interval column -10 :month -20 :year)
+                              {:column column
+                               :value -10
+                               :unit :month
+                               :offset-value -20
+                               :offset-unit :year
+                               :options {}}
+
+                              (lib.filter/relative-time-interval column 10 :day 20 :quarter)
+                              {:column column
+                               :value 10
+                               :unit :day
+                               :offset-value 20
+                               :offset-unit :quarter
+                               :options {}}}]
+        (let [{:keys [column value unit offset-value offset-unit options]} parts]
+          (is (=? parts (lib.fe-util/relative-date-filter-parts query -1 clause)))
+          (is (=? parts (lib.fe-util/relative-date-filter-parts
+                          query -1 (lib.fe-util/relative-date-filter-clause column
+                                                                            value
+                                                                            unit
+                                                                            offset-value
+                                                                            offset-unit
+                                                                            options)))))))
+    (testing "unsupported clauses"
+      (are [clause] (= nil (lib.fe-util/relative-date-filter-parts query -1 clause))
+        (lib.filter/is-null column)))))
+
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
         date-arg-1 "2023-11-02"

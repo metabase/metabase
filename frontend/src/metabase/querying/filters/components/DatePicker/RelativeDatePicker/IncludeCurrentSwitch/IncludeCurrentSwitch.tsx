@@ -28,7 +28,7 @@ export const IncludeCurrentSwitch = ({
     <Switch
       aria-checked={includeCurrent}
       checked={includeCurrent}
-      data-testid="include-current-interval-option"
+      data-testid="includeCurrent-interval-option"
       label={t`Include ${getIncludeCurrentLabel(value.unit)}`}
       labelPosition="right"
       onChange={handleIncludeCurrentSwitch}

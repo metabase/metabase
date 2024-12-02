@@ -322,7 +322,8 @@
        :value value
        :unit unit
        :offset-value offset-value
-       :offset-unit offset-unit}
+       :offset-unit offset-unit
+       :options     {}}
 
       ;; legacy expression; replaced by :relative-time-interval; supported for backward compatibility
       [:between _
@@ -339,7 +340,8 @@
         :value        (if (pos? offset-value) start-value end-value)
         :unit         start-unit
         :offset-value (- offset-value)
-        :offset-unit  offset-unit})))
+        :offset-unit  offset-unit
+        :options      {}})))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
