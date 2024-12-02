@@ -78,7 +78,9 @@
 (defmethod search.engine/model-set :search.engine/fulltext
   [search-ctx]
   ;; We ignore any current models filter
-  (let [search-ctx (assoc search-ctx :models search.config/all-models)]
+  (let [unfiltered-context (assoc search-ctx :models search.config/all-models)
+        applicable-models  (search.filter/search-context->applicable-models unfiltered-context)
+        search-ctx         (assoc search-ctx :models applicable-models)]
     (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
          (add-collection-join-and-where-clauses search-ctx)
          (search.filter/with-filters search-ctx)
