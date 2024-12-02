@@ -161,6 +161,7 @@ describe("filter", () => {
           Lib.coordinateFilterClause({
             operator,
             column,
+            longitudeColumn: null,
             values: [10],
           }),
         );
@@ -182,6 +183,7 @@ describe("filter", () => {
           Lib.coordinateFilterClause({
             operator,
             column,
+            longitudeColumn: null,
             values: [1, 2, 3],
           }),
         );
@@ -203,6 +205,7 @@ describe("filter", () => {
           Lib.coordinateFilterClause({
             operator,
             column,
+            longitudeColumn: null,
             values: [1, 2],
           }),
         );
@@ -223,6 +226,7 @@ describe("filter", () => {
           Lib.coordinateFilterClause({
             operator: "inside",
             column,
+            longitudeColumn: null,
             values: [1, 2, 3, 4],
           }),
         );
@@ -295,6 +299,7 @@ describe("filter", () => {
         Lib.coordinateFilterClause({
           operator: "=",
           column: findColumn(query, tableName, "CREATED_AT"),
+          longitudeColumn: null,
           values: [10],
         }),
       );

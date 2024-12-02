@@ -158,7 +158,10 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        string-col? #(or (lib.util/original-isa? % :type/Text) (lib.util/original-isa? % :type/TextLike))]
+        string-col? (fn [maybe-ref]
+                      (and (lib.util/ref-clause? maybe-ref)
+                           (or (lib.util/original-isa? maybe-ref :type/Text)
+                               (lib.util/original-isa? maybe-ref :type/TextLike))))]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
@@ -205,7 +208,9 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        number-col? #(lib.util/original-isa? % :type/Number)]
+        number-col? (fn [maybe-ref]
+                      (and (lib.util/ref-clause? maybe-ref)
+                           (lib.util/original-isa? maybe-ref :type/Number)))]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
@@ -259,7 +264,8 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
         coordinate-col? (fn [maybe-ref]
-                          (and (lib.util/original-isa? maybe-ref :type/Number)
+                          (and (lib.util/ref-clause? maybe-ref)
+                               (lib.util/original-isa? maybe-ref :type/Number)
                                (lib.types.isa/coordinate? (ref->col maybe-ref))))]
     (lib.util.match/match-one filter-clause
       ;; multiple arguments
@@ -304,8 +310,10 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        boolean-col? #(lib.util/original-isa? % :type/Boolean)]
+  (let [ref->col     #(column-metadata-from-ref query stage-number %)
+        boolean-col? (fn [maybe-ref]
+                       (and (lib.util/ref-clause? maybe-ref)
+                            (lib.util/original-isa? maybe-ref :type/Boolean)))]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?)]
@@ -352,7 +360,10 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        date-col? #(or (lib.util/original-isa? % :type/Date) (lib.util/original-isa? % :type/DateTime))]
+        date-col? (fn [maybe-ref]
+                    (and (lib.util/ref-clause? maybe-ref)
+                         (or (lib.util/original-isa? maybe-ref :type/Date)
+                             (lib.util/original-isa? maybe-ref :type/DateTime))))]
     (lib.util.match/match-one filter-clause
       [:time-interval
        opts
