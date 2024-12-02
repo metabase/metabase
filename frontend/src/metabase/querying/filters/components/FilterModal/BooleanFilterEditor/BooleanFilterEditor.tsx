@@ -3,9 +3,10 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useBooleanOperatorFilter } from "metabase/querying/filters/hooks/use-boolean-operator-filter";
-import { Checkbox, Group } from "metabase/ui";
+import { Group } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
+import { ToggleButton } from "../DateFilterEditor/DateFilterEditor.styled";
 import ItemGrid from "../FilterModalBody/poc.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
@@ -27,7 +28,6 @@ export function BooleanFilterEditor({
     operator,
     availableOptions,
     values,
-    valueCount,
     isExpanded,
     getDefaultValues,
     getFilterClause,
@@ -54,6 +54,9 @@ export function BooleanFilterEditor({
     onChange(getFilterClause(newOperator, newValues));
   };
 
+  const isTrueChecked = values.length > 0 ? values[0] : false;
+  const isFalseChecked = values.length > 0 ? !values[0] : false;
+
   return (
     <HoverParent data-testid="boolean-filter-editor">
       <ItemGrid
@@ -77,22 +80,23 @@ export function BooleanFilterEditor({
         }
       >
         <Group spacing="md">
-          <Checkbox
-            label={t`True`}
-            checked={values.length > 0 ? values[0] : false}
-            indeterminate={valueCount === 0}
-            onChange={event =>
-              handleValuesChange(event.target.checked ? [true] : [])
-            }
-          />
-          <Checkbox
-            label={t`False`}
-            checked={values.length > 0 ? !values[0] : false}
-            indeterminate={valueCount === 0}
-            onChange={event =>
-              handleValuesChange(event.target.checked ? [false] : [])
-            }
-          />
+          <ToggleButton
+            radius="xl"
+            variant={isTrueChecked ? "filled" : "subtle"}
+            aria-selected={isTrueChecked}
+            onClick={() => handleValuesChange(isTrueChecked ? [] : [true])}
+          >
+            {t`True`}
+          </ToggleButton>
+
+          <ToggleButton
+            radius="xl"
+            variant={isFalseChecked ? "filled" : "subtle"}
+            aria-selected={isFalseChecked}
+            onClick={() => handleValuesChange(isFalseChecked ? [] : [false])}
+          >
+            {t`False`}
+          </ToggleButton>
         </Group>
       </ItemGrid>
     </HoverParent>
