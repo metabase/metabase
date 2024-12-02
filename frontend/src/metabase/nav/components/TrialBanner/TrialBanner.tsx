@@ -1,57 +1,20 @@
-import dayjs from "dayjs";
-import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { useUserSetting } from "metabase/common/hooks";
 import { Banner } from "metabase/components/Banner";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { getStoreUrl } from "metabase/selectors/settings";
 import { Flex, Text } from "metabase/ui";
 
-import { calculateDaysUntilTokenExpiry, shouldShowBanner } from "./utils";
-
 export const TrialBanner = ({
-  tokenExpiryTimestamp,
+  daysRemaining,
+  onClose,
 }: {
-  tokenExpiryTimestamp: string;
+  daysRemaining: number;
+  onClose: () => void;
 }) => {
-  const [lastDismissed, setLastDismissed] = useUserSetting(
-    "trial-banner-dismissal-timestamp",
-  );
-
-  // Both `daysRemaining` and `showBanner` are supposed to share this same timestamp as an input.
-  // We could've calculated the current timestamp from within each of these functions,
-  // but that would've made them impure and harder to test.
-  const currentTimestamp = dayjs().toISOString();
-
-  const daysRemaining = calculateDaysUntilTokenExpiry({
-    currentTime: currentTimestamp,
-    tokenExpiry: tokenExpiryTimestamp,
-  });
-
-  const showBanner = useMemo(
-    () =>
-      shouldShowBanner({
-        now: currentTimestamp,
-        daysRemaining,
-        lastDismissed,
-      }),
-    [currentTimestamp, daysRemaining, lastDismissed],
-  );
-
-  if (!showBanner) {
-    return null;
-  }
-
   const lastDay = daysRemaining === 0;
   const href = getStoreUrl("account/manage/plans");
-
-  const handleBannerClose = () => {
-    // We need a fresh timestamp here
-    const now = dayjs().toISOString();
-    setLastDismissed(now);
-  };
 
   return (
     <Banner
@@ -75,7 +38,7 @@ export const TrialBanner = ({
         </Flex>
       }
       closable
-      onClose={handleBannerClose}
+      onClose={onClose}
       py="md"
     ></Banner>
   );

@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { Route } from "react-router";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
@@ -194,11 +193,9 @@ describe("AppBanner", () => {
       expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
     });
 
-    it("should render if it is a qualifying instance in a valid trial", () => {
-      // We need to ensure that the current timestamp is always the same
-      jest
-        .spyOn(dayjs.prototype, "toISOString")
-        .mockImplementation(() => "2024-12-28T23:00:00.000Z");
+    it("should render if it is a valid instance in a trial period", () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date("2024-12-15"));
 
       setup({
         isAdmin: true,
@@ -210,7 +207,7 @@ describe("AppBanner", () => {
       });
 
       expect(screen.getByTestId("app-banner")).toBeInTheDocument();
-      jest.clearAllMocks();
+      jest.useRealTimers();
     });
   });
 });
