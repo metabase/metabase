@@ -2,7 +2,6 @@ export * from "./config";
 
 import { FK_SYMBOL } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
-import Dimension from "metabase-lib/v1/Dimension";
 import type { Expression } from "metabase-types/api";
 
 import {
@@ -309,50 +308,37 @@ export function isOperator(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     OPERATORS.has(expr[0]) &&
-    expr
-      .slice(1, hasOptions(expr) ? -1 : 0) // skip options object at the end
-      .every(isExpression)
+    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
   );
 }
 
-function isPlainObject(obj: unknown): boolean {
+export function isOptionsObject(obj: unknown): boolean {
   return obj ? Object.getPrototypeOf(obj) === Object.prototype : false;
-}
-
-export function hasOptions(expr: unknown): boolean {
-  return Array.isArray(expr) && isPlainObject(expr[expr.length - 1]);
 }
 
 export function isFunction(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     FUNCTIONS.has(expr[0]) &&
-    expr
-      .slice(1, hasOptions(expr) ? -1 : 0) // skip options object at the end
-      .every(isExpression)
+    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
   );
 }
 
 export function isDimension(expr: unknown): boolean {
-  // @ts-expect-error parseMBQL doesn't accept Expr
-  return !!Dimension.parseMBQL(expr);
+  return (
+    Array.isArray(expr) && (expr[0] === "field" || expr[0] === "expression")
+  );
 }
 
 export function isMetric(expr: unknown): boolean {
   return (
-    Array.isArray(expr) &&
-    expr[0] === "metric" &&
-    (expr.length === 2 || expr.length === 3) &&
-    typeof expr[1] === "number"
+    Array.isArray(expr) && expr[0] === "metric" && typeof expr[1] === "number"
   );
 }
 
 export function isSegment(expr: unknown): boolean {
   return (
-    Array.isArray(expr) &&
-    expr[0] === "segment" &&
-    expr.length === 2 &&
-    typeof expr[1] === "number"
+    Array.isArray(expr) && expr[0] === "segment" && typeof expr[1] === "number"
   );
 }
 

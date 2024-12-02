@@ -169,12 +169,12 @@ const tokenStatusFeatures = [
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
 
 export interface TokenStatus {
-  status?: TokenStatusStatus;
+  status: TokenStatusStatus;
   valid: boolean;
   "valid-thru"?: string;
   "error-details"?: string;
-  trial: boolean;
-  features: TokenStatusFeature[];
+  trial?: boolean;
+  features?: TokenStatusFeature[];
 }
 
 export type DayOfWeekId =

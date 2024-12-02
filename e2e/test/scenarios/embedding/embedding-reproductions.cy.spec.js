@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
   createDashboardWithQuestions,
@@ -1204,5 +1205,32 @@ describeEE("issue 8490", () => {
       // Aggregation "count"
       cy.findByText("카운트").should("be.visible");
     });
+  });
+});
+
+describe("issue 50373", () => {
+  it("should return cache headers in production for js bundle", () => {
+    cy.intercept(
+      {
+        method: "GET",
+        url: /^\/app\/dist\/(.*)\.js$/,
+      },
+      req => {
+        // When running in development (e.g. with `yarn dev`),
+        // the *.hot.bundle.js hot-reloaded file is served by the dev server.
+        if (req.url.includes("hot.bundle.js")) {
+          return;
+        }
+
+        req.on("response", res => {
+          expect(
+            res.headers["cache-control"],
+            `Invalid Cache-Control header for ${req.url}`,
+          ).to.equal("public, max-age=31536000");
+        });
+      },
+    );
+
+    visitEmbeddedPage({ resource: { dashboard: ORDERS_DASHBOARD_ID } });
   });
 });

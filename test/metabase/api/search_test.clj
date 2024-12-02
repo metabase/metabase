@@ -157,35 +157,36 @@
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp [Collection  coll           (data-map "collection %s collection")
-                   Card        action-model   (if in-root-collection?
-                                                action-model-params
-                                                (assoc action-model-params :collection_id (u/the-id coll)))
-                   Action      {action-id :id
-                                :as action}   (merge (data-map "action %s action")
-                                                     {:type :query, :model_id (u/the-id action-model)})
-                   Database    {db-id :id
-                                :as db}       (data-map "database %s database")
-                   Table       table          (merge (data-map "database %s database")
-                                                     {:db_id db-id})
+    (search.tu/with-temp-index-table
+      (mt/with-temp [Collection  coll           (data-map "collection %s collection")
+                     Card        action-model   (if in-root-collection?
+                                                  action-model-params
+                                                  (assoc action-model-params :collection_id (u/the-id coll)))
+                     Action      {action-id :id
+                                  :as action}   (merge (data-map "action %s action")
+                                                       {:type :query, :model_id (u/the-id action-model)})
+                     Database    {db-id :id
+                                  :as db}       (data-map "database %s database")
+                     Table       table          (merge (data-map "database %s database")
+                                                       {:db_id db-id})
 
-                   QueryAction _qa (query-action action-id)
-                   Card        card           (coll-data-map "card %s card" coll)
-                   Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
-                                                     :type :model)
-                   Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   Card        metric         (assoc (coll-data-map "metric %s metric" coll)
-                                                     :type :metric)
-                   Segment     segment        (data-map "segment %s segment")]
-      (f {:action     action
-          :collection coll
-          :card       card
-          :database   db
-          :dataset    dataset
-          :dashboard  dashboard
-          :metric     metric
-          :table      table
-          :segment    segment}))))
+                     QueryAction _qa (query-action action-id)
+                     Card        card           (coll-data-map "card %s card" coll)
+                     Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
+                                                       :type :model)
+                     Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
+                     Card        metric         (assoc (coll-data-map "metric %s metric" coll)
+                                                       :type :metric)
+                     Segment     segment        (data-map "segment %s segment")]
+        (f {:action     action
+            :collection coll
+            :card       card
+            :database   db
+            :dataset    dataset
+            :dashboard  dashboard
+            :metric     metric
+            :table      table
+            :segment    segment})))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
   `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
@@ -336,37 +337,42 @@
       (is (= #{} (get-available-models :q "noresults"))))))
 
 (deftest available-models-test
-  (let [search-term "query-model-set"]
-    (with-search-items-in-root-collection search-term
-      (testing "should returns a list of models that search result will return"
-        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-               (get-available-models :q search-term))))
-      (testing "return a subset of model for created-by filter"
-        (is (= #{"dashboard" "dataset" "card" "metric" "action"}
-               (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
-      (testing "return a subset of model for verified filter"
-        (t2.with-temp/with-temp
-          [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
-           :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
-           :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
-           :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
-          (testing "when has both :content-verification features"
-            (mt/with-premium-features #{:content-verification}
-              (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
-                (is (= #{"card" "dataset" "metric"}
-                       (get-available-models :q search-term :verified true))))))
-          (testing "when has :content-verification feature only"
-            (mt/with-premium-features #{:content-verification}
-              (mt/with-verified-cards! [v-card-id]
-                (is (= #{"card"}
-                       (get-available-models :q search-term :verified true))))))))
-      (testing "return a subset of model for created_at filter"
-        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               (get-available-models :q search-term :created_at "today"))))
+  ;; Porting these tests over earlier
+  (doseq [engine ["in-place" "fulltext"]]
+    (let [search-term "query-model-set"
+          get-available-models #(apply get-available-models :search_engine engine %&)]
+      (with-search-items-in-root-collection search-term
+        (testing "should returns a list of models that search result will return"
+          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+                 (get-available-models)))
+          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+                 (get-available-models :q search-term))))
+        (testing "return a subset of model for created-by filter"
+          (is (= #{"dashboard" "dataset" "card" "metric" "action"}
+                 (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
+        (testing "return a subset of model for verified filter"
+          (t2.with-temp/with-temp
+            [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
+             :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
+             :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
+             :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+            (testing "when has both :content-verification features"
+              (mt/with-premium-features #{:content-verification}
+                (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
+                  (is (= #{"card" "dataset" "metric"}
+                         (get-available-models :q search-term :verified true))))))
+            (testing "when has :content-verification feature only"
+              (mt/with-premium-features #{:content-verification}
+                (mt/with-verified-cards! [v-card-id]
+                  (is (= #{"card"}
+                         (get-available-models :q search-term :verified true))))))))
+        (testing "return a subset of model for created_at filter"
+          (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+                 (get-available-models :q search-term :created_at "today"))))
 
-      (testing "return a subset of model for search_native_query filter"
-        (is (= #{"dataset" "action" "card" "metric"}
-               (get-available-models :q search-term :search_native_query true)))))))
+        (testing "return a subset of model for search_native_query filter"
+          (is (= #{"dataset" "action" "card" "metric"}
+                 (get-available-models :q search-term :search_native_query true))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
