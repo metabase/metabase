@@ -93,7 +93,7 @@ export function runQuery(xhrAlias = "dataset") {
  */
 export function enterParameterizedQuery(query, options = {}) {
   focusNativeEditor();
-  cy.get("@editor").realType(query, {
+  cy.get("@editor").type(query, {
     parseSpecialCharSequences: false,
     ...options,
   });

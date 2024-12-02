@@ -68,11 +68,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
     openNativeEditor();
 
-    const LEFT_BRACKET = "{{}";
-    const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
-    SQLFilter.enterParameterizedQuery(
-      `SELECT * FROM products WHERE ${DOUBLE_LEFT_BRACKET}f}}`,
-    );
+    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
