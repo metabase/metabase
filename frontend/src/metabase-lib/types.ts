@@ -362,7 +362,7 @@ export type StringFilterParts = {
 };
 
 export type StringFilterOptions = {
-  "case-sensitive"?: boolean;
+  caseSensitive?: boolean;
 };
 
 export type NumberFilterParts = {

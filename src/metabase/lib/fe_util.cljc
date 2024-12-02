@@ -117,7 +117,59 @@
    options  :- [:maybe :map]]
   (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
 
+(def ^:private StringFilterOperator
+  [:enum :is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
 
+(def ^:private StringFilterOptions
+  [:map
+   [:case-sensitive {:optional true} :boolean]])
+
+(def ^:private StringFilterParts
+  [:map
+   [:operator StringFilterOperator]
+   [:column   ::lib.schema.metadata/column]
+   [:values   [:sequential :string]]
+   [:options  StringFilterOptions]])
+
+(mu/defn string-filter-clause :- ::lib.schema.expression/expression
+  "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[string-filter-parts]]. To avoid mistakes the function requires `options` for all operators even
+  though they might not be used. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
+  [operator :- StringFilterOperator
+   column   :- ::lib.schema.metadata/column
+   values   :- [:sequential :string]
+   options  :- StringFilterOptions]
+  (case operator
+    :is-empty         (lib.filter/is-empty column)
+    :not-empty        (lib.filter/not-empty column)
+    :=                (apply lib.filter/= column values)
+    :!=               (apply lib.filter/!= column values)
+    :contains         (expression-clause operator (into [column] values) options)
+    :does-not-contain (expression-clause operator (into [column] values) options)
+    :starts-with      (expression-clause operator (into [column] values) options)
+    :ends-with        (expression-clause operator (into [column] values) options)))
+
+(mu/defn string-filter-parts :- [:maybe StringFilterParts]
+  "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape. To avoid mistakes the function returns `options` for all operators even though they might not be
+  used. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [string-column? #(or (lib.util/original-isa? % :type/Text) (lib.util/original-isa? % :type/TextLike))
+        ref->column    #(column-metadata-from-ref query stage-number %)]
+    (lib.util.match/match-one filter-clause
+      ;; no arguments
+      [(a :guard #{:is-empty :not-empty}) _ (b :guard string-column?)]
+      {:operator a, :column (ref->column b), :values [], :options {}}
+
+      ;; multiple arguments without options
+      [(a :guard #{:= :!=}) _ (b :guard string-column?) & (args :guard #(every? string? %))]
+      {:operator a, :column (ref->column b), :values args, :options {}}
+
+      ;; multiple arguments with options
+      [(a :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (b :guard string-column?) (c :guard number?)]
+      {:operator a, :column (ref->column b), :values [c], :options {:case-sensitive (get opts :case-sensitive true)}})))
 
 (def ^:private NumberFilterOperator
   [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
@@ -152,7 +204,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [number-column? #(lib.util/original-isa? % :type/Number)
-        ref->column #(column-metadata-from-ref query stage-number %)]
+        ref->column    #(column-metadata-from-ref query stage-number %)]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(a :guard #{:is-null :not-null}) _ (b :guard number-column?)]
@@ -197,7 +249,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [boolean-column? #(lib.util/original-isa? % :type/Boolean)
-        ref->column #(column-metadata-from-ref query stage-number %)]
+        ref->column     #(column-metadata-from-ref query stage-number %)]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(a :guard #{:is-null :not-null}) _ (b :guard boolean-column?)]

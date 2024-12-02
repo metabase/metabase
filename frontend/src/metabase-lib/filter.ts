@@ -18,8 +18,6 @@ import {
   EXCLUDE_DATE_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS_WITH_OPTIONS,
   TIME_FILTER_OPERATORS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
@@ -45,7 +43,6 @@ import type {
   ExpressionArg,
   ExpressionClause,
   ExpressionOperatorName,
-  ExpressionOptions,
   ExpressionParts,
   FilterClause,
   FilterOperator,
@@ -57,8 +54,6 @@ import type {
   SegmentMetadata,
   SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
-  StringFilterOperatorName,
-  StringFilterOptions,
   StringFilterParts,
   TimeFilterOperatorName,
   TimeFilterParts,
@@ -110,11 +105,7 @@ export function stringFilterClause({
   values,
   options,
 }: StringFilterParts): ExpressionClause {
-  return expressionClause(
-    operator,
-    [column, ...values],
-    getStringFilterOptions(operator, options),
-  );
+  return ML.string_filter_clause(operator, column, values, options);
 }
 
 export function stringFilterParts(
@@ -122,30 +113,7 @@ export function stringFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): StringFilterParts | null {
-  const { operator, options, args } = expressionParts(
-    query,
-    stageIndex,
-    filterClause,
-  );
-  if (!isStringOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isStringOrStringLike(column) ||
-    !isStringLiteralArray(values)
-  ) {
-    return null;
-  }
-
-  return {
-    operator,
-    column,
-    values,
-    options: getStringFilterOptions(operator, options),
-  };
+  return ML.string_filter_parts(query, stageIndex, filterClause);
 }
 
 export function numberFilterClause({
@@ -551,22 +519,6 @@ function isNumberOrCurrentLiteral(arg: unknown): arg is number | "current" {
 
 function isNumberLiteralArray(arg: unknown): arg is number[] {
   return Array.isArray(arg) && arg.every(isNumberLiteral);
-}
-
-function isStringOperator(
-  operator: ExpressionOperatorName,
-): operator is StringFilterOperatorName {
-  const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
-function getStringFilterOptions(
-  operator: ExpressionOperatorName,
-  options: ExpressionOptions,
-): StringFilterOptions {
-  const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS_WITH_OPTIONS;
-  const supportsOptions = operators.includes(operator);
-  return supportsOptions ? { "case-sensitive": true, ...options } : {};
 }
 
 function isCoordinateOperator(

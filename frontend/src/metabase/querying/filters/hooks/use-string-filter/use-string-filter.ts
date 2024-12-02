@@ -45,7 +45,7 @@ export function useStringFilter({
   );
 
   const [options, setOptions] = useState(
-    filterParts ? filterParts.options : { "case-sensitive": false },
+    filterParts ? filterParts.options : { caseSensitive: false },
   );
 
   const { type } = getOptionByOperator(operator);

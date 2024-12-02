@@ -191,10 +191,12 @@
   table-or-card-dependent-metadata
   expression-clause
   expression-parts
-  boolean-filter-clause
-  boolean-filter-parts
+  string-filter-clause
+  string-filter-parts
   number-filter-clause
   number-filter-parts
+  boolean-filter-clause
+  boolean-filter-parts
   filter-args-display-name]
  [lib.field
   add-field

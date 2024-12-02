@@ -344,7 +344,7 @@ describe("StringFilterPicker", () => {
       const opts = createQueryWithStringFilter({
         operator: "contains",
         values: ["abc"],
-        options: { "case-sensitive": false },
+        options: { caseSensitive: false },
       });
 
       it("should render a filter", () => {

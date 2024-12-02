@@ -92,8 +92,8 @@ export function StringFilterPicker({
         <FilterPickerFooter isNew={isNew} canSubmit={isValid}>
           {type === "partial" && (
             <CaseSensitiveOption
-              value={options["case-sensitive"] ?? false}
-              onChange={newValue => setOptions({ "case-sensitive": newValue })}
+              value={options.caseSensitive ?? false}
+              onChange={newValue => setOptions({ caseSensitive: newValue })}
             />
           )}
         </FilterPickerFooter>
