@@ -7,7 +7,6 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, Series } from "metabase-types/api";
 import type {
@@ -28,7 +27,10 @@ import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
 
 import { computeQuestionPivotTable } from "./pivot-table";
-import { getAdHocQuestionWithVizSettings } from "./utils";
+import {
+  getAdHocQuestionWithVizSettings,
+  syncCardParametersWithTemplateTags,
+} from "./utils";
 
 function shouldTemplateTagEditorBeVisible({
   currentQuestion,
@@ -126,11 +128,7 @@ export const updateQuestion = (
       );
     }
 
-    // Sync card's parameters with the template tags;
-    if (isNewQuestionNative) {
-      const parameters = getTemplateTagParametersFromCard(newQuestion.card());
-      newQuestion = newQuestion.setParameters(parameters);
-    }
+    newQuestion = syncCardParametersWithTemplateTags(newQuestion);
 
     await dispatch({
       type: UPDATE_QUESTION,

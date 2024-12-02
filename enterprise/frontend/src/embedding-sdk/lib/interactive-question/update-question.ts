@@ -3,7 +3,10 @@ import _ from "underscore";
 import type { SdkQuestionState } from "embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import { computeQuestionPivotTable } from "metabase/query_builder/actions/core/pivot-table";
-import { getAdHocQuestionWithVizSettings } from "metabase/query_builder/actions/core/utils";
+import {
+  getAdHocQuestionWithVizSettings,
+  syncCardParametersWithTemplateTags,
+} from "metabase/query_builder/actions/core/utils";
 import { createRawSeries } from "metabase/query_builder/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -51,6 +54,8 @@ export const updateQuestionSdk =
     if (!nextQuestion.canAutoRun()) {
       shouldRunQueryOnQuestionChange = false;
     }
+
+    nextQuestion = syncCardParametersWithTemplateTags(nextQuestion);
 
     const rawSeries = createRawSeries({
       question: nextQuestion,
