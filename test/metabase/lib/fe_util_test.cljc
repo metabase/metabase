@@ -122,6 +122,28 @@
           (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
                                                               1)))))
 
+(deftest ^:parallel string-filter-parts-test
+  (let [query lib.tu/venues-query
+        column (meta/field-metadata :venues :name)]
+    (testing "clause to parts rountrip"
+      (doseq [[clause parts] {(lib.filter/is-empty column)      {:operator :is-empty, :column column, :values []}
+                              (lib.filter/not-empty column)     {:operator :not-empty, :column column, :values []}
+                              (lib.filter/= column "A")         {:operator :=, :column column, :values ["A"]}
+                              (lib.filter/= column "A" "B")     {:operator :=, :column column, :values ["A" "B"]}
+                              (lib.filter/!= column "A")        {:operator :!=, :column column, :values ["A"]}
+                              (lib.filter/!= column "A" "B")    {:operator :!=, :column column, :values ["A" "B"]}
+                              (lib.filter/contains column "A")  {:operator :contains, :column column, :values ["A"]}}]
+        (let [{:keys [operator column values]} parts]
+          (is (=? parts (lib.fe-util/string-filter-parts query -1 clause)))
+          (is (=? parts (lib.fe-util/string-filter-parts query -1 (lib.fe-util/string-filter-clause operator
+                                                                                                    column
+                                                                                                    values
+                                                                                                    {})))))))
+  (testing "unsupported clauses"
+    (are [clause] (= nil (lib.fe-util/string-filter-parts query -1 clause))
+      (lib.expression/concat column "A")
+      (lib.filter/is-null column)))))
+
 (deftest ^:parallel number-filter-parts-test
   (let [query lib.tu/venues-query
         column (meta/field-metadata :venues :price)]
