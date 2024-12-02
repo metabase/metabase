@@ -7,16 +7,17 @@ interface FilterTabItemProps extends BoxProps {
 }
 
 export const FilterTabItem = styled(Box)<FilterTabItemProps>`
-  border-bottom: 1px solid var(--mb-color-border);
-  padding: 1rem 2rem;
-  padding-left: 0;
+  border-bottom: 1px solid hsla(0, 0%, 94%, 1);
+  padding: 0;
+  padding-block: 8px;
+  padding-right: 16px;
 
   &:last-of-type {
     border-bottom: none;
   }
 
   &:hover,
-  :focus-within {
-    background-color: var(--mb-color-bg-light);
+  &:focus-within {
+    background-color: hsla(240, 11%, 98%, 1);
   }
 `;
