@@ -12,7 +12,10 @@ import {
   PERSONAL_COLLECTIONS,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import { getShouldShowOnboardingLink } from "metabase/home/selectors";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -118,7 +121,9 @@ export function MainNavbarView({
   );
 
   const ONBOARDING_URL = "/getting-started";
-  const showOnboardingLink = useSelector(getShouldShowOnboardingLink);
+  const isNewInstance = useSelector(getIsNewInstance);
+  const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
+  const showOnboardingLink = isNewInstance && canAccessOnboarding;
 
   // Instances with DWH enabled already have uploads enabled by default.
   // It is not possible to turn the uploads off, nor to delete the attached database.

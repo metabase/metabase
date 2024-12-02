@@ -14,15 +14,15 @@ export const getHasMetabotLogo = (state: State) => {
   return getSetting(state, "show-metabot");
 };
 
-const getIsNewInstance = (state: State) => {
+export const getIsNewInstance = (state: State) => {
   const instanceCreated = getSetting(state, "instance-creation");
   const daysSinceCreation = dayjs().diff(dayjs(instanceCreated), "days");
   return daysSinceCreation <= 30;
 };
 
-export const getShouldShowOnboardingLink = createSelector(
-  [getIsNewInstance, getIsEmbedded, getIsWhiteLabeling],
-  (isNewInstance, isEmbedded, isWhiteLabelled) => {
-    return isNewInstance && !isEmbedded && !isWhiteLabelled;
+export const getCanAccessOnboardingPage = createSelector(
+  [getIsEmbedded, getIsWhiteLabeling],
+  (isEmbedded, isWhiteLabelled) => {
+    return !isEmbedded && !isWhiteLabelled;
   },
 );
