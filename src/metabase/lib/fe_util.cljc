@@ -385,11 +385,11 @@
        (offset-value :guard number?)
        (offset-unit :guard keyword?)]
       {:column (ref->col col-ref)
-       :value value
-       :unit unit
+       :value        value
+       :unit         unit
        :offset-value offset-value
-       :offset-unit offset-unit
-       :options     {}}
+       :offset-unit  offset-unit
+       :options      {}}
 
       ;; legacy expression; replaced by :relative-time-interval; supported for backward compatibility
       [:between _
