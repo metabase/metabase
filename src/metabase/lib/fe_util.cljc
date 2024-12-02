@@ -157,20 +157,20 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [string-column? #(or (lib.util/original-isa? % :type/Text) (lib.util/original-isa? % :type/TextLike))
-        ref->column    #(column-metadata-from-ref query stage-number %)]
+  (let [string-col? #(or (lib.util/original-isa? % :type/Text) (lib.util/original-isa? % :type/TextLike))
+        ref->col    #(column-metadata-from-ref query stage-number %)]
     (lib.util.match/match-one filter-clause
       ;; no arguments
-      [(a :guard #{:is-empty :not-empty}) _ (b :guard string-column?)]
-      {:operator a, :column (ref->column b), :values [], :options {}}
+      [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
+      {:operator op, :column (ref->col col-ref), :values [], :options {}}
 
       ;; multiple arguments without options
-      [(a :guard #{:= :!=}) _ (b :guard string-column?) & (args :guard #(every? string? %))]
-      {:operator a, :column (ref->column b), :values args, :options {}}
+      [(op :guard #{:= :!=}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
+      {:operator op, :column (ref->col col-ref), :values args, :options {}}
 
       ;; multiple arguments with options
-      [(a :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (b :guard string-column?) & (args :guard #(every? string? %))]
-      {:operator a, :column (ref->column b), :values args, :options {:case-sensitive (get opts :case-sensitive true)}})))
+      [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard #(every? string? %))]
+      {:operator op, :column (ref->col col-ref), :values args, :options {:case-sensitive (get opts :case-sensitive true)}})))
 
 (def ^:private NumberFilterOperator
   [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
@@ -204,24 +204,24 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [number-column? #(lib.util/original-isa? % :type/Number)
-        ref->column    #(column-metadata-from-ref query stage-number %)]
+  (let [number-col? #(lib.util/original-isa? % :type/Number)
+        ref->col    #(column-metadata-from-ref query stage-number %)]
     (lib.util.match/match-one filter-clause
       ;; no arguments
-      [(a :guard #{:is-null :not-null}) _ (b :guard number-column?)]
-      {:operator a, :column (ref->column b), :values [] }
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
+      {:operator op, :column (ref->col col-ref), :values [] }
 
       ;; multiple arguments
-      [(a :guard #{:= :!=}) _ (b :guard number-column?) & (args :guard #(every? number? %))]
-      {:operator a, :column (ref->column b), :values args}
+      [(op :guard #{:= :!=}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
+      {:operator op, :column (ref->col col-ref), :values args}
 
       ;; exactly 1 argument
-      [(a :guard #{:> :>= :< :<=}) _ (b :guard number-column?) (c :guard number?)]
-      {:operator a, :column (ref->column b), :values [c]}
+      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) (arg :guard number?)]
+      {:operator op, :column (ref->col col-ref), :values [arg]}
 
       ;; exactly 2 arguments
-      [(a :guard #{:between}) _ (b :guard number-column?) (c :guard number?) (d :guard number?)]
-      {:operator a, :column (ref->column b), :values [c d]})))
+      [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number?) (end :guard number?)]
+      {:operator op, :column (ref->col col-ref), :values [start end]})))
 
 (def ^:private BooleanFilterOperator
   [:enum :is-null :not-null :=])
@@ -249,16 +249,68 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [boolean-column? #(lib.util/original-isa? % :type/Boolean)
-        ref->column     #(column-metadata-from-ref query stage-number %)]
+  (let [boolea-col? #(lib.util/original-isa? % :type/Boolean)
+        ref->col    #(column-metadata-from-ref query stage-number %)]
     (lib.util.match/match-one filter-clause
       ;; no arguments
-      [(a :guard #{:is-null :not-null}) _ (b :guard boolean-column?)]
-      {:operator a, :column (ref->column b), :values [] }
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolea-col?)]
+      {:operator op, :column (ref->col col-ref), :values [] }
 
       ;; exactly 1 argument
-      [(a :guard #{:=}) _ (b :guard boolean-column?) (c :guard boolean?)]
-      {:operator a, :column (ref->column b), :values [c]})))
+      [(op :guard #{:=}) _ (col-ref :guard boolea-col?) (arg :guard boolean?)]
+      {:operator op, :column (ref->col col-ref), :values [arg]})))
+
+(def ^:private RelativeDateFilterUnit
+  [:enum :minute :hour :day :week :month :quarter :year])
+
+(def ^:private RelativeDateFilterOptions
+  [:map
+   [:include-current {:optional true} :boolean]])
+
+(def ^:private RelativeDateFilterParts
+  [:map
+   [:column       ::lib.schema.metadata/column]
+   [:unit         RelativeDateFilterUnit]
+   [:value        [:or number? [:enum :current]]]
+   [:offset-unit  [:maybe RelativeDateFilterUnit]]
+   [:offset-value [:maybe number?]]
+   [:options      RelativeDateFilterOptions]])
+
+(mu/defn relative-date-filter-clause :- ::lib.schema.expression/expression
+  "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[relative-date-filter-parts]]."
+  [column       :- ::lib.schema.metadata/column
+   unit         :- RelativeDateFilterUnit
+   value        :- [:or number? [:enum :current]]
+   offset-unit  :- [:maybe RelativeDateFilterUnit]
+   offset-value :- [:maybe number?]
+   options      :- RelativeDateFilterOptions]
+  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)]
+    (if (or (nil? offset-value) (nil? offset-unit))
+      (expression-clause :time-interval [column value unit] options)
+      (lib.filter/relative-time-interval column value unit offset-value offset-unit))))
+
+(mu/defn relative-date-filter-parts :- [:maybe RelativeDateFilterParts]
+  "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [date-col? #(or (lib.util/original-isa? % :type/Date) (lib.util/original-isa? % :type/DateTime))
+        ref->col  #(column-metadata-from-ref query stage-number %)]
+    (lib.util.match/match-one filter-clause
+      [:relative-time-interval
+       _
+       (col-ref :guard date-col?)
+       (value :guard number?)
+       (unit :guard keyword?)
+       (offset-value :guard number?)
+       (offset-unit :guard keyword?)]
+      {:column (ref->col col-ref)
+       :value value
+       :unit unit
+       :offset-value offset-value
+       :offset-unit offset-unit})))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
