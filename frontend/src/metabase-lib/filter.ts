@@ -17,7 +17,6 @@ import {
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
   STRING_FILTER_OPERATORS,
@@ -53,7 +52,6 @@ import type {
   FilterClause,
   FilterOperator,
   FilterParts,
-  NumberFilterOperatorName,
   NumberFilterParts,
   Query,
   RelativeDateBucketName,
@@ -157,7 +155,7 @@ export function numberFilterClause({
   column,
   values,
 }: NumberFilterParts): ExpressionClause {
-  return expressionClause(operator, [column, ...values]);
+  return ML.number_filter_clause(operator, column, values);
 }
 
 export function numberFilterParts(
@@ -165,26 +163,7 @@ export function numberFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): NumberFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isNumberOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isNumeric(column) ||
-    isCoordinate(column) || // coordinates have their own filterParts
-    !isNumberLiteralArray(values)
-  ) {
-    return null;
-  }
-
-  return {
-    operator,
-    column,
-    values,
-  };
+  return ML.number_filter_parts(query, stageIndex, filterClause);
 }
 
 export function coordinateFilterClause({
@@ -616,13 +595,6 @@ function getStringFilterOptions(
   const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS_WITH_OPTIONS;
   const supportsOptions = operators.includes(operator);
   return supportsOptions ? { "case-sensitive": true, ...options } : {};
-}
-
-function isNumberOperator(
-  operator: ExpressionOperatorName,
-): operator is NumberFilterOperatorName {
-  const operators: ReadonlyArray<string> = NUMBER_FILTER_OPERATORS;
-  return operators.includes(operator);
 }
 
 function isCoordinateOperator(

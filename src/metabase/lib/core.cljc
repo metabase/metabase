@@ -191,6 +191,8 @@
   table-or-card-dependent-metadata
   expression-clause
   expression-parts
+  number-filter-clause
+  number-filter-parts
   filter-args-display-name]
  [lib.field
   add-field

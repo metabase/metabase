@@ -74,6 +74,14 @@
     (expand-temporal-expression expression-clause)
     expression-clause))
 
+(defn- column-metadata-from-ref
+  [query stage-number a-ref]
+  (lib.filter/add-column-operators
+   (lib.field/extend-column-metadata-from-ref
+    query stage-number
+    (lib.metadata.calculation/metadata query stage-number a-ref)
+    a-ref)))
+
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
   ([query expression-clause]
@@ -84,11 +92,7 @@
     expression-clause :- ::lib.schema.expression/expression]
    (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
          ->maybe-col #(when (lib.util/ref-clause? %)
-                        (lib.filter/add-column-operators
-                         (lib.field/extend-column-metadata-from-ref
-                          query stage-number
-                          (lib.metadata.calculation/metadata query stage-number %)
-                          %)))]
+                       (column-metadata-from-ref query stage-number %))]
      {:lib/type :mbql/expression-parts
       :operator op
       :options  options
@@ -112,6 +116,59 @@
    args     :- [:sequential :any]
    options  :- [:maybe :map]]
   (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
+
+
+
+(def ^:private NumberFilterOperator
+  [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
+
+(def ^:private NumberFilterParts
+  [:map
+   [:operator NumberFilterOperator
+    :column   ::lib.schema.metadata/column
+    :values   [:vector [:sequential number?]]]])
+
+(mu/defn number-filter-clause :- ::lib.schema.expression/expression
+  "Creates a filter clause based on FE-friendly filter parts. It should be possible to destructure each expression with
+  [[number-filter-parts]]."
+  [operator :- NumberFilterOperator
+   column   :- ::lib.schema.metadata/column
+   values   :- [:vector [:sequential number?]]]
+  (case operator
+    :is-null  (lib.filter/is-null column)
+    :not-null (lib.filter/not-null column)
+    :=        (apply lib.filter/= column values)
+    :!=       (apply lib.filter/!= column values)
+    :>        (lib.filter/> column (first values))
+    :>=       (lib.filter/>= column (first values))
+    :<        (lib.filter/< column (first values))
+    :<=       (lib.filter/<= column (first values))
+    :between  (lib.filter/between column (first values) (second values))))
+
+(mu/defn number-filter-parts :- NumberFilterParts
+  "Destructures a filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match the
+  expected schema."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [number-column? #(lib.util/original-isa? % :type/Number)
+        ref->column #(column-metadata-from-ref query stage-number %)]
+    (lib.util.match/match-one filter-clause
+      ;; no arguments
+      [(a :guard #{:is-null :not-null}) _ (b :guard number-column?)]
+      {:operator a, :column (ref->column b), :values [] }
+
+      ;; multiple arguments
+      [(a :guard #{:= :!=}) _ (b :guard number-column?) & (args :guard #(every? number? %))]
+      {:operator a, :column (ref->column b), :values args}
+
+      ;; exactly 1 argument
+      [(a :guard #{:> :>= :< :<=}) _ (b :guard number-column?) (c :guard number?)]
+      {:operator a, :column (ref->column b), :values [c]}
+
+      ;; exactly 2 arguments
+      [(a :guard #{:between}) _ (b :guard number-column?) (c :guard number?) (d :guard number?)]
+      {:operator a, :column (ref->column b), :values [c d]})))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
