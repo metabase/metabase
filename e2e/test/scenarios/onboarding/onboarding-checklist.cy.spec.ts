@@ -13,7 +13,35 @@ import {
 } from "e2e/support/helpers";
 import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
 
-describeEE("Onboarding checklist page", () => {
+describe("Onboarding checklist page", () => {
+  beforeEach(() => {
+    restore();
+  });
+
+  it("should let non-admins access this page", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/getting-started");
+
+    cy.get("[data-accordion=true]").within(() => {
+      cy.findByRole("heading", { name: "Start visualizing your data" }).should(
+        "be.visible",
+      );
+      cy.contains(
+        "Hover over a table and click the yellow lightning bolt",
+      ).should("be.visible");
+
+      cy.findByText("Make an interactive chart with the query builder").click();
+      cy.contains(
+        "Filter and summarize data, add custom columns, join data from other tables, and more",
+      ).should("be.visible");
+      cy.contains(
+        "Hover over a table and click the yellow lightning bolt",
+      ).should("not.exist");
+    });
+  });
+});
+
+describeEE("Onboarding checklist main sidebar link", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
