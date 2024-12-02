@@ -124,9 +124,9 @@
 
 (def ^:private NumberFilterParts
   [:map
-   [:operator NumberFilterOperator
-    :column   ::lib.schema.metadata/column
-    :values   [:vector [:sequential number?]]]])
+   [:operator NumberFilterOperator]
+   [:column   ::lib.schema.metadata/column]
+   [:values   [:sequential number?]]])
 
 (mu/defn number-filter-clause :- ::lib.schema.expression/expression
   "Creates a filter clause based on FE-friendly filter parts. It should be possible to destructure each expression with
@@ -145,9 +145,9 @@
     :<=       (lib.filter/<= column (first values))
     :between  (lib.filter/between column (first values) (second values))))
 
-(mu/defn number-filter-parts :- NumberFilterParts
+(mu/defn number-filter-parts :- [:maybe NumberFilterParts]
   "Destructures a filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match the
-  expected schema."
+  expected shape."
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]

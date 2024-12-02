@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -120,6 +121,12 @@
                   1]}
           (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
                                                               1)))))
+
+(deftest ^:parallel number-filter-parts-test
+  (let [query lib.tu/venues-query
+        column (meta/field-metadata :venues :price)]
+    (are [expected clause] (=? expected (lib.fe-util/number-filter-parts query -1 clause))
+      {:operator :=, :column column, :values [10]} (lib.filter/= column 10))))
 
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)

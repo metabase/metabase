@@ -1041,7 +1041,7 @@
 
 (defn ^:export number-filter-parts
   "Destructures a filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match the
-  expected schema."
+  expected shape."
   [a-query stage-number a-filter-clause]
   (when-let [filter-parts (lib.core/number-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [operator column values]} filter-parts]
