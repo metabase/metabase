@@ -273,7 +273,7 @@ describe("filter", () => {
           operator: "starts-with",
           column: expect.anything(),
           values: ["Gadget"],
-          options: { "case-sensitive": false },
+          options: { "case-sensitive": true },
         });
         expect(columnInfo?.name).toBe(columnName);
       },
@@ -291,7 +291,7 @@ describe("filter", () => {
           operator: "starts-with",
           column,
           values: ["Gadget"],
-          options: { "case-sensitive": true },
+          options: { "case-sensitive": false },
         }),
       );
 
@@ -299,7 +299,7 @@ describe("filter", () => {
         operator: "starts-with",
         column: expect.anything(),
         values: ["Gadget"],
-        options: { "case-sensitive": true },
+        options: { "case-sensitive": false },
       });
       expect(columnInfo?.name).toBe(columnName);
     });

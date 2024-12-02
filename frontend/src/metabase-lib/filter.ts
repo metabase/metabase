@@ -615,7 +615,7 @@ function getStringFilterOptions(
 ): StringFilterOptions {
   const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS_WITH_OPTIONS;
   const supportsOptions = operators.includes(operator);
-  return supportsOptions ? { "case-sensitive": false, ...options } : {};
+  return supportsOptions ? { "case-sensitive": true, ...options } : {};
 }
 
 function isNumberOperator(

@@ -25,6 +25,7 @@ export interface InteractiveQuestionResultProps {
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: ReactNode;
+  withChartTypeSelector?: boolean;
 }
 
 export const InteractiveQuestionResult = ({
@@ -35,6 +36,7 @@ export const InteractiveQuestionResult = ({
   withTitle,
   customTitle,
   withResetButton,
+  withChartTypeSelector,
 }: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
   const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
     useDisclosure(false);
@@ -90,7 +92,6 @@ export const InteractiveQuestionResult = ({
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
           )}
         </Group>
-
         <Group
           position="apart"
           p="sm"
@@ -98,13 +99,13 @@ export const InteractiveQuestionResult = ({
           style={{ borderRadius: "0.5rem" }}
         >
           <Group spacing="xs">
-            <InteractiveQuestion.ChartTypeDropdown />
+            {withChartTypeSelector && (<> <InteractiveQuestion.ChartTypeDropdown />
             <Divider
               mx="xs"
               orientation="vertical"
               // we have to do this for now because Mantine's divider overrides this color no matter what
               color="var(--mb-color-border) !important"
-            />
+            /> </>)}
             <InteractiveQuestion.FilterDropdown />
             <InteractiveQuestion.SummarizeDropdown />
             <InteractiveQuestion.BreakoutDropdown />
@@ -112,6 +113,7 @@ export const InteractiveQuestionResult = ({
           <InteractiveQuestion.EditorButton
             isOpen={isEditorOpen}
             onClick={toggleEditor}
+
           />
         </Group>
       </Stack>
