@@ -1786,4 +1786,4 @@
   (remove-stage-numbers-from-viz-settings-parameter-mapping-targets))
 
 (define-migration MigrateAlertToNotification
-  (pulse-to-notification/migrate-alert!))
+  (pulse-to-notification/migrate-alerts!))

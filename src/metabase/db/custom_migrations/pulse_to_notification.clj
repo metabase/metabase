@@ -38,7 +38,7 @@
                            "mid"   "15"
                            "last"  "L"))))
 
-(defn schedule-map->cron-string
+(defn- schedule-map->cron-string
   "Convert the frontend schedule map into a cron string."
   [{day-of-week :schedule_day, hour :schedule_hour, minute :schedule_minute,
     frame :schedule_frame,  schedule-type :schedule_type}]
@@ -51,7 +51,7 @@
                  :monthly (assoc (frame->cron frame day-of-week)
                                  :hours hour))))
 
-(defn create-notification!
+(defn- create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [notification subscriptions handlers+recipients]
@@ -79,7 +79,7 @@
            (assoc pc :recipients (get pc-id->recipients (:id pc))))
          pcs)))
 
-(defn pulse->-notification!
+(defn- pulse->notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [pulse alert-template-id]
@@ -131,7 +131,7 @@
                                pcs)]
         (create-notification! notification subscriptions handlers)))))
 
-(defn migrate-alert!
+(defn migrate-alerts!
   "Migrate alerts from `pulse` to `notification`."
   []
   (let [alert-template-id (t2/insert-returning-pk! :channel_template
@@ -143,14 +143,13 @@
                                                                     :path    "metabase/email/alert.hbs"})
                                                     :created_at   :%now
                                                     :updated_at   :%now})]
-    (run! #(pulse->-notification! % alert-template-id)
+    (run! #(pulse->notification! % alert-template-id)
           (t2/reducible-query {:select [:*]
                                :from   [:pulse]
                                :where  [:in :alert_condition ["rows" "goal"]]}))))
 
 (comment
   (t2/delete! :model/Notification)
-  (migrate-alert!)
-
+  (migrate-alerts!)
   (t2/hydrate (t2/select :model/Notification) :subscriptions
               [:handlers :recipients :template]))
