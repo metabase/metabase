@@ -1,7 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Fragment, isValidElement } from "react";
 
-import { Container, Divider, HeaderBadge } from "./HeaderBreadcrumbs.styled";
+import { Badge } from "metabase/components/Badge";
+import { Flex, Text } from "metabase/ui";
+
+import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
+import { HeaderBadge } from "./HeaderBreadcrumbs.styled";
 
 const crumbShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
@@ -30,7 +35,12 @@ export function HeadBreadcrumbs({
   ...props
 }) {
   return (
-    <Container data-testid="head-crumbs-container" {...props} variant={variant}>
+    <Flex
+      align="center"
+      wrap="wrap"
+      data-testid="head-crumbs-container"
+      {...props}
+    >
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;
         const badgeInactiveColor =
@@ -40,22 +50,35 @@ export function HeadBreadcrumbs({
             {isValidElement(part) ? (
               part
             ) : (
-              <HeaderBadge
+              <Badge
+                className={cx(HeaderBreadcrumbsS.badge, {
+                  [HeaderBreadcrumbsS.headVariant]: variant === "head",
+                })}
                 to={part.href}
                 icon={part.icon}
                 inactiveColor={badgeInactiveColor}
               >
                 {part.name}
-              </HeaderBadge>
+              </Badge>
             )}
             {!isLast &&
               (isValidElement(divider) ? divider : <Divider char={divider} />)}
           </Fragment>
         );
       })}
-    </Container>
+    </Flex>
+  );
+}
+
+// eslint-disable-next-line react/prop-types
+function Divider({ char = "/" }) {
+  return (
+    <Text component="span" className={HeaderBreadcrumbsS.HeaderBreadcrumbs}>
+      {char}
+    </Text>
   );
 }
 
 HeadBreadcrumbs.Badge = HeaderBadge;
+// TODO: likely not used and can be removed
 HeadBreadcrumbs.Divider = Divider;

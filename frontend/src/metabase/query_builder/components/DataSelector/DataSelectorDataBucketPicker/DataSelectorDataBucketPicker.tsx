@@ -1,15 +1,9 @@
 import SelectList from "metabase/components/SelectList";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import type { DataTypeInfoItem } from "../types";
 
 import DataSelectorDataBucketPickerS from "./DataSelectorDataBucketPicker.module.css";
-import {
-  DataBucketListItemContainer as ItemContainer,
-  DataBucketListItemDescription as ItemDescription,
-  DataBucketListItemIcon as ItemIcon,
-  DataBucketListItemTitle as ItemTitle,
-} from "./DataSelectorDataBucketPicker.styled";
 
 type DataSelectorDataBucketPickerProps = {
   dataTypes: DataTypeInfoItem[];
@@ -45,20 +39,35 @@ const DataBucketListItem = ({
   name,
   onSelect,
 }: DataBucketListItemProps) => (
-  <ItemContainer
+  <SelectList.BaseItem
+    className={DataSelectorDataBucketPickerS.DataBucketListItemContainer}
     data-testid="data-bucket-list-item"
     id={id}
     name={name}
     onSelect={onSelect}
   >
     <Flex align="center">
-      <ItemIcon name={icon} size={18} />
-      <ItemTitle>{name}</ItemTitle>
+      <Icon
+        className={DataSelectorDataBucketPickerS.DataBucketListItemIcon}
+        name={icon}
+        size={18}
+      />
+      <Text
+        component="span"
+        className={DataSelectorDataBucketPickerS.DataBucketListItemTitle}
+      >
+        {name}
+      </Text>
     </Flex>
     <Box mt="xs">
-      <ItemDescription>{description}</ItemDescription>
+      <Text
+        component="span"
+        className={DataSelectorDataBucketPickerS.DataBucketListItemDescription}
+      >
+        {description}
+      </Text>
     </Box>
-  </ItemContainer>
+  </SelectList.BaseItem>
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

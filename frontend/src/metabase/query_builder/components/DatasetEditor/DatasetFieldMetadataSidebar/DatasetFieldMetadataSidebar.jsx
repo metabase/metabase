@@ -32,7 +32,7 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 import { EDITOR_TAB_INDEXES } from "../constants";
 
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
-import { MainFormContainer } from "./DatasetFieldMetadataSidebar.styled";
+import { FormContainer } from "./DatasetFieldMetadataSidebar.styled";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
@@ -230,7 +230,9 @@ function DatasetFieldMetadataSidebar({
         {({ values: formFieldValues }) => {
           return (
             <Form>
-              <MainFormContainer>
+              <FormContainer
+                className={DatasetFieldMetadataSidebarS.MainFormContainer}
+              >
                 <FormTextInput
                   name="display_name"
                   onChange={handleDisplayNameChange}
@@ -299,7 +301,7 @@ function DatasetFieldMetadataSidebar({
                     />
                   </Box>
                 )}
-              </MainFormContainer>
+              </FormContainer>
 
               <Tabs value={tab} onTabChange={setTab}>
                 {hasColumnFormattingOptions ? (
