@@ -1,7 +1,9 @@
 import { t } from "ttag";
 
 import type { SegmentItem } from "metabase/querying/filters/types";
-import { Flex, Grid, Icon, MultiSelect, Text } from "metabase/ui";
+import { Flex, Icon, MultiSelect, Text } from "metabase/ui";
+
+import ItemGrid from "../FilterModalBody/poc.styled";
 
 import S from "./SegmentFilterEditor.module.css";
 
@@ -31,26 +33,25 @@ export function SegmentFilterEditor({
   };
 
   return (
-    <Grid grow>
-      <Grid.Col span="auto">
+    <ItemGrid
+      title={
         <Flex h="100%" align="center" gap="sm">
           <Icon className={S.icon} name="filter" />
           <Text color="text-dark" weight="bold">
             {t`Filter down to a segment`}
           </Text>
         </Flex>
-      </Grid.Col>
-      <Grid.Col span={4}>
-        <MultiSelect
-          data={data}
-          value={value}
-          placeholder={t`Filter segments`}
-          nothingFound={t`No matching segment found.`}
-          aria-label={t`Filter segments`}
-          searchable
-          onChange={handleChange}
-        />
-      </Grid.Col>
-    </Grid>
+      }
+    >
+      <MultiSelect
+        data={data}
+        value={value}
+        placeholder={t`Filter segments`}
+        nothingFound={t`No matching segment found.`}
+        aria-label={t`Filter segments`}
+        searchable
+        onChange={handleChange}
+      />
+    </ItemGrid>
   );
 }

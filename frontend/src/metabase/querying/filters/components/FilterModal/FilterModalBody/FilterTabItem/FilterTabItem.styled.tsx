@@ -8,9 +8,7 @@ interface FilterTabItemProps extends BoxProps {
 
 export const FilterTabItem = styled(Box)<FilterTabItemProps>`
   border-bottom: 1px solid hsla(0, 0%, 94%, 1);
-  padding: 0;
-  padding-block: 8px;
-  padding-right: 16px;
+  padding: 0 !important;
 
   &:last-of-type {
     border-bottom: none;

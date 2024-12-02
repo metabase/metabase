@@ -5,8 +5,9 @@ import {
   type OperatorOption,
   useDefaultFilter,
 } from "metabase/querying/filters/hooks/use-default-filter";
-import { Checkbox, Grid, Group } from "metabase/ui";
+import { Checkbox, Group } from "metabase/ui";
 
+import ItemGrid from "../FilterModalBody/poc.styled";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
@@ -38,8 +39,8 @@ export function DefaultFilterEditor({
 
   return (
     <HoverParent data-testid="default-filter-editor">
-      <Grid grow>
-        <Grid.Col span="auto">
+      <ItemGrid
+        title={
           <FilterTitle
             query={query}
             stageIndex={stageIndex}
@@ -47,22 +48,21 @@ export function DefaultFilterEditor({
             columnIcon={columnIcon}
             isSearching={isSearching}
           />
-        </Grid.Col>
-        <Grid.Col span={4}>
-          <Group spacing="md">
-            {availableOptions.map(option => (
-              <Checkbox
-                key={option.operator}
-                label={option.name}
-                checked={option.operator === operator}
-                onChange={event =>
-                  handleOperatorChange(option, event.target.checked)
-                }
-              />
-            ))}
-          </Group>
-        </Grid.Col>
-      </Grid>
+        }
+      >
+        <Group spacing="md">
+          {availableOptions.map(option => (
+            <Checkbox
+              key={option.operator}
+              label={option.name}
+              checked={option.operator === operator}
+              onChange={event =>
+                handleOperatorChange(option, event.target.checked)
+              }
+            />
+          ))}
+        </Group>
+      </ItemGrid>
     </HoverParent>
   );
 }

@@ -31,7 +31,7 @@ export function FilterTitle({
   stageIndex,
 }: FilterTitleProps) {
   return (
-    <Flex h="100%" align="center" gap="sm" pl="md">
+    <Flex h="100%" align="center" gap="sm">
       <QueryColumnInfoIcon
         className={S.icon}
         query={query}
