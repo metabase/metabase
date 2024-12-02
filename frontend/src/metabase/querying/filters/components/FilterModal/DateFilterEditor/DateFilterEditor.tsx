@@ -18,7 +18,7 @@ import ItemGrid from "../FilterModalBody/poc.styled";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
-import { ClearIcon } from "./DateFilterEditor.styled";
+import { ClearIcon, ToggleButton } from "./DateFilterEditor.styled";
 import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 
@@ -74,15 +74,19 @@ export function DateFilterEditor({
         <Flex gap="0.5rem">
           {visibleOptions.map(option => {
             const isSelected = option.shortcut === selectedOption?.shortcut;
+
             return (
-              <Button
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-expect-error
+              <ToggleButton
                 key={option.shortcut}
-                variant={isSelected ? "outline" : "default"}
+                radius="xl"
+                variant={isSelected ? "filled" : "subtle"}
                 aria-selected={isSelected}
                 onClick={() => handleOptionToggle(option)}
               >
                 {option.label}
-              </Button>
+              </ToggleButton>
             );
           })}
           <DateFilterPopover
