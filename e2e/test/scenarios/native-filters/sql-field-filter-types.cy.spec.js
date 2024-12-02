@@ -67,7 +67,12 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     cy.signInAsAdmin();
 
     openNativeEditor();
-    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
+
+    const LEFT_BRACKET = "{{}";
+    const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
+    SQLFilter.enterParameterizedQuery(
+      `SELECT * FROM products WHERE ${DOUBLE_LEFT_BRACKET}f}}`,
+    );
 
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
@@ -87,6 +92,25 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         filterType: subType,
         filterValue: value,
       });
+
+      // When the filter is "Previous N months", ensure that N is large enough
+      // that the representative result appears. For this filter, the
+      // representative result is Synergistic Steel Chair, created on May 24,
+      // 2022.
+      if (subType === "All Options" && value.timeBucket === "month") {
+        cy.findAllByTestId("parameter-value-widget-target")
+          .filter(':contains("Previous 30")')
+          .click();
+        const representativeResultDate = new Date(2022, 5, 24);
+        const monthsAgo = Math.floor(
+          (new Date() - representativeResultDate) / (1000 * 60 * 60 * 24 * 30),
+        );
+        cy.findByTestId("relative-datetime-value")
+          .clear()
+          .type(`${monthsAgo + 2}`)
+          .blur();
+        cy.button("Update filter").click();
+      }
 
       SQLFilter.runQuery();
 
