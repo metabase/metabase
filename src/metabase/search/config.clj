@@ -84,15 +84,33 @@
 (def ^:private static-weights
   {:default
    {:pinned              0
-    :bookmarked          2
-    :recency             1.5
-    :user-recency        1.5
-    :dashboard           0.5
+    :bookmarked          1
+    :recency             1
+    :user-recency        5
+    :dashboard           0
     :model               2
-    :official-collection 2
-    :verified            2
+    :official-collection 1
+    :verified            1
     :view-count          2
-    :text                10}})
+    :text                5
+    :mine                1
+    :exact               5
+    :prefix              0}
+   :command-palette
+   {:prefix               5
+    :model/collection     1
+    :model/dashboard      1
+    :model/metric         1
+    :model/dataset        0.8
+    :model/table          0.8
+    :model/indexed-entity 0.5
+    :model/database       0.5
+    :model/question       0}
+   :entity-picker
+   {:model/table    1
+    :model/dataset  1
+    :model/metric   1
+    :model/question 0}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
