@@ -169,8 +169,8 @@
       {:operator a, :column (ref->column b), :values args, :options {}}
 
       ;; multiple arguments with options
-      [(a :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (b :guard string-column?) (c :guard string?)]
-      {:operator a, :column (ref->column b), :values [c], :options {:case-sensitive (get opts :case-sensitive true)}})))
+      [(a :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (b :guard string-column?) & (args :guard #(every? string? %))]
+      {:operator a, :column (ref->column b), :values args, :options {:case-sensitive (get opts :case-sensitive true)}})))
 
 (def ^:private NumberFilterOperator
   [:enum :is-null :not-null := :!= :> :>= :< :<= :between])

@@ -126,19 +126,50 @@
   (let [query lib.tu/venues-query
         column (meta/field-metadata :venues :name)]
     (testing "clause to parts rountrip"
-      (doseq [[clause parts] {(lib.filter/is-empty column)      {:operator :is-empty, :column column, :values []}
-                              (lib.filter/not-empty column)     {:operator :not-empty, :column column, :values []}
-                              (lib.filter/= column "A")         {:operator :=, :column column, :values ["A"]}
-                              (lib.filter/= column "A" "B")     {:operator :=, :column column, :values ["A" "B"]}
-                              (lib.filter/!= column "A")        {:operator :!=, :column column, :values ["A"]}
-                              (lib.filter/!= column "A" "B")    {:operator :!=, :column column, :values ["A" "B"]}
-                              (lib.filter/contains column "A")  {:operator :contains, :column column, :values ["A"]}}]
-        (let [{:keys [operator column values]} parts]
+      (doseq [[clause parts] {(lib.filter/is-empty column)
+                              {:operator :is-empty, :column column, :values [], :options {}}
+
+                              (lib.filter/not-empty column)
+                              {:operator :not-empty, :column column, :values [], :options {}}
+
+                              (lib.filter/= column "A")
+                              {:operator :=, :column column, :values ["A"], :options {}}
+
+                              (lib.filter/= column "A" "B")
+                              {:operator :=, :column column, :values ["A" "B"], :options {}}
+
+                              (lib.filter/!= column "A")
+                              {:operator :!=, :column column, :values ["A"], :options {}}
+
+                              (lib.filter/!= column "A" "B")
+                              {:operator :!=, :column column, :values ["A" "B"], :options {}}
+
+                              (lib.filter/contains column "A")
+                              {:operator :contains, :column column, :values ["A"], :options {:case-sensitive true}}
+
+                              (lib.filter/contains column "A" "B")
+                              {:operator :contains, :column column, :values ["A" "B"], :options {}}
+
+                              (lib.filter/does-not-contain column "A" "B")
+                              {:operator :does-not-contain, :column column, :values ["A" "B"], :options {}}
+
+                              (lib.filter/starts-with column "A" "B")
+                              {:operator :starts-with, :column column, :values ["A" "B"], :options {}}
+
+                              (lib.filter/ends-with column "A" "B")
+                              {:operator :ends-with, :column column, :values ["A" "B"], :options {}}
+
+                              (lib.fe-util/expression-clause :contains [column "A"] {:case-sensitive false})
+                              {:operator :contains, :column column, :values ["A"], :options {:case-sensitive false}}
+
+                              (lib.fe-util/expression-clause :contains [column "A" "B"] {:case-sensitive false})
+                              {:operator :contains, :column column, :values ["A" "B"], :options {:case-sensitive false}}}]
+        (let [{:keys [operator column values options]} parts]
           (is (=? parts (lib.fe-util/string-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/string-filter-parts query -1 (lib.fe-util/string-filter-clause operator
                                                                                                     column
                                                                                                     values
-                                                                                                    {})))))))
+                                                                                                    options)))))))
   (testing "unsupported clauses"
     (are [clause] (= nil (lib.fe-util/string-filter-parts query -1 clause))
       (lib.expression/concat column "A")
