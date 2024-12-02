@@ -10,7 +10,7 @@ type Props = {
 };
 
 /**
- * Determines whether a banner should be shown based on the token expirty (ISO8601) timestamp,
+ * Determines whether a banner should be shown based on the token expiry (ISO8601) timestamp,
  * the number of days remaining in a trial period, and the last dismissal (ISO8601) timestamp.
  *
  * The banner will not be shown if:
