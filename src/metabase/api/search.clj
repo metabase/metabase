@@ -56,7 +56,7 @@
     (throw (ex-info "Search index is not enabled." {:status-code 501}))
 
     (search.core/supports-index?)
-    (do (search.core/init-index! {:force-reset? true}) {:message "done"})
+    {:message (search.core/init-index! {:force-reset? true})}
 
     :else
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))

@@ -67,7 +67,7 @@
       :else
       [:and [:>= dt-col start] [:< dt-col end]])))
 
-(defmulti ^:private where-clause* (fn [context-key _column _v] context-key))
+(defmulti ^:private where-clause* (fn [filter-type _column _v] filter-type))
 
 (defmethod where-clause* ::single-value [_ k v] [:= k v])
 
