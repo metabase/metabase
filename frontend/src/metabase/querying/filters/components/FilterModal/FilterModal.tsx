@@ -65,7 +65,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
               onChange={handleSearch}
             />
 
-            {groupItems.length > 1 && (
+            {groupItems.length > 1 && !searchText && (
               <Box mt="md">
                 <FieldGroupPicker
                   groupItems={groupItems}
