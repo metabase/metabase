@@ -176,6 +176,7 @@ type CoordinateFilterQueryOpts = Partial<Lib.CoordinateFilterParts> & {
 export function createQueryWithCoordinateFilter({
   query = createQuery(),
   column = findLatitudeColumn(query),
+  longitudeColumn = null,
   operator = "=",
   values = [0],
   ...parts
@@ -183,6 +184,7 @@ export function createQueryWithCoordinateFilter({
   const clause = Lib.coordinateFilterClause({
     operator,
     column,
+    longitudeColumn,
     values,
     ...parts,
   });

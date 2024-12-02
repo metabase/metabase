@@ -173,8 +173,9 @@
                                                                                                     options)))))))
     (testing "unsupported clauses"
       (are [clause] (= nil (lib.fe-util/string-filter-parts query -1 clause))
-        (lib.expression/concat column "A")
-        (lib.filter/is-null column)))))
+        (lib.filter/= "A" column)
+        (lib.filter/is-null column)
+        (lib.expression/concat column "A")))))
 
 (deftest ^:parallel number-filter-parts-test
   (let [query lib.tu/venues-query
@@ -198,8 +199,9 @@
                                                                                                     values)))))))
     (testing "unsupported clauses"
       (are [clause] (= nil (lib.fe-util/number-filter-parts query -1 clause))
-        (lib.expression/+ column 10)
-        (lib.filter/is-null (meta/field-metadata :venues :name))))))
+        (lib.filter/= 10 column)
+        (lib.filter/is-null (meta/field-metadata :venues :name))
+        (lib.expression/+ column 10)))))
 
 (deftest ^:parallel coordinate-filter-parts-test
   (let [query  (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
@@ -240,9 +242,10 @@
                                                                                                             values)))))))
     (testing "unsupported clauses"
       (are [clause] (= nil (lib.fe-util/coordinate-filter-parts query -1 clause))
-        (lib.expression/+ lat-column 10)
+        (lib.filter/= 10 lat-column)
         (lib.filter/is-null lat-column)
-        (lib.filter/= (meta/field-metadata :orders :total) 10)))))
+        (lib.filter/= (meta/field-metadata :orders :total) 10)
+        (lib.expression/+ lat-column 10)))))
 
 (deftest ^:parallel boolean-filter-parts-test
   (let [query  (-> lib.tu/venues-query
@@ -262,6 +265,7 @@
                                                                                                          values)))))))
     (testing "unsupported clauses"
       (are [clause] (= nil (lib.fe-util/boolean-filter-parts query -1 clause))
+        (lib.filter/= true column)
         (lib.filter/!= column true)
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
 

@@ -51,7 +51,7 @@ export function useCoordinateFilter({
     getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
   const [secondColumn, setSecondColumn] = useState(
-    getDefaultSecondColumn(availableColumns, filterParts?.longitudeColumn),
+    getDefaultSecondColumn(availableColumns, filterParts),
   );
 
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);

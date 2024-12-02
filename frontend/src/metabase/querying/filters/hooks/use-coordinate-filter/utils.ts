@@ -50,9 +50,9 @@ export function getAvailableColumns(
 
 export function getDefaultSecondColumn(
   columns: Lib.ColumnMetadata[],
-  longitudeColumn?: Lib.ColumnMetadata,
+  filterParts: Lib.CoordinateFilterParts | null,
 ): Lib.ColumnMetadata | undefined {
-  return longitudeColumn ?? columns[0];
+  return filterParts?.longitudeColumn ?? columns[0];
 }
 
 export function canPickColumns(
@@ -129,6 +129,7 @@ function getSimpleFilterParts(
   return {
     operator,
     column,
+    longitudeColumn: null,
     values: values.filter(isNotEmpty),
   };
 }
@@ -143,18 +144,21 @@ function getBetweenFilterParts(
     return {
       operator,
       column,
+      longitudeColumn: null,
       values: [Math.min(startValue, endValue), Math.max(startValue, endValue)],
     };
   } else if (isNotEmpty(startValue)) {
     return {
       operator: ">=",
       column,
+      longitudeColumn: null,
       values: [startValue],
     };
   } else if (isNotEmpty(endValue)) {
     return {
       operator: "<=",
       column,
+      longitudeColumn: null,
       values: [endValue],
     };
   } else {
