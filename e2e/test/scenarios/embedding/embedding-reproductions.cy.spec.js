@@ -1201,7 +1201,7 @@ describeEE("issue 8490", () => {
 
     cy.findByTestId("embed-frame").within(() => {
       // X-axis labels: Jan 2023
-      cy.findByText("11월 2023").should("be.visible");
+      cy.findByText("11월 2024").should("be.visible");
       // Aggregation "count"
       cy.findByText("카운트").should("be.visible");
     });
