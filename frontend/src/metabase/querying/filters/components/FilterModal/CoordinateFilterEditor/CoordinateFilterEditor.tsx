@@ -166,7 +166,6 @@ function NumberValueInput({
         <NumberInput
           value={values[0]}
           placeholder={t`Min`}
-          maw="8rem"
           onChange={(newValue: number) => onChange([newValue, values[1]])}
           onFocus={onFocus}
           onBlur={onBlur}
@@ -175,7 +174,6 @@ function NumberValueInput({
         <NumberInput
           value={values[1]}
           placeholder={t`Max`}
-          maw="8rem"
           onChange={(newValue: number) => onChange([values[0], newValue])}
           onFocus={onFocus}
           onBlur={onBlur}
