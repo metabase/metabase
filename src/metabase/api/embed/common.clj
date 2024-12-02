@@ -1,6 +1,5 @@
 (ns metabase.api.embed.common
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -24,6 +23,7 @@
    [metabase.util.i18n
     :as i18n
     :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -134,7 +134,7 @@
   [query-params]
   (or (try
         (when-let [parameters (:parameters query-params)]
-          (json/parse-string parameters keyword))
+          (json/decode+kw parameters))
         (catch Throwable _
           nil))
       query-params))

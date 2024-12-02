@@ -1,6 +1,5 @@
 (ns metabase.search.impl
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -19,6 +18,7 @@
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -181,7 +181,7 @@
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          (remove-thunks all-scores))
         (update :dataset_query (fn [dataset-query]
-                                 (when-let [query (some-> dataset-query json/parse-string)]
+                                 (when-let [query (some-> dataset-query json/decode)]
                                    (if (get query "type")
                                      (mbql.normalize/normalize query)
                                      (not-empty (lib/normalize query))))))
@@ -359,7 +359,7 @@
 (defn- normalize-result-more
   "Additional normalization that is done after we've filtered by permissions, as its more expensive."
   [search-ctx result]
-  (->> (update result :pk_ref json/parse-string)
+  (->> (update result :pk_ref json/decode)
        (add-can-write search-ctx)))
 
 (defn- search-results [search-ctx model-set-fn total-results]
