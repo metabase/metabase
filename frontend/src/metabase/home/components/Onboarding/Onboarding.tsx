@@ -232,7 +232,7 @@ export const Onboarding = () => {
                 <Accordion.Panel>
                   <Stack spacing="lg">
                     <img
-                      alt={`${applicationName} data stack`}
+                      alt={`${applicationName} ${t`data stack`}`}
                       className={S.image}
                       loading="lazy"
                       src="app/assets/img/onboarding_data_diagram.png"
