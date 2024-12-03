@@ -10074,8 +10074,9 @@ databaseChangeLog:
                   name: refresh_automatically
                   type: ${boolean.type}
                   remarks: Whether or not we should automatically refresh cache results when a cache expires
+                  defaultValueBoolean: false
                   constraints:
-                    nullable: true
+                    nullable: false
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
