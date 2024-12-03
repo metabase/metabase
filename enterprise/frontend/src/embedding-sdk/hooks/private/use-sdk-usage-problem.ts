@@ -39,11 +39,10 @@ export function useSdkUsageProblem({
   const usageProblem = useMemo(() => {
     return getSdkUsageProblem({
       authConfig,
-      allowConsoleLog,
       hasTokenFeature,
       isEnabled,
     });
-  }, [authConfig, allowConsoleLog, hasTokenFeature, isEnabled]);
+  }, [authConfig, hasTokenFeature, isEnabled]);
 
   useEffect(() => {
     // SDK components will stop rendering if a license error is detected.

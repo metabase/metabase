@@ -7,8 +7,6 @@ import { getIsLocalhost } from "./is-localhost";
 
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
-  allowConsoleLog: boolean;
-
   isEnabled: boolean;
   hasTokenFeature: boolean;
 }
