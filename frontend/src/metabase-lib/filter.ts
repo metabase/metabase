@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn, TemporalUnit } from "metabase-types/api";
@@ -332,7 +332,14 @@ export function timeFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  return ML.time_filter_parts(query, stageIndex, filterClause);
+  const filterParts = ML.time_filter_parts(query, stageIndex, filterClause);
+  if (!filterParts) {
+    return null;
+  }
+  return {
+    ...filterParts,
+    values: filterParts.values.map((value: Moment) => value.toDate()),
+  };
 }
 
 export function defaultFilterClause({

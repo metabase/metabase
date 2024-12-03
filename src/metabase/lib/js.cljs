@@ -1157,7 +1157,7 @@
   "Destructures a time filter clause created by [[time-filter-clause]]. Returns `nil` if the clause does not match the
   expected shape."
   [a-query stage-boolean a-filter-clause]
-  (when-let [filter-parts (lib.core/boolean-filter-parts a-query stage-boolean a-filter-clause)]
+  (when-let [filter-parts (lib.core/time-filter-parts a-query stage-boolean a-filter-clause)]
     (let [{:keys [operator column values]} filter-parts]
       #js {:operator (name operator)
            :column   column
