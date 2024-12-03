@@ -12,7 +12,7 @@ import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 
-import SlackChannelField from "../SlackChannelField";
+import { SlackChannelField } from "../SlackChannelField";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -69,7 +69,7 @@ function _AddEditSlackSidebar({
             "schedule_type",
           )}
           scheduleOptions={channelSpec.schedules}
-          textBeforeInterval={t`Sent`}
+          textBeforeInterval={t`Send`}
           textBeforeSendTime={t`${
             CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`
           } will be sent at`}

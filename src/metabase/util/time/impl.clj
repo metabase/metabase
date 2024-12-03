@@ -172,14 +172,20 @@
 (defmethod common/number->timestamp :hour-of-day [value _]
   (-> (now) (t/truncate-to :days) (t/plus (t/hours value))))
 
+(defn- number->timestamp [value day-of-week]
+  (-> (now)
+      (t/adjust :previous-or-same-day-of-week day-of-week)
+      (t/truncate-to :days)
+      (t/plus (t/days (dec value)))))
+
 (defmethod common/number->timestamp :day-of-week [value _]
   ;; Metabase uses 1 to mean the start of the week, based on the Metabase setting for the first day of the week.
   ;; Moment uses 0 as the first day of the week in its configured locale.
   ;; For Java, get the first day of the week from the setting, and offset by `(dec value)` for the current day.
-  (-> (now)
-      (t/adjust :previous-or-same-day-of-week (first-day-of-week))
-      (t/truncate-to :days)
-      (t/plus (t/days (dec value)))))
+  (number->timestamp value (first-day-of-week)))
+
+(defmethod common/number->timestamp :day-of-week-iso [value _]
+  (number->timestamp value :monday))
 
 (defmethod common/number->timestamp :day-of-month [value _]
   ;; We force the initial date to be in a month with 31 days.
@@ -320,6 +326,7 @@
 
 (def ^:private unit-formats
   {:day-of-week     "EEEE"
+   :day-of-week-iso "EEEE"
    :month-of-year   "MMM"
    :minute-of-hour  "m"
    :hour-of-day     "h a"

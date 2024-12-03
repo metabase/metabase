@@ -175,10 +175,9 @@
                          (lib/query metadata-provider query))
               expected (walk/postwalk
                         (fn [x]
-                          (if (and (map? x)
-                                   (:lib/uuid x))
-                            (assoc x :lib/uuid string?)
-                            x))
+                          (cond-> x
+                            (and (map? x) (:lib/uuid x)) (assoc :lib/uuid string?)
+                            (and (map? x) (:ident x))    (assoc :ident string?)))
                         expected)
               actual   (#'qp.pivot/generate-queries query {:pivot-rows [1 0] :pivot-cols [2]})]
           (is (= 6 (count actual)))

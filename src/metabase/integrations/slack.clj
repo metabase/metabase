@@ -1,6 +1,5 @@
 (ns metabase.integrations.slack
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -11,6 +10,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -140,7 +140,7 @@
 
 (defn- handle-response [{:keys [status body]}]
   (with-open [reader (io/reader body)]
-    (let [body (json/parse-stream reader true)]
+    (let [body (json/decode+kw reader)]
       (if (and (= 200 status) (:ok body))
         body
         (handle-error body)))))
@@ -374,7 +374,7 @@
   [& {:keys [channel-id file-id filename]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
-                      {:query-params {:files      (json/generate-string [{:id file-id, :title filename}])
+                      {:query-params {:files      (json/encode [{:id file-id, :title filename}])
                                       :channel_id channel-id}}))
         complete-response (try
                             (complete!)
@@ -444,10 +444,10 @@
         message-params (cond
                         ;; If message-content contains :blocks key, it's a new-style message
                          (:blocks message-content)
-                         {:blocks (json/generate-string (:blocks message-content))}
+                         {:blocks (json/encode (:blocks message-content))}
                         ;; Otherwise treat it as notification attachments
                          (seq message-content)
-                         {:attachments (json/generate-string message-content)}
+                         {:attachments (json/encode message-content)}
                          :else
                          {})]
     (POST "chat.postMessage"
