@@ -60,13 +60,6 @@ export const MetabaseProviderInternal = ({
   className,
   locale = "en",
 }: InternalMetabaseProviderProps): JSX.Element => {
-  useEffect(() => {
-    console.log("Provider mounted");
-    return () => {
-      console.log("Provider unmounted");
-    };
-  }, []);
-
   const { fontFamily } = theme ?? {};
   useInitData({ config });
 
