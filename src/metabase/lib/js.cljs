@@ -353,7 +353,7 @@
   A `\"is\"` prefix in JavaScript is replaced with a `?` suffix in Clojure , eg. `isManyPks` becomes `:many-pks?`."
   [js-key]
   (let [key-str (if (str/starts-with? js-key "is")
-                  (str (str/replace js-key #"^is" "") "?")
+                  (str (subs js-key 2) "?")
                   js-key)]
     (-> key-str u/->kebab-case-en keyword)))
 
