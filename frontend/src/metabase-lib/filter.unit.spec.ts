@@ -118,10 +118,6 @@ function addExcludeDateFilter(
   return addFilter(query, filterClause, Lib.excludeDateFilterParts);
 }
 
-function addTimeFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
-  return addFilter(query, filterClause, Lib.timeFilterParts);
-}
-
 function addDefaultFilter(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
@@ -588,119 +584,6 @@ describe("filter", () => {
           column: findColumn(query, tableName, "PRICE"),
           bucket: "day-of-week",
           values: [1, 2],
-        }),
-      );
-
-      expect(filterParts).toBeNull();
-    });
-  });
-
-  describe("time filters", () => {
-    const tableName = "PEOPLE";
-    const columnName = TIME_FIELD.name;
-    const column = findColumn(query, tableName, columnName);
-
-    beforeEach(() => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date(2020, 0, 1));
-    });
-
-    it.each<Lib.TimeFilterOperator>([">", "<"])(
-      'should be able to create and destructure a time filter with "%s" operator and 1 value',
-      operator => {
-        const { filterParts, columnInfo } = addTimeFilter(
-          query,
-          Lib.timeFilterClause({
-            operator,
-            column,
-            values: [new Date(2015, 0, 1, 10, 20)],
-          }),
-        );
-
-        expect(filterParts).toMatchObject({
-          operator,
-          column: expect.anything(),
-          values: [new Date(2020, 0, 1, 10, 20)],
-        });
-        expect(columnInfo?.name).toBe(columnName);
-      },
-    );
-
-    it('should be able to create and destructure a time filter with "between" operator and 2 values', () => {
-      const { filterParts, columnInfo } = addTimeFilter(
-        query,
-        Lib.timeFilterClause({
-          operator: "between",
-          column,
-          values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
-        }),
-      );
-
-      expect(filterParts).toMatchObject({
-        operator: "between",
-        column: expect.anything(),
-        values: [new Date(2020, 0, 1, 10, 20), new Date(2020, 0, 1, 18, 50)],
-      });
-      expect(columnInfo?.name).toBe(columnName);
-    });
-
-    it.each([
-      ["11:08", new Date(1970, 0, 1, 11, 8)],
-      ["11:08:13", new Date(1970, 0, 1, 11, 8, 13)],
-      ["11:08:13.123", new Date(1970, 0, 1, 11, 8, 13, 123)],
-      ["11:08:13.123Z", new Date(1970, 0, 1, 11, 8, 13, 123)],
-    ])("should support %s time format", (arg, date) => {
-      const { filterParts } = addTimeFilter(
-        query,
-        Lib.expressionClause(">", [column, arg]),
-      );
-      expect(filterParts).toMatchObject({
-        operator: ">",
-        column: expect.anything(),
-        values: [expect.any(Date)],
-      });
-
-      const value = filterParts?.values[0];
-      expect(value?.getHours()).toBe(date.getHours());
-      expect(value?.getMinutes()).toBe(date.getMinutes());
-      expect(value?.getSeconds()).toBe(date.getSeconds());
-      expect(value?.getMilliseconds()).toBe(date.getMilliseconds());
-    });
-
-    it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = addTimeFilter(
-        query,
-        Lib.expressionClause("=", [column, "10:20:00.000"]),
-      );
-
-      expect(filterParts).toBeNull();
-    });
-
-    it("should ignore expressions without first column", () => {
-      const { filterParts } = addTimeFilter(
-        query,
-        Lib.expressionClause(">", ["10:20:00.000", column]),
-      );
-
-      expect(filterParts).toBeNull();
-    });
-
-    it("should ignore expressions with non-time arguments", () => {
-      const { filterParts } = addTimeFilter(
-        query,
-        Lib.expressionClause(">", [column, column]),
-      );
-
-      expect(filterParts).toBeNull();
-    });
-
-    it("should ignore expressions with incorrect column type", () => {
-      const { filterParts } = addTimeFilter(
-        query,
-        Lib.timeFilterClause({
-          operator: "between",
-          column: findColumn(query, tableName, "CREATED_AT"),
-          values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
         }),
       );
 
