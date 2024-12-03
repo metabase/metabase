@@ -27,7 +27,7 @@ import {
 const METABASE_INSTANCE_URL = "path:";
 const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
-const defaultAuthUriConfig = defineMetabaseAuthConfig({
+const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: AUTH_PROVIDER_URL,
 });
@@ -103,7 +103,7 @@ describe("SDK auth errors", () => {
         body: "not a json object",
       });
 
-      await setup(defaultAuthUriConfig);
+      await setup(defaultAuthConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
@@ -114,7 +114,7 @@ describe("SDK auth errors", () => {
 
     it("should show a message when fetchRequestToken doesn't return a json object", async () => {
       const authConfig = defineMetabaseAuthConfig({
-        ...defaultAuthUriConfig,
+        ...defaultAuthConfig,
         // @ts-expect-error -- testing error path
         fetchRequestToken: async () => "not a json object",
       });
@@ -131,7 +131,7 @@ describe("SDK auth errors", () => {
         JSON.stringify({ status: "error-embedding-sdk-disabled" }),
       );
 
-      await setup(defaultAuthUriConfig);
+      await setup(defaultAuthConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
@@ -140,7 +140,7 @@ describe("SDK auth errors", () => {
 
     it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
       const authConfig = defineMetabaseAuthConfig({
-        ...defaultAuthUriConfig,
+        ...defaultAuthConfig,
         fetchRequestToken: async () => {
           throw new Error("Custom error message");
         },

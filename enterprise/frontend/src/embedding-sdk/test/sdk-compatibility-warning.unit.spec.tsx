@@ -23,7 +23,7 @@ import { getEmbeddingSdkVersion } from "../config";
 const METABASE_INSTANCE_URL = "path:";
 const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
-const defaultAuthUriConfig = defineMetabaseAuthConfig({
+const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: AUTH_PROVIDER_URL,
   fetchRequestToken: _ =>
@@ -56,7 +56,7 @@ const setup = async ({
   setupCurrentUserEndpoint(createMockUser({ id: 1 }));
 
   render(
-    <MetabaseProvider authConfig={defaultAuthUriConfig}>
+    <MetabaseProvider authConfig={defaultAuthConfig}>
       <div>Hello</div>
     </MetabaseProvider>,
   );
