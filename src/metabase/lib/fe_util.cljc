@@ -371,14 +371,14 @@
   [:map
    [:operator ::lib.schema.filter/time-filter-operator]
    [:column   ::lib.schema.metadata/column]
-   [:values   [:sequential :any]]]) ;; platform-specific time
+   [:values   [:sequential [:fn u.time/valid?]]]])
 
 (mu/defn time-filter-clause :- ::lib.schema.expression/expression
   "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[time-filter-parts]]."
   [operator :- ::lib.schema.filter/time-filter-operator
    column   :- ::lib.schema.metadata/column
-   values   :- [:maybe [:sequential :any]]]
+   values   :- [:maybe [:sequential [:fn u.time/valid?]]]]
   (let [format-time #(u.time/format-for-base-type % ((some-fn :effective-type :base-type) column))]
     (expression-clause operator (into [column] (map format-time) values) {})))
 

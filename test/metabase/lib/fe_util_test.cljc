@@ -346,8 +346,8 @@
         (let [{:keys [operator column values]} parts]
           (is (=? parts (lib.fe-util/time-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/time-filter-parts query -1 (lib.fe-util/time-filter-clause operator
-                                                                                                    column
-                                                                                                    values)))))))
+                                                                                                column
+                                                                                                values)))))))
     (testing "unsupported clauses"
       (are [clause] (nil? (lib.fe-util/time-filter-parts query -1 clause))
         (lib.filter/= column "10:20")
