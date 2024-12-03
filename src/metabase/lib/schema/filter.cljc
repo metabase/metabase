@@ -46,7 +46,7 @@
   [:enum := :!= :> :>= :< :<= :between :inside])
 
 (mr/def ::boolean-filter-operator
-  "Boolean filter operator supported by the FE. Note that `:!=` is not supported."
+  "Boolean filter operators supported by the FE. Note that `:!=` is not supported."
   [:enum :is-null :not-null :=])
 
 (mr/def ::time-interval-options
