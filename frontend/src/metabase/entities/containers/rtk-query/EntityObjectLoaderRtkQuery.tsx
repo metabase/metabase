@@ -230,20 +230,22 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     return entityDefinition.wrapEntity(object, dispatch);
   }, [dispatch, object, entityDefinition, wrapped]);
 
-  const childProps = {
-    ...actionCreators,
-    ...props,
-    dispatch,
-    dispatchApiErrorEvent,
-    error,
-    fetched,
-    loading: loading || isLoading,
-    object: wrappedObject,
-    [entityAlias || entityDefinition.nameOne]: wrappedObject,
-    reload: refetch,
-  };
-
-  const renderedChildren = <ComposedComponent {...childProps} />;
+  const children = (
+    <ComposedComponent
+      {...actionCreators}
+      {...props}
+      {...{
+        [entityAlias || entityDefinition.nameOne]: wrappedObject,
+      }}
+      dispatch={dispatch}
+      dispatchApiErrorEvent={dispatchApiErrorEvent}
+      error={error}
+      fetched={fetched}
+      loading={loading || isLoading}
+      object={wrappedObject}
+      reload={refetch}
+    />
+  );
 
   if (loadingAndErrorWrapper) {
     return (
@@ -252,12 +254,12 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
         error={error}
         noWrapper
       >
-        {renderedChildren}
+        {children}
       </LoadingAndErrorWrapper>
     );
   }
 
-  return renderedChildren;
+  return children;
 }
 
 /**
