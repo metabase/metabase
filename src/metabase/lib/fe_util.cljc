@@ -243,11 +243,18 @@
       {:operator op, :column (ref->col col-ref), :values [arg]}
 
       ;; exactly 2 arguments
-      [(op :guard #{:between}) _ (col-ref :guard coordinate-col?) & (args :guard #(and (every? number? %) (= (count %) 2)))]
+      [(op :guard #{:between})
+       _
+       (col-ref :guard coordinate-col?)
+       & (args :guard #(and (every? number? %) (= (count %) 2)))]
       {:operator op, :column (ref->col col-ref), :values args}
 
       ;; exactly 4 arguments
-      [(op :guard #{:inside}) _ (lat-col-ref :guard coordinate-col?) (lon-col-ref :guard coordinate-col?) & (args :guard #(and (every? number? %) (= (count %) 4)))]
+      [(op :guard #{:inside})
+       _
+       (lat-col-ref :guard coordinate-col?)
+       (lon-col-ref :guard coordinate-col?)
+       & (args :guard #(and (every? number? %) (= (count %) 4)))]
       {:operator op, :column (ref->col lat-col-ref), :longitude-column (ref->col lon-col-ref), :values args})))
 
 (def ^:private BooleanFilterParts
