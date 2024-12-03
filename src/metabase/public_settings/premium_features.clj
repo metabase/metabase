@@ -164,8 +164,8 @@
       (dh/with-timeout {:timeout-ms fetch-token-status-timeout-ms
                         :interrupt? true}
         (try (fetch-token-and-parse-body* token base-url site-uuid (active-users-count))
-          (catch Exception e
-            (throw e)))))
+             (catch Exception e
+               (throw e)))))
     (catch dev.failsafe.TimeoutExceededException _e
       {:valid         false
        :status        (tru "Unable to validate token")

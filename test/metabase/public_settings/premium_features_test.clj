@@ -275,13 +275,9 @@
 (deftest active-users-count-setting-test
   (t2.with-temp/with-temp
     [User _ {:is_active false}]
-    ;; premium-features/active-users-count is cached so it could be make the test flaky
-    ;; rebinding to avoid caching
     (testing "returns the number of active users"
-      (with-redefs [premium-features/active-users-count (fn []
-                                                          (t2/count :core_user :is_active true))]
-        (is (= (t2/count :core_user :is_active true)
-               (premium-features/active-users-count)))))
+      (is (= (t2/count :core_user :is_active true)
+             (premium-features/active-users-count))))
 
     (testing "Default to 0 if db is not setup yet"
       (binding [mdb.connection/*application-db* {:status (atom nil)}]
