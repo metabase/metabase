@@ -7,6 +7,10 @@ declare global {
   }
 }
 
+/**
+ * Wrap any delay with this helper to make it skippable in
+ * certain environments.
+ */
 export function delay(ms: number): number {
   if (typeof window !== "undefined" && window.METABASE_REMOVE_DELAYS) {
     return 0;
