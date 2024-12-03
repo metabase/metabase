@@ -10072,6 +10072,11 @@ databaseChangeLog:
       id: v52.2024-12-02T16:21:15
       author: noahmoss
       comment: Add cache_config.refresh_automatically column
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: cache_config
+                columnName: refresh_automatically
       changes:
         - addColumn:
             tableName: cache_config
