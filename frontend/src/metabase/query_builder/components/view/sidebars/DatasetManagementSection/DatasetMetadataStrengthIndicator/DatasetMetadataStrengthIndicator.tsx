@@ -9,10 +9,6 @@ import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 
 import DatasetMetadataStrengthIndicatorS from "./DatasetMetadataStrengthIndicator.module.css";
-import {
-  TooltipContent,
-  TooltipParagraph,
-} from "./DatasetMetadataStrengthIndicator.styled";
 
 function getIndicationColor(percentage: number, isHovered: boolean): string {
   if (percentage <= 0.5) {
@@ -33,14 +29,23 @@ function getTooltipMessage(percentage: number) {
     percentage <= 0.5 ? t`Most` : percentage >= 0.8 ? t`Some` : t`Many`;
 
   return (
-    <TooltipContent data-testid="tooltip-content">
-      <TooltipParagraph>
+    <Box
+      className={DatasetMetadataStrengthIndicatorS.TooltipContent}
+      data-testid="tooltip-content"
+    >
+      <Box
+        component="p"
+        className={DatasetMetadataStrengthIndicatorS.TooltipParagraph}
+      >
         {t`${columnCountDescription} columns are missing a column type, description, or friendly name.`}
-      </TooltipParagraph>
-      <TooltipParagraph>
+      </Box>
+      <Box
+        component="p"
+        className={DatasetMetadataStrengthIndicatorS.TooltipParagraph}
+      >
         {t`Adding metadata makes it easier for your team to explore this data.`}
-      </TooltipParagraph>
-    </TooltipContent>
+      </Box>
+    </Box>
   );
 }
 
