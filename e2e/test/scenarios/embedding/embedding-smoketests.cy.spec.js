@@ -8,6 +8,7 @@ import {
   openSharingMenu,
   openStaticEmbeddingModal,
   restore,
+  sharingMenu,
   sharingMenuButton,
   updateSetting,
   visitDashboard,
@@ -330,8 +331,16 @@ function assertLinkMatchesUrl(text, url) {
 
 function ensureEmbeddingIsDisabled() {
   openSharingMenu();
-  // XXX: Check the embed modal instead when implemented
-  // sharingMenu().findByText(/embedding is off/i);
+  sharingMenu()
+    .findByRole("menuitem", { name: "Embed" })
+    .should("be.enabled")
+    .click();
+  modal()
+    .findByRole("article", { name: "Static embedding" })
+    .within(() => {
+      cy.findByText("Disabled.").should("be.visible");
+      cy.findByText("Enable in admin settings").should("be.visible");
+    });
 }
 
 function visitAndEnableSharing(object, acceptTerms = true) {
