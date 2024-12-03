@@ -2,21 +2,17 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   setQueryBuilderMode,
   turnModelIntoQuestion,
 } from "metabase/query_builder/actions";
+import { Box, Flex, Text } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
-import {
-  Button,
-  MetadataIndicatorContainer,
-  Row,
-  SectionContent,
-  SectionTitle,
-} from "./DatasetManagementSection.styled";
+import DatasetManagementSectionS from "./DatasetManagementSection.module.css";
 import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 
 const mapDispatchToProps = {
@@ -49,22 +45,33 @@ function DatasetManagementSection({
 
   return (
     <div>
-      <SectionTitle>{t`Model management`}</SectionTitle>
-      <SectionContent>
+      <Text
+        component="span"
+        className={DatasetManagementSectionS.SectionTitle}
+      >{t`Model management`}</Text>
+      <Box mt="md" pos="relative" right={8}>
         <Button
+          className={DatasetManagementSectionS.Button}
+          iconSize={16}
           icon="notebook"
           onClick={onEditQueryDefinitionClick}
         >{t`Edit query definition`}</Button>
-        <Row>
+        <Flex align="center" justify="center">
           <Button
+            className={DatasetManagementSectionS.Button}
+            iconSize={16}
             icon="label"
             onClick={onCustomizeMetadataClick}
           >{t`Customize metadata`}</Button>
-          <MetadataIndicatorContainer>
+          <Flex
+            className={DatasetManagementSectionS.MetadataIndicatorContainer}
+          >
             <DatasetMetadataStrengthIndicator dataset={dataset} />
-          </MetadataIndicatorContainer>
-        </Row>
+          </Flex>
+        </Flex>
         <Button
+          className={DatasetManagementSectionS.Button}
+          iconSize={16}
           icon="insight"
           onClick={turnModelIntoQuestion}
         >{t`Turn back into a saved question`}</Button>
@@ -73,7 +80,7 @@ function DatasetManagementSection({
           VerifyButton={Button}
           reviewBannerClassName={CS.mt1}
         />
-      </SectionContent>
+      </Box>
     </div>
   );
 }
