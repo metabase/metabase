@@ -10080,8 +10080,9 @@ databaseChangeLog:
                   name: refresh_automatically
                   type: ${boolean.type}
                   remarks: Whether or not we should automatically refresh cache results when a cache expires
+                  defaultValueBoolean: false
                   constraints:
-                    nullable: true
+                    nullable: false
 
   # This migration should be changed to a no-op and a new migration inserted that does the load from edn whenever the
   # sample content is updated, so that it matches when the version that the sample content was updated from. See
