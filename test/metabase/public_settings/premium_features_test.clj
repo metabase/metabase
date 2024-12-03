@@ -39,7 +39,7 @@
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token @#'premium-features/token-check-url)
-      :query-params {:users      (str (#'premium-features/cached-active-users-count))
+      :query-params {:users      (str (#'premium-features/active-users-count))
                      :site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
                      :mb-version (:tag config/mb-version-info)}}
      (constantly premium-features-response)}
@@ -278,11 +278,11 @@
     ;; premium-features/active-users-count is cached so it could be make the test flaky
     ;; rebinding to avoid caching
     (testing "returns the number of active users"
-      (with-redefs [premium-features/cached-active-users-count (fn []
-                                                                 (t2/count :core_user :is_active true))]
+      (with-redefs [premium-features/active-users-count (fn []
+                                                          (t2/count :core_user :is_active true))]
         (is (= (t2/count :core_user :is_active true)
-               (premium-features/cached-active-users-count)))))
+               (premium-features/active-users-count)))))
 
     (testing "Default to 0 if db is not setup yet"
       (binding [mdb.connection/*application-db* {:status (atom nil)}]
-        (is (zero? (premium-features/cached-active-users-count)))))))
+        (is (zero? (premium-features/active-users-count)))))))
