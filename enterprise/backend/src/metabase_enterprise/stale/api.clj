@@ -54,6 +54,7 @@
 (defmethod present-model-items :model/Card [_ cards]
   (->> (t2/hydrate (t2/select [:model/Card
                                :id
+                               :dashboard_id
                                :description
                                :collection_id
                                :name
@@ -78,7 +79,7 @@
                                  :limit    1}
                                 :moderated_status]]
                               :id [:in (set (map :id cards))])
-                   :can_write :can_delete :can_restore [:collection :effective_location])
+                   :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
        present-collections
        (map (fn [card]
               (-> card
@@ -106,6 +107,7 @@
                                :collection_position
                                [:last_viewed_at :last_used_at]
                                ["dashboard" :model]
+                               [nil :dashboard_id]
                                [nil :location]
                                [nil :database_id]]
 
