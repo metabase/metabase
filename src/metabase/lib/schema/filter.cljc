@@ -28,11 +28,12 @@
 
 (mr/def ::string-filter-operator
   "String filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` with string
-  columns; `is-empty` and `not-empty` should be used instead."
+  columns; `:is-empty` and `:not-empty` should be used instead."
   [:enum :is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
 
 (mr/def ::string-filter-options
-  "String filter operator options. Only set for `:contains`, `does-not-contain`, `:starts-with`, `ends-with` operators."
+  "String filter operator options. Only set for `:contains`, `:does-not-contain`, `:starts-with`, `:ends-with`
+  operators."
   [:map [:case-sensitive {:optional true} :boolean]]) ; default true
 
 (mr/def ::number-filter-operator
