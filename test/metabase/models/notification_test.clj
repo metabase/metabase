@@ -63,8 +63,13 @@
 
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"
-    (mt/with-temp
-      [:model/NotificationCard])))
+    (notification.tu/with-card-notification [notification {}]
+      (let [notification-card-id (-> notification :payload :id)]
+        (testing "sanity check"
+          (is (t2/exists? :model/NotificationCard notification-card-id)))
+        (testing "delete notification will delete notification card"
+          (t2/delete! :model/Notification (:id notification))
+          (is (not (t2/exists? :model/NotificationCard notification-card-id))))))))
 
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {n-id :id} {}]

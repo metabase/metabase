@@ -76,7 +76,6 @@
              (get payload-type+id->payload [(:payload_type notification)
                                             (:payload_id notification)])))))
 
-
 (methodical/defmethod t2/batched-hydrate [:model/Notification :handlers]
   "Batch hydration NotificationHandlers for a list of Notifications"
   [_model k notifications]
@@ -113,7 +112,7 @@
 (t2/define-before-update :model/Notification
   [instance]
   (validate-notification instance)
-  (when (some #{:payload_type :payload_id}(keys (t2/changes instance)))
+  (when (some #{:payload_type :payload_id} (keys (t2/changes instance)))
     (throw (ex-info "Update notification payload is not allowed."
                     {:status-code 400
                      :changes     (t2/changes instance)})))

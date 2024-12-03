@@ -47,8 +47,8 @@
   (with-send-notification-sync
     (let [channel-messages (atom {})]
       (with-redefs
-        [channel/send! (fn [channel message]
-                         (swap! channel-messages update (:type channel) u/conjv message))]
+       [channel/send! (fn [channel message]
+                        (swap! channel-messages update (:type channel) u/conjv message))]
         (thunk)
         @channel-messages))))
 
@@ -64,8 +64,8 @@
   ;; => {:channel/email [{:say :hi} {:say :xin-chao}]}"
   [& body]
   `(do-with-captured-channel-send!
-     (fn []
-       ~@body)))
+    (fn []
+      ~@body)))
 
 (defmacro with-temporary-event-topics!
   "Temporarily make `topics` valid event topics."
