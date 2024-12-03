@@ -124,41 +124,41 @@
                                                               1)))))
 
 (deftest ^:parallel string-filter-parts-test
-  (let [query lib.tu/venues-query
+  (let [query  lib.tu/venues-query
         column (meta/field-metadata :venues :name)]
-    (testing "clause to parts rountrip"
+    (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-empty column)
-                              {:operator :is-empty, :column column, :values [], :options {}}
+                              {:operator :is-empty, :column column}
 
                               (lib.filter/not-empty column)
-                              {:operator :not-empty, :column column, :values [], :options {}}
+                              {:operator :not-empty, :column column}
 
                               (lib.filter/= column "A")
-                              {:operator :=, :column column, :values ["A"], :options {}}
+                              {:operator :=, :column column, :values ["A"]}
 
                               (lib.filter/= column "A" "B")
-                              {:operator :=, :column column, :values ["A" "B"], :options {}}
+                              {:operator :=, :column column, :values ["A" "B"]}
 
                               (lib.filter/!= column "A")
-                              {:operator :!=, :column column, :values ["A"], :options {}}
+                              {:operator :!=, :column column, :values ["A"]}
 
                               (lib.filter/!= column "A" "B")
-                              {:operator :!=, :column column, :values ["A" "B"], :options {}}
+                              {:operator :!=, :column column, :values ["A" "B"]}
 
                               (lib.filter/contains column "A")
                               {:operator :contains, :column column, :values ["A"], :options {:case-sensitive true}}
 
                               (lib.filter/contains column "A" "B")
-                              {:operator :contains, :column column, :values ["A" "B"], :options {}}
+                              {:operator :contains, :column column, :values ["A" "B"]}
 
                               (lib.filter/does-not-contain column "A" "B")
-                              {:operator :does-not-contain, :column column, :values ["A" "B"], :options {}}
+                              {:operator :does-not-contain, :column column, :values ["A" "B"]}
 
                               (lib.filter/starts-with column "A" "B")
-                              {:operator :starts-with, :column column, :values ["A" "B"], :options {}}
+                              {:operator :starts-with, :column column, :values ["A" "B"]}
 
                               (lib.filter/ends-with column "A" "B")
-                              {:operator :ends-with, :column column, :values ["A" "B"], :options {}}
+                              {:operator :ends-with, :column column, :values ["A" "B"]}
 
                               (lib.fe-util/expression-clause :contains [column "A"] {:case-sensitive false})
                               {:operator :contains, :column column, :values ["A"], :options {:case-sensitive false}}
@@ -172,17 +172,17 @@
                                                                                                     values
                                                                                                     options)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/string-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/string-filter-parts query -1 clause))
         (lib.filter/= "A" column)
         (lib.filter/is-null column)
         (lib.expression/concat column "A")))))
 
 (deftest ^:parallel number-filter-parts-test
-  (let [query lib.tu/venues-query
+  (let [query  lib.tu/venues-query
         column (meta/field-metadata :venues :price)]
-    (testing "clause to parts rountrip"
-      (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column, :values []}
-                              (lib.filter/not-null column)      {:operator :not-null, :column column, :values []}
+    (testing "clause to parts roundtrip"
+      (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
+                              (lib.filter/not-null column)      {:operator :not-null, :column column}
                               (lib.filter/= column 10)          {:operator :=, :column column, :values [10]}
                               (lib.filter/= column 10 20)       {:operator :=, :column column, :values [10 20]}
                               (lib.filter/!= column 10)         {:operator :!=, :column column, :values [10]}
@@ -198,16 +198,16 @@
                                                                                                     column
                                                                                                     values)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/number-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/number-filter-parts query -1 clause))
         (lib.filter/= 10 column)
         (lib.filter/is-null (meta/field-metadata :venues :name))
         (lib.expression/+ column 10)))))
 
 (deftest ^:parallel coordinate-filter-parts-test
-  (let [query  (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
+  (let [query      (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
         lat-column (meta/field-metadata :people :latitude)
         lon-column (meta/field-metadata :people :longitude)]
-    (testing "clause to parts rountrip"
+    (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= lat-column 10)
                               {:operator :=, :column lat-column, :values [10]}
 
@@ -241,7 +241,7 @@
                                                                                                             longitude-column
                                                                                                             values)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/coordinate-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/coordinate-filter-parts query -1 clause))
         (lib.filter/= 10 lat-column)
         (lib.filter/is-null lat-column)
         (lib.filter/= (meta/field-metadata :orders :total) 10)
@@ -252,74 +252,61 @@
                    (lib.expression/expression "Boolean"
                                               (lib.filter/is-empty (meta/field-metadata :venues :name))))
         column (m/find-first #(= (:name %) "Boolean") (lib.filter/filterable-columns query))]
-    (testing "clause to parts rountrip"
-      (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column, :values []}
-                              (lib.filter/not-null column)      {:operator :not-null, :column column, :values []}
-                              (lib.filter/= column true)        {:operator :=, :column column, :values [true]}
-                              (lib.filter/= column false)       {:operator :=, :column column, :values [false]}}]
+    (testing "clause to parts roundtrip"
+      (doseq [[clause parts] {(lib.filter/is-null column)  {:operator :is-null, :column column}
+                              (lib.filter/not-null column) {:operator :not-null, :column column}
+                              (lib.filter/= column true)   {:operator :=, :column column, :values [true]}
+                              (lib.filter/= column false)  {:operator :=, :column column, :values [false]}}]
         (let [{:keys [operator column values]} parts
-              expected {:operator operator, :column (select-keys column [:name]), :values values}]
+              expected (merge parts {:column (select-keys column [:name])})]
           (is (=? expected (lib.fe-util/boolean-filter-parts query -1 clause)))
           (is (=? expected (lib.fe-util/boolean-filter-parts query -1 (lib.fe-util/boolean-filter-clause operator
                                                                                                          column
                                                                                                          values)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/boolean-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/boolean-filter-parts query -1 clause))
         (lib.filter/= true column)
         (lib.filter/!= column true)
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
 (deftest ^:parallel relative-date-filter-parts-test
-  (let [query lib.tu/venues-query
+  (let [query  lib.tu/venues-query
         column (meta/field-metadata :checkins :date)]
-    (testing "clause to parts rountrip"
+    (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
                               {:column column
-                               :value :current
-                               :unit :day
-                               :offset-value nil
-                               :offset-unit nil
-                               :options {}}
+                               :value  :current
+                               :unit   :day}
 
                               (lib.filter/time-interval column -10 :month)
                               {:column column
-                               :value -10
-                               :unit :month
-                               :offset-value nil
-                               :offset-unit nil
-                               :options {}}
+                               :value  -10
+                               :unit   :month}
 
                               (lib.filter/time-interval column 10 :year)
                               {:column column
-                               :value 10
-                               :unit :year
-                               :offset-value nil
-                               :offset-unit nil
-                               :options {}}
+                               :value  10
+                               :unit   :year}
 
                               (lib.fe-util/expression-clause :time-interval [column -10 :month] {:include-current true})
-                              {:column column
-                               :value -10
-                               :unit :month
-                               :offset-value nil
-                               :offset-unit nil
+                              {:column  column
+                               :value   -10
+                               :unit    :month
                                :options {:include-current true}}
 
                               (lib.filter/relative-time-interval column -10 :month -20 :year)
-                              {:column column
-                               :value -10
-                               :unit :month
+                              {:column       column
+                               :value        -10
+                               :unit         :month
                                :offset-value -20
-                               :offset-unit :year
-                               :options {}}
+                               :offset-unit  :year}
 
                               (lib.filter/relative-time-interval column 10 :day 20 :quarter)
-                              {:column column
-                               :value 10
-                               :unit :day
+                              {:column       column
+                               :value        10
+                               :unit         :day
                                :offset-value 20
-                               :offset-unit :quarter
-                               :options {}}}]
+                               :offset-unit  :quarter}}]
         (let [{:keys [column value unit offset-value offset-unit options]} parts]
           (is (=? parts (lib.fe-util/relative-date-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/relative-date-filter-parts
@@ -330,7 +317,7 @@
                                                                            offset-unit
                                                                            options)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/relative-date-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)))))
 
 (deftest ^:parallel date-parts-display-name-test
