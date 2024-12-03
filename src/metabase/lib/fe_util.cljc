@@ -409,6 +409,56 @@
        :offset-unit  offset-unit
        :options      {}})))
 
+(def ^:private TimeFilterOperator
+  [:enum :is-null :not-null :> :< :between])
+
+(def ^:private TimeFilterParts
+  [:map
+   [:operator TimeFilterOperator]
+   [:column   ::lib.schema.metadata/column]
+   [:values   [:sequential :any]]])
+
+(mu/defn time-filter-clause :- ::lib.schema.expression/expression
+  "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[time-filter-parts]]."
+  [operator :- TimeFilterOperator
+   column   :- ::lib.schema.metadata/column
+   values   :- [:sequential :any]]
+  (let [format-time #(u.time/format-for-base-type % ((some-fn :effective-type :base-type) column))]
+    (case operator
+      :is-null  (lib.filter/is-null column)
+      :not-null (lib.filter/not-null column)
+      :>        (lib.filter/> column (format-time (first values)))
+      :<        (lib.filter/< column (format-time (first values)))
+      :between  (lib.filter/between column (format-time (first values)) (format-time (second values))))))
+
+(mu/defn time-filter-parts :- [:maybe TimeFilterParts]
+  "Destructures a time filter clause created by [[time-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+        time-col? (fn [maybe-ref]
+                    (and (lib.util/ref-clause? maybe-ref)
+                         (lib.util/original-isa? maybe-ref :type/Time)))]
+    (lib.util.match/match-one filter-clause
+      ;; no arguments
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?)]
+      {:operator op, :column (ref->col col-ref), :values []}
+
+      ;; exactly 1 argument
+      [(op :guard #{:> :<}) _ (col-ref :guard time-col?) (arg :guard string?)]
+      (when-let [arg (u.time/coerce-to-time arg)]
+        {:operator op, :column (ref->col col-ref), :values [arg]})
+
+      ;; exactly 2 arguments
+      [(op :guard #{:between}) _ (col-ref :guard time-col?) (start :guard string?) (end :guard string?)]
+      (let [start (u.time/coerce-to-time start)
+            end   (u.time/coerce-to-time end)]
+        (when (and start end)
+          {:operator op, :column (ref->col col-ref), :values [start end]})))))
+
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
    Can be expanded as needed but only currently defined for a narrow set of date filters.

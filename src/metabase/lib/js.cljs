@@ -1145,6 +1145,24 @@
            :offsetUnit  (some-> offset-unit name)
            :options     (-> options (update-keys cljs-key->js-key) clj->js)})))
 
+(defn ^:export time-filter-clause
+  "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[time-filter-parts]]."
+  [operator column values]
+  (lib.core/time-filter-clause (keyword operator)
+                               column
+                               (js->clj values)))
+
+(defn ^:export time-filter-parts
+  "Destructures a time filter clause created by [[time-filter-clause]]. Returns `nil` if the clause does not match the
+  expected shape."
+  [a-query stage-boolean a-filter-clause]
+  (when-let [filter-parts (lib.core/boolean-filter-parts a-query stage-boolean a-filter-clause)]
+    (let [{:keys [operator column values]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))})))
+
 ;; TODO remove once all filter-parts are migrated to MBQL lib
 (defn ^:export is-column-metadata
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.

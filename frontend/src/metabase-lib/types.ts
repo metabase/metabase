@@ -16,7 +16,6 @@ import type {
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
-  TIME_FILTER_OPERATORS,
 } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
@@ -345,7 +344,7 @@ export type SpecificDateFilterOperatorName =
 export type ExcludeDateFilterOperatorName =
   (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
 
-export type TimeFilterOperatorName = (typeof TIME_FILTER_OPERATORS)[number];
+export type TimeFilterOperator = ">" | "<" | "between" | "is-null" | "not-null";
 
 export type DefaultFilterOperatorName =
   (typeof DEFAULT_FILTER_OPERATORS)[number];
@@ -444,7 +443,7 @@ export type ExcludeDateFilterParts = {
 };
 
 export type TimeFilterParts = {
-  operator: TimeFilterOperatorName;
+  operator: TimeFilterOperator;
   column: ColumnMetadata;
   values: Date[];
 };

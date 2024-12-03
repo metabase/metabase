@@ -15,7 +15,6 @@ import {
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
-  TIME_FILTER_OPERATORS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
@@ -50,7 +49,6 @@ import type {
   SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
   StringFilterParts,
-  TimeFilterOperatorName,
   TimeFilterParts,
 } from "./types";
 
@@ -322,8 +320,11 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const serializedValues = values.map(value => serializeTime(value));
-  return expressionClause(operator, [column, ...serializedValues]);
+  return ML.time_filter_clause(
+    operator,
+    column,
+    values.map(value => moment(value)),
+  );
 }
 
 export function timeFilterParts(
@@ -331,30 +332,7 @@ export function timeFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isTimeOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...serializedValues] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isTime(column) ||
-    !isStringLiteralArray(serializedValues)
-  ) {
-    return null;
-  }
-
-  const values = serializedValues.map(value => deserializeTime(value));
-  if (!isDefinedArray(values)) {
-    return null;
-  }
-
-  return {
-    operator,
-    column,
-    values,
-  };
+  return ML.time_filter_parts(query, stageIndex, filterClause);
 }
 
 export function defaultFilterClause({
@@ -474,13 +452,6 @@ function isExcludeDateOperator(
   return operators.includes(operator);
 }
 
-function isTimeOperator(
-  operator: ExpressionOperatorName,
-): operator is TimeFilterOperatorName {
-  const operators: ReadonlyArray<string> = TIME_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
 function isDefaultOperator(
   operator: ExpressionOperatorName,
 ): operator is DefaultFilterOperatorName {
@@ -497,8 +468,6 @@ function isExcludeDateBucket(
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
-const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
-const TIME_FORMAT_MS = "HH:mm:ss.SSS";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
 function serializeDate(date: Date): string {
@@ -525,19 +494,6 @@ function deserializeDateTime(value: string): Date | null {
   }
 
   return dateTime.local(true).toDate();
-}
-
-function serializeTime(value: Date): string {
-  return moment(value).format(TIME_FORMAT_MS);
-}
-
-function deserializeTime(value: string): Date | null {
-  const time = moment(value, TIME_FORMATS, true);
-  if (!time.isValid()) {
-    return null;
-  }
-
-  return time.toDate();
 }
 
 function serializeExcludeDatePart(

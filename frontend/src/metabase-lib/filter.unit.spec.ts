@@ -605,7 +605,7 @@ describe("filter", () => {
       jest.setSystemTime(new Date(2020, 0, 1));
     });
 
-    it.each<Lib.TimeFilterOperatorName>([">", "<"])(
+    it.each<Lib.TimeFilterOperator>([">", "<"])(
       'should be able to create and destructure a time filter with "%s" operator and 1 value',
       operator => {
         const { filterParts, columnInfo } = addTimeFilter(
