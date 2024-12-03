@@ -80,7 +80,7 @@ describe("scenarios > question > native subquery", () => {
       }).then(({ body: { id: questionId2 } }) => {
         openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
-        nativeEditor().should("be.visible").realType("{{#people");
+        focusNativeEditor().realType(" {{#people");
 
         // Wait until another explicit autocomplete is triggered
         // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
