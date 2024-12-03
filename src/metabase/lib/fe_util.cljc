@@ -371,7 +371,7 @@
   [:map
    [:operator ::lib.schema.filter/time-filter-operator]
    [:column   ::lib.schema.metadata/column]
-   [:values   [:sequential :any]]])
+   [:values   [:sequential :any]]]) ;; platform-specific time
 
 (mu/defn time-filter-clause :- ::lib.schema.expression/expression
   "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
