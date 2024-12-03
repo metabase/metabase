@@ -499,7 +499,7 @@ describe("[EE, with token] embedding settings", () => {
     expect(getInteractiveEmbeddingQuickStartLink()).toBeInTheDocument();
     expect(getInteractiveEmbeddingQuickStartLink()).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=pro-self-hosted&utm_media=embed-settings",
+      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-interactive&utm_content=embedding-admin&source_plan=pro-self-hosted",
     );
   });
 
