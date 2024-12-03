@@ -27,7 +27,7 @@ describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
 
     cy.mount(
       <MetabaseProvider
-        config={{
+        authConfig={{
           authProviderUri: AUTH_PROVIDER_URL,
           metabaseInstanceUrl: METABASE_INSTANCE_URL,
         }}

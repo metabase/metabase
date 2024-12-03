@@ -81,7 +81,7 @@ function setup() {
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockAuthProviderUriConfig(),
+        authConfig: createMockAuthProviderUriConfig(),
       },
     },
   );

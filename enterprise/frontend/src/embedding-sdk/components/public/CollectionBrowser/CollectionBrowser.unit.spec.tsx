@@ -85,7 +85,7 @@ async function setup({
   renderWithProviders(<CollectionBrowserInner {...props} />, {
     mode: "sdk",
     sdkProviderProps: {
-      config: createMockAuthProviderUriConfig({
+      authConfig: createMockAuthProviderUriConfig({
         authProviderUri: "http://TEST_URI/sso/metabase",
       }),
     },
