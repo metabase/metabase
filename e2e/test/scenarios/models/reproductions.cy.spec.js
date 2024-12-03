@@ -210,13 +210,18 @@ describe("issue 19776", { tags: "@OSS" }, () => {
     cy.signInAsAdmin();
   });
 
-  //TODO: Find a equilivant test
-  it.skip("should reflect archived model in the data picker without refreshing (metabase#19776)", () => {
+  it("should reflect archived model in the data picker without refreshing (metabase#19776)", () => {
     cy.visit("/");
 
     cy.findByTestId("app-bar").button("New").click();
     popover().findByText("Question").click();
-    entityPickerModalTab("Collections").should("be.visible"); // now you see it
+    entityPickerModalTab("Collections").click(); // now you see it
+    entityPickerModal()
+      .button(/Filter/)
+      .click();
+
+    popover().findByText("Models").should("exist");
+
     entityPickerModal().findByLabelText("Close").click();
 
     // navigate without a page load
@@ -232,7 +237,12 @@ describe("issue 19776", { tags: "@OSS" }, () => {
 
     cy.findByTestId("app-bar").button("New").click();
     popover().findByText("Question").click();
-    entityPickerModalTab("Models").should("not.exist"); // now you don't
+    entityPickerModalTab("Collections").click(); // now you don't
+    entityPickerModal()
+      .button(/Filter/)
+      .click();
+
+    popover().findByText("Models").should("not.exist");
   });
 });
 

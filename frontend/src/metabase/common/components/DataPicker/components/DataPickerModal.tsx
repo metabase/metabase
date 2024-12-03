@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import { Button, Checkbox, Icon, Popover } from "metabase/ui";
@@ -48,25 +48,12 @@ interface Props {
   onClose: () => void;
 }
 
+type FilterOption = { label: string; value: CollectionItemModel };
+
 const QUESTION_PICKER_MODELS: CollectionItemModel[] = [
   "card",
   "dataset",
   "metric",
-];
-
-const QUESITON_PICKER_MODEL_FILTER_OPTIONS = [
-  {
-    label: t`Metrics`,
-    value: "metric" as const,
-  },
-  {
-    label: t`Models`,
-    value: "dataset" as const,
-  },
-  {
-    label: t`Saved questions`,
-    value: "card" as const,
-  },
 ];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
@@ -99,6 +86,30 @@ export const DataPickerModal = ({
   } = useAvailableData({
     databaseId,
   });
+
+  const QUESITON_PICKER_MODEL_FILTER_OPTIONS = useMemo(() => {
+    const filterOptions: FilterOption[] = [];
+
+    if (hasQuestions) {
+      filterOptions.push({
+        label: t`Saved questions`,
+        value: "card" as const,
+      });
+    }
+    if (hasModels) {
+      filterOptions.push({
+        label: t`Models`,
+        value: "dataset" as const,
+      });
+    }
+    if (hasMetrics) {
+      filterOptions.push({
+        label: t`Metrics`,
+        value: "metric" as const,
+      });
+    }
+    return filterOptions;
+  }, [hasQuestions, hasModels, hasMetrics]);
 
   const { tryLogRecentItem } = useLogRecentItem();
 
@@ -138,8 +149,6 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
-  // const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
-  // const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
 
@@ -236,15 +245,14 @@ const FilterButton = ({
 }: {
   value: CollectionItemModel[];
   onChange: (value: CollectionItemModel[]) => void;
-  options: { label: string; value: CollectionItemModel }[];
+  options: FilterOption[];
 }) => {
   return (
     <Popover zIndex={1000}>
       <Popover.Target>
-        <Button
-          leftIcon={<Icon name="filter" />}
-          variant="subtle"
-        >{t`Filter`}</Button>
+        <Button leftIcon={<Icon name="filter" />} variant="subtle">{c(
+          "A verb, not a noun",
+        ).t`Filter`}</Button>
       </Popover.Target>
       <Popover.Dropdown>
         <Checkbox.Group value={value} onChange={onChange} px="1rem" py="0.5rem">

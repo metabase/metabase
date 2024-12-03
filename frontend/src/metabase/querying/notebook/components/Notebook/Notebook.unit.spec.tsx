@@ -309,6 +309,7 @@ describe("Notebook", () => {
         });
       });
 
+      /* eslint-disable jest/expect-expect */
       it("should show tabs if more than one type is chosen", async () => {
         const models: DataPickerValue["model"][] = ["dataset", "card"];
 
@@ -331,9 +332,6 @@ describe("Notebook", () => {
             data: itemPickerData,
           });
         }
-
-        // Stupid assertion to make linter happy. Assertions are made in convenience functions above
-        expect(true).toBe(true);
       });
 
       it("should show all tabs if no filter is selected", async () => {
