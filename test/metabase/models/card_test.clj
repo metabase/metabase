@@ -1137,27 +1137,28 @@
                  :model/Collection {other-coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
                  :model/Card card {:dashboard_id dash-id}]
-    (testing "Can't update the collection_id"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot manually set `collection_id` on a Dashboard Question"
-                            (card/update-card! {:card-before-update card
-                                                :card-updates {:collection_id other-coll-id}}))))
-    (testing "CAN 'update' the collection_id"
-      (is (card/update-card! {:card-before-update card
-                              :card-updates {:collection_id coll-id}})))
-    (testing "Can't update the collection_position"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set `collection_position` on a Dashboard Question"
-                            (card/update-card! {:card-before-update card
-                                                :card-updates {:collection_position 5}}))))
-    (testing "CAN 'update' the collection_position"
-      (is (card/update-card! {:card-before-update card
-                              :card-updates {:collection_position nil}})))
-    (testing "Can't update the type"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set `type` on a Dashboard Question"
-                            (card/update-card! {:card-before-update card
-                                                :card-updates {:type :model}}))))
-    (testing "CAN 'update' the type"
-      (is (card/update-card! {:card-before-update card
-                              :card-updates {:type :question}})))))
+    (mt/with-test-user :rasta
+      (testing "Can't update the collection_id"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot manually set `collection_id` on a Dashboard Question"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:collection_id other-coll-id}}))))
+      (testing "CAN 'update' the collection_id"
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:collection_id coll-id}})))
+      (testing "Can't update the collection_position"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set `collection_position` on a Dashboard Question"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:collection_position 5}}))))
+      (testing "CAN 'update' the collection_position"
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:collection_position nil}})))
+      (testing "Can't update the type"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set `type` on a Dashboard Question"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:type :model}}))))
+      (testing "CAN 'update' the type"
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:type :question}}))))))
 
 (deftest update-does-not-break
   ;; There's currently a footgun in Toucan2 - if 1) the result of `before-update` doesn't have an ID, 2) part of your
