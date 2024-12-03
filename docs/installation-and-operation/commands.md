@@ -16,26 +16,27 @@ Metabase will print out the help text for available commands.
 
 Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api-documentation.md`.
 
-## `driver-methods`
+## `driver-methods` | `driver-methods _docs`
 
-Print a list of all multimethods available for a driver to implement. Use `driver-methods _docs` to include their docstrings.
+Print a list of all multimethods available for a driver to implement. Add `_docs` to include their docstrings.
 
 ## `drop-entity-ids`
 
 Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier) to v2 (x.47+).
 
-## `dump`
+## `dump path & options`
 
 **Note: this command is deprecated. Use `export` instead.**
 
 Serializes Metabase instance into directory `path`.
 
 Options:
+
 - `-u, --user EMAIL` - Export collections owned by the specified user
 - `-s, --state (active|all)` - When set to `active`, do not dump archived entities. Default behavior is `all`
 - `--include-entity-id` - Include entity_id property in all dumped entities. Default: false
 
-## `dump-to-h2`
+## `dump-to-h2 h2-filename & opts`
 
 Transfer data from existing database to newly created H2 DB with specified filename. Target H2 file is deleted before dump, unless the --keep-existing flag is given.
 
@@ -48,11 +49,12 @@ Options:
 
 Generates a markdown file containing documentation for environment variables relevant to configuring Metabase. The command only includes environment variables registered as defsettings. For a full list of environment variables, see https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.
 
-## `export`
+## `export path & options`
 
 Serialize Metabase instance into directory at `path`.
 
 Options:
+
 - `-c, --collection ID` - Export only specified ID(s). Use commas to separate multiple IDs. You can pass entity ids with `eid:<...>` as a prefix
 - `-C, --no-collections` - Do not export any content in collections
 - `-S, --no-settings` - Do not export settings.yaml
@@ -62,11 +64,11 @@ Options:
 - `-e, --continue-on-error` - Do not break execution on errors
 - `--full-stacktrace` - Output full stacktraces on errors
 
-## `help`
+## `help command-name` | `help`
 
 Show this help message listing valid Metabase commands. Use `help command-name` for specific command details.
 
-## `import`
+## `import path & options`
 
 Load serialized Metabase instance as created by the `export` command from directory `path`.
 
@@ -75,7 +77,7 @@ Options:
 - `-e, --continue-on-error` - Do not break execution on errors
 - `--full-stacktrace` - Output full stacktraces on errors
 
-## `load`
+## `load path & options`
 
 **Note: this command is deprecated. Use `import` instead.**
 
@@ -86,11 +88,11 @@ Options:
 - `-m, --mode (skip|update)` - Update or skip on conflicts. Default: skip
 - `-e, --on-error (continue|abort)` - Abort or continue on error. Default: continue
 
-## `load-from-h2`
+## `load-from-h2` | `load-from-h2 h2-connection-string`
 
-Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars. Can be used as `load-from-h2 h2-connection-string`.
+Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars.
 
-## `migrate`
+## `migrate direction`
 
 Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `print`, or `release-locks`.
 
@@ -98,11 +100,11 @@ Run database migrations. Valid options for `direction` are `up`, `force`, `down`
 
 Start Metabase the usual way and exit. Useful for profiling Metabase launch time.
 
-## `reset-password`
+## `reset-password email-address`
 
 Reset the password for a user with `email-address`.
 
-## `rotate-encryption-key`
+## `rotate-encryption-key new-key`
 
 Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
 
@@ -114,12 +116,11 @@ Add entity IDs for instances of serializable models that don't already have them
 
 Print version information about Metabase and the current system.
 
-## Additional Useful Commands
+## Additional useful commands
 
 ### H2 SQL Shell
 
 Open an SQL shell for the Metabase H2 DB:
-
 ```
 java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db
 ```
