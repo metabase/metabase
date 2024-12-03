@@ -20,7 +20,7 @@ import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 export type EditableDashboardProps = {
-  questionHeight?: number;
+  drillThroughQuestionHeight?: number;
   plugins?: SdkPluginsConfig;
   className?: string;
   style?: CSSProperties;
@@ -29,9 +29,9 @@ export type EditableDashboardProps = {
 
 export const EditableDashboard = ({
   dashboardId,
-  initialParameterValues = {},
+  initialParameters = {},
   withDownloads = false,
-  questionHeight,
+  drillThroughQuestionHeight,
   plugins,
   onLoad,
   onLoadWithoutCards,
@@ -50,7 +50,7 @@ export const EditableDashboard = ({
     withDownloads,
     withTitle: true,
     hiddenParameters: undefined,
-    initialParameterValues,
+    initialParameters,
   });
 
   const {
@@ -73,7 +73,7 @@ export const EditableDashboard = ({
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
           withTitle
-          height={questionHeight}
+          height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
         />
@@ -85,7 +85,7 @@ export const EditableDashboard = ({
         >
           <ConnectedDashboard
             dashboardId={dashboardId}
-            parameterQueryParams={initialParameterValues}
+            parameterQueryParams={initialParameters}
             refreshPeriod={refreshPeriod}
             onRefreshPeriodChange={onRefreshPeriodChange}
             setRefreshElapsedHook={setRefreshElapsedHook}
