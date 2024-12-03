@@ -58,13 +58,13 @@
   [card rerun-cutoff]
   (let [card-query            (:dataset_query card)
         parameterized-queries (t2/select :model/Query
-                               {:select   [:q.query_hash :q.query [[:count :q.query_hash]]]
-                                :from     [[(t2/table-name :model/Query) :q]]
-                                :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
-                                :where    [:>= :started_at rerun-cutoff]
-                                :group-by [:q.query_hash :q.query]
-                                :order-by [[[:count :q.query_hash] :desc]]
-                                :limit    *parameterized-queries-per-card*})]
+                                         {:select   [:q.query_hash :q.query [[:count :q.query_hash]]]
+                                          :from     [[(t2/table-name :model/Query) :q]]
+                                          :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
+                                          :where    [:>= :started_at rerun-cutoff]
+                                          :group-by [:q.query_hash :q.query]
+                                          :order-by [[[:count :q.query_hash] :desc]]
+                                          :limit    *parameterized-queries-per-card*})]
     (conj (map :query parameterized-queries)
           card-query)))
 
