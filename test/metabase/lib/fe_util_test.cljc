@@ -124,7 +124,7 @@
                                                               1)))))
 
 (deftest ^:parallel string-filter-parts-test
-  (let [query lib.tu/venues-query
+  (let [query  lib.tu/venues-query
         column (meta/field-metadata :venues :name)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-empty column)
@@ -178,7 +178,7 @@
         (lib.expression/concat column "A")))))
 
 (deftest ^:parallel number-filter-parts-test
-  (let [query lib.tu/venues-query
+  (let [query  lib.tu/venues-query
         column (meta/field-metadata :venues :price)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
@@ -204,7 +204,7 @@
         (lib.expression/+ column 10)))))
 
 (deftest ^:parallel coordinate-filter-parts-test
-  (let [query  (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
+  (let [query      (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
         lat-column (meta/field-metadata :people :latitude)
         lon-column (meta/field-metadata :people :longitude)]
     (testing "clause to parts roundtrip"
@@ -270,7 +270,7 @@
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
 (deftest ^:parallel relative-date-filter-parts-test
-  (let [query lib.tu/venues-query
+  (let [query  lib.tu/venues-query
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
