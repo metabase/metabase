@@ -129,7 +129,7 @@
                                          :format_rows   format-rows
                                          :pivot_results pivot)
                    (process-results pivot export-format)))]
-      (if (contains? card-or-dashcard :dashboard_id)
+      (if (= :model/DashboardCard (t2/model card-or-dashcard))
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}]
           (public-dashcard-download* (assoc card-or-dashcard :dashboard_id dashboard-id)))
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}
