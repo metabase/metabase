@@ -32,14 +32,14 @@ export const SharingPaneButton = ({
     <Paper
       component="article"
       className={cx(S.Container, { [S.Disabled]: isDisabled })}
-      p={24}
-      pt={52}
+      p="lg"
+      pt="3.25rem"
       withBorder
       data-testid={dataTestId}
       onClick={onClick}
       mih="100%"
       pos="relative"
-      w={"22rem"}
+      w="22rem"
       aria-label={title}
     >
       <Stack pb={isDisabled ? "md" : undefined}>
@@ -65,11 +65,13 @@ export const SharingPaneButton = ({
             py="sm"
             lh="1"
           >
-            {t`Disabled.`}{" "}
-            <Link
+            {t`Disabled.`}
+            <Box
+              ml="xs"
+              component={Link}
               variant="brand"
               to={disabledLink}
-            >{t`Enable in admin settings`}</Link>
+            >{t`Enable in admin settings`}</Box>
           </Text>
         </Box>
       )}

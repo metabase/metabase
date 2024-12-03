@@ -151,7 +151,8 @@ export function SelectEmbedTypePane({
             {!isInteractiveEmbeddingAvailable && (
               <ExternalLink>
                 <Flex align="center">
-                  {t`Learn more`} <Icon name="share" ml="xs" />
+                  {t`Learn more`}
+                  <Icon name="share" ml="xs" />
                 </Flex>
               </ExternalLink>
             )}
