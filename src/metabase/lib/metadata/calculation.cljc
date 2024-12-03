@@ -476,7 +476,7 @@
   Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
   stages.
 
-  `:was-binned` is used similarly as `:inherited-temporal-unit`. It helps to identified fields that were binned on
+  `:was-binned` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were binned on
   previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields when
   breakout column popover is opened in query builder.
 
