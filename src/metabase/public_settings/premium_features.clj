@@ -59,7 +59,7 @@
 
 (declare premium-embedding-token)
 
-(def ^:private ^:const active-users-count-cache-ttl
+(def ^:private ^:const active-users-count-cache-ttl-ms
   "Amount of time before we re-fetch the count of active users."
   (u/minutes->ms 5))
 
@@ -77,7 +77,7 @@
                    result))
       memoized (memoize/ttl
                 f
-                :ttl/threshold (u/minutes->ms active-users-count-cache-ttl))
+                :ttl/threshold active-users-count-cache-ttl-ms)
       lock     (Object.)]
   (defn- cached-active-users-count'
     "Returns a count of users on the system, cached for 5 minutes."
@@ -115,7 +115,7 @@
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]])
 
-(def ^:private ^:const token-status-cache-ttl
+(def ^:private ^:const token-status-cache-ttl-ms
   "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
   (u/hours->ms 12))
 
@@ -141,7 +141,7 @@
          :else (throw (ex-info "An unknown error occurred when validating token." {:status status
                                                                                    :body body})))))
 
-   :ttl/threshold token-status-cache-ttl))
+   :ttl/threshold token-status-cache-ttl-ms))
 
 (def ^:private store-circuit-breaker-config
   {;; if 10 requests within 10 seconds fail, open the circuit breaker.
