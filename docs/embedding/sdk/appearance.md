@@ -13,9 +13,9 @@ You can style your embedded Metabase components with a theme.
 Here's an example that includes the various styling options available:
 
 ```js
-import {defineEmbeddingSdkTheme} from "@metabase/embedding-sdk-react";
+import {defineMetabaseTheme} from "@metabase/embedding-sdk-react";
 
-const theme = defineEmbeddingSdkTheme({
+const theme = defineMetabaseTheme({
   // Specify a font to use from the set of fonts supported by Metabase.
   // You can set the font to "Custom" to use the custom font
   // configured in your Metabase instance.

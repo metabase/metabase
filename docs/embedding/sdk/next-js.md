@@ -19,9 +19,9 @@ It's fine to leave "use client" in the component even when using the Pages Route
 ```typescript
 "use client";
 
-import { MetabaseProvider, StaticQuestion, defineEmbeddingSdkAuthConfig } from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, StaticQuestion, defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
 
-const authConfig = defineEmbeddingSdkAuthConfig({
+const authConfig = defineMetabaseAuthConfig({
 //...
 }); // Your Metabase auth configuration
 
@@ -125,8 +125,8 @@ export async function GET() {
 Then, pass this `authConfig` to `MetabaseProvider`
 
 ```typescript
-import { defineEmbeddingSdkAuthConfig } from "@metabase/embedding-sdk-react";
-const authConfig = defineEmbeddingSdkAuthConfig({
+import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
+const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
@@ -182,8 +182,8 @@ export default async function handler(
 Then, pass this `authConfig` to `MetabaseProvider`
 
 ```ts
-import { defineEmbeddingSdkAuthConfig } from "@metabase/embedding-sdk-react";
-const authConfig = defineEmbeddingSdkAuthConfig({
+import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
+const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });

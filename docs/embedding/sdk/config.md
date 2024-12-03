@@ -11,7 +11,7 @@ title: Embedded analytics SDK - config
 To use the SDK in your app, you need to import the `MetabaseProvider` component and provide it with an `authConfig` object, like so:
 
 ```typescript
-const authConfig = defineEmbeddingSdkAuthConfig({
+const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
@@ -43,18 +43,18 @@ You can also pass additional props to `MetabaseProvider`:
 import React from "react";
 import {
   MetabaseProvider,
-  defineEmbeddingSdkAuthConfig,
-  defineEmbeddingSdkTheme,
+  defineMetabaseAuthConfig,
+  defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 
 // Configure authentication
-const config = defineEmbeddingSdkAuthConfig({
+const config = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 
 // See the "Customizing appearance" section for more information
-const theme = defineEmbeddingSdkTheme({
+const theme = defineMetabaseTheme({
   // Optional: Specify a font to use from the set of fonts supported by Metabase
   fontFamily: "Lato",
 

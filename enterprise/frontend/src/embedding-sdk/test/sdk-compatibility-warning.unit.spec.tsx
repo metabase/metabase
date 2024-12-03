@@ -8,7 +8,7 @@ import {
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import {
   MetabaseProvider,
-  defineEmbeddingSdkAuthConfig,
+  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
 import {
   createMockSettings,
@@ -23,7 +23,7 @@ import { getEmbeddingSdkVersion } from "../config";
 const METABASE_INSTANCE_URL = "path:";
 const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
-const defaultAuthUriConfig = defineEmbeddingSdkAuthConfig({
+const defaultAuthUriConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: AUTH_PROVIDER_URL,
   fetchRequestToken: _ =>

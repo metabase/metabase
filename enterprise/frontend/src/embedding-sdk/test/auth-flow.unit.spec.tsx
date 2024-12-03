@@ -12,7 +12,7 @@ import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
   StaticQuestion,
-  defineEmbeddingSdkAuthConfig,
+  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
@@ -76,7 +76,7 @@ describe("SDK auth and init flow", () => {
   });
 
   it("should initialize the auth flow only once, not on rerenders", async () => {
-    const authConfig = defineEmbeddingSdkAuthConfig({
+    const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: METABASE_INSTANCE_URL,
       authProviderUri: AUTH_PROVIDER_URL,
     });
@@ -104,7 +104,7 @@ describe("SDK auth and init flow", () => {
 
   describe("when using authProviderUri", () => {
     it("should retrieve the session from the authProviderUri and send it as 'X-Metabase-Session' header", async () => {
-      const authConfig = defineEmbeddingSdkAuthConfig({
+      const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
         authProviderUri: AUTH_PROVIDER_URL,
       });
@@ -134,7 +134,7 @@ describe("SDK auth and init flow", () => {
         id: "mock-id-from-custom-fetch-function",
       }));
 
-      const authConfig = defineEmbeddingSdkAuthConfig({
+      const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
         authProviderUri: AUTH_PROVIDER_URL,
         fetchRequestToken: customFetchFunction,
@@ -162,7 +162,7 @@ describe("SDK auth and init flow", () => {
 
   describe("when using apiKeyProvider", () => {
     it("should send the api key as 'X-Api-Key' header", async () => {
-      const authConfig = defineEmbeddingSdkAuthConfig({
+      const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
         apiKey: MOCK_API_KEY,
       });
@@ -197,7 +197,7 @@ describe("SDK auth and init flow", () => {
       fetchMock.get(wrongPath, 200);
       fetchMock.get(correctPath, 200);
 
-      const authConfig = defineEmbeddingSdkAuthConfig({
+      const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: metabaseInstanceUrl,
         apiKey: MOCK_API_KEY,
       });

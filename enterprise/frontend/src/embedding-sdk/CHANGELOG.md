@@ -71,7 +71,7 @@
 
 ### Features
 
-* **sdk:** `defineEmbeddingSdkAuthConfig` to make typing easier ([#48879](https://github.com/metabase/metabase/issues/48879)) ([aa72eb8](https://github.com/metabase/metabase/commit/aa72eb83aebd2adc3dbd700d28f1b7d18b2e0987))
+* **sdk:** `defineMetabaseAuthConfig` to make typing easier ([#48879](https://github.com/metabase/metabase/issues/48879)) ([aa72eb8](https://github.com/metabase/metabase/commit/aa72eb83aebd2adc3dbd700d28f1b7d18b2e0987))
 * **sdk:** ability to enforce the destination collection to save to and hide the collection picker ([#49251](https://github.com/metabase/metabase/issues/49251)) ([de559f4](https://github.com/metabase/metabase/commit/de559f49d6dc245bc35d73d373a3cbba3c8062e4))
 * **sdk:** Add `isOpen` prop to control CreateDashboardModal visibility ([#49452](https://github.com/metabase/metabase/issues/49452)) ([9f49d1a](https://github.com/metabase/metabase/commit/9f49d1aa141f5bb291eb10a0b0549f30e8daa081))
 * **sdk:** Add chart viz selection for `InteractiveQuestion` ([#47744](https://github.com/metabase/metabase/issues/47744)) ([a288c15](https://github.com/metabase/metabase/commit/a288c15e579975cd3ed783cd6c18f39a84445c41))
