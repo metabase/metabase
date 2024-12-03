@@ -8,10 +8,10 @@ import {
   isDraggedWellItem,
 } from "metabase/visualizer/utils";
 import type { VisualizationSettings } from "metabase-types/api";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { VisualizerState } from "metabase-types/store/visualizer";
 
 export const pivotDropHandler = (
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   { active, over }: DragEndEvent,
 ) => {
   if (over && isDraggedColumnItem(active)) {
@@ -73,7 +73,7 @@ export const pivotDropHandler = (
 };
 
 export function removeColumnFromPivotTable(
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   columnName: string,
   wellId: string,
 ) {

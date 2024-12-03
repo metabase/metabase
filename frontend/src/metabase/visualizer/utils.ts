@@ -117,6 +117,12 @@ export function createVisualizerColumnReference(
   };
 }
 
+export function isColumnReference(
+  source: VisualizerColumnValueSource,
+): source is VisualizerColumnReference {
+  return typeof source !== "string";
+}
+
 export function createDataSourceNameRef(
   id: VisualizerDataSourceId,
 ): VisualizerDataSourceNameReference {
@@ -187,10 +193,7 @@ export function extractReferencedColumns(
   mappings: Record<string, VisualizerColumnValueSource[]>,
 ): VisualizerColumnReference[] {
   const sources = Object.values(mappings).flat();
-  return sources.filter(
-    (valueSource): valueSource is VisualizerColumnReference =>
-      typeof valueSource !== "string",
-  );
+  return sources.filter(isColumnReference);
 }
 
 function maybeGetTemporalUnit(col: DatasetColumn) {

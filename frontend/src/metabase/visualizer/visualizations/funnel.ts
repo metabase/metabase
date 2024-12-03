@@ -13,11 +13,11 @@ import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Card, Dataset, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerDataSource,
-  VisualizerHistoryItem,
+  VisualizerState,
 } from "metabase-types/store/visualizer";
 
 export const funnelDropHandler = (
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   { active, over }: DragEndEvent,
 ) => {
   if (!over || !isDraggedColumnItem(active)) {
@@ -89,7 +89,7 @@ export function canCombineCardWithFunnel(card: Card, dataset: Dataset) {
 }
 
 export function addScalarToFunnel(
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
 ) {
@@ -135,7 +135,7 @@ function createDimensionColumn(name: string): DatasetColumn {
 }
 
 export function removeColumnFromFunnel(
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   name: string,
   wellId: string,
 ) {

@@ -9,10 +9,10 @@ import {
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { VisualizerState } from "metabase-types/store/visualizer";
 
 export const pieDropHandler = (
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   { active, over }: DragEndEvent,
 ) => {
   if (!over || !isDraggedColumnItem(active)) {
@@ -65,7 +65,7 @@ export const pieDropHandler = (
 };
 
 export function removeColumnFromPieChart(
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   columnName: string,
   wellId: string,
 ) {

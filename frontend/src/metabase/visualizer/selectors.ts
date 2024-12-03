@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import { utf8_to_b64 } from "metabase/lib/encoding";
 import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -18,12 +19,12 @@ type State = { visualizer: VisualizerState };
 
 // Private selectors
 
-const getCurrentHistoryItem = (state: State) => state.visualizer.present;
-
 const getCards = (state: State) => state.visualizer.cards;
 
+const getRawSettings = (state: State) => state.visualizer.settings;
+
 const getSettings = createSelector(
-  [getVisualizationType, state => getCurrentHistoryItem(state).settings],
+  [getVisualizationType, getRawSettings],
   (display, rawSettings) => {
     if (display && isCartesianChart(display)) {
       // Visualizer wells display labels
@@ -37,16 +38,15 @@ const getSettings = createSelector(
   },
 );
 
-const getVisualizationColumns = (state: State) =>
-  getCurrentHistoryItem(state).columns;
+const getVisualizationColumns = (state: State) => state.visualizer.columns;
 
 const getVisualizerColumnValuesMapping = (state: State) =>
-  getCurrentHistoryItem(state).columnValuesMapping;
+  state.visualizer.columnValuesMapping;
 
 // Public selectors
 
 export function getVisualizationType(state: State) {
-  return getCurrentHistoryItem(state).display;
+  return state.visualizer.display;
 }
 
 export const getDatasets = (state: State) => state.visualizer.datasets;
@@ -55,9 +55,6 @@ export const getExpandedDataSources = (state: State) =>
   state.visualizer.expandedDataSources;
 
 export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
-
-export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
-export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
 
 export const getReferencedColumns = createSelector(
   [getVisualizerColumnValuesMapping],
@@ -180,4 +177,28 @@ export const getVisualizerComputedSettings = createSelector(
   [getVisualizerRawSeries],
   (rawSeries): ComputedVisualizationSettings =>
     getComputedSettingsForSeries(rawSeries),
+);
+
+export const getVisualizerUrlHash = createSelector(
+  [
+    getVisualizationType,
+    getVisualizationColumns,
+    getVisualizerColumnValuesMapping,
+    getRawSettings,
+  ],
+  (display, columns, columnValuesMapping, settings) => {
+    const isDirty =
+      !!display ||
+      columns.length > 0 ||
+      Object.keys(settings).length > 0 ||
+      Object.keys(columnValuesMapping).length > 0;
+
+    if (!isDirty) {
+      return "";
+    }
+
+    return utf8_to_b64(
+      JSON.stringify({ display, columns, columnValuesMapping, settings }),
+    );
+  },
 );

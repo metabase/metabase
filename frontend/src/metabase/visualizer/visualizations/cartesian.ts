@@ -11,11 +11,11 @@ import {
 import type { DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
-  VisualizerHistoryItem,
+  VisualizerState,
 } from "metabase-types/store/visualizer";
 
 export const cartesianDropHandler = (
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   { active, over }: DragEndEvent,
 ) => {
   if (!over) {
@@ -100,7 +100,7 @@ export const cartesianDropHandler = (
 };
 
 export function addMetricColumnToCartesianChart(
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
 ) {
@@ -120,7 +120,7 @@ export function addMetricColumnToCartesianChart(
 }
 
 export function removeColumnFromCartesianChart(
-  state: VisualizerHistoryItem,
+  state: VisualizerState,
   columnName: string,
   wellId: string,
 ) {

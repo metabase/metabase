@@ -1,6 +1,5 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import {
-  type Action,
   type PayloadAction,
   createAction,
   createSlice,
@@ -8,6 +7,7 @@ import {
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -23,10 +23,8 @@ import type {
 } from "metabase-types/api";
 import type {
   DraggedItem,
-  VisualizerCommonState,
   VisualizerDataSource,
   VisualizerDataSourceId,
-  VisualizerHistoryItem,
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
@@ -56,7 +54,11 @@ import {
   removeColumnFromPivotTable,
 } from "./visualizations/pivot";
 
-const initialCommonState: VisualizerCommonState = {
+const initialState: VisualizerState = {
+  display: null,
+  columns: [],
+  columnValuesMapping: {},
+  settings: {},
   cards: [],
   datasets: {},
   loadingDataSources: {},
@@ -66,19 +68,32 @@ const initialCommonState: VisualizerCommonState = {
   draggedItem: null,
 };
 
-const initialVisualizerHistoryItem: VisualizerHistoryItem = {
-  display: null,
-  columns: [],
-  columnValuesMapping: {},
-  settings: {},
-};
-
-const initialState: VisualizerState = {
-  ...initialCommonState,
-  past: [],
-  present: initialVisualizerHistoryItem,
-  future: [],
-};
+export const initializeVisualizer = createAsyncThunk(
+  "visualizer/initializeVisualizer",
+  async (urlHash: string, { dispatch }) => {
+    try {
+      const urlData = JSON.parse(b64hash_to_utf8(urlHash));
+      const columnRefs = extractReferencedColumns(urlData.columnValuesMapping);
+      const dataSourceIds = Array.from(
+        new Set(columnRefs.map(ref => ref.sourceId)),
+      );
+      await Promise.all(
+        dataSourceIds
+          .map(sourceId => {
+            const [, cardId] = sourceId.split(":");
+            return [
+              dispatch(fetchCard(Number(cardId))),
+              dispatch(fetchCardQuery(Number(cardId))),
+            ];
+          })
+          .flat(),
+      );
+      return urlData;
+    } catch (err) {
+      console.error("Error parsing visualizer URL hash", err);
+    }
+  },
+);
 
 export const addDataSource = createAsyncThunk(
   "visualizer/dataImporter/addDataSource",
@@ -130,9 +145,9 @@ const fetchCardQuery = createAsyncThunk<
   throw new Error("Failed to fetch card query");
 });
 
-const visualizerHistoryItemSlice = createSlice({
-  name: "present",
-  initialState: initialVisualizerHistoryItem,
+const visualizerSlice = createSlice({
+  name: "visualizer",
+  initialState,
   reducers: {
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
       const display = action.payload;
@@ -194,10 +209,28 @@ const visualizerHistoryItemSlice = createSlice({
         removeColumnFromPivotTable(state, name, wellId);
       }
     },
+    setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
+      state.draggedItem = action.payload;
+    },
+    toggleDataSourceExpanded: (
+      state,
+      action: PayloadAction<VisualizerDataSourceId>,
+    ) => {
+      state.expandedDataSources[action.payload] =
+        !state.expandedDataSources[action.payload];
+    },
+    resetVisualizer: () => initialState,
   },
   extraReducers: builder => {
     builder
+      .addCase(initializeVisualizer.fulfilled, (state, action) => {
+        const urlState = action.payload;
+        if (urlState) {
+          Object.assign(state, urlState);
+        }
+      })
       .addCase(handleDrop, (state, action) => {
+        state.draggedItem = null;
         if (!state.display) {
           return;
         }
@@ -216,6 +249,15 @@ const visualizerHistoryItemSlice = createSlice({
       })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
+        if (source.type === "card") {
+          const cardId = source.sourceId;
+          state.cards = state.cards.filter(card => card.id !== cardId);
+        }
+
+        delete state.expandedDataSources[source.id];
+        delete state.loadingDataSources[source.id];
+        delete state.datasets[source.id];
+        delete state.loadingDatasets[source.id];
 
         const columnsToRemove: string[] = [];
         const columnVizSettings = state.display
@@ -256,8 +298,40 @@ const visualizerHistoryItemSlice = createSlice({
           }
         });
       })
+      .addCase(fetchCard.pending, (state, action) => {
+        const cardId = action.meta.arg;
+        state.loadingDataSources[`card:${cardId}`] = true;
+        state.error = null;
+      })
+      .addCase(fetchCard.fulfilled, (state, action) => {
+        const card = action.payload;
+        const index = state.cards.findIndex(c => c.id === card.id);
+        if (index !== -1) {
+          state.cards[index] = card;
+        } else {
+          state.cards.push(card);
+        }
+        state.loadingDataSources[`card:${card.id}`] = false;
+        state.expandedDataSources[`card:${card.id}`] = true;
+      })
+      .addCase(fetchCard.rejected, (state, action) => {
+        const cardId = action.meta.arg;
+        if (cardId) {
+          state.loadingDataSources[`card:${cardId}`] = false;
+        }
+        state.error = action.error.message || "Failed to fetch card";
+      })
+      .addCase(fetchCardQuery.pending, (state, action) => {
+        const cardId = action.meta.arg;
+        state.loadingDatasets[`card:${cardId}`] = true;
+        state.error = null;
+      })
       .addCase(fetchCardQuery.fulfilled, (state, action) => {
+        const cardId = action.meta.arg;
         const { card, dataset } = action.payload;
+
+        state.datasets[`card:${cardId}`] = dataset;
+        state.loadingDatasets[`card:${cardId}`] = false;
 
         if (!card) {
           return;
@@ -344,95 +418,6 @@ const visualizerHistoryItemSlice = createSlice({
           const [column] = dataset.data.cols;
           addScalarToFunnel(state, source, column);
         }
-      });
-  },
-});
-
-const visualizerSlice = createSlice({
-  name: "visualizer",
-  initialState,
-  reducers: {
-    setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
-      state.draggedItem = action.payload;
-    },
-    toggleDataSourceExpanded: (
-      state,
-      action: PayloadAction<VisualizerDataSourceId>,
-    ) => {
-      state.expandedDataSources[action.payload] =
-        !state.expandedDataSources[action.payload];
-    },
-    undo: state => {
-      const canUndo = state.past.length > 0;
-      if (canUndo) {
-        state.future = [state.present, ...state.future];
-        state.present = state.past[state.past.length - 1];
-        state.past = state.past.slice(0, state.past.length - 1);
-      }
-    },
-    redo: state => {
-      const canRedo = state.future.length > 0;
-      if (canRedo) {
-        state.past = [...state.past, state.present];
-        state.present = state.future[0];
-        state.future = state.future.slice(1);
-      }
-    },
-    resetVisualizer: () => initialState,
-  },
-  extraReducers: builder => {
-    builder
-      .addCase(handleDrop, (state, action) => {
-        state.draggedItem = null;
-        maybeUpdateHistory(state, action);
-      })
-      .addCase(removeDataSource, (state, action) => {
-        const source = action.payload;
-        if (source.type === "card") {
-          const cardId = source.sourceId;
-          state.cards = state.cards.filter(card => card.id !== cardId);
-        }
-        delete state.expandedDataSources[source.id];
-        delete state.loadingDataSources[source.id];
-        delete state.datasets[source.id];
-        delete state.loadingDatasets[source.id];
-        maybeUpdateHistory(state, action);
-      })
-      .addCase(fetchCard.pending, (state, action) => {
-        const cardId = action.meta.arg;
-        state.loadingDataSources[`card:${cardId}`] = true;
-        state.error = null;
-      })
-      .addCase(fetchCard.fulfilled, (state, action) => {
-        const card = action.payload;
-        const index = state.cards.findIndex(c => c.id === card.id);
-        if (index !== -1) {
-          state.cards[index] = card;
-        } else {
-          state.cards.push(card);
-        }
-        state.loadingDataSources[`card:${card.id}`] = false;
-        state.expandedDataSources[`card:${card.id}`] = true;
-        maybeUpdateHistory(state, action);
-      })
-      .addCase(fetchCard.rejected, (state, action) => {
-        const cardId = action.meta.arg;
-        if (cardId) {
-          state.loadingDataSources[`card:${cardId}`] = false;
-        }
-        state.error = action.error.message || "Failed to fetch card";
-      })
-      .addCase(fetchCardQuery.pending, (state, action) => {
-        const cardId = action.meta.arg;
-        state.loadingDatasets[`card:${cardId}`] = true;
-        state.error = null;
-      })
-      .addCase(fetchCardQuery.fulfilled, (state, action) => {
-        const cardId = action.meta.arg;
-        const { dataset } = action.payload;
-        state.datasets[`card:${cardId}`] = dataset;
-        state.loadingDatasets[`card:${cardId}`] = false;
-        maybeUpdateHistory(state, action);
       })
       .addCase(fetchCardQuery.rejected, (state, action) => {
         const cardId = action.meta.arg;
@@ -440,31 +425,16 @@ const visualizerSlice = createSlice({
           state.loadingDatasets[`card:${cardId}`] = false;
         }
         state.error = action.error.message || "Failed to fetch card query";
-      })
-      .addDefaultCase((state, action) => {
-        maybeUpdateHistory(state, action);
       });
   },
 });
 
-function maybeUpdateHistory(state: VisualizerState, action: Action) {
-  const present = _.clone(state.present);
-  const newPresent = visualizerHistoryItemSlice.reducer(state.present, action);
-  if (!_.isEqual(present, newPresent)) {
-    state.past = [...state.past, present];
-    state.present = newPresent;
-    state.future = [];
-  }
-}
-
-export const { setDisplay, updateSettings, removeColumn } =
-  visualizerHistoryItemSlice.actions;
-
 export const {
+  setDisplay,
+  updateSettings,
+  removeColumn,
   setDraggedItem,
   toggleDataSourceExpanded,
-  undo,
-  redo,
   resetVisualizer,
 } = visualizerSlice.actions;
 
