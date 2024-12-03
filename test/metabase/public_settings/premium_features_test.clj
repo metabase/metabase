@@ -276,7 +276,7 @@
   (t2.with-temp/with-temp
     [User _ {:is_active false}]
     (testing "returns the number of active users"
-      (is (= (t2/count :core_user :is_active true)
+      (is (= (t2/count :model/User :is_active true :type :personal)
              (premium-features/active-users-count))))
 
     (testing "Default to 0 if db is not setup yet"
