@@ -6,6 +6,8 @@ import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
+import { getCanAccessOnboardingPage } from "./home/selectors";
+
 type Props = { children: React.ReactElement };
 
 const getRedirectUrl = () => {
@@ -60,6 +62,14 @@ const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   redirectAction: routerActions.replace,
 });
 
+export const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessOnboarding",
+  redirectPath: "/",
+  allowRedirectBack: false,
+  authenticatedSelector: state => getCanAccessOnboardingPage(state),
+  redirectAction: routerActions.replace,
+});
+
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -73,4 +83,8 @@ export const IsNotAuthenticated = MetabaseIsSetup(
 
 export const CanAccessSettings = MetabaseIsSetup(
   UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
+);
+
+export const CanAccessOnboarding = UserCanAccessOnboarding(
+  ({ children }) => children,
 );
