@@ -12,9 +12,11 @@ import { jt, t } from "ttag";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
 import {
   getDocsUrl,
   getIsPaidPlan,
@@ -190,6 +192,8 @@ export const Onboarding = () => {
       utm: utmTags,
     }),
   );
+
+  const helpLink = useHelpLink();
 
   const disabledXrayCopy = (isAdmin: boolean) =>
     isAdmin
@@ -486,11 +490,13 @@ export const Onboarding = () => {
                     <Text data-testid="subscription-communication-setup">
                       {jt`${(
                         <Link
+                          className={CS.link}
                           key="subscription-email"
                           to="/admin/settings/email/smtp"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
+                          className={CS.link}
                           key="subscription-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
@@ -545,11 +551,13 @@ export const Onboarding = () => {
                     <Text data-testid="alert-communication-setup">
                       {jt`${(
                         <Link
+                          className={CS.link}
                           key="alert-email"
                           to="/admin/settings/email/smtp"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
+                          className={CS.link}
                           key="alert-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
@@ -644,15 +652,15 @@ export const Onboarding = () => {
                 </Text>
               </Box>
             )}
-            {isAdmin && isPaidPlan && (
+            {helpLink.visible && (
               <Box className={S.support} data-testid="help-section" p="lg">
                 <Stack spacing="xs">
                   <Title order={4}>{t`Need to talk with someone?`}</Title>
                   <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
                 </Stack>
-                <Link to="mailto:help@metabase.com" key="help">
+                <ExternalLink href={helpLink.href} key="help">
                   <Button variant="filled">{t`Get Help`}</Button>
-                </Link>
+                </ExternalLink>
               </Box>
             )}
           </Box>
