@@ -1,0 +1,50 @@
+.buttonEnter {
+  /* background-color: plum !important; */
+  opacity: 0;
+}
+
+.buttonEnterActive {
+  opacity: 1;
+  transition: opacity 300ms ease-in;
+}
+
+.buttonExit {
+  min-width: 0 !important; /* override default style */
+  border-radius: 50% !important; /* override default border-radius */
+  transition:
+    transform 0.2s ease-out,
+    color 0.1s ease-out,
+    border-radius 0.1s ease-out,
+    opacity 0.3s ease-out;
+  /* min-width 0.3s ease-out; */
+  transition: all 0.3s ease-out;
+  transform-origin: center;
+}
+
+.buttonExitActive {
+  color: transparent !important; /* to hide text */
+  width: 2rem !important;
+  /* transform: translateX(60px); */
+  left: 60px !important;
+  /* transform: scaleX(0.2); */
+  /* border-radius: 50% !important; */
+  /* opacity: 0.7; */
+}
+
+.controlEnter {
+  opacity: 0;
+}
+
+.controlEnterActive {
+  opacity: 1;
+  transition: opacity 200ms;
+}
+
+.controlExit {
+  /* opacity: 1; */
+}
+
+.controlExitActive {
+  opacity: 0;
+  /* transition: opacity 200ms; */
+}

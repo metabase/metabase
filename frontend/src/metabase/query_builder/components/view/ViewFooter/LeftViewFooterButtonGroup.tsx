@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -23,13 +24,14 @@ interface LeftViewFooterButtonGroupProps {
   isRunning: boolean;
 }
 
-export const LeftViewFooterButtonGroup = ({
+// eslint-disable-next-line react/display-name
+export const LeftViewFooterButtonGroup = forwardRef<HTMLDivElement, LeftViewFooterButtonGroupProps>(({
   question,
   hideChartSettings = false,
   isResultLoaded,
   isNotebook,
   isRunning,
-}: LeftViewFooterButtonGroupProps) => {
+}, ref) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
   const isShowingRawTable = useSelector(getIsShowingRawTable);
@@ -43,7 +45,7 @@ export const LeftViewFooterButtonGroup = ({
     isResultLoaded;
 
   return (
-    <Flex gap="0.75rem">
+    <Flex gap="0.75rem" ref={ref} pos="absolute" left={0}>
       <ViewFooterControl
         question={question}
         isNotebook={isNotebook}
@@ -80,4 +82,4 @@ export const LeftViewFooterButtonGroup = ({
       )}
     </Flex>
   );
-};
+});

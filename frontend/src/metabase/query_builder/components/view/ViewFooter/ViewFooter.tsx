@@ -1,7 +1,10 @@
 import cx from "classnames";
+import { useEffect, useRef, useState } from "react";
+import { CSSTransition } from "react-transition-group";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import S from "./ViewFooterControl.module.css"
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
@@ -9,7 +12,7 @@ import {
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Button, Group, rem } from "metabase/ui";
+import { Button, Flex, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -50,6 +53,25 @@ export const ViewFooter = ({
   const shouldHideFooterForNativeQuestionWithoutResult = isNative && !result;
 
   const { isShowingNotebookNativePreview } = useSelector(getUiControls);
+  const [showViewControl, setShowViewControl] = useState(!isNotebook);
+  const [enableOpacity, setEnableOpacity] = useState(false);
+  const [showButton, setShowButton] = useState(isNotebook);
+
+  console.log({ showButton })
+
+  useEffect(() => {
+    if (isNotebook && hasVisualizeButton && isResultDirty) {
+      if (!showButton) {
+        console.log("show button")
+        setShowButton(true);
+        setShowViewControl(false);
+      }
+    }
+  }, [hasVisualizeButton, isNotebook, isResultDirty, showButton]);
+
+  const viewControlRef = useRef(null);
+  const buttonRef = useRef(null);
+
   if (!question || shouldHideFooterForNativeQuestionWithoutResult) {
     return null;
   }
@@ -95,33 +117,80 @@ export const ViewFooter = ({
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hideChartSettings =
     (result?.error && !isEditable) || question.isArchived();
+  const shouldRenderVizButton = isNotebook && hasVisualizeButton && isResultDirty;
+
 
   return (
     <ViewFooterRoot
       className={cx(className, CS.textMedium, CS.borderTop, CS.fullWidth)}
       data-testid="view-footer"
     >
-      <Group position="apart" pos="relative" noWrap w="100%">
-        {isNotebook && hasVisualizeButton && isResultDirty ? (
+      <Flex mih="xl" pos="relative" justify="flex-end" w="100%">
+        {/* {isNotebook && hasVisualizeButton && isResultDirty ? ( */}
+        <CSSTransition in={showButton} key="visualize-button" timeout={{
+          exit: 400,
+          enter: 300
+        }}
+          unmountOnExit
+          // unmountOnExit
+          // onEnter={() => console.log("on enter")}
+          // onEntered={() => {
+          //   console.log("enable opacity");
+          // }}
+          onExited={() => {
+            console.log("on Exited");
+            // setEnableOpacity(false);
+            // setShowButton(false);
+            setShowViewControl(true);
+          }}
+          onExit={() => {
+            console.log("on exit");
+          }}
+          classNames={{
+            enter: S.buttonEnter,
+            enterActive: S.buttonEnterActive,
+            exit: S.buttonExit,
+            exitActive: S.buttonExitActive,
+          }}>
           <Button
+            pos='absolute'
+            left={0}
             variant="filled"
             radius="xl"
             pt={rem(7)}
             pb={rem(7)}
             miw={190}
-            onClick={visualize}
+            onClick={() => {
+              visualize();
+              setShowButton(false);
+            }}
           >
             {t`Visualize`}
           </Button>
-        ) : (
+        </CSSTransition>
+        <CSSTransition
+          timeout={300}
+          key="view-footer-control"
+          unmountOnExit
+          in={showViewControl}
+          onExited={() => { setShowButton(true); }}
+          onEnter={() => { console.log("on enter") }}
+          classNames={{
+            enter: S.controlEnter,
+            enterActive: S.controlEnterActive,
+            exit: S.controlExit,
+            exitActive: S.controlExitActive
+          }}
+        >
           <LeftViewFooterButtonGroup
+            ref={viewControlRef}
             question={question}
             hideChartSettings={hideChartSettings}
             isResultLoaded={!!result}
             isRunning={isRunning}
             isNotebook={isNotebook}
           />
-        )}
+        </CSSTransition>
         {isNotebook ? (
           isShowingNotebookNativePreview ? (
             <ConvertToNativeQuestionButton />
@@ -129,7 +198,7 @@ export const ViewFooter = ({
         ) : (
           <RightViewFooterButtonGroup />
         )}
-      </Group>
+      </Flex>
     </ViewFooterRoot>
   );
 };
