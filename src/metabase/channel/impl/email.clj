@@ -162,7 +162,7 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
+(mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [card_part
                 alert
@@ -235,7 +235,7 @@
       (for [row rows]
         [:tr {} row])])))
 
-(mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
+(mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
