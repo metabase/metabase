@@ -1,5 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { GraphMetricName } from "metabase/visualizations/types";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
@@ -224,7 +225,7 @@ export type VisualizationSettings = {
 
   // Series
   "graph.dimensions"?: string[];
-  "graph.metrics"?: string[];
+  "graph.metrics"?: GraphMetricName[];
 
   // Series settings
   series_settings?: Record<string, SeriesSettings>;
@@ -275,9 +276,8 @@ export type VisualizationSettings = {
   "sankey.node_align"?: "left" | "right" | "justify";
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
-
-  [key: string]: any;
-} & EmbedVisualizationSettings;
+} & EmbedVisualizationSettings &
+  Record<string, any>;
 
 export type EmbedVisualizationSettings = {
   iframe?: string;

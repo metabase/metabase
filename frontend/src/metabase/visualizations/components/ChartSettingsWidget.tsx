@@ -1,9 +1,9 @@
 import cx from "classnames";
-import type * as React from "react";
 
 import PopoverS from "metabase/components/Popover/Popover.module.css";
 import FormS from "metabase/css/components/form.module.css";
 
+import type { Widget } from "./ChartSettings";
 import {
   Description,
   InfoIcon,
@@ -13,21 +13,23 @@ import {
 } from "./ChartSettingsWidget.styled";
 
 type Props = {
-  title?: string;
   description?: string;
   hint?: string;
-  hidden?: boolean;
-  disabled?: boolean;
-  widget?: React.ComponentType<{ id: string }>;
-  inline?: boolean;
-  marginBottom?: string;
-  props?: Record<string, unknown>;
   noPadding?: boolean;
   variant?: "default" | "form-field";
   borderBottom?: boolean;
   dataTestId?: string;
-  id: string;
-};
+} & Pick<
+  Widget,
+  | "id"
+  | "props"
+  | "widget"
+  | "disabled"
+  | "inline"
+  | "hidden"
+  | "title"
+  | "marginBottom"
+>;
 
 const ChartSettingsWidget = ({
   title,
