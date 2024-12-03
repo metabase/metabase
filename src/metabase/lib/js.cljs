@@ -358,12 +358,12 @@
     (-> key-str u/->kebab-case-en keyword)))
 
 (defn- js-obj->cljs-map
-  "Converts a JavaScript object with camelCase keys into a Clojure map with kebab-case keys."
+  "Converts a JavaScript object with `\"camelCase\"` keys into a Clojure map with `:kebab-case` keys."
   [an-object]
   (-> an-object js->clj (update-keys js-key->cljs-key)))
 
 (defn- cljs-map->js-obj
-  "Converts a Clojure map with kebab-case keys into a JavaScript object with camelCase keys."
+  "Converts a Clojure map with `:kebab-case` keys into a JavaScript object with `\"camelCase\"` keys."
   [a-map]
   (-> a-map (update-keys cljs-key->js-key) clj->js))
 
