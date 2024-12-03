@@ -126,7 +126,7 @@ export function SelectEmbedTypePane({
           to={interactiveEmbeddingCta.url}
           target={interactiveEmbeddingCta.target}
           rel="noreferrer"
-          shouldRender={
+          shouldRenderLink={
             !isInteractiveEmbeddingAvailable || isInteractiveEmbeddingEnabled
           }
           aria-label={t`Interactive embedding`}
@@ -162,7 +162,7 @@ export function SelectEmbedTypePane({
         {/* REACT SDK */}
         <MaybeLink
           to="/admin/settings/embedding-in-other-applications/sdk"
-          shouldRender={isEmbeddingSdkEnabled}
+          shouldRenderLink={isEmbeddingSdkEnabled}
           aria-label={t`Embedded analytics SDK`}
         >
           <SharingPaneButton
@@ -244,10 +244,10 @@ export const useInteractiveEmbeddingCta = () => {
 };
 
 interface MaybeLinkProps extends ComponentProps<typeof Link> {
-  shouldRender?: boolean;
+  shouldRenderLink?: boolean;
 }
-function MaybeLink({ shouldRender, ...props }: MaybeLinkProps) {
-  if (shouldRender) {
+function MaybeLink({ shouldRenderLink, ...props }: MaybeLinkProps) {
+  if (shouldRenderLink) {
     return <Link {...props} />;
   }
 
