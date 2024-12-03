@@ -51,6 +51,7 @@ export function useLoadQuestion({
   cardId,
   options,
   deserializedCard,
+  initialSqlParameters,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useSdkDispatch();
 
@@ -81,13 +82,14 @@ export function useLoadQuestion({
         deserializedCard,
         cardId,
         cancelDeferred: deferred(),
+        initialSqlParameters,
       }),
     );
 
     setQuestionState(state);
 
     return state;
-  }, [dispatch, options, deserializedCard, cardId]);
+  }, [dispatch, options, deserializedCard, cardId, initialSqlParameters]);
 
   const [runQuestionState, runQuestion] = useAsyncFn(async () => {
     if (!question) {
