@@ -12,6 +12,7 @@ import { jt, t } from "ttag";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -489,11 +490,13 @@ export const Onboarding = () => {
                     <Text data-testid="subscription-communication-setup">
                       {jt`${(
                         <Link
+                          className={CS.link}
                           key="subscription-email"
                           to="/admin/settings/email/smtp"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
+                          className={CS.link}
                           key="subscription-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
@@ -548,11 +551,13 @@ export const Onboarding = () => {
                     <Text data-testid="alert-communication-setup">
                       {jt`${(
                         <Link
+                          className={CS.link}
                           key="alert-email"
                           to="/admin/settings/email/smtp"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
+                          className={CS.link}
                           key="alert-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
