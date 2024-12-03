@@ -667,7 +667,9 @@
     io.github.clojure/tools.build     {:mvn/version "0.10.6"}
     org.clojure/data.xml              {:mvn/version "0.2.0-alpha9"}
     org.clojure/tools.deps.alpha      {:mvn/version "0.15.1254"}
-    org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}}
+    org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}
+
+    io.github.seancorfield/build-uber-log4j2-handler {:git/tag "v2.24.0" :git/sha "de93f51"}} ; collect binary files for log4j2
 
    :jvm-opts
    ["-Dclojure.main.report=stderr"
