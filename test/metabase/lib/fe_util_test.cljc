@@ -172,7 +172,7 @@
                                                                                                     values
                                                                                                     options)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/string-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/string-filter-parts query -1 clause))
         (lib.filter/= "A" column)
         (lib.filter/is-null column)
         (lib.expression/concat column "A")))))
@@ -198,7 +198,7 @@
                                                                                                     column
                                                                                                     values)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/number-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/number-filter-parts query -1 clause))
         (lib.filter/= 10 column)
         (lib.filter/is-null (meta/field-metadata :venues :name))
         (lib.expression/+ column 10)))))
@@ -241,7 +241,7 @@
                                                                                                             longitude-column
                                                                                                             values)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/coordinate-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/coordinate-filter-parts query -1 clause))
         (lib.filter/= 10 lat-column)
         (lib.filter/is-null lat-column)
         (lib.filter/= (meta/field-metadata :orders :total) 10)
@@ -264,7 +264,7 @@
                                                                                                          column
                                                                                                          values)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/boolean-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/boolean-filter-parts query -1 clause))
         (lib.filter/= true column)
         (lib.filter/!= column true)
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
@@ -317,7 +317,7 @@
                                                                            offset-unit
                                                                            options)))))))
     (testing "unsupported clauses"
-      (are [clause] (= nil (lib.fe-util/relative-date-filter-parts query -1 clause))
+      (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)))))
 
 (deftest ^:parallel date-parts-display-name-test
