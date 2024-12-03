@@ -8,6 +8,7 @@ import { getSankeyLayout } from "metabase/visualizations/echarts/graph/sankey/la
 import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/sankey/model";
 import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/graph/sankey/option/tooltip";
+import { useCloseTooltipOnScroll } from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
@@ -58,12 +59,14 @@ export const SankeyChart = ({
 
   const { eventHandlers } = useChartEvents(
     chartRef,
-    chartModel,
+    chartModel.sankeyColumns,
     rawSeriesWithRemappings,
     settings,
     onVisualizationClick,
     clicked,
   );
+
+  useCloseTooltipOnScroll(chartRef);
 
   return (
     <ResponsiveEChartsRenderer
