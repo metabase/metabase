@@ -228,7 +228,7 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col    #(column-metadata-from-ref query stage-number %)
+  (let [ref->col        #(column-metadata-from-ref query stage-number %)
         coordinate-col? (fn [maybe-ref]
                           (and (lib.util/ref-clause? maybe-ref)
                                (lib.util/original-isa? maybe-ref :type/Number)
