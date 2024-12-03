@@ -45,7 +45,7 @@ interface LoadingAndErrorWrapperProps {
 }
 
 export interface Props<Entity, EntityWrapper> {
-  children: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
+  ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
   dispatchApiErrorEvent?: boolean;
   entityAlias?: string;
   entityId: EntityId | EntityIdSelector | undefined;
@@ -70,7 +70,7 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  * @deprecated use "metabase/api" instead
  */
 export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
-  children,
+  ComposedComponent,
   dispatchApiErrorEvent = true,
   entityAlias,
   entityId: entityIdProp,
@@ -230,7 +230,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     return entityDefinition.wrapEntity(object, dispatch);
   }, [dispatch, object, entityDefinition, wrapped]);
 
-  const renderedChildren = children({
+  const childProps = {
     ...actionCreators,
     ...props,
     dispatch,
@@ -241,7 +241,9 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     object: wrappedObject,
     [entityAlias || entityDefinition.nameOne]: wrappedObject,
     reload: refetch,
-  });
+  };
+
+  const renderedChildren = <ComposedComponent {...childProps} />;
 
   if (loadingAndErrorWrapper) {
     return (
@@ -266,7 +268,9 @@ export const entityObjectLoaderRtkQuery =
   (ComposedComponent: (props: any) => ReactNode) =>
   // eslint-disable-next-line react/display-name
   (props: any): ReactNode => (
-    <EntityObjectLoaderRtkQuery {...props} {...eolProps}>
-      {childProps => <ComposedComponent {...childProps} />}
-    </EntityObjectLoaderRtkQuery>
+    <EntityObjectLoaderRtkQuery
+      ComposedComponent={ComposedComponent}
+      {...props}
+      {...eolProps}
+    />
   );
