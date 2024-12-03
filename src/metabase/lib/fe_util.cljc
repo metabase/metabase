@@ -14,6 +14,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -117,38 +118,24 @@
    options  :- [:maybe :map]]
   (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
 
-(def ^:private StringFilterOperator
-  [:enum :is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
-
-(def ^:private StringFilterOptions
-  [:map
-   [:case-sensitive {:optional true} :boolean]])
-
 (def ^:private StringFilterParts
   [:map
-   [:operator StringFilterOperator]
+   [:operator lib.schema.filter/string-filter-operator]
    [:column   ::lib.schema.metadata/column]
    [:values   [:sequential :string]]
-   [:options  StringFilterOptions]])
+   [:options  lib.schema.filter/string-filter-options]])
 
 (mu/defn string-filter-clause :- ::lib.schema.expression/expression
   "Creates a string filter clause based on FE-friendly filter parts. It should be possible to destructure each created
-  expression with [[string-filter-parts]]. To avoid mistakes the function requires `options` for all operators even
-  though they might not be used. Note that the FE does not support `:is-null` and `:not-null` operators with string
+  expression with [[string-filter-parts]]. Note that the FE does not support `:is-null` and `:not-null` operators with string
   columns."
-  [operator :- StringFilterOperator
+  [operator :- lib.schema.filter/string-filter-operator
    column   :- ::lib.schema.metadata/column
-   values   :- [:sequential :string]
-   options  :- StringFilterOptions]
-  (case operator
-    :is-empty         (lib.filter/is-empty column)
-    :not-empty        (lib.filter/not-empty column)
-    :=                (apply lib.filter/= column values)
-    :!=               (apply lib.filter/!= column values)
-    :contains         (expression-clause operator (into [column] values) options)
-    :does-not-contain (expression-clause operator (into [column] values) options)
-    :starts-with      (expression-clause operator (into [column] values) options)
-    :ends-with        (expression-clause operator (into [column] values) options)))
+   values   :- [:maybe [:sequential :string]]
+   options  :- [:maybe lib.schema.filter/string-filter-options]]
+  (if (#{:is-empty :not-empty := :!=} operator)
+    (expression-clause operator (into [column] values) {})
+    (expression-clause operator (into [column] values) options)))
 
 (mu/defn string-filter-parts :- [:maybe StringFilterParts]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
@@ -175,31 +162,19 @@
       [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard #(every? string? %))]
       {:operator op, :column (ref->col col-ref), :values args, :options {:case-sensitive (get opts :case-sensitive true)}})))
 
-(def ^:private NumberFilterOperator
-  [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
-
 (def ^:private NumberFilterParts
   [:map
-   [:operator NumberFilterOperator]
+   [:operator lib.schema.filter/number-filter-operator]
    [:column   ::lib.schema.metadata/column]
    [:values   [:sequential number?]]])
 
 (mu/defn number-filter-clause :- ::lib.schema.expression/expression
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[number-filter-parts]]."
-  [operator :- NumberFilterOperator
+  [operator :- lib.schema.filter/number-filter-operator
    column   :- ::lib.schema.metadata/column
-   values   :- [:sequential number?]]
-  (case operator
-    :is-null  (lib.filter/is-null column)
-    :not-null (lib.filter/not-null column)
-    :=        (apply lib.filter/= column values)
-    :!=       (apply lib.filter/!= column values)
-    :>        (lib.filter/> column (first values))
-    :>=       (lib.filter/>= column (first values))
-    :<        (lib.filter/< column (first values))
-    :<=       (lib.filter/<= column (first values))
-    :between  (lib.filter/between column (first values) (second values))))
+   values   :- [:maybe [:sequential number?]]]
+  (expression-clause operator (into [column] values) {}))
 
 (mu/defn number-filter-parts :- [:maybe NumberFilterParts]
   "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
@@ -228,12 +203,9 @@
       [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number?) (end :guard number?)]
       {:operator op, :column (ref->col col-ref), :values [start end]})))
 
-(def ^:private CoordinateFilterOperator
-  [:enum := :!= :> :>= :< :<= :between :inside])
-
 (def ^:private CoordinateFilterParts
   [:map
-   [:operator         CoordinateFilterOperator]
+   [:operator         lib.schema.filter/coordinate-filter-operator]
    [:column           ::lib.schema.metadata/column]
    [:longitude-column {:optional true} [:maybe ::lib.schema.metadata/column]]
    [:values           [:sequential number?]]])
@@ -241,19 +213,13 @@
 (mu/defn coordinate-filter-clause :- ::lib.schema.expression/expression
   "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
   created expression with [[coordinate-filter-parts]]."
-  [operator         :- CoordinateFilterOperator
+  [operator         :- lib.schema.filter/coordinate-filter-operator
    column           :- ::lib.schema.metadata/column
    longitude-column :- [:maybe ::lib.schema.metadata/column]
-   values           :- [:sequential number?]]
-  (case operator
-    :=       (apply lib.filter/= column values)
-    :!=      (apply lib.filter/!= column values)
-    :>       (lib.filter/> column (first values))
-    :>=      (lib.filter/>= column (first values))
-    :<       (lib.filter/< column (first values))
-    :<=      (lib.filter/<= column (first values))
-    :between (lib.filter/between column (first values) (second values))
-    :inside  (apply lib.filter/inside column (or longitude-column column) values)))
+   values           :- [:maybe [:sequential number?]]]
+  (if (= operator :inside)
+    (expression-clause operator (into [column longitude-column] values) {})
+    (expression-clause operator (into [column] values) {})))
 
 (mu/defn coordinate-filter-parts :- [:maybe CoordinateFilterParts]
   "Destructures a coordinate filter clause created by [[coordinate-filter-clause]]. Returns `nil` if the clause does not
@@ -272,7 +238,7 @@
       [(op :guard #{:= :!=}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
       {:operator op, :column (ref->col col-ref), :values args}
 
-      ;; exactly 1 argument
+     ;; exactly 1 argument
       [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard coordinate-col?) (arg :guard number?)]
       {:operator op, :column (ref->col col-ref), :values [arg]}
 
@@ -281,28 +247,22 @@
       {:operator op, :column (ref->col col-ref), :values args}
 
       ;; exactly 4 arguments
-      [(op :guard #{:inside}) _ (col-ref :guard coordinate-col?) (lon-col-ref :guard coordinate-col?) & (args :guard #(and (every? number? %) (= (count %) 4)))]
-      {:operator op, :column (ref->col col-ref), :longitude-column (ref->col lon-col-ref), :values args})))
-
-(def ^:private BooleanFilterOperator
-  [:enum :is-null :not-null :=])
+      [(op :guard #{:inside}) _ (lat-col-ref :guard coordinate-col?) (lon-col-ref :guard coordinate-col?) & (args :guard #(and (every? number? %) (= (count %) 4)))]
+      {:operator op, :column (ref->col lat-col-ref), :longitude-column (ref->col lon-col-ref), :values args})))
 
 (def ^:private BooleanFilterParts
   [:map
-   [:operator BooleanFilterOperator]
+   [:operator lib.schema.filter/boolean-filter-operator]
    [:column   ::lib.schema.metadata/column]
    [:values   [:sequential :boolean]]])
 
 (mu/defn boolean-filter-clause :- ::lib.schema.expression/expression
   "Creates a boolean filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[boolean-filter-parts]]."
-  [operator :- BooleanFilterOperator
+  [operator :- lib.schema.filter/boolean-filter-operator
    column   :- ::lib.schema.metadata/column
-   values   :- [:sequential :boolean]]
-  (case operator
-    :is-null  (lib.filter/is-null column)
-    :not-null (lib.filter/not-null column)
-    :=        (lib.filter/= column (first values))))
+   values   :- [:maybe [:sequential :boolean]]]
+  (expression-clause operator (into [column] values) {}))
 
 (mu/defn boolean-filter-parts :- [:maybe BooleanFilterParts]
   "Destructures a boolean filter clause created by [[boolean-filter-clause]]. Returns `nil` if the clause does not match
@@ -323,35 +283,28 @@
       [(op :guard #{:=}) _ (col-ref :guard boolean-col?) (arg :guard boolean?)]
       {:operator op, :column (ref->col col-ref), :values [arg]})))
 
-(def ^:private RelativeDateFilterUnit
-  [:enum :minute :hour :day :week :month :quarter :year])
-
-(def ^:private RelativeDateFilterOptions
-  [:map
-   [:include-current {:optional true} :boolean]])
-
 (def ^:private RelativeDateFilterParts
   [:map
    [:column       ::lib.schema.metadata/column]
    [:value        [:or number? [:enum :current]]]
-   [:unit         RelativeDateFilterUnit]
+   [:unit         [:ref ::lib.schema.temporal-bucketing/unit.date-time.interval]]
    [:offset-value [:maybe number?]]
-   [:offset-unit  [:maybe RelativeDateFilterUnit]]
-   [:options      RelativeDateFilterOptions]])
+   [:offset-unit  [:maybe [:ref ::lib.schema.temporal-bucketing/unit.date-time.interval]]]
+   [:options      [:maybe lib.schema.filter/time-interval-options]]])
 
 (mu/defn relative-date-filter-clause :- ::lib.schema.expression/expression
   "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[relative-date-filter-parts]]."
   [column       :- ::lib.schema.metadata/column
    value        :- [:or number? [:enum :current]]
-   unit         :- RelativeDateFilterUnit
+   unit         :- [:ref ::lib.schema.temporal-bucketing/unit.date-time.interval]
    offset-value :- [:maybe number?]
-   offset-unit  :- [:maybe RelativeDateFilterUnit]
-   options      :- RelativeDateFilterOptions]
+   offset-unit  :- [:maybe [:ref ::lib.schema.temporal-bucketing/unit.date-time.interval]]
+   options      :- [:maybe lib.schema.filter/time-interval-options]]
   (let [column (lib.temporal-bucket/with-temporal-bucket column nil)]
     (if (or (nil? offset-value) (nil? offset-unit))
       (expression-clause :time-interval [column value unit] options)
-      (lib.filter/relative-time-interval column value unit offset-value offset-unit))))
+      (expression-clause :relative-time-interval [column value unit offset-value offset-unit] {}))))
 
 (mu/defn relative-date-filter-parts :- [:maybe RelativeDateFilterParts]
   "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause

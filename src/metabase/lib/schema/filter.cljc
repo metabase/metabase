@@ -76,7 +76,13 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
     [:ref ::expression/expression]))
 
-(def ^:private string-filter-options
+(def string-filter-operator
+  "String filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` with string
+  columns; `is-empty` and `not-empty` should be used instead."
+  [:enum :is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
+
+(def string-filter-options
+  "String filter operator options. Only set for `:contains`, `does-not-contain`, `:starts-with`, `ends-with` operators."
   [:map [:case-sensitive {:optional true} :boolean]]) ; default true
 
 ;; N-ary [:ref ::expression/string] filter clauses. These also accept a `:case-sensitive` option.
@@ -91,7 +97,21 @@
               [:options [:merge ::common/options string-filter-options]]
               [:args [:repeat {:min 2} [:schema [:ref ::expression/string]]]]]]))
 
-(def ^:private time-interval-options
+(def number-filter-operator
+  "Numeric filter operators supported by the FE."
+  [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
+
+(def coordinate-filter-operator
+  "Coordinate filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` for
+  coordinate columns."
+  [:enum := :!= :> :>= :< :<= :between :inside])
+
+(def boolean-filter-operator
+  "Boolean filter operator supported by the FE. Note that `:!=` is not supported."
+  [:enum :is-null :not-null :=])
+
+(def time-interval-options
+  "Options for `:time-interval` operator. Note that `:relative-time-interval` does not support these options."
   [:map [:include-current {:optional true} :boolean]]) ; default false
 
 ;; SUGAR: rewritten as a filter clause with a relative-datetime value
