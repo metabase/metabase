@@ -2,10 +2,10 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import AutocompleteInput from "metabase/core/components/AutocompleteInput";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Autocomplete } from "metabase/ui";
 import type { Channel, ChannelSpec } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";
@@ -20,7 +20,7 @@ interface SlackChannelFieldProps {
   onChannelPropertyChange: any;
 }
 
-const SlackChannelField = ({
+export const SlackChannelField = ({
   channel,
   channelSpec,
   onChannelPropertyChange,
@@ -62,15 +62,17 @@ const SlackChannelField = ({
   };
 
   const applicationName = useSelector(getApplicationName);
+
   return (
     <div>
       <span className={cx(CS.block, CS.textBold, CS.pb2)}>
         {channelField?.displayName}
       </span>
-      <AutocompleteInput
-        placeholder={t`Pick a user or channel...`}
+      <Autocomplete
+        data={channelField?.options || []}
         value={value}
-        options={channelField?.options}
+        placeholder={t`Pick a user or channel...`}
+        limit={300}
         onBlur={handleBlur}
         onChange={handleChange}
       />
@@ -82,6 +84,3 @@ const SlackChannelField = ({
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SlackChannelField;

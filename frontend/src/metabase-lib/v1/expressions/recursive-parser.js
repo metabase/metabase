@@ -2,7 +2,12 @@ import { t } from "ttag";
 
 import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
 
-import { MBQL_CLAUSES, getMBQLName, unescapeString } from "./index";
+import {
+  MBQL_CLAUSES,
+  getMBQLName,
+  isOptionsObject,
+  unescapeString,
+} from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,
@@ -264,7 +269,7 @@ export const adjustOptions = tree =>
       if (operands.length > 0) {
         const clause = MBQL_CLAUSES[operator];
         if (clause && clause.hasOptions) {
-          if (operands.length === clause.args.length + 1) {
+          if (operands.length === clause.args.length + 1 || clause.multiple) {
             // the last one holds the function options
             const options = operands[operands.length - 1];
 
@@ -314,6 +319,36 @@ export const adjustOffset = tree =>
       if (tag === "offset") {
         const opts = {};
         return withAST([tag, opts, expr, n], node);
+      }
+    }
+    return node;
+  });
+
+/*
+ MBQL clause for an operator that supports multiple arguments *requires* an
+ option object after the operator when there are more than 2 arguments. Compare:
+
+ ["contains", ["field", 1, null], "A"]
+ ["contains", ["field", 1, null], "A", {"case-sensitive": false}]
+ ["contains", {}, ["field", 1, null], "A", "B"]
+ ["contains", {"case-sensitive": false}, ["field", 1, null], "A", "B"]
+
+ By default, the expression parser adds the options object as the last operand,
+ so we need to adjust its position here or insert an empty options object if
+ there is none.
+*/
+export const adjustMultiArgOptions = tree =>
+  modify(tree, node => {
+    if (Array.isArray(node)) {
+      const [operator, ...args] = node;
+      const clause = MBQL_CLAUSES[operator];
+      if (clause != null && clause.multiple && clause.hasOptions) {
+        if (isOptionsObject(args.at(-1)) && args.length > 3) {
+          return withAST([operator, args.at(-1), ...args.slice(0, -1)], node);
+        }
+        if (args.length > 2 && !isOptionsObject(args.at(-1))) {
+          return withAST([operator, {}, ...args], node);
+        }
       }
     }
     return node;
@@ -374,4 +409,5 @@ export const parse = pipe(
   useShorthands,
   adjustOffset,
   adjustCase,
+  adjustMultiArgOptions,
 );

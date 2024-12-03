@@ -185,7 +185,6 @@
   ring/ring-jetty-adapter                   {:mvn/version "1.13.0"              ; Jetty adapter
                                              :exclusions [org.eclipse.jetty/jetty-server
                                                           org.eclipse.jetty.websocket/websocket-jetty-server]}
-  ring/ring-json                            {:mvn/version "0.5.1"}              ; Ring middleware for reading/writing JSON automatically
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
