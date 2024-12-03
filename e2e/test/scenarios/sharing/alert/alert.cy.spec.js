@@ -1,6 +1,8 @@
 import { H } from "e2e/support";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
   ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -171,5 +173,30 @@ describe("scenarios > alert", () => {
     });
 
     H.sharingMenuButton().should("not.exist");
+  });
+
+  it("can set up an alert for a question saved in a dashboard", () => {
+    setupSMTP();
+
+    createQuestion(
+      {
+        name: "Total Orders",
+        database_id: SAMPLE_DATABASE.id,
+        dashboard_id: ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      },
+      { visitQuestion: true },
+    );
+
+    openSharingMenu("Create alert");
+    modal().button("Set up an alert").click();
+    modal().button("Done").click();
+
+    openSharingMenu("Edit alerts");
+    popover().findByText("You set up an alert").should("be.visible");
   });
 });

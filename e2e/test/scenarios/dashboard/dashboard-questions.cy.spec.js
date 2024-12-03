@@ -261,6 +261,26 @@ describe("Dashboard > Dashboard Questions", () => {
         .should("exist");
     });
 
+    it("can save a native question to a dashboard", () => {
+      cy.visit("/");
+      H.newButton("SQL query").click();
+
+      H.focusNativeEditor();
+      cy.get(".ace_content").type(
+        "SELECT COUNT(*) / 2 as half_count FROM ORDERS",
+      );
+
+      H.queryBuilderHeader().button("Save").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("Half Orders");
+        cy.findByText("Orders in a dashboard"); // save location
+        cy.button("Save").click();
+      });
+
+      cy.findByTestId("edit-bar").button("Save").click();
+      H.dashboardCards().findByText("Half Orders");
+    });
+
     it("can create a question using a dashboard question as a data source", () => {
       H.createQuestion({
         name: "Total Orders Dashboard Question",
@@ -363,6 +383,10 @@ describe("Dashboard > Dashboard Questions", () => {
             .should("be.visible");
         });
     });
+
+    it("can embed a dashboard question", () => {});
+
+    it("can embed a dashboard with dashboard questions", () => {});
 
     it("preserves bookmarks when moving a question to a dashboard", () => {
       // bookmark it
