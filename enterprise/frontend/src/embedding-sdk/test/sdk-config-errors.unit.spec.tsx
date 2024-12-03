@@ -113,13 +113,13 @@ describe("SDK auth errors", () => {
     });
 
     it("should show a message when fetchRequestToken doesn't return a json object", async () => {
-      const config = defineMetabaseAuthConfig({
+      const authConfig = defineMetabaseAuthConfig({
         ...defaultAuthUriConfig,
         // @ts-expect-error -- testing error path
         fetchRequestToken: async () => "not a json object",
       });
 
-      await setup(config);
+      await setup(authConfig);
 
       await expectErrorMessage(
         `The "fetchRequestToken" must return an object with the shape {id:string, exp:number, iat:number, status:string}, got "not a json object" instead`,
@@ -139,14 +139,14 @@ describe("SDK auth errors", () => {
     });
 
     it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
-      const config = defineMetabaseAuthConfig({
+      const authConfig = defineMetabaseAuthConfig({
         ...defaultAuthUriConfig,
         fetchRequestToken: async () => {
           throw new Error("Custom error message");
         },
       });
 
-      await setup(config);
+      await setup(authConfig);
 
       await expectErrorMessage("Custom error message");
     });

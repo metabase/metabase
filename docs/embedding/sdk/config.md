@@ -48,7 +48,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 // Configure authentication
-const config = defineMetabaseAuthConfig({
+const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
