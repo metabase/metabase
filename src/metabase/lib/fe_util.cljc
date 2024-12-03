@@ -288,8 +288,8 @@
    [:column       ::lib.schema.metadata/column]
    [:value        [:or number? [:enum :current]]]
    [:unit         ::lib.schema.temporal-bucketing/unit.date-time.interval]
-   [:offset-value [:maybe number?]]
-   [:offset-unit  [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]]
+   [:offset-value {:optional true} [:maybe number?]]
+   [:offset-unit  {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]]
    [:options      [:maybe ::lib.schema.filter/time-interval-options]]])
 
 (mu/defn relative-date-filter-clause :- ::lib.schema.expression/expression
@@ -326,8 +326,6 @@
       {:column       (ref->col col-ref)
        :value        value
        :unit         unit
-       :offset-value nil
-       :offset-unit  nil
        :options      (select-keys opts [:include-current])}
 
       [:relative-time-interval
