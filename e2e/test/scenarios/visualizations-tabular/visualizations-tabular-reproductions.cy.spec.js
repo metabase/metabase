@@ -6,6 +6,7 @@ import {
   cartesianChartCircle,
   createNativeQuestion,
   createQuestion,
+  focusNativeEditor,
   getDashboardCard,
   getDraggableElements,
   getNotebookStep,
@@ -13,7 +14,6 @@ import {
   main,
   modal,
   moveDnDKitElement,
-  openNativeEditor,
   openNotebook,
   openOrdersTable,
   popover,
@@ -22,6 +22,7 @@ import {
   rightSidebar,
   runNativeQuery,
   sidebar,
+  startNewNativeQuestion,
   summarize,
   tableInteractive,
   visitDashboard,
@@ -623,7 +624,8 @@ describe("issue 30039", () => {
   });
 
   it("should not trigger object detail navigation after the modal was closed (metabase#30039)", () => {
-    openNativeEditor().type("select * from ORDERS LIMIT 2");
+    startNewNativeQuestion();
+    focusNativeEditor().as("editor").type("select * from ORDERS LIMIT 2");
     runNativeQuery();
     cy.findAllByTestId("detail-shortcut").first().click();
     cy.findByTestId("object-detail").should("be.visible");

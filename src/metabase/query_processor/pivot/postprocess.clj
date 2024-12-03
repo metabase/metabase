@@ -129,15 +129,19 @@
     :min
     (fn [prev v]
       (if (number? v)
-        (-> (merge {:min 0} prev)
-            (update :min #(min % v)))
+        (update prev :min
+                (fn [x] (if x
+                          (min x v)
+                          v)))
         v))
 
     :max
     (fn [prev v]
       (if (number? v)
-        (-> (merge {:min 0} prev)
-            (update :min #(max % v)))
+        (update prev :max
+                (fn [x] (if x
+                          (max x v)
+                          v)))
         v))
 
     ;; else
@@ -442,10 +446,11 @@
                             ;; filtering out any rows that begin with "Totals ..."
                             (mapv
                              (fn [row]
-                               (let [[row-part vals-part] (split-at (count pivot-rows) row)]
+                               (let [[row-part vals-part] (split-at (count pivot-rows) row)
+                                     first-entry (first row-part)]
                                  (if (or
                                       (not (seq row-part))
-                                      (str/starts-with? (first row-part) "Totals"))
+                                      (and (string? first-entry) (str/starts-with? first-entry "Totals")))
                                    row
                                    (into (mapv fmt row-formatters row-part) vals-part)))))))
                          sections-rows))))
