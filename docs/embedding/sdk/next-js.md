@@ -22,8 +22,8 @@ It's fine to leave "use client" in the component even when using the Pages Route
 import { MetabaseProvider, StaticQuestion, defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
 
 const authConfig = defineMetabaseAuthConfig({
-//...
-}); // Your Metabase auth configuration
+  //...
+});
 
 export default function MetabaseComponents() {
   return (
