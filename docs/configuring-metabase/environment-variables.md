@@ -570,16 +570,9 @@ Enumerated field values with cardinality at or below this point are treated as e
 ### `MB_EXPERIMENTAL_FULLTEXT_SEARCH_ENABLED`
 
 - Type: boolean
-- Default: `true`
+- Default: `false`
 
 Enables search engines which are still in the experimental stage.
-
-### `MB_EXPERIMENTAL_SEARCH_WEIGHT_OVERRIDES`
-
-- Type: json
-- Default: `null`
-
-Used to override weights used for search ranking.
 
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
@@ -1417,13 +1410,6 @@ don't have one.
 - [Configuration file name](./config-file.md): `scim-enabled`
 
 Is SCIM currently enabled?
-
-### `MB_SEARCH_ENGINE_APPDB_INDEX_STATE`
-
-- Type: json
-- Default: `null`
-
-Internation state used to maintain the AppDb Search Index.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
