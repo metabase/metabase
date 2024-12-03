@@ -116,14 +116,14 @@
           (t2/delete! :model/Notification (:id notification)))))))
 
 (defmacro with-card-notification
+  "Macro that sets up a card notification for testing.
+    (with-card-notification
+      [notification {:card              {:name \"My Card\"}
+                     :notification-card {:send_condition :rows}
+                     :subscriptions     []
+                     :handlers          []}]"
   [[bindings props] & body]
   `(do-with-card-notification ~props (fn [~bindings] ~@body)))
-
-#_(ngoc/with-tc
-    (with-card-notification [notification {:card {:name "ngoc"
-                                                  :dataset_query (mt/mbql-query users)}}]
-      notification))
-
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;

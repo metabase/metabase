@@ -40,7 +40,7 @@
                                                                 :updated_at   :%now})))))
 
     (testing "failed if payload_type is invalid"
-      (is (thrown-with-msg? Exception #"Invalid value :notification/not-existed\. Must be one of .*"
+      (is (thrown-with-msg? Exception #"Value does not match schema*"
                             (t2/insert! :model/Notification {:payload_type :notification/not-existed}))))))
 
 (deftest disallow-update-notification-type-test

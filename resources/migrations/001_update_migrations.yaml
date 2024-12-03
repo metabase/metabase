@@ -10164,6 +10164,11 @@ databaseChangeLog:
       id: v53.2024-11-26T08:04:00
       author: qnkhuat
       comment: add fk constraint to notification.creator_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_creator_id
+              foreignKeyTableName: notification
       changes:
         - addForeignKeyConstraint:
             baseTableName: notification

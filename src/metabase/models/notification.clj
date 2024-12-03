@@ -98,7 +98,8 @@
     [:notification/card
      [:map
       [:payload_id int?]
-      [:creator_id int?]]]]])
+      [:creator_id int?]]]
+    [:notification/testing :any]]])
 
 (defn- validate-notification
   [notification]
@@ -372,7 +373,7 @@
   [notification subscriptions handlers+recipients]
   (t2/with-transaction [_conn]
     (let [payload-id      (case (:payload_type notification)
-                            :notification/system-event
+                            (:notification/system-event :notification/testing)
                             nil
                             :notification/card
                             (t2/insert-returning-pk! :model/NotificationCard (:payload notification)))

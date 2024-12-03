@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.notification.test-util :as notification.tu]
    [metabase.sync.sync-metadata]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest get-notication-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel
@@ -23,32 +24,40 @@
                                                           :user_id (mt/user->id :crowberto)}]
                                           :template_id  tmpl-id}]}]
       (let [notification-id (:id notification)]
-        (is (=?
-             {:id            notification-id
-              :creator_id    (mt/user->id :crowberto)
-              :creator       {:email "crowberto@metabase.com"}
-              :payload_type  "notification/card"
-              :subscriptions [{:notification_id notification-id
-                               :type            "notification-subscription/cron"
-                               :cron_schedule   "0 0 0 * * ?"}
-                              {:notification_id notification-id
-                               :type            "notification-subscription/cron"
-                               :cron_schedule   "1 1 1 * * ?"}]
-              :handlers      [{:template_id     nil
-                               :channel_type    "channel/metabase-test"
-                               :channel         {:id chn-id}
-                               :channel_id      chn-id
-                               :notification_id notification-id
-                               :active          false}
-                              {:template_id  tmpl-id
-                               :channel_type "channel/email"
-                               :channel      nil
-                               :template     {:id tmpl-id}
-                               :recipients   [{:type    "notification-recipient/user"
-                                               :details nil
-                                               :user_id (mt/user->id :crowberto)
-                                               :user    {:email "crowberto@metabase.com"}}]
-                               :channel_id nil
-                               :notification_id notification-id
-                               :active true}]}
-             (mt/user-http-request :crowberto :get (format "notification/%d" notification-id))))))))
+        (testing "hydrate creator, payload, subscriptions, handlers"
+          (is (=? {:id            notification-id
+                   :creator_id    (mt/user->id :crowberto)
+                   :creator       {:email "crowberto@metabase.com"}
+                   :payload_type  "notification/card"
+                   :payload       {:card_id (-> notification :payload :card_id)}
+                   :subscriptions [{:notification_id notification-id
+                                    :type            "notification-subscription/cron"
+                                    :cron_schedule   "0 0 0 * * ?"}
+                                   {:notification_id notification-id
+                                    :type            "notification-subscription/cron"
+                                    :cron_schedule   "1 1 1 * * ?"}]
+                   :handlers      [{:template_id     nil
+                                    :channel_type    "channel/metabase-test"
+                                    :channel         {:id chn-id}
+                                    :channel_id      chn-id
+                                    :notification_id notification-id
+                                    :active          false}
+                                   {:template_id  tmpl-id
+                                    :channel_type "channel/email"
+                                    :channel      nil
+                                    :template     {:id tmpl-id}
+                                    :recipients   [{:type    "notification-recipient/user"
+                                                    :details nil
+                                                    :user_id (mt/user->id :crowberto)
+                                                    :user    {:email "crowberto@metabase.com"}}]
+                                    :channel_id nil
+                                    :notification_id notification-id
+                                    :active true}]}
+                  (mt/user-http-request :crowberto :get (format "notification/%d" notification-id)))))))))
+
+(deftest get-notification-error-test
+  (testing "require auth"
+    (is (= "Unauthenticated" (mt/client :get 401 "notification/1"))))
+  (testing "404 on unknown notification"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :get (format "notification/%d" (inc (t2/count :model/Notification))))))))
