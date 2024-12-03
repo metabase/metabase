@@ -177,19 +177,21 @@ export interface ColumnSettings {
   [key: string]: any;
 }
 
+export type OtherCategoryAggregationFn =
+  | "sum"
+  | "avg"
+  | "min"
+  | "max"
+  | "stddev"
+  | "median";
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
   "graph.show_stack_values"?: StackValuesDisplay;
   "graph.max_categories_enabled"?: boolean;
   "graph.max_categories"?: number;
-  "graph.other_category_aggregation_fn"?:
-    | "sum"
-    | "avg"
-    | "min"
-    | "max"
-    | "stddev"
-    | "median";
+  "graph.other_category_aggregation_fn"?: OtherCategoryAggregationFn;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];

@@ -1,3 +1,4 @@
+import type { GraphMetricName } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import {
   getColumnKey,
@@ -146,7 +147,7 @@ function syncColumns<T>({
 }
 
 type SyncColumnNamesOpts = {
-  settings: string[];
+  settings: (string | null)[];
   newColumns: ColumnInfo[];
   oldColumns: ColumnInfo[];
   shouldCreateSetting?: (column: ColumnInfo) => boolean | undefined;
@@ -158,11 +159,11 @@ function syncColumnNames({
   oldColumns,
   shouldCreateSetting,
 }: SyncColumnNamesOpts) {
-  return syncColumns({
+  return syncColumns<GraphMetricName>({
     settings,
     newColumns,
     oldColumns,
-    getColumnName: setting => setting,
+    getColumnName: setting => setting ?? null,
     setColumnName: (_, newName) => newName,
     createSetting: column => column.name,
     shouldCreateSetting,
