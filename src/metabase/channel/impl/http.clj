@@ -76,7 +76,7 @@
     {:cols (map :name (:cols data))
      :rows (:rows data)}))
 
-(mu/defmethod channel/render-notification [:channel/http :notification/alert]
+(mu/defmethod channel/render-notification [:channel/http :notification/card]
   [_channel-type {:keys [payload creator]} _template _recipients]
   (let [{:keys [card alert card_part]} payload
         request-body {:type               "alert"
