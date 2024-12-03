@@ -9,16 +9,9 @@
     "emitDeclarationOnly": true,
     "outDir": "./resources/embedding-sdk/dist",
     "paths": {
-      "*": [
-        "./frontend/src/*",
-        "./frontend/test/*",
-        "./enterprise/frontend/src/*",
-        "./enterprise/frontend/test/*"
-      ],
-      "cljs/*": [
-        "./target/cljs_release/*"
-      ]
-    },
+      "*": ["./frontend/src/*", "./enterprise/frontend/src/*"],
+      "cljs/*": ["./target/cljs_release/*"]
+    }
   },
   "include": [
     "frontend/src/**/*.ts",

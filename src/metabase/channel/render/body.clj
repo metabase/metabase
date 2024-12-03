@@ -74,7 +74,7 @@
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
     (types/temporal-field? col)
-    (formatter/format-temporal-str timezone-id value col)
+    ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
     (number? value)
     (formatter/format-number value col visualization-settings)
@@ -609,7 +609,7 @@
       [:div {:style (style/style
                      (style/font-style)
                      {:margin-top :8px
-                      :color      style/color-gray-4})}
+                      :color      style/color-text-light})}
        (trs "No results")]]
      :render/text (trs "No results")}))
 

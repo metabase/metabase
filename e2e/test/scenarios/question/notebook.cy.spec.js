@@ -23,6 +23,7 @@ import {
   selectFilterOperator,
   startNewQuestion,
   summarize,
+  verifyNotebookQuery,
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
@@ -968,6 +969,55 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         cy.findByText("Hour of day").should("not.exist");
         cy.findByText("More…").should("not.exist");
       });
+  });
+
+  it("should not shrink the remove clause button (metabase#50128)", () => {
+    const CUSTOM_COLUMN_LONG_NAME = "very-very-very-long-name";
+
+    // The issue is reproducible on all viewports, but the smaller the viewport is,
+    // the more likely the issue is going to occur.
+    cy.viewport(300, 800);
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [CUSTOM_COLUMN_LONG_NAME]: ["+", 1000, 1000],
+          },
+          filter: ["<", ["expression", CUSTOM_COLUMN_LONG_NAME, null], 1000000],
+          aggregation: [["avg", ["expression", CUSTOM_COLUMN_LONG_NAME, null]]],
+          breakout: [["expression", CUSTOM_COLUMN_LONG_NAME, null]],
+          "order-by": [["asc", ["expression", CUSTOM_COLUMN_LONG_NAME, null]]],
+        },
+      },
+      { visitQuestion: true },
+    );
+    openNotebook();
+
+    verifyNotebookQuery("Orders", [
+      {
+        expressions: [CUSTOM_COLUMN_LONG_NAME],
+        filters: [`${CUSTOM_COLUMN_LONG_NAME} is less than 1000000`],
+        aggregations: [`Average of ${CUSTOM_COLUMN_LONG_NAME}`],
+        breakouts: [CUSTOM_COLUMN_LONG_NAME],
+        sort: [{ column: CUSTOM_COLUMN_LONG_NAME, order: "asc" }],
+      },
+    ]);
+
+    cy.findAllByTestId("notebook-cell-item")
+      .filter(`:contains(${CUSTOM_COLUMN_LONG_NAME})`)
+      .then(items => {
+        for (let index = 0; index < items.length; ++index) {
+          cy.wrap(items[index]).within(() => {
+            assertRemoveClauseIconSize();
+          });
+        }
+      });
+
+    function assertRemoveClauseIconSize() {
+      cy.findByLabelText("close icon").invoke("outerWidth").should("eq", 16);
+      cy.findByLabelText("close icon").invoke("outerHeight").should("eq", 16);
+    }
   });
 });
 

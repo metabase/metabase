@@ -20,6 +20,20 @@ Example: `Offset(Sum([Total]), -1)` would get the value of `Sum([Total])` from t
 
 Because `Offset` refers to other rows, the order of the breakouts matters (the breakouts are the groups in the "Group By" section in the Summarization step). Metabase will sort by the first group, then partition by any additional breakouts. For example, if you want to see the counts of orders by product category over time, and the counts by product category for the previous period, you should first group by `Created At`, then by the product category.
 
+## Offset doesn't account for missing data
+
+`Offset` can only reference the rows you _have_, which means it can produce correct but unexpected results. For example, let's say you want to compare each _day's_ count to the previous day.
+
+Take the following table, where the `Previous` column is created by the expression `Offset(Count, -1)`:
+
+| Date     | Count | Previous |
+| -------- | ----- | -------- |
+| 1-Oct-22 | 6     |          |
+| 2-Oct-22 | 3     | 6        |
+| 4-Oct-22 | 2     | 3        |
+
+The value in the `Previous` column for October 4th is `3`, which is the value of the previous row. While correct based on the data, the previous row is October _2nd_; there's no data for the previous _day_, October 3rd. If you want to use offset to compare previous _days_ (or weeks, or whatever), you need to make sure that your data includes a row for each data point you want to compare. In this case, your data would need to include a row for each day, including days where the count was zero. If you're missing dates in your data, you could join a calendar table to your data to make sure that each day has a row in your data.
+
 ## Data types
 
 The `Offset` function returns whatever value is in the offset row.

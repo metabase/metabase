@@ -34,6 +34,12 @@ const theme = defineEmbeddingSdkTheme({
     // The primary color of your application
     brand: "#9B5966",
 
+    // Lighter variation of the brand color. Used for hover and accented elements.
+    "brand-hover": "#DDECFA",
+
+    // Lightest variation of the brand color. Used for hover and accented elements.
+    "brand-hover-light": "#EEF6FC",
+
     // The color of text that is most prominent
     "text-primary": "#4C5773",
 
@@ -45,6 +51,9 @@ const theme = defineEmbeddingSdkTheme({
 
     // Default background color
     background: "#FFFFFF",
+
+    // Slightly muted background color.
+    "background-secondary": "#EDF2F5",
 
     // Slightly darker background color used for hover and accented elements
     "background-hover": "#F9FBFC",
@@ -102,6 +111,21 @@ const theme = defineEmbeddingSdkTheme({
     question: {
       // Background color for all questions
       backgroundColor: "#2D2D30",
+    },
+
+    // Tooltips
+    tooltip: {
+      // Tooltip text color.
+      textColor: "#FFFFFF",
+
+      // Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes.
+      secondaryTextColor: "#949AAB",
+
+      // Tooltip background color.
+      backgroundColor: "#2E353B",
+
+      // Tooltip background color for focused rows.
+      focusedBackgroundColor: "#0A0E10",
     },
 
     // Data table

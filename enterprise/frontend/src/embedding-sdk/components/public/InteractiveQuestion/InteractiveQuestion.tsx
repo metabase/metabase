@@ -28,7 +28,7 @@ import {
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/util/FlexibleSizeComponent";
+import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: InteractiveQuestionProviderProps["cardId"];
@@ -59,6 +59,7 @@ export const _InteractiveQuestion = ({
   entityTypeFilter,
   isSaveEnabled,
   saveToCollectionId,
+  withChartTypeSelector = true,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
@@ -80,6 +81,7 @@ export const _InteractiveQuestion = ({
         customTitle={customTitle}
         withResetButton={withResetButton}
         withTitle={withTitle}
+        withChartTypeSelector={withChartTypeSelector}
       />
     )}
   </InteractiveQuestionProvider>

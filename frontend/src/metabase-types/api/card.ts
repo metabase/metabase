@@ -26,7 +26,7 @@ type CreatorInfo = Pick<
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
-  entity_id: CardEntityId;
+  entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;
   name: string;
@@ -268,6 +268,14 @@ export type VisualizationSettings = {
   "pie.slice_threshold"?: number;
   "pie.colors"?: Record<string, string>;
 
+  // Sankey settings
+  "sankey.source"?: string;
+  "sankey.target"?: string;
+  "sankey.value"?: string;
+  "sankey.node_align"?: "left" | "right" | "justify";
+  "sankey.show_edge_labels"?: boolean;
+  "sankey.label_value_formatting"?: "auto" | "full" | "compact";
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 
@@ -278,7 +286,6 @@ export type EmbedVisualizationSettings = {
 export type VisualizationSettingKey = keyof VisualizationSettings;
 
 export type CardId = number;
-export type CardEntityId = BaseEntityId;
 
 export type CardFilterOption =
   | "all"

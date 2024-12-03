@@ -3,7 +3,7 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 
-import ArchiveModal from "metabase/components/ArchiveModal";
+import { ArchiveModal } from "metabase/components/ArchiveModal";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
 
 const mapDispatchToProps = dispatch => ({
@@ -40,8 +40,7 @@ const getLabels = question => {
 class ArchiveQuestionModal extends Component {
   onArchive = () => {
     const { question, archive } = this.props;
-
-    archive(question);
+    return archive(question);
   };
 
   render() {
@@ -62,6 +61,8 @@ class ArchiveQuestionModal extends Component {
     return (
       <ArchiveModal
         title={title}
+        model={question.card().model}
+        modelId={question.id()}
         message={`${message}${additionalWarning}`}
         onArchive={this.onArchive}
         onClose={onClose}

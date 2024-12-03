@@ -128,10 +128,12 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
-     metabase.models.notification/create-notification!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.models.notification/create-notification!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
+     ;; Safe in tests, where we typically use a private, temporary index per thread.
+     metabase.search.core/reindex!
      metabase.util/run-count!
      next.jdbc/execute!}}
 
@@ -249,6 +251,7 @@
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
+   cheshire.core          {:message "Use metabase.util.json instead of cheshire.core directly."}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
    grouper.core           {:message "Use metabase.util.grouper instead of grouper.core"}
    honeysql.core          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
@@ -343,6 +346,8 @@
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search
+                                     ;; deprecating naked metabase.search namespace in favor of this.
+                                     metabase.search.core
                                      metabase.search.spec}
     metabase.server                #{metabase.server
                                      metabase.server.handler
@@ -475,7 +480,6 @@
     clojure.tools.namespace.parse                                 ns.parse
     colorize.core                                                 colorize
     environ.core                                                  env
-    hf.depstar.api                                                depstar
     hiccup.core                                                   hiccup
     hiccup.util                                                   hiccup.util
     honey.sql                                                     sql
@@ -752,8 +756,8 @@
   metabase.api.search-test/do-test-users                                                clojure.core/let
   metabase.async.api-response-test/with-response                                        clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
-  metabase.channel.http-test/with-captured-http-requests                                clojure.core/fn
-  metabase.channel.http-test/with-server                                                clojure.core/let
+  metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
+  metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
   metabase.db.data-migrations/defmigration                                              clojure.core/def
@@ -805,6 +809,8 @@
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
   metabase.util.ssh/with-ssh-tunnel                                                     clojure.core/let
   metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
+  metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
+  metabuild-common.files/with-open-jar-file-system                                      clojure.core/let
   monger.operators/defoperator                                                          clojure.core/def
   potemkin.types/defprotocol+                                                           clojure.core/defprotocol
   potemkin.types/defrecord+                                                             clojure.core/defrecord
@@ -855,7 +861,8 @@
    metabase.api.search-test/with-search-items-in-root-collection                                                             hooks.common/do*
    metabase.api.user-test/with-temp-user-email                                                                               hooks.common/with-one-binding
    metabase.async.streaming-response-test/with-start-execution-chan                                                          hooks.common/with-one-binding
-   metabase.channel.template.handlebars-test/with-temp-template                                                              hooks.common/with-vec-first-binding
+   metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
+   metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity

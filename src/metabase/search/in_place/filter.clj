@@ -72,7 +72,7 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.legacy/searchable-columns)]
+     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
                                    (search-columns-fn model search-native-query))
                                  (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
@@ -200,7 +200,7 @@
 
 ;; We won't need this post-legacy as it defines the joins à la carte.
 (defn- search-model->revision-model [model]
-  ((requiring-resolve 'metabase.search.legacy/search-model->revision-model) model))
+  ((requiring-resolve 'metabase.search.in-place.legacy/search-model->revision-model) model))
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
@@ -249,7 +249,7 @@
   (merge
    ;; models support search-native-query if there are additional columns to search when the `search-native-query`
    ;; argument is true
-   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.legacy/searchable-columns)) :default)
+   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
                               (filter (fn [[model f]]
                                         (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)

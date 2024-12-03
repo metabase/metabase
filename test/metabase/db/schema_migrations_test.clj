@@ -9,7 +9,6 @@
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
   (:require
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -40,17 +39,24 @@
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+;; Disable the search index, as older schemas may not be compatible with ingestion.
+(use-fixtures :each (fn [thunk]
+                      (binding [search.ingestion/*disable-updates* true]
+                        (thunk))))
 
 (deftest rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
@@ -1519,8 +1525,8 @@
                               {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}]))
       (let [user (create-raw-user! (mt/random-email))
             db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
-                                                                 (update :details json/generate-string)
-                                                                 (update :settings json/generate-string)
+                                                                 (update :details json/encode)
+                                                                 (update :settings json/encode)
                                                                  (update :engine str)
                                                                  (assoc :cache_ttl 10)))
             dash (t2/insert-returning-pk! (t2/table-name :model/Dashboard)
@@ -1560,7 +1566,7 @@
                   :strategy "duration"
                   :config   {:duration 30 :unit "hours"}}]
                 (->> (t2/select :cache_config)
-                     (mapv #(update % :config json/decode true)))))))))
+                     (mapv #(update % :config json/decode+kw)))))))))
 
 (deftest cache-config-handle-big-value-test
   (testing "Caching config is correctly copied over"
@@ -1574,7 +1580,7 @@
                 :config   {:multiplier      2147483647
                            :min_duration_ms 2147483647}}]
               (->> (t2/select :cache_config)
-                   (mapv #(update % :config json/decode true))))))))
+                   (mapv #(update % :config json/decode+kw))))))))
 
 (deftest cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
@@ -1584,8 +1590,8 @@
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
       ;; this one to have custom configuration to check they are not copied over
       (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
-                                                      (update :details json/generate-string)
-                                                      (update :settings json/generate-string)
+                                                      (update :details json/encode)
+                                                      (update :settings json/encode)
                                                       (update :engine str)
                                                       (assoc :cache_ttl 10)))
       (migrate!)
@@ -1617,7 +1623,7 @@
                    :config {:multiplier      101
                             :min_duration_ms 124}}
                   (-> (t2/select-one :cache_config)
-                      (update :config json/decode true)))))))))
+                      (update :config json/decode+kw)))))))))
 
 (deftest cache-config-old-id-cleanup
   (testing "Cache config migration old id is removed from databasechangelog"

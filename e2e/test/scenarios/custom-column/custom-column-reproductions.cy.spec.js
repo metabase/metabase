@@ -5,6 +5,7 @@ import {
   addOrUpdateDashboardCard,
   cartesianChartCircle,
   createNativeQuestion,
+  createQuestion,
   createSegment,
   editDashboard,
   enterCustomColumnDetails,
@@ -416,7 +417,7 @@ describe("issue 18814", () => {
   });
 });
 
-describe.skip("issue 19744", () => {
+describe("issue 19744", () => {
   const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
   const questionDetails = {
@@ -1101,5 +1102,179 @@ describe("issue 49342", () => {
       .should("be.focused")
       .realPress(["Shift", "Tab"]);
     cy.button("Cancel").should("be.focused");
+  });
+});
+
+describe("issue 49882", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.wait("@queryMetadata");
+    cy.findByLabelText("Custom column").click();
+  });
+
+  it("should not eat up subsequent characters when applying a suggestion (metabase#49882-1)", () => {
+    const moveCursorTo2ndCaseArgument = "{leftarrow}".repeat(6);
+    enterCustomColumnDetails({
+      formula: `case([Total] > 200, , "X")${moveCursorTo2ndCaseArgument}[tot{enter}`,
+    });
+
+    cy.get(".ace_text-input")
+      .first()
+      .should("have.value", 'case([Total] > 200, [Total] , "X")\n\n');
+    popover().findByText("Expecting a closing parenthesis").should("not.exist");
+  });
+
+  it("does not clear expression input when expression is invalid (metabase#49882-2)", () => {
+    const selectTax = `{leftarrow}${"{shift+leftarrow}".repeat(5)}`;
+    const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
+    enterCustomColumnDetails({
+      formula: `case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])${selectTax}`,
+    });
+    cy.get(".ace_text-input").first().focus().realPress(["Control", "X"]);
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
+      .type(moveCursorBefore2ndCase)
+      .realPress(["Control", "V"]);
+    cy.get(".ace_text-input").first().focus().type(" ").blur();
+
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
+      .should(
+        "have.value",
+        'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )\n\n',
+      );
+
+    popover().findByText("Invalid expression").should("be.visible");
+  });
+
+  it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
+    enterCustomColumnDetails({
+      formula:
+        'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
+    });
+
+    cy.get(".ace_text-input")
+      .first()
+      .should(
+        "have.value",
+        'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)\n\n',
+      );
+  });
+
+  it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
+    const selectProductVendor =
+      "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{enter}";
+    enterCustomColumnDetails({
+      formula: `[Product${selectProductVendor}{leftarrow}{leftarrow}`,
+      blur: false,
+    });
+
+    cy.findByTestId("expression-suggestions-list-item")
+      .should("have.text", "Product → Vendor")
+      .and("have.css", "background-color", "rgb(80, 158, 227)");
+  });
+});
+
+describe("issue 49304", () => {
+  const questionDetails = {
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to switch between filter widgets and the expression editor for multi-argument operators (metabase#49304)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    openNotebook();
+
+    cy.log(
+      "add a filter using a filter widget and check that it is rendered in the expression editor",
+    );
+    getNotebookStep("data").button("Filter").click();
+    popover().findByText("Category").click();
+    selectFilterOperator("Contains");
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter some text").type("gadget,widget");
+      cy.button("Add filter").click();
+    });
+    getNotebookStep("filter")
+      .findByText("Category contains 2 selections")
+      .click();
+    popover().within(() => {
+      cy.button("Back").click();
+      cy.findByText("Custom Expression").click();
+      cy.get(".ace_content").should(
+        "have.text",
+        'contains([Category], "gadget", "widget", "case-insensitive")',
+      );
+    });
+
+    cy.log(
+      "modify the expression in the expression editor and make sure it is rendered correctly in the filter widget",
+    );
+    popover().within(() => {
+      enterCustomColumnDetails({
+        formula:
+          'contains([Category], "gadget", "widget", "gizmo", "case-insensitive")',
+      });
+      cy.button("Done").click();
+    });
+    getNotebookStep("filter")
+      .findByText("Category contains 3 selections")
+      .click();
+    popover().within(() => {
+      cy.findByText("gadget").should("be.visible");
+      cy.findByText("widget").should("be.visible");
+      cy.findByText("gizmo").should("be.visible");
+      cy.findByLabelText("Case sensitive").should("not.be.checked");
+    });
+
+    cy.log(
+      "change options in the filter widget and make sure they get reflected in the expression editor",
+    );
+    popover().within(() => {
+      cy.findByLabelText("Case sensitive").click();
+      cy.button("Update filter").click();
+    });
+    getNotebookStep("filter")
+      .findByText("Category contains 3 selections")
+      .click();
+    popover().within(() => {
+      cy.button("Back").click();
+      cy.findByText("Custom Expression").click();
+      cy.get(".ace_content").should(
+        "have.text",
+        'contains([Category], "gadget", "widget", "gizmo")',
+      );
+    });
+
+    cy.log(
+      "remove options from the expression in the expression editor and make sure it is rendered correctly in the filter widget",
+    );
+    popover().within(() => {
+      enterCustomColumnDetails({
+        formula: 'contains([Category], "gadget", "widget", "gizmo")',
+      });
+      cy.button("Done").click();
+    });
+    getNotebookStep("filter")
+      .findByText("Category contains 3 selections")
+      .click();
+    popover().within(() => {
+      cy.findByText("gadget").should("be.visible");
+      cy.findByText("widget").should("be.visible");
+      cy.findByText("gizmo").should("be.visible");
+      cy.findByLabelText("Case sensitive").should("be.checked");
+    });
   });
 });

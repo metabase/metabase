@@ -110,10 +110,19 @@ const mapStateToProps = state => ({
 
 const connector = connect(mapStateToProps, null);
 
-function getMapUrl(details, props) {
+const ensureTrailingSlash = url => (url.endsWith("/") ? url : url + "/");
+
+export function getMapUrl(details, props) {
   if (details.builtin) {
     if (props?.isSdk && props?.sdkMetabaseInstanceUrl) {
-      return new URL(details.url, props.sdkMetabaseInstanceUrl).href;
+      const baseUrl = new URL(
+        props.sdkMetabaseInstanceUrl,
+        window.location.origin,
+      ).href;
+
+      // if the second parameter ends with a slash, it will join them together
+      // new URL("/sub-path", "http://example.org/proxy/") => "http://example.org/proxy/sub-path"
+      return new URL(details.url, ensureTrailingSlash(baseUrl)).href;
     }
     return details.url;
   }

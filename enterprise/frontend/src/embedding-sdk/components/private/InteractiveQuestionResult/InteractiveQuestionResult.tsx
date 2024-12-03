@@ -11,12 +11,12 @@ import {
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon } from "metabase/ui";
 
-import { InteractiveQuestion } from "../../public/InteractiveQuestion";
-import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
-} from "../util/FlexibleSizeComponent";
+} from "../../public/FlexibleSizeComponent";
+import { InteractiveQuestion } from "../../public/InteractiveQuestion";
+import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
 
@@ -24,6 +24,7 @@ export interface InteractiveQuestionResultProps {
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: ReactNode;
+  withChartTypeSelector?: boolean;
 }
 
 type QuestionView = "editor" | "filter" | "summarize" | "visualization";
@@ -57,6 +58,7 @@ export const InteractiveQuestionResult = ({
   withTitle,
   customTitle,
   withResetButton,
+  withChartTypeSelector,
 }: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
@@ -78,11 +80,14 @@ export const InteractiveQuestionResult = ({
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
-  if (isQuestionLoading) {
+  // When visualizing a question for the first time, there is no query result yet.
+  const isQueryResultLoading = question && !queryResults;
+
+  if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
-  if (!question || !queryResults) {
+  if (!question) {
     return <SdkError message={t`Question not found`} />;
   }
 
@@ -126,7 +131,7 @@ export const InteractiveQuestionResult = ({
       </Group>
 
       <Group className={InteractiveQuestionS.MidBar} py={0} px="md">
-        {questionView === "visualization" && (
+        {withChartTypeSelector && questionView === "visualization" && (
           <Button
             compact
             radius="xl"
@@ -135,6 +140,7 @@ export const InteractiveQuestionResult = ({
             variant="filled"
             color="brand"
             onClick={toggleChartTypeSelector}
+            data-testid="chart-type-selector-button"
           >
             <Group>
               <Icon
@@ -154,7 +160,9 @@ export const InteractiveQuestionResult = ({
       </Group>
       <Box className={InteractiveQuestionS.Main} p="md" w="100%" h="100%">
         <Box className={InteractiveQuestionS.ChartTypeSelector}>
-          {isChartSelectorOpen && questionView === "visualization" ? (
+          {isChartSelectorOpen &&
+          withChartTypeSelector &&
+          questionView === "visualization" ? (
             <InteractiveQuestion.ChartTypeSelector />
           ) : null}
         </Box>

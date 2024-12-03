@@ -5,7 +5,6 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  changeSynchronousBatchUpdateSetting,
   disconnectDashboardFilter,
   editDashboard,
   filterWidget,
@@ -47,12 +46,6 @@ describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true);
-  });
-
-  afterEach(() => {
-    cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("one filter should search across multiple fields", () => {
@@ -305,7 +298,11 @@ describe("scenarios > dashboard > parameters", () => {
               {
                 parameter_id: matchingFilterType.id,
                 card_id,
-                target: ["dimension", ["template-tag", "filter"]],
+                target: [
+                  "dimension",
+                  ["template-tag", "filter"],
+                  { "stage-number": 0 },
+                ],
               },
             ],
           },

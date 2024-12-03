@@ -3,7 +3,6 @@
    column metadata, and visualization-settings are known. These functions can be used for uniform rendering of all
    artifacts such as generated CSV or image files that need consistent formatting across the board."
   (:require
-   [cheshire.core :as json]
    [clojure.pprint :refer [cl-format]]
    [clojure.string :as str]
    [hiccup.util]
@@ -13,6 +12,7 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.types :as types]
    [metabase.util.currency :as currency]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]
@@ -29,7 +29,7 @@
 
 (p/import-vars
  [datetime
-  format-temporal-str
+  make-temporal-str-formatter
   temporal-string?])
 
 (p.types/defrecord+ NumericWrapper [^String num-str ^Number num-value]
@@ -275,7 +275,7 @@
      ;; for numbers, return a format function that has already computed the differences.
      ;; todo: do the same for temporal strings
      (and apply-formatting? (types/temporal-field? col))
-     #(datetime/format-temporal-str timezone-id % col visualization-settings)
+     (datetime/make-temporal-str-formatter timezone-id col visualization-settings)
 
      (and apply-formatting? (isa? (:semantic_type col) :type/Coordinate))
      (partial format-geographic-coordinates (:semantic_type col))
