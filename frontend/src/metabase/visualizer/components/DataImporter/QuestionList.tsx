@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCardsQuery } from "metabase/api";
@@ -109,11 +110,9 @@ function QuestionListItem({
           <Text truncate fw="bold">
             {card.name}
           </Text>
-          {!!card.collection && (
-            <Text truncate c="text-medium" size="sm">
-              {card.collection.name}
-            </Text>
-          )}
+          <Text truncate c="text-medium" size="sm">
+            {card.collection?.name ?? t`Our analytics`}
+          </Text>
         </Stack>
         <DataTypeStack columns={card.result_metadata} />
       </Flex>
