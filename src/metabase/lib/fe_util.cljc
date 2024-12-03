@@ -399,14 +399,15 @@
 
       ;; exactly 1 argument
       [(op :guard #{:> :<}) _ (col-ref :guard time-col?) (arg :guard string?)]
-      (when-let [arg (u.time/coerce-to-time arg)]
-        {:operator op, :column (ref->col col-ref), :values [arg]})
+      (let [arg (u.time/coerce-to-time arg)]
+        (when (u.time/valid? arg)
+          {:operator op, :column (ref->col col-ref), :values [arg]}))
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard time-col?) (start :guard string?) (end :guard string?)]
       (let [start (u.time/coerce-to-time start)
             end   (u.time/coerce-to-time end)]
-        (when (and start end)
+        (when (and (u.time/valid? start) (u.time/valid? end))
           {:operator op, :column (ref->col col-ref), :values [start end]})))))
 
 (mu/defn filter-args-display-name :- :string
