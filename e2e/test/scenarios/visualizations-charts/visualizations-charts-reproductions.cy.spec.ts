@@ -2,6 +2,8 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   type StructuredQuestionDetails,
+  assertEChartsTooltip,
+  cartesianChartCircleWithColor,
   chartPathWithFillColor,
   createQuestion,
   echartsContainer,
@@ -186,6 +188,46 @@ describe("issue 49529", () => {
     leftSidebar().within(() => {
       cy.findByText("Y-axis");
       cy.findByText("Nothing to order");
+    });
+  });
+});
+
+describe("issue 47847", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show chart tooltip on narrow ordinal line charts", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.x_axis.scale": "ordinal",
+        "graph.show_values": true,
+      },
+    });
+
+    cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
+    assertEChartsTooltip({
+      header: "April 24–30, 2022",
+      blurAfter: false,
+      footer: null,
+      rows: [
+        {
+          color: "#509EE3",
+          name: "Count",
+          value: "1",
+        },
+      ],
     });
   });
 });
