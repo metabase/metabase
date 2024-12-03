@@ -41,16 +41,16 @@ import {
       });
 
       describe("when user is admin", () => {
-        it(`should disable the embed button for ${resource} and provide a tooltip`, () => {
+        it(`should always show the embed button for ${resource}`, () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
 
           openSharingMenu();
-          sharingMenu().within(() => {
-            cy.findByText("Embedding is off").should("be.visible");
-            cy.findByText("Enable it in settings").should("be.visible");
-          });
+          sharingMenu()
+            .findByRole("menuitem", { name: "Embed" })
+            .should("be.visible")
+            .and("be.enabled");
         });
       });
 
