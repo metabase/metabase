@@ -37,11 +37,11 @@ export default function App() {
 }
 ```
 
-You can pass parameter values to questions defined with SQL via `parameterValues` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
+You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md). This works for both interactive and static questions.
 
 ```jsx
 {% raw %}
-<StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
+<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
 {% endraw %}
 ```
 
@@ -82,6 +82,7 @@ export default function App() {
 | onBeforeSave          | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
 | onSave                | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
 | saveToCollectionId    | number                                                               | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to static questions.                                                                                                                                                           |
+| initialSqlParameters  | `Record<string, string \| string[]>`                                 | (optional) A mapping of Learn more about [SQL parameters names](../../questions/native-editor/sql-parameters.md) to parameter values to set on the question, such as `{ product_id: "42" }`.                                                                                                                       |
 
 ## Customizing interactive questions
 
