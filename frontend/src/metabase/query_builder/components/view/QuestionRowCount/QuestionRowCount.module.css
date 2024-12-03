@@ -1,0 +1,17 @@
+.RowCountButton {
+  font-weight: bold;
+  cursor: pointer;
+  color: var(--mb-color-text-medium);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &.isHighlighted {
+    color: var(--mb-color-brand);
+  }
+}
+
+.RowCountStaticLabel {
+  color: var(--mb-color-text-medium);
+}
