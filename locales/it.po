@@ -1,12 +1,16 @@
 msgid ""
 msgstr ""
+"Project-Id-Version: Metabase\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: it\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: POEditor.com\n"
-"Project-Id-Version: Metabase\n"
-"Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0.1\n"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:23
 msgid "Your database has been added!"
@@ -64,7 +68,8 @@ msgid "Database syncing"
 msgstr "Sync in corso"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:128
-msgid "This is a lightweight process that checks for\n"
+msgid ""
+"This is a lightweight process that checks for\n"
 "updates to this database’s schema. In most cases, you should be fine leaving this\n"
 "set to sync hourly."
 msgstr "Questo è un processo leggero che controlla aggiornamenti nello schema del database. Di solito va bene lasciarlo impostato ad ogni ora."
@@ -78,7 +83,8 @@ msgid "Scanning for Filter Values"
 msgstr "Ricerca di Valori Filtro"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:153
-msgid "Metabase can scan the values present in each\n"
+msgid ""
+"Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
@@ -97,7 +103,8 @@ msgid "Only when adding a new filter widget"
 msgstr "Solo quando si aggiunge un nuovo filtro nel widget"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:55
-msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
+msgid ""
+"When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
 "scan the field(s) mapped to that filter in order to show the list of selectable values."
 msgstr "Quando un utente aggiunge un nuovo filtro a una dashboard o question, Metabase cercherá tra i campi mappati dal filtro, per mostrare la lista dei valori selezionabili."
 
@@ -664,7 +671,7 @@ msgstr "titolo modificato"
 
 #: frontend/src/metabase/admin/datamodel/components/revisions/Revision.jsx:34
 msgid "edited the description"
-msgstr "Modificato la descrizione"
+msgstr "modificato la descrizione"
 
 #: frontend/src/metabase/admin/datamodel/components/revisions/Revision.jsx:36
 msgid "edited the "
@@ -764,7 +771,7 @@ msgstr "Scegli un campo"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldRemappingSettings/FieldRemappingSettings.jsx:268
 msgid "Please select a column to use for display."
-msgstr "Prego selezionare una colonna da usare per visualizzazione"
+msgstr "Selezionare una colonna da usare per visualizzazione"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:771
 msgid "Tip:"
@@ -800,7 +807,7 @@ msgstr "Errore durante la cancellazione del valore"
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:339
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:108
 msgid "Discard triggered!"
-msgstr "Cancellazione avviata"
+msgstr "Cancellazione avviata!"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
 msgid "Select any table to see its schema and add or edit metadata."
@@ -860,7 +867,7 @@ msgstr "Descrivi la tua Metrica"
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm/MetricForm.tsx:110
 msgid "Give your metric a description to help others understand what it's about."
-msgstr "Dai alla tua Metrica una descrizione per aiutare gli altri a capire di cosa tratta"
+msgstr "Dai alla tua metrica una descrizione per aiutare gli altri a capire di cosa tratta."
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm/MetricForm.tsx:116
 msgid "This is a good place to be more specific about less obvious metric rules"
@@ -892,7 +899,7 @@ msgstr "Crea il tuo Segmento"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:69
 msgid "Make changes to your segment and leave an explanatory note."
-msgstr "Cambia il tuo segmento e aggiungi una nota esplicativa"
+msgstr "Cambia il tuo segmento e aggiungi una nota esplicativa."
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:109
 msgid "Select and add filters to create your new segment for the {0} table"
@@ -904,7 +911,7 @@ msgstr "Dai un nome al tuo Segmento"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:84
 msgid "Give your segment a name to help others find it."
-msgstr "Dai un nome al tuo segmento per aiutare gli altri a trovarlo"
+msgstr "Dai un nome al tuo segmento per aiutare gli altri a trovarlo."
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:95
 msgid "Describe Your Segment"
@@ -916,7 +923,7 @@ msgstr "Dai una descrizione al tuo segmento per aiutare gli altri a capire di co
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:102
 msgid "This is a good place to be more specific about less obvious segment rules"
-msgstr "questo e' un buon posto per essere precisi nel descrivere le regole di segmento meno ovvie"
+msgstr "Questo e' il punto adatto per descrivere al meglio le regole di segmento più complesse"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:115
 msgid "This will show up in the revision history for this segment to help everyone remember why things changed"
@@ -936,7 +943,7 @@ msgstr "Impostazioni"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:92
 msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
-msgstr "Metabase può analizzare i valori per questa tabella in modo da abilitare i filtri delle caselle di controllo nelle 'dashboard' e nelle 'question'. "
+msgstr "Metabase può analizzare i valori per questa tabella in modo da abilitare i filtri delle caselle di controllo nelle 'dashboard' e nelle 'domande'."
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
 msgid "Re-scan this table"
@@ -981,15 +988,19 @@ msgid "Make this user an admin"
 msgstr "Rendi admin questo user"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "Tutti gli utenti appartengono al gruppo {0} e non possono essere rimossi da esso. L'impostazione dei permessi per questo gruppo è un ottimo modo per \n"
+msgstr ""
+"Tutti gli utenti appartengono al gruppo {0} e non possono essere rimossi da esso. L'impostazione dei permessi per questo gruppo è un ottimo modo per \n"
 "assicurarti di sapere quali nuovi utenti di Metabase saranno in grado di vedere."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Questo è un gruppo speciale i cui membri possono vedere tutto dell'istanza di Metabase e chi vi accede può apportare modifiche alle\n"
+msgstr ""
+"Questo è un gruppo speciale i cui membri possono vedere tutto dell'istanza di Metabase e chi vi accede può apportare modifiche alle\n"
 "impostazioni nel Pannello di amministrazione, compresi i permessi di modifica! Quindi, aggiungi le persone a questo gruppo con cura."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:47
@@ -1069,7 +1080,8 @@ msgid "Remove this group?"
 msgstr "Rimuovere questo gruppo?"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
 msgstr "Sei sicuro? Tutti i membri di questo gruppo perderanno tutti i permessi basati su di esso. Operazione irreversibile."
 
@@ -1195,10 +1207,12 @@ msgid "Add another person"
 msgstr "Aggiungi un'altra persona"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:231
-msgid "We couldn’t send them an email invitation,\n"
+msgid ""
+"We couldn’t send them an email invitation,\n"
 "so make sure to tell them to log in using {0}\n"
 "and this password we’ve generated for them:"
-msgstr "Non è stato possibile inviare agli utenti un invito via email, \n"
+msgstr ""
+"Non è stato possibile inviare agli utenti un invito via email, \n"
 "assicurati di comunicare di accedere utilizzando {0} \n"
 "e questa password che abbiamo generato:"
 
@@ -1222,7 +1236,7 @@ msgstr "Ok"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:289
 msgid "Any previous email invites they have will no longer work."
-msgstr " Qualsiasi email precedente inviti non funzionerà più."
+msgstr "Qualsiasi invito via e-mail precedente non funzionerà più."
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:25
 #: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:196
@@ -1266,11 +1280,11 @@ msgstr "La password di {0} è stata ripristinata"
 
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:45
 msgid "Here’s a temporary password they can use to log in and then change their password."
-msgstr "Ecco una password temporanea si può utilizzare per accedere ,sucessivamente modificare la password"
+msgstr "Ecco una password temporanea da utilizzare per accedere e modificare la password."
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:388
 msgid "We've sent them an email with instructions for creating a new password."
-msgstr "Abbiamo spedito una email con le istruzioni per creare una nuova password"
+msgstr "Abbiamo spedito un'email con le istruzioni per creare una nuova password."
 
 #: frontend/src/metabase/account/login-history/components/LoginHistory/LoginHistory.jsx:36
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:47
@@ -1322,7 +1336,7 @@ msgstr " sarà "
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:54
 msgid "given access to"
-msgstr "Accesso permesso a"
+msgstr "accesso permesso a"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:59
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription.tsx:36
@@ -1332,7 +1346,7 @@ msgstr " e "
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:62
 msgid "denied access to"
-msgstr "Accesso proibito a"
+msgstr "accesso negato a"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:79
 msgid " will no longer be able to "
@@ -1366,11 +1380,11 @@ msgstr "Scartare le modifiche?"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:42
 msgid "No changes to permissions will be made."
-msgstr "Nessun cambiamento ai permessi sará fatto"
+msgstr "Non verrà effettuata nessuna modifica ai permessi."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:38
 msgid "You've made changes to permissions."
-msgstr "Hai cambiato i permessi"
+msgstr "Hai modificato i permessi."
 
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.jsx:35
 msgid "Permissions for this collection"
@@ -1613,7 +1627,7 @@ msgstr "Usando "
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:132
 msgid "Getting set up"
-msgstr "Prepararsi"
+msgstr "Preparazione"
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:135
 msgid "A few things you can do to get the most out of Metabase."
@@ -1671,7 +1685,7 @@ msgstr "É disponibile Metabase {0}. La versione in uso é la {1}."
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:69
 #: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:161
 msgid "Update"
-msgstr "Aggiornare"
+msgstr "Aggiorna"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.tsx:127
 msgid "What's Changed:"
@@ -1692,7 +1706,7 @@ msgstr "URL"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:254
 msgid "Delete custom map"
-msgstr "Cancellare mappa personalizzata"
+msgstr "Cancella mappa personalizzata"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:258
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx:248
@@ -1703,7 +1717,7 @@ msgstr "Cancellare mappa personalizzata"
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepHeader/NotebookStepHeader.tsx:29
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/ComparisonPicker.tsx:161
 msgid "Remove"
-msgstr "Rimuovere"
+msgstr "Rimuovi"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:290
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperButton.tsx:120
@@ -1821,10 +1835,12 @@ msgid "Create a mapping"
 msgstr "Crea Mapping"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:145
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
+msgid ""
+"Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a\n"
 "failsafe measure."
-msgstr "I mapping consentono a Metabase di aggiungere e rimuovere automaticamente utenti dai gruppi in base alle informazioni sull'appartenenza fornite dal server di directory \n"
+msgstr ""
+"I mapping consentono a Metabase di aggiungere e rimuovere automaticamente utenti dai gruppi in base alle informazioni sull'appartenenza fornite dal server di directory \n"
 ". L'appartenenza al gruppo di amministrazione può essere concessa tramite associazioni, ma non verrà automaticamente rimossa come misura \n"
 "failsafe."
 
@@ -1996,7 +2012,7 @@ msgstr "Porta SMTP"
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:259
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
 msgid "That's not a valid port number"
-msgstr "Questo non e' un numero diporta valido"
+msgstr "Questo non e' un numero di porta valido"
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:263
 msgid "SMTP Security"
@@ -2012,7 +2028,7 @@ msgstr "SMTP Password"
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:211
 msgid "From Address"
-msgstr "\"Da\" Indirizzo"
+msgstr "Indirizzo mittente"
 
 #: frontend/src/metabase/admin/settings/selectors.js:186
 msgid "Slack API Token"
@@ -2186,7 +2202,7 @@ msgstr "L'avviso è stato cancellato con successo."
 
 #: frontend/src/metabase/auth/auth.js:32
 msgid "Please enter a valid formatted email address."
-msgstr "Per piacere inserisci un indirizzo email valido"
+msgstr "Inserisci un indirizzo email valido."
 
 #: frontend/src/metabase/account/password/components/UserPasswordForm/UserPasswordForm.tsx:32
 msgid "Passwords do not match"
@@ -2257,9 +2273,11 @@ msgid "Whoops, that's an expired link"
 msgstr "Ops, questo è un link scaduto"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:125
-msgid "For security reasons, password reset links expire after a little while. If you still need\n"
+msgid ""
+"For security reasons, password reset links expire after a little while. If you still need\n"
 "to reset your password, you can {0}."
-msgstr "Per motivi di sicurezza, i link di reimpostazione password scadono dopo un po 'di tempo. Se hai ancora bisogno\n"
+msgstr ""
+"Per motivi di sicurezza, i link di reimpostazione password scadono dopo un po 'di tempo. Se hai ancora bisogno\n"
 "per resettare la tua password, puoi {0}."
 
 #: frontend/src/metabase/auth/components/ResetPasswordForm/ResetPasswordForm.tsx:58
@@ -2302,7 +2320,7 @@ msgstr "Accedi con la tua nuova password"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditor.jsx:502
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorHeader/MetricEditorHeader.tsx:49
 msgid "Save failed"
-msgstr "salvataggio fallito"
+msgstr "Salvataggio fallito"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx:422
 #: frontend/src/metabase/components/ActionButton/ActionButton.jsx:37
@@ -2319,11 +2337,11 @@ msgstr "Ok"
 
 #: frontend/src/metabase/components/ArchiveCollectionModal/ArchiveCollectionModal.jsx:41
 msgid "Archive this collection?"
-msgstr "Archiviare questa collezione"
+msgstr "Archiviare questa collezione?"
 
 #: frontend/src/metabase/components/ArchiveCollectionModal/ArchiveCollectionModal.jsx:42
 msgid "The dashboards, collections, and pulses in this collection will also be archived."
-msgstr "Anche le 'dashboard', le collezioni, e i 'pulse' in questa collezione saranno archiviati"
+msgstr "Anche le 'dashboard', le collezioni e i 'pulse' in questa collezione saranno archiviati."
 
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/CollectionOptionsButton.jsx:82
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelActionDetails/ModelActionListItem.tsx:72
@@ -2362,11 +2380,11 @@ msgstr "Ulteriori informazioni su questa tabella"
 #: frontend/src/metabase/components/Button.info.js:13
 #: frontend/src/metabase/components/Button.info.js:14
 msgid "Clickity click"
-msgstr "click ripetuti"
+msgstr "Click ripetuti"
 
 #: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
 msgid "Saved!"
-msgstr "salvato!"
+msgstr "Salvato!"
 
 #: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
 msgid "Saving failed."
@@ -2470,7 +2488,7 @@ msgstr[1] "{0} elementi selezionati"
 
 #: frontend/src/metabase/containers/MoveModal.tsx:132
 msgid "Move {0} items?"
-msgstr "Vuoi spostare {0} elementi"
+msgstr "Vuoi spostare {0} elementi?"
 
 #: frontend/src/metabase/collections/components/MoveCollectionModal/MoveCollectionModal.tsx:34
 #: frontend/src/metabase/containers/MoveModal.tsx:133
@@ -2521,10 +2539,12 @@ msgid "Use an SSH-tunnel for database connections"
 msgstr "Usa un tunnel-SSH per le connessioni col database"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:218
-msgid "Some database installations can only be accessed by connecting through an SSH bastion host.\n"
+msgid ""
+"Some database installations can only be accessed by connecting through an SSH bastion host.\n"
 "This option also provides an extra layer of security when a VPN is not available.\n"
 "Enabling this is usually slower than a direct connection."
-msgstr "È possibile accedere ad alcune installazioni di database solo collegandosi tramite un host protetto SSH.\n"
+msgstr ""
+"È possibile accedere ad alcune installazioni di database solo collegandosi tramite un host protetto SSH.\n"
 "Questa opzione fornisce anche un ulteriore livello di sicurezza quando una VPN non è disponibile.\n"
 "Abilitare ciò è di solito più lento rispetto ad una connessione diretta."
 
@@ -2533,9 +2553,11 @@ msgid "This is a large database, so let me choose when Metabase syncs and scans"
 msgstr "Questo è un database grande, quindi lasciami scegliere quando Metabase deve sincronizzare e scansionare"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:296
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
+msgid ""
+"By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "Come impostazione predefinita, Metabase esegue una sincronizzazione oraria leggera e un'analisi giornaliera intensiva dei valori dei campi.\n"
+msgstr ""
+"Come impostazione predefinita, Metabase esegue una sincronizzazione oraria leggera e un'analisi giornaliera intensiva dei valori dei campi.\n"
 "Se si dispone di un database di grandi dimensioni, si consiglia di attivarlo e rivedere quando e con quale frequenza si verificano le scansioni dei valori di campo."
 
 #: frontend/src/metabase/databases/components/DatabaseClientIdDescription/DatabaseClientIdDescription.tsx:27
@@ -2565,7 +2587,7 @@ msgstr "Per usare Metabase con questi dati, devi abilitare l'accesso API nella c
 
 #: frontend/src/metabase/entities/databases/forms.js:249
 msgid "{0} to go to the console if you haven't already done so."
-msgstr "{0} per andare alla console se non lo hai già fatto"
+msgstr "{0} per andare alla console se non lo hai già fatto."
 
 #: frontend/src/metabase/entities/databases/forms.js:334
 msgid "How would you like to refer to this database?"
@@ -3411,7 +3433,7 @@ msgstr "cancellata una dashboard"
 #: frontend/src/metabase/home/components/Activity.jsx:187
 #: frontend/src/metabase/home/components/Activity.jsx:205
 msgid "added a question to the dashboard - "
-msgstr "aggiunta una richiesta (Question) alla dashboard"
+msgstr "aggiunta una richiesta alla dashboard - "
 
 #: frontend/src/metabase/home/components/Activity.jsx:215
 #: frontend/src/metabase/home/components/Activity.jsx:233
@@ -3497,7 +3519,7 @@ msgstr "iscritto!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:533
 msgid "Hmmm, looks like nothing has happened yet."
-msgstr "mmm, sembra che non sia ancora successo nulla."
+msgstr "Mmm, sembra che non sia ancora successo nulla."
 
 #: frontend/src/metabase/home/components/Activity.jsx:536
 msgid "Save a question and get this baby going!"
@@ -3581,7 +3603,7 @@ msgstr "Riga generale"
 
 #: frontend/src/metabase/lib/core.js:11
 msgid "The primary key for this table."
-msgstr "La chiave primaria per questa tabella"
+msgstr "La chiave primaria per questa tabella."
 
 #: frontend/src/metabase/lib/core.js:16
 msgid "Entity Name"
@@ -3690,12 +3712,12 @@ msgstr "Data e ora della creazione"
 
 #: frontend/src/metabase/lib/core.js:222
 msgid "Creation time"
-msgstr "ora di creazione "
+msgstr "Ora di creazione"
 
 #: frontend/src/metabase/lib/core.js:216
 #: frontend/src/metabase/search/components/filters/CreatedAtFilter.tsx:11
 msgid "Creation date"
-msgstr "Data creazione "
+msgstr "Data di creazione"
 
 #: frontend/src/metabase/lib/core.js:296
 msgid "Product"
@@ -4098,7 +4120,7 @@ msgstr "Uguale a"
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:13
 #: metabase/lib/filter/operator.cljc:128
 msgid "Not equal to"
-msgstr "Non uguale a "
+msgstr "Non uguale a"
 
 #: frontend/src/metabase-lib/v1/operators/constants.js:207
 #: frontend/src/metabase-lib/v1/operators/constants.js:221
@@ -4211,7 +4233,7 @@ msgstr "Conteggio di righe"
 #: frontend/src/metabase-lib/v1/operators/constants.js:328
 #: metabase/lib/schema/aggregation.cljc:142
 msgid "Total number of rows in the answer."
-msgstr "Numero totale di righe nella risposta"
+msgstr "Numero totale di righe nella risposta."
 
 #: frontend/src/metabase-lib/v1/operators/constants.js:335
 #: metabase/lib/schema/aggregation.cljc:148
@@ -4221,7 +4243,7 @@ msgstr "Somma di ..."
 #: frontend/src/metabase-lib/v1/operators/constants.js:337
 #: metabase/lib/schema/aggregation.cljc:150
 msgid "Sum of all the values of a column."
-msgstr "Somma di tutti i valori di una colonna"
+msgstr "Somma di tutti i valori di una colonna."
 
 #: frontend/src/metabase-lib/v1/operators/constants.js:344
 #: metabase/lib/schema/aggregation.cljc:156
@@ -4472,7 +4494,7 @@ msgstr "Categoria, Tipo, Valutazione, ecc."
 #: frontend/src/metabase/account/routes.jsx:15
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:53
 msgid "Account settings"
-msgstr "Impostazioni di account"
+msgstr "Impostazioni account"
 
 #: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:74
 #: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:115
@@ -4481,7 +4503,7 @@ msgstr "Esci da amministratore"
 
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:36
 msgid "Logs"
-msgstr "I log"
+msgstr "Log"
 
 #: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:112
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:23
@@ -4504,7 +4526,7 @@ msgstr "Grazie per l'uso"
 
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:122
 msgid "You're on version"
-msgstr "Tu stai usando la versione"
+msgstr "Stai usando la versione"
 
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:125
 msgid "Built on"
@@ -4527,7 +4549,7 @@ msgstr "Amministratore Metabase"
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:33
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:27
 msgid "Ask a question"
-msgstr "Poni una domanda"
+msgstr "Fai una domanda"
 
 #: frontend/src/metabase/dashboard/containers/CreateDashboardModal.tsx:50
 #: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:103
@@ -4571,7 +4593,7 @@ msgstr "Personalizzato"
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionDescription.tsx:36
 #: frontend/src/metabase/redux/downloads.ts:329
 msgid "New question"
-msgstr "Nuove domande"
+msgstr "Nuova domanda"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:152
 msgid "Use the simple question builder to see trends, lists of things, or to create your own metrics."
@@ -6387,7 +6409,6 @@ msgstr "I database appariranno qui quando i tuoi amministratori li avranno aggiu
 msgid "Connect a database"
 msgstr "Connetti un database"
 
-#. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
 #. cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:37
 #: metabase/lib/aggregation.cljc:89
@@ -6878,7 +6899,8 @@ msgid "Metabot is feeling pretty good about all this…"
 msgstr "Metabot ha un ottimo presentimento riguardo tutto ciò..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:49
-msgid "We’ll show you some interesting explorations of your data in\n"
+msgid ""
+"We’ll show you some interesting explorations of your data in\n"
 "just a few minutes."
 msgstr "Tra pochi minuti ti mostreremo alcune indagini molto interessanti sui tuoi dati."
 
@@ -7150,7 +7172,8 @@ msgid "Conditional formatting"
 msgstr "Formattazione condizionale"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:219
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Puoi aggiungere regole per fare in modo che le celle di questa tabella cambino colore se soddisfano determinate condizioni."
 
@@ -10097,7 +10120,8 @@ msgid "Use the Java Virtual Machine (JVM) timezone"
 msgstr "Usa la timezone di Java Virtual Machine (JVM)"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:246
-msgid "We suggest you leave this off unless you're doing manual timezone casting in\n"
+msgid ""
+"We suggest you leave this off unless you're doing manual timezone casting in\n"
 "many or most of your queries with this data."
 msgstr "Ti suggeriamo di lasciar perdere, a meno che tu non stia eseguendo manualmente il fuso orario in molte o la maggior parte delle tue query con questi dati."
 
@@ -13235,7 +13259,8 @@ msgid "Use DNS SRV when connecting"
 msgstr "usa DNS SRV quando ti connetti"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:269
-msgid "Using this option requires that provided host is a FQDN.  If connecting to \n"
+msgid ""
+"Using this option requires that provided host is a FQDN.  If connecting to \n"
 "an Atlas cluster, you might need to enable this option.  If you don't know what this means,\n"
 "leave this disabled."
 msgstr "L'utilizzo di questa opzione richiede che l'host fornito sia un nome di dominio completo. Se ci si connette a un cluster Atlas, potrebbe essere necessario abilitare questa opzione. Se non sai cosa significa, lascialo disabilitato."
@@ -13949,7 +13974,6 @@ msgstr "Scheduling dei task per il Database {0} non riuscita"
 msgid "All elements must be distinct."
 msgstr "Tutti gli elementi devono essere distinti"
 
-#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Scegli le colonne che desideri includere"
@@ -14035,7 +14059,7 @@ msgstr "Rimuovere questi suggerimenti?"
 
 #: frontend/src/metabase/home/homepage/components/XraySection/XraySection.tsx:129
 msgid "These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables."
-msgstr "Questi non si presenterà più sulla homepage di ognuno dei vostri utenti, ma si può sempre ottenere i raggi-x facendo clic su Naviga Dati nella navigazione principale, quindi facendo clic sull'icona fulmine su una delle tue tabelle."
+msgstr "Questi non appariranno più nel cruscotto per nessuno dei vostri utenti, ma potrete sempre accedere ai raggi-x facendo clic su Sfoglia Dati nella navigazione principale, quindi facendo clic sull'icona del fulmine su una delle vostre tabelle."
 
 #: frontend/src/metabase/home/homepage/components/DatabaseSection/DatabaseSection.tsx:51
 msgid "Hide this section"
@@ -14047,7 +14071,7 @@ msgstr "Rimuovi questa sezione?"
 
 #: frontend/src/metabase/home/homepage/components/DatabaseSection/DatabaseSection.tsx:100
 msgid "\"Our Data\" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation."
-msgstr "\"I nostri dati\" non apparirà più sulla homepage di nessuno dei tuoi utenti, ma puoi sempre navigare attraverso i tuoi database e tabelle facendo clic su Naviga Dati nella navigazione principale."
+msgstr "\"I nostri dati\" non apparirà più sul cruscotto di nessuno dei tuoi utenti, ma puoi sempre navigare attraverso i tuoi database e tabelle facendo clic su Naviga Dati nella navigazione principale."
 
 #: frontend/src/metabase/collections/components/CreateCollectionForm/CreateCollectionForm.tsx:119
 msgid "My new fantastic collection"
@@ -14315,11 +14339,11 @@ msgstr "Errore nel parsing JSON"
 
 #: metabase/public_settings.clj:756
 msgid "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data"
-msgstr "Indica se visualizzare o meno i dati sulla homepage. Gli amministratori potrebbero disattivare questo al fine di indirizzare gli utenti a contenuti migliori di dati grezzi"
+msgstr "Indica se visualizzare o meno i dati sul cruscotto. Gli amministratori potrebbero disattivare questo al fine di indirizzare gli utenti a contenuti migliori di dati grezzi"
 
 #: metabase/public_settings.clj:766
 msgid "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data"
-msgstr "Indica se visualizzare o meno i suggerimenti a raggi x sulla homepage. Essi saranno anche nascosti se eventuali dashboard sono bloccate. Gli amministratori potrebbero nascondere questo per indirizzare gli utenti a contenuti migliori di dati grezzi"
+msgstr "Indica se visualizzare o meno i suggerimenti a raggi-x sul cruscotto. Essi saranno anche nascosti se eventuali dashboard sono bloccate. Gli amministratori potrebbero nascondere questo per indirizzare gli utenti a contenuti migliori di dati grezzi"
 
 #: metabase/public_settings.clj:787
 msgid "Identify the source of HTTP requests by this header's value, instead of its remote address."
@@ -15577,7 +15601,7 @@ msgstr "Nuova metrica"
 
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:48
 msgid "Create metrics to add them to the Summarize dropdown in the query builder"
-msgstr "Crea metriche per aggiungerle al menu a tendina Riassumere del costruttore delle query"
+msgstr "Crea metriche per aggiungerle al menu a tendina Riassumi del costruttore delle query"
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:25
 msgid "New segment"
@@ -16019,7 +16043,8 @@ msgstr "il valore deve essere una keyword o una stringa."
 
 #: metabase/util/malli/schema.clj:379
 msgid "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'."
-msgstr "La stringa deve avere un valore valido \"two-letter ISO\" o \"language-country\".\n"
+msgstr ""
+"La stringa deve avere un valore valido \"two-letter ISO\" o \"language-country\".\n"
 "Esempio 'it' o 'it_IT'"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTable.jsx:116
@@ -16075,9 +16100,11 @@ msgid "URL the IdP should redirect back to"
 msgstr "URL a cui l'IdP deve essere reindirizzato"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:83
-msgid "This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0,\n"
+msgid ""
+"This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0,\n"
 "and the ACS (Consumer) URL in OneLogin."
-msgstr "Questo in Okta si chiama Single Sign On URL, Application Callback URL in Auth0,\n"
+msgstr ""
+"Questo in Okta si chiama Single Sign On URL, Application Callback URL in Auth0,\n"
 "e in OneLogin URL ACS (Consumer) ."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:131
@@ -16085,9 +16112,11 @@ msgid "SAML attributes"
 msgstr "attributi SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:134
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
-msgstr "Nella maggior parte degli IdP, è necessario inserire ciascuno di questi in una casella di input etichettata\n"
+msgstr ""
+"Nella maggior parte degli IdP, è necessario inserire ciascuno di questi in una casella di input etichettata\n"
 "\"Nome\" nella sezione delle dichiarazioni degli attributi."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:141
@@ -16152,7 +16181,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Sincronizzare l'appartenenza al gruppo con la vostra SSO"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:215
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "Per abilitare questa opzione, è necessario creare dei mapping per dire a Metabase in quale gruppo (o gruppi) gli utenti vanno inseriti in base al loro gruppo SSO."
 
@@ -17135,16 +17165,20 @@ msgstr "Non nullo"
 
 #: frontend/src/metabase-lib/v1/operators/constants.js:373
 #: metabase/lib/schema/aggregation.cljc:182
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Somma additiva di tutti i valori di una colonna.\n"
+msgstr ""
+"Somma additiva di tutti i valori di una colonna.\n"
 "e.x. il totale delle entrate nel tempo."
 
 #: frontend/src/metabase-lib/v1/operators/constants.js:382
 #: metabase/lib/schema/aggregation.cljc:189
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Conteggio additivo del numero di righe.\n"
+msgstr ""
+"Conteggio additivo del numero di righe.\n"
 "e.x. numero totale di vendite nel tempo."
 
 #: frontend/src/metabase/parameters/components/ParameterSidebar/ParameterSidebar.tsx:278
@@ -17538,9 +17572,11 @@ msgid "Allow logging in by email and password."
 msgstr "Consentire l'accesso tramite e-mail e password."
 
 #: target/classes/metabase/public_settings.clj
-msgid "This will affect things like grouping by week or filtering in GUI queries.\n"
+msgid ""
+"This will affect things like grouping by week or filtering in GUI queries.\n"
 "  It won''t affect SQL queries."
-msgstr "Questo influenzerà cose come il raggruppamento per settimana o il filtraggio nelle query GUI.\n"
+msgstr ""
+"Questo influenzerà cose come il raggruppamento per settimana o il filtraggio nelle query GUI.\n"
 "  Non influenzerà le query SQL."
 
 #: metabase/public_settings/premium_features.clj:179
@@ -18057,9 +18093,11 @@ msgid "Enable SAML authentication."
 msgstr "Attivare l'autenticazione SAML."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:49
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml"
-msgstr "Questo è l'URL dove i vostri utenti si recano per accedere al vostro fornitore di identità. A seconda di quale IdP sei\n"
+msgstr ""
+"Questo è l'URL dove i vostri utenti si recano per accedere al vostro fornitore di identità. A seconda di quale IdP sei\n"
 "utilizzando, questo di solito assomiglia a https://your-org-name.example.com o https://example.com/app/my_saml_app/abc123/sso/saml"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:60
@@ -18071,15 +18109,19 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Certificato di identità non valido. Il certificato dovrebbe essere una stringa codificata su base 64."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:72
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate's contents here."
-msgstr "Certificato codificato per il fornitore di identità. A seconda del vostro IdP, potrebbe essere necessario scaricarlo,\n"
+msgstr ""
+"Certificato codificato per il fornitore di identità. A seconda del vostro IdP, potrebbe essere necessario scaricarlo,\n"
 "aprirlo in un editor di testo, quindi copiare e incollare qui il contenuto del certificato."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:76
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending\n"
 "on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v"
-msgstr "Si tratta di un identificatore unico per l'IdP. Spesso indicato come Entity ID o semplicemente \"Emittente\". A seconda di\n"
+msgstr ""
+"Si tratta di un identificatore unico per l'IdP. Spesso indicato come Entity ID o semplicemente \"Emittente\". A seconda di\n"
 "sul vostro IdP, questo di solito assomiglia a http://www.example.com/141xkex604w0Q5PN724v"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:91
@@ -18427,12 +18469,10 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Gli impulsi vengono eliminati gradualmente"
 
-#: 
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Ora è possibile impostare {0} invece. Rimuoveremo gli Impulsi in un futuro rilascio e ti aiuteremo a migrare quelli che hai ancora."
@@ -18441,7 +18481,6 @@ msgstr "Ora è possibile impostare {0} invece. Rimuoveremo gli Impulsi in un fut
 msgid "dashboard subscriptions"
 msgstr "abbonamenti cruscotto"
 
-#: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "I grafici nel tuo abbonamento non avranno lo stesso aspetto del tuo cruscotto. {1}"
 
@@ -18589,7 +18628,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Impostare il database sorgente {0} ed eseguire le migrazioni..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:402
 msgid "Set up {0} target database and run migrations..."
@@ -18640,7 +18679,7 @@ msgstr "Migrare a Metabase Cloud."
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:50
 msgid "Manage Metabase Cloud"
-msgstr "Gestire Metabase Cloud"
+msgstr "Gestisci Metabase Cloud"
 
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/settings.ts:241
 msgid "Show totals"
@@ -19134,7 +19173,8 @@ msgid "Add bot integration"
 msgstr "Aggiungi integrazione con un bot"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:79
-msgid "Sorry, we were unable to check for updates at this time. Last successful check was\n"
+msgid ""
+"Sorry, we were unable to check for updates at this time. Last successful check was\n"
 "{0}."
 msgstr "Spiacente, al momento non ci è stato possibile reperire gli aggiornamenti. L'ultimo controllo effettuato risale a {0}."
 
@@ -19581,9 +19621,11 @@ msgid "This is our new {0} driver, which is faster and more reliable."
 msgstr "Questo è il nostro nuovo driver {0}, che è più veloce e più affidabile."
 
 #: frontend/src/metabase/components/DriverWarning/DriverWarning.jsx:37
-msgid "The old driver has been deprecated and will be removed in the next release. If you really\n"
+msgid ""
+"The old driver has been deprecated and will be removed in the next release. If you really\n"
 "need to use it, you can select {0} now."
-msgstr "Il vecchio driver è stato deprecato e sarà rimosso nella prossima release. Se hai davvero\n"
+msgstr ""
+"Il vecchio driver è stato deprecato e sarà rimosso nella prossima release. Se hai davvero\n"
 "bisogno di usarlo, puoi selezionare {0} ora."
 
 #: frontend/src/metabase/components/DriverWarning/DriverWarning.jsx:63
@@ -19852,7 +19894,8 @@ msgid "Our team is ready to help you"
 msgstr "Il nostro team è pronto ad aiutarvi"
 
 #: frontend/src/metabase/components/DriverWarning/DriverWarning.jsx:47
-msgid "The old driver has been deprecated and will be removed in the next release. If you really\n"
+msgid ""
+"The old driver has been deprecated and will be removed in the next release. If you really\n"
 "need to use it, you can"
 msgstr "Il vecchio driver è stato deprecato e verrà rimosso nel prossimo rilascio. Se davvero ne necessitate, potete"
 
@@ -20057,8 +20100,7 @@ msgstr "Cura"
 
 #: frontend/src/metabase/admin/permissions/hooks/use-leave-confirmation.jsx:46
 msgid "Discard your unsaved changes?"
-msgstr "Eliminare le modifiche non salvate?\n"
-""
+msgstr "Eliminare le modifiche non salvate?"
 
 #: frontend/src/metabase/admin/permissions/hooks/use-leave-confirmation.jsx:47
 msgid "If you leave this page now, your changes won't be saved."
@@ -20914,21 +20956,27 @@ msgid "Turn this into a model"
 msgstr "Trasformalo in un modello"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:53
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Consenti di aggiornare le descrizioni delle colonne e personalizzare i metadati da creare\n"
+msgstr ""
+"Consenti di aggiornare le descrizioni delle colonne e personalizzare i metadati da creare\n"
 "ottimi punti di partenza per l'esplorazione."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:57
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "Mostrarsi più in alto nei risultati di ricerca ed essere evidenziati quando altri\n"
+msgstr ""
+"Mostrarsi più in alto nei risultati di ricerca ed essere evidenziati quando altri\n"
 "utenti iniziano nuove domande per promuovere il riutilizzo."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:61
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "vivere in collezioni per tenerle separate da schemi di database disordinati.\n"
+msgstr ""
+"vivere in collezioni per tenerle separate da schemi di database disordinati.\n"
 "schemi del database."
 
 #: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:72
@@ -21758,9 +21806,11 @@ msgid "Bought a license to unlock advanced functionality? Please enter it below.
 msgstr "Hai comprato una licenza per sbloccare funzionalità avanzate? Inseriscila qui sotto."
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:38
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "La tua licenza non è più valida. Se hai una nuova licenza, per favore\n"
+msgstr ""
+"La tua licenza non è più valida. Se hai una nuova licenza, per favore\n"
 "inserirla qui sotto, altrimenti contatta {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:51
@@ -22033,9 +22083,11 @@ msgid "Enter the token you bought from the Metabase Store below."
 msgstr "Inserisci il token che hai comprato dal Metabase Store qui sotto."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:12
-msgid "Looking to remove the “Powered by Metabase” logo, customize colors\n"
+msgid ""
+"Looking to remove the “Powered by Metabase” logo, customize colors\n"
 "and make it your own? {0}"
-msgstr "Vuoi rimuovere il logo \"Powered by Metabase\", personalizzare i colori\n"
+msgstr ""
+"Vuoi rimuovere il logo \"Powered by Metabase\", personalizzare i colori\n"
 "e renderlo tuo? {0}"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:24
@@ -22097,7 +22149,7 @@ msgstr "Appunta le dashboard in {0} per farle apparire in questo spazio per tutt
 
 #: frontend/src/metabase/home/homepage/components/XraySection/XraySection.tsx:42
 msgid "Try these x-rays based on your data"
-msgstr "Prova queste radiografie basate sui tuoi dati"
+msgstr "Prova questi raggi-x basate sui tuoi dati"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:155
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx:31
@@ -22402,7 +22454,7 @@ msgstr "I download di query native sono consentiti solo se un gruppo ha i permes
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/constants.ts:9
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/utils.ts:31
 msgid "Manage data model"
-msgstr "Gestire il modello di dati"
+msgstr "Gestisci il modello di dati"
 
 #: frontend/src/metabase/lib/timelines.ts:15
 msgid "Star"
@@ -22434,7 +22486,7 @@ msgstr "Ti è permesso di scaricare fino a 10.000 file."
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/utils.ts:39
 msgid "Manage database"
-msgstr "Gestire il database"
+msgstr "Gestisci il database"
 
 #: frontend/src/metabase-lib/v1/Dimension.ts:600
 #: frontend/src/metabase/common/components/QueryColumnPicker/BucketPickerPopover/BinningStrategyPickerPopover.tsx:68
@@ -22477,7 +22529,7 @@ msgstr "Abbonamenti e avvisi"
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:7
 msgid "Manage database access requires full data access."
-msgstr "Gestire l'accesso al database richiede un accesso completo ai dati."
+msgstr "Gestisci l'accesso al database richiede un accesso completo ai dati."
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:19
 msgid "Download results access requires full data access."
@@ -22666,7 +22718,7 @@ msgstr "Riprendi da dove hai lasciato"
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:69
 msgid "Try out these sample x-rays to see what Metabase can do."
-msgstr "Provate queste radiografie di esempio per vedere cosa può fare Metabase."
+msgstr "Provate questi raggi-x di esempio per vedere cosa può fare Metabase."
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:83
 msgid "Here are some explorations of the"
@@ -23125,9 +23177,11 @@ msgid "Switch to visualization"
 msgstr "Passa alla visualizzazione"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:139
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
+msgid ""
+"Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Users are only ever added to or removed from mapped groups."
-msgstr "Le mappature permettono a Metabase di aggiungere e rimuovere automaticamente gli utenti dai gruppi in base alle informazioni di appartenenza fornite dal\n"
+msgstr ""
+"Le mappature permettono a Metabase di aggiungere e rimuovere automaticamente gli utenti dai gruppi in base alle informazioni di appartenenza fornite dal\n"
 "server di directory. Gli utenti vengono aggiunti o rimossi solo dai gruppi mappati."
 
 #: metabase_enterprise/advanced_config/models/pulse_channel.clj:10
@@ -23254,7 +23308,7 @@ msgstr "Confermare"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:184
 msgid "Home"
-msgstr "Casa"
+msgstr "Cruscotto"
 
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeToggle/UserTypeToggle.tsx:20
 msgid "Turn into Member"
@@ -23913,7 +23967,7 @@ msgstr "Peso del carattere"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabotToggleWidget/MetabotToggleWidget.tsx:21
 msgid "Display our little friend on the homepage"
-msgstr "Mostra il nostro piccolo amico sulla homepage"
+msgstr "Mostra il nostro piccolo amico sul cruscotto"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationWidget/EmbeddingCustomizationWidget.tsx:13
 msgid "In order to remove the Metabase logo from embeds, you can always upgrade to {0}"
@@ -23994,19 +24048,23 @@ msgid "More details"
 msgstr "Più dettagli"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:43
-msgid "When you embed charts or dashboards from Metabase in your own\n"
+msgid ""
+"When you embed charts or dashboards from Metabase in your own\n"
 "application, that application isn't subject to the Affero General Public\n"
 "License that covers the rest of Metabase, provided you keep the Metabase\n"
 "logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "Quando incorpori grafici o dashboard da Metabase nel tuo\n"
+msgstr ""
+"Quando incorpori grafici o dashboard da Metabase nel tuo\n"
 "domanda, tale domanda non è soggetta all'Affero General Public\n"
 "Licenza che copre il resto di Metabase, a condizione che tu conservi la Metabase\n"
 "logo e il \"Powered by Metabase\" visibile su quegli incorporamenti."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:49
-msgid "Your should, however, read the license text linked above as that is the\n"
+msgid ""
+"Your should, however, read the license text linked above as that is the\n"
 "actual license that you will be agreeing to by enabling this feature."
-msgstr "Tuttavia, dovresti leggere il testo della licenza collegato sopra poiché è il\n"
+msgstr ""
+"Tuttavia, dovresti leggere il testo della licenza collegato sopra poiché è il\n"
 "licenza effettiva che accetterai abilitando questa funzione."
 
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CustomScheduleExplainer.tsx:24
@@ -24231,7 +24289,7 @@ msgstr "Rimuovi badge ufficiale"
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:51
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormFieldEditor/FormFieldEditor.tsx:126
 msgid "Appearance"
-msgstr "Aspetto esteriore"
+msgstr "Aspetto"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
 msgid "Font"
@@ -24243,7 +24301,7 @@ msgstr "Messaggio di caricamento"
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:204
 msgid "From Name"
-msgstr "Dal nome"
+msgstr "Nome mittente"
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:219
 msgid "Reply-To Address"
@@ -24304,7 +24362,7 @@ msgstr "Scopri come eseguire il debug degli errori SQL"
 
 #: frontend/src/metabase/sharing/components/NewPulseSidebar.tsx:72
 msgid "set up email"
-msgstr "impostare l'e-mail"
+msgstr "imposta l'e-mail"
 
 #: frontend/src/metabase/sharing/components/NewPulseSidebar.tsx:114
 msgid "configure Slack"
@@ -24316,7 +24374,7 @@ msgstr "Nome dashboard"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/pages/AuditDashboards.jsx:38
 msgid "All dashboards"
-msgstr "Tutti i dashboard"
+msgstr "Tutte le dashboard"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/pages/AuditDatabases.jsx:38
 msgid "All databases"
@@ -24324,7 +24382,7 @@ msgstr "Tutti i database"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/pages/AuditQueryDetail.jsx:20
 msgid "Query Not Recorded, sorry"
-msgstr "Query non registrata, mi dispiace"
+msgstr "Spiacente, query non registrata"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/pages/AuditSchemas.jsx:31
 msgid "All schemas"
@@ -24332,7 +24390,7 @@ msgstr "Tutti gli schemi"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/pages/AuditTables.jsx:31
 msgid "All tables"
-msgstr "Tutti i tavoli"
+msgstr "Tutte le tabelle"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/pages/AuditUsers.jsx:26
 msgid "Member name"
@@ -24469,33 +24527,41 @@ msgid "Value must be a string representing a cron schedule of format <seconds> <
 msgstr "Il valore deve essere una stringa che rappresenta una cron schedule con formato <secondi> <minuti> <ore> <giorno del mese> <mese> <giorno della settimana> <anno>"
 
 #: metabase/automagic_dashboards/core.clj:1076
-msgid "Using definitions:\n"
+msgid ""
+"Using definitions:\n"
 "Metrics:\n"
 "{0}\n"
 "Filters:\n"
 "{1}"
-msgstr "Usando le definizioni:\n"
+msgstr ""
+"Usando le definizioni:\n"
 "Metrica:\n"
 "{0}\n"
 "Filtri:\n"
 "{1}"
 
 #: metabase/automagic_dashboards/core.clj:1071
-msgid "Dimensions bindings:\n"
+msgid ""
+"Dimensions bindings:\n"
 "{0}"
-msgstr "Dimensioni attacchi:\n"
+msgstr ""
+"Dimensioni attacchi:\n"
 "{0}"
 
 #: metabase/automagic_dashboards/populate.clj:326
-msgid "Adding {0} cards to dashboard {1}:\n"
+msgid ""
+"Adding {0} cards to dashboard {1}:\n"
 "{2}"
-msgstr "Aggiunta di {0} carte alla dashboard {1}:\n"
+msgstr ""
+"Aggiunta di {0} carte alla dashboard {1}:\n"
 "{2}"
 
 #: metabase/core.clj:102
-msgid "System info:\n"
+msgid ""
+"System info:\n"
 " {0}"
-msgstr "Informazioni di sistema:\n"
+msgstr ""
+"Informazioni di sistema:\n"
 " {0}"
 
 #: metabase/driver/common.clj:158
@@ -24750,7 +24816,7 @@ msgstr "Carattere non valido {0}"
 
 #: metabase/public_settings.clj:568
 msgid "Enables Metabot character on the home page"
-msgstr "Abilita il carattere Metabot nella home page"
+msgstr "Abilita il personaggio Metabot nel cruscotto"
 
 #: metabase/query_processor/card.clj:201
 msgid "Invalid parameter: Card {0} does not have a template tag with the ID {1} or name {2}."
@@ -24809,9 +24875,11 @@ msgid "Updated default schedules for {0} databases"
 msgstr "Pianificazioni predefinite aggiornate per {0} database"
 
 #: metabase/xrays/transforms/core.clj:172
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Le trasformazioni risultanti non sono conformi alle aspettative.\n"
+msgstr ""
+"Le trasformazioni risultanti non sono conformi alle aspettative.\n"
 "Previsto: {0}"
 
 #: metabase/util/malli/schema.clj:355
@@ -24827,9 +24895,11 @@ msgid "String must be a valid 21-character NanoID string."
 msgstr "La stringa deve essere una stringa NanoID di 21 caratteri valida."
 
 #: metabase/util/yaml.clj:59
-msgid "Error parsing {0}:\n"
+msgid ""
+"Error parsing {0}:\n"
 "{1}"
-msgstr "Errore durante l'analisi di {0}:\n"
+msgstr ""
+"Errore durante l'analisi di {0}:\n"
 "{1}"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:207
@@ -25487,11 +25557,13 @@ msgid "The name of the column with your date or datetime value.."
 msgstr "Il nome della colonna con il valore della data o del datetime."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:922
-msgid "Optional. The default is \"ISO\".\n"
+msgid ""
+"Optional. The default is \"ISO\".\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Opzionale. L'impostazione predefinita è \"ISO\".\n"
+msgstr ""
+"Opzionale. L'impostazione predefinita è \"ISO\".\n"
 "- ISO: la settimana 1 inizia il lunedì precedente il primo giovedì di gennaio.\n"
 "- USA: La settimana 1 inizia il 1° gennaio. Tutte le altre settimane iniziano di domenica.\n"
 "- Istanza: La settimana 1 inizia il 1° gennaio. Tutte le altre settimane iniziano nel giorno definito nelle impostazioni di localizzazione del Metabase."
@@ -26257,9 +26329,11 @@ msgid "Metabase task scheduler disabled. Scheduled tasks will not be ran."
 msgstr "Pianificazione delle attività di Metabase disabilitata. Le attività pianificate non verranno eseguite."
 
 #: metabase/util/schema.clj:148
-msgid "value must be a map with schema: (\n"
+msgid ""
+"value must be a map with schema: (\n"
 "{0}{1}{2}{3}{4}{5}"
-msgstr "deve essere una mappa con schema: (\n"
+msgstr ""
+"deve essere una mappa con schema: (\n"
 "{0}{1}{2}{3}{4}{5}"
 
 #: metabase/util/schema.clj:138
@@ -26521,10 +26595,12 @@ msgid "Backfilling entity_id for {0} rows of {1}"
 msgstr "Riempimento di entity_id per {0} righe di {1}"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1051
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names.\n"
 "See the full list here: https://w.wiki/4Jx"
-msgstr "Convertire il fuso orario di una colonna data o timestamp.\n"
+msgstr ""
+"Convertire il fuso orario di una colonna data o timestamp.\n"
 "Supportiamo i nomi dei fusi orari dei database tz.\n"
 "Vedere l'elenco completo qui: https://w.wiki/4Jx"
 
@@ -26572,12 +26648,10 @@ msgstr "Non è stato possibile estrarre il database di esempio nella directory d
 msgid "Metabase config files require a Premium token with the :advanced-config feature."
 msgstr "I file di configurazione di Metabase richiedono un token Premium con la funzione :advanced-config."
 
-#: 
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "I grafici nelle sottoscrizioni possono avere un aspetto leggermente diverso da quello dei grafici nei dashboard."
 
-#: 
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "I destinatari vedranno questi dati proprio come li vedete voi, indipendentemente dalle loro autorizzazioni."
@@ -26662,8 +26736,7 @@ msgstr "Sincronizza le appartenenze ai gruppi"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidget.jsx:123
 msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
-msgstr "le mappature consentono a Metabase di aggiungere e rimuovere automaticamente gli utenti dai gruppi in base alle informazioni sull'appartenenza fornite dal server di directory. Se un gruppo non è mappato, la sua appartenenza non verrà sincronizzata.\n"
-""
+msgstr "Le mappature consentono a Metabase di aggiungere e rimuovere automaticamente gli utenti dai gruppi in base alle informazioni sull'appartenenza fornite dal server di directory. Se un gruppo non è mappato, la sua appartenenza non verrà sincronizzata."
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidget.jsx:128
 msgid "About mappings"
@@ -27756,7 +27829,7 @@ msgstr "{0} il Gruppo può modificare i metadati della tabella nel pannello di A
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:209
 msgid "Manage Data Model (Pro):"
-msgstr "Gestire il modello di dati (Pro):"
+msgstr "Gestisci il modello di dati (Pro):"
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:132
 msgid "{0} Grants a group access to the Admin settings page for a given database (i.e., the page at Admin settings > Databases > your database)."
@@ -28244,7 +28317,7 @@ msgstr "Saluto di Metabot"
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:103
 msgid "Custom Homepage"
-msgstr "Homepage personalizzata"
+msgstr "Cruscotto personalizzato"
 
 #: frontend/src/metabase/admin/settings/selectors/selectors.js:392
 msgid "Uploads"
@@ -28321,7 +28394,7 @@ msgstr "Esportazione in formato PDF"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeader.tsx:153
 msgid " Remember that this dashboard is set as homepage."
-msgstr " Ricordare che questa dashboard è impostata come homepage."
+msgstr " Ricorda che questa dashboard è impostata come cruscotto."
 
 #: frontend/src/metabase/visualizations/components/ScalarValue/ScalarValue.jsx:77
 msgid "null"
@@ -28401,7 +28474,7 @@ msgstr "Modifica delle impostazioni"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabotToggleWidget/MetabotToggleWidget.tsx:21
 msgid "Display welcome message on the homepage"
-msgstr "Visualizzare il messaggio di benvenuto sulla homepage"
+msgstr "Visualizza il messaggio di benvenuto sul cruscotto"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormCreator.tsx:165
 msgid "Heads up."
@@ -29318,7 +29391,7 @@ msgstr "Dettagli dell'errore di caricamento"
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx:108
 msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General."
-msgstr "Scegliere una dashboard da utilizzare come homepage. Se le persone non hanno i permessi per visualizzare la dashboard selezionata, Metabase le reindirizzerà alla homepage predefinita. È possibile aggiornare o reimpostare la homepage in qualsiasi momento in Impostazioni amministratore > Impostazioni > Generale."
+msgstr "Scegli una dashboard da utilizzare come cruscotto. Se le persone non hanno i permessi per visualizzare il cruscotto selezionato, Metabase le reindirizzerà al cruscotto predefinito. È possibile aggiornare o reimpostare il cruscotto in qualsiasi momento in Impostazioni amministratore > Impostazioni > Generale."
 
 #: frontend/src/metabase/redux/uploads.ts:68
 msgid "You cannot upload files larger than {0}mb"
@@ -29326,7 +29399,7 @@ msgstr "Non è possibile caricare file di dimensioni superiori a {0}mb."
 
 #: metabase/public_settings.clj:104
 msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage."
-msgstr "Scegliere una dashboard da utilizzare come homepage. Se le persone non hanno i permessi per visualizzare la dashboard selezionata, Metabase le reindirizzerà alla homepage predefinita."
+msgstr "Scegliere una dashboard da utilizzare come cruscotto. Se le persone non hanno i permessi per visualizzare la dashboard selezionata, Metabase le reindirizzerà al cruscotto predefinito."
 
 #: metabase/public_settings.clj:333
 msgid "{0} will cache all saved questions with an average query execution time longer than this many seconds:"
@@ -29601,7 +29674,7 @@ msgstr "Scegliete una dashboard che funga da pagina iniziale."
 
 #: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx:51
 msgid "Customize"
-msgstr "Personalizzare"
+msgstr "Personalizza"
 
 #: frontend/src/metabase/nav/components/DatabasePromptBanner/DatabasePromptBanner.tsx:57
 msgid "Connect your database"
@@ -29638,7 +29711,7 @@ msgstr "Aggiungere un attributo"
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx:92
 msgid "Customize Homepage"
-msgstr "Personalizzare la homepage"
+msgstr "Personalizza la homepage"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:74
 msgid "Like January 2016"
@@ -30099,10 +30172,12 @@ msgid "Open in Metabase"
 msgstr "Aprire in Metabase"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditApp.jsx:35
-msgid "This Audit section has been upgraded to the\n"
+msgid ""
+"This Audit section has been upgraded to the\n"
 "{0}\n"
 " and will be removed in a future release."
-msgstr "Questa sezione dell'Audit è stata aggiornata alla versione\n"
+msgstr ""
+"Questa sezione dell'Audit è stata aggiornata alla versione\n"
 "{0}\n"
 " e sarà rimossa in una release futura."
 
@@ -30111,10 +30186,12 @@ msgid "Metabase Analytics Collection"
 msgstr "Raccolta di metabasi analitici"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditApp.jsx:48
-msgid "It's now easier to explore and to give others\n"
+msgid ""
+"It's now easier to explore and to give others\n"
 "  {0}\n"
 "to these insights."
-msgstr "Ora è più facile esplorare e dare agli altri\n"
+msgstr ""
+"Ora è più facile esplorare e dare agli altri\n"
 "  {0}\n"
 "a queste intuizioni."
 
@@ -30696,7 +30773,7 @@ msgstr "Chiave API"
 
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:239
 msgid "Manage API keys"
-msgstr "Gestire le chiavi API"
+msgstr "Gestisci le chiavi API"
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx:112
 msgid "tables"
@@ -30835,26 +30912,30 @@ msgstr "{0} suggerimenti"
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:79
 msgid "Try out these sample x-rays to see what {0} can do."
-msgstr "Provate questi esempi di radiografie per vedere cosa può fare {0}."
+msgstr "Prova questi esempi di raggi-x per vedere cosa può fare {0}."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:265
 msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Questo filtro è impostato su disabilitato in un dashboard incorporato."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:268
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Per richiedere sempre un valore, visitare prima le impostazioni di incorporamento,\n"
+msgstr ""
+"Per richiedere sempre un valore, visitare prima le impostazioni di incorporamento,\n"
 "rendere questo filtro modificabile o bloccato, ripubblicare il dashboard e tornare a questa pagina.\n"
 "quindi tornare a questa pagina."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:274
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:67
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "per renderlo bloccato, richiederà l'aggiornamento del\n"
+msgstr ""
+"per renderlo bloccato, richiederà l'aggiornamento del\n"
 "prima di procedere, altrimenti l'incorporamento si interromperà.\n"
 "si interromperà."
 
@@ -30931,10 +31012,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Questo filtro è impostato su disabilitato in una domanda incorporata."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:61
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Per richiedere sempre un valore, visitare prima le impostazioni di incorporamento,\n"
+msgstr ""
+"Per richiedere sempre un valore, visitare prima le impostazioni di incorporamento,\n"
 "rendere questo filtro modificabile o bloccato, ripubblicare la domanda e tornare a questa pagina.\n"
 "e poi tornare a questa pagina."
 
@@ -31154,7 +31237,7 @@ msgstr "Usate l'incorporamento statico quando non volete dare alle persone un ac
 #: frontend/src/metabase/admin/settings/auth/components/ApiKeysAuthCard.tsx:20
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/StaticEmbeddingOptionCard/StaticEmbeddingOptionCard.tsx:49
 msgid "Manage"
-msgstr "Gestire"
+msgstr "Gestisci"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:113
 msgid "PRO & ENTERPRISE"
@@ -31233,7 +31316,7 @@ msgstr "Documentazione e riferimenti"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:75
 msgid "Manage embeds"
-msgstr "Gestire gli embed"
+msgstr "Gestisci gli embed"
 
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:72
 msgid "About {0}"
@@ -31642,7 +31725,7 @@ msgstr "Ultima modifica il"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:173
 msgid "Manage API Keys"
-msgstr "Gestire le chiavi API"
+msgstr "Gestisci le chiavi API"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:175
 msgid "Allow users to use the API keys to authenticate their API calls."
@@ -32156,21 +32239,27 @@ msgid "You do not have access to the audit database"
 msgstr "Non si ha accesso al database di audit"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:27
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Quando si abilita il provisioning degli utenti SAML, si crea automaticamente un account Metabase all'accesso SAML per gli utenti che non ne hanno uno.\n"
+msgstr ""
+"Quando si abilita il provisioning degli utenti SAML, si crea automaticamente un account Metabase all'accesso SAML per gli utenti che non ne hanno uno.\n"
 "non ne hanno uno."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:40
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "Quando abilitiamo il provisioning degli utenti JWT, creiamo automaticamente un account Metabase all'accesso JWT per gli utenti che non ne hanno uno.\n"
+msgstr ""
+"Quando abilitiamo il provisioning degli utenti JWT, creiamo automaticamente un account Metabase all'accesso JWT per gli utenti che non ne hanno uno.\n"
 "non ne hanno uno."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:48
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Quando si abilita il provisioning degli utenti LDAP, si crea automaticamente un account Metabase all'accesso LDAP per gli utenti che non ne hanno uno.\n"
+msgstr ""
+"Quando si abilita il provisioning degli utenti LDAP, si crea automaticamente un account Metabase all'accesso LDAP per gli utenti che non ne hanno uno.\n"
 "non ne hanno uno."
 
 #: metabase_enterprise/sso/integrations/sso_utils.clj:37
@@ -32278,9 +32367,11 @@ msgid "Configure your instance to match your brand visuals and voice"
 msgstr "Configurate la vostra istanza in modo che corrisponda alle immagini e alla voce del vostro marchio."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Per ottenere risultati ottimali, utilizzare un file SVG con sfondo trasparente.\n"
+msgstr ""
+"Per ottenere risultati ottimali, utilizzare un file SVG con sfondo trasparente.\n"
 "sfondo trasparente."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
@@ -32491,10 +32582,12 @@ msgstr "Mostra tutti"
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:170
 msgctxt "indicates an email address to which to send diagnostic information"
-msgid "Click the button below to download diagnostic information to send\n"
+msgid ""
+"Click the button below to download diagnostic information to send\n"
 "to\n"
 "{0}"
-msgstr "Fare clic sul pulsante sottostante per scaricare le informazioni diagnostiche da inviare\n"
+msgstr ""
+"Fare clic sul pulsante sottostante per scaricare le informazioni diagnostiche da inviare\n"
 "a\n"
 "{0}"
 
@@ -32884,9 +32977,11 @@ msgstr "Mostra tutti"
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:268
 msgctxt "indicates an email address to which to send diagnostic information"
-msgid "If the error persists, you can download diagnostic information to send to\n"
+msgid ""
+"If the error persists, you can download diagnostic information to send to\n"
 "{0}"
-msgstr "Se l'errore persiste, è possibile scaricare informazioni diagnostiche da inviare a\n"
+msgstr ""
+"Se l'errore persiste, è possibile scaricare informazioni diagnostiche da inviare a\n"
 "{0}"
 
 #: metabase/api/cache.clj:51
@@ -33296,7 +33391,7 @@ msgstr "Domande appuntate"
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionActions.tsx:334
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionActions.tsx:337
 msgid "Move, trash, and more..."
-msgstr "Traslochi, rifiuti e altro..."
+msgstr "Sposta, cestino e altro..."
 
 #: frontend/src/metabase/home/components/EmbedHomepage/EmbedHomepage.tsx:75
 msgid "Your feedback was submitted, thank you."
@@ -33779,7 +33874,7 @@ msgstr[1] "Selezionate {0} tabelle"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:148
 msgid "Manage Uploads"
-msgstr "Gestire i caricamenti"
+msgstr "Gestisci i caricamenti"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:152
 msgid "Uploaded Tables"
@@ -33893,7 +33988,7 @@ msgstr "Sfoglia i modelli"
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:55
 #: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:181
 msgid "Browse databases"
-msgstr "Sfogliare i database"
+msgstr "Sfoglia i database"
 
 #: frontend/src/metabase/parameters/components/ParameterSidebar/ParameterSidebar.tsx:270
 msgid "Filter settings"
@@ -34038,7 +34133,7 @@ msgstr "Scorciatoie"
 
 #: frontend/src/metabase/routes.jsx:147 metabase/models/collection.clj:120
 msgid "Trash"
-msgstr "Rifiuti"
+msgstr "Cestino"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/DeleteConfirmModal.tsx:39
 msgid "This may impact the models and questions that use the table(s) as their data source. This can't be undone."
@@ -34135,9 +34230,11 @@ msgid "Configure permissions"
 msgstr "Configurare le autorizzazioni"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} sarà in grado di usare il costruttore di query\n"
+msgstr ""
+"{0} sarà in grado di usare il costruttore di query\n"
 "per {1}."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -34592,7 +34689,7 @@ msgstr "Istantanea caricata su {0}."
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:30
 msgctxt "A verb, shown in the sidebar"
 msgid "Browse"
-msgstr "Sfogliare"
+msgstr "Sfoglia"
 
 #: metabase/api/cache.clj:142
 msgid "Could not find any questions for the criteria you specified."
@@ -34811,15 +34908,19 @@ msgid "Upload Management"
 msgstr "Gestione dei caricamenti"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:55
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "È l'URL a cui gli utenti accedono per collegarsi al provider di identità. A seconda dell''IdP che si sta utilizzando\n"
+msgstr ""
+"È l'URL a cui gli utenti accedono per collegarsi al provider di identità. A seconda dell''IdP che si sta utilizzando\n"
 "si utilizza, di solito ha l'aspetto di `https://your-org-name.example.com` o `https://example.com/app/my_saml_app/abc123/sso/saml`."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:84
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Si tratta di un identificativo unico per l'IdP. Spesso viene indicato come Entity ID o semplicemente \"Issuer\". A seconda\n"
+msgstr ""
+"Si tratta di un identificativo unico per l'IdP. Spesso viene indicato come Entity ID o semplicemente \"Issuer\". A seconda\n"
 "dell'IdP, di solito ha un aspetto simile a `http://www.example.com/141xkex604w0Q5PN724v`."
 
 #: metabase_enterprise/upload_management/api.clj:35
@@ -35195,9 +35296,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Iniziare con Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:62
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Solo un avvertimento: la metabasi sarà di sola lettura per un massimo di 30\n"
+msgstr ""
+"Solo un avvertimento: la metabasi sarà di sola lettura per un massimo di 30\n"
 "minuti mentre lo prepariamo per la migrazione."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationSuccess.tsx:38
@@ -35235,7 +35338,7 @@ msgstr "Aggiungere un widget Unità di tempo"
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx:14
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx:17
 msgid "Move, trash, and more…"
-msgstr "Traslochi, rifiuti e altro..."
+msgstr "Sposta, cestino e altro..."
 
 #: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV/UploadCSV.tsx:73
 #: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV/UploadCSV.tsx:75
@@ -35291,7 +35394,7 @@ msgstr "di"
 
 #: metabase/api/collection.clj:1071 metabase/models/collection.clj:1492
 msgid "You cannot modify the Trash Collection."
-msgstr "Non è possibile modificare la raccolta dei rifiuti."
+msgstr "Non è possibile modificare la collezione del cestino."
 
 #: metabase/api/geojson.clj:153
 msgid "GeoJSON URL returned invalid content-type"
@@ -36248,9 +36351,11 @@ msgid "Connect to Slack"
 msgstr "Connettersi a Slack"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Se il team utilizza Slack, è possibile inviare le sottoscrizioni alla dashboard e gli\n"
+msgstr ""
+"Se il team utilizza Slack, è possibile inviare le sottoscrizioni alla dashboard e gli\n"
 "avvisi"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -36422,9 +36527,11 @@ msgid "Time grouping options"
 msgstr "Opzioni di raggruppamento temporale"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Usare {0} per aggiungere un iframe visibile pubblicamente alla pagina web o al post del blog.\n"
+msgstr ""
+"Usare {0} per aggiungere un iframe visibile pubblicamente alla pagina web o al post del blog.\n"
 "post."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -37192,7 +37299,7 @@ msgstr "Incorporare i componenti di Metabase con React (come grafici standalone,
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:150
 msgid "Manage access and interactivity per component"
-msgstr "Gestire l'accesso e l'interattività per ogni componente"
+msgstr "Gestisci l'accesso e l'interattività per ogni componente"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:151
 msgid "Advanced customization options for styling"
@@ -37372,9 +37479,11 @@ msgid "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metaba
 msgstr "È necessario eseguire `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` dalla versione {0}."
 
 #: metabase/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Il numero massimo di destinatari, sommato tra le e-mail, che può essere inviato al secondo.\n"
+msgstr ""
+"Il numero massimo di destinatari, sommato tra le e-mail, che può essere inviato al secondo.\n"
 "                Si noti che l'ultima e-mail inviata prima di raggiungere il limite può superarlo, se ha più destinatari."
 
 #: metabase/embed/settings.clj:118
@@ -37492,4 +37601,3 @@ msgstr "JWT SSO non è stato abilitato"
 #: metabase_enterprise/sso/integrations/jwt.clj:113
 msgid "JWT SSO has not been configured"
 msgstr "JWT SSO non è stato configurato"
-
