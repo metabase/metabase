@@ -139,7 +139,10 @@ export const InteractiveQuestionResult = ({
           closeOnSuccess
           onClose={closeSaveModal}
           onCreate={onCreate}
-          onSave={onSave}
+          onSave={async question => {
+            await onSave(question);
+            closeSaveModal();
+          }}
           saveToCollectionId={saveToCollectionId}
         />
       )}
