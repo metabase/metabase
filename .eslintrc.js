@@ -7,6 +7,20 @@
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
 
+const frontendRestrictedSyntax = [
+  {
+    selector: "Literal[value=/mb-base-color-/]",
+    message:
+      "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
+  },
+  {
+    selector:
+      "CallExpression[callee.object.name='Error'][callee.property.name='captureStackTrace']",
+    message:
+      "Error.captureStackTrace is not supported on all browsers, use maybeCaptureStackTrace instead.",
+  },
+];
+
 module.exports = {
   rules: {
     strict: [2, "never"],
@@ -254,16 +268,9 @@ module.exports = {
       files: ["*.cy.spec.ts", "*.cy.spec.js"],
     },
     {
-      files: ["frontend/src/**/*"],
+      files: ["frontend/src/**/*", "enterprise/frontend/src/**/*"],
       rules: {
-        "no-restricted-syntax": [
-          "error",
-          {
-            selector: "Literal[value=/mb-base-color-/]",
-            message:
-              "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
-          },
-        ],
+        "no-restricted-syntax": ["error", ...frontendRestrictedSyntax],
       },
     },
     {
@@ -271,11 +278,7 @@ module.exports = {
       rules: {
         "no-restricted-syntax": [
           "error",
-          {
-            selector: "Literal[value=/mb-base-color-/]",
-            message:
-              "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
-          },
+          ...frontendRestrictedSyntax,
           {
             selector:
               "CallExpression[callee.property.name='legacyQuery'] > ObjectExpression > Property[key.name='useStructuredQuery'][value.value=true]",

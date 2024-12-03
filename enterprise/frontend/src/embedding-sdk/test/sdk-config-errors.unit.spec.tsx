@@ -17,6 +17,7 @@ import {
   defineEmbeddingSdkConfig,
 } from "embedding-sdk/components/public";
 import type { SDKConfig } from "embedding-sdk/types";
+import { maybeCaptureStackTrace } from "metabase/lib/errors/maybeCaptureStackTrace";
 import {
   createMockCard,
   createMockSettings,
@@ -65,7 +66,7 @@ const expectErrorMessage = async (message: string) => {
       ).toBeInTheDocument();
     });
   } catch (error) {
-    Error.captureStackTrace(error as Error, expectErrorMessage);
+    maybeCaptureStackTrace(error as Error, expectErrorMessage);
     throw error;
   }
 };

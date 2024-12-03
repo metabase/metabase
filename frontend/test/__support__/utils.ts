@@ -1,5 +1,7 @@
 import type fetchMock from "fetch-mock";
 
+import { maybeCaptureStackTrace } from "metabase/lib/errors/maybeCaptureStackTrace";
+
 import { act, waitFor } from "./ui";
 
 export const getNextId = (() => {
@@ -29,9 +31,7 @@ export const waitForRequest = async (
       }
     });
   } catch (error) {
-    if (error instanceof Error) {
-      Error.captureStackTrace(error, waitForRequest);
-    }
+    maybeCaptureStackTrace(error, waitForRequest);
     throw error;
   }
 };

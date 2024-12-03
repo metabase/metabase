@@ -9,6 +9,7 @@ import { bigErrorHeader, bigWarningHeader } from "embedding-sdk/lib/log-utils";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import api from "metabase/lib/api";
+import { maybeCaptureStackTrace } from "metabase/lib/errors/maybeCaptureStackTrace";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -130,7 +131,7 @@ export const refreshTokenAsync = createAsyncThunk(
       return session;
     } catch (exception: unknown) {
       if (exception instanceof Error) {
-        Error.captureStackTrace(exception, refreshTokenAsync);
+        maybeCaptureStackTrace(exception, refreshTokenAsync);
       }
 
       // The host app may have a lot of logs (and the sdk logs a lot too), so we
