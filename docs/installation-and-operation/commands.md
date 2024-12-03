@@ -51,6 +51,8 @@ Generates a markdown file containing documentation for environment variables rel
 
 ## `export path & options`
 
+{% include plans-blockquote.html feature="Serialization" self-hosted-only="true" %}
+
 Serialize Metabase instance into directory at `path`.
 
 Options:
@@ -69,6 +71,8 @@ Options:
 Show this help message listing valid Metabase commands. Use `help command-name` for specific command details.
 
 ## `import path & options`
+
+{% include plans-blockquote.html feature="Serialization" self-hosted-only="true" %}
 
 Load serialized Metabase instance as created by the `export` command from directory `path`.
 
