@@ -266,5 +266,67 @@ describe("SANKEY_CHART_DEFINITION", () => {
         ),
       );
     });
+
+    it("should throw error when there are too many nodes", () => {
+      // Create 152 unique nodes
+      const rows = Array.from({ length: 76 }, (_, i) => [
+        `Source${i}`,
+        `Target${i}`,
+        10,
+      ]);
+
+      const rawSeries = [
+        {
+          card: createMockCard(),
+          data: createMockDatasetData({
+            rows,
+            cols: columns,
+          }),
+        },
+      ];
+
+      const settings = {
+        "sankey.source": "Source",
+        "sankey.target": "Target",
+        "sankey.value": "Amount",
+      };
+
+      expect(() =>
+        SANKEY_CHART_DEFINITION.checkRenderable(rawSeries, settings),
+      ).toThrow(
+        new ChartSettingsError(
+          "Sankey chart doesn't support more than 150 unique nodes.",
+        ),
+      );
+    });
+
+    it("should not throw error when node count is at the limit", () => {
+      // Create 150 unique nodes
+      const rows = Array.from({ length: 75 }, (_, i) => [
+        `Source${i}`,
+        `Target${i}`,
+        10,
+      ]);
+
+      const rawSeries = [
+        {
+          card: createMockCard(),
+          data: createMockDatasetData({
+            rows,
+            cols: columns,
+          }),
+        },
+      ];
+
+      const settings = {
+        "sankey.source": "Source",
+        "sankey.target": "Target",
+        "sankey.value": "Amount",
+      };
+
+      expect(() =>
+        SANKEY_CHART_DEFINITION.checkRenderable(rawSeries, settings),
+      ).not.toThrow();
+    });
   });
 });

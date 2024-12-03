@@ -1,4 +1,4 @@
-(ns metabase.notification.payload.impl.dashboard-subscription
+(ns metabase.notification.payload.impl.dashboard
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.models.params.shared :as shared.params]
@@ -22,7 +22,7 @@
    shared.params/param-val-or-default
    (the-parameters dashboard-subscription-params dashboard-params)))
 
-(mu/defmethod notification.payload/payload :notification/dashboard-subscription
+(mu/defmethod notification.payload/payload :notification/dashboard
   [{:keys [creator_id dashboard_subscription] :as _notification-info} :- notification.payload/Notification]
   (let [dashboard-id (:dashboard_id dashboard_subscription)
         dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
@@ -40,7 +40,7 @@
      :parameters             parameters
      :dashboard_subscription dashboard_subscription}))
 
-(mu/defmethod notification.payload/should-send-notification? :notification/dashboard-subscription
+(mu/defmethod notification.payload/should-send-notification? :notification/dashboard
   [{:keys [payload] :as _noti-payload}]
   (let [{:keys [dashboard_parts dashboard_subscription]} payload]
     (if (:skip_if_empty dashboard_subscription)

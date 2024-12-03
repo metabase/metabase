@@ -26,6 +26,10 @@ import {
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
+// cy.realType does not have an option to not parse special characters
+const LEFT_BRACKET = "{{}";
+const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
+
 describe("issue 12439", () => {
   const nativeQuery = `
   SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY",
@@ -84,8 +88,9 @@ describe("issue 15029", () => {
   });
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
-    openNativeEditor().type(
-      "select * from products where RATING = {{number.of.stars}}",
+    openNativeEditor();
+    cy.realType(
+      `select * from products where RATING = ${DOUBLE_LEFT_BRACKET}number.of.stars}}`,
       {
         parseSpecialCharSequences: false,
       },
@@ -99,20 +104,17 @@ describe("issue 16886", () => {
   const ORIGINAL_QUERY = "select 1 from orders";
   const SELECTED_TEXT = "select 1";
 
-  const moveCursorToBeginning = "{selectall}{leftarrow}";
-  const highlightSelectedText = "{shift}{rightarrow}".repeat(
-    SELECTED_TEXT.length,
-  );
-
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
   it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
-    openNativeEditor().type(
-      ORIGINAL_QUERY + moveCursorToBeginning + highlightSelectedText,
-      { delay: 50 },
+    openNativeEditor();
+    cy.realType(ORIGINAL_QUERY);
+    cy.realPress("Home");
+    Cypress._.range(SELECTED_TEXT.length).forEach(() =>
+      cy.realPress(["Shift", "ArrowRight"]),
     );
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -132,12 +134,18 @@ describe("issue 16914", () => {
 
   it("should recover visualization settings after a failed query (metabase#16914)", () => {
     const FAILING_PIECE = " foo";
-    const highlightSelectedText = "{shift}{leftarrow}".repeat(
-      FAILING_PIECE.length,
-    );
 
-    openNativeEditor().type("SELECT 'a' as hidden, 'b' as visible");
-    runNativeQuery();
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: {
+          query: "SELECT 'a' as hidden, 'b' as visible",
+        },
+      },
+      visualization_settings: {},
+    });
 
     openVizType("Columns");
     cy.findByTestId("sidebar-left")
@@ -146,12 +154,16 @@ describe("issue 16914", () => {
       .click();
     cy.button("Done").click();
 
-    cy.get("@editor").type(FAILING_PIECE);
+    focusNativeEditor();
+    cy.realType(FAILING_PIECE);
     runNativeQuery();
 
-    cy.get("@editor").type(
-      "{movetoend}" + highlightSelectedText + "{backspace}",
+    focusNativeEditor();
+    cy.realPress("End");
+    Cypress._.range(FAILING_PIECE.length).forEach(() =>
+      cy.realPress(["Shift", "ArrowLeft"]),
     );
+    cy.realPress("Backspace");
     runNativeQuery();
 
     cy.findByTestId("query-visualization-root").within(() => {
@@ -168,14 +180,6 @@ describe("issue 17060", () => {
   const SECTION = "select ";
   const SELECTED_TEXT = "ID";
 
-  const moveCursorToBeginning = "{selectall}{leftarrow}";
-
-  const highlightSelectedText = "{shift}{rightarrow}".repeat(
-    SELECTED_TEXT.length,
-  );
-
-  const moveCursorAfterSection = "{rightarrow}".repeat(SECTION.length);
-
   function rearrangeColumns() {
     cy.findAllByTestId(/draggable-item/)
       .first()
@@ -190,10 +194,17 @@ describe("issue 17060", () => {
 
     restore();
     cy.signInAsAdmin();
-
-    openNativeEditor().type(ORIGINAL_QUERY);
-
-    runQuery();
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: {
+          query: ORIGINAL_QUERY,
+        },
+      },
+      visualization_settings: {},
+    });
 
     openVizType("Columns");
 
@@ -203,14 +214,13 @@ describe("issue 17060", () => {
   });
 
   it("should not render duplicated columns (metabase#17060)", () => {
-    cy.get("@editor").type(
-      moveCursorToBeginning +
-        moveCursorAfterSection +
-        highlightSelectedText +
-        "RATING",
-      { delay: 50 },
+    focusNativeEditor();
+    cy.realPress("Home");
+    Cypress._.range(SECTION.length).forEach(() => cy.realPress("ArrowRight"));
+    Cypress._.range(SELECTED_TEXT.length).forEach(() =>
+      cy.realPress(["Shift", "ArrowRight"]),
     );
-
+    cy.realType("RATING");
     runQuery();
 
     cy.findByTestId("query-visualization-root").within(() => {
@@ -246,7 +256,8 @@ describe("issue 18148", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(dbName).click();
 
-    cy.get(".ace_content").should("be.visible").type("select foo");
+    focusNativeEditor();
+    cy.realType("select foo");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -375,7 +386,8 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
 
   // realpress messes with cypress 13
   it("should continue to request more prefix matches (metabase#20625)", () => {
-    openNativeEditor().type("s");
+    openNativeEditor();
+    cy.realType("s");
 
     // autocomplete_suggestions?prefix=s
     cy.wait("@autocomplete");
@@ -401,7 +413,8 @@ describe("issue 21034", () => {
   });
 
   it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    cy.get(".ace_content").should("be.visible").type("p");
+    focusNativeEditor();
+    cy.realType("p");
 
     // Wait until another explicit autocomplete is triggered
     // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -470,10 +483,10 @@ describe("issue 21597", { tags: "@external" }, () => {
     // Create a native query and run it
     openNativeEditor({
       databaseName,
-    }).type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}", {
-      delay: 0,
-      parseSpecialCharSequences: false,
     });
+    cy.realType(
+      `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
+    );
 
     cy.findByTestId("variable-type-select").click();
     popover().within(() => {
@@ -589,15 +602,12 @@ describe("issue 34330", () => {
   });
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
-    const editor = openNativeEditor();
-
-    // can't use cy.type because it does not simulate the bug
-    // Delay needed for React 18. TODO: fix shame
-    editor.type("USER").type("_", { delay: 1000 });
+    openNativeEditor();
+    cy.realType("USER");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
-      expect(url.searchParams.get("substring")).to.equal("USER_");
+      expect(url.searchParams.get("substring")).to.equal("USER");
     });
 
     // only one call to the autocompleter should have been made
@@ -605,10 +615,8 @@ describe("issue 34330", () => {
   });
 
   it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
-    const editor = openNativeEditor();
-
-    // can't use cy.type because it does not simulate the bug
-    editor.type("U");
+    openNativeEditor();
+    cy.realType("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -620,10 +628,8 @@ describe("issue 34330", () => {
   });
 
   it("should call the autocompleter when backspacing to a 1-character prefix(metabase#34330)", () => {
-    const editor = openNativeEditor();
-
-    // can't use cy.type because it does not simulate the bug
-    editor.type("SE{backspace}");
+    openNativeEditor();
+    cy.realType("SE{backspace}");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
@@ -652,14 +658,17 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    focusNativeEditor().type("--");
+    focusNativeEditor();
+    cy.realType("--");
     expect(focusNativeEditor().findByText("--")).to.exist;
 
-    focusNativeEditor().type("{meta}z");
+    focusNativeEditor();
+    cy.realPress(["Meta", "z"]);
     focusNativeEditor().findByText("--").should("not.exist");
 
     // more undoing does not change to empty editor
-    focusNativeEditor().type("{meta}z");
+    focusNativeEditor();
+    cy.realPress(["Meta", "z"]);
     expect(focusNativeEditor().findByText("select")).to.exist;
   });
 });
@@ -705,7 +714,8 @@ describe("issue 35785", () => {
     cy.findByTestId("native-query-editor-container")
       .findByTestId("visibility-toggler")
       .click();
-    cy.findByTestId("native-query-editor").type("{backspace}4");
+    focusNativeEditor();
+    cy.realType("{backspace}4");
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
 
@@ -755,11 +765,10 @@ describe("issue 22991", () => {
     cy.signOut();
     cy.signInAsNormalUser();
 
-    const editor = openNativeEditor();
-
+    openNativeEditor();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
-      editor.type(`select * from {{#${questionId}`);
+      cy.realType(`select * from ${DOUBLE_LEFT_BRACKET}#${questionId}`);
     });
 
     cy.get("main").should(
