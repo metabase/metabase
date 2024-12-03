@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { ChartTypeSidebar } from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import {
   BaseChartSettings,
   useChartSettingsState,
@@ -22,15 +23,15 @@ export const QuestionSettingsContent = ({
   queryResults?: any[];
   updateQuestion: InteractiveQuestionContextType["updateQuestion"];
 }) => {
+  const result = useMemo(() => queryResults?.[0] ?? {}, [queryResults]);
   const series = useMemo(() => {
-    const result = queryResults?.[0] ?? {};
     return [
       {
         ...result,
         card: question.card(),
       },
     ];
-  }, [queryResults, question]);
+  }, [question, result]);
 
   const onChange = async (settings: VisualizationSettings) => {
     await updateQuestion(question.updateSettings(settings).lockDisplay());
@@ -58,6 +59,9 @@ export const QuestionSettingsContent = ({
       chartSettings={chartSettings}
       transformedSeries={transformedSeries}
       widgets={widgets}
+      chartTypeSettings={
+        result ? <ChartTypeSidebar question={question} result={result} /> : null
+      }
     />
   );
 };

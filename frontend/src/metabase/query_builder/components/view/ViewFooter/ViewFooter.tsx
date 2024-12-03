@@ -1,35 +1,100 @@
 import cx from "classnames";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import {
   getFirstQueryResult,
-  getIsVisualized,
   getQuestion,
+  getUiControls,
 } from "metabase/query_builder/selectors";
-import { Group } from "metabase/ui";
+import { Button, Group, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { ViewFooterRoot } from "../ViewFooter.styled";
 
-import { CenterViewFooterButtonGroup } from "./CenterViewFooterButtonGroup";
+import { ConvertToNativeQuestionButton } from "./ConvertToNativeQuestionButton";
 import { LeftViewFooterButtonGroup } from "./LeftViewFooterButtonGroup";
 import { RightViewFooterButtonGroup } from "./RightViewFooterButtonGroup";
 
-type ViewFooterProps = { className?: string };
+type ViewFooterProps = {
+  className?: string;
+  isResultDirty: boolean;
+  setQueryBuilderMode?: (mode: string) => Promise<void>;
+  isDirty: boolean;
+  runQuestionQuery: () => Promise<void>;
+  hasVisualizeButton?: boolean;
+  isNotebook: boolean;
+  updateQuestion: (question: Question) => Promise<void>;
+  isNative: boolean;
+  isRunning: boolean;
+};
 
-export const ViewFooter = ({ className }: ViewFooterProps) => {
-  const isVisualized = useSelector(getIsVisualized);
+export const ViewFooter = ({
+  className,
+  isResultDirty,
+  setQueryBuilderMode,
+  isDirty,
+  runQuestionQuery,
+  updateQuestion,
+  isNotebook,
+  hasVisualizeButton = true,
+  isNative,
+  isRunning,
+}: ViewFooterProps) => {
+  const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const result = useSelector(getFirstQueryResult);
+  const shouldHideFooterForNativeQuestionWithoutResult = isNative && !result;
 
-  if (!question || !result) {
+  const { isShowingNotebookNativePreview } = useSelector(getUiControls);
+  if (!question || shouldHideFooterForNativeQuestionWithoutResult) {
     return null;
+  }
+
+  async function cleanupQuestion() {
+    // Converting a query to MLv2 and back performs a clean-up
+    let cleanQuestion = question?.setQuery(
+      Lib.dropEmptyStages(question?.query()),
+    );
+
+    if (cleanQuestion?.display() === "table") {
+      cleanQuestion = cleanQuestion.setDefaultDisplay();
+    }
+
+    if (cleanQuestion) {
+      await updateQuestion(cleanQuestion);
+    }
+  }
+
+  // visualize switches the view to the question's visualization.
+  async function visualize() {
+    // Only cleanup the question if it's dirty, otherwise Metabase
+    // will incorrectly display the Save button, even though there are no changes to save.
+    if (isDirty) {
+      cleanupQuestion();
+    }
+
+    // tell segment control in the footer to switch to visualization
+    dispatch(
+      setUIControls({
+        isShowingRawTable: false,
+        viewFooterControlState: "visualization",
+      }),
+    );
+
+    // switch mode before running otherwise URL update may cause it to switch back to notebook mode
+    await setQueryBuilderMode?.("view");
+    if (isResultDirty) {
+      await runQuestionQuery();
+    }
   }
 
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hideChartSettings =
-    (result.error && !isEditable) || question.isArchived();
+    (result?.error && !isEditable) || question.isArchived();
 
   return (
     <ViewFooterRoot
@@ -37,9 +102,33 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
       data-testid="view-footer"
     >
       <Group position="apart" pos="relative" noWrap w="100%">
-        {!hideChartSettings && <LeftViewFooterButtonGroup />}
-        {isVisualized && <CenterViewFooterButtonGroup />}
-        <RightViewFooterButtonGroup />
+        {isNotebook && hasVisualizeButton && isResultDirty ? (
+          <Button
+            variant="filled"
+            radius="xl"
+            pt={rem(7)}
+            pb={rem(7)}
+            miw={190}
+            onClick={visualize}
+          >
+            {t`Visualize`}
+          </Button>
+        ) : (
+          <LeftViewFooterButtonGroup
+            question={question}
+            hideChartSettings={hideChartSettings}
+            isResultLoaded={!!result}
+            isRunning={isRunning}
+            isNotebook={isNotebook}
+          />
+        )}
+        {isNotebook ? (
+          isShowingNotebookNativePreview ? (
+            <ConvertToNativeQuestionButton />
+          ) : null
+        ) : (
+          <RightViewFooterButtonGroup />
+        )}
       </Group>
     </ViewFooterRoot>
   );

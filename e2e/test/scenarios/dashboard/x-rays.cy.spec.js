@@ -9,6 +9,7 @@ import {
   dashboardGrid,
   getDashboardCards,
   main,
+  openVizType,
   popover,
   restore,
   saveDashboard,
@@ -294,6 +295,10 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     });
 
     cy.url().should("contain", "/question");
+    openVizType("Data");
+    cy.findAllByTestId("chartsettings-field-picker")
+      .contains("User → Source")
+      .should("be.visible");
 
     // Bars
     chartPathWithFillColor("#509EE3").should("have.length", 5);
@@ -310,8 +315,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       ],
     });
 
-    cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("chartsettings-field-picker")
+    cy.findAllByTestId("chartsettings-sidebar")
       .contains("User → Source")
       .should("be.visible");
   });

@@ -56,7 +56,7 @@ export const Editor = ({ onApply = () => {} }: EditorProps) => {
             onApply();
             await runQuestion();
           }}
-          setQueryBuilderMode={() => {}}
+          setQueryBuilderMode={async () => {}}
           hasVisualizeButton={true}
           modelsFilterList={modelsFilterList}
         />

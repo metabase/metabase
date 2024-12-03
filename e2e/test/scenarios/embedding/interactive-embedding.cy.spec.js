@@ -23,6 +23,7 @@ import {
   getTextCardDetails,
   goToTab,
   navigationSidebar,
+  notebookButton,
   popover,
   resetTestTable,
   restore,
@@ -195,7 +196,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.button(/Edited/).should("be.visible");
 
       cy.icon("refresh").should("be.visible");
-      cy.findByTestId("notebook-button").should("be.visible");
+      notebookButton().should("be.visible");
       cy.button("Summarize").should("be.visible");
       cy.button("Filter").should("be.visible");
     });
@@ -230,7 +231,7 @@ describeEE("scenarios > embedding > full app", () => {
       });
 
       cy.icon("refresh").should("be.visible");
-      cy.findByTestId("notebook-button").should("not.exist");
+      notebookButton().should("not.exist");
       cy.button("Summarize").should("not.exist");
       cy.button("Filter").should("not.exist");
     });

@@ -8,14 +8,13 @@ export type ChartTypeListProps = {
   "data-testid"?: string;
 } & Pick<
   ChartTypeOptionProps,
-  "selectedVisualization" | "onSelectVisualization" | "onOpenSettings"
+  "selectedVisualization" | "onSelectVisualization"
 >;
 
 export const ChartTypeList = ({
   visualizationList,
   onSelectVisualization,
   selectedVisualization,
-  onOpenSettings,
   "data-testid": dataTestId,
 }: ChartTypeListProps) => (
   <Grid
@@ -31,7 +30,6 @@ export const ChartTypeList = ({
           visualizationType={type}
           selectedVisualization={selectedVisualization}
           onSelectVisualization={onSelectVisualization}
-          onOpenSettings={onOpenSettings}
         />
       </Grid.Col>
     ))}

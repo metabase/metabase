@@ -9,6 +9,7 @@ import {
   getXYTransform,
   modal,
   openSeriesSettings,
+  openVizType,
   popover,
   queryBuilderMain,
   restore,
@@ -42,7 +43,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     openSeriesSettings("Count");
 
     echartsContainer()
@@ -71,7 +72,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     openSeriesSettings("Count");
 
     popover().within(() => {
@@ -103,7 +104,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     openSeriesSettings("Count");
 
     popover().within(() => {
@@ -122,11 +123,11 @@ describe("scenarios > visualizations > line chart", () => {
       display: "area",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     openSeriesSettings("Count");
     cy.icon("bar").click();
 
-    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("chartsettings-sidebar").findByText("Chart").click();
 
     cy.icon("line").click();
 
@@ -154,7 +155,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
 
     cy.icon("line").click();
 
@@ -326,7 +327,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     // Make sure we can update input with some existing value
     openSeriesSettings("cat1", true);
@@ -430,7 +431,7 @@ describe("scenarios > visualizations > line chart", () => {
       .findByText("(empty)")
       .should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     cy.findByTestId("chartsettings-sidebar").findByText("(empty)");
   });
 
@@ -750,7 +751,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findAllByTestId("legend-item").should("contain", "Doohickey");
 
       cy.log("Ensure that legend is hidden when not dealing with multi series");
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Data");
       cy.findByTestId("remove-CATEGORY").click();
       queryBuilderMain().should("not.contain", "Doohickey");
     });

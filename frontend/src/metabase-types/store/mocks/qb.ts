@@ -33,6 +33,7 @@ export const createMockQueryBuilderUIControlsState = (
   modal: null,
   modalContext: null,
   dataReferenceStack: null,
+  viewFooterControlState: undefined,
   ...opts,
 });
 

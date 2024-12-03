@@ -4,7 +4,6 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import * as Lib from "metabase-lib";
 
-import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import {
@@ -64,7 +63,6 @@ export const ViewMainContainer = props => {
         updateQuestion={updateQuestion}
         className={CS.flexNoShrink}
       />
-      <ViewFooter className={CS.flexNoShrink} />
     </QueryBuilderMain>
   );
 };

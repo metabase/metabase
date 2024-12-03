@@ -104,7 +104,7 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
-    cy.findByTestId("viz-type-button").should("exist");
+    cy.findByTestId("viz-settings-button").should("exist");
     cy.findAllByText("79").should("not.exist");
   });
 

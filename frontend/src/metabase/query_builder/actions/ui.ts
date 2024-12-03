@@ -11,6 +11,7 @@ import type {
   QueryBuilderMode,
 } from "metabase-types/store";
 
+import { getViewFooterControlInitialState } from "./core/utils";
 import { updateUrl } from "./navigation";
 import { cancelQuery } from "./querying";
 
@@ -33,12 +34,20 @@ export const setQueryBuilderMode =
       replaceState?: boolean;
     } = {},
   ) =>
-  async (dispatch: Dispatch) => {
+  async (dispatch: Dispatch, getState: GetState) => {
+    const viewFooterControlState = getViewFooterControlInitialState(
+      {
+        queryBuilderMode,
+      },
+      getState,
+    );
+
     await dispatch(
       setUIControls({
         queryBuilderMode,
         datasetEditorTab,
         isShowingChartSettingsSidebar: false,
+        viewFooterControlState,
       }),
     );
     if (shouldUpdateUrl) {

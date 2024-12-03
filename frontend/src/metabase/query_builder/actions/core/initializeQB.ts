@@ -41,6 +41,7 @@ import {
   getParameterValuesForQuestion,
   propagateDashboardParameters,
 } from "./parameterUtils";
+import { getViewFooterControlInitialState } from "./utils";
 
 type BlankQueryOptions = {
   db?: string;
@@ -350,6 +351,16 @@ async function handleQBInit(
     getIsNotebookNativePreviewShown(getState());
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
+
+  const queryBuilderMode = uiControls.queryBuilderMode;
+  if (queryBuilderMode) {
+    uiControls.viewFooterControlState = getViewFooterControlInitialState(
+      {
+        queryBuilderMode,
+      },
+      getState,
+    );
+  }
 
   dispatch({
     type: INITIALIZE_QB,

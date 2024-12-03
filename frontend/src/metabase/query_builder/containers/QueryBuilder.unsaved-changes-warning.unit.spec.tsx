@@ -435,10 +435,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByTestId("notebook-button"));
+      await userEvent.click(screen.getByLabelText("Switch to editor"));
 
       await waitFor(() => {
-        expect(screen.getByText("Visualize")).toBeInTheDocument();
+        expect(screen.getByText("View the SQL")).toBeInTheDocument();
       });
 
       expect(
@@ -591,8 +591,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
 
-      await userEvent.click(screen.getByTestId("viz-type-button"));
+      await userEvent.click(screen.getByTestId("viz-settings-button"));
+      await userEvent.click(screen.getByText("Chart"));
       await userEvent.click(screen.getByTestId("Detail-button"));
+
       await waitForSaveToBeEnabled();
 
       act(() => {
@@ -780,10 +782,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByTestId("notebook-button"));
+      await userEvent.click(screen.getByLabelText("Switch to editor"));
 
       await waitFor(() => {
-        expect(screen.getByText("Visualize")).toBeInTheDocument();
+        expect(screen.getByText("View the SQL")).toBeInTheDocument();
       });
 
       expect(
