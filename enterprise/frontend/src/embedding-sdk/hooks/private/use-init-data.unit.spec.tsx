@@ -39,7 +39,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-const TestComponent = ({ config }: { config: MetabaseAuthConfig }) => {
+const TestComponent = ({ authConfig }: { authConfig: MetabaseAuthConfig }) => {
   const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
@@ -47,7 +47,7 @@ const TestComponent = ({ config }: { config: MetabaseAuthConfig }) => {
 
   useInitData({
     authConfig: {
-      ...config,
+      ...authConfig,
       metabaseInstanceUrl: "http://localhost",
     } as MetabaseAuthConfig,
   });
@@ -122,12 +122,12 @@ const setup = ({
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  const config = createMockAuthProviderUriConfig({
+  const authConfig = createMockAuthProviderUriConfig({
     authProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
     ...configOpts,
   });
 
-  return renderWithProviders(<TestComponent config={config} />, {
+  return renderWithProviders(<TestComponent authConfig={authConfig} />, {
     storeInitialState: state,
     customReducers: sdkReducers,
   });
@@ -229,12 +229,12 @@ describe("useInitData hook", () => {
         exp: Number.MAX_SAFE_INTEGER,
       }));
 
-      const config = createMockAuthProviderUriConfig({
+      const authConfig = createMockAuthProviderUriConfig({
         authProviderUri: "http://TEST_URI/sso/metabase",
         fetchRequestToken,
       });
 
-      rerender(<TestComponent config={config} />);
+      rerender(<TestComponent authConfig={authConfig} />);
 
       await userEvent.click(screen.getByText("Refresh Token"));
 
