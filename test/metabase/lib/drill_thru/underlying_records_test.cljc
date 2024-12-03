@@ -509,7 +509,7 @@
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel include-all-joined-columns-test
-  (testing "underlying records for a query with a join should include all fields from the join"
+  (testing "underlying records for a query with a join should include all fields from the join (#48032)"
     (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/join (meta/table-metadata :people))
                            (lib/aggregate (lib/count))
