@@ -96,6 +96,7 @@ export const createMockTokenStatus = (
   valid: true,
   trial: false,
   "valid-thru": "2022-12-30T23:00:00Z",
+  features: [],
   ...opts,
 });
 

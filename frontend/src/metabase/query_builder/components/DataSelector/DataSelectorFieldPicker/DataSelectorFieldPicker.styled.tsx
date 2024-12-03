@@ -12,10 +12,10 @@ export const HeaderContainer = styled.div`
   color: var(--mb-color-text-medium);
   cursor: pointer;
   display: flex;
+  gap: ${space(1)};
 `;
 
 export const HeaderName = styled.span`
-  margin-left: ${space(1)};
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;

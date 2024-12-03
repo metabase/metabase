@@ -1,7 +1,6 @@
 (ns metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.api.card-test]]."
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.models :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
@@ -12,6 +11,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn run-query-for-card
@@ -164,7 +164,7 @@
                                                           {:aggregation [[:count]]})
 
                                                         :visualization_settings
-                                                        {:column_settings {(json/generate-string
+                                                        {:column_settings {(json/encode
                                                                             [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
                                                                            {:date_abbreviate true
                                                                             :some_other_key  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]

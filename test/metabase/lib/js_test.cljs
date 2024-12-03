@@ -420,6 +420,12 @@
     [:get-week {} [:field {} int?]]
     (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at)] nil)
 
+    [:get-day-of-week {} [:field {} int?] :iso]
+    (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at) "iso"] nil)
+
+    [:get-day-of-week {} [:field {} int?]]
+    (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at)] nil)
+
     [:temporal-extract {} [:field {} int?] :day-of-week]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week"] nil)
 

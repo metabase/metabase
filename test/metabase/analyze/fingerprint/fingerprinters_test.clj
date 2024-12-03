@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.analyze.fingerprint.fingerprinters-test
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
@@ -8,6 +7,7 @@
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -124,7 +124,7 @@
          (transduce identity
                     (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Text}))
                     ["metabase" "more" "like" "metabae" "[1, 2, 3]"])))
-  (let [truncated-json (subs (json/generate-string (vec (range 50))) 0 30)]
+  (let [truncated-json (subs (json/encode (vec (range 50))) 0 30)]
     (is (= {:global {:distinct-count 5
                      :nil%           0.0}
             :type   {:type/Text {:percent-json   0.2
@@ -178,7 +178,7 @@
 (deftest ^:parallel valid-serialized-json?-test
   (testing "recognizes substrings of json"
     (letfn [(partial-json [x]
-              (let [json (json/generate-string x)]
+              (let [json (json/encode x)]
                 (subs json 0 (/ (count json) 2))))]
       (are [x] (#'fingerprinters/valid-serialized-json? (partial-json x))
         [1 2 3]

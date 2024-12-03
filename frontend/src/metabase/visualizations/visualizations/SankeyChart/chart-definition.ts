@@ -21,12 +21,17 @@ import type { DatasetData, RawSeries, Series } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
+const MAX_SANKEY_NODES = 150;
+
 export const SETTINGS_DEFINITIONS = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
     section: t`Data`,
     title: t`Source`,
     showColumnSetting: true,
+    persistDefault: true,
+    dashboard: false,
+    autoOpenWhenUnset: false,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.source,
   }),
@@ -34,6 +39,9 @@ export const SETTINGS_DEFINITIONS = {
     section: t`Data`,
     title: t`Target`,
     showColumnSetting: true,
+    persistDefault: true,
+    dashboard: false,
+    autoOpenWhenUnset: false,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.target,
   }),
@@ -41,6 +49,9 @@ export const SETTINGS_DEFINITIONS = {
     section: t`Data`,
     title: t`Value`,
     showColumnSetting: true,
+    persistDefault: true,
+    dashboard: false,
+    autoOpenWhenUnset: false,
     getDefault: ([series]: RawSeries) =>
       findSensibleSankeyColumns(series.data)?.metric,
   }),
@@ -153,10 +164,12 @@ export const SANKEY_CHART_DEFINITION = {
     rawSeries: RawSeries,
     settings: ComputedVisualizationSettings,
   ) => {
-    const sankeyColumns = getSankeyChartColumns(
-      rawSeries[0].data.cols,
-      settings,
-    );
+    const { rows, cols } = rawSeries[0].data;
+
+    if (rows.length === 0) {
+      return;
+    }
+    const sankeyColumns = getSankeyChartColumns(cols, settings);
     if (!sankeyColumns) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
@@ -172,7 +185,7 @@ export const SANKEY_CHART_DEFINITION = {
 
     if (
       hasCyclicFlow(
-        rawSeries[0].data.rows,
+        rows,
         sankeyColumns.source.index,
         sankeyColumns.target.index,
       )
@@ -180,6 +193,19 @@ export const SANKEY_CHART_DEFINITION = {
       throw new ChartSettingsError(
         t`Selected columns create circular flows. Try picking different columns that flow in one direction.`,
         { section: "Data" },
+      );
+    }
+
+    const nodesCount = new Set(
+      rows.flatMap(row => [
+        row[sankeyColumns.source.index],
+        row[sankeyColumns.target.index],
+      ]),
+    ).size;
+
+    if (nodesCount > MAX_SANKEY_NODES) {
+      throw new ChartSettingsError(
+        t`Sankey chart doesn't support more than ${MAX_SANKEY_NODES} unique nodes.`,
       );
     }
   },

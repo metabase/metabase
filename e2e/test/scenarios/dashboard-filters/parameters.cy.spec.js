@@ -298,7 +298,11 @@ describe("scenarios > dashboard > parameters", () => {
               {
                 parameter_id: matchingFilterType.id,
                 card_id,
-                target: ["dimension", ["template-tag", "filter"]],
+                target: [
+                  "dimension",
+                  ["template-tag", "filter"],
+                  { "stage-number": 0 },
+                ],
               },
             ],
           },

@@ -1,6 +1,7 @@
 (ns metabase.query-processor.streaming.csv
   (:require
    [clojure.data.csv]
+   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter :as formatter]
@@ -9,6 +10,7 @@
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.performance :as perf])
   (:import
@@ -70,6 +72,18 @@
                                 string))
                (when must-quote (.write writer "\"")))))
 
+(defn- col->aggregation-fn-key
+  [{agg-name :name source :source}]
+  (when (= :aggregation source)
+    (let [agg-name (u/lower-case-en agg-name)]
+      (cond
+        (str/starts-with? agg-name "sum")    :sum
+        (str/starts-with? agg-name "avg")    :avg
+        (str/starts-with? agg-name "min")    :min
+        (str/starts-with? agg-name "max")    :max
+        (str/starts-with? agg-name "count")  :count
+        (str/starts-with? agg-name "stddev") :stddev))))
+
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -82,7 +96,8 @@
         (let [col-names          (vec (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
               opts               (when (and pivot? pivot-export-options)
                                    (-> (merge {:pivot-rows []
-                                               :pivot-cols []}
+                                               :pivot-cols []
+                                               :measures   (mapv col->aggregation-fn-key ordered-cols)}
                                               pivot-export-options)
                                        (assoc :column-titles col-names)
                                        (qp.pivot.postprocess/add-totals-settings viz-settings)
@@ -101,7 +116,7 @@
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
 
           ;; write the column names for non-pivot tables
-          (when (not opts)
+          (when (or (not opts) (not (public-settings/enable-pivoted-exports)))
             (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
               (write-csv writer [header])
               (.flush writer)))))

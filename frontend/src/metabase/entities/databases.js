@@ -2,7 +2,12 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
-import { databaseApi } from "metabase/api";
+import {
+  databaseApi,
+  useGetDatabaseMetadataQuery,
+  useGetDatabaseQuery,
+  useListDatabaseIdFieldsQuery,
+} from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import {
@@ -30,6 +35,11 @@ export const FETCH_DATABASE_SCHEMAS =
 export const FETCH_DATABASE_IDFIELDS =
   "metabase/entities/database/FETCH_DATABASE_IDFIELDS";
 
+const transformFetchIdFieldsResponse = (data, query) => ({
+  idFields: data,
+  id: query.id,
+});
+
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -40,6 +50,28 @@ const Databases = createEntity({
 
   nameOne: "database",
   nameMany: "databases",
+
+  rtk: {
+    getUseGetQuery: fetchType => {
+      if (fetchType === "fetchDatabaseMetadata") {
+        return {
+          useGetQuery: useGetDatabaseMetadataQuery,
+        };
+      }
+
+      if (fetchType === "fetchIdFields") {
+        return {
+          action: FETCH_DATABASE_IDFIELDS,
+          transformResponse: transformFetchIdFieldsResponse,
+          useGetQuery: useListDatabaseIdFieldsQuery,
+        };
+      }
+
+      return {
+        useGetQuery: useGetDatabaseQuery,
+      };
+    },
+  },
 
   api: {
     list: (entityQuery, dispatch) =>

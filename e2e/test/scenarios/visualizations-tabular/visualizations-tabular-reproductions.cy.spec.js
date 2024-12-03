@@ -6,6 +6,7 @@ import {
   cartesianChartCircle,
   createNativeQuestion,
   createQuestion,
+  focusNativeEditor,
   getDashboardCard,
   getDraggableElements,
   getNotebookStep,
@@ -13,7 +14,6 @@ import {
   main,
   modal,
   moveDnDKitElement,
-  openNativeEditor,
   openNotebook,
   openOrdersTable,
   popover,
@@ -22,6 +22,7 @@ import {
   rightSidebar,
   runNativeQuery,
   sidebar,
+  startNewNativeQuestion,
   summarize,
   tableInteractive,
   visitDashboard,
@@ -623,7 +624,8 @@ describe("issue 30039", () => {
   });
 
   it("should not trigger object detail navigation after the modal was closed (metabase#30039)", () => {
-    openNativeEditor().type("select * from ORDERS LIMIT 2");
+    startNewNativeQuestion();
+    focusNativeEditor().as("editor").type("select * from ORDERS LIMIT 2");
     runNativeQuery();
     cy.findAllByTestId("detail-shortcut").first().click();
     cy.findByTestId("object-detail").should("be.visible");
@@ -1123,6 +1125,102 @@ describe("issue 32718", () => {
       cy.findByText("Ean").should("not.exist");
       cy.findByText("Category").should("be.visible");
       cy.findByText("Created At").should("be.visible");
+    });
+  });
+});
+
+describe("issue 50346", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count"],
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
+      breakout: [
+        [
+          "field",
+          PRODUCTS.CATEGORY,
+          { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+        ],
+        [
+          "field",
+          PRODUCTS.VENDOR,
+          { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+        ],
+        [
+          "field",
+          PEOPLE.SOURCE,
+          { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+        ],
+      ],
+    },
+    display: "pivot",
+    visualization_settings: {
+      "pivot_table.column_split": {
+        rows: [
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+          [
+            "field",
+            PRODUCTS.VENDOR,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+          [
+            "field",
+            PEOPLE.SOURCE,
+            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+          ],
+        ],
+        columns: [],
+        values: [
+          ["aggregation", 0],
+          ["aggregation", 1],
+        ],
+      },
+      "pivot_table.column_widths": {
+        leftHeaderWidths: [150, 214, 120],
+        totalLeftHeaderWidths: 484,
+        valueHeaderWidths: {},
+      },
+    },
+  };
+
+  const groupValue = "Annetta Wyman and Sons";
+  const totalValue = "1,217.76";
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should be able to collapse rows for questions with legacy pivot settings (metabase#50346)", () => {
+    createQuestion(questionDetails, { visitQuestion: true, wrapId: true });
+
+    cy.log("collapse one of the sections");
+    cy.findByTestId("pivot-table").within(() => {
+      cy.findByText(totalValue).should("be.visible");
+      cy.findByTestId(`${groupValue}-toggle-button`).click();
+      cy.findByText(totalValue).should("not.exist");
+    });
+
+    cy.log("save and make sure the setting is preserved on reload");
+    queryBuilderHeader().button("Save").click();
+    modal().button("Save").click();
+    cy.wait("@updateCard");
+    visitQuestion("@questionId");
+    cy.findByTestId("pivot-table").within(() => {
+      cy.findByText(totalValue).should("not.exist");
+    });
+
+    cy.log("expand the section");
+    cy.findByTestId("pivot-table").within(() => {
+      cy.findByTestId(`${groupValue}-toggle-button`).click();
+      cy.findByText(totalValue).should("be.visible");
     });
   });
 });
