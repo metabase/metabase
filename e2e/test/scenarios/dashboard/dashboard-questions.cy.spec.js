@@ -66,7 +66,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.createQuestion(
         {
           name: "Total Orders",
-          database_id: SAMPLE_DATABASE.id,
           collection_id: S.FIRST_COLLECTION_ID,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -125,7 +124,6 @@ describe("Dashboard > Dashboard Questions", () => {
           {
             name: "Total Orders",
             dashboard_id: anotherDashboardId,
-            database_id: SAMPLE_DATABASE.id,
             query: {
               "source-table": SAMPLE_DATABASE.ORDERS_ID,
               aggregation: [["count"]],
@@ -168,7 +166,6 @@ describe("Dashboard > Dashboard Questions", () => {
         H.createQuestion({
           name: `Question ${i + 1}`,
           collection_id: S.THIRD_COLLECTION_ID,
-          database_id: SAMPLE_DATABASE.id,
           query: {
             "source-table": SAMPLE_DATABASE.PRODUCTS_ID,
             limit: i + 1,
@@ -204,7 +201,6 @@ describe("Dashboard > Dashboard Questions", () => {
         {
           name: "Total Orders",
           dashboard_id: S.ORDERS_DASHBOARD_ID,
-          database_id: SAMPLE_DATABASE.id,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
             aggregation: [["count"]],
@@ -285,7 +281,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.createQuestion({
         name: "Total Orders Dashboard Question",
         dashboard_id: S.ORDERS_DASHBOARD_ID,
-        database_id: SAMPLE_DATABASE.id,
         query: {
           "source-table": SAMPLE_DATABASE.ORDERS_ID,
           aggregation: [["count"]],
@@ -307,7 +302,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.createQuestion({
         name: "Total Orders Dashboard Question",
         dashboard_id: S.ORDERS_DASHBOARD_ID,
-        database_id: SAMPLE_DATABASE.id,
         query: {
           "source-table": SAMPLE_DATABASE.ORDERS_ID,
           aggregation: [["count"]],
@@ -362,7 +356,6 @@ describe("Dashboard > Dashboard Questions", () => {
         {
           name: "Total Orders",
           dashboard_id: S.ORDERS_DASHBOARD_ID,
-          database_id: SAMPLE_DATABASE.id,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
             aggregation: [["count"]],
@@ -383,10 +376,6 @@ describe("Dashboard > Dashboard Questions", () => {
             .should("be.visible");
         });
     });
-
-    it("can embed a dashboard question", () => {});
-
-    it("can embed a dashboard with dashboard questions", () => {});
 
     it("preserves bookmarks when moving a question to a dashboard", () => {
       // bookmark it
@@ -422,7 +411,6 @@ describe("Dashboard > Dashboard Questions", () => {
     it("can delete a question from a dashboard without deleting all of the questions in metabase", () => {
       H.createQuestion({
         name: "Total Orders",
-        database_id: SAMPLE_DATABASE.id,
         dashboard_id: S.ORDERS_DASHBOARD_ID,
         query: {
           "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -434,7 +422,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.createQuestion(
         {
           name: "Total Orders deleted",
-          database_id: SAMPLE_DATABASE.id,
           dashboard_id: S.ORDERS_DASHBOARD_ID,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -485,7 +472,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
         H.createQuestion({
           name: "Total Orders",
-          database_id: SAMPLE_DATABASE.id,
           dashboard_id: dashboardId,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -496,7 +482,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
         H.createQuestion({
           name: "More Total Orders",
-          database_id: SAMPLE_DATABASE.id,
           dashboard_id: dashboardId,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -540,7 +525,6 @@ describe("Dashboard > Dashboard Questions", () => {
     it("can archive and unarchive a card within a dashboard", () => {
       H.createQuestion({
         name: "Total Orders",
-        database_id: SAMPLE_DATABASE.id,
         dashboard_id: S.ORDERS_DASHBOARD_ID,
         query: {
           "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -551,7 +535,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.createQuestion({
         name: "More Total Orders",
-        database_id: SAMPLE_DATABASE.id,
         dashboard_id: S.ORDERS_DASHBOARD_ID,
         query: {
           "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -580,6 +563,146 @@ describe("Dashboard > Dashboard Questions", () => {
       // check that it got restored
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Total Orders");
+    });
+
+    it("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
+      H.createQuestion(
+        {
+          name: "Average Quantity by Month Question",
+          collection_id: S.FIRST_COLLECTION_ID,
+          query: {
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
+            aggregation: [
+              [
+                "avg",
+                [
+                  "field",
+                  SAMPLE_DATABASE.ORDERS.QUANTITY,
+                  { "base-type": "type/Integer" },
+                ],
+              ],
+            ],
+            breakout: [
+              [
+                "field",
+                SAMPLE_DATABASE.ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        {
+          wrapId: true,
+          idAlias: "avgQuanityQuestionId",
+        },
+      );
+
+      H.createQuestion(
+        {
+          name: "Average Order Total by Month Question",
+          collection_id: S.FIRST_COLLECTION_ID,
+          query: {
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
+            aggregation: [
+              [
+                "avg",
+                [
+                  "field",
+                  SAMPLE_DATABASE.ORDERS.TOTAL,
+                  { "base-type": "type/Float" },
+                ],
+              ],
+            ],
+            breakout: [
+              [
+                "field",
+                SAMPLE_DATABASE.ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        {
+          wrapId: true,
+          idAlias: "avgTotalQuestionId",
+        },
+      );
+
+      H.createDashboard(
+        {
+          name: "Blue Dashboard",
+          collection_id: S.FIRST_COLLECTION_ID,
+        },
+        { wrapId: true, idAlias: "blueDashboardId" },
+      );
+
+      H.createDashboard(
+        {
+          name: "Purple Dashboard",
+          collection_id: S.FIRST_COLLECTION_ID,
+        },
+        { wrapId: true, idAlias: "purpleDashboardId" },
+      );
+
+      cy.get("@blueDashboardId").then(blueDashboardId => {
+        H.visitDashboard(blueDashboardId);
+      });
+
+      // add the quanity question to the blue dashboard
+      H.editDashboard();
+      H.openAddQuestionMenu("Existing Question");
+
+      H.sidebar().findByText("First collection").click();
+      H.sidebar().findByText("Average Quantity by Month Question").click();
+      H.saveDashboard();
+
+      cy.get("@purpleDashboardId").then(purpleDashboardId => {
+        H.visitDashboard(purpleDashboardId);
+      });
+
+      // add the total question to the purple dashboard
+      H.editDashboard();
+      H.openAddQuestionMenu("Existing Question");
+
+      H.sidebar().findByText("First collection").click();
+      H.sidebar().findByText("Average Order Total by Month Question").click();
+
+      // overlay the quantity series in the purple dashboard
+      H.showDashboardCardActions(0);
+      cy.findByLabelText("Add series").click();
+
+      H.modal().findByLabelText("Average Quantity by Month Question").click();
+      H.modal().button("Done").click();
+      H.saveDashboard();
+      H.dashboardCards()
+        .findByText(/Average Quantity by Month/)
+        .should("be.visible");
+
+      // move the quantity question to an entirely different dashboard
+      H.visitQuestion("@avgQuanityQuestionId");
+      H.openQuestionActions("Move");
+
+      H.entityPickerModalTab("Browse").click();
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().button("Move").click();
+
+      // should warn about removing from 2 dashboards
+      H.modal().within(() => {
+        cy.findByText(/will be removed from/i);
+        cy.findByText(/purple dashboard/i);
+        cy.findByText(/blue dashboard/i);
+        cy.button("Move it").click();
+      });
+
+      cy.get("@purpleDashboardId").then(purpleDashboardId => {
+        H.visitDashboard(purpleDashboardId);
+      });
+
+      H.dashboardCards()
+        .findByText("Average Quantity by Month Question")
+        .should("not.exist");
     });
   });
 
@@ -617,7 +740,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.createQuestion(
         {
           name: "Total Orders Question",
-          database_id: SAMPLE_DATABASE.id,
           collection_id: null, // our analytics
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
