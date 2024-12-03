@@ -10,12 +10,12 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
-import { waitTimeContext } from "metabase/context/wait-time";
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
+import { delay } from "metabase/lib/delay";
 import resizeObserver from "metabase/lib/resize-observer";
 
-const WAIT_TIME = 300;
+const WAIT_TIME = delay(300);
 
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
@@ -59,8 +59,6 @@ function ExplicitSize<T>({
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
     class WrappedComponent extends Component<T & InnerProps> {
-      static contextType = waitTimeContext;
-
       static displayName = `ExplicitSize[${displayName}]`;
 
       state: SizeState = {
