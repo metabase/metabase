@@ -367,28 +367,20 @@
        :offset-unit  offset-unit
        :options      {}})))
 
-(def ^:private TimeFilterOperator
-  [:enum :is-null :not-null :> :< :between])
-
 (def ^:private TimeFilterParts
   [:map
-   [:operator TimeFilterOperator]
+   [:operator ::lib.schema.filter/time-filter-operator]
    [:column   ::lib.schema.metadata/column]
    [:values   [:sequential :any]]])
 
 (mu/defn time-filter-clause :- ::lib.schema.expression/expression
   "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[time-filter-parts]]."
-  [operator :- TimeFilterOperator
+  [operator :- ::lib.schema.filter/time-filter-operator
    column   :- ::lib.schema.metadata/column
-   values   :- [:sequential :any]]
+   values   :- [:maybe [:sequential :any]]]
   (let [format-time #(u.time/format-for-base-type % ((some-fn :effective-type :base-type) column))]
-    (case operator
-      :is-null  (lib.filter/is-null column)
-      :not-null (lib.filter/not-null column)
-      :>        (lib.filter/> column (format-time (first values)))
-      :<        (lib.filter/< column (format-time (first values)))
-      :between  (lib.filter/between column (format-time (first values)) (format-time (second values))))))
+    (expression-clause operator (into [column] (map format-time) values) {})))
 
 (mu/defn time-filter-parts :- [:maybe TimeFilterParts]
   "Destructures a time filter clause created by [[time-filter-clause]]. Returns `nil` if the clause does not match
