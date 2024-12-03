@@ -353,9 +353,19 @@
   A `\"is\"` prefix in JavaScript is replaced with a `?` suffix in Clojure , eg. `isManyPks` becomes `:many-pks?`."
   [js-key]
   (let [key-str (if (str/starts-with? js-key "is")
-                  (str (str/replace js-key #"^is" "") "?")
+                  (str (subs js-key 2) "?")
                   js-key)]
     (-> key-str u/->kebab-case-en keyword)))
+
+(defn- js-obj->cljs-map
+  "Converts a JavaScript object with `\"camelCase\"` keys into a Clojure map with `:kebab-case` keys."
+  [an-object]
+  (-> an-object js->clj (update-keys js-key->cljs-key)))
+
+(defn- cljs-map->js-obj
+  "Converts a Clojure map with `:kebab-case` keys into a JavaScript object with `\"camelCase\"` keys."
+  [a-map]
+  (-> a-map (update-keys cljs-key->js-key) clj->js))
 
 (defn- display-info-map->js* [x]
   (reduce (fn [obj [cljs-key cljs-val]]
@@ -1050,7 +1060,7 @@
   (lib.core/string-filter-clause (keyword operator)
                                  column
                                  (js->clj values)
-                                 (-> options js->clj (update-keys js-key->cljs-key))))
+                                 (js-obj->cljs-map options)))
 
 (defn ^:export string-filter-parts
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
@@ -1062,7 +1072,7 @@
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))
-           :options  (-> options (update-keys cljs-key->js-key) clj->js)})))
+           :options  (cljs-map->js-obj options)})))
 
 (defn ^:export number-filter-clause
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1130,7 +1140,7 @@
                                         (keyword unit)
                                         offset-value
                                         (some-> offset-unit keyword)
-                                        (-> options js->clj (update-keys js-key->cljs-key))))
+                                        (js-obj->cljs-map options)))
 
 (defn ^:export relative-date-filter-parts
   "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
@@ -1143,7 +1153,7 @@
            :unit        (name unit)
            :offsetValue offset-value
            :offsetUnit  (some-> offset-unit name)
-           :options     (-> options (update-keys cljs-key->js-key) clj->js)})))
+           :options     (cljs-map->js-obj options)})))
 
 (defn ^:export time-filter-clause
   "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
