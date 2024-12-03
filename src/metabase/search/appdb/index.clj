@@ -86,11 +86,13 @@
                              (keyword table-name)))
           to-drop     (remove keep-table? (existing-indexes))]
       (when (seq to-drop)
-        (try
-          (t2/query (apply sql.helpers/drop-table to-drop))
-          ;; Deletion could fail if it races with other instances
-          (catch ExceptionInfo _))
-        (log/infof "Dropped %d stale indexes" (count to-drop))))))
+        (let [dropped (volatile! 0)]
+          (try
+            (t2/query (apply sql.helpers/drop-table to-drop))
+            (vswap! dropped inc)
+            ;; Deletion could fail if it races with other instances
+            (catch ExceptionInfo _))
+          (log/infof "Dropped %d stale indexes" @dropped))))))
 
 (defsetting search-engine-appdb-index-state
   "Internation state used to maintain the AppDb Search Index"
