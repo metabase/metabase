@@ -17,7 +17,7 @@
 (defn send-alert-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (t2.with-temp/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)
                                                      :alert_condition "rows"}
                              :model/PulseChannel _   {:pulse_id (:id pulse), :channel_type :email}

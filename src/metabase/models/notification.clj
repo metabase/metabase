@@ -18,11 +18,13 @@
 (methodical/defmethod t2/table-name :model/NotificationSubscription [_model] :notification_subscription)
 (methodical/defmethod t2/table-name :model/NotificationHandler      [_model] :notification_handler)
 (methodical/defmethod t2/table-name :model/NotificationRecipient    [_model] :notification_recipient)
+(methodical/defmethod t2/table-name :model/NotificationCard         [_model] :notification_card)
 
 (doseq [model [:model/Notification
                :model/NotificationSubscription
                :model/NotificationHandler
-               :model/NotificationRecipient]]
+               :model/NotificationRecipient
+               :model/NotificationCard]]
   (doto model
     (derive :metabase/model)
     (derive (if (= model :model/NotificationSubscription)
@@ -52,7 +54,28 @@
    #(group-by :notification_id
               (t2/select :model/NotificationSubscription :notification_id [:in (map :id notifications)]))
    :id
-   {:default nil}))
+   {:default []}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Notification :payload]
+  "Batch hydration payloads for a list of Notifications."
+  [_model k notifications]
+  (let [payload-type->ids        (u/group-by :payload_type :payload_id
+                                             conj #{}
+                                             notifications)
+        payload-type+id->payload (into {}
+                                       (for [[payload-type payload-ids] payload-type->ids]
+                                         (case payload-type
+                                           :notification/systen-event
+                                           {[:notification/systen-event nil] nil}
+                                           :notification/card
+                                           (t2/select-fn->fn (fn [x] [payload-type (:id x)]) identity
+                                                             :model/NotificationCard :id [:in payload-ids]))))]
+
+    (for [notification notifications]
+      (assoc notification k
+             (get payload-type+id->payload [(:payload_type notification)
+                                            (:payload_id notification)])))))
+
 
 (methodical/defmethod t2/batched-hydrate [:model/Notification :handlers]
   "Batch hydration NotificationHandlers for a list of Notifications"
@@ -62,7 +85,38 @@
    #(group-by :notification_id
               (t2/select :model/NotificationHandler :notification_id [:in (map :id notifications)]))
    :id
-   {:default nil}))
+   {:default []}))
+
+(def ^:private Notification
+  [:merge
+   [:map
+    [:payload_type (into [:enum] notification-types)]]
+   [:multi {:dispatch (comp keyword :payload_type)}
+    [:notification/system-event
+     [:map
+      [:payload_id {:optional true} nil?]]]
+    [:notification/card
+     [:map
+      [:payload_id int?]
+      [:creator_id int?]]]]])
+
+(defn- validate-notification
+  [notification]
+  (mu/validate-throw Notification notification))
+
+(t2/define-before-insert :model/Notification
+  [instance]
+  (validate-notification instance)
+  instance)
+
+(t2/define-before-update :model/Notification
+  [instance]
+  (validate-notification instance)
+  (when (some #{:payload_type :payload_id}(keys (t2/changes instance)))
+    (throw (ex-info "Update notification payload is not allowed."
+                    {:status-code 400
+                     :changes     (t2/changes instance)})))
+  instance)
 
 (defn- delete-trigger-for-subscription!
   [& args]
@@ -70,8 +124,15 @@
 
 (t2/define-before-delete :model/Notification
   [instance]
-  (doseq [subscription-ids (t2/select-pks-set :model/NotificationSubscription :notification_id (:id instance))]
-    (delete-trigger-for-subscription! subscription-ids))
+  (doseq [subscription-id (t2/select-pks-set :model/NotificationSubscription
+                                             :notification_id (:id instance)
+                                             :type :notification-subscription/cron)]
+    (delete-trigger-for-subscription! subscription-id))
+  (when-let [payload-id (:payload_id instance)]
+    (t2/delete! (case (:payload_type instance)
+                  :notification/card
+                  :model/NotificationCard)
+                payload-id))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -263,8 +324,35 @@
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
+;;                                     :model/NotificationCard                                     ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private card-subscription-send-conditions
+  #{:has_result
+    :goal_above
+    :goal_below})
+
+(t2/deftransforms :model/NotificationCard
+  {:send_condition (mi/transform-validator mi/transform-keyword (partial mi/assert-enum card-subscription-send-conditions))})
+
+(t2/define-before-insert :model/NotificationCard
+  [instance]
+  (merge {:send_condition :has_result
+          :run_once       false}
+         instance))
+
+;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
+(defn hydrate-notification
+  "Fully hydrate notificaitons."
+  [notification-or-notifications]
+  (t2/hydrate notification-or-notifications
+              :creator
+              :payload
+              :subscriptions
+              [:handlers :channel :template :recipients]))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."
@@ -283,15 +371,23 @@
   Return the created notification."
   [notification subscriptions handlers+recipients]
   (t2/with-transaction [_conn]
-    (let [instance (t2/insert-returning-instance! :model/Notification notification)
-          id       (:id instance)]
+    (let [payload-id      (case (:payload_type notification)
+                            :notification/system-event
+                            nil
+                            :notification/card
+                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification)))
+          notification    (-> notification
+                              (assoc :payload_id payload-id)
+                              (dissoc :payload))
+          instance        (t2/insert-returning-instance! :model/Notification notification)
+          notification-id (:id instance)]
       (when (seq subscriptions)
-        (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id id) subscriptions)))
+        (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
       (doseq [handler handlers+recipients]
         (let [recipients (:recipients handler)
               handler    (-> handler
                              (dissoc :recipients)
-                             (assoc :notification_id id))
+                             (assoc :notification_id notification-id))
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))

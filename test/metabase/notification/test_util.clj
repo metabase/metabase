@@ -4,10 +4,12 @@
    [clojure.set :as set]
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
+   [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (def test-channel-type
   "The channel type for the test channel."
@@ -34,7 +36,6 @@
   [_notification]
   {::payload? true})
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
@@ -46,8 +47,8 @@
   (with-send-notification-sync
     (let [channel-messages (atom {})]
       (with-redefs
-       [channel/send! (fn [channel message]
-                        (swap! channel-messages update (:type channel) u/conjv message))]
+        [channel/send! (fn [channel message]
+                         (swap! channel-messages update (:type channel) u/conjv message))]
         (thunk)
         @channel-messages))))
 
@@ -55,16 +56,16 @@
   "Macro that captures all messages sent to channels in the body of the macro.
   Returns a map of channel-type -> messages sent to that channel.
 
-    (with-captured-channel-send!
-      (channel/send! {:type :channel/email} {:say :hi})
-      (channel/send! {:type :channel/email} {:say :xin-chao}))
+  (with-captured-channel-send!
+  (channel/send! {:type :channel/email} {:say :hi})
+  (channel/send! {:type :channel/email} {:say :xin-chao}))
 
-    @captured-messages
-    ;; => {:channel/email [{:say :hi} {:say :xin-chao}]}"
+  @captured-messages
+  ;; => {:channel/email [{:say :hi} {:say :xin-chao}]}"
   [& body]
   `(do-with-captured-channel-send!
-    (fn []
-      ~@body)))
+     (fn []
+       ~@body)))
 
 (defmacro with-temporary-event-topics!
   "Temporarily make `topics` valid event topics."
@@ -79,13 +80,50 @@
          (doseq [topic# topics#]
            (underive topic# :metabase/event))))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defmacro with-notification-testing-setup
+(defmacro with-notification-cleanup!
+  "Macro that clean ups notification related models"
+  [& body]
+  `(mt/with-model-cleanup [:model/Notification
+                           :model/NotificationCard
+                           :model/NotificationHandler
+                           :model/NotificationSubscription
+                           :model/NotificationRecipient]
+     ~@body))
+
+(defmacro with-notification-testing-setup!
   "Macro that sets up the notification testing environment."
   [& body]
-  `(mt/with-model-cleanup [:model/Notification]
+  `(with-notification-cleanup!
      (with-send-notification-sync
        ~@body)))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn do-with-card-notification
+  [{:keys [card notification-card notification subscriptions handlers]} thunk]
+  (mt/with-temp
+    [:model/Card {card-id :id} card]
+    (let [notification (models.notification/create-notification!
+                        (merge {:payload      (assoc notification-card
+                                                     :card_id card-id)
+                                :payload_type :notification/card
+                                :creator_id   (mt/user->id :crowberto)}
+                               notification)
+                        subscriptions
+                        handlers)]
+      (try
+        (thunk (models.notification/hydrate-notification notification))
+        (finally
+          (t2/delete! :model/Notification (:id notification)))))))
+
+(defmacro with-card-notification
+  [[bindings props] & body]
+  `(do-with-card-notification ~props (fn [~bindings] ~@body)))
+
+#_(ngoc/with-tc
+    (with-card-notification [notification {:card {:name "ngoc"
+                                                  :dataset_query (mt/mbql-query users)}}]
+      notification))
+
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;

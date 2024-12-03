@@ -774,6 +774,7 @@
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
+  metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let

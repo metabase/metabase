@@ -14,6 +14,18 @@
 
 (use-fixtures :once (fixtures/initialize :web-server))
 
+(def default-system-event-notification
+  {:payload_type :notification/system-event
+   :active       true})
+
+(def default-user-invited-subscription
+  {:type       :notification-subscription/system-event
+   :event_name :event/user-invited})
+
+(def default-card-created-subscription
+  {:type       :notification-subscription/system-event
+   :event_name :event/card-create})
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Life cycle test                                            ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -30,6 +42,29 @@
     (testing "failed if payload_type is invalid"
       (is (thrown-with-msg? Exception #"Invalid value :notification/not-existed\. Must be one of .*"
                             (t2/insert! :model/Notification {:payload_type :notification/not-existed}))))))
+
+(deftest disallow-update-notification-type-test
+  (testing "can't change notification payload"
+    (mt/with-temp [:model/Notification {noti-id :id} default-system-event-notification]
+      (is (thrown-with-msg?
+           java.lang.Exception
+           #"Update notification payload is not allowed."
+           (t2/update! :model/Notification noti-id {:payload_type :notification/card
+                                                    :payload_id   1337
+                                                    :creator_id   (mt/user->id :crowberto)})))))
+  (testing "can't change payload id"
+    (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
+                                                      :payload_id   1337
+                                                      :creator_id   (mt/user->id :crowberto)}]
+      (is (thrown-with-msg?
+           java.lang.Exception
+           #"Update notification payload is not allowed."
+           (t2/update! :model/Notification noti-id {:payload_id 1338}))))))
+
+(deftest delete-notification-clean-up-payload-test
+  (testing "cleanup :model/NotificationCard on delete"
+    (mt/with-temp
+      [:model/NotificationCard])))
 
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
@@ -67,18 +102,6 @@
                             (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/system-event
                                                                          :event_name     :user-join
                                                                          :notification_id n-id}))))))
-
-(def default-system-event-notification
-  {:payload_type :notification/system-event
-   :active       true})
-
-(def default-user-invited-subscription
-  {:type       :notification-subscription/system-event
-   :event_name :event/user-invited})
-
-(def default-card-created-subscription
-  {:type       :notification-subscription/system-event
-   :event_name :event/card-create})
 
 (deftest create-notification!+hydration-keys-test
   (mt/with-model-cleanup [:model/Notification]
