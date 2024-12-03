@@ -591,6 +591,27 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
     });
 
+    it("should send a dashboard with questions saved in the dashboard", () => {
+      createQuestion({
+        name: "Total Orders",
+        database_id: SAMPLE_DATABASE.id,
+        dashboard_id: ORDERS_DASHBOARD_ID,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      assignRecipient();
+      sendEmailAndVisitIt();
+
+      cy.get(".container").within(() => {
+        cy.findByText("Total Orders");
+        cy.findAllByText("18,760").should("have.length", 2);
+      });
+    });
+
     describe("with parameters", () => {
       beforeEach(() => {
         addParametersToDashboard();
