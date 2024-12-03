@@ -42,7 +42,7 @@ const setup = ({
   locale?: string;
 }) => {
   return render(
-    <MetabaseProvider authConfig={{ ...authConfig }} locale={locale}>
+    <MetabaseProvider authConfig={authConfig} locale={locale}>
       <StaticQuestion questionId={1} />
     </MetabaseProvider>,
   );
@@ -86,7 +86,7 @@ describe("SDK auth and init flow", () => {
     expect(fetchMock.calls(AUTH_PROVIDER_URL)).toHaveLength(1);
 
     rerender(
-      <MetabaseProvider authConfig={{ ...authConfig }}>
+      <MetabaseProvider authConfig={authConfig}>
         <StaticQuestion questionId={1} />
       </MetabaseProvider>,
     );
