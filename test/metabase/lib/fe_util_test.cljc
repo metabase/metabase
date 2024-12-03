@@ -275,38 +275,38 @@
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
                               {:column column
-                               :value :current
-                               :unit :day}
+                               :value  :current
+                               :unit   :day}
 
                               (lib.filter/time-interval column -10 :month)
                               {:column column
-                               :value -10
-                               :unit :month}
+                               :value  -10
+                               :unit   :month}
 
                               (lib.filter/time-interval column 10 :year)
                               {:column column
-                               :value 10
-                               :unit :year}
+                               :value  10
+                               :unit   :year}
 
                               (lib.fe-util/expression-clause :time-interval [column -10 :month] {:include-current true})
-                              {:column column
-                               :value -10
-                               :unit :month
+                              {:column  column
+                               :value   -10
+                               :unit    :month
                                :options {:include-current true}}
 
                               (lib.filter/relative-time-interval column -10 :month -20 :year)
-                              {:column column
-                               :value -10
-                               :unit :month
+                              {:column       column
+                               :value        -10
+                               :unit         :month
                                :offset-value -20
-                               :offset-unit :year}
+                               :offset-unit  :year}
 
                               (lib.filter/relative-time-interval column 10 :day 20 :quarter)
-                              {:column column
-                               :value 10
-                               :unit :day
+                              {:column       column
+                               :value        10
+                               :unit         :day
                                :offset-value 20
-                               :offset-unit :quarter}}]
+                               :offset-unit  :quarter}}]
         (let [{:keys [column value unit offset-value offset-unit options]} parts]
           (is (=? parts (lib.fe-util/relative-date-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/relative-date-filter-parts
