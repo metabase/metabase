@@ -81,6 +81,6 @@ export const PaneContent = (props: BoxProps) => {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SidebarContent, {
   Header: SidebarHeader,
-  Content: SidebarContentMain,
+  // Content: SidebarContentMain,
   Pane: PaneContent,
 });
