@@ -309,9 +309,10 @@
    offset-value :- [:maybe number?]
    offset-unit  :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]
    options      :- [:maybe ::lib.schema.filter/time-interval-options]]
-  (if (or (nil? offset-value) (nil? offset-unit))
-    (expression-clause :time-interval [column value unit] options)
-    (expression-clause :relative-time-interval [column value unit offset-value offset-unit] {})))
+  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)]
+    (if (or (nil? offset-value) (nil? offset-unit))
+      (expression-clause :time-interval [column value unit] options)
+      (expression-clause :relative-time-interval [column value unit offset-value offset-unit] {}))))
 
 (defn- date-col?
   [maybe-ref]
@@ -388,7 +389,8 @@
    column   :- ::lib.schema.metadata/column
    unit     :- [:maybe ::lib.schema.filter/exclude-date-filter-unit]
    values   :- [:maybe [:sequential number?]]]
-  (let [expr   (if (= operator :!=)
+  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)
+        expr   (if (= operator :!=)
                  (case unit
                    :hour-of-day (lib.expression/get-hour column)
                    :day-of-week (lib.expression/get-day-of-week column :iso)
