@@ -1,4 +1,5 @@
 import type { Query } from "history";
+import type { CSSProperties } from "react";
 import { pick } from "underscore";
 
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
@@ -18,6 +19,8 @@ export type SdkDashboardDisplayProps = {
   withCardTitle?: boolean;
   withDownloads?: boolean;
   hiddenParameters?: string[];
+  className?: string;
+  style?: CSSProperties;
 };
 
 export const useSdkDashboardParams = ({
