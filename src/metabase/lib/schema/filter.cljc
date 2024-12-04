@@ -49,6 +49,10 @@
   "Boolean filter operators supported by the FE. Note that `:!=` is not supported."
   [:enum :is-null :not-null :=])
 
+(mr/def ::time-filter-operator
+  "Time filter operators supported by the FE."
+  [:enum :is-null :not-null :> :< :between])
+
 (mr/def ::time-interval-options
   "Options for `:time-interval` operator. Note that `:relative-time-interval` does not support these options."
   [:map [:include-current {:optional true} :boolean]]) ; default false
