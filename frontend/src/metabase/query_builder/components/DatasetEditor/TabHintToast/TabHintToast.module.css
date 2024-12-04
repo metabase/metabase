@@ -19,8 +19,6 @@
   cursor: pointer;
 
   &:hover {
-    /* color: ${() => lighten(color("bg-dark"), 0.3)}; */
-    /* TODO: find a correct place */
-    color: var(var(--mb-color-bg-light));
+    color: color-mix(in srgb, var(--mb-color-bg-dark), white 30%);
   }
 }
