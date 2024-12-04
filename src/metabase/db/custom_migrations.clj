@@ -1240,35 +1240,26 @@
                           (update-vals replace-temporals)
                           (dissoc :id))))))
 
-(defn create-sample-content-v2! []
-  (log/warn "entered create-sample-content-v2!")
+(define-migration CreateSampleContentV2
+  ;; Adds sample content to a fresh install. Adds curate permissions to the collection for the 'All Users' group.
   (when *create-sample-content*
-    (log/warn "*create-sample-content* is true")
     (when (and (config/load-sample-content?)
                (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
                (no-user?)
                (no-db?))
-      (log/warn "Creating sample content")
       (let [table-name->raw-rows (load-edn "sample-content.edn")
-            _                    (log/warn (str "dashboards: " (pr-str (t2/query {:select :* :from :report_dashboard})))) ;; []
             example-dashboard-id  1
-            _                    (log/warn (str "collections: " (pr-str (t2/query {:select :* :from :collection}))))
             example-collection-id 2 ;; trash collection is 1
             expected-sample-db-id 1
             dbs                   (table-name->rows table-name->raw-rows :metabase_database)
-            _                     (log/warn (str "dbs in edn:" (pr-str dbs)))
             _                     (t2/query {:insert-into :metabase_database :values dbs})
             db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
         ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database rows
         ;; and do nothing else, to be safe.
         (if (not= db-ids #{expected-sample-db-id})
-          (do
-            (log/warn "(not= db-ids #{expected-sample-db-id})!")
-            (log/warn (pr-str ["db-ids: " db-ids]))
-            (log/warn (str "DBs:\n" (with-out-str (pprint/pprint (t2/query {:select :* :from :metabase_database})))))
-            (when (seq db-ids)
-              (t2/query {:delete-from :metabase_database :where [:in :id db-ids]})))
+          (when (seq db-ids)
+            (t2/query {:delete-from :metabase_database :where [:in :id db-ids]}))
           (do (doseq [table-name [:collection
                                   :metabase_table
                                   :metabase_field
@@ -1293,15 +1284,9 @@
                          :values      [{:key   "example-dashboard-id"
                                         :value (str example-dashboard-id)}]})))))))
 
-(comment (create-sample-content-v2!)
-         )
-
-(define-migration CreateSampleContentV2
-  ;; Adds sample content to a fresh install. Adds curate permissions to the collection for the 'All Users' group.
-  (create-sample-content-v2!))
-
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
+  ;; We know this won't work for binning on a computed column, there may be other limitations as well.
   ;; -----------------------------------------------------------------------------
   ;; Check out a fresh metabase instance on the branch of the major version you're targeting,
   ;; and without the :ee alias so instance analytics content is not created.
