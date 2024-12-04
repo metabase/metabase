@@ -9,6 +9,7 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -364,6 +365,37 @@
                                :values   [1 12]}
 
                               (lib.filter/!= (lib.expression/get-quarter column) 1 4)
+                              {:operator :!=
+                               :column   column
+                               :unit     :quarter-of-year
+                               :values   [1 4]}
+
+                              ;; legacy expressions based on temporal bucketing
+                              (lib.filter/!= (lib.temporal-bucket/with-temporal-bucket column :hour-of-day) 1 4)
+                              {:operator :!=
+                               :column   column
+                               :unit     :hour-of-day
+                               :values   [1 4]}
+
+                              (lib.filter/!= (lib.temporal-bucket/with-temporal-bucket column :day-of-week)
+                                             "2024-12-02"
+                                             "2024-12-08")
+                              {:operator :!=
+                               :column   column
+                               :unit     :day-of-week
+                               :values   [1 7]}
+
+                              (lib.filter/!= (lib.temporal-bucket/with-temporal-bucket column :month-of-year)
+                                             "2024-01-01"
+                                             "2024-12-31")
+                              {:operator :!=
+                               :column   column
+                               :unit     :month-of-year
+                               :values   [1 12]}
+
+                              (lib.filter/!= (lib.temporal-bucket/with-temporal-bucket column :quarter-of-year)
+                                             "2024-01-01"
+                                             "2024-12-31")
                               {:operator :!=
                                :column   column
                                :unit     :quarter-of-year

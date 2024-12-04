@@ -476,20 +476,7 @@
   [t _base-type]
   (str t))
 
-(defmulti extract
+(defn extract
   "Extracts a unit from a date or datetime."
-  {:arglists '([t unit])}
-  (fn [_t unit]
-    unit))
-
-(defmethod extract :day-of-week
-  [t _unit]
-  (t/as t :day-of-week))
-
-(defmethod extract :month-of-year
-  [t _unit]
-  (t/as t :month-of-year))
-
-(defmethod extract :quarter-of-year
-  [t _unit]
-  (t/as t :quarter))
+  [t unit]
+  (t/as t unit))

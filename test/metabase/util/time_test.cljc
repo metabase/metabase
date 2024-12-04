@@ -348,6 +348,19 @@
     :minute      "12:02"
     :hour        "12:00"))
 
+(deftest ^:parallel extract-test
+  (are [unit expected] (= expected
+                          (shared.ut/extract (from "2024-02-05T10:20:30") unit))
+    :second-of-minute 30
+    :minute-of-hour   20
+    :hour-of-day      10
+    :day-of-week      1
+    :day-of-month     5
+    :day-of-year      36
+    :month-of-year    2
+    :quarter-of-year  1
+    :year             2024))
+
 (deftest ^:parallel unit-diff-datetime-test
   (are [unit expected] (= expected
                           (shared.ut/unit-diff unit "2024-01-01T00:00:00.000" "2024-02-02T12:02:12.345"))

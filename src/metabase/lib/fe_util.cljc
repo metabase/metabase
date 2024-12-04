@@ -309,10 +309,9 @@
    offset-value :- [:maybe number?]
    offset-unit  :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]
    options      :- [:maybe ::lib.schema.filter/time-interval-options]]
-  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)]
-    (if (or (nil? offset-value) (nil? offset-unit))
-      (expression-clause :time-interval [column value unit] options)
-      (expression-clause :relative-time-interval [column value unit offset-value offset-unit] {}))))
+  (if (or (nil? offset-value) (nil? offset-unit))
+    (expression-clause :time-interval [column value unit] options)
+    (expression-clause :relative-time-interval [column value unit offset-value offset-unit] {})))
 
 (defn- date-col?
   [maybe-ref]
@@ -323,7 +322,7 @@
 (defn- unit-is?
   [maybe-ref units]
   (and (lib.util/ref-clause? maybe-ref)
-       (contains? (lib.temporal-bucket/raw-temporal-bucket maybe-ref) units)))
+       (contains? units (lib.temporal-bucket/raw-temporal-bucket maybe-ref))))
 
 (mu/defn relative-date-filter-parts :- [:maybe RelativeDateFilterParts]
   "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
@@ -389,8 +388,7 @@
    column   :- ::lib.schema.metadata/column
    unit     :- [:maybe ::lib.schema.filter/exclude-date-filter-unit]
    values   :- [:maybe [:sequential number?]]]
-  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)
-        expr   (if (= operator :!=)
+  (let [expr   (if (= operator :!=)
                  (case unit
                    :hour-of-day (lib.expression/get-hour column)
                    :day-of-week (lib.expression/get-day-of-week column :iso)
@@ -422,16 +420,21 @@
 
       ;; Legacy expression based on temporal bucketing; numeric arguments. The expression is supported for backward
       ;; compatibility only; we do not generate it back with [[exclude-date-filter-clause]].
-      [:!= _ (col-ref :guard #(and (date-col? %) (unit-is? % [:hour-of-day]))) & (args :guard #(every? int? %))]
-      {:operator :!=, :column (ref->col col-ref), :unit :hour-of-day, :values args}
+      ;; It's important to remove temporal bucketing from the ref before constructing a column to avoid `:display-name`
+      ;; and `:effective-type` changes.
+      [:!= _ (col-ref :guard #(and (date-col? %) (unit-is? % #{:hour-of-day}))) & (args :guard #(every? int? %))]
+      {:operator :!=
+       :column   (-> col-ref (lib.temporal-bucket/with-temporal-bucket nil) ref->col)
+       :unit     :hour-of-day
+       :values   args}
 
       ;; Legacy expression based on temporal bucketing; date arguments. Temporal unit is used to extract the part of the
       ;; date that should be excluded, e.g. `:day-of-week` with `2024-12-04` is used to exclude Wednesdays because
       ;; `2024-12-04` is Wednesday. The dates themselves can be arbitrary. The expression is supported for backward
       ;; compatibility only; we do not generate it back with [[exclude-date-filter-clause]].
-      [:!= _ (col-ref :guard #(and (date-col? %) (unit-is? % [:day-of-week :month-of-year :quarter-of-year]))) & (args :guard #(every? string? %))]
-      (let [col  (ref->col col-ref)
-            unit (lib.temporal-bucket/raw-temporal-bucket col)
+      [:!= _ (col-ref :guard #(and (date-col? %) (unit-is? % #{:day-of-week :month-of-year :quarter-of-year}))) & (args :guard #(every? string? %))]
+      (let [col  (-> col-ref (lib.temporal-bucket/with-temporal-bucket nil) ref->col)
+            unit (lib.temporal-bucket/raw-temporal-bucket col-ref)
             args (mapv u.time/coerce-to-timestamp args)]
         (when (every? u.time/valid? args)
           {:operator :!=
