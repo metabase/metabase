@@ -2,10 +2,13 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   type StructuredQuestionDetails,
+  assertEChartsTooltip,
+  cartesianChartCircleWithColor,
   chartPathWithFillColor,
   createQuestion,
   echartsContainer,
   getDraggableElements,
+  leftSidebar,
   modal,
   moveDnDKitElement,
   popover,
@@ -150,6 +153,81 @@ describe("issue 49874", () => {
     echartsContainer().within(() => {
       cy.findByText("Sum of Quantity").should("not.exist");
       cy.findByText("Sum of Total").should("be.visible");
+    });
+  });
+});
+
+describe("issue 49529", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow selecting breakout dimension before metrics", () => {
+    const question = {
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        database: 1,
+      },
+      display: "bar",
+    };
+
+    visitQuestionAdhoc(question);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findAllByTestId("select-button").eq(0).as("dimensionSelect").click();
+    popover().findByText("ID").click();
+
+    leftSidebar().findByText("Add series breakout").click();
+    popover().findByText("Quantity").click();
+
+    leftSidebar().within(() => {
+      cy.findByText("Y-axis");
+      cy.findByText("Nothing to order");
+    });
+  });
+});
+
+describe("issue 47847", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show chart tooltip on narrow ordinal line charts", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.x_axis.scale": "ordinal",
+        "graph.show_values": true,
+      },
+    });
+
+    cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
+    assertEChartsTooltip({
+      header: "April 24–30, 2022",
+      blurAfter: false,
+      footer: null,
+      rows: [
+        {
+          color: "#509EE3",
+          name: "Count",
+          value: "1",
+        },
+      ],
     });
   });
 });

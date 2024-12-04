@@ -4,7 +4,6 @@ import _ from "underscore";
 import { singularize } from "metabase/lib/formatting";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/v1/operators/utils";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type { NormalizedTable } from "metabase-types/api";
 
 import Question from "../Question";
@@ -79,22 +78,6 @@ class Table {
       tableId: this.id,
       metadata: this.metadata,
     });
-  }
-
-  savedQuestionId() {
-    const match = String(this.id).match(/card__(\d+)/);
-    return match ? parseInt(match[1]) : null;
-  }
-
-  legacyQuery(query = {}) {
-    return (
-      this.question().legacyQuery({
-        useStructuredQuery: true,
-      }) as StructuredQuery
-    ).updateQuery(q => ({
-      ...q,
-      ...query,
-    }));
   }
 
   dimensions() {

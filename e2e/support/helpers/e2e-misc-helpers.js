@@ -1,3 +1,5 @@
+import { focusNativeEditor } from "./e2e-native-editor-helpers";
+
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
@@ -40,17 +42,6 @@ export function openNativeEditor({
   cy.findAllByTestId("loading-indicator").should("not.exist");
 
   return focusNativeEditor().as(alias);
-}
-
-export function focusNativeEditor() {
-  cy.findByTestId("native-query-editor")
-    .should("be.visible")
-    .should("have.class", "ace_editor")
-    .click();
-
-  return cy
-    .findByTestId("native-query-editor")
-    .should("have.class", "ace_focus");
 }
 
 /**
@@ -356,22 +347,47 @@ export function saveSavedQuestion() {
   cy.wait("@updateQuestion");
 }
 
-export function visitPublicQuestion(id) {
+/**
+ *
+ * @param {number} id
+ * @param {object} options
+ * @param {Record<string, string>} options.params
+ * @param {Record<string, string>} options.hash
+ */
+export function visitPublicQuestion(id, { params = {}, hash = {} } = {}) {
+  const searchParams = new URLSearchParams(params).toString();
+  const searchSection = searchParams ? `?${searchParams}` : "";
+  const hashParams = new URLSearchParams(hash).toString();
+  const hashSection = hashParams ? `#${hashParams}` : "";
+
   cy.request("POST", `/api/card/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
-      cy.visit(`/public/question/${uuid}`);
+      cy.visit({
+        url: `/public/question/${uuid}` + searchSection + hashSection,
+      });
     },
   );
 }
 
-export function visitPublicDashboard(id, { params = {} } = {}) {
+/**
+ *
+ * @param {number} id
+ * @param {object} options
+ * @param {Record<string, string>} options.params
+ * @param {Record<string, string>} options.hash
+ */
+export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
+  const searchParams = new URLSearchParams(params).toString();
+  const searchSection = searchParams ? `?${searchParams}` : "";
+  const hashParams = new URLSearchParams(hash).toString();
+  const hashSection = hashParams ? `#${hashParams}` : "";
+
   cy.request("POST", `/api/dashboard/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
       cy.visit({
-        url: `/public/dashboard/${uuid}`,
-        qs: params,
+        url: `/public/dashboard/${uuid}` + searchSection + hashSection,
       });
     },
   );

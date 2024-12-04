@@ -63,6 +63,11 @@
                                            (map ->op-arg)
                                            args))))
 
+(defn ensure-ident
+  "Given an MBQL clause, ensure that it has an `:ident` in its options."
+  [clause]
+  (lib.options/update-options clause update :ident #(or % (u/generate-nano-id))))
+
 (defn defop-create
   "Impl for [[defop]]."
   [op-name args]

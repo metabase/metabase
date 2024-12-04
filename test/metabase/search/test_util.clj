@@ -1,15 +1,14 @@
 (ns metabase.search.test-util
   (:require
    [clojure.test :refer :all]
-   ;; For now, this is specialized to postgres, but we should be able to abstract it to all index-based engines.
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search :as search]
-   [metabase.search.api :as search.api]
+   ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
+   [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
-   [metabase.search.postgres.index :as search.index]
-   [metabase.search.test-util :as search.tu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -21,13 +20,10 @@
   "Create a temporary index table for the duration of the body."
   [& body]
   `(when (search/supports-index?)
-     (let [table-name# (search.index/random-table-name)]
-       (binding [search.index/*active-table* table-name#]
-         (try
-           (search.index/create-table! search.index/*active-table*)
-           ~@body
-           (finally
-             (#'search.index/drop-table! search.index/*active-table*)))))))
+     (search.index/with-temp-index-table
+      ;; We need ingestion to happen on the same thread so that it uses the right search index.
+       (binding [metabase.search.ingestion/*force-sync* true]
+         ~@body))))
 
 (defmacro with-api-user [raw-ctx & body]
   `(let [raw-ctx# ~raw-ctx]
@@ -67,4 +63,4 @@
                          :models           search.config/all-models
                          :model-ancestors? false}
                         raw-ctx))]
-       (search.api/results search-ctx)))))
+       (search.engine/results search-ctx)))))

@@ -16,6 +16,7 @@ import {
   getDashboardCards,
   getTextCardDetails,
   modal,
+  nativeEditor,
   openNotebook,
   openQuestionsSidebar,
   popover,
@@ -92,14 +93,14 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     getDashboardCard().realHover();
     getDashboardCardMenu().click();
     popover().findByText("Edit question").click();
-    cy.findByTestId("native-query-editor").should("be.visible");
+    nativeEditor().should("be.visible");
 
     queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
     getDashboardCard().findByText("Orders SQL").click();
     cy.findByTestId("native-query-top-bar")
       .findByText("This question is written in SQL.")
       .should("be.visible");
-    cy.findByTestId("native-query-editor").should("not.be.visible");
+    nativeEditor().should("not.be.visible");
   });
 
   it("should display a back to the dashboard button in table x-ray dashboards", () => {

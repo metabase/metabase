@@ -1,10 +1,10 @@
 (ns metabase-enterprise.llm.api-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase-enterprise.llm.client :as llm-client]
    [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest summarize-card-test
@@ -16,7 +16,7 @@
                                            :type     :query
                                            :query    {:source-table (mt/id :orders)}}}]
         (let [fake-response {:title "Title" :description "Description"}
-              json-response (json/generate-string fake-response)
+              json-response (json/encode fake-response)
               expected {:summary fake-response}]
           (testing "Card summarization works in the happy path"
             (mt/with-premium-features #{:llm-autodescription}
@@ -67,7 +67,7 @@
               fake-response {:description "Description"
                              :keywords    "awesome, amazing"
                              :questions   "- What is this?"}
-              json-response (json/generate-string fake-response)
+              json-response (json/encode fake-response)
               expected      {:summary {:description "Keywords: awesome, amazing\n\nDescription: Description\n\nQuestions:\n- What is this?"}}]
           (testing "Card summarization works in the happy path"
             (mt/with-premium-features #{:llm-autodescription}

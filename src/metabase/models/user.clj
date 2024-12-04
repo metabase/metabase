@@ -526,6 +526,14 @@
   :type       :boolean
   :default    true)
 
+(defsetting trial-banner-dismissal-timestamp
+  (deferred-tru "The ISO8601 date when a user last dismissed the trial banner.")
+  :user-local :only
+  :encryption :no
+  :export?    false
+  :visibility :authenticated
+  :type       :string)
+
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
 (defmethod audit-log/model-details :model/User

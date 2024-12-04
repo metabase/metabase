@@ -128,10 +128,12 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
-     metabase.models.notification/create-notification!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.models.notification/create-notification!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
+     ;; Safe in tests, where we typically use a private, temporary index per thread.
+     metabase.search.core/reindex!
      metabase.util/run-count!
      next.jdbc/execute!}}
 
@@ -249,6 +251,7 @@
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
+   cheshire.core          {:message "Use metabase.util.json instead of cheshire.core directly."}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
    grouper.core           {:message "Use metabase.util.grouper instead of grouper.core"}
    honeysql.core          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
@@ -343,6 +346,8 @@
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search
+                                     ;; deprecating naked metabase.search namespace in favor of this.
+                                     metabase.search.core
                                      metabase.search.spec}
     metabase.server                #{metabase.server
                                      metabase.server.handler
@@ -475,7 +480,6 @@
     clojure.tools.namespace.parse                                 ns.parse
     colorize.core                                                 colorize
     environ.core                                                  env
-    hf.depstar.api                                                depstar
     hiccup.core                                                   hiccup
     hiccup.util                                                   hiccup.util
     honey.sql                                                     sql
@@ -805,6 +809,8 @@
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
   metabase.util.ssh/with-ssh-tunnel                                                     clojure.core/let
   metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
+  metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
+  metabuild-common.files/with-open-jar-file-system                                      clojure.core/let
   monger.operators/defoperator                                                          clojure.core/def
   potemkin.types/defprotocol+                                                           clojure.core/defprotocol
   potemkin.types/defrecord+                                                             clojure.core/defrecord

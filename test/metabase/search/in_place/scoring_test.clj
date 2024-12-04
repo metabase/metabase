@@ -4,8 +4,8 @@
    [java-time.api :as t]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter-test :as search.filter-test]
+   [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.in-place.scoring :as scoring]
-   [metabase.search.legacy :as search.legacy]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
