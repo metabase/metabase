@@ -161,9 +161,10 @@
    response
    {session-uuid :id
     session-type :type
-    anti-csrf-token :anti_csrf_token} :- [:map [:id [:or
-                                                     uuid?
-                                                     [:re u/uuid-regex]]]]
+    anti-csrf-token :anti_csrf_token
+    :as _session-instance} :- [:map [:id [:or
+                                          uuid?
+                                          [:re u/uuid-regex]]]]
    request-time]
   (let [cookie-options (merge
                         (default-session-cookie-attributes session-type request)

@@ -8,7 +8,7 @@
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -211,7 +211,7 @@
 
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "\nwith test user %s\n" user-kwd)
-    (mw.session/with-current-user (some-> user-kwd user->id)
+    (request/with-current-user (some-> user-kwd user->id)
       (thunk))))
 
 (defmacro with-test-user

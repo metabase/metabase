@@ -127,8 +127,7 @@
   This is a delay so that the settings for a user are loaded only if and when they are actually needed during a given
   API request.
 
-  This is normally bound automatically by session middleware, in
-  [[metabase.server.middleware.session/do-with-current-user]]."
+  This is normally bound automatically by session middleware, in [[metabase.server.middleware.session]]."
   (delay (atom nil)))
 
 (def ^:private retired-setting-names

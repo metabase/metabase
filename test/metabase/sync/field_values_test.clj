@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze :as analyze]
    [metabase.models :refer [Field FieldValues Table]]
-   [metabase.models.field-values :as sync.field-values]
+   [metabase.models.field-values :as field-values]
    [metabase.sync :as sync]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
@@ -86,7 +86,7 @@
 (deftest sync-should-delete-expired-advanced-field-values-test
   (testing "Test that the expired Advanced FieldValues should be removed"
     (let [field-id                  (mt/id :venues :price)
-          expired-created-at        (t/minus (t/offset-date-time) (t/plus sync.field-values/advanced-field-values-max-age (t/days 1)))
+          expired-created-at        (t/minus (t/offset-date-time) (t/plus field-values/advanced-field-values-max-age (t/days 1)))
           now                       (t/offset-date-time)
           [expired-sandbox-id
            expired-linked-filter-id
@@ -187,7 +187,7 @@
 
     (testing (str "If the total length of all values exceeded the length threshold, it should get unmarked as auto list "
                   "and set back to `nil`")
-      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 sync.field-values/*total-max-length*) "A"))])
+      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
       (testing "has_field_values should have been set to nil."
         (is (= nil
                (t2/select-one-fn :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
@@ -212,14 +212,14 @@
                                :type :sandbox
                                :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
-        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 sync.field-values/*absolute-max-distinct-values-limit*)))
+        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*absolute-max-distinct-values-limit*)))
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values Field
                                    :id (mt/id :blueberries_consumed :str)))))
         (testing "it should still have FieldValues, but the stored list has at most [metadata-queries/absolute-max-distinct-values-limit] elements"
-          (is (= {:values                (take sync.field-values/*absolute-max-distinct-values-limit*
-                                               (one-off-dbs/range-str (+ 100 sync.field-values/*absolute-max-distinct-values-limit*)))
+          (is (= {:values                (take field-values/*absolute-max-distinct-values-limit*
+                                               (one-off-dbs/range-str (+ 100 field-values/*absolute-max-distinct-values-limit*)))
                   :human_readable_values []
                   :has_more_values       true}
                  (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
@@ -240,7 +240,7 @@
                (t2/select-one-fn :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
 
       (testing "insert a row with the value length exceeds our length limit\n"
-        (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 sync.field-values/*total-max-length*) "A"))])
+        (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values Field

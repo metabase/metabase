@@ -440,6 +440,7 @@
     metabase.query-processor       :any
     metabase.related               :any
     metabase.request               #{metabase.config
+                                     metabase.models
                                      metabase.public-settings
                                      metabase.util}
     metabase.sample-data           :any

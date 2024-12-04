@@ -4,10 +4,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.api.common :as api :refer [*current-user*
-                                        *current-user-id*
-                                        *is-group-manager?*
-                                        *is-superuser?*]]
+   [metabase.api.common :as api :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -17,6 +14,8 @@
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.request.cookies :as request.cookies]
+   [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
@@ -30,8 +29,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private session-cookie mw.session/metabase-session-cookie)
-(def ^:private session-timeout-cookie @#'mw.session/metabase-session-timeout-cookie)
+(def ^:private session-cookie request/metabase-session-cookie)
+(def ^:private session-timeout-cookie request/metabase-session-timeout-cookie)
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 
@@ -39,19 +38,19 @@
   (testing "`SameSite` value is read from config (env)"
     (is (= :lax ; Default value
            (with-redefs [env/env (dissoc env/env :mb-session-cookie-samesite)]
-             (mw.session/session-cookie-samesite))))
+             (request.cookies/session-cookie-samesite))))
 
     (is (= :strict
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "StRiCt")]
-             (mw.session/session-cookie-samesite))))
+             (request.cookies/session-cookie-samesite))))
 
     (is (= :none
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
-             (mw.session/session-cookie-samesite))))
+             (request.cookies/session-cookie-samesite))))
 
     (is (thrown-with-msg? ExceptionInfo #"Invalid value for session cookie samesite"
                           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
-                            (mw.session/session-cookie-samesite))))))
+                            (request.cookies/session-cookie-samesite))))))
 
 (deftest set-session-cookie-test
   (mt/with-temporary-setting-values [session-timeout nil]
@@ -62,7 +61,7 @@
                 :same-site :lax
                 :http-only true
                 :path      "/"}
-               (-> (mw.session/set-session-cookies {} {} {:id uuid, :type :normal} request-time)
+               (-> (request/set-session-cookies {} {} {:id uuid, :type :normal} request-time)
                    (get-in [:cookies "metabase.SESSION"])))))
       (testing "should set `Max-Age` if `remember` is true in request"
         (is (= {:value     (str uuid)
@@ -70,7 +69,7 @@
                 :http-only true
                 :path      "/"
                 :max-age   1209600}
-               (-> (mw.session/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
+               (-> (request/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
                    (get-in [:cookies "metabase.SESSION"])))))
       (testing "if `MB_SESSION_COOKIES=true` we shouldn't set a `Max-Age`, even if `remember` is true"
         (is (= {:value     (str uuid)
@@ -78,7 +77,7 @@
                 :http-only true
                 :path      "/"}
                (mt/with-temporary-setting-values [session-cookies true]
-                 (-> (mw.session/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
+                 (-> (request/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
                      (get-in [:cookies "metabase.SESSION"])))))))))
 
 (deftest samesite-none-log-warning-test
@@ -88,14 +87,14 @@
           request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
       (testing "should log a warning if SameSite is configured to \"None\" and the site is served over an insecure connection."
         (mt/with-log-messages-for-level [messages :warn]
-          (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)
+          (request/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)
           (is (contains? (into #{}
                                (map :message)
                                (messages))
                          "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032"))))
       (testing "should not log a warning over a secure connection."
         (mt/with-log-messages-for-level [messages :warn]
-          (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)
+          (request/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)
           (is (not (contains? (into #{}
                                     (map :message)
                                     (messages))
@@ -120,7 +119,7 @@
                      (pr-str headers) (if expected "SHOULD" "SHOULD NOT"))
       (let [session {:id   (random-uuid)
                      :type :normal}
-            actual  (-> (mw.session/set-session-cookies {:headers headers} {} session (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))
+            actual  (-> (request/set-session-cookies {:headers headers} {} session (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))
                         (get-in [:cookies "metabase.SESSION" :secure])
                         boolean)]
         (is (= expected actual))))))
@@ -145,8 +144,8 @@
 
 ;;; ------------------------------------- tests for full-app embedding sessions --------------------------------------
 
-(def ^:private embedded-session-cookie @#'mw.session/metabase-embedded-session-cookie)
-(def ^:private anti-csrf-token-header @#'mw.session/anti-csrf-token-header)
+(def ^:private embedded-session-cookie request/metabase-embedded-session-cookie)
+(def ^:private anti-csrf-token-header request/anti-csrf-token-header)
 
 (def ^:private test-anti-csrf-token "84482ddf1bb178186ed9e1c0b1e05a2d")
 
@@ -168,7 +167,7 @@
                                                    :path      "/"
                                                    :max-age   60}}
                 :headers {anti-csrf-token-header test-anti-csrf-token}}
-               (mw.session/set-session-cookies {}
+               (request/set-session-cookies {}
                                                {}
                                                test-full-app-embed-session
                                                (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
@@ -186,7 +185,7 @@
                                                    :secure    true
                                                    :max-age   60}}
                 :headers {anti-csrf-token-header test-anti-csrf-token}}
-               (mw.session/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
+               (request/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
                                                {}
                                                test-full-app-embed-session
                                                (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))))))))
@@ -454,7 +453,7 @@
 
 (deftest with-current-user-test
   (testing "with-current-user correctly binds the appropriate vars for the provided user ID"
-    (mw.session/with-current-user (mt/user->id :rasta)
+    (request/with-current-user (mt/user->id :rasta)
       ;; Set a user-local value for rasta so that we can make sure that the user-local settings map is correctly bound
       (setting-test/test-user-local-only-setting! "XYZ")
 
@@ -468,8 +467,8 @@
 
 (deftest as-admin-test
   (testing "as-admin overrides *is-superuser?* and *current-user-permissions-set*"
-    (mw.session/with-current-user (mt/user->id :rasta)
-      (mw.session/as-admin
+    (request/with-current-user (mt/user->id :rasta)
+      (request/as-admin
        ;; Current user ID remains the same
         (is (= (mt/user->id :rasta) *current-user-id*))
        ;; *is-superuser?* and permissions set are overrided
@@ -478,7 +477,7 @@
   (testing "as-admin preserves any locale settings"
     (let [original "fr"]
       (binding [i18n/*user-locale* original]
-        (mw.session/as-admin
+        (request/as-admin
           (is (= original i18n/*user-locale*))
           (is (= "French" (.getDisplayLanguage (i18n/user-locale)))))))))
 
@@ -664,7 +663,7 @@
                                                   :path      "/"
                                                   :max-age   60
                                                   :http-only true}}}
-                   (mw.session/set-session-cookies request response session request-time)))))))))
+                   (request/set-session-cookies request response session request-time)))))))))
 
 (deftest session-timeout-test-6
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
@@ -692,4 +691,4 @@
                                                   :same-site :lax
                                                   :path      "/"
                                                   :http-only true}}}
-                   (mw.session/set-session-cookies request response session request-time)))))))))
+                   (request/set-session-cookies request response session request-time)))))))))

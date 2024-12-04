@@ -10,7 +10,7 @@
    [metabase.models :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Session User]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -38,7 +38,7 @@
   [:map
    [:id ms/UUIDString]])
 
-(def ^:private session-cookie mw.session/metabase-session-cookie)
+(def ^:private session-cookie request/metabase-session-cookie)
 
 (deftest login-test
   (reset-throttlers!)
