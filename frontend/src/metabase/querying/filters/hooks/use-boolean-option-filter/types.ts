@@ -4,7 +4,7 @@ import type * as Lib from "metabase-lib";
 export type OptionType = "true" | "false" | "is-null" | "not-null";
 
 export interface OperatorOption
-  extends FilterOperatorOption<Lib.BooleanFilterOperatorName> {
+  extends FilterOperatorOption<Lib.BooleanFilterOperator> {
   type: OptionType;
   isAdvanced?: boolean;
 }

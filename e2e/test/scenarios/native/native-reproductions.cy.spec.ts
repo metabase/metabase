@@ -3,6 +3,9 @@ import {
   adhocQuestionHash,
   createNativeQuestion,
   createQuestion,
+  focusNativeEditor,
+  nativeEditor,
+  nativeEditorCompletions,
   openNativeEditor,
   restore,
   runNativeQuery,
@@ -134,22 +137,20 @@ describe("issue 33327", () => {
     cy.findByTestId("scalar-value").should("have.text", "1");
 
     cy.findByTestId("visibility-toggler").click();
-    cy.findByTestId("native-query-editor")
-      .should("contain", query)
-      .type("{leftarrow}--");
+    focusNativeEditor().should("contain", query).type("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.findByTestId("native-query-editor").should("contain", "SELECT --1");
+    nativeEditor().should("be.visible").and("contain", "SELECT --1");
     getRunQueryButton().click();
     cy.wait("@dataset");
 
     cy.findByTestId("visualization-root").icon("warning").should("be.visible");
     cy.findByTestId("scalar-value").should("not.exist");
 
-    cy.findByTestId("native-query-editor")
+    focusNativeEditor()
       .should("contain", "SELECT --1")
-      .type("{leftarrow}{backspace}{backspace}");
-    cy.findByTestId("native-query-editor").should("contain", query);
+      .type("{leftarrow}{backspace}{backspace}")
+      .should("contain", query);
 
     getRunQueryButton().click();
     cy.wait("@dataset");
@@ -185,11 +186,9 @@ describe("issue 49454", () => {
   it("should be possible to use metrics in native queries (metabase#49454)", () => {
     openNativeEditor().type("select * from {{ #test");
 
-    cy.get(".ace_autocomplete")
-      .should("be.visible")
-      .within(() => {
-        cy.findByText("-question-49454").should("be.visible");
-        cy.findByText("-metric-49454").should("be.visible");
-      });
+    nativeEditorCompletions().within(() => {
+      cy.findByText("-question-49454").should("be.visible");
+      cy.findByText("-metric-49454").should("be.visible");
+    });
   });
 });

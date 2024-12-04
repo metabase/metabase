@@ -31,17 +31,17 @@ export default function App() {
 
     return (
         <MetabaseProvider config={config}>
-            <StaticQuestion questionId={questionId} showVisualizationSelector={false}/>
+            <StaticQuestion questionId={questionId} withChartTypeSelector={false}/>
         </MetabaseProvider>
     );
 }
 ```
 
-You can pass parameter values to questions defined with SQL via `parameterValues` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
+You can pass parameter values to questions defined with SQL via `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
 
 ```jsx
 {% raw %}
-<StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
+<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
 {% endraw %}
 ```
 
