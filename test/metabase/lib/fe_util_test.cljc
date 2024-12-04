@@ -340,6 +340,16 @@
                               (lib.filter/> column "10:20")
                               {:operator :>, :column column, :values [(u.time/local-time 10 20)]}
 
+                              (lib.filter/> column "10:20:30")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30)]}
+
+                              (lib.filter/> column "10:20:30.123")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30 123)]}
+
+                              ;; timezone should be ignored
+                              (lib.filter/> column "10:20:30.123Z")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30 123)]}
+
                               (lib.filter/< column "15:40")
                               {:operator :<, :column column, :values [(u.time/local-time 15 40)]}
 
