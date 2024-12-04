@@ -17,7 +17,7 @@ import {
   useDashboardUrlQuery,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
-import favicon from "metabase/hoc/Favicon";
+import { useFavicon } from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
@@ -109,6 +109,8 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
+  useFavicon({ favicon: props.pageFavicon });
+
   const {
     dashboard,
     isRunning,
@@ -121,7 +123,6 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const {
     documentTitle: _documentTitle,
-    pageFavicon: _pageFavicon,
     isRunning: _isRunning,
     isLoadingComplete: _isLoadingComplete,
     children,
@@ -247,7 +248,6 @@ function getDashboardId({ dashboardId, params }: DashboardAppProps) {
 
 export const DashboardAppConnected = _.compose(
   connector,
-  favicon(({ pageFavicon }: Pick<ReduxProps, "pageFavicon">) => pageFavicon),
   title(
     ({
       dashboard,
