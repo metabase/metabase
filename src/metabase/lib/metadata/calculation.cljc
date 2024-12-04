@@ -466,7 +466,7 @@
   [query _stage-number stage-number options]
   (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
-(def ^:dynamic *propagate-options-to-next-stage*
+(def ^:dynamic *propagate-binning-and-bucketing*
   "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
   the `:was-binned` option.
 
@@ -503,7 +503,7 @@
     x
     options        :- [:maybe ReturnedColumnsOptions]]
    (let [options (merge (default-returned-columns-options query) options)]
-     (binding [*propagate-options-to-next-stage* true]
+     (binding [*propagate-binning-and-bucketing* true]
        (returned-columns-method query stage-number x options)))))
 
 (def VisibleColumnsOptions
