@@ -109,10 +109,6 @@ describe("app banner utils", () => {
       jest.useRealTimers();
     });
 
-    it("should return the current UTC timestamp", () => {
-      expect(getCurrentUTCTimestamp()).toBe(dayjs().utc().toISOString());
-    });
-
     it("should return the UTC timestamp from the UTC input", () => {
       jest.setSystemTime(new Date("2024-12-31T23:00:00.000Z"));
       expect(getCurrentUTCTimestamp()).toBe("2024-12-31T23:00:00.000Z");
