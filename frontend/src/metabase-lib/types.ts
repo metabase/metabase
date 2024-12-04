@@ -302,7 +302,7 @@ export type FilterOperatorName =
   | NumberFilterOperator
   | BooleanFilterOperator
   | SpecificDateFilterOperatorName
-  | ExcludeDateFilterOperatorName
+  | ExcludeDateFilterOperator
   | CoordinateFilterOperator;
 
 export type StringFilterOperator =
@@ -341,7 +341,7 @@ export type BooleanFilterOperator = "=" | "is-null" | "not-null";
 export type SpecificDateFilterOperatorName =
   (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
 
-export type ExcludeDateFilterOperatorName =
+export type ExcludeDateFilterOperator =
   (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
 
 export type TimeFilterOperator = ">" | "<" | "between" | "is-null" | "not-null";
@@ -358,7 +358,7 @@ export type RelativeDateFilterUnit =
   | "quarter"
   | "year";
 
-export type ExcludeDateBucketName = (typeof EXCLUDE_DATE_BUCKETS)[number];
+export type ExcludeDateFilterUnit = (typeof EXCLUDE_DATE_BUCKETS)[number];
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -431,14 +431,14 @@ export type RelativeDateFilterOptions = {
 /*
  * values depend on the bucket
  * day-of-week => 1-7 (Monday-Sunday)
- * month-of-year => 0-11 (January-December)
+ * month-of-year => 1-12 (January-December)
  * quarter-of-year => 1-4
  * hour-of-day => 0-23
  */
 export type ExcludeDateFilterParts = {
-  operator: ExcludeDateFilterOperatorName;
+  operator: ExcludeDateFilterOperator;
   column: ColumnMetadata;
-  bucket: ExcludeDateBucketName | null;
+  unit: ExcludeDateFilterUnit | null;
   values: number[];
 };
 

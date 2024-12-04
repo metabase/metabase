@@ -429,20 +429,20 @@ describe("filter", () => {
       jest.setSystemTime(new Date(2020, 0, 1));
     });
 
-    it.each<Lib.ExcludeDateBucketName>([
+    it.each<Lib.ExcludeDateFilterUnit>([
       "hour-of-day",
       "day-of-week",
       "month-of-year",
       "quarter-of-year",
     ])(
-      'should be able to create and destructure an exclude date filter with "%s" bucket and multiple values',
-      bucket => {
+      'should be able to create and destructure an exclude date filter with "%s" unit and multiple values',
+      unit => {
         const { filterParts, columnInfo } = addExcludeDateFilter(
           query,
-          Lib.excludeDateFilterClause(query, 0, {
+          Lib.excludeDateFilterClause({
             operator: "!=",
             column,
-            bucket,
+            unit,
             values: [1, 2],
           }),
         );
@@ -450,22 +450,22 @@ describe("filter", () => {
         expect(filterParts).toMatchObject({
           operator: "!=",
           column: expect.anything(),
-          bucket,
+          unit,
           values: [1, 2],
         });
         expect(columnInfo?.name).toBe(columnName);
       },
     );
 
-    it.each<Lib.ExcludeDateFilterOperatorName>(["is-null", "not-null"])(
+    it.each<Lib.ExcludeDateFilterOperator>(["is-null", "not-null"])(
       'should be able to create and destructure an exclude date filter with "%s" operator without values',
       operator => {
         const { filterParts, columnInfo } = addExcludeDateFilter(
           query,
-          Lib.excludeDateFilterClause(query, 0, {
+          Lib.excludeDateFilterClause({
             operator,
             column,
-            bucket: null,
+            unit: null,
             values: [],
           }),
         );
@@ -473,25 +473,25 @@ describe("filter", () => {
         expect(filterParts).toMatchObject({
           operator,
           column: expect.anything(),
-          bucket: null,
+          unit: null,
           values: [],
         });
         expect(columnInfo?.name).toBe(columnName);
       },
     );
 
-    it.each<Lib.ExcludeDateFilterOperatorName>(["is-null", "not-null"])(
+    it.each<Lib.ExcludeDateFilterOperator>(["is-null", "not-null"])(
       'should remove an existing temporal bucket with "%s" operator',
       operator => {
         const { filterParts, columnInfo } = addExcludeDateFilter(
           query,
-          Lib.excludeDateFilterClause(query, 0, {
+          Lib.excludeDateFilterClause({
             operator,
             column: Lib.withTemporalBucket(
               column,
               findTemporalBucket(query, column, "Minute"),
             ),
-            bucket: null,
+            unit: null,
             values: [],
           }),
         );
@@ -499,25 +499,25 @@ describe("filter", () => {
         expect(filterParts).toMatchObject({
           operator,
           column: expect.anything(),
-          bucket: null,
+          unit: null,
           values: [],
         });
         expect(columnInfo?.name).toBe(columnName);
       },
     );
 
-    it.each<[Lib.ExcludeDateBucketName, number[], Lib.ExpressionArg[]]>([
+    it.each<[Lib.ExcludeDateFilterUnit, number[], Lib.ExpressionArg[]]>([
       ["hour-of-day", [10, 20], [10, 20]],
       ["day-of-week", [1, 2, 3], ["2019-12-30", "2019-12-31", "2020-01-01"]],
       ["month-of-year", [0, 2], ["2020-01-01", "2020-03-01"]],
       ["quarter-of-year", [1, 4], ["2020-01-01", "2020-10-01"]],
     ])(
-      'should properly serialize values for "%s" bucket',
-      (bucket, values, args) => {
-        const filter = Lib.excludeDateFilterClause(query, 0, {
+      'should properly serialize values for "%s" unit',
+      (unit, values, args) => {
+        const filter = Lib.excludeDateFilterClause({
           operator: "!=",
           column,
-          bucket,
+          unit,
           values,
         });
 
@@ -579,10 +579,10 @@ describe("filter", () => {
     it("should ignore expressions with incorrect column type", () => {
       const { filterParts } = addExcludeDateFilter(
         query,
-        Lib.excludeDateFilterClause(query, 0, {
+        Lib.excludeDateFilterClause({
           operator: "!=",
           column: findColumn(query, tableName, "PRICE"),
-          bucket: "day-of-week",
+          unit: "day-of-week",
           values: [1, 2],
         }),
       );
