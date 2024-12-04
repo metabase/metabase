@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type {
   CreateActionRequest,
   DeleteActionRequest,
@@ -48,7 +50,7 @@ export const actionApi = Api.injectEndpoints({
       query: body => ({
         method: "POST",
         url: "/api/action",
-        body,
+        body: _.omit(body, "type"), // Changing action type is not supported
       }),
       invalidatesTags: (action, error) =>
         action ? [...invalidateTags(error, [listTag("action")])] : [],

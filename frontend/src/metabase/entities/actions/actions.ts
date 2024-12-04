@@ -6,6 +6,7 @@ import {
   actionApi,
   createActionPublicLink,
   deleteActionPublicLink,
+  useGetActionQuery,
 } from "metabase/api";
 import {
   createEntity,
@@ -114,6 +115,11 @@ const Actions = createEntity({
   nameOne: "action",
   schema: ActionSchema,
   path: "/api/action",
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery: useGetActionQuery,
+    }),
+  },
   api: {
     list: (entityQuery: ListActionsRequest, dispatch: Dispatch) =>
       entityCompatibleQuery(
