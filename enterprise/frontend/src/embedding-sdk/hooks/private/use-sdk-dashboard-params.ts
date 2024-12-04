@@ -18,6 +18,7 @@ export type SdkDashboardDisplayProps = {
   withCardTitle?: boolean;
   withDownloads?: boolean;
   hiddenParameters?: string[];
+  initialTabId?: number;
 };
 
 export const useSdkDashboardParams = ({

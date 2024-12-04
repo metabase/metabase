@@ -53,6 +53,7 @@ const InteractiveDashboardInner = ({
   className,
   style,
   renderDrillThroughQuestion: AdHocQuestionView,
+  initialTabId,
 }: InteractiveDashboardProps) => {
   const {
     displayOptions,
@@ -122,6 +123,7 @@ const InteractiveDashboardInner = ({
             isNightMode={false}
             onNightModeChange={_.noop}
             hasNightModeToggle={false}
+            initialTabId={initialTabId}
           />
         </InteractiveDashboardProvider>
       )}

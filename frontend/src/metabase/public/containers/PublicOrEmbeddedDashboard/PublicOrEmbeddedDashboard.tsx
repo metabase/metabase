@@ -40,14 +40,16 @@ import type { State } from "metabase-types/store";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-const mapStateToProps = (state: State) => {
+const mapStateToProps = (state: State, props: OwnProps) => {
   return {
     dashboard: getDashboardComplete(state),
     slowCards: getSlowCards(state),
     parameters: getParameters(state),
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
-    selectedTabId: getSelectedTabId(state),
+    selectedTabId: getSelectedTabId(state, {
+      initialTabId: props.initialTabId,
+    }),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
@@ -69,6 +71,7 @@ type OwnProps = {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
+  initialTabId?: number;
 } & PublicOrEmbeddedDashboardEventHandlersProps;
 
 type PublicOrEmbeddedDashboardProps = OwnProps &

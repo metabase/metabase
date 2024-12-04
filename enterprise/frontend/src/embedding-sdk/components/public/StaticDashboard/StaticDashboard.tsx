@@ -30,6 +30,7 @@ export const StaticDashboardInner = ({
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
+  initialTabId,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -74,6 +75,7 @@ export const StaticDashboardInner = ({
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
+        initialTabId={initialTabId}
       />
     </Box>
   );
