@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   downloadAndAssert,
+  focusNativeEditor,
   restore,
   runNativeQuery,
   visitQuestion,
@@ -46,7 +47,7 @@ describe("issue 10803", () => {
       // Add a space at the end of the query to make it "dirty"
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
-      cy.get(".ace_editor").type("{movetoend} ");
+      focusNativeEditor().type("{movetoend} ");
 
       runNativeQuery();
       downloadAndAssert({ fileType, raw: true }, testWorkbookDatetimes);
@@ -446,7 +447,7 @@ describe("issue 19889", () => {
     it("should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
-      cy.get(".ace_editor").type(
+      focusNativeEditor().type(
         '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
       );
 
@@ -489,7 +490,7 @@ describe("metabase#28834", () => {
     });
 
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    cy.get(".ace_editor").should("be.visible").type(', select 2 "column b"');
+    focusNativeEditor().type(', select 2 "column b"');
   });
 
   it("should be able to export unsaved native query results as CSV even after the query has changed", () => {

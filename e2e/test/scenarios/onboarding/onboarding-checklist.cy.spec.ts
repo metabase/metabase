@@ -13,7 +13,35 @@ import {
 } from "e2e/support/helpers";
 import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
 
-describeEE("Onboarding checklist page", () => {
+describe("Onboarding checklist page", () => {
+  beforeEach(() => {
+    restore();
+  });
+
+  it("should let non-admins access this page", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/getting-started");
+
+    cy.get("[data-accordion=true]").within(() => {
+      cy.findByRole("heading", { name: "Start visualizing your data" }).should(
+        "be.visible",
+      );
+      cy.contains(
+        "Hover over a table and click the yellow lightning bolt",
+      ).should("be.visible");
+
+      cy.findByText("Make an interactive chart with the query builder").click();
+      cy.contains(
+        "Filter and summarize data, add custom columns, join data from other tables, and more",
+      ).should("be.visible");
+      cy.contains(
+        "Hover over a table and click the yellow lightning bolt",
+      ).should("not.exist");
+    });
+  });
+});
+
+describeEE("Inaccessible Onboarding checklist", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -29,7 +57,14 @@ describeEE("Onboarding checklist page", () => {
       );
     });
 
+    cy.log("Redirects to the home page");
+    visitFullAppEmbeddingUrl({ url: "/getting-started", qs: {} });
+    cy.location("pathname").should("eq", "/");
+  });
+
+  it("should not render when the instance is whitelabelled", () => {
     updateSetting("application-name", "Acme, corp.");
+
     cy.visit("/");
     cy.findByTestId("main-navbar-root").within(() => {
       cy.findByRole("listitem", { name: "Home" }).should("be.visible");
@@ -37,6 +72,10 @@ describeEE("Onboarding checklist page", () => {
         "not.exist",
       );
     });
+
+    cy.log("Redirects to the home page");
+    cy.visit("/getting-started");
+    cy.location("pathname").should("eq", "/");
   });
 });
 

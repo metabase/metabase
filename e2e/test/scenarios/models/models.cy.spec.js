@@ -605,12 +605,9 @@ describe("scenarios > models", () => {
     }).then(({ body: { id: modelId } }) => {
       cy.request("PUT", `/api/card/${modelId}`, { type: "model" }).then(() => {
         cy.visit(`/model/${modelId}/query`);
-        cy.get(".ace_editor:not(.ace_autocomplete)")
-          .should("be.visible")
-          .type("{movetoend}")
-          .type(" WHERE {{F", {
-            parseSpecialCharSequences: false,
-          });
+        focusNativeEditor().type("{movetoend}").type(" WHERE {{F", {
+          parseSpecialCharSequences: false,
+        });
         cy.findByTestId("tag-editor-sidebar").should("not.exist");
       });
     });
