@@ -89,29 +89,32 @@
       false {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 20})))
 
 (deftest ^:parallel binning-is-propagated-into-next-stage-display-name
-  (let [query (as-> meta/metadata-provider $
-                (lib/query $ (meta/table-metadata :orders))
-                (lib/aggregate $ (lib/count))
-                (lib/breakout $ (lib/with-binning
-                                 (meta/field-metadata :orders :total)
-                                 (m/find-first (comp #{"50 bins"} :display-name)
-                                               (lib/available-binning-strategies $ (meta/field-metadata :orders :total)))))
-                (lib.stage/append-stage $))]
-    (testing "Binning is present in next stage display-name"
-      (is (some? (m/find-first (comp #{"Total: 50 bins"} :display-name)
-                               (lib/visible-columns query)))))
-    (testing "Binning is present in next next stage display-name"
-      (is (some? (m/find-first (comp #{"Total: 50 bins"} :display-name)
-                               (lib/visible-columns
-                                (lib.stage/append-stage query))))))
-    (testing "Application of same binning on next stage does not modify display name"
-      (is (some? (m/find-first (comp #{"Total: 50 bins"} :display-name)
-                               (let [first-stage-binned-column (m/find-first (comp #{"Total: 50 bins"} :display-name)
-                                                                             (lib/visible-columns query))]
-                                 (lib/visible-columns
-                                  (as-> query $
-                                    (lib/breakout $ (lib/with-binning
-                                                     first-stage-binned-column
-                                                     (m/find-first (comp #{"50 bins"} :display-name)
-                                                                   (lib/available-binning-strategies
-                                                                    $ first-stage-binned-column)))))))))))))
+  (doseq [[binning-name expected-display-name table-kw field-kw]
+          [["50 bins" "Total: 50 bins" :orders :total]
+           ["Bin every 10 degrees" "Latitude: 10°" :venues :latitude]]]
+   (let [query (as-> meta/metadata-provider $
+                 (lib/query $ (meta/table-metadata table-kw))
+                 (lib/aggregate $ (lib/count))
+                 (lib/breakout $ (lib/with-binning
+                                   (meta/field-metadata table-kw field-kw)
+                                   (m/find-first (comp #{binning-name} :display-name)
+                                                 (lib/available-binning-strategies $ (meta/field-metadata table-kw field-kw)))))
+                 (lib.stage/append-stage $))]
+     (testing "Binning is present in next stage display-name"
+       (is (some? (m/find-first (comp #{expected-display-name} :display-name)
+                                (lib/visible-columns query)))))
+     (testing "Binning is present in next next stage display-name"
+       (is (some? (m/find-first (comp #{expected-display-name} :display-name)
+                                (lib/visible-columns
+                                 (lib.stage/append-stage query))))))
+     (testing "Application of same binning on next stage does not modify display name"
+       (is (some? (m/find-first (comp #{expected-display-name} :display-name)
+                                (let [first-stage-binned-column (m/find-first (comp #{expected-display-name} :display-name)
+                                                                              (lib/visible-columns query))]
+                                  (lib/visible-columns
+                                   (as-> query $
+                                     (lib/breakout $ (lib/with-binning
+                                                       first-stage-binned-column
+                                                       (m/find-first (comp #{binning-name} :display-name)
+                                                                     (lib/available-binning-strategies
+                                                                      $ first-stage-binned-column))))))))))))))
