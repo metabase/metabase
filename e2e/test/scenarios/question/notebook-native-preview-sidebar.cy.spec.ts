@@ -15,6 +15,7 @@ import {
   expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  nativeEditor,
   openNotebook,
   openReviewsTable,
   popover,
@@ -54,7 +55,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
-      cy.get(".ace_content").should("not.exist");
+      nativeEditor().should("not.exist");
       cy.button("Convert this question to SQL").should("be.disabled");
     });
   });
@@ -70,8 +71,9 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.wait("@nativeDataset");
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
-      cy.get(".ace_content")
-        .should("contain", "SELECT")
+      nativeEditor()
+        .should("be.visible")
+        .and("contain", "SELECT")
         .and("contain", queryLimit);
       cy.button("Convert this question to SQL").should("exist");
     });
@@ -91,9 +93,9 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.log("Modifying GUI query should update the SQL preview");
     cy.findByTestId("step-limit-0-0").icon("close").click({ force: true });
     cy.wait("@nativeDataset");
-    cy.findByTestId("native-query-preview-sidebar")
-      .get(".ace_content")
-      .should("contain", "SELECT")
+    nativeEditor()
+      .should("be.visible")
+      .and("contain", "SELECT")
       .and("contain", defaultRowLimit)
       .and("not.contain", queryLimit);
 
@@ -298,8 +300,9 @@ describe(
       cy.findByLabelText("View the native query").click();
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        cy.get(".ace_content")
-          .should("contain", "$project")
+        nativeEditor()
+          .should("be.visible")
+          .and("contain", "$project")
           .and("contain", "$limit");
 
         cy.button("Convert this question to a native query").click();
@@ -322,8 +325,9 @@ describe(
       openNotebook(); // SQL sidebar state was persisted so it's already open now
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        cy.get(".ace_content")
-          .should("contain", "$project")
+        nativeEditor()
+          .should("be.visible")
+          .and("contain", "$project")
           .and("contain", "$limit")
           .and("not.contain", "BsonString")
           .and("not.contain", "BsonInt32");
@@ -374,8 +378,9 @@ describe(
 
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        cy.get(".ace_content")
-          .should("contain", "$project")
+        nativeEditor()
+          .should("be.visible")
+          .and("contain", "$project")
           .and("contain", "$limit")
           .and("not.contain", "BsonString")
           .and("not.contain", "BsonInt32");
@@ -436,7 +441,7 @@ function convertToSql() {
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.button("Convert this question to SQL").click();
   cy.wait("@dataset");
-  cy.findByTestId("native-query-editor").should("be.visible");
+  nativeEditor().should("be.visible");
 }
 
 type ResizeSidebarCallback = (

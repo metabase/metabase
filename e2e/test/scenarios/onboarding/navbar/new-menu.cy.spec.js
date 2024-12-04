@@ -1,4 +1,4 @@
-import { popover, restore } from "e2e/support/helpers";
+import { nativeEditor, popover, restore } from "e2e/support/helpers";
 
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {
@@ -24,7 +24,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
     });
 
     cy.url("should.contain", "/question#");
-    cy.get(".ace_content");
+    nativeEditor().should("be.visible");
   });
 
   it("collection opens modal and redirects to a created collection after saving", () => {

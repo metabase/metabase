@@ -151,6 +151,18 @@
     (is (partial= {:valid false, :status "Token does not exist."}
                   (#'premium-features/fetch-token-status* (random-token))))))
 
+(deftest fetch-token-does-not-call-db-when-cached
+  (testing "No DB calls are made for the user count when checking token status if the status is cached"
+    (let [token (random-token)]
+      (t2/with-call-count [call-count]
+        ;; First fetch, should trigger a DB call to fetch user count
+        (premium-features/fetch-token-status token)
+        (is (= 1 (call-count)))
+
+        ;; Subsequent fetches with the same token should not trigger additional DB calls
+        (premium-features/fetch-token-status token)
+        (is (= 1 (call-count)))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro Tests                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+

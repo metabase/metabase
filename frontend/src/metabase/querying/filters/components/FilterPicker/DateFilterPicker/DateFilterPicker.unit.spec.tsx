@@ -92,7 +92,7 @@ describe("DateFilterPicker", () => {
     expect(getNextRelativeFilterParts()).toMatchObject({
       column: expect.anything(),
       value: "current",
-      bucket: "day",
+      unit: "day",
     });
   });
 
@@ -154,9 +154,9 @@ describe("DateFilterPicker", () => {
     expect(getNextRelativeFilterParts()).toMatchObject({
       column: expect.anything(),
       value: -20,
-      bucket: "day",
+      unit: "day",
       offsetValue: null,
-      offsetBucket: null,
+      offsetUnit: null,
     });
   });
 
@@ -176,9 +176,9 @@ describe("DateFilterPicker", () => {
     expect(getNextFilterColumnName()).toBe(COLUMN_NAME);
     expect(getNextRelativeFilterParts()).toMatchObject({
       value: 20,
-      bucket: "day",
+      unit: "day",
       offsetValue: null,
-      offsetBucket: null,
+      offsetUnit: null,
     });
   });
 
