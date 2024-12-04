@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import { isEmail } from "metabase/lib/email";
@@ -15,6 +15,13 @@ export const AlertsEmailRecipientsSelector = ({
   value,
   onChange,
 }: AlertsEmailSelectorProps): JSX.Element => {
+  const handleShouldCreate = useCallback(
+    (query: string) => {
+      return isEmail(query) && value.length < MAX_EMAILS_LIMIT;
+    },
+    [value],
+  );
+
   return (
     <MultiSelect
       data={value}
@@ -36,15 +43,15 @@ export const AlertsEmailRecipientsSelector = ({
       value={value}
       creatable
       limit={MAX_EMAILS_LIMIT}
-      shouldCreate={isEmail}
+      shouldCreate={handleShouldCreate}
       onChange={onChange}
-      getCreateLabel={getCreateLabel}
+      getCreateLabel={handleGetCreateLabel}
       onCreate={handleOnCreate}
     />
   );
 };
 
-function getCreateLabel(query: string) {
+function handleGetCreateLabel(query: string) {
   return t`Add "${query}"`;
 }
 

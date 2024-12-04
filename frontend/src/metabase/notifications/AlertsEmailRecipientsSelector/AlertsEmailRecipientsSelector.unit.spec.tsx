@@ -47,6 +47,69 @@ describe("AlertsEmailRecipientsSelector", () => {
     expect(onChangeMock).toHaveBeenCalledTimes(1);
     expect(onChangeMock).toHaveBeenLastCalledWith(inputValues.slice(1));
   });
+
+  it("should validate input value to be an email", async () => {
+    const { element, onChangeMock } = setup();
+
+    await userEvent.click(element, {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+    await userEvent.type(element, "notanemail{ArrowDown}{Enter}", {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+
+    expect(screen.queryByTestId("select-dropdown")).not.toBeInTheDocument();
+    expect(onChangeMock).toHaveBeenCalledTimes(0);
+
+    await userEvent.click(element, {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+    await userEvent.type(element, "@test", {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+
+    expect(screen.queryByTestId("select-dropdown")).not.toBeInTheDocument();
+    expect(onChangeMock).toHaveBeenCalledTimes(0);
+
+    await userEvent.click(element, {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+    await userEvent.type(element, ".com{ArrowDown}{Enter}", {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+
+    expect(onChangeMock).toHaveBeenCalledTimes(1);
+    expect(onChangeMock).toHaveBeenLastCalledWith(["notanemail@test.com"]);
+  });
+
+  it("should does not allow to enter more than 50 values", async () => {
+    const initialValue = Array.from({ length: 49 }).map(
+      (_, index) => `test-${index}@email.com`,
+    );
+    const { element, onChangeMock } = setup({ initialValue });
+
+    await userEvent.click(element, {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+    await userEvent.type(element, "newemail@example.com{ArrowDown}{Enter}", {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+
+    expect(onChangeMock).toHaveBeenCalledTimes(1);
+    expect(onChangeMock).toHaveBeenLastCalledWith([
+      ...initialValue,
+      "newemail@example.com",
+    ]);
+
+    await userEvent.click(element, {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+    await userEvent.type(element, "newemail-2@example.com{ArrowDown}{Enter}", {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
+
+    expect(onChangeMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 function setup({ initialValue = [] }: { initialValue?: string[] } = {}) {
