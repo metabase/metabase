@@ -203,9 +203,11 @@
                                  nil)))
         ;; make all joins include all fields
         new-joins (mapv #(lib.join/with-join-fields % :all)
-                       (lib.join/joins agg-filtered))]
-    ;; update query with the new joins
-    (lib.util/update-query-stage agg-filtered -1 assoc :joins new-joins)))
+                        (lib.join/joins agg-filtered))]
+    ;; if the query has joins, update query with the new joins
+    (if (empty? new-joins)
+      agg-filtered
+      (lib.util/update-query-stage agg-filtered -1 assoc :joins new-joins))))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
   [query _stage-number context & _]
