@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
-import {
-  BackButton,
-  BackButtonContainer,
-} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { getDashboard } from "metabase/query_builder/selectors";
+import { Box } from "metabase/ui";
+
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
 type DashboardBackButtonProps = {
   noLink?: boolean;
@@ -37,8 +37,9 @@ export function DashboardBackButton({
 
   return (
     <Tooltip tooltip={label}>
-      <BackButtonContainer>
-        <BackButton
+      <Box mr="0.75rem" component="span">
+        <Button
+          className={ViewTitleHeaderS.backButton}
           {...(noLink
             ? {}
             : {
@@ -50,7 +51,7 @@ export function DashboardBackButton({
           aria-label={label}
           onClick={handleClick}
         />
-      </BackButtonContainer>
+      </Box>
     </Tooltip>
   );
 }
