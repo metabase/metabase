@@ -9,9 +9,8 @@
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search :as search]
    [metabase.search.config :as search.config]
-   [metabase.search.core :as search.core]
+   [metabase.search.core :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
@@ -51,15 +50,15 @@
   "This will blow away any search indexes, re-create, and re-populate them."
   []
   (api/check-superuser)
-  (if (search.core/supports-index?)
-    {:message (search.core/init-index! {:force-reset? true})}
+  (if (search/supports-index?)
+    {:message (search/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (api/defendpoint POST "/force-reindex"
   "This will trigger an immediate reindexing, if we are using search index."
   []
   (api/check-superuser)
-  (if  (search.core/supports-index?)
+  (if  (search/supports-index?)
     ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
     (if (and (task/job-exists? task.search-index/reindex-job-key) (not config/is-test?))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
