@@ -396,7 +396,16 @@ const visualizerSlice = createSlice({
         delete state.loadingDataSources[source.id];
         delete state.datasets[source.id];
         delete state.loadingDatasets[source.id];
-        maybeUpdateHistory(state, action);
+
+        const isLastDataSource = Object.keys(state.datasets).length === 0;
+        if (isLastDataSource) {
+          const present = _.clone(state.present);
+          state.past = [...state.past, present];
+          state.present = initialVisualizerHistoryItem;
+          state.future = [];
+        } else {
+          maybeUpdateHistory(state, action);
+        }
       })
       .addCase(fetchCard.pending, (state, action) => {
         const cardId = action.meta.arg;
