@@ -1,11 +1,11 @@
 import { merge } from "icepick";
 
 import type {
-  SdkDashCardMenuPluginsConfig,
-  SdkPluginsConfig,
+  MetabaseDashboardCardMenuPluginsConfig,
+  MetabasePluginsConfig,
 } from "embedding-sdk";
 
-const DEFAULT_DASHCARD_MENU_ITEMS: SdkDashCardMenuPluginsConfig = {
+const DEFAULT_DASHCARD_MENU_ITEMS: MetabaseDashboardCardMenuPluginsConfig = {
   dashcardMenu: {
     withDownloads: true,
     withEditLink: true,
@@ -13,19 +13,22 @@ const DEFAULT_DASHCARD_MENU_ITEMS: SdkDashCardMenuPluginsConfig = {
   },
 } as const;
 
-const getDashcardMenu = (plugins: SdkPluginsConfig) => {
-  if (typeof plugins?.dashboard?.dashcardMenu === "function") {
-    return plugins?.dashboard?.dashcardMenu;
+const getDashcardMenu = (plugins: MetabasePluginsConfig) => {
+  if (typeof plugins?.dashboardCardMenu?.dashcardMenu === "function") {
+    return plugins?.dashboardCardMenu?.dashcardMenu;
   }
-  return merge(DEFAULT_DASHCARD_MENU_ITEMS, plugins?.dashboard?.dashcardMenu);
+  return merge(
+    DEFAULT_DASHCARD_MENU_ITEMS,
+    plugins?.dashboardCardMenu?.dashcardMenu,
+  );
 };
 
 export const addDefaultDashboardPluginValues = (
-  plugins: SdkPluginsConfig = {},
-): SdkPluginsConfig => {
+  plugins: MetabasePluginsConfig = {},
+): MetabasePluginsConfig => {
   return {
     ...plugins,
-    dashboard: {
+    dashboardCardMenu: {
       dashcardMenu: getDashcardMenu(plugins),
     },
   };

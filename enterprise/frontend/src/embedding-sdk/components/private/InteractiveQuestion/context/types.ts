@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
@@ -12,7 +12,7 @@ import type { CardId } from "metabase-types/api";
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 
 type InteractiveQuestionConfig = {
-  componentPlugins?: SdkPluginsConfig;
+  componentPlugins?: MetabasePluginsConfig;
   onNavigateBack?: () => void;
   onBeforeSave?: (
     question: Question | undefined,

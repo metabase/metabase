@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { DashCardCustomMenuItem } from "embedding-sdk";
+import type { DashboardCardCustomMenuItem } from "embedding-sdk";
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { editQuestion } from "metabase/dashboard/actions";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
@@ -32,8 +32,8 @@ export const DashCardMenuItems = ({
       dispatch(editQuestion(question, mode)),
   } = useInteractiveDashboardContext();
 
-  const dashcardMenuItems = plugins?.dashboard?.dashcardMenu as
-    | DashCardCustomMenuItem
+  const dashcardMenuItems = plugins?.dashboardCardMenu?.dashcardMenu as
+    | DashboardCardCustomMenuItem
     | undefined;
 
   const {

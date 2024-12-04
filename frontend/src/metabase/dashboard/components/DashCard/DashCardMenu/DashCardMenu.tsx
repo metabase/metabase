@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { isValidElement, useState } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import CS from "metabase/css/core/index.css";
 import {
@@ -50,8 +50,8 @@ export type DashCardMenuItem = {
   disabled?: boolean;
 } & MenuItemProps;
 
-function isDashCardMenuEmpty(plugins?: SdkPluginsConfig) {
-  const dashcardMenu = plugins?.dashboard?.dashcardMenu;
+function isDashCardMenuEmpty(plugins?: MetabasePluginsConfig) {
+  const dashcardMenu = plugins?.dashboardCardMenu?.dashcardMenu;
 
   if (!plugins || !dashcardMenu || typeof dashcardMenu !== "object") {
     return false;
@@ -97,11 +97,11 @@ export const DashCardMenu = ({
   }
 
   const getMenuContent = () => {
-    if (typeof plugins?.dashboard?.dashcardMenu === "function") {
+    if (typeof plugins?.dashboardCardMenu?.dashcardMenu === "function") {
       return plugins.dashboard.dashcardMenu({ question: question.card() });
     }
 
-    if (isValidElement(plugins?.dashboard?.dashcardMenu)) {
+    if (isValidElement(plugins?.dashboardCardMenu?.dashcardMenu)) {
       return plugins.dashboard.dashcardMenu;
     }
 
