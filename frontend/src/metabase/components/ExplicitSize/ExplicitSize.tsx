@@ -76,11 +76,11 @@ function ExplicitSize<T>({
 
       _updateSize: () => void;
 
-      constructor(props: T & InnerProps, context: unknown) {
-        super(props, context);
+      constructor(props: T & InnerProps) {
+        super(props);
 
         this._printMediaQuery = window.matchMedia && window.matchMedia("print");
-        if (this.context === 0) {
+        if (WAIT_TIME === 0) {
           this._refreshMode = "none";
         } else {
           this._refreshMode =
