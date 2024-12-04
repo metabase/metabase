@@ -7,16 +7,11 @@ import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-import {
-  NodeListItemIcon,
-  NodeListItemLink,
-  NodeListItemName,
-} from "./NodeList.styled";
-import { PaneContent } from "./Pane.styled";
+import { NodeListItemLink, NodeListItemName } from "./NodeList";
 
 const MainPane = ({ databases, onClose, onItemClick }) => (
   <SidebarContent title={t`Data Reference`} onClose={onClose}>
-    <PaneContent>
+    <SidebarContent.Pane>
       <p className={cx(CS.mt2, CS.mb3, CS.textSpaced)}>
         {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
       </p>
@@ -27,13 +22,13 @@ const MainPane = ({ databases, onClose, onItemClick }) => (
               <NodeListItemLink
                 onClick={() => onItemClick("database", database)}
               >
-                <NodeListItemIcon name="database" />
+                <NodeListItemLink name="database" />
                 <NodeListItemName>{database.name}</NodeListItemName>
               </NodeListItemLink>
             </li>
           ))}
       </ul>
-    </PaneContent>
+    </SidebarContent.Pane>
   </SidebarContent>
 );
 
