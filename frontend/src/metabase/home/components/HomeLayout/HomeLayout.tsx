@@ -47,6 +47,7 @@ export const HomeLayout = ({ children }: PropsWithChildren): JSX.Element => {
         lg: "4rem 7rem 2rem",
         xl: "10rem 15rem 4rem",
       }}
+      data-testid="home-page"
       {...containerProps}
     >
       <Group pos="absolute" top="0.75rem" right="1rem" position="right">

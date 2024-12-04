@@ -316,7 +316,7 @@ describeEE("formatting > whitelabel", () => {
             logo_data => {
               const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
               cy.visit("/");
-              cy.findByTestId("landing-page-illustration").should(
+              cy.findByTestId("home-page").should(
                 "have.css",
                 "background-image",
                 backgroundImage,
