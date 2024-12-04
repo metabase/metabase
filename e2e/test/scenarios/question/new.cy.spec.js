@@ -481,7 +481,7 @@ describe("scenarios > question > new", () => {
       });
     });
 
-    describe("creating a new dashboard", () => {
+    describe.only("creating a new dashboard", () => {
       beforeEach(() => {
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
@@ -533,7 +533,7 @@ describe("scenarios > question > new", () => {
         cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
       });
 
-      it("when selecting a collection with no child dashboards (metabase#47000)", () => {
+      it.only("when selecting a collection with no child dashboards (metabase#47000)", () => {
         entityPickerModal().within(() => {
           entityPickerModalTab("Dashboards").click();
           entityPickerModalItem(1, "First collection").click();

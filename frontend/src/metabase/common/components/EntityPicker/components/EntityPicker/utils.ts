@@ -1,22 +1,28 @@
+import _ from "underscore";
+
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type {
+  Card,
+  CardType,
   CollectionId,
-  ListCollectionItemsRequest,
+  CollectionItemModel,
 } from "metabase-types/api";
 
-import type { PickerState } from "../EntityPicker";
-import type { QuestionPickerItem } from "../QuestionPicker";
-
-import type { CollectionPickerItem, CollectionPickerStatePath } from "./types";
+import type {
+  QuestionPickerItem,
+  QuestionPickerStatePath,
+  QuestionPickerValue,
+  QuestionPickerValueModel,
+} from "../../../QuestionPicker/types";
 
 export const getCollectionIdPath = (
   collection: Pick<
-    CollectionPickerItem,
+    QuestionPickerItem,
     "id" | "location" | "is_personal" | "effective_location"
   >,
   userPersonalCollectionId?: CollectionId,
 ): CollectionId[] => {
-  if (collection.id === null || collection.id === "root") {
+  if (collection.id === "root" || collection.id === null) {
     return ["root"];
   }
 
@@ -50,21 +56,18 @@ export const getCollectionIdPath = (
 export const getStateFromIdPath = ({
   idPath,
   namespace,
+  models = ["card", "dataset"],
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-}): CollectionPickerStatePath => {
-  const statePath: PickerState<
-    CollectionPickerItem,
-    ListCollectionItemsRequest
-  > = [
+  models?: CollectionItemModel[];
+}): QuestionPickerStatePath => {
+  const statePath: QuestionPickerStatePath = [
     {
       selectedItem: {
         name: "",
         model: "collection",
         id: idPath[0],
-        here: ["collection"],
-        below: ["collection"],
       },
     },
   ];
@@ -75,7 +78,7 @@ export const getStateFromIdPath = ({
     statePath.push({
       query: {
         id,
-        models: ["collection"],
+        models: ["collection", ...models],
         namespace,
       },
       selectedItem: nextLevelId
@@ -83,8 +86,6 @@ export const getStateFromIdPath = ({
             name: "",
             model: "collection",
             id: nextLevelId,
-            here: ["collection"],
-            below: ["collection"],
           }
         : null,
     });
@@ -93,41 +94,35 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder = (item: CollectionPickerItem): boolean => {
-  return Boolean(
-    item.model === "collection" && item?.here?.includes("collection"),
+export const isFolder = (
+  item: QuestionPickerItem,
+  models: CollectionItemModel[],
+) => {
+  return (
+    item.id === "root" ||
+    item.is_personal ||
+    (item?.model === "collection" &&
+      _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
+        .length > 0)
   );
 };
 
-export const getParentCollectionId = (
-  location?: string | null,
-): CollectionId => {
-  const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
-  return parentCollectionId ? Number(parentCollectionId) : "root";
+export const getQuestionPickerValue = ({
+  id,
+  type,
+}: Pick<Card, "id" | "type">): QuestionPickerValue => {
+  return { id, model: getQuestionPickerValueModel(type) };
 };
 
-export const getPathLevelForItem = (
-  item: CollectionPickerItem | QuestionPickerItem,
-  path: PickerState<
-    CollectionPickerItem | QuestionPickerItem,
-    ListCollectionItemsRequest
-  >,
-  userPersonalCollectionId?: CollectionId,
-): number => {
-  if (item.id === userPersonalCollectionId) {
-    return 0;
+export const getQuestionPickerValueModel = (
+  type: CardType,
+): QuestionPickerValueModel => {
+  switch (type) {
+    case "question":
+      return "card";
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
   }
-
-  const parentCollectionId =
-    item.collection_id ??
-    getParentCollectionId(item?.effective_location ?? item?.location);
-
-  console.log({ parentCollectionId });
-
-  // set selected item at the correct level
-  const pathLevel = path.findIndex(
-    level => String(level?.query?.id) === String(parentCollectionId),
-  );
-
-  return pathLevel === -1 ? 0 : pathLevel;
 };

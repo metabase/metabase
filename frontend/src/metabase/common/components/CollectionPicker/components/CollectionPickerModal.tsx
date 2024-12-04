@@ -7,6 +7,7 @@ import type { RecentItem, SearchResult } from "metabase-types/api";
 
 import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
+import { EntityPicker } from "../../EntityPicker/components/EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
@@ -15,7 +16,6 @@ import type {
   CollectionPickerValueItem,
 } from "../types";
 
-import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
 export interface CollectionPickerModalProps {
@@ -72,7 +72,7 @@ export const CollectionPickerModal = ({
   ] = useToggle(false);
 
   const pickerRef = useRef<{
-    onNewCollection: (item: CollectionPickerItem) => void;
+    onNewCollection: ({ folder }: { folder: CollectionPickerItem }) => void;
   }>();
 
   const handleInit = useCallback((item: CollectionPickerItem) => {
@@ -125,10 +125,11 @@ export const CollectionPickerModal = ({
       folderModels: ["collection" as const],
       icon: "folder",
       render: ({ onItemSelect }) => (
-        <CollectionPicker
+        <EntityPicker
           initialValue={value}
           options={options}
           path={collectionsPath}
+          models={["collection"]}
           ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
           onInit={handleInit}
@@ -140,7 +141,7 @@ export const CollectionPickerModal = ({
   ];
 
   const handleNewCollectionCreate = (newCollection: CollectionPickerItem) => {
-    pickerRef.current?.onNewCollection(newCollection);
+    pickerRef.current?.onNewItem(newCollection);
   };
 
   const composedSearchResultFilter = useCallback(

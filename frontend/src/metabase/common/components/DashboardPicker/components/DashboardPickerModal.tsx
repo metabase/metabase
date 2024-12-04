@@ -4,12 +4,15 @@ import { t } from "ttag";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
+import { useSelector } from "metabase/lib/redux";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import type { EntityPickerTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
 } from "../../EntityPicker";
+import { EntityPicker } from "../../EntityPicker/components/EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   DashboardPickerInitialValueItem,
@@ -19,12 +22,14 @@ import type {
   DashboardPickerValueItem,
 } from "../types";
 import { getCollectionId } from "../utils";
+import { getPathLevelForItem } from "../../CollectionPicker/utils";
 
 import {
-  DashboardPicker,
+  // DashboardPicker,
   defaultOptions as defaultDashboardPickerOptions,
 } from "./DashboardPicker";
 import { NewDashboardDialog } from "./NewDashboardDialog";
+import { InitialValue } from "metabase/components/TextWidget/TextWidget.stories";
 
 interface DashboardPickerModalProps {
   title?: string;
@@ -62,6 +67,7 @@ export const DashboardPickerModal = ({
   recentFilter,
 }: DashboardPickerModalProps) => {
   options = { ...defaultOptions, ...options };
+  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
   const [selectedItem, setSelectedItem] = useState<DashboardPickerItem | null>(
     canSelectItem(value) ? value : null,
@@ -69,16 +75,6 @@ export const DashboardPickerModal = ({
 
   const [dashboardsPath, setDashboardsPath] =
     useState<DashboardPickerStatePath>();
-
-  const handleDashboardsPathChange = useCallback(function (
-    newPath: DashboardPickerStatePath,
-  ) {
-    setDashboardsPath(newPath);
-    const last = newPath?.[newPath.length - 1];
-    if (last && canSelectItem(last?.selectedItem ?? null)) {
-      setSelectedItem(last.selectedItem);
-    }
-  }, []);
 
   const { tryLogRecentItem } = useLogRecentItem();
 
@@ -140,7 +136,7 @@ export const DashboardPickerModal = ({
       folderModels: ["collection" as const],
       icon: "dashboard",
       render: ({ onItemSelect }) => (
-        <DashboardPicker
+        <EntityPicker
           initialValue={value}
           models={["dashboard"]}
           options={options}
@@ -148,14 +144,40 @@ export const DashboardPickerModal = ({
           ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
           onItemSelect={onItemSelect}
-          onPathChange={handleDashboardsPathChange}
+          onPathChange={setDashboardsPath}
         />
       ),
     },
   ];
 
   const handleNewDashboardCreate = (newDashboard: DashboardPickerItem) => {
-    pickerRef.current?.onNewDashboard(newDashboard);
+    const collection_id = newDashboard.collection_id || "root";
+    const selectedItem = { ...newDashboard, model: "dashboard", collection_id };
+
+    // Is the parent collection already in the path? Possible if collection in the picker is "empty",
+    // and therefore not a folder
+    const isParentCollectionInPath =
+      getPathLevelForItem(
+        selectedItem,
+        dashboardsPath,
+        userPersonalCollectionId,
+      ) > 0;
+
+    if (!isParentCollectionInPath) {
+      setDashboardsPath(path => [
+        ...path,
+        {
+          query: {
+            id: parentCollectionId,
+            models: ["dashboard", "collection"],
+          },
+          selectedItem,
+        },
+      ]);
+      setSelectedItem(selectedItem);
+    } else {
+      pickerRef.current?.onNewItem(selectedItem);
+    }
   };
 
   const parentCollectionId = getCollectionId(selectedItem || value);
