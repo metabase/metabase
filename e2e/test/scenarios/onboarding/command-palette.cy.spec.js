@@ -247,4 +247,14 @@ describe("command palette", () => {
       cy.location("pathname").should("eq", "/metric/query");
     });
   });
+
+  it("should show the 'File a bug' command palette item", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /Search/ }).click();
+
+    commandPalette().within(() => {
+      commandPaletteInput().should("exist").type("Bug");
+      cy.findByText("File a bug").should("be.visible");
+    });
+  });
 });
