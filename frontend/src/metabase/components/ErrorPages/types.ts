@@ -25,4 +25,13 @@ export type ErrorPayload = Partial<{
   entityInfo: Card | Dashboard | Collection;
   queryResults: DatasetData;
   bugReportDetails: MetabaseInfo;
+  browserInfo: {
+    userAgent: string;
+    language: string;
+    browserName: string;
+    browserVersion: string;
+    platform: string;
+    os: string;
+    osVersion: string;
+  };
 }>;
