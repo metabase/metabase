@@ -263,7 +263,7 @@
        [:<  col-default-bucket upper-with-offset]])))
 
 (defn desugar-during
-  "Transform `:relative-time-interval` to `:and` expression."
+  "Transform a `:during` expression to an `:and` expression."
   [m]
   (lib.util.match/replace
     m
