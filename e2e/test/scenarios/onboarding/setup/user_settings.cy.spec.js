@@ -2,6 +2,7 @@ import { USERS } from "e2e/support/cypress_data";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   entityPickerModal,
+  entityPickerModalTab,
   getFullName,
   popover,
   restore,
@@ -170,6 +171,7 @@ describe("user > settings", () => {
 
     // should be redirected to new question page
     cy.wait("@getUser");
+    entityPickerModalTab("Collections").click();
     entityPickerModal().findByText("Orders Model").click();
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")

@@ -268,7 +268,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // Build a new question off that grouping by City
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.contains("CA People").click();
     });
 

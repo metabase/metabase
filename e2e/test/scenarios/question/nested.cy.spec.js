@@ -403,7 +403,7 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").should("be.visible").click();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("15725").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

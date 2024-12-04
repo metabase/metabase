@@ -56,6 +56,7 @@ import {
   visualize,
   withDatabase,
 } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -767,7 +768,7 @@ describe("issue 42957", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Models").click();
+      entityPickerModalTab("Collections").click();
 
       cy.findByText("Collection without models").should("not.exist");
     });
@@ -920,12 +921,12 @@ describe("issue 32020", () => {
 
     cy.log("create joined question manually");
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText(question1Details.name).click();
     });
     join();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText(question2Details.name).click();
     });
     popover().findByText("ID").click();
@@ -974,7 +975,7 @@ describe("issue 44071", () => {
     cy.visit("/");
     newButton("Question").click();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText(/Personal Collection/).click();
       cy.findByText(questionDetails.name).click();
     });
@@ -1452,21 +1453,21 @@ describe("issue 19894", () => {
 
     startNewQuestion();
 
-    modal().findByText("Saved questions").click();
-    modal().findByText("Q1").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q1").click();
 
     cy.button("Join data").click();
 
-    modal().findByText("Saved questions").click();
-    modal().findByText("Q2").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q2").click();
 
     popover().findByText("Category").click();
     popover().findByText("Category").click();
 
     cy.button("Join data").click();
 
-    modal().findByText("Saved questions").click();
-    modal().findByText("Q3").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(1, "Q3").click();
 
     popover().findByText("Category").should("be.visible");
     popover().findByText("Count").should("be.visible");
@@ -1632,7 +1633,7 @@ describe("issue 44974", () => {
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Recents").should("not.exist");
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText(questionDetails.name).should("not.exist");
       });
     });

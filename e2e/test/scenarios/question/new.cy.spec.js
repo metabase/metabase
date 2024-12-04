@@ -33,6 +33,7 @@ import {
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -66,9 +67,10 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Tables", ["Tables", "Collections"]);
 
         entityPickerModalTab("Search").should("not.exist");
+        entityPickerModalTab("Collections").click();
 
         cy.findByPlaceholderText("Search this collection or everywhere…")
           .type("  ")
@@ -103,9 +105,8 @@ describe("scenarios > question > new", () => {
           .clear()
           .blur();
         entityPickerModalTab("Search").should("not.exist");
-        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Collections", ["Tables", "Collections"]);
 
-        entityPickerModalTab("Saved questions").click();
         cy.findByText("Orders, Count").click();
       });
 
@@ -123,7 +124,7 @@ describe("scenarios > question > new", () => {
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
       entityPickerModal().within(() => {
         // It is now possible to choose another saved question
-        entityPickerModalTab("Saved questions").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -156,7 +157,7 @@ describe("scenarios > question > new", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         // Note: collection name's first letter is capitalized
         cy.findByText(/foo:bar/i).click();
         cy.findByText("Orders");
@@ -172,7 +173,7 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         assertDataPickerEntitySelected(0, "Our analytics");
         cy.findByText("First collection").should("exist");
         cy.findByText("Second collection").should("not.exist");
@@ -204,7 +205,7 @@ describe("scenarios > question > new", () => {
       cy.signInAsAdmin();
       startNewQuestion();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("All personal collections").click();
         cy.findByText(getPersonalCollectionName(USERS.nocollection)).click();
         cy.findByText("Personal question").click();
@@ -289,7 +290,7 @@ describe("scenarios > question > new", () => {
     );
 
     cy.findByRole("button", { name: /Orders/ }).click();
-    shouldDisplayTabs(["Recents", "Models", "Tables", "Saved questions"]);
+    shouldDisplayTabs(["Recents", "Tables", "Collections"]);
     entityPickerModalTab("Recents").click();
     cy.findByRole("dialog", { name: "Pick your starting data" })
       .findByRole("button", { name: /Orders/ })
@@ -611,8 +612,7 @@ describe(
       cy.visit("/question/new");
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").should("be.visible");
-        entityPickerModalTab("Models").should("not.exist");
+        entityPickerModalTab("Collections").should("be.visible");
         entityPickerModalTab("Tables").click();
 
         entityPickerModalItem(2, "Products").click();
@@ -630,7 +630,7 @@ describe(
       cy.visit("/question/new");
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         entityPickerModalItem(1, "Orders").click();
       });
 
@@ -653,25 +653,21 @@ describe(
 
       cy.visit("/question/notebook");
 
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").should("be.visible");
-        entityPickerModalTab("Models").should("be.visible");
-        entityPickerModalTab("Tables").should("be.visible");
-        entityPickerModalItem(1, "Orders Model").click();
+      H.entityPickerModal().within(() => {
+        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
+        H.entityPickerModalTab("Collections").should("be.visible");
+        H.entityPickerModalTab("Tables").should("be.visible");
+        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(1, "Orders Model").click();
       });
 
       cy.wait("@recents");
 
       cy.button(/Orders Model/).click();
 
-      entityPickerModal().within(() => {
-        tabsShouldBe("Models", [
-          "Recents",
-          "Models",
-          "Tables",
-          "Saved questions",
-        ]);
-        entityPickerModalTab("Recents").click();
+      H.entityPickerModal().within(() => {
+        H.tabsShouldBe("Collections", ["Recents", "Tables", "Collections"]);
+        H.entityPickerModalTab("Recents").click();
         cy.findByTestId("result-item").should("contain.text", "Orders Model");
       });
     });

@@ -70,7 +70,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("QB Binning").click();
       });
 
@@ -137,7 +137,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("QB Binning").click();
       });
 
@@ -210,7 +210,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("QB Binning").click();
       });
 

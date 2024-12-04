@@ -90,9 +90,8 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
-        entityPickerModalTab("Models").should("exist");
         entityPickerModalTab("Tables").should("exist");
-        entityPickerModalTab("Saved questions").should("not.exist");
+        entityPickerModalTab("Collections").should("exist");
       });
     });
 
@@ -106,8 +105,7 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        shouldDisplayTabs(["Tables", "Saved questions"]);
-        entityPickerModalTab("Models").should("not.exist");
+        shouldDisplayTabs(["Tables", "Collections"]);
       });
     });
   });
@@ -123,7 +121,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
       entityPickerModal().within(() => {
-        tabsShouldBe("Tables", ["Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Tables", ["Tables", "Collections"]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
@@ -137,7 +135,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       entityPickerModal().within(() => {
-        tabsShouldBe("Tables", ["Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Tables", ["Tables", "Collections"]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
@@ -260,7 +258,7 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       entityPickerModal().within(() => {
-        shouldDisplayTabs(["Models", "Tables", "Saved questions"]);
+        shouldDisplayTabs(["Tables", "Collections"]);
 
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
@@ -279,7 +277,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -294,7 +292,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -329,7 +327,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       openDataSelector();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -351,7 +349,7 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").should(
+        entityPickerModalTab("Collections").should(
           "have.attr",
           "aria-selected",
           "true",
@@ -382,8 +380,7 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
     entityPickerModal().within(() => {
       cy.findAllByRole("tab").should("have.length", 2);
       entityPickerModalTab("Tables").should("be.visible");
-      entityPickerModalTab("Models").should("be.visible");
-      entityPickerModalTab("Saved questions").should("not.exist");
+      entityPickerModalTab("Collections").should("be.visible");
     });
   });
 });
@@ -478,8 +475,10 @@ describe("issue 28106", () => {
   }
 });
 
-describe("issue 32252", () => {
+// Needs to be OSS because EE will always have models due to instance analytics
+describe("issue 32252", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    onlyOnOSS();
     restore("setup");
     cy.signInAsAdmin();
 
@@ -505,7 +504,7 @@ describe("issue 32252", () => {
     entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
-      cy.findByText("Saved questions").should("be.visible");
+      cy.findByText("Collections").should("be.visible");
       cy.button("Close").click();
     });
 
@@ -522,7 +521,7 @@ describe("issue 32252", () => {
     entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
-      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Collections").should("not.exist");
       cy.findByText("Orders").should("be.visible");
     });
   });
@@ -534,7 +533,7 @@ describe("issue 32252", () => {
     entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
-      cy.findByText("Saved questions").should("be.visible");
+      cy.findByText("Collections").should("be.visible");
       cy.button("Close").click();
     });
 
@@ -552,7 +551,7 @@ describe("issue 32252", () => {
     entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
-      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Collections").should("not.exist");
       cy.findByText("Orders").should("be.visible");
     });
   });

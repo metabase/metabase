@@ -102,7 +102,7 @@ describe("scenarios > collections > trash", () => {
 
     popover().findByText("Question").click();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Models").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText("Our analytics").should("exist");
       cy.findByText("Trash").should("not.exist");
       cy.button("Close").click();

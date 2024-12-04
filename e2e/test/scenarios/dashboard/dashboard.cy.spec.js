@@ -29,6 +29,7 @@ import {
   editIFrameWhileEditing,
   enableTracking,
   entityPickerModal,
+  entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   filterWidget,
@@ -133,6 +134,7 @@ describe("scenarios > dashboard", () => {
         .click();
 
       entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
         cy.findByPlaceholderText("Search this collection or everywhere…").type(
           "Pro",
         );

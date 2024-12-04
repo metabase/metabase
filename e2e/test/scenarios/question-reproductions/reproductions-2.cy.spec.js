@@ -31,6 +31,7 @@ import {
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -198,7 +199,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     newButton("Question").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").should("not.exist");
+      cy.findByText("Collections").should("not.exist");
       entityPickerModalItem(2, "Orders").click();
     });
 
@@ -207,7 +208,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     newButton("Question").click();
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").should("be.visible").click();
+      entityPickerModalTab("Collections").should("be.visible").click();
       entityPickerModalItem(1, "Orders question").should("be.visible");
     });
   });
@@ -234,7 +235,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
     newButton("Question").click();
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Models").should("be.visible").click();
+      entityPickerModalTab("Collections").should("be.visible").click();
       entityPickerModalItem(1, "Orders model").should("be.visible");
     });
   });
@@ -586,6 +587,7 @@ describe("issue 36669", () => {
     });
 
     entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
       cy.findByPlaceholderText("Search this collection or everywhere…").type(
         "Orders 36669",
       );
@@ -597,8 +599,8 @@ describe("issue 36669", () => {
 
     getNotebookStep("data").findByText("Orders 36669").click();
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
 
       cy.log("verify Tables are listed");
       cy.findByRole("tabpanel").should("contain", "Orders");
@@ -673,7 +675,7 @@ describe("issue 43216", () => {
     cy.log("Create target question");
     newButton("Question").click();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText("Source question").click();
     });
     saveQuestion("Target question");
@@ -712,7 +714,7 @@ function removeSourceColumns() {
 function createAdHocQuestion(questionName) {
   startNewQuestion();
   entityPickerModal().within(() => {
-    entityPickerModalTab("Saved questions").click();
+    entityPickerModalTab("Collections").click();
     cy.findByText(questionName).click();
   });
   cy.findByTestId("fields-picker").click();

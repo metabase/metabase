@@ -846,7 +846,7 @@ describeEE("formatting > sandboxes", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab("Collections").click();
         cy.findByText("14766_joined").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

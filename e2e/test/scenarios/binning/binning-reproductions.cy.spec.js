@@ -34,7 +34,7 @@ describe("binning related reproductions", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText("16327").click();
     });
 
@@ -106,7 +106,7 @@ describe("binning related reproductions", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText("17975").click();
     });
 
@@ -146,7 +146,7 @@ describe("binning related reproductions", () => {
     cy.icon("join_left_outer").click();
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText("18646").click();
     });
 
@@ -192,7 +192,7 @@ describe("binning related reproductions", () => {
     // (for example, visiting `/collection/root` would yield different result)
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+      entityPickerModalTab("Collections").click();
       cy.findByText("11439").click();
     });
 
@@ -381,7 +381,7 @@ describe("binning related reproductions", () => {
 function openSummarizeOptions(questionType) {
   startNewQuestion();
   entityPickerModal().within(() => {
-    entityPickerModalTab("Saved questions").click();
+    entityPickerModalTab("Collections").click();
     cy.findByText("16379").click();
   });
 
