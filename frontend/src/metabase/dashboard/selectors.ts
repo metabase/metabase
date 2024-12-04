@@ -484,7 +484,7 @@ export const getSelectedTabId = createSelector(
     state => getSetting(state, "site-url"),
     getDashboard,
     state => state.dashboard.selectedTabId,
-    (_, props: { initialTabId?: number }) => props.initialTabId,
+    (_, props: { initialTab?: number }) => props.initialTab,
   ],
   (isWebApp, siteUrl, dashboard, selectedTabId, initialTabId) => {
     if (dashboard && selectedTabId === null) {

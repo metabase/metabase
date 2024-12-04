@@ -48,7 +48,7 @@ const mapStateToProps = (state: State, props: OwnProps) => {
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state, {
-      initialTabId: props.initialTabId,
+      initialTab: props.initialTab,
     }),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
@@ -71,7 +71,7 @@ type OwnProps = {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  initialTabId?: number;
+  initialTab?: number;
 } & PublicOrEmbeddedDashboardEventHandlersProps;
 
 type PublicOrEmbeddedDashboardProps = OwnProps &
