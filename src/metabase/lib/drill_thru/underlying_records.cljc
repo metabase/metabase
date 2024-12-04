@@ -204,7 +204,7 @@
         ;; make all joins include all fields
         new-joins (mapv #(lib.join/with-join-fields % :all)
                         (lib.join/joins agg-filtered))]
-    ;; if the query has joins, update query with the new joins
+    ;; if we have new joins to add, update query with the new joins
     (if (empty? new-joins)
       agg-filtered
       (lib.util/update-query-stage agg-filtered -1 assoc :joins new-joins))))
