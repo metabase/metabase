@@ -483,14 +483,14 @@
    (extract t unit :instance))
   ([t unit _mode]
    (t/as t (case unit
-               :second-of-minute :second-of-minute
-               :minute-of-hour   :minute-of-hour
-               :hour-of-day      :hour-of-day
+             :second-of-minute :second-of-minute
+             :minute-of-hour   :minute-of-hour
+             :hour-of-day      :hour-of-day
                ;; :day-of-week   (.dayOfWeek (week-fields start-of-week))
-               :day-of-week      :day-of-week
-               :day-of-month     :day-of-month
-               :day-of-year      :day-of-year
+             :day-of-week      :day-of-week
+             :day-of-month     :day-of-month
+             :day-of-year      :day-of-year
                ;; :week-of-year   (.weekOfYear (week-fields start-of-week))
-               :month-of-year    :month-of-year
-               :quarter-of-year  :quarter-of-year
-               :year             :year))))
+             :month-of-year    :month-of-year
+             :quarter-of-year  :quarter-of-year
+             :year             :year))))

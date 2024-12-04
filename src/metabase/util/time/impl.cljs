@@ -490,17 +490,17 @@
    (extract t unit :instance))
   ([^moment/Moment t unit mode]
    (case unit
-         :second-of-minute (.second t)
-         :minute-of-hour   (.minute t)
-         :hour-of-day      (.hour t)
-         :day-of-week      (case mode
-                             :instance (.weekday t)
-                             :iso      (.isoWeekday t))
-         :day-of-month     (.date t)
-         :day-of-year      (.dayOfYear t)
-         :week-of-year     (case mode
-                             :instance (.isoWeek t)
-                             :iso      (.week t))
-         :month-of-year    (inc (.month t))
-         :quarter-of-year  (.quarter t)
-         :year             (.year t))))
+     :second-of-minute (.second t)
+     :minute-of-hour   (.minute t)
+     :hour-of-day      (.hour t)
+     :day-of-week      (case mode
+                         :instance (.weekday t)
+                         :iso      (.isoWeekday t))
+     :day-of-month     (.date t)
+     :day-of-year      (.dayOfYear t)
+     :week-of-year     (case mode
+                         :instance (.isoWeek t)
+                         :iso      (.week t))
+     :month-of-year    (inc (.month t))
+     :quarter-of-year  (.quarter t)
+     :year             (.year t))))
