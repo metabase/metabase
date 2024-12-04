@@ -23,8 +23,23 @@ export function nativeEditorCompletion(label: string) {
   return cy.get(".cm-completionLabel").contains(label).parent();
 }
 
-export function nativeEditorType(text: string) {
-  const parts = text.split(/(}}|\]\])/);
+export function nativeEditorSelectAll() {
+  focusNativeEditor();
+  cy.realPress(["Meta", "A"]);
+}
+
+export function clearNativeEditor() {
+  nativeEditorSelectAll();
+  cy.realPress(["Backspace"]);
+}
+
+export function nativeEditorType(
+  text: string,
+  { delay = 10 }: { delay?: number } = {},
+) {
+  focusNativeEditor();
+
+  const parts = text.split(/(}}|\]\]|{[^{}]+})/);
 
   // HACK: realType does not accept {{ foo }} and there is no way to escape it
   // so we break it up manually here.
@@ -32,7 +47,30 @@ export function nativeEditorType(text: string) {
     if (part === "}}" || part === "]]") {
       return;
     }
-    focusNativeEditor().realType(part);
+
+    if (part === "{clear}") {
+      clearNativeEditor();
+      return;
+    }
+
+    if (part === "{selectAll}") {
+      nativeEditorSelectAll();
+      return;
+    }
+
+    if (part === "{leftarrow}") {
+      cy.realPress(["ArrowLeft"]);
+      return;
+    }
+
+    if (part.startsWith("{") && part.endsWith("}")) {
+      cy.realType("{").realType(part.slice(1), { pressDelay: delay });
+      return;
+    }
+
+    cy.realType(part, {
+      pressDelay: delay,
+    });
   });
 
   return nativeEditor();
