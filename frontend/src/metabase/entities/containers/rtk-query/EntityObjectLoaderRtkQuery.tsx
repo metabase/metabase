@@ -134,7 +134,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   const {
     data,
     error: rtkError,
-    isLoading,
+    isFetching,
     refetch,
   } = useGetQuery(entityId != null ? finalQuery : skipToken, {
     refetchOnMountOrArgChange: reload,
@@ -158,11 +158,11 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   }, [objectStatePath, requestType]);
 
   useEffect(() => {
-    if (isLoading) {
+    if (isFetching) {
       // @ts-expect-error - invalid typings in redux-actions package
       dispatch(setRequestLoading(requestStatePath, queryKey));
     }
-  }, [dispatch, isLoading, requestStatePath, queryKey]);
+  }, [dispatch, isFetching, requestStatePath, queryKey]);
 
   useEffect(() => {
     if (rtkError) {
@@ -241,7 +241,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
       dispatchApiErrorEvent={dispatchApiErrorEvent}
       error={error}
       fetched={fetched}
-      loading={loading || isLoading}
+      loading={loading || isFetching}
       object={wrappedObject}
       reload={refetch}
     />
