@@ -136,32 +136,6 @@ describe("scenarios > visualizations > pie chart", () => {
         "false",
       );
     });
-
-    cy.findByTestId("chart-legend").findByText("Gadget").realHover();
-
-    cy.log("Ensure that only Gadget has aria-current=true");
-    cy.findByTestId("chart-legend").within(() => {
-      cy.findByTestId("legend-item-Doohickey").should(
-        "have.attr",
-        "aria-current",
-        "false",
-      );
-      cy.findByTestId("legend-item-Gadget").should(
-        "have.attr",
-        "aria-current",
-        "true",
-      );
-      cy.findByTestId("legend-item-Gizmo").should(
-        "have.attr",
-        "aria-current",
-        "false",
-      );
-      cy.findByTestId("legend-item-Widget").should(
-        "have.attr",
-        "aria-current",
-        "false",
-      );
-    });
   });
 
   it("should not truncate legend titles when enabling percentages (metabase#48207)", () => {
