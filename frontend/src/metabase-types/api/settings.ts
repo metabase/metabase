@@ -358,6 +358,7 @@ export type UserSettings = {
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
+  "trial-banner-dismissal-timestamp"?: string | null;
 };
 
 /**
