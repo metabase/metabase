@@ -9,6 +9,7 @@
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
@@ -506,3 +507,38 @@
                            :breakout    (symbol "nil #_\"key is not present.\"")
                            :fields      (symbol "nil #_\"key is not present.\"")}]}
               (lib/drill-thru query drill))))))
+
+(deftest ^:parallel include-all-joined-columns-test
+  (testing "underlying records for a query with a join should include all fields from the join (#48032)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/join (meta/table-metadata :people))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (-> (meta/field-metadata :orders :discount)
+                                             (lib/with-binning {:strategy :default}))))
+          count-col    (m/find-first #(= (:name %) "count")
+                                     (lib/returned-columns query))
+          _            (is (some? count-col))
+          discount-col (m/find-first #(= (:name %) "DISCOUNT")
+                                     (lib/returned-columns query))
+          _            (is (some? discount-col))
+          context      {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value      16845
+                        :row        [{:column     discount-col
+                                      :column-ref (lib/ref discount-col)
+                                      :value      nil}
+                                     {:column     count-col
+                                      :column-ref (lib/ref count-col)
+                                      :value      16845}]
+                        :dimensions [{:column     discount-col
+                                      :column-ref (lib/ref discount-col)
+                                      :value      nil}]}
+          drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                              (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? :all
+              (-> query
+                  (lib/drill-thru drill)
+                  lib.join/joins
+                  first
+                  lib.join/join-fields))))))

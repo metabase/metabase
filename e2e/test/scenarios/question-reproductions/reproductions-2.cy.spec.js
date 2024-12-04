@@ -1,36 +1,7 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  chartPathWithFillColor,
-  commandPalette,
-  commandPaletteButton,
-  createNativeQuestion,
-  createQuestion,
-  entityPickerModal,
-  entityPickerModalItem,
-  entityPickerModalTab,
-  focusNativeEditor,
-  getNotebookStep,
-  modal,
-  newButton,
-  onlyOnOSS,
-  openNativeEditor,
-  openNotebook,
-  openOrdersTable,
-  openQuestionActions,
-  popover,
-  queryBuilderHeader,
-  restore,
-  saveQuestion,
-  saveSavedQuestion,
-  selectFilterOperator,
-  startNewQuestion,
-  tableHeaderClick,
-  visitQuestion,
-  visitQuestionAdhoc,
-  visualize,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -65,14 +36,14 @@ describe("issue 23023", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should show only selected columns in a step preview (metabase#23023)", () => {
-    visitQuestionAdhoc(questionDetails);
+    H.visitQuestionAdhoc(questionDetails);
 
-    openNotebook();
+    H.openNotebook();
 
     cy.icon("play").eq(1).click();
 
@@ -96,12 +67,12 @@ describe("issue 24839: should be able to summarize a nested question based on th
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.createQuestion(questionDetails).then(({ body: { id } }) => {
       // Start ad-hoc nested question based on the saved one
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: { "source-table": `card__${id}` },
@@ -112,20 +83,20 @@ describe("issue 24839: should be able to summarize a nested question based on th
   });
 
   it("from the notebook GUI (metabase#24839-1)", () => {
-    openNotebook();
+    H.openNotebook();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sum of ...").click();
-    popover()
+    H.popover()
       .should("contain", "Sum of Quantity")
       .and("contain", "Average of Total");
   });
 
   it("from a table header cell (metabase#24839-2)", () => {
-    tableHeaderClick("Average of Total");
+    H.tableHeaderClick("Average of Total");
 
-    popover().contains("Distinct values").click();
+    H.popover().contains("Distinct values").click();
 
     cy.findByTestId("scalar-value").invoke("text").should("eq", "49");
 
@@ -161,16 +132,16 @@ describe("issue 25016", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should be possible to filter by a column in a multi-stage query (metabase#25016)", () => {
-    visitQuestionAdhoc(questionDetails);
-    tableHeaderClick("Category");
+    H.visitQuestionAdhoc(questionDetails);
+    H.tableHeaderClick("Category");
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
@@ -185,8 +156,8 @@ describe("issue 25016", () => {
 // this is only testable in OSS because EE always has models from auditv2
 describe("issue 25144", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    onlyOnOSS();
-    restore("setup");
+    H.onlyOnOSS();
+    H.restore("setup");
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("createCard");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
@@ -195,47 +166,47 @@ describe("issue 25144", { tags: "@OSS" }, () => {
   it("should show Saved Questions tab after creating the first question (metabase#25144)", () => {
     cy.visit("/");
 
-    newButton("Question").click();
+    H.newButton("Question").click();
 
-    entityPickerModal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByText("Saved questions").should("not.exist");
-      entityPickerModalItem(2, "Orders").click();
+      H.entityPickerModalItem(2, "Orders").click();
     });
 
-    saveQuestion("Orders question");
+    H.saveQuestion("Orders question");
 
-    newButton("Question").click();
+    H.newButton("Question").click();
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").should("be.visible").click();
-      entityPickerModalItem(1, "Orders question").should("be.visible");
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Saved questions").should("be.visible").click();
+      H.entityPickerModalItem(1, "Orders question").should("be.visible");
     });
   });
 
   it("should show Models tab after creation the first model (metabase#24878)", () => {
     cy.visit("/");
 
-    newButton("Model").click();
+    H.newButton("Model").click();
     cy.findByTestId("new-model-options")
       .findByText(/use the notebook/i)
       .click();
-    entityPickerModal().within(() => {
-      entityPickerModalItem(2, "Orders").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalItem(2, "Orders").click();
     });
 
     cy.findByTestId("dataset-edit-bar").button("Save").click();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByLabelText("Name").clear().type("Orders model");
       cy.button("Save").click();
     });
     cy.wait("@createCard");
 
-    newButton("Question").click();
+    H.newButton("Question").click();
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Models").should("be.visible").click();
-      entityPickerModalItem(1, "Orders model").should("be.visible");
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Models").should("be.visible").click();
+      H.entityPickerModalItem(1, "Orders model").should("be.visible");
     });
   });
 });
@@ -257,35 +228,35 @@ describe("issue 27104", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    visitQuestionAdhoc(questionDetails, { mode: "notebook" });
+    H.visitQuestionAdhoc(questionDetails, { mode: "notebook" });
   });
 
   it("should correctly format the filter operator after the aggregation (metabase#27104)", () => {
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
-    popover().findByText("Count").click();
+    H.popover().findByText("Count").click();
     // The following line is the main assertion.
-    popover().button("Back").should("have.text", "Count");
+    H.popover().button("Back").should("have.text", "Count");
     // The rest of the test is not really needed for this reproduction.
-    selectFilterOperator("Greater than");
-    popover().within(() => {
+    H.selectFilterOperator("Greater than");
+    H.popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("0").blur();
       cy.button("Add filter").click();
     });
 
-    visualize();
+    H.visualize();
 
     cy.findByTestId("qb-filters-panel").findByText("Count is greater than 0");
     // Check bars count
-    chartPathWithFillColor("#509EE3").should("have.length", 5);
+    H.chartPathWithFillColor("#509EE3").should("have.length", 5);
   });
 });
 
 describe("issue 27462", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -304,13 +275,13 @@ describe("issue 27462", () => {
       visualization_settings: {},
     };
 
-    visitQuestionAdhoc(questionDetails, { mode: "notebook" });
+    H.visitQuestionAdhoc(questionDetails, { mode: "notebook" });
 
     cy.button("Summarize").click();
 
     cy.findByRole("option", { name: "Sum of ..." }).click();
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByRole("option", { name: "Count" }).click();
     });
 
@@ -323,7 +294,7 @@ describe("issue 27462", () => {
 
 describe("issue 28221", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -367,7 +338,7 @@ describe("issue 28221", () => {
 
 describe("issue 28599", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
 
     cy.createQuestion(
@@ -402,9 +373,9 @@ describe("issue 28599", () => {
       cy.findByText("Year").should("be.visible");
     });
 
-    openQuestionActions();
-    popover().findByText("Turn into a model").click();
-    modal().findByText("Turn this into a model").click();
+    H.openQuestionActions();
+    H.popover().findByText("Turn into a model").click();
+    H.modal().findByText("Turn this into a model").click();
 
     cy.wait("@updateCard");
 
@@ -431,12 +402,12 @@ describe("issue 28874", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should allow to modify a pivot question in the notebook (metabase#28874)", () => {
-    visitQuestionAdhoc(questionDetails, { mode: "notebook" });
+    H.visitQuestionAdhoc(questionDetails, { mode: "notebook" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").parent().icon("close").click();
@@ -460,20 +431,20 @@ describe("issue 29082", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should handle nulls in quick filters (metabase#29082)", () => {
-    visitQuestionAdhoc(questionDetails);
+    H.visitQuestionAdhoc(questionDetails);
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 11 rows").should("exist");
 
     cy.get(".test-TableInteractive-emptyCell").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("=").click());
+    H.popover().within(() => cy.findByText("=").click());
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 8 rows").should("exist");
@@ -488,7 +459,7 @@ describe("issue 29082", () => {
 
     cy.get(".test-TableInteractive-emptyCell").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("≠").click());
+    H.popover().within(() => cy.findByText("≠").click());
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 3 rows").should("exist");
@@ -499,7 +470,7 @@ describe("issue 29082", () => {
 
 describe("issue 30165", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -508,9 +479,9 @@ describe("issue 30165", () => {
   });
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
-    openNativeEditor();
-    focusNativeEditor().type("SELECT * FROM ORDERS");
-    queryBuilderHeader().findByText("Save").click();
+    H.openNativeEditor();
+    H.focusNativeEditor().type("SELECT * FROM ORDERS");
+    H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").clear().type("Q1");
       cy.findByText("Save").click();
@@ -518,15 +489,15 @@ describe("issue 30165", () => {
     cy.wait("@createQuestion");
     cy.button("Not now").click();
 
-    focusNativeEditor().type(" WHERE TOTAL < 20");
-    queryBuilderHeader().findByText("Save").click();
+    H.focusNativeEditor().type(" WHERE TOTAL < 20");
+    H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
 
-    focusNativeEditor().type(" LIMIT 10");
-    queryBuilderHeader().findByText("Save").click();
+    H.focusNativeEditor().type(" LIMIT 10");
+    H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
     });
@@ -542,22 +513,22 @@ describe("issue 30165", () => {
 
 describe("issue 30610", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should remove stale metadata when saving a new question (metabase#30610)", () => {
-    openOrdersTable();
-    openNotebook();
+    H.openOrdersTable();
+    H.openNotebook();
     removeSourceColumns();
-    saveQuestion("New orders");
+    H.saveQuestion("New orders");
     createAdHocQuestion("New orders");
     visualizeAndAssertColumns();
   });
 
   it("should remove stale metadata when updating an existing question (metabase#30610)", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
-    openNotebook();
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.openNotebook();
     removeSourceColumns();
     updateQuestion();
     createAdHocQuestion("Orders");
@@ -567,7 +538,7 @@ describe("issue 30610", () => {
 
 describe("issue 36669", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/search*").as("search");
   });
@@ -581,11 +552,11 @@ describe("issue 36669", () => {
       },
     };
 
-    createQuestion(questionDetails).then(() => {
-      startNewQuestion();
+    H.createQuestion(questionDetails).then(() => {
+      H.startNewQuestion();
     });
 
-    entityPickerModal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByPlaceholderText("Search this collection or everywhere…").type(
         "Orders 36669",
       );
@@ -595,10 +566,10 @@ describe("issue 36669", () => {
       cy.findByRole("tabpanel").findByText("Orders 36669").click();
     });
 
-    getNotebookStep("data").findByText("Orders 36669").click();
+    H.getNotebookStep("data").findByText("Orders 36669").click();
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
 
       cy.log("verify Tables are listed");
       cy.findByRole("tabpanel").should("contain", "Orders");
@@ -608,7 +579,7 @@ describe("issue 36669", () => {
 
 describe("issue 35290", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
@@ -632,7 +603,7 @@ describe("issue 35290", () => {
       },
     };
 
-    createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
       const questionDetails = {
         name: "35290",
         query: {
@@ -640,7 +611,7 @@ describe("issue 35290", () => {
         },
       };
 
-      createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
     });
 
     cy.findByTestId("viz-settings-button").click();
@@ -658,10 +629,10 @@ describe("issue 35290", () => {
 
 describe("issue 43216", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
 
-    createNativeQuestion({
+    H.createNativeQuestion({
       name: "Source question",
       native: { query: "select 1 as A, 2 as B, 3 as C" },
     });
@@ -671,34 +642,34 @@ describe("issue 43216", () => {
     cy.visit("/");
 
     cy.log("Create target question");
-    newButton("Question").click();
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+    H.newButton("Question").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Saved questions").click();
       cy.findByText("Source question").click();
     });
-    saveQuestion("Target question");
+    H.saveQuestion("Target question");
 
     cy.log("Update source question");
-    commandPaletteButton().click();
-    commandPalette().findByText("Source question").click();
+    H.commandPaletteButton().click();
+    H.commandPalette().findByText("Source question").click();
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
-    focusNativeEditor().should("be.visible").type(" , 4 as D");
-    saveSavedQuestion();
+    H.focusNativeEditor().should("be.visible").type(" , 4 as D");
+    H.saveSavedQuestion();
 
     cy.log("Assert updated metadata in target question");
-    commandPaletteButton().click();
-    commandPalette().findByText("Target question").click();
+    H.commandPaletteButton().click();
+    H.commandPalette().findByText("Target question").click();
     cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
-    openNotebook();
-    getNotebookStep("data").button("Pick columns").click();
-    popover().findByText("D").should("be.visible");
+    H.openNotebook();
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText("D").should("be.visible");
   });
 });
 
 function updateQuestion() {
-  queryBuilderHeader().findByText("Save").click();
+  H.queryBuilderHeader().findByText("Save").click();
   cy.findByTestId("save-question-modal").within(modal => {
     cy.findByText("Save").click();
   });
@@ -706,24 +677,24 @@ function updateQuestion() {
 
 function removeSourceColumns() {
   cy.findByTestId("fields-picker").click();
-  popover().findByText("Select none").click();
+  H.popover().findByText("Select none").click();
 }
 
 function createAdHocQuestion(questionName) {
-  startNewQuestion();
-  entityPickerModal().within(() => {
-    entityPickerModalTab("Saved questions").click();
+  H.startNewQuestion();
+  H.entityPickerModal().within(() => {
+    H.entityPickerModalTab("Saved questions").click();
     cy.findByText(questionName).click();
   });
   cy.findByTestId("fields-picker").click();
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByText("ID").should("be.visible");
     cy.findByText("Total").should("not.exist");
   });
 }
 
 function visualizeAndAssertColumns() {
-  visualize();
+  H.visualize();
   cy.findByTestId("TableInteractive-root").within(() => {
     cy.findByText("ID").should("exist");
     cy.findByText("Total").should("not.exist");
@@ -744,18 +715,18 @@ describe("Custom columns visualization settings", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.createQuestion(question).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
-      visitQuestion(id);
+      H.visitQuestion(id);
     });
   });
 
   it("should not show 'Save' after modifying minibar settings for a custom column", () => {
     goToExpressionSidebarVisualizationSettings();
-    popover().within(() => {
+    H.popover().within(() => {
       const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
       miniBarSwitch.click();
       miniBarSwitch.should("be.checked");
@@ -766,14 +737,14 @@ describe("Custom columns visualization settings", () => {
   it("should not show 'Save' after text formatting visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
 
-    popover().within(() => {
+    H.popover().within(() => {
       const viewAsDropdown = cy.findByLabelText("Display as");
       viewAsDropdown.click();
     });
 
     cy.findByLabelText("Email link").click();
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Email link").should("exist");
     });
 
@@ -781,11 +752,11 @@ describe("Custom columns visualization settings", () => {
   });
 
   it("should not show 'Save' after saving viz settings from the custom column dropdown", () => {
-    tableHeaderClick(EXPRESSION_NAME);
-    popover().within(() => {
+    H.tableHeaderClick(EXPRESSION_NAME);
+    H.popover().within(() => {
       cy.findByRole("button", { name: /gear icon/i }).click();
     });
-    popover().within(() => {
+    H.popover().within(() => {
       const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
       miniBarSwitch.click();
       miniBarSwitch.should("be.checked");
