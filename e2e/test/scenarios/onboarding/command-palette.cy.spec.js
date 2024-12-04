@@ -9,12 +9,16 @@ import {
   commandPaletteAction,
   commandPaletteButton,
   commandPaletteInput,
+  describeEE,
+  modal,
+  modifyPermission,
   openCommandPalette,
   pressEnd,
   pressHome,
   pressPageDown,
   pressPageUp,
   restore,
+  setTokenFeatures,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
@@ -163,58 +167,91 @@ describe("command palette", () => {
     });
   });
 
-  it("should render links to admin settings pages for admins", () => {
-    cy.log("should render links for admins");
-    cy.visit("/");
-    cy.findByTestId("home-page")
-      .findByText(/see what metabase can do/i)
-      .should("exist");
+  describe("admin settings links", () => {
+    it("should render links to all admin settings pages for admins", () => {
+      cy.visit("/");
+      cy.findByTestId("home-page")
+        .findByText(/see what metabase can do/i)
+        .should("exist");
 
-    openCommandPalette();
-    commandPalette().within(() => {
-      commandPaletteInput().type("Settings -");
-      commandPaletteAction("Settings - General").should("exist");
+      openCommandPalette();
+      commandPalette().within(() => {
+        commandPaletteInput().type("Settings -");
+        cy.log("check admin sees all settings links");
+        commandPaletteAction("Settings - Setup").should("exist");
+        commandPaletteAction("Settings - General").should("exist");
+        commandPaletteInput().clear();
+
+        cy.log("shouldsee admin links");
+        commandPaletteInput().type("Performance");
+        commandPaletteAction("Performance").should("exist");
+      });
     });
 
-    cy.log("should not render links for non-admins");
-    cy.signOut();
-    cy.signInAsNormalUser();
-    cy.reload();
-    cy.findByTestId("home-page")
-      .findByText(/see what metabase can do/i)
-      .should("exist");
+    it("should not render any links to settings or admin pages for non-admins without settings access", () => {
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.findByTestId("home-page")
+        .findByText(/see what metabase can do/i)
+        .should("exist");
 
-    openCommandPalette();
-    commandPalette().within(() => {
-      commandPaletteInput().type("Settings -");
-      commandPaletteAction("Settings - General").should("not.exist");
-    });
-  });
+      openCommandPalette();
+      commandPalette().within(() => {
+        cy.log("check normal user does not see any setting links");
+        commandPaletteInput().type("Settings -");
+        commandPaletteAction("Settings - Setup").should("not.exist");
+        commandPaletteAction("Settings - General").should("not.exist");
+        commandPaletteInput().clear();
 
-  it("should render links to site settings in settings pages", () => {
-    cy.visit("/admin");
-    cy.findByRole("heading", { name: "Getting set up" }).should("exist");
-    openCommandPalette();
-
-    commandPalette().within(() => {
-      commandPaletteInput().type("Custom Homepage");
-      cy.findByRole("option", { name: "Custom Homepage" }).click();
+        cy.log("should not see admin links");
+        commandPaletteInput().type("Performance");
+        commandPaletteAction("Performance").should("not.exist");
+      });
     });
 
-    cy.findByTestId("custom-homepage-setting").should("be.visible");
+    describeEE("with advanced permissions", () => {
+      it("should render links to settings pages but not other admin pages for non-admins with settings access", () => {
+        // setup
+        cy.log("setup permissions");
 
-    cy.location("pathname").should("contain", "settings/general");
-    cy.location("hash").should("contain", "#custom-homepage");
+        setTokenFeatures("all");
+        cy.visit("/admin/permissions/application");
 
-    openCommandPalette();
+        const SETTINGS_INDEX = 0;
+        modifyPermission("All Users", SETTINGS_INDEX, "Yes");
 
-    commandPalette().within(() => {
-      commandPaletteInput().clear().type("Week");
-      cy.findByRole("option", { name: "First day of the week" }).click();
+        cy.button("Save changes").click();
+
+        modal().within(() => {
+          cy.findByText("Save permissions?");
+          cy.findByText("Are you sure you want to do this?");
+          cy.button("Yes").click();
+        });
+
+        cy.signInAsNormalUser();
+
+        // test
+        cy.visit("/");
+        cy.findByTestId("home-page")
+          .findByText(/see what metabase can do/i)
+          .should("exist");
+
+        openCommandPalette();
+        commandPalette().within(() => {
+          commandPaletteInput().type("Settings -");
+          cy.log(
+            "check user with settings permissions see non-admin restricted settings links",
+          );
+          commandPaletteAction("Settings - Setup").should("not.exist");
+          commandPaletteAction("Settings - General").should("exist");
+          commandPaletteInput().clear();
+
+          cy.log("should not see admin links");
+          commandPaletteInput().type("Performance");
+          commandPaletteAction("Performance").should("not.exist");
+        });
+      });
     });
-
-    cy.location("pathname").should("contain", "settings/localization");
-    cy.location("hash").should("contain", "#start-of-week");
   });
 
   it("should not be accessible when doing full app embedding", () => {

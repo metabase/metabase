@@ -479,6 +479,7 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   getRoutes: (): ReactNode => null,
   tabs: [] as any,
   selectors: {
+    canAccessSettings: (_state: any) => false,
     canManageSubscriptions: (_state: any) => true,
   },
 };

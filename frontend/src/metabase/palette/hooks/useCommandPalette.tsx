@@ -24,7 +24,7 @@ import {
   getDocsUrl,
   getSettings,
 } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, type IconName } from "metabase/ui";
 import {
@@ -44,7 +44,10 @@ export const useCommandPalette = ({
   const dispatch = useDispatch();
   const docsUrl = useSelector(state => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
   const isAdmin = useSelector(getUserIsAdmin);
+  const canUserAccessSettings = useSelector(canAccessSettings);
+
   const isSearchTypeaheadEnabled = useSetting("search-typeahead-enabled");
 
   // Used for finding actions within the list
@@ -277,14 +280,18 @@ export const useCommandPalette = ({
     }));
   }, [isAdmin, adminPaths, dispatch]);
 
-  const adminSettingsActions = useMemo<PaletteAction[]>(() => {
-    if (!isAdmin) {
+  const settingsActions = useMemo<PaletteAction[]>(() => {
+    if (!canUserAccessSettings) {
       return [];
     }
 
     return Object.entries(settingsSections)
       .filter(([slug, section]) => {
         if (section.getHidden?.(settingValues)) {
+          return false;
+        }
+
+        if (section.adminOnly && !isAdmin) {
           return false;
         }
 
@@ -297,12 +304,19 @@ export const useCommandPalette = ({
         perform: () => dispatch(push(`/admin/settings/${slug}`)),
         section: "admin",
       }));
-  }, [isAdmin, settingsSections, settingValues, dispatch]);
+  }, [
+    canUserAccessSettings,
+    isAdmin,
+    settingsSections,
+    settingValues,
+    dispatch,
+  ]);
 
-  useRegisterActions(
-    hasQuery ? [...adminActions, ...adminSettingsActions] : [],
-    [adminActions, adminSettingsActions, hasQuery],
-  );
+  useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
+    adminActions,
+    settingsActions,
+    hasQuery,
+  ]);
 };
 
 export const getSearchResultSubtext = (wrappedSearchResult: any) => {
