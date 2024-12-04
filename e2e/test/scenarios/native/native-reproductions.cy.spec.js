@@ -590,7 +590,11 @@ describe("issue 34330", () => {
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
-      expect(url.searchParams.get("substring")).to.equal("USER", {
+
+      // TODO: is this a behaviour we really want?
+      // CodeMirror will not request more autocompletions if the prefix has just become
+      // more narrow since the last call, and will do filtering on the client.
+      expect(url.searchParams.get("substring")).to.equal("U", {
         delay: 0,
       });
     });
