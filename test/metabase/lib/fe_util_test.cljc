@@ -321,6 +321,10 @@
       (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)))))
 
+(defn- format-time-filter-parts
+  [parts]
+  (update parts :values (fn [values] (mapv #(u.time/format-for-base-type % :type/Time) values))))
+
 (deftest ^:parallel time-filter-parts-test
   (let [query  lib.tu/venues-query
         column (assoc (meta/field-metadata :checkins :date)
@@ -344,10 +348,13 @@
                                :column column
                                :values [(u.time/local-time 10 20) (u.time/local-time 15 40)]}}]
         (let [{:keys [operator column values]} parts]
-          (is (=? parts (lib.fe-util/time-filter-parts query -1 clause)))
-          (is (=? parts (lib.fe-util/time-filter-parts query -1 (lib.fe-util/time-filter-clause operator
-                                                                                                column
-                                                                                                values)))))))
+          (is (=? (format-time-filter-parts parts)
+                  (format-time-filter-parts (lib.fe-util/time-filter-parts query -1 clause))))
+          (is (=? (format-time-filter-parts parts)
+                  (format-time-filter-parts (lib.fe-util/time-filter-parts query -1
+                                                                           (lib.fe-util/time-filter-clause operator
+                                                                                                           column
+                                                                                                           values))))))))
     (testing "unsupported clauses"
       (are [clause] (nil? (lib.fe-util/time-filter-parts query -1 clause))
         (lib.filter/= column "10:20")

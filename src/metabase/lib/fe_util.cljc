@@ -379,7 +379,7 @@
   [operator :- ::lib.schema.filter/time-filter-operator
    column   :- ::lib.schema.metadata/column
    values   :- [:maybe [:sequential [:fn u.time/valid?]]]]
-  (let [format-time #(u.time/format-for-base-type % ((some-fn :effective-type :base-type) column))]
+  (let [format-time #(u.time/format-for-base-type % :type/Time)]
     (expression-clause operator (into [column] (map format-time) values) {})))
 
 (mu/defn time-filter-parts :- [:maybe TimeFilterParts]
