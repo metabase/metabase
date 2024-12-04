@@ -1,7 +1,9 @@
 (ns metabase.lib.drill-thru.common
   (:require
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]))
 
 (defn mbql-stage?
@@ -46,3 +48,42 @@
   "Convert a drill value to a JS value"
   [value]
   (if (= value :null) nil value))
+
+(defn- has-source-or-underyling-source-fn
+  [source]
+  (fn has-source?
+    ([column]
+     (= (:lib/source column) source))
+    ([query column]
+     (and
+      (seq column)
+      (or (has-source? column)
+          (has-source? (lib.underlying/top-level-column query column)))))))
+
+(def aggregation-sourced?
+  "Does column or top-level-column have :source/aggregations?"
+  (has-source-or-underyling-source-fn :source/aggregations))
+
+(def breakout-sourced?
+  "Does column or top-level-column have :source/breakouts?"
+  (has-source-or-underyling-source-fn :source/breakouts))
+
+(defn strictly-underyling-aggregation?
+  "Does the top-level-column for `column` in `query` have :source/aggregations?"
+  [query column]
+  (and (not (aggregation-sourced? column))
+       (aggregation-sourced? query column)))
+
+(defn dimensions-from-breakout-columns
+  "Convert `row` data into dimensions for `column`s that come from an aggregation in a previous stage."
+  [query column row]
+  (when (strictly-underyling-aggregation? query column)
+    (not-empty (filterv #(breakout-sourced? query (:column %))
+                        row))))
+
+(defn underlying-aggregation-ref
+  "TODO: unused in this draft PR, but will be used by underyling-records drill"
+  [query column column-ref]
+  (if (strictly-underyling-aggregation? query column)
+    (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
+    column-ref))

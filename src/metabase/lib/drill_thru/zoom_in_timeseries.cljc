@@ -45,6 +45,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -96,27 +97,31 @@
   For example: The month of a year, days or weeks of a quarter, smaller lat/long regions, etc.
 
   This is different from the `:drill-thru/zoom` type, which is for showing the details of a single object."
-  [query                              :- ::lib.schema/query
-   stage-number                       :- :int
-   {:keys [dimensions], :as _context} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             (not-empty dimensions))
-    (when-let [{:keys [value column-ref], :as dimension} (matching-breakout-dimension query stage-number dimensions)]
-      (when value
-        (when-let [next-unit (next-breakout-unit query stage-number column-ref)]
-          {:lib/type     :metabase.lib.drill-thru/drill-thru
-           :display-name (describe-next-unit next-unit)
-           :type         :drill-thru/zoom-in.timeseries
-           :dimension    dimension
-           :next-unit    next-unit})))))
+  [query                                         :- ::lib.schema/query
+   _stage-number                                 :- :int
+   {:keys [column dimensions row], :as _context} :- ::lib.schema.drill-thru/context]
+  (let [dimensions   (or (not-empty dimensions)
+                         (lib.drill-thru.common/dimensions-from-breakout-columns query column row))
+        stage-number (lib.underlying/top-level-stage-number query)]
+    (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+               (not-empty dimensions))
+      (when-let [{:keys [value column-ref], :as dimension} (matching-breakout-dimension query stage-number dimensions)]
+        (when value
+          (when-let [next-unit (next-breakout-unit query stage-number column-ref)]
+            {:lib/type     :metabase.lib.drill-thru/drill-thru
+             :display-name (describe-next-unit next-unit)
+             :type         :drill-thru/zoom-in.timeseries
+             :dimension    dimension
+             :next-unit    next-unit}))))))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/zoom-in.timeseries
   [query                         :- ::lib.schema/query
-   stage-number                  :- :int
+   _stage-number                 :- :int
    {:keys [dimension next-unit]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries]
   (let [{:keys [column value]} dimension
         old-breakout           (:column-ref dimension)
-        new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)]
+        new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)
+        stage-number           (lib.underlying/top-level-stage-number query)]
     (-> query
         (lib.filter/filter stage-number (lib.filter/= column value))
         (lib.remove-replace/replace-clause stage-number old-breakout new-breakout))))

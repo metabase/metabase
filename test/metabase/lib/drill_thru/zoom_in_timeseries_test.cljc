@@ -189,6 +189,38 @@
           bucketing
           {"CREATED_AT" "2022-12-01"}))))))
 
+(deftest ^:parallel returns-zoom-in-timeseries-for-multi-stage-queries
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/zoom-in-timeseries
+    :click-type   :cell
+    :query-type   :aggregated
+    :column-name  "count"
+    :custom-query (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                       (lib/aggregate (lib/count))
+                                       (lib/breakout (meta/field-metadata :orders :product-id))
+                                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                                         (lib/with-temporal-bucket :month)))
+                                       lib/append-stage)
+                        count-col  (m/find-first #(= (:name %) "count")
+                                                 (lib/returned-columns base-query))
+                        _          (is (some? count-col))
+                        query      (lib/filter base-query (lib/> count-col 0))]
+                    query)
+    :custom-row   {"PRODUCT_ID" 3
+                   "CREATED_AT" "2023-12-01"
+                   "count"      77}
+    :expected     {:type       :drill-thru/zoom-in-timeseries
+                   :next-unit  :week
+                   ;; the "underlying" dimensions are reconstructed from the row.
+                   :dimensions [{:column     {:name       "PRODUCT_ID"
+                                              :lib/source :source/previous-stage}
+                                 :column-ref [:field {} "PRODUCT_ID"]
+                                 :value      3}
+                                {:column     {:name       "CREATED_AT"
+                                              :lib/source :source/previous-stage}
+                                 :column-ref [:field {} "CREATED_AT"]
+                                 :value      "2023-12-01"}]}}))
+
 (deftest ^:parallel returns-zoom-in-timeseries-e2e-test-2
   (testing "zoom-in.timeseries should be returned for a"
     (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
