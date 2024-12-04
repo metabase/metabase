@@ -96,9 +96,9 @@
                   (lib/query $ (meta/table-metadata table-kw))
                   (lib/aggregate $ (lib/count))
                   (lib/breakout $ (lib/with-binning
-                                    (meta/field-metadata table-kw field-kw)
-                                    (m/find-first (comp #{binning-name} :display-name)
-                                                  (lib/available-binning-strategies $ (meta/field-metadata table-kw field-kw)))))
+                                   (meta/field-metadata table-kw field-kw)
+                                   (m/find-first (comp #{binning-name} :display-name)
+                                                 (lib/available-binning-strategies $ (meta/field-metadata table-kw field-kw)))))
                   (lib.stage/append-stage $))]
       (testing "Binning is present in next stage display-name"
         (is (some? (m/find-first (comp #{expected-display-name} :display-name)
@@ -114,7 +114,7 @@
                                    (lib/visible-columns
                                     (as-> query $
                                       (lib/breakout $ (lib/with-binning
-                                                        first-stage-binned-column
-                                                        (m/find-first (comp #{binning-name} :display-name)
+                                                       first-stage-binned-column
+                                                       (m/find-first (comp #{binning-name} :display-name)
                                                                       (lib/available-binning-strategies
                                                                        $ first-stage-binned-column))))))))))))))
