@@ -40,6 +40,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   actionTypes: Record<string, string>;
   getQueryKey: (entityQuery: EntityQuery) => string;
   getObjectStatePath: (entityId: EntityId) => string;
+  name: string;
   nameOne: string;
   normalize: (object: unknown) => {
     object: unknown;
