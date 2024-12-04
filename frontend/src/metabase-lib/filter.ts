@@ -269,6 +269,7 @@ export function excludeDateFilterParts(
   );
 }
 
+// TODO move to MBQL lib
 function legacyExcludeDateFilterParts(
   query: Query,
   stageIndex: number,
