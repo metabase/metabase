@@ -4,9 +4,9 @@ title: Content verification
 
 # Content verification
 
-![Verified icon](./images/verified-icon.png)
-
 {% include plans-blockquote.html feature="Content verification" %}
+
+![Verified icon](./images/verified-icon.png)
 
 Admins can verify items to let others know that the content is accurate and up to date with the correct data source and query.
 
@@ -28,7 +28,7 @@ To remove verification from an item, Admins can visit the item, click on the thr
 
 Admins can verify the following items:
 
-- Questions
-- Models
-- Metrics
-- Dashboards
+- [Questions](../questions/start.md)
+- [Models](../data-modeling/models.md)
+- [Metrics](../data-modeling/metrics.md)
+- [Dashboards](../dashboards/introduction.md)
