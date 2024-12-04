@@ -252,10 +252,10 @@ export function relativeDateFilterParts(
 export function excludeDateFilterClause({
   operator,
   column,
-  values,
   unit,
+  values,
 }: ExcludeDateFilterParts): ExpressionClause {
-  return ML.exclude_date_filter_clause(operator, column, values, unit);
+  return ML.exclude_date_filter_clause(operator, column, unit, values);
 }
 
 export function excludeDateFilterParts(

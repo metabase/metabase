@@ -508,9 +508,9 @@ describe("filter", () => {
 
     it.each<[Lib.ExcludeDateFilterUnit, number[], Lib.ExpressionArg[]]>([
       ["hour-of-day", [10, 20], [10, 20]],
-      ["day-of-week", [1, 2, 3], ["2019-12-30", "2019-12-31", "2020-01-01"]],
-      ["month-of-year", [0, 2], ["2020-01-01", "2020-03-01"]],
-      ["quarter-of-year", [1, 4], ["2020-01-01", "2020-10-01"]],
+      ["day-of-week", [1, 2, 3], [1, 2, 3]],
+      ["month-of-year", [1, 12], [1, 12]],
+      ["quarter-of-year", [1, 4], [1, 4]],
     ])(
       'should properly serialize values for "%s" unit',
       (unit, values, args) => {
