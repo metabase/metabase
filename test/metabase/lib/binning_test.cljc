@@ -103,7 +103,7 @@
      (testing "Binning is present in next stage display-name"
        (is (some? (m/find-first (comp #{expected-display-name} :display-name)
                                 (lib/visible-columns query)))))
-     (testing "Binning is present in next next stage display-name"
+     (testing "Binning is present in `nnext` stage display-name"
        (is (some? (m/find-first (comp #{expected-display-name} :display-name)
                                 (lib/visible-columns
                                  (lib.stage/append-stage query))))))
