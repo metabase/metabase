@@ -1,31 +1,8 @@
 import styled from "@emotion/styled";
 
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
-import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
-import { space } from "metabase/styled-components/theme";
 
-import RunButtonWithTooltip from "../../RunButtonWithTooltip";
-import ViewSection, { ViewSubHeading } from "../ViewSection";
-
-import { QuestionDataSource } from "./components/QuestionDataSource";
-
-export const ViewHeaderContainer = styled(ViewSection)<{
-  isNavBarOpen?: boolean;
-}>`
-  border-bottom: 1px solid var(--mb-color-border);
-  padding-top: ${space(1)};
-  padding-bottom: ${space(1)};
-
-  @media screen and (max-width: 40em) {
-    flex-direction: column;
-    align-items: start;
-    padding: ${space(1)} 0;
-    ${({ isNavBarOpen }) =>
-      isNavBarOpen ? `margin-top: ${APP_SUBHEADER_HEIGHT};` : null}
-  }
-`;
+import { ViewSubHeading } from "../ViewSection";
 
 export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   display: flex;
@@ -42,31 +19,6 @@ export const SavedQuestionHeaderButtonContainer = styled.div<{
   isModelOrMetric: boolean;
 }>`
   right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
-`;
-
-export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
-  color: var(--mb-color-text-light);
-
-  @media screen and (max-width: 40em) {
-    margin-left: 0;
-    margin-top: 2px;
-    margin-bottom: 4px;
-  }
-`;
-
-export const StyledQuestionDataSource = styled(QuestionDataSource)`
-  padding-right: 1rem;
-
-  @media screen and (max-width: 40em) {
-    margin-left: 0;
-    padding-right: 0;
-  }
-`;
-
-export const AdHocLeftSideRoot = styled.div`
-  @media screen and (max-width: 40em) {
-    padding: 0 1.25rem;
-  }
 `;
 
 export const SavedQuestionLeftSideRoot = styled.div<{
@@ -117,19 +69,5 @@ export const ViewHeaderIconButtonContainer = styled.div`
       color: var(--mb-color-brand);
       background-color: var(--mb-color-bg-medium);
     }
-  }
-`;
-
-interface ViewRunButtonWithTooltipProps {
-  isDirty: boolean;
-}
-
-export const ViewRunButtonWithTooltip = styled(
-  RunButtonWithTooltip,
-)<ViewRunButtonWithTooltipProps>`
-  color: var(--mb-color-text-dark);
-
-  &:hover {
-    color: ${props => (props.isDirty ? color("text-white") : color("brand"))};
   }
 `;

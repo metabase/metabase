@@ -6,10 +6,8 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import {
-  ViewHeaderIconButtonContainer,
-  ViewRunButtonWithTooltip,
-} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
+import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import { ViewHeaderIconButtonContainer } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -195,7 +193,10 @@ export function ViewTitleHeaderRightSide({
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <ViewHeaderIconButtonContainer>
-          <ViewRunButtonWithTooltip
+          <RunButtonWithTooltip
+            className={cx(ViewTitleHeaderS.ViewRunButtonWithTooltip, {
+              [ViewTitleHeaderS.isDirty]: isResultDirty,
+            })}
             iconSize={16}
             onlyIcon
             medium

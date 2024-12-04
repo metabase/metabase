@@ -1,12 +1,11 @@
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 import {
   SavedQuestionHeaderButtonContainer,
   SavedQuestionLeftSideRoot,
-  StyledLastEditInfoLabel,
-  StyledQuestionDataSource,
   ViewHeaderLeftSubHeading,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { Flex } from "metabase/ui";
@@ -17,6 +16,7 @@ import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 import { HeaderCollectionBadge } from "../HeaderCollectionBadge";
 import { QuestionDataSource } from "../QuestionDataSource";
 
+import SavedQuestionLeftSideS from "./SavedQuestionLeftSide.module.css";
 import { ViewOnlyTag } from "./ViewOnly";
 
 interface SavedQuestionLeftSideProps {
@@ -101,7 +101,8 @@ export function SavedQuestionLeftSide({
         <ViewHeaderLeftSubHeading>
           {QuestionDataSource.shouldRender({ question, isObjectDetail }) &&
             !isModelOrMetric && (
-              <StyledQuestionDataSource
+              <QuestionDataSource
+                className={SavedQuestionLeftSideS.StyledQuestionDataSource}
                 question={question}
                 isObjectDetail={isObjectDetail}
                 originalQuestion={undefined} // can be removed, needed for typings
@@ -109,7 +110,8 @@ export function SavedQuestionLeftSide({
               />
             )}
           {hasLastEditInfo && isAdditionalInfoVisible && (
-            <StyledLastEditInfoLabel
+            <LastEditInfoLabel
+              className={SavedQuestionLeftSideS.StyledLastEditInfoLabel}
               item={question.card()}
               onClick={onOpenQuestionInfo}
             />
