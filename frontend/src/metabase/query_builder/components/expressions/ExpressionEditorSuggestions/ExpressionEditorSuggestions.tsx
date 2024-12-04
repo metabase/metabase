@@ -310,7 +310,6 @@ function ExpressionEditorSuggestionsListItem({
             <PopoverHoverTarget
               className={ExpressionEditorSuggestionsS.PopoverHoverTarget}
               name="info_filled"
-              hasDescription
               aria-label={t`More info`}
             />
           </InfoPopover>
