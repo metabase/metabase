@@ -106,14 +106,62 @@ describe("scenarios > visualizations > pie chart", () => {
       dataset_query: testQuery,
       display: "pie",
     });
+    cy.findByTestId("chart-container").within(() => {
+      cy.findByText("200").should("be.visible");
+      cy.findByText(/Total/i).should("be.visible");
+    });
 
     cy.findByTestId("chart-legend").findByText("Doohickey").realHover();
-    [
-      ["Doohickey", "true"],
-      ["Gadget", "false"],
-      ["Gizmo", "false"],
-      ["Widget", "false"],
-    ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
+
+    cy.log("Ensure that only Doohickey has aria-current=true");
+    cy.findByTestId("chart-legend").within(() => {
+      cy.findByTestId("legend-item-Doohickey").should(
+        "have.attr",
+        "aria-current",
+        "true",
+      );
+      cy.findByTestId("legend-item-Gadget").should(
+        "have.attr",
+        "aria-current",
+        "false",
+      );
+      cy.findByTestId("legend-item-Gizmo").should(
+        "have.attr",
+        "aria-current",
+        "false",
+      );
+      cy.findByTestId("legend-item-Widget").should(
+        "have.attr",
+        "aria-current",
+        "false",
+      );
+    });
+
+    cy.findByTestId("chart-legend").findByText("Gadget").realHover();
+
+    cy.log("Ensure that only Gadget has aria-current=true");
+    cy.findByTestId("chart-legend").within(() => {
+      cy.findByTestId("legend-item-Doohickey").should(
+        "have.attr",
+        "aria-current",
+        "false",
+      );
+      cy.findByTestId("legend-item-Gadget").should(
+        "have.attr",
+        "aria-current",
+        "true",
+      );
+      cy.findByTestId("legend-item-Gizmo").should(
+        "have.attr",
+        "aria-current",
+        "false",
+      );
+      cy.findByTestId("legend-item-Widget").should(
+        "have.attr",
+        "aria-current",
+        "false",
+      );
+    });
   });
 
   it("should not truncate legend titles when enabling percentages (metabase#48207)", () => {
@@ -660,12 +708,6 @@ function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {
       cy.findAllByTestId("legend-item").contains(name).should("be.visible");
     });
   });
-}
-
-function checkLegendItemAriaCurrent(title, value) {
-  cy.findByTestId("chart-legend")
-    .findByTestId(`legend-item-${title}`)
-    .should("have.attr", "aria-current", value);
 }
 
 function getLimitedQuery(query, limit) {
