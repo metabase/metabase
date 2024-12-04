@@ -50,9 +50,10 @@ describe("issue 16584", () => {
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     // - the space at the end of the query is not needed to reproduce this issue
-    H.openNativeEditor()
-      .realType("SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country")
-      .realType("}} LIMIT 1");
+    H.openNativeEditor();
+    H.nativeEditorType(
+      "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
+    );
 
     H.focusNativeEditor().realPress(["Meta", "A"]);
 
