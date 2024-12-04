@@ -14,11 +14,10 @@
   ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
   search.engine/keep-me
   search.engines.appdb/keep-me
+  search.legacy/keep-me
 
   search.config/keep-me
-  search.impl/keep-me
-  search.legacy/keep-me
-  search.spec/keep-me)
+  search.impl/keep-me)
 
 (p/import-vars
  [search.config
