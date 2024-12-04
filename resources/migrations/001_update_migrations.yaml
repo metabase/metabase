@@ -10195,9 +10195,9 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_user_key_value_user_id
               - column:
-                  name: context
+                  name: namespace
                   type: varchar(254)
-                  remarks: 'The context for this KV, e.g. "dashboard-filters" or "nobody-knows"'
+                  remarks: 'The namespace for this KV, e.g. "dashboard-filters" or "nobody-knows"'
               - column:
                   name: key
                   remarks: 'The key'
@@ -10224,16 +10224,21 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+              - column:
+                  name: expires_at
+                  remarks: 'If set, when this row expires'
+                  type: ${timestamp_type}
+                  defaultValue: null
 
   - changeSet:
       id: v52.2024-12-10T11:20:12
       author: johnswanson
-      comment: Add a unique constraint for user_id,context,key
+      comment: Add a unique constraint for user_id,namespace,key
       changes:
         - addUniqueConstraint:
             tableName: user_key_value
-            columnNames: user_id, context, key
-            constraintName: unique_user_key_value_user_id_context_key
+            columnNames: user_id, namespace, key
+            constraintName: unique_user_key_value_user_id_namespace_key
       rollback: # will be deleted with table
  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

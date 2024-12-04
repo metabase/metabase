@@ -1,6 +1,7 @@
 (ns metabase.api.user-key-value
   (:require [compojure.core :refer [GET PUT]]
             [malli.core :as mc]
+            [malli.experimental.time.transform :as mett]
             [malli.transform :as mtx]
             [metabase.api.common :as api]
             [metabase.models.user-key-value :as user-key-value]
@@ -10,14 +11,22 @@
 
 (api/defendpoint PUT "/"
   "Upsert a KV-pair for the user"
-  [:as {{k :key context :context v :value} :body}]
+  [:as {{k :key
+         namespace :namespace
+         v :value
+         expires_at :expires_at} :body}]
   {k ms/NonBlankString
    v :any
-   context ms/NonBlankString}
+   namespace ms/NonBlankString
+   expires_at [:maybe :metabase.lib.schema.literal/string.datetime]}
   (try (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
-                                                             {:key k :context context :value v}
+                                                             {:key k
+                                                              :namespace namespace
+                                                              :value v
+                                                              :expires-at expires_at}
                                                              (mtx/transformer
                                                               (mtx/default-value-transformer)
+                                                              (mett/time-transformer)
                                                               {:name :api-request})))
        (catch Exception e
          (when (= (:type (ex-data e))
@@ -27,8 +36,10 @@
 
 (api/defendpoint GET "/"
   "Get a value for the user"
-  [context key]
-  (user-key-value/retrieve api/*current-user-id* context key))
+  [namespace key]
+  {key ms/NonBlankString
+   namespace ms/NonBlankString}
+  (user-key-value/retrieve api/*current-user-id* namespace key))
 
 (mr/resolve-schema ::types/user-key-value)
 

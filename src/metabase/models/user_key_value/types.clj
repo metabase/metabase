@@ -20,30 +20,34 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- file->context [^File f]
-  (keyword "context" (-> f .getName (str/replace #"\.edn$" ""))))
+(defn- file->namespace [^File f]
+  (keyword "namespace" (-> f .getName (str/replace #"\.edn$" ""))))
 
-(mr/def ::context
-  "A context for the key-value pair"
+(mr/def ::namespace
+  "A namespace for the key-value pair"
   [:and
-   {;; api request comes in, turn `foo` into `:context/foo`
-    :decode/api-request (partial keyword "context")
-    ;; writing to the DB, turn `:context/foo` into `foo`
+   {;; api request comes in, turn `foo` into `:namespace/foo`
+    :decode/api-request (partial keyword "namespace")
+    ;; writing to the DB, turn `:namespace/foo` into `foo`
     :encode/database name
-    ;; reading from the DB, turn `foo` into `:context/foo`
-    :decode/database (partial keyword "context")}
+    ;; reading from the DB, turn `foo` into `:namespace/foo`
+    :decode/database (partial keyword "namespace")}
    :keyword])
 
-(mu/defn defcontext
-  "Declare a new context with a schema for the value"
-  [context :- ::context
-   schema]
-  (derive context ::registered-context)
-  (mr/register! context schema))
+(mr/def ::expires-at
+  "When the thing expires"
+  :time/instant)
 
-(defn- known-contexts
+(mu/defn defnamespace
+  "Declare a new namespace with a schema for the value"
+  [namespace :- ::namespace
+   schema]
+  (derive namespace ::registered-namespace)
+  (mr/register! namespace schema))
+
+(defn- known-namespaces
   []
-  (descendants ::registered-context))
+  (descendants ::registered-namespace))
 
 ;;; this is just a placeholder so LSP can register the place it lives for jump-to-definition functionality. Actual
 ;;; schema gets created below by [[user-key-value-schema]] and [[update-user-key-value-schema]]
@@ -54,15 +58,16 @@
   []
   [:and
    [:map
-    [:context ::context]
+    [:expires-at [:maybe ::expires-at]]
+    [:namespace ::namespace]
     [:value {:encode/database json/generate-string
              :decode/database json/parse-string}
      :any]]
    (into [:multi
-          {:dispatch :context}]
-         (map (fn [context]
-                [context context]))
-         (known-contexts))])
+          {:dispatch :namespace}]
+         (map (fn [namespace]
+                [namespace namespace]))
+         (known-namespaces))])
 
 (defn- update-user-key-value-schema! []
   (log/debug "Updating user-key-value schema")
@@ -86,11 +91,11 @@
        distinct))
 
 (defn- load-schema
-  "Load a schema from an EDN file, using its name as the context."
+  "Load a schema from an EDN file, using its name as the namespace."
   [^File file]
-  (let [context (file->context file)
+  (let [namespace (file->namespace file)
         schema  (-> file slurp edn/read-string)]
-    (defcontext context schema)
+    (defnamespace namespace schema)
     (update-user-key-value-schema!)))
 
 (defn load-all-schemas
@@ -129,11 +134,11 @@
   (case action
     :create (load-schema file)
     :modify (load-schema file)
-    :delete (let [context (file->context file)]
+    :delete (let [namespace (file->namespace file)]
               ;; this is kind of silly. we don't have a way to delete something from the registry, so just hackily
               ;; make a schema that can't ever be valid. In production, we're not going to be watching files, so
               ;; this is solely for dev.
-              (defcontext context [:and true? false?]))))
+              (defnamespace namespace [:and true? false?]))))
 
 (defn load-and-watch-schemas
   "In production, just load the schemas. In development, watch for changes as well."
