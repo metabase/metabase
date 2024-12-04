@@ -399,7 +399,7 @@
                  column)]
     (expression-clause operator (into [expr] values) {})))
 
-(mu/defn exclude-date-filter-parts :- ExcludeDateFilterParts
+(mu/defn exclude-date-filter-parts :- [:maybe ExcludeDateFilterParts]
   "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
   [query stage-number filter-clause]
