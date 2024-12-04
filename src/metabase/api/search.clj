@@ -48,34 +48,23 @@
    (meta handler)))
 
 (api/defendpoint POST "/re-init"
-  "If fulltext search is enabled, this will blow away the index table, re-create it, and re-populate it."
+  "This will blow away any search indexes, re-create, and re-populate them."
   []
   (api/check-superuser)
-  (cond
-    (not (public-settings/experimental-fulltext-search-enabled))
-    (throw (ex-info "Search index is not enabled." {:status-code 501}))
-
-    (search.core/supports-index?)
-    (do (search.core/init-index! {:force-reset? true}) {:message "done"})
-
-    :else
+  (if (search.core/supports-index?)
+    {:message (search.core/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (api/defendpoint POST "/force-reindex"
-  "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
+  "This will trigger an immediate reindexing, if we are using search index."
   []
   (api/check-superuser)
-  (cond
-    (not (public-settings/experimental-fulltext-search-enabled))
-    (throw (ex-info "Search index is not enabled." {:status-code 501}))
-
-    (search.core/supports-index?)
+  (if  (search.core/supports-index?)
     ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
     (if (and (task/job-exists? task.search-index/reindex-job-key) (not config/is-test?))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (task.search-index/reindex!) {:message "done"}))
 
-    :else
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (defn- set-weights! [context overrides]

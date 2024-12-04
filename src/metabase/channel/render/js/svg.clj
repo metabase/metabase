@@ -4,12 +4,12 @@
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [metabase.channel.render.js.engine :as js.engine]
    [metabase.channel.render.style :as style]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings])
+   [metabase.public-settings :as public-settings]
+   [metabase.util.json :as json])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
@@ -141,36 +141,36 @@
   "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
   Returns a byte array of a png file."
   [data settings]
-  (let [svg-string (.asString (js.engine/execute-fn-name (context) "funnel" (json/generate-string data)
-                                                         (json/generate-string settings)))]
+  (let [svg-string (.asString (js.engine/execute-fn-name (context) "funnel" (json/encode data)
+                                                         (json/encode settings)))]
     (svg-string->bytes svg-string)))
 
 (defn javascript-visualization
   "Clojure entrypoint to render javascript visualizations."
   [cards-with-data dashcard-viz-settings]
   (let [response (.asString (js.engine/execute-fn-name (context) "javascript_visualization"
-                                                       (json/generate-string cards-with-data)
-                                                       (json/generate-string dashcard-viz-settings)
-                                                       (json/generate-string (public-settings/application-colors))))]
+                                                       (json/encode cards-with-data)
+                                                       (json/encode dashcard-viz-settings)
+                                                       (json/encode (public-settings/application-colors))))]
     (-> response
-        (json/parse-string true)
+        json/decode+kw
         (update :type (fnil keyword "unknown")))))
 
 (defn row-chart
   "Clojure entrypoint to render a row chart."
   [settings data]
   (let [svg-string (.asString (js.engine/execute-fn-name (context) "row_chart"
-                                                         (json/generate-string settings)
-                                                         (json/generate-string data)
-                                                         (json/generate-string (public-settings/application-colors))))]
+                                                         (json/encode settings)
+                                                         (json/encode data)
+                                                         (json/encode (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
   (let [js-res (js.engine/execute-fn-name (context) "gauge"
-                                          (json/generate-string card)
-                                          (json/generate-string data))
+                                          (json/encode card)
+                                          (json/encode data))
         svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 
@@ -178,9 +178,9 @@
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]
   (let [js-res (js.engine/execute-fn-name (context) "progress"
-                                          (json/generate-string {:value value :goal goal})
-                                          (json/generate-string settings)
-                                          (json/generate-string (public-settings/application-colors)))
+                                          (json/encode {:value value :goal goal})
+                                          (json/encode settings)
+                                          (json/encode (public-settings/application-colors)))
         svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 

@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -125,8 +126,16 @@
         date-arg-1 "2023-11-02"
         date-arg-2 "2024-01-03"]
     (are [expected clause] (=? expected (lib/filter-args-display-name lib.tu/venues-query -1 clause))
+      "4 AM" (lib/= (lib/get-hour created-at) 4)
+      "Excludes 12 PM" (lib/!= (lib/get-hour created-at) 12)
+      "Mondays" (lib/= (lib.expression/get-day-of-week created-at :iso) 1)
+      "Excludes Wednesdays" (lib/!= (lib.expression/get-day-of-week created-at :iso) 3)
+      "Jan" (lib/= (lib/get-month created-at) 1)
+      "Excludes Mar" (lib/!= (lib/get-month created-at) 3)
       "Nov 2, 2023" (lib/= created-at date-arg-1)
       "Excludes Nov 2, 2023" (lib/!= created-at date-arg-1)
+      "Q1" (lib/= (lib/get-quarter created-at) 1)
+      "Excludes Q4" (lib/!= (lib/get-quarter created-at) 4)
       "Excludes Q4" (lib/!= (lib/with-temporal-bucket created-at :quarter-of-year) date-arg-1)
       "Nov 2, 2023 – Jan 3, 2024" (lib/between created-at date-arg-1 date-arg-2)
       "After Nov 2, 2023" (lib/> created-at date-arg-1)

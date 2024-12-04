@@ -96,6 +96,7 @@ export const createMockTokenStatus = (
   valid: true,
   trial: false,
   "valid-thru": "2022-12-30T23:00:00Z",
+  features: [],
   ...opts,
 });
 
@@ -211,6 +212,7 @@ export const createMockSettings = (
   "ldap-group-membership-filter": "(member={dn})",
   "loading-message": "doing-science",
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "native-query-autocomplete-match-style": "substring",
   "openai-api-key": null,
   "openai-organization": null,
   "openai-model": null,
@@ -273,5 +275,6 @@ export const createMockSettings = (
   "query-analysis-enabled": false,
   "check-for-updates": true,
   "update-channel": "latest",
+  "trial-banner-dismissal-timestamp": null,
   ...opts,
 });
