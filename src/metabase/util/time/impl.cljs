@@ -486,15 +486,21 @@
 
 (defn extract
   "Extracts a unit from a date or datetime."
-  [^moment/Moment t unit]
-  (case unit
-    :second-of-minute (.second t)
-    :minute-of-hour   (.minute t)
-    :hour-of-day      (.hour t)
-    :day-of-week      (.isoWeekday t)
-    :day-of-month     (.date t)
-    :day-of-year      (.dayOfYear t)
-    :week-of-year     (.isoWeek t)
-    :month-of-year    (.month t)
-    :quarter-of-year  (.quarter t)
-    :year             (.year t)))
+  ([^moment/Moment t unit]
+   (extract t unit :instance))
+  ([^moment/Moment t unit mode]
+   (case unit
+         :second-of-minute (.second t)
+         :minute-of-hour   (.minute t)
+         :hour-of-day      (.hour t)
+         :day-of-week      (case mode
+                             :instance (.weekday t)
+                             :iso      (.isoWeekday t))
+         :day-of-month     (.date t)
+         :day-of-year      (.dayOfYear t)
+         :week-of-year     (case mode
+                             :instance (.isoWeek t)
+                             :iso      (.week t))
+         :month-of-year    (.month t)
+         :quarter-of-year  (.quarter t)
+         :year             (.year t))))

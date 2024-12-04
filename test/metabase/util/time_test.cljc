@@ -350,13 +350,14 @@
 
 (deftest ^:parallel extract-test
   (are [unit expected] (= expected
-                          (shared.ut/extract (from "2024-02-05T10:20:30") unit))
+                          (shared.ut/extract (from "2024-02-05T10:20:30") unit :iso))
     :second-of-minute 30
     :minute-of-hour   20
     :hour-of-day      10
     :day-of-week      1
     :day-of-month     5
     :day-of-year      36
+    ;; :week-of-year     6
     :month-of-year    2
     :quarter-of-year  1
     :year             2024))

@@ -440,7 +440,7 @@
           {:operator :!=
            :column   col
            :unit     unit
-           :values   (mapv #(u.time/extract % unit) args)})))))
+           :values   (mapv #(u.time/extract % unit :iso) args)})))))
 
 (def ^:private TimeFilterParts
   [:map
