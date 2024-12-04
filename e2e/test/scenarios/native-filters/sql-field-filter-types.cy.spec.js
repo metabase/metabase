@@ -66,6 +66,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     cy.signInAsAdmin();
 
     openNativeEditor();
+
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();

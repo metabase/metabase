@@ -1158,8 +1158,8 @@
         (assoc :card-id (*import-fk* entity-id 'Card))
         mbql-fully-qualified-names->ids*) ; Process other keys
 
-    [(:or :metric "metric") (fully-qualified-name :guard portable-id?)]
-    [:metric (*import-fk* fully-qualified-name 'LegacyMetric)]
+    [(:or :metric "metric") (entity-id :guard portable-id?)]
+    [:metric (*import-fk* entity-id 'Card)]
 
     [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
     [:segment (*import-fk* fully-qualified-name 'Segment)]
@@ -1210,8 +1210,8 @@
     ["field"    (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
     [:field-id  (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
     ["field-id" (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    [:metric    (field :guard portable-id?)] #{[{:model "LegacyMetric" :id field}]}
-    ["metric"   (field :guard portable-id?)] #{[{:model "LegacyMetric" :id field}]}
+    [:metric    (field :guard portable-id?)] #{[{:model "Card" :id field}]}
+    ["metric"   (field :guard portable-id?)] #{[{:model "Card" :id field}]}
     [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
     ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
     :else (reduce #(cond
