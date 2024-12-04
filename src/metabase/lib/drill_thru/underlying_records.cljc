@@ -202,7 +202,7 @@
                                  ;; Default: no filters to add.
                                  nil)))
         ;; make all joins include all fields
-        new-joins (map #(lib.join/with-join-fields % :all)
+        new-joins (mapv #(lib.join/with-join-fields % :all)
                        (lib.join/joins agg-filtered))]
     ;; update query with the new joins
     (lib.util/update-query-stage agg-filtered -1 assoc :joins new-joins)))
