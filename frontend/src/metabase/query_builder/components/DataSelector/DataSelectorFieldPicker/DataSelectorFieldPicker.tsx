@@ -8,17 +8,13 @@ import {
 import AccordionList from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
-import { DelayGroup, Icon } from "metabase/ui";
+import { Box, DelayGroup, Icon, Text } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import DataSelectorLoading from "../DataSelectorLoading";
 
-import {
-  Container,
-  HeaderContainer,
-  HeaderName,
-} from "./DataSelectorFieldPicker.styled";
+import DataSelectorFieldPickerS from "./DataSelectorFieldPicker.module.css";
 
 type DataSelectorFieldPickerProps = {
   fields: Field[];
@@ -81,7 +77,7 @@ const DataSelectorFieldPicker = ({
     );
 
   return (
-    <Container>
+    <Box className={DataSelectorFieldPickerS.Container}>
       <DelayGroup>
         <AccordionList
           id="FieldPicker"
@@ -99,7 +95,7 @@ const DataSelectorFieldPicker = ({
           renderItemIcon={renderItemIcon}
         />
       </DelayGroup>
-    </Container>
+    </Box>
   );
 };
 
@@ -108,10 +104,12 @@ function renderItemWrapper(content: ReactNode) {
 }
 
 const Header = ({ onBack, selectedTable }: HeaderProps) => (
-  <HeaderContainer onClick={onBack}>
+  <Box className={DataSelectorFieldPickerS.HeaderContainer} onClick={onBack}>
     {onBack && <Icon name="chevronleft" size={18} />}
-    <HeaderName>{selectedTable?.display_name || t`Fields`}</HeaderName>
-  </HeaderContainer>
+    <Text component="span" className={DataSelectorFieldPickerS.HeaderName}>
+      {selectedTable?.display_name || t`Fields`}
+    </Text>
+  </Box>
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
