@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
@@ -18,6 +19,8 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ------------------------------------------- Preemptive Caching ----------------------------------------------------
+
 (defsetting preemptive-caching-thread-pool-size
   (deferred-tru "The size of the thread pool used to preemptively re-run cached queries.")
   :default    5
@@ -30,10 +33,10 @@
           (preemptive-caching-thread-pool-size)
           (.build
            (doto (BasicThreadFactory$Builder.)
-             (.namingPattern "send-notification-thread-pool-%d"))))))
+             (.namingPattern "preemptive-caching-thread-pool-%d"))))))
 
-(def ^:const ^:dynamic *parameterized-queries-per-card*
-  "Number of parameterized queries to run for a single cached card."
+(def ^:dynamic *queries-to-rerun-per-card*
+  "Number of query variations (e.g. with different parameters) to run for a single cached card."
   10)
 
 (defn- submit-refresh-task!
@@ -53,25 +56,20 @@
 
 (defn- queries-to-rerun
   "Returns a list containing all of the query definitions that we should preemptively rerun for a given card that uses
-  :schedule-strategy caching. This includes the card's vanilla query, and a limited number of parameterized variations
-  which were run most often within the most recent caching period (if applicable)."
+  :schedule-strategy caching."
   [card rerun-cutoff]
-  (let [card-query            (:dataset_query card)
-        parameterized-queries (t2/select :model/Query
-                                         {:select   [:q.query_hash :q.query [[:count :q.query_hash]]]
-                                          :from     [[(t2/table-name :model/Query) :q]]
-                                          :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
-                                          :where    [:>= :started_at rerun-cutoff]
-                                          :group-by [:q.query_hash :q.query]
-                                          :order-by [[[:count :q.query_hash] :desc]]
-                                          :limit    *parameterized-queries-per-card*})]
-    (conj (map :query parameterized-queries)
-          card-query)))
-
-(defn- distinct-by
-  "Removes elements of `coll` that are duplicates after applying `(f coll)`"
-  [f coll]
-  (map first (vals (group-by f coll))))
+  (let [queries (t2/select :model/Query
+                           {:select   [:q.query_hash :q.query [[:count :q.query_hash]]]
+                            :from     [[(t2/table-name :model/Query) :q]]
+                            :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
+                            :where    [:and
+                                       [:= :qe.card_id (u/the-id card)]
+                                       [:>= :started_at rerun-cutoff]]
+                            :group-by [:q.query_hash :q.query]
+                            :order-by [[[:count :q.query_hash] :desc]
+                                       [[:min :qe.started_at] :asc]]
+                            :limit    *queries-to-rerun-per-card*})]
+    (map :query queries)))
 
 (defn- cards-to-refresh
   [model model-id]
@@ -81,7 +79,7 @@
                                     (t2/hydrate [:dashcards :card])
                                     :dashcards)]
                   ;; Only re-run an identical card once per dashboard
-                  (distinct-by :id (map :card dashcards)))
+                  (m/distinct-by :id (map :card dashcards)))
     (throw (ex-info "Unsupported model type for preemptive caching"
                     {:model-id model-id
                      :model model}))))
@@ -107,6 +105,8 @@
                             cards))]
     (submit-refresh-task! cards-and-queries :schedule)))
 
+;;; ------------------------------------------- Cache invalidation task ------------------------------------------------
+
 (defn- select-ready-to-run
   "Fetch whatever cache configs for a given `strategy` are ready to be updated."
   [strategy]
@@ -126,7 +126,7 @@
         (t/offset-date-time (t/zone-offset)))))
 
 (defn- refresh-schedule-configs!
-  "Update `invalidated_at` for every cache config with `:schedule` strategy"
+  "Update `invalidated_at` for every cache config with `:schedule` strategy, and maybe rerun cached queries."
   []
   (let [now (t/offset-date-time)]
     (count
