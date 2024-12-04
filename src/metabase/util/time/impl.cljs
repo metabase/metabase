@@ -483,3 +483,21 @@
                        :type/DateTime       :local-date-time
                        :type/Date           :local-date)]
       (moment+type->iso-8601 [t value-type]))))
+
+(defmulti extract
+  "Extracts a unit from a date or datetime."
+  {:arglists '([t unit])}
+  (fn [_t unit]
+    unit))
+
+(defmethod extract :day-of-week
+  [^moment/Moment t _unit]
+  (inc (.isoWeekday t)))
+
+(defmethod extract :month-of-year
+  [^moment/Moment t _unit]
+  (inc (.month t)))
+
+(defmethod extract :quarter-of-year
+  [^moment/Moment t _unit]
+  (inc (.month t)))
