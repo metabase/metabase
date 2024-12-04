@@ -28,7 +28,6 @@ import {
   Icon,
   type IconName,
   Popover,
-  Text,
 } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type {
@@ -297,9 +296,9 @@ function ExpressionEditorSuggestionsListItem({
         )}
         <Box mr="1.5rem" component="span">
           {suggestion.name.slice(0, start)}
-          <Text component="span" fw="bold">
+          <Box component="span" fw="bold">
             {suggestion.name.slice(start, end)}
-          </Text>
+          </Box>
           {suggestion.name.slice(end)}
         </Box>
         {helpText && (

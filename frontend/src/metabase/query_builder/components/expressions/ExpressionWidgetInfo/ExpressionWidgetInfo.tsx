@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, Icon, Text, Tooltip } from "metabase/ui";
+import { Box, Icon, Tooltip } from "metabase/ui";
 
 import ExpressionWidgetInfoS from "./ExpressionWidgetInfo.module.css";
 
@@ -19,9 +19,9 @@ export function ExpressionWidgetInfo() {
   return showMetabaseLinks ? (
     <Tooltip
       label={
-        <Text component="span" className={ExpressionWidgetInfoS.TooltipLabel}>
+        <Box component="span" className={ExpressionWidgetInfoS.TooltipLabel}>
           {t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
-        </Text>
+        </Box>
       }
       position="right"
     >
@@ -38,9 +38,9 @@ export function ExpressionWidgetInfo() {
   ) : (
     <Tooltip
       label={
-        <Text component="span" className={ExpressionWidgetInfoS.TooltipLabel}>
+        <Box component="span" className={ExpressionWidgetInfoS.TooltipLabel}>
           {t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]).`}
-        </Text>
+        </Box>
       }
       position="right"
     >
