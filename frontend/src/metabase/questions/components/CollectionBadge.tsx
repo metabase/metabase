@@ -62,7 +62,6 @@ export const CollectionBadge = Collections.load({
     props.collectionId || "root",
   wrapped: true,
   loadingAndErrorWrapper: false,
-  properties: ["name", "authority_level"],
 })(CollectionBadgeInner) as ComponentType<
   PropsWithChildren<
     {
