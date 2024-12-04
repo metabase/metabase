@@ -133,9 +133,10 @@
    column   :- ::lib.schema.metadata/column
    values   :- [:maybe [:sequential :string]]
    options  :- [:maybe ::lib.schema.filter/string-filter-options]]
-  (if (#{:is-empty :not-empty := :!=} operator)
-    (expression-clause operator (into [column] values) {})
-    (expression-clause operator (into [column] values) options)))
+  (expression-clause operator (into [column] values)
+                     (if (#{:is-empty :not-empty := :!=} operator)
+                       {}
+                       options)))
 
 (mu/defn string-filter-parts :- [:maybe StringFilterParts]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
