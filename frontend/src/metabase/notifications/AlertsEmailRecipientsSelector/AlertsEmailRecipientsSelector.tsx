@@ -38,11 +38,16 @@ export const AlertsEmailRecipientsSelector = ({
       limit={MAX_EMAILS_LIMIT}
       shouldCreate={isEmail}
       onChange={onChange}
-      getCreateLabel={query => t`Add "${query}"`}
-      onCreate={query => {
-        onChange([...value, query]);
-        return query;
-      }}
+      getCreateLabel={getCreateLabel}
+      onCreate={handleOnCreate}
     />
   );
 };
+
+function getCreateLabel(query: string) {
+  return t`Add "${query}"`;
+}
+
+function handleOnCreate(query: string) {
+  return query;
+}

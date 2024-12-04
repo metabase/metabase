@@ -13,7 +13,14 @@ const Template: StoryFn<
 > = args => {
   const [data, setData] = useState(args.value);
 
-  return <AlertsEmailRecipientsSelector value={data} onChange={setData} />;
+  return (
+    <AlertsEmailRecipientsSelector
+      value={data}
+      onChange={newValue => {
+        setData(newValue);
+      }}
+    />
+  );
 };
 
 export const Default = {
