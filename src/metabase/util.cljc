@@ -283,11 +283,6 @@
     (str (upper-case-en (subs s 0 1))
          (subs s 1))))
 
-(defn kebab-keys
-  "Convert the top-level keys in a map to `kebab-case`."
-  [m]
-  (update-keys m ->kebab-case-en))
-
 (defn snake-keys
   "Convert the top-level keys in a map to `snake_case`."
   [m]

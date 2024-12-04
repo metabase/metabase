@@ -207,7 +207,7 @@
 (defn- binning_info->binning-options
   [binning_info]
   (-> binning_info
-      u/kebab-keys
+      u/normalize-map
       (set/rename-keys {:binning-strategy :strategy})))
 
 (defn ends-with-binning?
