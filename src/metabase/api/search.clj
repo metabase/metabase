@@ -1,6 +1,4 @@
 (ns metabase.api.search
-  ;; Allowing search.config to be accessed for developer API to set weights
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.string :as str]
    [compojure.core :refer [GET]]
@@ -9,10 +7,9 @@
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.request.core :as request]
    [metabase.search :as search]
-   [metabase.search.config :as search.config]
    [metabase.search.core :as search.core]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
    [metabase.util.malli.schema :as ms]
@@ -83,7 +80,7 @@
   (when (= context :all)
     (throw (ex-info (str "Cannot set weights for all context")
                     {:status-code 400})))
-  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
+  (let [known-ranker?   (set (keys (:default @#'search/static-weights)))
         rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
         unknown-rankers (seq (remove known-ranker? rankers))]
     (when unknown-rankers
@@ -100,7 +97,7 @@
         overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
-    (search.config/weights context)))
+    (search/weights context)))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.
@@ -143,7 +140,7 @@
    verified                            [:maybe true?]
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    calculate_available_models          [:maybe true?]}
-  (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
+  (api/check-valid-page-params (request/limit) (request/offset))
   (let  [models-set (if (seq models)
                       (set models)
                       search/all-models)]
@@ -161,10 +158,10 @@
        :filter-items-in-personal-collection filter_items_in_personal_collection
        :last-edited-at                      last_edited_at
        :last-edited-by                      (set last_edited_by)
-       :limit                               mw.offset-paging/*limit*
+       :limit                               (request/limit)
        :model-ancestors?                    model_ancestors
        :models                              models-set
-       :offset                              mw.offset-paging/*offset*
+       :offset                              (request/offset)
        :search-engine                       search_engine
        :search-native-query                 search_native_query
        :search-string                       q

@@ -25,7 +25,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync :as sync]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.field-values :as field-values]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -1382,9 +1382,9 @@
     (mt/with-premium-features #{:audit-app}
       (let [update-field-values-called? (promise)]
         (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
-          (with-redefs [field-values/update-field-values! (fn [synced-db]
-                                                            (when (= (u/the-id synced-db) (u/the-id db))
-                                                              (deliver update-field-values-called? :sync-called)))]
+          (with-redefs [sync.field-values/update-field-values! (fn [synced-db]
+                                                                 (when (= (u/the-id synced-db) (u/the-id db))
+                                                                   (deliver update-field-values-called? :sync-called)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
             (is (= :sync-called
                    (deref update-field-values-called? long-timeout :sync-never-called)))

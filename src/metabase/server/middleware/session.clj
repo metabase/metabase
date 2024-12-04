@@ -35,7 +35,7 @@
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -129,14 +129,14 @@
     :path      "/" #_(site-path)}
    ;; If the authentication request request was made over HTTPS (hopefully always except for
    ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-   (when (req.util/https? request)
+   (when (request/https? request)
      {:secure true})))
 
 (defmethod default-session-cookie-attributes :full-app-embed
   [_ request]
   (merge
    {:path "/"}
-   (when (req.util/https? request)
+   (when (request/https? request)
      ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
      ;; security is provided via anti-CSRF token. Note that most browsers will only accept
      ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
@@ -200,7 +200,7 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= (session-cookie-samesite) :none) (not (req.util/https? request)))
+    (when (and (= (session-cookie-samesite) :none) (not (request/https? request)))
       (log/warn
        (str "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection."
             " Some browsers will reject cookies under these conditions."
@@ -465,6 +465,7 @@
     (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
                    :id current-user-id)))
 
+;;; TODO -- move to [[metabase.request.current]]
 (defmacro as-admin
   "Execude code in body as an admin user."
   {:style/indent 0}

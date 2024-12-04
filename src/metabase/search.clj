@@ -18,7 +18,9 @@
 (p/import-vars
  [search.config
   SearchableModel
-  all-models]
+  all-models
+  static-weights
+  weights]
 
  [search.engine
   model-set]

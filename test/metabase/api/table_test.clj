@@ -13,7 +13,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload-test :as upload-test]
@@ -28,9 +28,9 @@
 ;; authentication test on every single individual endpoint
 
 (deftest ^:parallel unauthenticated-test
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :get 401 "table")))
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :get 401 (format "table/%d" (mt/id :users))))))
 
 (defn- db-details []

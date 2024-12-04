@@ -192,6 +192,8 @@
   metabase.query-processor.store/with-metadata-provider                                [[:inner 0]]
   metabase.query-processor.streaming/streaming-response                                [[:block 1]]
   metabase.query-processor.test-util/format-rows-by                                    [[:default]]
+  metabase.request/as-admin                                                            [[:block 0]]
+  metabase.request/with-current-user                                                   [[:inner 0]]
   metabase.sample-data-test/with-temp-sample-database-db                               [[:block 1]]
   metabase.server.middleware.session/as-admin                                          [[:block 0]]
   metabase.server.middleware.session/with-current-user                                 [[:inner 0]]

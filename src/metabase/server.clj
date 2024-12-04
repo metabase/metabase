@@ -1,5 +1,7 @@
 (ns metabase.server
-  "Code related to configuring, starting, and stopping the Metabase Jetty web server."
+  "Code related to configuring, starting, and stopping the Metabase Jetty web server.
+
+  TODO -- rename to something else."
   (:require
    [clojure.core :as core]
    [clojure.string :as str]

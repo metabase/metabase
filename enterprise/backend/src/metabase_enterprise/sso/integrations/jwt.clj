@@ -11,8 +11,8 @@
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as req.util]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response])
   (:import
@@ -103,7 +103,7 @@
           first-name   (get jwt-data (jwt-attribute-firstname))
           last-name    (get jwt-data (jwt-attribute-lastname))
           user         (fetch-or-create-user! first-name last-name email login-attrs)
-          session      (api.session/create-session! :sso user (req.util/device-info request))]
+          session      (api.session/create-session! :sso user (request/device-info request))]
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 

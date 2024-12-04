@@ -2,7 +2,7 @@
 {:config-paths ["macros" "src"]
  :linters
  {:aliased-namespace-symbol     {:level :warning}
-  :invalid-arity                {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
+  :invalid-arity                {:skip-args [metabase.lib.util.match/match]}           ; TODO (cam): can we fix these?
   :keyword-binding              {:level :warning}
   :main-without-gen-class       {:level :warning}
   :misplaced-docstring          {:level :warning}
@@ -290,75 +290,80 @@
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
-                                     metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
+                                     metabase.analytics.sdk}    ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
                                      metabase.api.permission-graph
-                                     metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
+                                     metabase.api.routes} ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.async                 #{metabase.async.streaming-response
                                      metabase.async.streaming-response.thread-pool
-                                     metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
+                                     metabase.async.util}       ; TODO -- consolidate these into a real API namespace.
     metabase.audit                 #{metabase.audit}
     metabase.bootstrap             #{metabase.bootstrap}
-    metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
+    metabase.cmd                   #{} ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.channel               #{metabase.channel.core
                                      metabase.channel.render.core
                                      metabase.channel.template.core}
     metabase.config                #{metabase.config}
-    metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
+    metabase.core                  #{metabase.core.initialization-status} ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
-                                     metabase.db.metadata-queries                                   ; TODO this should probably be separate from metabase.db
-                                     metabase.db.query                                              ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
-                                     metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
-    metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
+                                     metabase.db.metadata-queries ; TODO this should probably be separate from metabase.db
+                                     metabase.db.query ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
+                                     metabase.db.setup} ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
+    metabase.driver                :any                 ; TODO -- 19 namespaces!!!! CRY
     metabase.email                 #{metabase.email
                                      metabase.email.messages
-                                     metabase.email.result-attachment}                              ; TODO -- consolidate these into a real API namespace.
+                                     metabase.email.result-attachment} ; TODO -- consolidate these into a real API namespace.
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events}
     metabase.formatter             #{metabase.formatter}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
                                      metabase.integrations.ldap
-                                     metabase.integrations.slack}                                   ; TODO -- consolidate these into a real API namespace.
+                                     metabase.integrations.slack} ; TODO -- consolidate these into a real API namespace.
     metabase.legacy-mbql           #{metabase.legacy-mbql.normalize
                                      metabase.legacy-mbql.predicates
                                      metabase.legacy-mbql.schema
                                      metabase.legacy-mbql.schema.helpers
-                                     metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
-    metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
+                                     metabase.legacy-mbql.util} ; TODO -- consolidate these into a real API namespace.
+    metabase.lib                   :any ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger}
     metabase.metabot               #{metabase.metabot}
-    metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
+    metabase.models                :any ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core
                                      metabase.notification.payload.core}
-    metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
+    metabase.permissions           #{metabase.permissions.util} ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
-                                     metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
+                                     metabase.plugins.classloader} ; TODO -- not 100% sure the classloader belongs here
     metabase.public-settings       #{metabase.public-settings
                                      metabase.public-settings.premium-features}
     metabase.pulse                 #{metabase.pulse.core}
-    metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
+    metabase.query-processor       :any     ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
     metabase.query-analysis        #{metabase.query-analysis
                                      metabase.query-analysis.failure-map}
     metabase.related               #{metabase.related}
+    metabase.request               #{metabase.request.core}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search
-                                     ;; deprecating naked metabase.search namespace in favor of this.
+                                     ;; deprecating naked metabase.search namespace in favor of this. -- Chris T
                                      metabase.search.core
                                      metabase.search.spec}
-    metabase.server                #{metabase.server
-                                     metabase.server.handler
-                                     metabase.server.middleware.auth
-                                     metabase.server.middleware.exceptions
+    metabase.server                #{metabase.server.core
+                                     ;;
+                                     ;; TODO FIXME -- this is loaded for side effects since it contains the JSON
+                                     ;; encoder logic for stuff like `java.time` classes. As a
+                                     ;; result, [[metabase.models.setting]] (and thus the `metabase.models` module)
+                                     ;; has to depend on the `metabase.server` module...we should create either a new
+                                     ;; `metabase.json` or `metabase.encoders` module for stuff like this to live. Or
+                                     ;; maybe it just belongs in a generic `metabase.config` module.
                                      metabase.server.middleware.json
-                                     metabase.server.middleware.misc
-                                     metabase.server.middleware.offset-paging
-                                     metabase.server.middleware.session
-                                     metabase.server.protocols
-                                     metabase.server.request.util}                                  ; TODO -- consolidate these into a real API namespace.
+                                     ;;
+                                     ;; TODO -- we can't make this part of [[metabase.server.core]] YET because it
+                                     ;; causes circular dependencies. Maybe in the future once we tease apart more of
+                                     ;; the modules tangle we can.
+                                     metabase.server.protocols}
     metabase.setup                 #{metabase.setup}
     metabase.sync                  #{metabase.sync
                                      metabase.sync.analyze
@@ -368,17 +373,17 @@
                                      metabase.sync.sync-metadata
                                      metabase.sync.sync-metadata.fields
                                      metabase.sync.sync-metadata.tables
-                                     metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
+                                     metabase.sync.util}        ; TODO -- consolidate these into a real API namespace.
     metabase.task                  #{metabase.task
                                      metabase.task.index-values
                                      metabase.task.persist-refresh
                                      ;; We need to expose this to the metabase.search module.
                                      ;; Ideally, it would just live inside that module.
-                                     metabase.task.search-index}                                    ; TODO -- consolidate these into a real API namespace.
+                                     metabase.task.search-index} ; TODO -- consolidate these into a real API namespace.
     metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
-    metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
+    metabase.util                  :any ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
     metabase.xrays                 #{metabase.xrays}}
 
    ;; Map of module => other modules you're allowed to use there. You have two options here:
@@ -397,7 +402,8 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
-    metabase.auth-provider         #{metabase.util metabase.public-settings}
+    metabase.auth-provider         #{metabase.public-settings
+                                     metabase.util}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
@@ -433,6 +439,9 @@
                                      metabase.util}
     metabase.query-processor       :any
     metabase.related               :any
+    metabase.request               #{metabase.config
+                                     metabase.public-settings
+                                     metabase.util}
     metabase.sample-data           :any
     metabase.search                :any
     metabase.server                :any
@@ -442,7 +451,7 @@
     metabase.troubleshooting       :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
-    metabase.util                  :any
+    metabase.util                  :any ; TODO -- this should probably be #{}
     metabase.xrays                 :any}
 
    ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
@@ -451,11 +460,11 @@
    ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
    ;; together, e.g. `metabase.lib.metadata.jvm`.
    :ignored-namespace-patterns
-   #{"-test$"                     ; anything ending in `-test`
-     "test[-.]util"               ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                ; anything that contains `test.impl`
-     "^metabase\\.test"           ; anything starting with `metabase.test`
-     "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                                ; anything ending in `-test`
+     "test[-.]util"                          ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                           ; anything that contains `test.impl`
+     "^metabase\\.test"                      ; anything starting with `metabase.test`
+     "^metabase\\.http-client$"}}            ; `metabase.http-client` which is a test-only namespace despite its name.
 
   :consistent-alias
   {:aliases
@@ -467,7 +476,7 @@
     clj-time.coerce                                               time.coerce
     clj-time.format                                               time.format
     clojure.core.async                                            a
-    clojure.core.match                                            clojure.core.match ; Prefer :refer [match]
+    clojure.core.match                                            clojure.core.match           ; Prefer :refer [match]
     clojure.data                                                  data
     clojure.math.combinatorics                                    math.combo
     clojure.pprint                                                pprint
@@ -669,25 +678,16 @@
     metabase.query-processor.timezone                             qp.timezone
     metabase.query-processor.util                                 qp.util
     metabase.related                                              related
+    metabase.request.core                                         request
     metabase.search.config                                        search.config
     metabase.search.filter                                        search.filter
     metabase.search.in-place.filter                               search.in-place.filter
     metabase.search.in-place.util                                 search.util
     metabase.search.in-place.scoring                              scoring
-    metabase.server.middleware.auth                               mw.auth
-    metabase.server.middleware.browser-cookie                     mw.browser-cookie
-    metabase.server.middleware.exceptions                         mw.exceptions
-    metabase.server.middleware.json                               mw.json
-    metabase.server.middleware.log                                mw.log
-    metabase.server.middleware.misc                               mw.misc
-    metabase.server.middleware.offset-paging                      mw.offset-paging
-    metabase.server.middleware.security                           mw.security
-    metabase.server.middleware.session                            mw.session
-    metabase.server.middleware.ssl                                mw.ssl
-    metabase.server.request.util                                  req.util
+    metabase.server.core                                          server
     metabase.server.protocols                                     server.protocols
     metabase.sync.analyze.fingerprint                             sync.fingerprint
-    metabase.sync.field-values                                    field-values
+    metabase.sync.field-values                                    sync.field-values
     metabase.sync.interface                                       i
     metabase.sync.schedules                                       sync.schedules
     metabase.sync.sync-metadata.fields.our-metadata               fields.our-metadata

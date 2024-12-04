@@ -5,7 +5,7 @@
    [metabase.http-client :as client]
    [metabase.models :refer [Database Revision Table]]
    [metabase.models.segment :as segment :refer [Segment]]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -31,10 +31,10 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :get 401 "segment")))
 
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :put 401 "segment/13"))))
 
 ;; ## POST /api/segment

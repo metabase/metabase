@@ -46,7 +46,7 @@
       ["backend/mbql/src/metabase/mbql/normalize.clj"]                              true
       ["metabase_enterprise/audit_app/interface.clj:25"]                            true
       ["enterprise/backend/test/metabase_enterprise/serialization/load_test.clj"]   true
-      ["target/classes/metabase/server/request/util.clj"]                           true
+      ["target/classes/metabase/request/util.clj"]                                  true
       ;; Both a FE and a BE path
       ["frontend/src/metabase/browse/components/TableBrowser/TableBrowser.jsx:145"
        "metabase/api/database.clj:178"]                                             true
