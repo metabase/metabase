@@ -367,10 +367,10 @@
         qualified-view (qualify-and-quote driver database-name view-name)
         qualified-table (qualify-and-quote driver database-name table-name)]
     (sql/format
-      {(if materialized? :create-materialized-view :create-view)
-       [[[:raw qualified-view]]]
-       :select [:*]
-       :from [[[:raw qualified-table]]]}
+     {(if materialized? :create-materialized-view :create-view)
+      [[[:raw qualified-view]]]
+      :select [:*]
+      :from [[[:raw qualified-table]]]}
      :dialect (sql.qp/quote-style driver))))
 
 (defmulti drop-view-sql
@@ -387,6 +387,6 @@
   (let [database-name (get-in database [:settings :database-source-dataset-name])
         qualified-view (qualify-and-quote driver database-name view-name)]
     (sql/format
-      {(if materialized? :drop-materialized-view :drop-view)
-       [[:if-exists [:raw qualified-view]]]}
+     {(if materialized? :drop-materialized-view :drop-view)
+      [[:if-exists [:raw qualified-view]]]}
      :dialect (sql.qp/quote-style driver))))
