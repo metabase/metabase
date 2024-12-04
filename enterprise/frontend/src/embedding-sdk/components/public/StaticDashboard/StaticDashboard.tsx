@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import _ from "underscore";
 
 import {
@@ -21,11 +20,7 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { Box } from "metabase/ui";
 
 export type StaticDashboardProps = SdkDashboardDisplayProps &
-  PublicOrEmbeddedDashboardEventHandlersProps & {
-    withCardTitle?: boolean;
-    className?: string;
-    style?: CSSProperties;
-  };
+  PublicOrEmbeddedDashboardEventHandlersProps;
 
 export const StaticDashboardInner = ({
   dashboardId,
