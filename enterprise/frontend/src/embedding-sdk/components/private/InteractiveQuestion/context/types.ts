@@ -7,6 +7,7 @@ import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import type Question from "metabase-lib/v1/Question";
 import type { CardId } from "metabase-types/api";
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
@@ -55,6 +56,6 @@ export type InteractiveQuestionContextType = Omit<
     mode: Mode | null | undefined;
     resetQuestion: () => void;
     onReset: () => void;
-    onCreate: (question: MetabaseQuestion) => Promise<void>;
-    onSave: (question: MetabaseQuestion) => Promise<void>;
+    onCreate: (question: Question) => Promise<void>;
+    onSave: (question: Question) => Promise<void>;
   };
