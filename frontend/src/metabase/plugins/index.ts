@@ -324,13 +324,10 @@ export const PLUGIN_COLLECTIONS = {
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
-  canCleanUp: false,
+  canCleanUp: (_collection: Collection) => false as boolean,
   getCleanUpMenuItems: (
+    _collection: Collection,
     _itemCount: number,
-    _url: string,
-    _isInstanceAnalyticsCustom: boolean,
-    _isTrashed: boolean,
-    _canWrite: boolean,
   ): CleanUpMenuItem[] => [],
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {

@@ -39,9 +39,7 @@ import * as actions from "../actions";
 import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
-  getAutocompleteResultsFn,
   getCard,
-  getCardAutocompleteResultsFn,
   getDataReferenceStack,
   getDatabaseFields,
   getDatabasesList,
@@ -182,9 +180,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
 
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
-
-    autocompleteResultsFn: getAutocompleteResultsFn(state),
-    cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
     queryStartTime: getQueryStartTime(state),
     nativeEditorCursorOffset: getNativeEditorCursorOffset(state),

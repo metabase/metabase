@@ -10,6 +10,8 @@ import {
   entityPickerModal,
   filter,
   filterField,
+  focusNativeEditor,
+  nativeEditor,
   openNativeEditor,
   openQuestionActions,
   popover,
@@ -404,11 +406,9 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // Switch to SQL engine which is supported by the formatter
       popover().findByText("Sample Database").click();
 
-      cy.findByTestId("native-query-editor")
-        .as("nativeQueryEditor")
-        .type("select * from orders", {
-          parseSpecialCharSequences: false,
-        });
+      focusNativeEditor().type("select * from orders", {
+        parseSpecialCharSequences: false,
+      });
 
       // It should load the formatter chunk only when used
       cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
@@ -417,10 +417,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
       cy.wait("@sqlFormatter");
 
-      cy.findByTestId("native-query-editor")
-        .get(".ace_text-layer")
-        .get(".ace_line")
-        .as("lines");
+      nativeEditor().should("be.visible").get(".ace_line").as("lines");
 
       cy.get("@lines").eq(0).should("have.text", "SELECT");
       cy.get("@lines").eq(1).should("have.text", "  *");

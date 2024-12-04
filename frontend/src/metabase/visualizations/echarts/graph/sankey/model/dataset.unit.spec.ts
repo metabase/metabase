@@ -118,7 +118,7 @@ describe("getSankeyData", () => {
     expect(result).toEqual({
       nodes: [
         {
-          value: "A",
+          rawName: "A",
           level: 0,
           hasInputs: false,
           hasOutputs: true,
@@ -131,7 +131,7 @@ describe("getSankeyData", () => {
           },
         },
         {
-          value: "B",
+          rawName: "B",
           level: 1,
           hasInputs: true,
           hasOutputs: true,
@@ -149,7 +149,7 @@ describe("getSankeyData", () => {
           },
         },
         {
-          value: "C",
+          rawName: "C",
           level: 2,
           hasInputs: true,
           hasOutputs: false,
