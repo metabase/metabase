@@ -77,8 +77,8 @@
         qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
     (sql/format
      {(if materialized? :create-materialized-view :create-view) [[[:raw qualified-view]]]
-       :select [:*]
-       :from [[[:raw qualified-table]]]}
+      :select [:*]
+      :from [[[:raw qualified-table]]]}
      :dialect (sql.qp/quote-style driver))))
 
 (defmethod sql.tx/drop-view-sql :sqlserver
