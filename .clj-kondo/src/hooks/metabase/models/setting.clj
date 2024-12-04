@@ -161,6 +161,7 @@
      token-features
      token-status
      toucan-name
+     trial-banner-dismissal-timestamp
      uncached-setting
      user-visibility
      version
