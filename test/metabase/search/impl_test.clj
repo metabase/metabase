@@ -25,7 +25,7 @@
   (testing "Registered engines"
     (is (= :search.engine/in-place (#'search.impl/parse-engine "in-place")))
     (when (search/supports-index?)
-      (is (= :search.engine/fulltext (#'search.impl/parse-engine "fulltext")))))
+      (is (= :search.engine/appdb (#'search.impl/parse-engine "appdb")))))
   ;; We don't currently leverage subclasses.
   #_(when (search/supports-index?)
       (testing "Subclasses"
