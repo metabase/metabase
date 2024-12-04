@@ -52,14 +52,14 @@ export const AppBanner = () => {
       lastDismissed,
     });
 
-    return (
-      showBanner && (
+    if (showBanner) {
+      return (
         <TrialBanner
           daysRemaining={daysRemaining}
           onClose={() => setLastDismissed(getCurrentUTCTimestamp())}
         />
-      )
-    );
+      );
+    }
   }
 
   if (shouldRenderPaymentBanner) {
