@@ -22,3 +22,18 @@ export function nativeEditorCompletions() {
 export function nativeEditorCompletion(label: string) {
   return cy.get(".cm-completionLabel").contains(label).parent();
 }
+
+export function nativeEditorType(text: string) {
+  const parts = text.split(/(}}|\]\])/);
+
+  // HACK: realType does not accept {{ foo }} and there is no way to escape it
+  // so we break it up manually here.
+  parts.forEach(part => {
+    if (part === "}}" || part === "]]") {
+      return;
+    }
+    focusNativeEditor().realType(part);
+  });
+
+  return nativeEditor();
+}
