@@ -6,6 +6,7 @@ import {
 import {
   closeCommandPalette,
   commandPalette,
+  commandPaletteAction,
   commandPaletteButton,
   commandPaletteInput,
   openCommandPalette,
@@ -159,6 +160,34 @@ describe("command palette", () => {
             .should("contain.text", result.name);
         });
       });
+    });
+  });
+
+  it("should render links to admin settings pages for admins", () => {
+    cy.log("should render links for admins");
+    cy.visit("/");
+    cy.findByTestId("home-page")
+      .findByText(/see what metabase can do/i)
+      .should("exist");
+
+    openCommandPalette();
+    commandPalette().within(() => {
+      commandPaletteInput().type("Settings -");
+      commandPaletteAction("Settings - General").should("exist");
+    });
+
+    cy.log("should not render links for non-admins");
+    cy.signOut();
+    cy.signInAsNormalUser();
+    cy.reload();
+    cy.findByTestId("home-page")
+      .findByText(/see what metabase can do/i)
+      .should("exist");
+
+    openCommandPalette();
+    commandPalette().within(() => {
+      commandPaletteInput().type("Settings -");
+      commandPaletteAction("Settings - General").should("not.exist");
     });
   });
 
