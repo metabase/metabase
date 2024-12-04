@@ -500,4 +500,4 @@
 
 (defmethod extract :quarter-of-year
   [^moment/Moment t _unit]
-  (inc (.month t)))
+  (inc (.quarter t)))
