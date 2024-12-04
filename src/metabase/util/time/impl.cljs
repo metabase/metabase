@@ -501,6 +501,6 @@
          :week-of-year     (case mode
                              :instance (.isoWeek t)
                              :iso      (.week t))
-         :month-of-year    (.month t)
+         :month-of-year    (inc (.month t))
          :quarter-of-year  (.quarter t)
          :year             (.year t))))
