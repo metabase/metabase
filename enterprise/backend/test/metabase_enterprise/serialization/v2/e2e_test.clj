@@ -879,12 +879,13 @@
                   (is (int? new-coll-id))
                   (is (=? {:name "Metric Card"
                            :collection_id new-coll-id
-                           :dataset_query {:query {:aggregation [[:count]]
-                                                   :breakout    [[:field int? {:source-field int?}] [:field int? nil]]}}}
+                           :dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:count]]
+                                             :breakout    [$product_id->products.category $created_at]})}
                           new-metric))
                   (is (=? {:name "Metric Consuming Question Card"
                            :collection_id new-coll-id
-                           :dataset_query {:query
-                                           {:aggregation [[:metric (:id new-metric)]]
-                                            :breakout    [[:field int? nil]]}}}
+                           :dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:metric (:id new-metric)]]
+                                             :breakout    [[:field %orders.user_id nil]]})}
                           (t2/select-one Card :name "Metric Consuming Question Card"))))))))))))
