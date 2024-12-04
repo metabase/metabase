@@ -1220,11 +1220,6 @@
 (define-migration CreateSampleContent
   (log/warn "Creating sample content v1: noop"))
 
-(comment
-  (t2/query {:select :* :from :report_dashboard})
-
-  )
-
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
     :%now
@@ -1338,7 +1333,6 @@
 ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
 ;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
 ;; - replace metabase_version "<version>" with metabase_version nil
-
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
