@@ -463,7 +463,7 @@ describe("graph.tooltip_columns", () => {
       ];
 
       const isHidden = tooltipColumnsSetting.getHidden(mockSeries, {
-        "graph.tooltip_type": "customized",
+        "graph.tooltip_type": "series_comparison",
         "graph.dimensions": ["dim"],
         "graph.metrics": ["metric"],
       });
@@ -488,7 +488,7 @@ describe("graph.tooltip_columns", () => {
       ];
 
       const isHidden = tooltipColumnsSetting.getHidden(mockSeries, {
-        "graph.tooltip_type": "customized",
+        "graph.tooltip_type": "series_comparison",
         "graph.dimensions": ["dim"],
         "graph.metrics": ["metric1"],
       });
