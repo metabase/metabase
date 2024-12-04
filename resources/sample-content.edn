@@ -377,8 +377,7 @@
    "[{\"card_id\":17,\"parameter_id\":\"1ebab259\",\"target\":[\"dimension\",[\"field\",34,{\"base-type\":\"type/Text\",\"source-field\":14}],{\"stage-number\":0}]},{\"card_id\":17,\"parameter_id\":\"81cd957\",\"target\":[\"dimension\",[\"field\",13,{\"base-type\":\"type/DateTime\"}],{\"stage-number\":0}]},{\"card_id\":17,\"parameter_id\":\"9d9cddd4\",\"target\":[\"dimension\",[\"field\",18,{\"base-type\":\"type/Text\",\"source-field\":14}],{\"stage-number\":0}]}]",
    :card_id 17,
    :entity_id "vPyErYUpYMjucZa7z4smS",
-   :visualization_settings
-   "{\"click_behavior\":{\"linkType\":\"dashboard\",\"parameterMapping\":{},\"tabId\":1087,\"targetId\":1,\"type\":\"link\"},\"column_settings\":null}",
+   :visualization_settings "{\"column_settings\":null}",
    :size_y 4,
    :dashboard_id 1,
    :created_at #t "2024-11-22T16:25:31.780166Z",
