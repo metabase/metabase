@@ -2,7 +2,11 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { createActionPublicLink, deleteActionPublicLink } from "metabase/api";
+import {
+  createActionPublicLink,
+  deleteActionPublicLink,
+  useGetActionQuery,
+} from "metabase/api";
 import { createEntity, undo } from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -101,6 +105,11 @@ const Actions = createEntity({
   nameOne: "action",
   schema: ActionSchema,
   path: "/api/action",
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery: useGetActionQuery,
+    }),
+  },
   api: {
     create: (params: CreateActionParams) => ActionsApi.create(params),
     update: (params: UpdateActionParams) => {
