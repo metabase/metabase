@@ -114,19 +114,19 @@
 (defn- do-after-notification-sent
   [{:keys [payload_type] :as notification-info}]
   (u/ignore-exceptions
-    (when (and (= :notification/alert payload_type)
+    (when (and (= :notification/card payload_type)
                (-> notification-info :alert :alert_first_only))
       (t2/delete! :model/Pulse (-> notification-info :alert :id)))
     ;; TODO check how this is used, maybe we need to rework this
-    (when (#{:notification/alert :notification/dashboard-subscription} payload_type)
-      (let [event-type (if (= :notification/dashboard-subscription payload_type)
+    (when (#{:notification/card :notification/dashboard} payload_type)
+      (let [event-type (if (= :notification/dashboard payload_type)
                          :event/subscription-send
                          :event/alert-send)]
         (events/publish-event! event-type {:id      (:id notification-info)
                                            :user-id (:creator_id notification-info)
                                            :object  {:recipients (->> notification-info :handlers (mapcat :recipients) (map #(or (:user %)
                                                                                                                                  (:email %))))
-                                                     :filters    (-> notification-info #((if (= :notification/dashboard-subscription payload_type)
+                                                     :filters    (-> notification-info #((if (= :notification/dashboard payload_type)
                                                                                            :dashboard_subscription
                                                                                            :alert)
                                                                                          %)

@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   POPOVER_ELEMENT,
   addPostgresDatabase,
+  focusNativeEditor,
   openNativeEditor,
   popover,
   restore,
@@ -347,11 +348,9 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   });
 
   it("can save a native MongoDB query", () => {
-    cy.get(".ace_content")
-      .should("be.visible")
-      .type('[ { $count: "Total" } ]', {
-        parseSpecialCharSequences: false,
-      });
+    focusNativeEditor().type('[ { $count: "Total" } ]', {
+      parseSpecialCharSequences: false,
+    });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");
