@@ -7,12 +7,12 @@
   user-select: none;
 }
 
-.headVariant {
-  /* to add specificity */
-  font-size: 1.25rem !important;
-}
+.HeaderBadge :global(.Icon) {
+  &.headVariant {
+    /* to add specificity */
+    font-size: 1.25rem !important;
+  }
 
-.badge :global(.Icon) {
   width: 1em;
   height: 1em;
   margin-right: 0.5em;

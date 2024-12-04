@@ -6,7 +6,10 @@ import { Badge } from "metabase/components/Badge";
 import { Flex, Text } from "metabase/ui";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
-import { HeaderBadge } from "./HeaderBreadcrumbs.styled";
+
+const HeaderBadge = props => (
+  <Badge className={HeaderBreadcrumbsS.HeaderBadge} {...props} />
+);
 
 const crumbShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
@@ -51,7 +54,7 @@ export function HeadBreadcrumbs({
               part
             ) : (
               <Badge
-                className={cx(HeaderBreadcrumbsS.badge, {
+                className={cx(HeaderBreadcrumbsS.HeaderBadge, {
                   [HeaderBreadcrumbsS.headVariant]: variant === "head",
                 })}
                 to={part.href}
