@@ -5,15 +5,11 @@ import { t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, DEFAULT_POPOVER_Z_INDEX, Icon } from "metabase/ui";
+import { Box, DEFAULT_POPOVER_Z_INDEX, Icon, Text } from "metabase/ui";
 import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 
 import ExpressionEditorHelpTextS from "./ExpressionEditorHelpText.module.css";
-import {
-  ArgumentTitle,
-  FunctionHelpCodeArgument,
-} from "./ExpressionEditorHelpText.styled";
 
 export type ExpressionEditorHelpTextContentProps = {
   helpText: HelpText | null | undefined;
@@ -56,7 +52,14 @@ export const ExpressionEditorHelpTextContent = ({
               (
               {args.map(({ name }, index) => (
                 <span key={name}>
-                  <FunctionHelpCodeArgument>{name}</FunctionHelpCodeArgument>
+                  <Text
+                    component="span"
+                    className={
+                      ExpressionEditorHelpTextS.FunctionHelpCodeArgument
+                    }
+                  >
+                    {name}
+                  </Text>
                   {index + 1 < args.length && ", "}
                 </span>
               ))}
@@ -75,7 +78,9 @@ export const ExpressionEditorHelpTextContent = ({
           >
             {args.map(({ name, description: argDescription }) => (
               <Fragment key={name}>
-                <ArgumentTitle>{name}</ArgumentTitle>
+                <Box className={ExpressionEditorHelpTextS.ArgumentTitle}>
+                  {name}
+                </Box>
                 <div>{argDescription}</div>
               </Fragment>
             ))}

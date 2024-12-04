@@ -47,3 +47,14 @@
   font-size: 0.8125rem;
   line-height: 1.065rem;
 }
+
+.FunctionHelpCodeArgument {
+  color: var(--mb-base-color-lobster-50);
+}
+
+.ArgumentTitle {
+  color: var(--mb-base-color-lobster-50);
+  font-family: Monaco, monospace;
+  font-size: 0.8125rem;
+  text-align: right;
+}
