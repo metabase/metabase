@@ -1,8 +1,9 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
+import cx from "classnames";
 import { Component, createRef } from "react";
 import { connect } from "react-redux";
-import type { ResizableBox, ResizableBoxProps } from "react-resizable";
+import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -28,7 +29,7 @@ import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -47,13 +48,8 @@ import type { Dispatch } from "metabase-types/store";
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
 import DataSourceSelectors from "./DataSourceSelectors";
-import {
-  DragHandle,
-  DragHandleContainer,
-  EditorRoot,
-  NativeQueryEditorRoot,
-  StyledResizableBox,
-} from "./NativeQueryEditor.styled";
+import NativeQueryEditorS from "./NativeQueryEditor.module.css";
+import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { RightClickPopover } from "./RightClickPopover";
@@ -771,9 +767,9 @@ export class NativeQueryEditor extends Component<
     const parameters = query.question().parameters();
 
     const dragHandle = resizable ? (
-      <DragHandleContainer>
-        <DragHandle />
-      </DragHandleContainer>
+      <Flex className={NativeQueryEditorS.DragHandleContainer}>
+        <Box className={NativeQueryEditorS.DragHandle} />
+      </Flex>
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(
@@ -781,7 +777,10 @@ export class NativeQueryEditor extends Component<
     );
 
     return (
-      <NativeQueryEditorRoot data-testid="native-query-editor-container">
+      <NativeQueryEditorRoot
+        className={NativeQueryEditorS.NativeQueryEditorRoot}
+        data-testid="native-query-editor-container"
+      >
         {hasTopBar && (
           <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
@@ -816,9 +815,11 @@ export class NativeQueryEditor extends Component<
               )}
           </Flex>
         )}
-        <StyledResizableBox
+        <ResizableBox
+          className={cx(NativeQueryEditorS.StyledResizableBox, {
+            [NativeQueryEditorS.isOpen]: isNativeEditorOpen,
+          })}
           ref={this.resizeBox}
-          isOpen={isNativeEditorOpen}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
@@ -834,7 +835,8 @@ export class NativeQueryEditor extends Component<
           }}
         >
           <>
-            <EditorRoot
+            <Box
+              className={NativeQueryEditorS.EditorRoot}
               id={ACE_ELEMENT_ID}
               data-testid="native-query-editor"
               ref={this.editor}
@@ -877,7 +879,7 @@ export class NativeQueryEditor extends Component<
               />
             )}
           </>
-        </StyledResizableBox>
+        </ResizableBox>
       </NativeQueryEditorRoot>
     );
   }
