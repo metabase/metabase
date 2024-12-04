@@ -37,7 +37,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
-   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -902,8 +902,7 @@
   (mt/test-driver :postgres
     (do-with-enums-db!
      (fn [db]
-       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db)
-                      [(sql.tx/create-materialized-view-of-table-sql driver/*driver* db "birds_m" "birds")])
+       (tx/create-view-of-table! driver/*driver* db "birds_m" "birds" true)
        (sync/sync-database! db)
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
