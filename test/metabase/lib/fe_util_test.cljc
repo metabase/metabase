@@ -343,14 +343,39 @@
                               {:operator :!=
                                :column   column
                                :unit     :hour-of-day
-                               :values   [0 23]}}]
+                               :values   [0 23]}
+
+                              (lib.filter/!= (lib.expression/get-day-of-week column :iso) 1)
+                              {:operator :!=
+                               :column   column
+                               :unit     :day-of-week
+                               :values   [1]}
+
+                              (lib.filter/!= (lib.expression/get-day-of-week column :iso) 1 7)
+                              {:operator :!=
+                               :column   column
+                               :unit     :day-of-week
+                               :values   [1 7]}
+
+                              (lib.filter/!= (lib.expression/get-month column) 1 12)
+                              {:operator :!=
+                               :column   column
+                               :unit     :month-of-year
+                               :values   [1 12]}
+
+                              (lib.filter/!= (lib.expression/get-quarter column) 1 4)
+                              {:operator :!=
+                               :column   column
+                               :unit     :quarter-of-year
+                               :values   [1 4]}}]
         (let [{:keys [operator column unit values]} parts]
           (is (=? parts (lib.fe-util/exclude-date-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/exclude-date-filter-parts
                          query -1 (lib.fe-util/exclude-date-filter-clause operator column unit values)))))))
     (testing "unsupported clauses"
       (are [clause] (nil? (lib.fe-util/exclude-date-filter-parts query -1 clause))
-        (lib.filter/between column "2020-01-01" "2021-01-01")))))
+        (lib.filter/between column "2020-01-01" "2021-01-01")
+        (lib.filter/!= (lib.expression/get-day-of-week column) 1)))))
 
 (defn- format-time-filter-parts
   [parts]
