@@ -8,12 +8,12 @@ title: Content verification
 
 ![Verified icon](./images/verified-icon.png)
 
-Admins can verify items to let others know that the content is accurate and up to date with the correct data source and query.
+Admins can verify items to let others know that the content is accurate and up to date.
 
 ## Benefits of verifying an item
 
 - Verified items get a fancy blue checkmark next to them.
-- They're more likely to show up higher in search suggestions and results.
+- They show up higher in search suggestions and results.
 - The models and metrics browsers allow you to filter for verified items.
 
 ![Verified models toggle](./images/verified-only.png)
@@ -26,7 +26,11 @@ To verify an item, an admin can click on the three-dot menu (**...**) in the upp
 
 ## Removing verification status
 
-To remove verification from an item, Admins can visit the item, click on the three-dot menu (**...**) and select **remove verification**.
+To remove verification from an item, admins can:
+
+1. Visit the item.
+2. Click on the three-dot menu (**...**).
+3. Select **remove verification**.
 
 ## Changes to queries require re-verification
 
@@ -42,3 +46,9 @@ Admins can verify the following items:
 - [Models](../data-modeling/models.md)
 - [Metrics](../data-modeling/metrics.md)
 - [Dashboards](../dashboards/introduction.md)
+
+Dashboard verification status has no affect on its questions. Questions must be verified independently.
+
+## Further reading
+
+- [Official collections](./collections.md#official-collections)
