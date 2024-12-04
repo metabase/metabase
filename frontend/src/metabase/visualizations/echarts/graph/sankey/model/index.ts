@@ -27,7 +27,7 @@ export const getSankeyChartModel = (
   const data = getSankeyData(rawSeries, sankeyColumns);
 
   const nodeColors = getColorsForValues(
-    data.nodes.map(node => String(node.value)),
+    data.nodes.map(node => String(node.rawName)),
   );
 
   return {

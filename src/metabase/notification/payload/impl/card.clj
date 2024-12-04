@@ -1,4 +1,4 @@
-(ns metabase.notification.payload.impl.alert
+(ns metabase.notification.payload.impl.card
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.notification.payload.core :as notification.payload]
@@ -7,7 +7,7 @@
    [metabase.util.ui-logic :as ui-logic]
    [toucan2.core :as t2]))
 
-(mu/defmethod notification.payload/payload :notification/alert
+(mu/defmethod notification.payload/payload :notification/card
   [{:keys [creator_id alert] :as _notification-info} :- notification.payload/Notification]
   (let [card_id (:card_id alert)]
     {:card_part   (notification.execute/execute-card creator_id card_id
@@ -35,7 +35,7 @@
              (goal-comparison (comparison-col-rowfn row) goal-val))
            (get-in card_part [:result :data :rows])))))
 
-(mu/defmethod notification.payload/should-send-notification? :notification/alert
+(mu/defmethod notification.payload/should-send-notification? :notification/card
   [{:keys [payload]}]
   (let [{:keys [alert card_part]} payload
         alert_condition        (:alert_condition alert)]
