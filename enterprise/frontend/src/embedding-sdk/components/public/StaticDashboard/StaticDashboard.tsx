@@ -1,3 +1,5 @@
+import cx from "classnames";
+import type { CSSProperties } from "react";
 import _ from "underscore";
 
 import {
@@ -19,7 +21,11 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { Box } from "metabase/ui";
 
 export type StaticDashboardProps = SdkDashboardDisplayProps &
-  PublicOrEmbeddedDashboardEventHandlersProps;
+  PublicOrEmbeddedDashboardEventHandlersProps & {
+    withCardTitle?: boolean;
+    className?: string;
+    style?: CSSProperties;
+  };
 
 export const StaticDashboardInner = ({
   dashboardId,
@@ -30,6 +36,8 @@ export const StaticDashboardInner = ({
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
+  style,
+  className,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -52,7 +60,12 @@ export const StaticDashboardInner = ({
   const { font } = useEmbedFont();
 
   return (
-    <Box w="100%" ref={ref} className={CS.overflowAuto}>
+    <Box
+      w="100%"
+      ref={ref}
+      className={cx(CS.overflowAuto, className)}
+      style={style}
+    >
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameters}

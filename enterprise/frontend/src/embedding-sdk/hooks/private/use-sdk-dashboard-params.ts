@@ -15,7 +15,6 @@ export type SdkDashboardDisplayProps = {
   dashboardId: DashboardId;
   initialParameters?: Query;
   withTitle?: boolean;
-  withCardTitle?: boolean;
   withDownloads?: boolean;
   hiddenParameters?: string[];
 };
