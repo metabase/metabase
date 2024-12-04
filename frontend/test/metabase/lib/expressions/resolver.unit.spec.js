@@ -81,15 +81,9 @@ describe("metabase-lib/v1/expressions/resolve", () => {
     });
 
     it("should catch mismatched number of function parameters", () => {
-      expect(() => filter(["contains"])).toThrow();
-      expect(() => filter(["contains", Y])).toThrow();
-      expect(() => filter(["contains", Y, "A", "B", "C"])).toThrow();
-      expect(() => filter(["starts-with"])).toThrow();
-      expect(() => filter(["starts-with", A])).toThrow();
-      expect(() => filter(["starts-with", A, "P", "Q", "R"])).toThrow();
-      expect(() => filter(["ends-with"])).toThrow();
-      expect(() => filter(["ends-with", B])).toThrow();
-      expect(() => filter(["ends-with", B, "P", "Q", "R"])).toThrow();
+      expect(() => filter(["between"])).toThrow();
+      expect(() => filter(["between", Y])).toThrow();
+      expect(() => filter(["between", Y, "A", "B", "C"])).toThrow();
     });
 
     it("should allow a comparison (lexicographically) on strings", () => {

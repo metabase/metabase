@@ -13,7 +13,7 @@ To use the SDK in your app, you need to import the `MetabaseProvider` component 
 ```typescript
 const config = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
+  authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 
 export default function App() {
@@ -45,7 +45,7 @@ import {
 // Configuration
 const config = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
+  authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 
 // See the "Customizing appearance" section for more information

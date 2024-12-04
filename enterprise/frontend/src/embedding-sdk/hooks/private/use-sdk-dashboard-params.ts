@@ -1,4 +1,5 @@
 import type { Query } from "history";
+import type { CSSProperties } from "react";
 import { pick } from "underscore";
 
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
@@ -13,11 +14,13 @@ import type { DashboardId } from "metabase-types/api";
 
 export type SdkDashboardDisplayProps = {
   dashboardId: DashboardId;
-  initialParameterValues?: Query;
+  initialParameters?: Query;
   withTitle?: boolean;
   withCardTitle?: boolean;
   withDownloads?: boolean;
   hiddenParameters?: string[];
+  className?: string;
+  style?: CSSProperties;
 };
 
 export const useSdkDashboardParams = ({
@@ -25,7 +28,7 @@ export const useSdkDashboardParams = ({
   withDownloads,
   withTitle,
   hiddenParameters,
-  initialParameterValues = {},
+  initialParameters = {},
 }: SdkDashboardDisplayProps) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
@@ -44,7 +47,7 @@ export const useSdkDashboardParams = ({
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId,
-    parameterQueryParams: initialParameterValues,
+    parameterQueryParams: initialParameters,
   });
   const { isFullscreen, onFullscreenChange, ref } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =

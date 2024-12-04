@@ -207,14 +207,15 @@
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump! path (get-parsed-options #'dump options)))
 
 (defn ^:command export
-  {:doc "Serialize Metabase instance into directory at `path`."
-   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs. You can pass entity ids with `eid:<...>` as a prefix."
+  {:doc      "Serialize Metabase instance into directory at `path`."
+   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs. Pass either PKs or entity IDs."
                :id        :collection-ids
                :parse-fn  (fn [raw-string] (->> (str/split raw-string #"\s*,\s*")
                                                 (map (fn [v]
-                                                       (if (str/starts-with? v "eid:")
-                                                         v
-                                                         (parse-long v))))))]
+                                                       (cond
+                                                         (str/starts-with? v "eid:") v
+                                                         (= (count v) 21)            v
+                                                         :else                       (parse-long v))))))]
               ["-C" "--no-collections"           "Do not export any content in collections."]
               ["-S" "--no-settings"              "Do not export settings.yaml"]
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]

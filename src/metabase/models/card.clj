@@ -39,7 +39,7 @@
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
-   [metabase.search :as search]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -70,7 +70,7 @@
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
-   :parameters             mi/transform-parameters-list
+   :parameters             mi/transform-card-parameters-list
    :parameter_mappings     mi/transform-parameters-list
    :type                   mi/transform-keyword})
 
@@ -595,8 +595,7 @@
         card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
-      maybe-populate-initially-published-at
-      (dissoc :id)))
+      maybe-populate-initially-published-at))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -1017,6 +1016,8 @@
                   :dashboardcard-count {:select [:%count.*]
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
+                  :database-id         :database_id
+                  :last-viewed-at      :last_used_at
                   :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :official-collection [:= "official" :collection.authority_level]
                   :last-edited-at      :r.timestamp
@@ -1051,13 +1052,13 @@
                   :mr         [:model/ModerationReview [:and
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]
-                                                        [:= :mr.most_recent true]]]
+                                                        [:= :mr.most_recent true]]]}
                   ;; Workaround for dataflow :((((((
                   ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
                   ;;       and could cause a large increase in the query count for dashboard updates.
                   ;;       (see the test failures when this hook is added back)
                   ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
-                  }})
+   #_:end})
 
 (search/define-spec "card"
   (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))

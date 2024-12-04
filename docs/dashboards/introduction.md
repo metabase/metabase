@@ -96,7 +96,7 @@ To add a link card to a dashboard, click the **pencil** icon to enter dashboard 
 
 ## Iframe cards
 
-[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embe:
+[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embed:
 
 - Spreadsheets or surveys for data entry or workflows
 - Videos or slides for contextualizing and storytelling on dashboards
@@ -292,6 +292,10 @@ There is one important limitation with the `fullscreen` option: for security rea
 For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
 See [History](../exploration-and-organization/history.md).
+
+## Verifying a dashboard
+
+See [content verification](../exploration-and-organization/content-verification.md).
 
 ## Deleting a dashboard
 

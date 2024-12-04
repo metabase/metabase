@@ -60,6 +60,10 @@ export function chartPathWithFillColor(color) {
   return echartsContainer().find(`path[fill="${color}"]`);
 }
 
+export function sankeyEdge(color) {
+  return echartsContainer().find(`path[fill="${color}"][fill-opacity="0.2"]`);
+}
+
 export function chartPathsWithFillColors(colors) {
   return colors.map(color => chartPathWithFillColor(color));
 }
@@ -185,6 +189,7 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
 }
 
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
+  echartsTooltip().should("be.visible");
   echartsTooltip().within(() => {
     if (header != null) {
       tooltipHeader().should("have.text", header);

@@ -175,10 +175,9 @@
                          (lib/query metadata-provider query))
               expected (walk/postwalk
                         (fn [x]
-                          (if (and (map? x)
-                                   (:lib/uuid x))
-                            (assoc x :lib/uuid string?)
-                            x))
+                          (cond-> x
+                            (and (map? x) (:lib/uuid x)) (assoc :lib/uuid string?)
+                            (and (map? x) (:ident x))    (assoc :ident string?)))
                         expected)
               actual   (#'qp.pivot/generate-queries query {:pivot-rows [1 0] :pivot-cols [2]})]
           (is (= 6 (count actual)))
@@ -191,7 +190,7 @@
   (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
     (let [query         (api.pivots/pivot-query false)
           viz-settings  (:visualization_settings (api.pivots/pivot-card))
-          pivot-options {:pivot-rows [1 0], :pivot-cols [2] :pivot-measures nil}]
+          pivot-options {:pivot-rows [1 0], :pivot-cols [2] :pivot-measures nil :column-sort-order {}}]
       (is (= pivot-options
              (#'qp.pivot/pivot-options query viz-settings)))
       (are [num-breakouts expected] (= expected
@@ -214,7 +213,7 @@
                          {:rows    ["ID"]
                           :columns ["RATING"]}}
           pivot-options (#'qp.pivot/pivot-options query viz-settings)]
-      (is (= {:pivot-rows [], :pivot-cols [] :pivot-measures nil}
+      (is (= {:pivot-rows [], :pivot-cols [] :pivot-measures nil :column-sort-order {}}
              pivot-options))
       (is (= [[0 1] [1] [0] []]
              (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options)))))))
@@ -241,7 +240,7 @@
                                {:rows    ["CATEGORY"]
                                 :columns ["CREATED_AT"]}}
                 pivot-options (#'qp.pivot/pivot-options query viz-settings)]
-            (is (= {:pivot-rows [0], :pivot-cols [1] :pivot-measures nil}
+            (is (= {:pivot-rows [0], :pivot-cols [1] :pivot-measures nil :column-sort-order {}}
                    pivot-options))
             (is (= [[0 1] [1] [0] []]
                    (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
@@ -349,7 +348,7 @@
           rows    (mt/rows results)]
       (is (= ["Product → Category"
               "User → Source"
-              "Created At"
+              "Created At: Year"
               "pivot-grouping"
               "Count"]
              (map :display_name (mt/cols results))))
@@ -605,7 +604,7 @@
                       :filter      [:between $created_at "2019-01-01" "2021-01-01"]})]
         (mt/with-native-query-testing-context query
           (let [results (qp.pivot/run-pivot-query query)]
-            (is (= ["Rating" "Created At" "pivot-grouping" "Count"]
+            (is (= ["Rating" "Created At: Year" "pivot-grouping" "Count"]
                    (map :display_name (mt/cols results))))
             (is (= order-by-aggregation-expected-results
                    (mt/rows results)))))))))

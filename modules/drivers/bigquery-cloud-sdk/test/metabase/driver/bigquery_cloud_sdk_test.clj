@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk-test
   (:require
-   [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -19,6 +18,7 @@
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -227,10 +227,20 @@
                                          " decimal_col DECIMAL, "
                                          " bignumeric_col BIGNUMERIC, "
                                          " bigdecimal_col BIGDECIMAL, "
-                                         " string255_col STRING(255)) "
-                                         "AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello'")
+                                         " string255_col STRING(255), "
+                                         " bytes32_col BYTES(32), "
+                                         " numeric29_col NUMERIC(29), "
+                                         " decimal29_col DECIMAL(29), "
+                                         " bignumeric32_col BIGNUMERIC(32), "
+                                         " bigdecimal76_col BIGDECIMAL(76,38))"
+                                         "AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello', "
+                                         "  B'mybytes', NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s'")
                                     ~test-db-name
                                     tbl-nm#
+                                    ~numeric-val
+                                    ~decimal-val
+                                    ~bignumeric-val
+                                    ~bigdecimal-val
                                     ~numeric-val
                                     ~decimal-val
                                     ~bignumeric-val
@@ -524,7 +534,7 @@
                                        :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
                                        :where  [:and [:in :field.table_id table-ids]
                                                 [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
-                            (map #(update % :values (comp set json/parse-string)))
+                            (map #(update % :values (comp set json/decode)))
                             (map (juxt :field-name :values))
                             (into {}))))))
 
@@ -757,7 +767,42 @@
                :database-type "STRING",
                :base-type :type/Text,
                :database-partitioned false,
-               :database-position 4}]
+               :database-position 4}
+              {:name "bytes32_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "BYTES",
+               :base-type :type/*,
+               :database-partitioned false,
+               :database-position 5}
+              {:name "numeric29_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "NUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 6}
+              {:name "decimal29_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "NUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 7}
+              {:name "bignumeric32_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "BIGNUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 8}
+              {:name "bigdecimal76_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "BIGNUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 9}]
              (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
           "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})

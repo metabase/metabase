@@ -69,6 +69,7 @@ export interface Collection {
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
   is_personal?: boolean;
+  is_sample?: boolean; // true if the collection part of the sample content
 
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access
@@ -124,7 +125,10 @@ export interface CollectionItem {
   authority_level?: CollectionAuthorityLevel;
   getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
-  setArchived?: (isArchived: boolean, opts?: Record<string, unknown>) => void;
+  setArchived?: (
+    isArchived: boolean,
+    opts?: Record<string, unknown>,
+  ) => Promise<void>;
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;

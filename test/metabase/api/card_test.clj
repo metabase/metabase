@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -12,6 +11,7 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
+   [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -43,6 +43,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -2040,9 +2041,9 @@
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 (def ^:private ^:const ^String encoded-params
-  (json/generate-string [{:type   :number
-                          :target [:variable [:template-tag :category]]
-                          :value  2}]))
+  (json/encode [{:type   :number
+                 :target [:variable [:template-tag :category]]
+                 :value  2}]))
 
 (deftest csv-download-test
   (testing "no parameters"
@@ -2461,7 +2462,7 @@
   [url]
   (-> (client/client-full-response (test.users/username->token :rasta)
                                    :post 200 url
-                                   :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+                                   :query (json/encode (mt/mbql-query checkins {:limit 1})))
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
@@ -3752,10 +3753,7 @@
             :tables (sort-by :id [{:id (mt/id :products)}])
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata"))
-                ;; The output is so large, these help debugging
-               (update :fields #(map (fn [x] (select-keys x [:id])) %))
-               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
+               (api.test-util/select-query-metadata-keys-for-debugging)))))
     (testing "Parameterized native query"
       (is (=?
            {:fields (sort-by :id
@@ -3767,10 +3765,31 @@
                              [{:id (str "card__" card-id-2)}])
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
-                ;; The output is so large, these help debugging
-               (update :fields #(map (fn [x] (select-keys x [:id])) %))
-               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))))
+               (api.test-util/select-query-metadata-keys-for-debugging)))))))
+
+(deftest card-query-metadata-with-archived-and-deleted-source-card-test
+  (testing "Don't throw an error if source card is deleted (#48461)"
+    (mt/with-temp
+      [Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
+       Card {card-id-2 :id} {:dataset_query {:type  :query
+                                             :query {:source-table (str "card__" card-id-1)}}}]
+      (letfn [(query-metadata [expected-status card-id]
+                (-> (mt/user-http-request :crowberto :get expected-status (str "card/" card-id "/query_metadata"))
+                    (api.test-util/select-query-metadata-keys-for-debugging)))]
+        (api.test-util/before-and-after-deleted-card
+         card-id-1
+         #(testing "Before delete"
+            (doseq [[card-id table-id] [[card-id-1 (mt/id :products)]
+                                        [card-id-2 (str "card__" card-id-1)]]]
+              (is (=?
+                   {:fields empty?
+                    :tables [{:id table-id}]
+                    :databases [{:id (mt/id) :engine string?}]}
+                   (query-metadata 200 card-id)))))
+         #(testing "After delete"
+            (doseq [card-id [card-id-1 card-id-2]]
+              (is (= "Not found."
+                     (query-metadata 404 card-id))))))))))
 
 (deftest card-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"

@@ -94,6 +94,7 @@
       (:base-type opts)      (update :base-type keyword)
       (:effective-type opts) (update :effective-type keyword)
       (:temporal-unit opts)  (update :temporal-unit keyword)
+      (:inherited-temporal-unit opts)  (update :inherited-temporal-unit keyword)
       (:binning opts)        (update :binning (fn [binning]
                                                 (cond-> binning
                                                   (:strategy binning) (update :strategy keyword)))))))
@@ -191,6 +192,12 @@
   (if mode
     [:get-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
     [:get-week (normalize-tokens field :ignore-path)]))
+
+(defmethod normalize-mbql-clause-tokens :get-day-of-week
+  [[_ field mode]]
+  (if mode
+    [:get-day-of-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
+    [:get-day-of-week (normalize-tokens field :ignore-path)]))
 
 (defmethod normalize-mbql-clause-tokens :temporal-extract
   [[_ field unit mode]]

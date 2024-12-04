@@ -135,6 +135,7 @@ const QuestionEditorInner = () => {
   );
 };
 
+/** @deprecated this is only used in the deprecated `ModifyQuestion` component - to be removed in a future release */
 export const QuestionEditor = ({
   questionId,
   isSaveEnabled = true,

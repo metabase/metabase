@@ -8313,6 +8313,7 @@ databaseChangeLog:
       id: v50.2024-05-29T18:42:14
       author: johnswanson
       comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: mysql
@@ -10026,48 +10027,6 @@ databaseChangeLog:
       rollback: # not necessary, will be removed with the table
 
   - changeSet:
-      id: v52.2024-10-01T08:00:01
-      author: qnkhuat
-      comment: Migrate user invited email to system event notification
-      rollback: # not necessary, will be removed with the table
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/user-invited'
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSystemNotificationUserJoined"
-
-  - changeSet:
-      id: v52.2024-10-01T08:00:02
-      author: qnkhuat
-      comment: Migrate user invited email to system event notification
-      rollback: # not necessary, will be removed with the table
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/alert-create'
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSystemNotificationAlertCreated"
-
-  - changeSet:
-      id: v52.2024-10-01T08:00:03
-      author: qnkhuat
-      comment: Migrate user invited email to system event notification
-      rollback: # not necessary, will be removed with the table
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/slack-token-invalid'
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSystemNotificationSlackTokenError"
-
-  - changeSet:
       id: v52.2024-10-15T08:00:00
       author: qnkhuat
       comment: add notification_subscription.cron_schedule
@@ -10086,6 +10045,22 @@ databaseChangeLog:
                   remarks: the cron schedule for the subscription
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v52.2024-10-26T18:42:42
+      author: metamben
+      comment: Add stage-number to dimension targets in parameter_mappings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddStageNumberToParameterMappingTargets"
+
+  - changeSet:
+      id: v52.2024-11-12T15:13:18
+      author: metamben
+      comment: Add stage-number to dimension targets in visualization_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

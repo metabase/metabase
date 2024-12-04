@@ -115,6 +115,9 @@
   ;; Moment uses 0 as the first day of the week in its configured locale.
   (.. (now) (weekday (dec value)) (startOf "day")))
 
+(defmethod common/number->timestamp :day-of-week-iso [value _]
+  (.. (now) (isoWeekday value) (startOf "day")))
+
 (defmethod common/number->timestamp :day-of-month [value _]
   ;; We force the initial date to be in a month with 31 days.
   (.. (magic-base-date) (date value) (startOf "day")))
@@ -231,6 +234,7 @@
   [t unit]
   (case unit
     :day-of-week     (.format t "dddd")
+    :day-of-week-iso (.format t "dddd")
     :month-of-year   (.format t "MMM")
     :minute-of-hour  (.format t "m")
     :hour-of-day     (.format t "h A")

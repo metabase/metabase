@@ -191,6 +191,18 @@
   table-or-card-dependent-metadata
   expression-clause
   expression-parts
+  string-filter-clause
+  string-filter-parts
+  number-filter-clause
+  number-filter-parts
+  coordinate-filter-clause
+  coordinate-filter-parts
+  boolean-filter-clause
+  boolean-filter-parts
+  relative-date-filter-clause
+  relative-date-filter-parts
+  time-filter-parts
+  time-filter-clause
   filter-args-display-name]
  [lib.field
   add-field

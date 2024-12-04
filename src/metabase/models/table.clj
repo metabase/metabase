@@ -11,7 +11,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.search :as search]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -311,7 +311,7 @@
                   :view-count    true
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :description :display_name]
+   :search-terms [:name :display_name :description]
    :render-terms {:initial-sync-status true
                   :table-id            :id
                   :table-description   :description

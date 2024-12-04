@@ -6,7 +6,9 @@ import type {
 } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
-export type StaleCollectionItem = CollectionItem & { last_used_at: string };
+export type StaleCollectionItem = CollectionItem & {
+  last_used_at: string;
+};
 
 export type ListStaleCollectionItemsRequest = {
   id: CollectionId;

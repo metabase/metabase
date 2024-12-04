@@ -10,6 +10,8 @@ Also known as: parameters for signed embeds, or standalone embeds.
 
 Parameters are pieces of information that are passed between Metabase and your website via the [embedding URL](./static-embedding.md#adding-the-embedding-url-to-your-website). You can use parameters to specify how Metabase items should look and behave inside the iframe on your website.
 
+{% include shared/in-page-promo.html %}
+
 ## Types of parameters
 
 Parameters can be signed or unsigned.
@@ -180,20 +182,28 @@ your_embedding_url#theme=night&bordered=false&titled=true
 
 You can preview appearance settings from your question or dashboard's embedded appearance settings.
 
-| Parameter name             | Possible values                               |
-| -------------------------- | --------------------------------------------- |
-| `bordered`                 | true, false                                   |
-| `titled`                   | true, false                                   |
-| `theme`                    | null (default), night                         |
-| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`)         |
-| `font`\*                   | [font name](../configuring-metabase/fonts.md) |
-| `downloads`\*\*            | true, false                                   |
+| Parameter name             | Possible values                                                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `background`               | true (default), false. Dashboards only.                                                                                                        |
+| `bordered`                 | true (default), false.                                                                                                                         |
+| `titled`                   | true (default), false.                                                                                                                         |
+| `theme`                    | null (default), night. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
+| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                         |
+| `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                  |
+| `downloads`\*\*            | true (default), false.                                                                                                                         |
 
 \* Avalable on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
 
 \*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+
+## Transparent backgrounds for embeds
+
+Making an embed transparent depends on the type of embed:
+
+- Dashboards: set `background=false`. The `background` parameter can be combined with the `theme` parameter (e.g., `background=false&theme=night`).
+- Questions: set `theme=transparent` (deprecated, but still supported).
 
 ## Disable downloads for an embedded question or dashboard
 

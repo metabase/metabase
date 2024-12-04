@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { loadStaticQuestion } from "embedding-sdk/lib/load-static-question";
 import type { GenericErrorResponse } from "metabase/lib/errors";
@@ -15,19 +15,8 @@ type QuestionState = {
 
 export function useLoadStaticQuestion(
   questionId: number | null,
-  parameterValues?: Record<string, string | number>,
+  initialSqlParameters?: Record<string, string | number>,
 ) {
-  // This is a hack around strict mode calling the useEffect twice ->
-  // the first request is being cancelled and we render a error state for a few renders
-  // This needs to start at true, it needs to bypass the double use effect of strict mode
-  // See https://github.com/metabase/metabase/issues/49620 for more details on the issue
-  const isMounted = useRef(true);
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
   const [questionState, setQuestionState] = useState<QuestionState>({
     loading: false,
     card: null,
@@ -45,6 +34,7 @@ export function useLoadStaticQuestion(
 
   useEffect(() => {
     const cancelDeferred = defer();
+    let ignore = false; // flag to ignore the result if the component unmounts: https://react.dev/learn/you-might-not-need-an-effect#fetching-data
 
     async function loadCardData() {
       setQuestionState(state => ({ ...state, loading: true }));
@@ -56,28 +46,28 @@ export function useLoadStaticQuestion(
       try {
         const { card, result } = await loadStaticQuestion({
           questionId,
-          parameterValues,
+          sqlParameters: initialSqlParameters,
           cancelDeferred,
         });
 
-        setQuestionState({
-          card,
-          result,
-          loading: false,
-          error: null,
-        });
-      } catch (error) {
-        if (!isMounted.current) {
-          return;
-        }
-
-        if (typeof error === "object") {
+        if (!ignore) {
           setQuestionState({
-            result: null,
-            card: null,
+            card,
+            result,
             loading: false,
-            error,
+            error: null,
           });
+        }
+      } catch (error) {
+        if (typeof error === "object") {
+          if (!ignore) {
+            setQuestionState({
+              result: null,
+              card: null,
+              loading: false,
+              error,
+            });
+          }
         } else {
           console.error("error loading static question", error);
         }
@@ -89,8 +79,9 @@ export function useLoadStaticQuestion(
     return () => {
       // cancel pending requests upon unmount
       cancelDeferred.resolve();
+      ignore = true;
     };
-  }, [questionId, parameterValues]);
+  }, [questionId, initialSqlParameters]);
 
   return { ...questionState, updateQuestion };
 }

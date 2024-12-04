@@ -14,6 +14,7 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
+  Padding,
   RenderingContext,
 } from "metabase/visualizations/types";
 import { isCategory, isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
@@ -23,7 +24,6 @@ import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 import type {
   ChartBoundsCoords,
   ChartMeasurements,
-  Padding,
   TicksDimensions,
 } from "./types";
 

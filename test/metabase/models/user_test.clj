@@ -42,7 +42,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users))
+  (fixtures/initialize :test-users :notifications))
 
 (comment
   ;; this has to be loaded for the Google Auth tests to work

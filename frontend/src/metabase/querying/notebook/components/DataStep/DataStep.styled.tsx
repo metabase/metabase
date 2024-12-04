@@ -8,4 +8,5 @@ export const DataStepIconButton = styled(IconButtonWrapper)`
   color: var(--mb-color-text-white);
   padding: ${NotebookCell.CONTAINER_PADDING};
   opacity: 0.5;
+  height: 100%;
 `;

@@ -9,7 +9,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import { DIMENSIONS, OPTION_NAME_SEPERATOR, TOTAL_TEXT } from "./constants";
+import { DIMENSIONS, OPTION_NAME_SEPERATOR, getTotalText } from "./constants";
 import type { PieChartFormatters } from "./format";
 import type { PieChartModel, SliceTreeNode } from "./model/types";
 import { getArrayFromMapValues, getSliceTreeNodesFromPath } from "./util";
@@ -42,7 +42,7 @@ function getTotalGraphicOption(
   let labelText = "";
 
   const defaultLabelWillOverflow =
-    renderingContext.measureText(TOTAL_TEXT, fontStyle) >= innerRadius * 2;
+    renderingContext.measureText(getTotalText(), fontStyle) >= innerRadius * 2;
 
   if (settings["pie.show_total"] && !defaultLabelWillOverflow) {
     let sliceValueOrTotal = 0;
@@ -65,7 +65,7 @@ function getTotalGraphicOption(
       labelText = slice.name.toUpperCase();
     } else {
       sliceValueOrTotal = chartModel.total;
-      labelText = TOTAL_TEXT;
+      labelText = getTotalText();
     }
 
     const valueWillOverflow =
