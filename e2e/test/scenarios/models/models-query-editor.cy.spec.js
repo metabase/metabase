@@ -1,5 +1,6 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  focusNativeEditor,
   modal,
   openQuestionActions,
   popover,
@@ -151,7 +152,7 @@ describe("scenarios > models query editor", () => {
       cy.url().should("include", "/query");
       cy.button("Save changes").should("be.disabled");
 
-      cy.get(".ace_content").type("{backspace}2");
+      focusNativeEditor().type("{backspace}2");
 
       runNativeQuery();
 
@@ -192,7 +193,7 @@ describe("scenarios > models query editor", () => {
       cy.url().should("include", "/query");
       cy.button("Save changes").should("be.disabled");
 
-      cy.get(".ace_content").type("{backspace}2");
+      focusNativeEditor().type("{backspace}2");
 
       runNativeQuery();
 
@@ -237,7 +238,7 @@ describe("scenarios > models query editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
-      cy.get(".ace_content").type("{backspace}".repeat(" FROM".length));
+      focusNativeEditor().type("{backspace}".repeat(" FROM".length));
       runNativeQuery();
 
       cy.get("[data-testid=cell-data]").contains(1);
