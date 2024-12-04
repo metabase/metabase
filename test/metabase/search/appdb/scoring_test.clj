@@ -33,7 +33,7 @@
   [search-string & {:as raw-ctx}]
   (memoize/memo-clear! #'scoring/view-count-percentiles)
   (mapv (juxt :model :id :name)
-        (search.tu/search-results search-string (assoc raw-ctx :search-engine "fulltext"))))
+        (search.tu/search-results search-string (assoc raw-ctx :search-engine "appdb"))))
 
 (defmacro with-weights [weight-map & body]
   `(mt/with-dynamic-redefs [search.config/weights (constantly ~weight-map)]
