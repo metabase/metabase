@@ -13,6 +13,7 @@ import {
   filter,
   filterField,
   filterWidget,
+  focusNativeEditor,
   leftSidebar,
   openNotebook,
   openSeriesSettings,
@@ -1141,7 +1142,7 @@ describe("issue 33208", () => {
 
   it("should not auto-select chart type when saving a native question with parameters that have default values", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    cy.get(".ace_editor").type(" ");
+    focusNativeEditor().type(" ");
     saveSavedQuestion("top category");
     runNativeQuery({ wait: false });
     cy.findByTestId("scalar-value").should("be.visible");

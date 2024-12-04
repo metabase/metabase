@@ -16,6 +16,7 @@ import {
   createQuestion,
   editDashboard,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   getDashboardCard,
   getNotebookStep,
@@ -31,6 +32,7 @@ import {
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 import type { DashboardCard } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -719,6 +721,53 @@ describe("scenarios > organization > entity picker", () => {
             "Normal personal collection 2",
           ],
         });
+      });
+    });
+
+    it("Should properly render a path from other users personal collections", () => {
+      cy.signInAsAdmin();
+      createTestCollections();
+      cy.visit("/");
+      H.newButton("Dashboard").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Which collection should this go in?").click();
+      });
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
+        entityPickerModalItem(0, "All personal collections").click();
+        entityPickerModalItem(
+          1,
+          "Robert Tableton's Personal Collection",
+        ).click();
+        entityPickerModalItem(2, "Normal personal collection 2").click();
+        cy.button("Select").click();
+      });
+
+      cy.log(
+        "Re-open the collection picker to ensure that the path is generated properly",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText("Which collection should this go in?").click();
+      });
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
+        entityPickerModalItem(0, "All personal collections").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        entityPickerModalItem(
+          1,
+          "Robert Tableton's Personal Collection",
+        ).should("have.attr", "data-active", "true");
+        entityPickerModalItem(2, "Normal personal collection 2").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
       });
     });
   });
