@@ -39,7 +39,7 @@
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token @#'premium-features/token-check-url)
-      :query-params {:users      (str (#'premium-features/cached-active-users-count))
+      :query-params {:users      (str (#'premium-features/active-users-count))
                      :site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
                      :mb-version (:tag config/mb-version-info)}}
      (constantly premium-features-response)}
@@ -150,6 +150,18 @@
     ;; for bug reports to come in
     (is (partial= {:valid false, :status "Token does not exist."}
                   (#'premium-features/fetch-token-status* (random-token))))))
+
+(deftest fetch-token-does-not-call-db-when-cached
+  (testing "No DB calls are made for the user count when checking token status if the status is cached"
+    (let [token (random-token)]
+      (t2/with-call-count [call-count]
+        ;; First fetch, should trigger a DB call to fetch user count
+        (premium-features/fetch-token-status token)
+        (is (= 1 (call-count)))
+
+        ;; Subsequent fetches with the same token should not trigger additional DB calls
+        (premium-features/fetch-token-status token)
+        (is (= 1 (call-count)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro Tests                                             |
@@ -275,14 +287,10 @@
 (deftest active-users-count-setting-test
   (t2.with-temp/with-temp
     [User _ {:is_active false}]
-    ;; premium-features/active-users-count is cached so it could be make the test flaky
-    ;; rebinding to avoid caching
     (testing "returns the number of active users"
-      (with-redefs [premium-features/cached-active-users-count (fn []
-                                                                 (t2/count :core_user :is_active true))]
-        (is (= (t2/count :core_user :is_active true)
-               (premium-features/cached-active-users-count)))))
+      (is (= (t2/count :model/User :is_active true :type :personal)
+             (premium-features/active-users-count))))
 
     (testing "Default to 0 if db is not setup yet"
       (binding [mdb.connection/*application-db* {:status (atom nil)}]
-        (is (zero? (premium-features/cached-active-users-count)))))))
+        (is (zero? (premium-features/active-users-count)))))))
