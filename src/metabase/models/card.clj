@@ -744,14 +744,14 @@
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
   (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)
-  (t2/query {:delete-from :dashboardcard_series
-             :where [:in :id
-                     {:select [[:dcs.id :id]]
-                      :from [[:dashboardcard_series :dcs]]
-                      :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
-                      :where [:and
-                              [:= :dc.dashboard_id dashboard-id]
-                              [:= :dcs.card_id card-id]]}]})
+  (when-let [dashcard-ids (seq (map :id (t2/query {:select [[:dcs.id]]
+                                                   :from [[:dashboardcard_series :dcs]]
+                                                   :join [[:report_dashboardcard :dc]
+                                                          [:= :dc.id :dcs.dashboardcard_id]]
+                                                   :where [:and
+                                                           [:= :dc.dashboard_id dashboard-id]
+                                                           [:= :dcs.card_id card-id]]})))]
+    (t2/delete! :model/DashboardCardSeries :id [:in (set dashcard-ids)]))
   (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
                                                   :user-id api/*current-user-id*}))
 
@@ -805,14 +805,13 @@
       ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
       ;; removed from the dashboard" since you can't restore to the previous state...
       (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id [:not= new-dashboard-id])
-      (t2/query {:delete-from :dashboardcard_series
-                 :where [:in :id
-                         {:select [[:dcs.id :id]]
-                          :from [[:dashboardcard_series :dcs]]
-                          :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
-                          :where [:and
-                                  [:= :dcs.card_id card-id]
-                                  [:not= :dc.dashboard_id new-dashboard-id]]}]}))))
+      (when-let [ids (seq (map :id (t2/query {:select [[:dcs.id]]
+                                              :from [[:dashboardcard_series :dcs]]
+                                              :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
+                                              :where [:and
+                                                      [:= :dcs.card_id card-id]
+                                                      [:not= :dc.dashboard_id new-dashboard-id]]})))]
+        (t2/delete! :model/DashboardCardSeries :id [:in ids])))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]

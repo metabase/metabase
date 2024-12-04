@@ -42,6 +42,7 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :dashboard_id               false
    :dashboard                  nil
    :effective_location         nil
    :location                   nil
