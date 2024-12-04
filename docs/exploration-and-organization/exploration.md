@@ -41,7 +41,7 @@ You can search by:
 - **Last editor**: who made the last saved change on the thing.
 - **Creation date**: when the thing entered our universe.
 - **Last edit date**: when someone last cared enough to update the thing.
-- **Verified items only**. Only show items that [have been verified](#verified-items).
+- **Verified items only**. Only show items that [have been verified](./content-verification.md).
 - **Search the contents of native queries**: search through the SQL/native code in questions.
 - **Search items in trash**: include the depths of oblivion in your search.
 
@@ -121,20 +121,6 @@ Some things to remember with bookmarks:
 - If you end up bookmarking a lot of items, you can collapse the bookmarks section in the sidebar (or remove the bookmarks that are just getting in your way).
 - Items that you bookmark will get a boost in your search results (but not the search results of other people).
 - To reorder bookmarks, simply drag and drop them in the sidebar.
-
-## Verified items
-
-{% include plans-blockquote.html feature="Verification" %}
-
-Verified questions, models, and dashboards are marked with a blue checkmark icon:
-
-
-
-See [Content verification](./content-verification.md).
-
-Administrators can **Verify** a question, [model](../data-modeling/models.md), [metric](../data-modeling/metrics.md), or dashboard from the three dot menu (`...`) to signal that they've reviewed the item and deemed it to be trustworthy. That is: the question or model is filtering the right columns, summarizing the right metrics, and querying records from the right tables. 
-
-If someone modifies a verified item, the item will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
 
 [collections]: ./collections.md
 [dashboards]: ../dashboards/start.md
