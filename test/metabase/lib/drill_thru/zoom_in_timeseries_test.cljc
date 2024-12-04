@@ -189,33 +189,77 @@
           bucketing
           {"CREATED_AT" "2022-12-01"}))))))
 
+(deftest ^:parallel returns-zoom-in-timeseries-for-multi-stage-queries
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/zoom-in.timeseries
+    :click-type   :cell
+    :query-type   :aggregated
+    :column-name  "count"
+    :custom-query (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                       (lib/aggregate (lib/count))
+                                       (lib/breakout (meta/field-metadata :orders :product-id))
+                                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                                         (lib/with-temporal-bucket :month)))
+                                       lib/append-stage)
+                        count-col  (m/find-first #(= (:name %) "count")
+                                                 (lib/returned-columns base-query))
+                        _          (is (some? count-col))]
+                    (lib/filter base-query (lib/> count-col 0)))
+    :custom-row   {"PRODUCT_ID" 3
+                   "CREATED_AT" "2023-12-01"
+                   "count"      77}
+    :expected     {:type      :drill-thru/zoom-in.timeseries
+                   :next-unit :week
+                   ;; the "underlying" dimension is reconstructed from the row.
+                   :dimension {:column     {:name       "CREATED_AT"
+                                            :lib/source :source/breakouts}
+                               :column-ref [:field {} (meta/id :orders :created-at)]
+                               :value      "2023-12-01"}}}))
+
 (deftest ^:parallel returns-zoom-in-timeseries-e2e-test-2
   (testing "zoom-in.timeseries should be returned for a"
-    (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                             (lib/aggregate (lib/count))
-                             (lib/breakout (-> (meta/field-metadata :orders :created-at)
-                                               (lib/with-temporal-bucket :year))))
-          created-at-col (m/find-first #(= (:name %) "CREATED_AT")
-                                       (lib/returned-columns query))
-          _              (is (some? created-at-col))]
-      (doseq [[message context] {"pivot cell (no column, value = NULL) (#36173)"
-                                 {:value      :null
-                                  :column     nil
-                                  :column-ref nil
-                                  :dimensions [{:column     created-at-col
-                                                :column-ref (lib/ref created-at-col)
-                                                :value      "2022-12-01T00:00:00+02:00"}]}
+    (let [base-query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/aggregate (lib/count))
+                                (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                                  (lib/with-temporal-bucket :year))))
+          created-at-col    (m/find-first #(= (:name %) "CREATED_AT")
+                                          (lib/returned-columns base-query))
+          _                 (is (some? created-at-col))
+          multi-stage-query (lib/append-stage base-query)
+          count-col         (m/find-first #(= (:name %) "count")
+                                          (lib/returned-columns multi-stage-query))
+          _                 (is (some? count-col))
+          multi-stage-query (lib/filter multi-stage-query (lib/> count-col 0))]
+      (doseq [[query-type query] {"single-stage" base-query
+                                  "multi-stage" multi-stage-query}
+              [message context]  {"pivot cell (no column, value = NULL) (#36173)"
+                                  {:value      :null
+                                   :column     nil
+                                   :column-ref nil
+                                   :dimensions [{:column     created-at-col
+                                                 :column-ref (lib/ref created-at-col)
+                                                 :value      "2022-12-01T00:00:00+02:00"}]}
 
-                                 "legend item (no column, no value) (#36173)"
-                                 {:value      nil
-                                  :column     nil
-                                  :column-ref nil
-                                  :dimensions [{:column     created-at-col
-                                                :column-ref (lib/ref created-at-col)
-                                                :value      "2022-12-01T00:00:00+02:00"}]}}]
-        (testing message
+                                  "legend item (no column, no value) (#36173)"
+                                  {:value      nil
+                                   :column     nil
+                                   :column-ref nil
+                                   :dimensions [{:column     created-at-col
+                                                 :column-ref (lib/ref created-at-col)
+                                                 :value      "2022-12-01T00:00:00+02:00"}]}}]
+        (testing (str query-type " query: " message)
           (let [[drill :as drills] (filter #(= (:type %) :drill-thru/zoom-in.timeseries)
-                                           (lib/available-drill-thrus query -1 context))]
+                                           (lib/available-drill-thrus query -1 context))
+                ;; both queries have the base-query stage where the drill filter should be added
+                expected-stages (cond-> [{:aggregation [[:count {}]]
+                                          :breakout    [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]],
+                                          :filters     [[:=
+                                                         {}
+                                                         [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+                                                         "2022-12-01T00:00:00+02:00"]]}]
+                                  ;; the multi-stage-query has an additional filter stage
+                                  (= query multi-stage-query) (conj {:filters
+                                                                     [[:> {} [:field {} "count"] 0]]}))]
             (is (= 1
                    (count drills)))
             (is (=? {:lib/type     :metabase.lib.drill-thru/drill-thru
@@ -225,43 +269,49 @@
                                     :value  "2022-12-01T00:00:00+02:00"}
                      :next-unit    :quarter}
                     drill))
-            (is (=? {:stages [{:aggregation [[:count {}]]
-                               :breakout    [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]],
-                               :filters     [[:=
-                                              {}
-                                              [:field {:temporal-unit :year} (meta/id :orders :created-at)]
-                                              "2022-12-01T00:00:00+02:00"]]}]}
+            (is (=? {:stages expected-stages}
                     (lib/drill-thru query -1 nil drill)))))))))
 
 (deftest ^:parallel zoom-in-timeseries-unit-tower-test
   (doseq [[unit1 unit2] datetime-unit-pairs]
-    (testing (str "zoom-in.timeseries for a DateTime column should zoom from " unit1 " to " unit2)
-      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                      (lib/aggregate (lib/count))
-                      (lib/breakout (-> (meta/field-metadata :orders :created-at)
-                                        (lib/with-temporal-bucket unit1))))]
-        (lib.drill-thru.tu/test-drill-application
-         {:click-type     :cell
-          :query-type     :aggregated
-          :custom-query   query
-          :custom-row     {"count"      100
-                           "CREATED_AT" "2022-12-09T11:22:33+02:00"}
-          :column-name    "count"
-          :drill-type     :drill-thru/zoom-in.timeseries
-          :expected       {:type         :drill-thru/zoom-in.timeseries
-                           :display-name (str "See this " (name unit1) " by " (name unit2))
-                           :dimension    {:column     {:name "CREATED_AT"}
-                                          :column-ref [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
-                                          :value      "2022-12-09T11:22:33+02:00"}
-                           :next-unit    unit2}
-          :expected-query {:stages [{:source-table (meta/id :orders)
-                                     :aggregation  [[:count {}]]
-                                     :breakout     [[:field
-                                                     {:temporal-unit unit2}
-                                                     (meta/id :orders :created-at)]]
-                                     :filters      [[:= {}
-                                                     [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
-                                                     "2022-12-09T11:22:33+02:00"]]}]}})))))
+    (let [base-query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/aggregate (lib/count))
+                                (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                                  (lib/with-temporal-bucket unit1))))
+          multi-stage-query (lib/append-stage base-query)
+          count-col         (m/find-first #(= (:name %) "count")
+                                          (lib/returned-columns multi-stage-query))
+          _                 (is (some? count-col))
+          multi-stage-query (lib/filter multi-stage-query (lib/> count-col 0))]
+      (doseq [[query-type query] {"single-stage" base-query
+                                  "multi-stage"  multi-stage-query}]
+        (testing (str "zoom-in.timeseries for a DateTime column in a " query-type " query should zoom from " unit1 " to " unit2)
+          (let [expected-stages (cond-> [{:source-table (meta/id :orders)
+                                          :aggregation  [[:count {}]]
+                                          :breakout     [[:field
+                                                          {:temporal-unit unit2}
+                                                          (meta/id :orders :created-at)]]
+                                          :filters      [[:= {}
+                                                          [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                                          "2022-12-09T11:22:33+02:00"]]}]
+                                  ;; the multi-stage-query has an additional filter stage
+                                  (= query multi-stage-query) (conj {:filters
+                                                                     [[:> {} [:field {} "count"] 0]]}))]
+            (lib.drill-thru.tu/test-drill-application
+             {:click-type     :cell
+              :query-type     :aggregated
+              :custom-query   query
+              :custom-row     {"count"      100
+                               "CREATED_AT" "2022-12-09T11:22:33+02:00"}
+              :column-name    "count"
+              :drill-type     :drill-thru/zoom-in.timeseries
+              :expected       {:type         :drill-thru/zoom-in.timeseries
+                               :display-name (str "See this " (name unit1) " by " (name unit2))
+                               :dimension    {:column     {:name "CREATED_AT"}
+                                              :column-ref [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                              :value      "2022-12-09T11:22:33+02:00"}
+                               :next-unit    unit2}
+              :expected-query {:stages expected-stages}})))))))
 
 (deftest ^:parallel zoom-in-timeseries-unit-tower-test-2
   (doseq [[unit1 unit2] date-unit-pairs]
