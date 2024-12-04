@@ -165,9 +165,7 @@ describe("scenarios > public > question", () => {
     }).then(({ body: { id } }) => {
       H.openNativeEditor();
 
-      cy.get("@editor")
-        .type("select * from {{#")
-        .type(`{leftarrow}{leftarrow}${id}`);
+      nativeEditorType(`select * from {{#${id}`);
 
       H.saveQuestion("test question", { wrapId: true });
       cy.get("@questionId").then(id => {
