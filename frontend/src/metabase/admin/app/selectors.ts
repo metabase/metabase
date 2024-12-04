@@ -29,6 +29,6 @@ export const getAdminPaths = (state: State) => {
   return state.admin?.app?.paths ?? [];
 };
 
-export const getIsOnboardingDismissed = (state: State) => {
+export const getIsOnboardingSidebarLinkDismissed = (state: State) => {
   return getSetting(state, "dismissed-onboarding-sidebar-link");
 };

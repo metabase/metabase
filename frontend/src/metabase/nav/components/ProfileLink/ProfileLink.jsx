@@ -5,12 +5,16 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
+import {
+  getAdminPaths,
+  getIsOnboardingSidebarLinkDismissed,
+} from "metabase/admin/app/selectors";
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
+import { getCanAccessOnboardingPage } from "metabase/home/selectors";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
@@ -26,11 +30,18 @@ import { useHelpLink } from "./useHelpLink";
 // based on whether they're an admin or not
 const mapStateToProps = state => ({
   adminItems: getAdminPaths(state),
+  canAccessOnboardingPage: getCanAccessOnboardingPage(state),
+  showOnboardingLink: getIsOnboardingSidebarLinkDismissed(state),
 });
 
 export default connect(mapStateToProps)(ProfileLink);
 
-function ProfileLink({ adminItems, onLogout }) {
+function ProfileLink({
+  adminItems,
+  onLogout,
+  showOnboardingLink,
+  canAccessOnboardingPage,
+}) {
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSetting("version");
   const applicationName = useSelector(getApplicationName);
@@ -68,6 +79,14 @@ function ProfileLink({ adminItems, onLogout }) {
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
+      showOnboardingLink &&
+        canAccessOnboardingPage && {
+          // eslint-disable-next-line no-literal-metabase-strings -- We don't show this to whitelabelled instances
+          title: t`How to use Metabase`,
+          icon: null,
+          link: "/getting-started",
+          event: `Navbar;Profile Dropdown;Getting Started`,
+        },
       {
         title: t`About ${applicationName}`,
         icon: null,
@@ -163,5 +182,7 @@ function ProfileLink({ adminItems, onLogout }) {
 
 ProfileLink.propTypes = {
   adminItems: PropTypes.array,
+  canAccessOnboardingPage: PropTypes.bool,
   onLogout: PropTypes.func.isRequired,
+  showOnboardingLink: PropTypes.bool,
 };
