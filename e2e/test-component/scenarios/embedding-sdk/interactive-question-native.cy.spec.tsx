@@ -1,10 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createNativeQuestion, describeEE } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { DatasetColumn } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
