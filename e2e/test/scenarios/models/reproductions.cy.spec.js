@@ -30,6 +30,7 @@ import {
   leftSidebar,
   main,
   modal,
+  nativeEditor,
   navigationSidebar,
   onlyOnOSS,
   openNativeEditor,
@@ -462,7 +463,7 @@ describe("issue 22517", () => {
 
     // This will edit the original query and add the `SIZE` column
     // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-    cy.get(".ace_content").type(
+    focusNativeEditor().type(
       "{leftarrow}".repeat(" from orders".length) +
         ", case when quantity > 4 then 'large' else 'small' end size ",
     );
@@ -502,7 +503,7 @@ describe("issue 22518", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
-    cy.get(".ace_content").type(", 'b' bar");
+    focusNativeEditor().type(", 'b' bar");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -767,7 +768,7 @@ describe("issue 23421", () => {
     openQuestionActions();
     popover().findByText("Edit query definition").click();
 
-    cy.get(".ace_content").should("contain", query);
+    nativeEditor().should("be.visible").and("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
     cy.button("Save changes").should("be.visible");
@@ -780,7 +781,7 @@ describe("issue 23421", () => {
     openQuestionActions();
     popover().findByText("Edit query definition").click();
 
-    cy.get(".ace_content").should("contain", query);
+    nativeEditor().should("be.visible").and("contain", query);
     cy.findByTestId("visualization-root")
       .findByText("Every field is hidden right now")
       .should("be.visible");

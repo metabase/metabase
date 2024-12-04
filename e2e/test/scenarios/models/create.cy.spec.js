@@ -2,6 +2,7 @@ import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   entityPickerModal,
   entityPickerModalTab,
+  focusNativeEditor,
   modal,
   restore,
   visitCollection,
@@ -31,7 +32,7 @@ describe("scenarios > models > create", () => {
     // Clicking on metadata should not work until we run a query
     cy.findByTestId("editor-tabs-metadata").should("be.disabled");
 
-    cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
+    focusNativeEditor().type("select * from ORDERS");
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
@@ -53,7 +54,7 @@ describe("scenarios > models > create", () => {
     visitCollection(THIRD_COLLECTION_ID);
 
     navigateToNewModelPage();
-    cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
+    focusNativeEditor().type("select * from ORDERS");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
