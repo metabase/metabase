@@ -14,6 +14,7 @@ import {
   expectNoBadSnowplowEvents,
   fillActionQuery,
   filterWidget,
+  focusNativeEditor,
   getActionCardDetails,
   modal,
   multiAutocompleteInput,
@@ -1013,9 +1014,9 @@ const MODEL_NAME = "Test Action Model";
           });
 
           actionEditorModal().within(() => {
-            cy.get(".ace_content").click().type("{home}{shift+end}{backspace}");
+            focusNativeEditor().type("{home}{shift+end}{backspace}");
             const TEST_COLUMNS_QUERY = `UPDATE ${TEST_COLUMNS_TABLE} SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}`;
-            cy.get(".ace_content").type(TEST_COLUMNS_QUERY, {
+            focusNativeEditor().type(TEST_COLUMNS_QUERY, {
               delay: 0,
               parseSpecialCharSequences: false,
             });

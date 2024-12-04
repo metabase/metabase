@@ -3,7 +3,9 @@ import {
   collectionOnTheGoModal,
   describeEE,
   entityPickerModal,
+  focusNativeEditor,
   modal,
+  nativeEditor,
   onlyOnOSS,
   openNativeEditor,
   popover,
@@ -137,22 +139,20 @@ describe("scenarios > question > snippets", () => {
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1
-    cy.get(".ace_content")
-      .as("editor")
-      .contains(/^select \* from {{snippet: Table: Orders}} limit 1$/);
+    nativeEditor()
+      .should("be.visible")
+      .and("have.text", "select * from {{snippet: Table: Orders}} limit 1");
     // Replace "Orders" with "Reviews"
-    cy.get("@editor")
-      .click()
-      .type(
-        "{end}" +
-          "{leftarrow}".repeat("}} limit 1".length) + // move left to "reach" the "Orders"
-          "{backspace}".repeat("Orders".length) + // Delete orders character by character
-          "Reviews",
-      );
-    // Check 2
-    cy.get("@editor").contains(
-      /^select \* from {{snippet: Table: Reviews}} limit 1$/,
+    focusNativeEditor().type(
+      "{end}" +
+        "{leftarrow}".repeat("}} limit 1".length) + // move left to "reach" the "Orders"
+        "{backspace}".repeat("Orders".length) + // Delete orders character by character
+        "Reviews",
     );
+    // Check 2
+    nativeEditor()
+      .should("be.visible")
+      .and("have.text", "select * from {{snippet: Table: Reviews}} limit 1");
     // Rerun the query
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.get("@results").contains(/christ/i);

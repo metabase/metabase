@@ -1,5 +1,5 @@
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
+import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/AceEditor/constants";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
