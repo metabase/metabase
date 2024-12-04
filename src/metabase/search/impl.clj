@@ -213,8 +213,10 @@
   (if config/is-test?
     ;; TODO The API tests have not yet been ported to reflect the new search's results.
     :search.engine/in-place
-    (u/prog1 (keyword "search.engine" (public-settings/search-engine))
-      (assert (search.engine/supported-engine? <>)))))
+    (if-let [s (public-settings/search-engine)]
+      (u/prog1 (keyword "search.engine" (name s))
+        (assert (search.engine/supported-engine? <>)))
+      :search.engine/in-place)))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
