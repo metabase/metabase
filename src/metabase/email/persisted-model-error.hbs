@@ -5,96 +5,98 @@
     >
       Model refresh for {{database-name}} failed
     </h2>
-    {{#if}}
-      {{#if is-not-first}}
-        <div>
-      {{else}}
-        <div class="padded-section">
-      {{/if}}
-      <p
-        style="font-weight: 600; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};"
-      >
-        We ran into some trouble refreshing the model {{card-name}}. You can
-        see the error description below:
-      </p>
-      <code
-        style="display: block; background-color: #F9FBFC; color: {{colorTextDark}}; border-radius: 4px; padding: 1.375rem 2.25em; margin-top: 1.125em; margin-bottom: 1.125em;"
-      >
-        {{error}}
-      </code>
-      <table
-        cellpadding="0"
-        cellspacing="0"
-        border="0"
-        width="100%"
-        style="border-collapse: separate; border-spacing: 0 2em;"
-      >
-        <tr>
-          <td
-            style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
-          >
-            Model name
-          </td>
-          <td>
-            <a
-              href="{{{card-url}}}"
-              style="font-weight: 600; font-size: 0.875em; color: {{applicationColor}}; line-height: 1.375em; text-decoration: none;"
-            >
-              {{card-name}}
-            </a>
-          </td>
-        </tr>
-        <tr>
-          <td
-            style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
-          >
-            Collection
-          </td>
-          <td>
-            <a
-              href="{{{collection-url}}}"
-              style="font-weight: 600; font-size: 0.875em; color: {{applicationColor}}; line-height: 1.375em; text-decoration: none;"
-            >
-              {{collection-name}}
-            </a>
-          </td>
-        </tr>
-        <tr>
-          <td
-            style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
-          >
-            Last run at
-          </td>
-          <td
-            style="font-weight: 600; font-size: 0.875em; color: {{colorTextDark}}; line-height: 1.375em;"
-          >
-            {{last-run-at}}
-          </td>
-        </tr>
-        <tr>
-          <td
-            style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
-          >
-            Last run trigger
-          </td>
-          <td
-            style="font-weight: 600; font-size: 0.875em; color: {{colorTextDark}}; line-height: 1.375em;"
-          >
-            {{last-run-trigger}}
-          </td>
-        </tr>
-      </table>
-
-      <div style="text-align: center;">
-        <a
-          href="{{caching-log-details-url}}"
-          style="display: inline-block; padding: 0.75rem 1.125em; background-color: {{applicationColor}}; color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
+    {{#each errors}}
+      {{#if}}
+        {{#if this.is-not-first}}
+          <div>
+        {{else}}
+          <div class="padded-section">
+        {{/if}}
+        <p
+          style="font-weight: 600; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};"
         >
-          Review in Tools page
-        </a>
-      </div>
-      </div>
-    {{/if}}
+          We ran into some trouble refreshing the model {{this.card-name}}. You can
+          see the error description below:
+        </p>
+        <code
+          style="display: block; background-color: #F9FBFC; color: {{colorTextDark}}; border-radius: 4px; padding: 1.375rem 2.25em; margin-top: 1.125em; margin-bottom: 1.125em;"
+        >
+          {{this.error}}
+        </code>
+        <table
+          cellpadding="0"
+          cellspacing="0"
+          border="0"
+          width="100%"
+          style="border-collapse: separate; border-spacing: 0 2em;"
+        >
+          <tr>
+            <td
+              style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+            >
+              Model name
+            </td>
+            <td>
+              <a
+                href="{{{this.card-url}}}"
+                style="font-weight: 600; font-size: 0.875em; color: {{applicationColor}}; line-height: 1.375em; text-decoration: none;"
+              >
+                {{this.card-name}}
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td
+              style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+            >
+              Collection
+            </td>
+            <td>
+              <a
+                href="{{{this.collection-url}}}"
+                style="font-weight: 600; font-size: 0.875em; color: {{applicationColor}}; line-height: 1.375em; text-decoration: none;"
+              >
+                {{this.collection-name}}
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td
+              style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+            >
+              Last run at
+            </td>
+            <td
+              style="font-weight: 600; font-size: 0.875em; color: {{colorTextDark}}; line-height: 1.375em;"
+            >
+              {{this.last-run-at}}
+            </td>
+          </tr>
+          <tr>
+            <td
+              style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+            >
+              Last run trigger
+            </td>
+            <td
+              style="font-weight: 600; font-size: 0.875em; color: {{colorTextDark}}; line-height: 1.375em;"
+            >
+              {{this.last-run-trigger}}
+            </td>
+          </tr>
+        </table>
+
+        <div style="text-align: center;">
+          <a
+            href="{{this.caching-log-details-url}}"
+            style="display: inline-block; padding: 0.75rem 1.125em; background-color: {{applicationColor}}; color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
+          >
+            Review in Tools page
+          </a>
+        </div>
+        </div>
+      {{/if}}
+    {{/each}}
     <div
       style="height: 1px; width: 100%; background-color: #F0F0F0; margin-top: 2em;"
     ></div>
