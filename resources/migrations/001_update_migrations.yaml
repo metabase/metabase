@@ -8223,7 +8223,7 @@ databaseChangeLog:
       comment: Create sample content
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleContent"
+            class: "metabase.db.custom_migrations.CreateSampleContentNoOp"
 
   - changeSet:
       id: v50.2024-05-29T14:04:47
@@ -10062,7 +10062,15 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
 
-  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v50.2024-05-27T15:55:22
+      author: escherize
+      comment: Create New and improved Sample Content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContent"
+
+ # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #
