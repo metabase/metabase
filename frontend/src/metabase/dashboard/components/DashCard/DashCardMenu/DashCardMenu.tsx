@@ -51,7 +51,7 @@ export type DashCardMenuItem = {
 } & MenuItemProps;
 
 function isDashCardMenuEmpty(plugins?: MetabasePluginsConfig) {
-  const dashcardMenu = plugins?.dashboardCardMenu?.dashcardMenu;
+  const dashcardMenu = plugins?.dashboard?.dashboardCardMenu;
 
   if (!plugins || !dashcardMenu || typeof dashcardMenu !== "object") {
     return false;
@@ -97,12 +97,12 @@ export const DashCardMenu = ({
   }
 
   const getMenuContent = () => {
-    if (typeof plugins?.dashboardCardMenu?.dashcardMenu === "function") {
-      return plugins.dashboard.dashcardMenu({ question: question.card() });
+    if (typeof plugins?.dashboard?.dashboardCardMenu === "function") {
+      return plugins.dashboard.dashboardCardMenu({ question: question.card() });
     }
 
-    if (isValidElement(plugins?.dashboardCardMenu?.dashcardMenu)) {
-      return plugins.dashboard.dashcardMenu;
+    if (isValidElement(plugins?.dashboard?.dashboardCardMenu)) {
+      return plugins.dashboard.dashboardCardMenu;
     }
 
     if (menuView === "download") {

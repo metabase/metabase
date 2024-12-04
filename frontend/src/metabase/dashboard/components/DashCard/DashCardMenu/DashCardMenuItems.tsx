@@ -32,7 +32,7 @@ export const DashCardMenuItems = ({
       dispatch(editQuestion(question, mode)),
   } = useInteractiveDashboardContext();
 
-  const dashcardMenuItems = plugins?.dashboardCardMenu?.dashcardMenu as
+  const dashcardMenuItems = plugins?.dashboard?.dashboardCardMenu as
     | DashboardCardCustomMenuItem
     | undefined;
 

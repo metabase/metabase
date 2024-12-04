@@ -32,11 +32,13 @@ export type DashboardCardCustomMenuItem = {
   customItems?: (DashCardMenuItem | CustomDashboardCardMenuItem)[];
 };
 
-export type MetabaseDashboardCardMenuPluginsConfig = {
-  dashcardMenu?: DashboardCardMenuCustomElement | DashboardCardCustomMenuItem;
+export type MetabaseDashboardPluginsConfig = {
+  dashboardCardMenu?:
+    | DashboardCardMenuCustomElement
+    | DashboardCardCustomMenuItem;
 };
 
 export type MetabasePluginsConfig = {
   mapQuestionClickActions?: MetabaseClickActionPluginsConfig;
-  dashboardCardMenu?: MetabaseDashboardCardMenuPluginsConfig;
+  dashboard?: MetabaseDashboardPluginsConfig;
 };
