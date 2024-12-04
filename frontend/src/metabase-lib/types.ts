@@ -13,8 +13,6 @@ import type {
 
 import type {
   DEFAULT_FILTER_OPERATORS,
-  EXCLUDE_DATE_BUCKETS,
-  EXCLUDE_DATE_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
 } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
@@ -341,8 +339,7 @@ export type BooleanFilterOperator = "=" | "is-null" | "not-null";
 export type SpecificDateFilterOperatorName =
   (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
 
-export type ExcludeDateFilterOperator =
-  (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
+export type ExcludeDateFilterOperator = "!=" | "is-null" | "not-null";
 
 export type TimeFilterOperator = ">" | "<" | "between" | "is-null" | "not-null";
 
@@ -358,7 +355,11 @@ export type RelativeDateFilterUnit =
   | "quarter"
   | "year";
 
-export type ExcludeDateFilterUnit = (typeof EXCLUDE_DATE_BUCKETS)[number];
+export type ExcludeDateFilterUnit =
+  | "hour-of-day"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year";
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
