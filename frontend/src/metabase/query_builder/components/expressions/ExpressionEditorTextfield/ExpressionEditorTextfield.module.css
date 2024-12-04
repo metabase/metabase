@@ -61,8 +61,7 @@
   }
 
   :global(.ace-tm .ace_string) {
-    /* TODO: find a correct color */
-    /* color: ${() => color("accent5")}; */
+    color: var(--mb-color-syntax-parameters);
   }
 
   :global(.ace_cursor) {
