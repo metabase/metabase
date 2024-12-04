@@ -16,5 +16,9 @@ export function blurNativeEditor() {
 }
 
 export function nativeEditorCompletions() {
-  return cy.get(".ace_autocomplete").should("be.visible");
+  return cy.get(".cm-tooltip-autocomplete").should("be.visible");
+}
+
+export function nativeEditorCompletion(label: string) {
+  return cy.get(".cm-completionLabel").contains(label).parent();
 }

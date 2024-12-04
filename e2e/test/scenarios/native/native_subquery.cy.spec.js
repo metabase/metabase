@@ -35,16 +35,17 @@ describe("scenarios > question > native subquery", () => {
           cy.reload();
           cy.findByText("Open Editor").click();
           // placing the cursor inside an existing template tag should open the data reference
-          H.focusNativeEditor().type("{leftarrow}");
+          H.focusNativeEditor().type("{leftarrow}{leftarrow}");
           cy.findByText("A People Question");
           // subsequently moving the cursor out from the tag should keep the data reference open
           H.focusNativeEditor().type("{rightarrow}");
           cy.findByText("A People Question");
           // typing a template tag id should open the editor
+          H.focusNativeEditor().type(" ").realType("{{#");
+
           H.focusNativeEditor()
-            .type(" ")
-            .type("{{#")
-            .type(`{leftarrow}{leftarrow}${questionId2}`);
+            .type("{leftarrow}{leftarrow}")
+            .realType(questionId2.toString());
           cy.findByText("A People Model");
         });
       });
@@ -77,12 +78,15 @@ describe("scenarios > question > native subquery", () => {
         cy.wait(1000);
 
         H.nativeEditorCompletions().within(() => {
-          cy.findByText(`${questionId2}-a-`).should("be.visible");
-          cy.findByText("Model in Bobby Tables's Personal Collection").should(
-            "be.visible",
-          );
-          cy.findByText(`${questionId1}-a-`).should("be.visible");
-          cy.findByText("Question in Our analytics").should("be.visible");
+          H.nativeEditorCompletion(`${questionId2}-a-`)
+            .should("be.visible")
+            .findByText("Model in Bobby Tables's Personal Collection")
+            .should("be.visible");
+
+          H.nativeEditorCompletion(`${questionId1}-a-`)
+            .should("be.visible")
+            .findByText("Question in Our analytics")
+            .should("be.visible");
         });
       });
     });
@@ -126,7 +130,7 @@ describe("scenarios > question > native subquery", () => {
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
           cy.findByText("Open Editor").click();
-          H.focusNativeEditor().type(" ").type("a_unique");
+          H.focusNativeEditor().realType(" ").realType(" a_");
 
           // Wait until another explicit autocomplete is triggered
           // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -137,16 +141,17 @@ describe("scenarios > question > native subquery", () => {
 
           // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
           // so type it in two parts
+          H.focusNativeEditor().realType(" {{#");
           H.focusNativeEditor()
-            .type(" {{#")
-            .type(`{leftarrow}{leftarrow}${questionId2}`);
+            .type("{leftarrow}{leftarrow}")
+            .realType(`{{#${questionId2}`);
 
           // Wait until another explicit autocomplete is triggered
           cy.wait(1000);
 
           // Again, typing in in one go doesn't always work
           // so type it in two parts
-          H.focusNativeEditor().type(" ").type("another");
+          H.focusNativeEditor().realType(" ").realType("another");
 
           H.nativeEditorCompletions().findByText("ANOTHER");
         });
@@ -269,7 +274,7 @@ describe("scenarios > question > native subquery", () => {
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         H.startNewNativeQuestion();
-        H.focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
+        H.focusNativeEditor().realType(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
@@ -293,7 +298,7 @@ describe("scenarios > question > native subquery", () => {
         const tagID = `#${baseQuestionId}`;
 
         H.startNewNativeQuestion();
-        H.focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
+        H.focusNativeEditor().realType(`SELECT * FROM {{${tagID}`);
 
         H.runNativeQuery();
         cy.findAllByTestId("cell-data").should("contain", "1");
