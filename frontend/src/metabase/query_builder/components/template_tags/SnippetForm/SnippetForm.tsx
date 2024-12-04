@@ -14,17 +14,14 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { Flex } from "metabase/ui";
 import type {
   Collection,
   NativeQuerySnippet,
   NativeQuerySnippetId,
 } from "metabase-types/api";
 
-import {
-  FormSnippetTextArea,
-  SnippetFormFooter,
-  SnippetFormFooterContent,
-} from "./SnippetForm.styled";
+import { FormSnippetTextArea } from "./SnippetForm.styled";
 
 const SNIPPET_SCHEMA = Yup.object({
   name: Yup.string()
@@ -178,8 +175,8 @@ function SnippetForm({
               type="snippet-collections"
             />
           )}
-          <SnippetFormFooter>
-            <SnippetFormFooterContent>
+          <Flex align="center" justify="center">
+            <Flex align="center" justify="center" gap="sm">
               {isEditing && (
                 <Button
                   type="button"
@@ -189,14 +186,14 @@ function SnippetForm({
                 >{t`Archive`}</Button>
               )}
               <FormErrorMessage inline />
-            </SnippetFormFooterContent>
-            <SnippetFormFooterContent>
+            </Flex>
+            <Flex align="center" justify="center" gap="sm">
               {!!onCancel && (
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
               )}
               <FormSubmitButton title={t`Save`} disabled={!dirty} primary />
-            </SnippetFormFooterContent>
-          </SnippetFormFooter>
+            </Flex>
+          </Flex>
         </Form>
       )}
     </FormProvider>
