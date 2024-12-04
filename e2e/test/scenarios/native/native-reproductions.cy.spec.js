@@ -9,10 +9,6 @@ import {
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
-// cy.realType does not have an option to not parse special characters
-const LEFT_BRACKET = "{{}";
-const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
-
 describe("issue 12439", () => {
   const nativeQuery = `
   SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY",
@@ -72,11 +68,8 @@ describe("issue 15029", () => {
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
     H.openNativeEditor();
-    cy.realType(
-      `select * from products where RATING = ${DOUBLE_LEFT_BRACKET}number.of.stars}}`,
-      {
-        parseSpecialCharSequences: false,
-      },
+    H.nativeEditorType(
+      "select * from products where RATING = {{number.of.stars}}",
     );
 
     cy.findAllByText("Variable name").parent().findByText("number.of.stars");
@@ -467,9 +460,8 @@ describe("issue 21597", { tags: "@external" }, () => {
     H.openNativeEditor({
       databaseName,
     });
-    cy.realType(
-      `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
-    );
+
+    nativeEditorType("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
 
     cy.findByTestId("variable-type-select").click();
     H.popover().within(() => {
@@ -760,7 +752,7 @@ describe("issue 22991", () => {
     H.openNativeEditor();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
-      cy.realType(`select * from ${DOUBLE_LEFT_BRACKET}#${questionId}`);
+      nativeEditorType(`select * from {{${questionId}}}`);
     });
 
     cy.get("main").should(
