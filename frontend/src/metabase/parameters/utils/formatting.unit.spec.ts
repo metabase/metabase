@@ -99,7 +99,7 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/month-year",
         value: "past1weeks",
-        expected: "Last Week",
+        expected: "Previous Week",
       },
       {
         type: "date/month-year",

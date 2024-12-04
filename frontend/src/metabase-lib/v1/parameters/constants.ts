@@ -95,7 +95,7 @@ export const PARAMETER_OPERATOR_TYPES = {
       type: "date/relative",
       operator: "relative",
       name: t`Relative Date`,
-      description: t`Like "the last 7 days" or "this month"`,
+      description: t`Like "the previous 7 days" or "this month"`,
     },
     {
       type: "date/all-options",
@@ -186,16 +186,16 @@ export const DATE_MBQL_FILTER_MAPPING: FilterMap = {
     mapping: ["time-interval", null, -30, "day"],
   },
   past1weeks: {
-    name: t`Last Week`,
-    mapping: ["time-interval", null, "last", "week"],
+    name: t`Previous Week`,
+    mapping: ["time-interval", null, "previous", "week"],
   },
   past1months: {
-    name: t`Last Month`,
-    mapping: ["time-interval", null, "last", "month"],
+    name: t`Previous Month`,
+    mapping: ["time-interval", null, "previous", "month"],
   },
   past1years: {
-    name: t`Last Year`,
-    mapping: ["time-interval", null, "last", "year"],
+    name: t`Previous Year`,
+    mapping: ["time-interval", null, "previous", "year"],
   },
   thisweek: {
     name: t`This Week`,

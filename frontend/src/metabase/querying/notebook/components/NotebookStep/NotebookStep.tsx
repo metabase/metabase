@@ -135,7 +135,7 @@ export function NotebookStep({
             <StepButtonContainer>
               <PreviewButton
                 as={NotebookActionButton}
-                icon="play"
+                icon="eye"
                 title={t`Preview`}
                 color={c("text-light")}
                 transparent

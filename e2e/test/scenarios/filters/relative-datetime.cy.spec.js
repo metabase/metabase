@@ -68,7 +68,7 @@ describe("scenarios > question > relative-datetime", () => {
       popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.icon("chevronleft").should("not.exist");
-        cy.findByText("Last 30 days").click();
+        cy.findByText("Previous 30 days").click();
       });
 
       cy.wait("@dataset");
