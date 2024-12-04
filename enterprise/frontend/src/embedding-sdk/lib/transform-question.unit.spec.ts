@@ -11,6 +11,7 @@ describe("transform internal to public sdk question", () => {
 
     const card = createMockCard({
       name: "My Question",
+      description: "My description",
       entity_id: entityId,
     });
 
@@ -25,7 +26,7 @@ describe("transform internal to public sdk question", () => {
     expect(publicQuestion).toStrictEqual({
       id: 1,
       name: "My Question",
-      description: null,
+      description: "My description",
       entityId: String(entityId),
       isSavedQuestion: true,
     });
