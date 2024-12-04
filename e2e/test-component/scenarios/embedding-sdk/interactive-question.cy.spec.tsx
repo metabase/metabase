@@ -23,7 +23,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Flex, Modal, Popover } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import { MetabaseQuestion } from "../../../../enterprise/frontend/src/embedding-sdk/types/public/question";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -213,11 +213,11 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
 
       const handleSave = (
-        question: Question | undefined,
+        question: MetabaseQuestion | undefined,
         context: { isNewQuestion: boolean },
       ) => {
         if (context.isNewQuestion) {
-          onSave(question?.displayName() ?? "");
+          onSave(question?.name ?? "");
         }
 
         close();
