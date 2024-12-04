@@ -253,15 +253,28 @@
                          :channel-type  channel-type
                          :template-type template-type}))))))
 
+(def ^:private NotificationHandler
+  [:map
+   [:notification_id               ms/PositiveInt]
+   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]
+   [:channel_id   {:optional true} [:maybe ms/PositiveInt]]
+   [:template_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:active       {:optional true} [:maybe :boolean]]])
+
+(defn- validate-notification-handler
+  [notification-handler]
+  (mu/validate-throw NotificationHandler notification-handler))
+
 (t2/define-before-insert :model/NotificationHandler
   [instance]
   (cross-check-channel-type-and-template-type instance)
+  (validate-notification-handler instance)
   instance)
 
 (t2/define-before-update :model/NotificationHandler
   [instance]
-  (when (or (contains? (t2/changes instance) :channel_id)
-            (contains? (t2/changes instance) :template_id))
+  (validate-notification-handler instance)
+  (when (some #{:channel_id :template_id :channel_type} (-> instance t2/changes keys))
     (cross-check-channel-type-and-template-type instance)
     instance))
 
@@ -345,7 +358,22 @@
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn hydrate-notification
+(def FullyHydratedNotification
+  "Fully hydrated notification."
+  [:merge
+   Notification
+   [:map
+    [:creator       {:optional true} [:maybe :map]]
+    [:payload       {:optional true} :any]
+    [:subscriptions {:optional true} [:sequential NotificationSubscription]]
+    [:handlers      {:optional true} [:sequential [:merge
+                                                   NotificationHandler
+                                                   [:map
+                                                    [:template   {:optional true} [:maybe :map]]
+                                                    [:channel    {:optional true} [:maybe :map]]
+                                                    [:recipients {:optional true} [:sequential NotificationRecipient]]]]]]]])
+
+(mu/defn hydrate-notification :- FullyHydratedNotification
   "Fully hydrate notificaitons."
   [notification-or-notifications]
   (t2/hydrate notification-or-notifications

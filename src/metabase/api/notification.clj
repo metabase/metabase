@@ -17,4 +17,12 @@
       api/check-404
       models.notification/hydrate-notification))
 
+(api/defendpoint POST "/"
+  "Create a new notification."
+  [:as {{:keys [payload_type active creator_id payload handlers subscriptions]} :body}]
+  {payload_type (into [:enum models.notification/notification-types])
+   active       ms/BooleanValue
+   payload
+   creator_id   [:maybe ms/PositiveInt]})
+
 (api/define-routes)
