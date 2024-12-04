@@ -38,5 +38,5 @@
       (request/do-with-limit-and-offset
        limit offset
        (^:once fn* []
-        (handler (with-paging-params request paging-params) respond raise)))
+         (handler (with-paging-params request paging-params) respond raise)))
       (handler request respond raise))))

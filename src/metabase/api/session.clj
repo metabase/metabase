@@ -321,18 +321,18 @@
     (google/do-google-auth request)
     (http-401-on-error
       (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
-          (let [user (google/do-google-auth request)
-                {session-uuid :id, :as session} (create-session! :sso user (request/device-info request))
-                response {:id (str session-uuid)}
-                user (t2/select-one [User :id :is_active], :email (:email user))]
-            (if (and user (:is_active user))
-              (request/set-session-cookies request
-                                          response
-                                          session
-                                          (t/zoned-date-time (t/zone-id "GMT")))
-              (throw (ex-info (str disabled-account-message)
-                              {:status-code 401
-                               :errors      {:account disabled-account-snippet}}))))))))
+        (let [user (google/do-google-auth request)
+              {session-uuid :id, :as session} (create-session! :sso user (request/device-info request))
+              response {:id (str session-uuid)}
+              user (t2/select-one [User :id :is_active], :email (:email user))]
+          (if (and user (:is_active user))
+            (request/set-session-cookies request
+                                         response
+                                         session
+                                         (t/zoned-date-time (t/zone-id "GMT")))
+            (throw (ex-info (str disabled-account-message)
+                            {:status-code 401
+                             :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
   (with-meta

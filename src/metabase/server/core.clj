@@ -16,19 +16,19 @@
   metabase.server.protocols/keep-me)
 
 (p/import-vars
-  [metabase.server.instance
-   instance
-   start-web-server!
-   stop-web-server!]
-  [metabase.server.middleware.auth
-   enforce-authentication
-   enforce-static-api-key]
-  [metabase.server.middleware.exceptions
-   message-only-exceptions
-   public-exceptions]
+ [metabase.server.instance
+  instance
+  start-web-server!
+  stop-web-server!]
+ [metabase.server.middleware.auth
+  enforce-authentication
+  enforce-static-api-key]
+ [metabase.server.middleware.exceptions
+  message-only-exceptions
+  public-exceptions]
   ;; TODO -- I think all of this stuff probably belongs in [[metabase.request.*]]
-  [metabase.server.protocols
-   Respond])
+ [metabase.server.protocols
+  Respond])
 
 (defn handler
   "Get the top-level Ring handler."

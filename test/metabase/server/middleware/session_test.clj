@@ -168,9 +168,9 @@
                                                    :max-age   60}}
                 :headers {anti-csrf-token-header test-anti-csrf-token}}
                (request/set-session-cookies {}
-                                               {}
-                                               test-full-app-embed-session
-                                               (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
+                                            {}
+                                            test-full-app-embed-session
+                                            (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
       (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
         (is (= {:body    {}
                 :status  200
@@ -186,9 +186,9 @@
                                                    :max-age   60}}
                 :headers {anti-csrf-token-header test-anti-csrf-token}}
                (request/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
-                                               {}
-                                               test-full-app-embed-session
-                                               (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))))))))
+                                            {}
+                                            test-full-app-embed-session
+                                            (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))))))))
 
 ;;; ---------------------------------------- TEST wrap-session-id middleware -----------------------------------------
 

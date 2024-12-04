@@ -208,8 +208,6 @@
 ;;; |                                               bind-current-user                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
-
 ;;; this is actually used by [[metabase.models.permissions/clear-current-user-cached-permissions!]]
 ;;;
 ;;; TODO -- then why doesn't it live there??? Not one single thing this touches is part of this namespace.
