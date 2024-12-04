@@ -48,7 +48,7 @@ const mapStateToProps = (state: State, props: OwnProps) => {
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state, {
-      initialTab: props.initialTab,
+      initialTab: props?.initialTab,
     }),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
