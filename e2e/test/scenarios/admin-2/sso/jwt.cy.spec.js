@@ -1,11 +1,4 @@
-import {
-  describeEE,
-  modal,
-  popover,
-  restore,
-  setTokenFeatures,
-  typeAndBlurUsingLabel,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
@@ -14,11 +7,11 @@ import {
 } from "./shared/group-mappings-widget";
 import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
-describeEE("scenarios > admin > settings > SSO > JWT", () => {
+H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
@@ -39,12 +32,12 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
-    popover().findByText("Pause").click();
+    H.popover().findByText("Pause").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Paused").should("exist");
 
     getJwtCard().icon("ellipsis").click();
-    popover().findByText("Resume").click();
+    H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Active").should("exist");
   });
@@ -65,8 +58,8 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
-    popover().findByText("Deactivate").click();
-    modal().button("Deactivate").click();
+    H.popover().findByText("Deactivate").click();
+    H.modal().button("Deactivate").click();
     cy.wait("@updateSettings");
 
     getJwtCard().findByText("Set up").should("exist");
@@ -77,7 +70,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.button("Regenerate key").click();
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Regenerate JWT signing key?").should("exist");
       cy.findByText(
         "This will cause existing tokens to stop working until the identity provider is updated with the new key.",
@@ -116,6 +109,6 @@ const getJwtCard = () => {
 };
 
 const enterJwtSettings = () => {
-  typeAndBlurUsingLabel(/JWT Identity Provider URI/, "https://example.test");
+  H.typeAndBlurUsingLabel(/JWT Identity Provider URI/, "https://example.test");
   cy.button("Generate key").click();
 };
