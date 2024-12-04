@@ -39,38 +39,56 @@ export function nativeEditorType(
 ) {
   focusNativeEditor();
 
-  const parts = text.split(/(}}|\]\]|{[^{}]+})/);
+  const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
-  // HACK: realType does not accept {{ foo }} and there is no way to escape it
-  // so we break it up manually here.
+  function type(text: string) {
+    cy.realType(text, {
+      pressDelay: delay,
+    });
+  }
+
+  // HACK: realType does not accept a lot of common escape sequences,
+  // so we implement them manually here for the nateive editor.
   parts.forEach(part => {
-    if (part === "}}" || part === "]]") {
-      return;
-    }
+    switch (part.toLowerCase()) {
+      case "":
+        return;
 
-    if (part === "{clear}") {
-      clearNativeEditor();
-      return;
-    }
+      case "{clear}":
+        return clearNativeEditor();
 
-    if (part === "{selectAll}") {
-      nativeEditorSelectAll();
-      return;
-    }
+      case "{selectAll}":
+        return nativeEditorSelectAll();
 
-    if (part === "{leftarrow}") {
-      cy.realPress(["ArrowLeft"]);
-      return;
+      case "{leftarrow}":
+        return cy.realPress(["ArrowLeft"]);
+
+      case "{rightarrow}":
+        return cy.realPress(["ArrowRight"]);
+
+      case "{enter}":
+        return cy.realPress(["Enter"]);
+
+      case "{home}":
+      case "{movetostart}":
+        return cy.realPress(["Control", "A"]);
+
+      case "{end}":
+      case "{movetoend}":
+        return cy.realPress(["Control", "E"]);
+
+      case "{{}":
+        return cy.realType("{");
     }
 
     if (part.startsWith("{") && part.endsWith("}")) {
-      cy.realType("{").realType(part.slice(1), { pressDelay: delay });
+      // unknown escape sequence, let's try typing it
+      type("{");
+      type(part.slice(1));
       return;
     }
 
-    cy.realType(part, {
-      pressDelay: delay,
-    });
+    type(part);
   });
 
   return nativeEditor();
