@@ -42,17 +42,21 @@
 (defn- submit-refresh-task!
   "Submits a job to the thread pool to run a sequence of queries for a single card or dashboard being refreshed.
   This is best-effort; we try each query once and discard failures."
-  [queries cache-strategy]
+  [refresh-defs]
   (.submit ^ExecutorService @pool ^Callable
            (fn []
-             (doseq [{:keys [card-id dashboard-id query]} queries]
+             (doseq [{:keys [card-id dashboard-id queries]} refresh-defs
+                     query queries]
                (qp/process-query
                 (qp/userland-query
-                 (assoc query :cache-strategy cache-strategy)
+                 (assoc-in query [:middleware :ignore-cached-results?] true)
                  {:executed-by  nil
                   :context      :cache-refresh
                   :card-id      card-id
                   :dasbhoard-id dashboard-id}))))))
+
+#_(defn- refresh-duration-caches!
+    "Finds any caches with the :duration cache strategy")
 
 (defn- queries-to-rerun
   "Returns a list containing all of the query definitions that we should preemptively rerun for a given card that uses
@@ -63,6 +67,7 @@
                             :from     [[(t2/table-name :model/Query) :q]]
                             :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
                             :where    [:and
+                                       [:not= :qe.context (name :cache-refresh)]
                                        [:= :qe.card_id (u/the-id card)]
                                        [:>= :started_at rerun-cutoff]]
                             :group-by [:q.query_hash :q.query]
@@ -93,17 +98,20 @@
     last-run-at :last_run_at
     created-at  :created_at}]
   (assert (= strategy :schedule))
-  (let [rerun-cutoff      (or last-run-at created-at)
-        cards             (cards-to-refresh model model-id)
-        dashboard-id      (when (= model "dashboard") model-id)
-        cards-and-queries (dedupe
-                           (map
-                            (fn [card]
-                              {:dashboard-id dashboard-id
-                               :card-id      (u/the-id card)
-                               :queries      (queries-to-rerun card rerun-cutoff)})
-                            cards))]
-    (submit-refresh-task! cards-and-queries :schedule)))
+  (let [rerun-cutoff (or last-run-at created-at)
+        cards        (cards-to-refresh model model-id)
+        dashboard-id (when (= model "dashboard") model-id)
+        refresh-defs (dedupe
+                      (map
+                       (fn [card]
+                         {:dashboard-id dashboard-id
+                          :card-id      (u/the-id card)
+                          :queries      (queries-to-rerun card rerun-cutoff)})
+                       cards))]
+    (submit-refresh-task! refresh-defs)))
+
+(comment
+ (refresh-schedule-cache! (t2/select-one :model/CacheConfig :model_id 242)))
 
 ;;; ------------------------------------------- Cache invalidation task ------------------------------------------------
 
