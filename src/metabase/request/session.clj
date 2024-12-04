@@ -9,12 +9,7 @@
 
 (comment metabase.server.middleware.session/keep-me)
 
-(ns metabase.request.session)
-
 (p/import-vars
   [metabase.server.middleware.session
    as-admin
-   clear-session-cookie
-   metabase-session-cookie
-   with-current-user
-   set-session-cookies])
+   with-current-user])
