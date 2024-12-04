@@ -126,13 +126,15 @@ Some things to remember with bookmarks:
 
 {% include plans-blockquote.html feature="Verification" %}
 
-Verified questions and models are marked with a blue checkmark icon:
+Verified questions, models, and dashboards are marked with a blue checkmark icon:
 
-![Verified icon](./images/verified-icon.png)
 
-Administrators can **Verify** a question, [model](../data-modeling/models.md), or [metric](../data-modeling/metrics.md) from the three dot menu (`...`) to signal that they've reviewed the item and deemed it to be trustworthy. That is: the question or model is filtering the right columns, summarizing the right metrics, and querying records from the right tables. Verified items are more likely to show up higher in search suggestions and search results.
 
-If someone modifies a verified question, the question will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
+See [Content verification](./content-verification.md).
+
+Administrators can **Verify** a question, [model](../data-modeling/models.md), [metric](../data-modeling/metrics.md), or dashboard from the three dot menu (`...`) to signal that they've reviewed the item and deemed it to be trustworthy. That is: the question or model is filtering the right columns, summarizing the right metrics, and querying records from the right tables. 
+
+If someone modifies a verified item, the item will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
 
 [collections]: ./collections.md
 [dashboards]: ../dashboards/start.md

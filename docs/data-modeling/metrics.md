@@ -86,6 +86,10 @@ By "editing" a metric, we mean [editing the metric's query definition](#editing-
 
 These collection permissions also interact with the group's [data permissions](../permissions/data.md), which define whether the group can view or query the metric's source data.
 
+## Verifying a metric
+
+See [content verification](../exploration-and-organization/content-verification.md).
+
 ## Further reading
 
 - [Models](./models.md)
