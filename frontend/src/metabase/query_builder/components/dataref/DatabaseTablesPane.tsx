@@ -11,12 +11,13 @@ import type { State } from "metabase-types/store";
 import {
   NodeListContainer,
   NodeListIcon,
+  NodeListItemIcon,
+  NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
   QuestionId,
 } from "./NodeList";
-import { NodeListItemIcon, NodeListItemLink } from "./NodeList.styled";
 
 export interface DatabaseTablesPaneProps {
   onBack: () => void;
@@ -101,7 +102,10 @@ export const DatabaseTablesPane = ({
                   disabled={table.initial_sync_status !== "complete"}
                   onClick={() => onItemClick("table", table)}
                 >
-                  <NodeListItemIcon name="table" />
+                  <NodeListItemIcon
+                    disabled={table.initial_sync_status !== "complete"}
+                    name="table"
+                  />
                   <NodeListItemName
                     data-disabled={table.initial_sync_status !== "complete"}
                   >

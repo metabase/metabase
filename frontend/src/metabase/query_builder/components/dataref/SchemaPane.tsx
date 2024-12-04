@@ -9,11 +9,12 @@ import type { State } from "metabase-types/store";
 import {
   NodeListContainer,
   NodeListIcon,
+  NodeListItemIcon,
+  NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
-import { NodeListItemIcon, NodeListItemLink } from "./NodeList.styled";
 
 interface SchemaPaneProps {
   onBack: () => void;

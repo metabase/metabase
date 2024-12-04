@@ -1,6 +1,13 @@
-import type { ComponentPropsWithRef, ReactNode } from "react";
+import cx from "classnames";
+import type {
+  AnchorHTMLAttributes,
+  ComponentPropsWithRef,
+  ReactNode,
+} from "react";
 
 import { Box, Flex, Icon, Text } from "metabase/ui";
+
+import S from "./NodeList.module.css";
 
 const NodeListTitle = ({ children }: { children: ReactNode }) => {
   return (
@@ -51,6 +58,32 @@ const NodeListIcon = (props: ComponentPropsWithRef<typeof Icon>) => (
   <Icon mt="1px" w="md" {...props} />
 );
 
+const NodeListItemIcon = (
+  props: ComponentPropsWithRef<typeof Icon> & { disabled?: boolean },
+) => {
+  const { disabled, ...rest } = props;
+
+  return (
+    <Icon
+      className={cx(S.NodeListItemIcon, { [S.isDisabled]: disabled })}
+      {...rest}
+    />
+  );
+};
+
+const NodeListItemLink = (
+  props: AnchorHTMLAttributes<HTMLAnchorElement> & { disabled?: boolean },
+) => {
+  const { disabled, ...rest } = props;
+
+  return (
+    <a
+      className={cx(S.NodeListItemLink, { [S.isDisabled]: disabled })}
+      {...rest}
+    />
+  );
+};
+
 export {
   NodeListTitle,
   NodeListContainer,
@@ -58,4 +91,6 @@ export {
   QuestionId,
   NodeListItemName,
   NodeListIcon,
+  NodeListItemIcon,
+  NodeListItemLink,
 };
