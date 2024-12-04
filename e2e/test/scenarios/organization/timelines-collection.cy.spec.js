@@ -725,6 +725,7 @@ describeWithSnowplow("scenarios > collections > timelines", () => {
   it("should send snowplow events when creating a timeline event", () => {
     // 1 - new_instance_created
     // 2 - pageview
+    // 3 - available-models
     cy.visit("/collection/root");
 
     // 3 - pageview
@@ -739,7 +740,7 @@ describeWithSnowplow("scenarios > collections > timelines", () => {
     // 5 - pageview
     cy.button("Create").click();
 
-    expectGoodSnowplowEvents(5);
+    expectGoodSnowplowEvents(6);
   });
 });
 

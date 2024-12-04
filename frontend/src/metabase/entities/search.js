@@ -34,6 +34,7 @@ export default createEntity({
           offset,
           sort_column,
           sort_direction,
+          context,
           ...unsupported
         } = query;
         if (Object.keys(unsupported).length > 0) {
@@ -54,6 +55,7 @@ export default createEntity({
             offset,
             sort_column,
             sort_direction,
+            context,
           },
           dispatch,
           collectionApi.endpoints.listCollectionItems,

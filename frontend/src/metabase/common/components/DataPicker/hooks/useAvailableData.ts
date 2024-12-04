@@ -8,6 +8,7 @@ interface Props {
 export const useAvailableData = ({ databaseId }: Props = {}) => {
   const { data, isLoading } = useSearchQuery(
     {
+      context: "available-models",
       limit: 0,
       models: ["card"],
       table_db_id: databaseId,

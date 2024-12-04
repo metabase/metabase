@@ -46,7 +46,8 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
         return (
           data.event === NEW_SEARCH_QUERY_EVENT_NAME &&
           data.context === "command-palette" &&
-          typeof data.runtime_milliseconds === "number"
+          typeof data.runtime_milliseconds === "number" &&
+          data.content_type === null
         );
       });
 
@@ -73,7 +74,8 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
         return (
           data.event === NEW_SEARCH_QUERY_EVENT_NAME &&
           data.context === "command-palette" &&
-          typeof data.runtime_milliseconds === "number"
+          typeof data.runtime_milliseconds === "number" &&
+          data.content_type === null
         );
       });
 
@@ -201,9 +203,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
         expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
-
           context: "search-app",
-
           content_type: [
             "dashboard",
             "card",

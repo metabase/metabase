@@ -99,10 +99,20 @@ export interface SearchResult<
 }
 
 export type SearchContext =
-  | "search-bar"
-  | "search-app"
+  | "available-models"
   | "command-palette"
-  | "entity-picker";
+  | "entity-picker"
+  | "metabot"
+  | "metrics-browser"
+  | "model-upload"
+  | "model-browser"
+  | "question-picker"
+  | "search-app"
+  | "search-bar"
+  | "skip-token" // never sent to the backend, used in a sentinel payload
+  | "strategy-editor"
+  | "query-builder"
+  | "action-picker";
 
 export type SearchRequest = {
   q?: string;
@@ -111,7 +121,7 @@ export type SearchRequest = {
   models?: SearchModel[];
   ids?: SearchResultId[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: SearchContext;
+  context: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;

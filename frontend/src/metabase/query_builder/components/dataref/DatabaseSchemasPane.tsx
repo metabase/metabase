@@ -107,6 +107,7 @@ export default Search.loadList({
   query: (_state: State, props: DatabaseSchemasPaneProps) => ({
     models: ["dataset"],
     table_db_id: props.database.id,
+    context: "query-builder",
   }),
   listName: "models",
 })(DatabaseSchemasPane);
