@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, DEFAULT_POPOVER_Z_INDEX, Icon, Text } from "metabase/ui";
+import { Box, DEFAULT_POPOVER_Z_INDEX, Icon } from "metabase/ui";
 import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 
@@ -52,14 +52,14 @@ export const ExpressionEditorHelpTextContent = ({
               (
               {args.map(({ name }, index) => (
                 <span key={name}>
-                  <Text
+                  <Box
                     component="span"
                     className={
                       ExpressionEditorHelpTextS.FunctionHelpCodeArgument
                     }
                   >
                     {name}
-                  </Text>
+                  </Box>
                   {index + 1 < args.length && ", "}
                 </span>
               ))}
