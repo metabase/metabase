@@ -317,9 +317,9 @@
     (testing "It can use an alternate search engine"
       (search/init-index! {:force-reset? false :re-populate? false})
       (with-search-items-in-root-collection "test"
-        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
+        (let [resp (search-request :crowberto :q "test" :search_engine "appdb" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
-          (is (= "search.engine/fulltext" (:engine resp))))))))
+          (is (= "search.engine/appdb" (:engine resp))))))))
 
 (defn- get-available-models [& args]
   (set
@@ -338,7 +338,7 @@
 
 (deftest available-models-test
   ;; Porting these tests over earlier
-  (doseq [engine ["in-place" "fulltext"]]
+  (doseq [engine ["in-place" "appdb"]]
     (let [search-term "query-model-set"
           get-available-models #(apply get-available-models :search_engine engine %&)]
       (with-search-items-in-root-collection search-term
@@ -1590,7 +1590,7 @@
     (search.tu/with-temp-index-table
       (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
         (mt/user-http-request :crowberto :post 200 "search/re-init")
-        (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "fulltext"))]
+        (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "appdb"))]
           (is (try (t2/delete! (search.index/active-table)) (catch Exception _ :already-deleted)))
           (is (empty? (search-results 200)))
           (mt/user-http-request :crowberto :post 200 "search/force-reindex")
