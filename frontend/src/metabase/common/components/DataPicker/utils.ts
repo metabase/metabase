@@ -172,11 +172,7 @@ export const createShouldShowItem = (
         contents.includes(model as CollectionItemModel),
       );
 
-      if (item.id !== "root" && !item.is_personal && !hasCards) {
-        return false;
-      } else {
-        return true;
-      }
+      return item.id === "root" && !!item.is_personal && hasCards;
     }
     if (
       (isNullOrUndefined(databaseId) ||

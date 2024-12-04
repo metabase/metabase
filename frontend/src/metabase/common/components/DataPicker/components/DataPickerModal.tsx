@@ -87,7 +87,7 @@ export const DataPickerModal = ({
     databaseId,
   });
 
-  const QUESITON_PICKER_MODEL_FILTER_OPTIONS = useMemo(() => {
+  const questionPickerModalFilterOptions = useMemo(() => {
     const filterOptions: FilterOption[] = [];
 
     if (hasQuestions) {
@@ -156,7 +156,7 @@ export const DataPickerModal = ({
     <FilterButton
       value={modelFilter}
       onChange={setModelFilter}
-      options={QUESITON_PICKER_MODEL_FILTER_OPTIONS}
+      options={questionPickerModalFilterOptions}
     />
   );
 
@@ -186,13 +186,14 @@ export const DataPickerModal = ({
       });
     }
 
-    if (
+    const shouldShowCollectionsTab =
       (hasQuestions || hasMetrics || hasModels) &&
       hasNestedQueriesEnabled &&
       (models.includes("card") ||
         models.includes("dataset") ||
-        models.includes("metric"))
-    ) {
+        models.includes("metric"));
+
+    if (shouldShowCollectionsTab) {
       computedTabs.push({
         id: "questions-tab",
         displayName: t`Collections`,
@@ -248,7 +249,7 @@ const FilterButton = ({
   options: FilterOption[];
 }) => {
   return (
-    <Popover zIndex={1000}>
+    <Popover zIndex={450}>
       <Popover.Target>
         <Button leftIcon={<Icon name="filter" />} variant="subtle">{c(
           "A verb, not a noun",

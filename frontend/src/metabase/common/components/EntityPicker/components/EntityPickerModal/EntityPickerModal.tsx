@@ -365,7 +365,7 @@ export function EntityPickerModal<
       zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
-      <ModalContent h="100%" maw="920px">
+      <ModalContent h="100%" maw="57.5rem">
         <Modal.Header
           px="2.5rem"
           pt="1rem"
