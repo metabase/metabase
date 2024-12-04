@@ -3,20 +3,20 @@
   `metabase.api` module -- some middleware binds stuff like the current user or
   limit/offset (see [[metabase.request.current]]) that is then consumed by the `metabase.api` module."
   (:require
-   [metabase.server]
+   [metabase.server.instance]
    [metabase.server.middleware.auth]
    [metabase.server.middleware.exceptions]
    [metabase.server.protocols]
    [potemkin :as p]))
 
 (comment
-  metabase.server/keep-me
+  metabase.server.instance/keep-me
   metabase.server.middleware.auth/keep-me
   metabase.server.middleware.exceptions/keep-me
   metabase.server.protocols/keep-me)
 
 (p/import-vars
-  [metabase.server
+  [metabase.server.instance
    instance
    start-web-server!
    stop-web-server!]

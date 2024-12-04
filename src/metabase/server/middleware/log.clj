@@ -11,7 +11,7 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.models.setting :refer [defsetting]]
    [metabase.request.core :as request]
-   [metabase.server :as server]
+   [metabase.server.instance :as server]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
