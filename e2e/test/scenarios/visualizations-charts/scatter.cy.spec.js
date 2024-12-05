@@ -1,13 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  assertEChartsTooltip,
-  assertEChartsTooltipNotContain,
-  cartesianChartCircle,
-  leftSidebar,
-  restore,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -29,12 +22,12 @@ const testQuery = {
 
 describe("scenarios > visualizations > scatter", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should show correct labels in tooltip (metabase#15150)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "scatter",
       visualization_settings: {
@@ -44,7 +37,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    assertEChartsTooltip({
+    H.assertEChartsTooltip({
       header: "May 2023",
       rows: [
         {
@@ -60,7 +53,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should show correct labels in tooltip when display name has manually set (metabase#11395)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "scatter",
       visualization_settings: {
@@ -78,7 +71,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    assertEChartsTooltip({
+    H.assertEChartsTooltip({
       header: "May 2023",
       rows: [
         {
@@ -94,7 +87,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should not display data points even when enabled in settings (metabase#13247)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "scatter",
       dataset_query: testQuery,
       visualization_settings: {
@@ -110,7 +103,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should respect circle size in a visualization (metabase#22929)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -127,7 +120,7 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
-    cartesianChartCircle().each(([circle], index) => {
+    H.cartesianChartCircle().each(([circle], index) => {
       const { width, height } = circle.getBoundingClientRect();
       const TOLERANCE = 0.1;
       expect(width).to.be.greaterThan(0);
@@ -143,7 +136,7 @@ select 10 as size, 2 as x, 5 as y`,
   });
 
   it("should allow adding non-series columns to the tooltip", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "scatter",
       dataset_query: {
         type: "query",
@@ -156,24 +149,24 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
-    cartesianChartCircle().first().realHover();
-    assertEChartsTooltip({
+    H.cartesianChartCircle().first().realHover();
+    H.assertEChartsTooltip({
       header: "15.69",
       rows: [{ name: "Tax", value: "0.86" }],
     });
-    assertEChartsTooltipNotContain(["Total", "Discount", "Quantity"]);
+    H.assertEChartsTooltipNotContain(["Total", "Discount", "Quantity"]);
 
     cy.findByTestId("viz-settings-button").click();
 
-    leftSidebar().within(() => {
+    H.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByPlaceholderText("Enter metric names").click();
     });
     cy.findByRole("option", { name: "Total" }).click();
     cy.findByRole("option", { name: "Discount" }).click();
 
-    cartesianChartCircle().first().realHover();
-    assertEChartsTooltip({
+    H.cartesianChartCircle().first().realHover();
+    H.assertEChartsTooltip({
       header: "15.69",
       rows: [
         { name: "Tax", value: "0.86" },
@@ -181,7 +174,7 @@ select 10 as size, 2 as x, 5 as y`,
         { name: "Discount", value: "(empty)" },
       ],
     });
-    assertEChartsTooltipNotContain(["Quantity"]);
+    H.assertEChartsTooltipNotContain(["Quantity"]);
   });
 });
 
@@ -193,7 +186,7 @@ function triggerPopoverForBubble(index = 13) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
-  cartesianChartCircle()
+  H.cartesianChartCircle()
     .eq(index) // Random bubble
     .trigger("mousemove");
 }
