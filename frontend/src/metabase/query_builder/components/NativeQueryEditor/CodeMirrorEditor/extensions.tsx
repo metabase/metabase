@@ -33,9 +33,11 @@ import { isNotNull } from "metabase/lib/types";
 import { MetabaseApi } from "metabase/services";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import type {
+  Card,
   CardId,
   CardType,
   DatabaseId,
+  Field,
   NativeQuerySnippet,
 } from "metabase-types/api";
 
@@ -77,16 +79,16 @@ function useGetCardColumns(referencedQuestionIds: CardId[] = []) {
   const cardIds = useMemoized(referencedQuestionIds);
   const [getCard] = useLazyGetCardQuery();
 
-  return useCallback(async (): Promise<string[][]> => {
+  return useCallback(async (): Promise<{ card: Card; field: Field }[]> => {
     const data = await Promise.all(cardIds.map(id => getCard({ id })));
     return data
       .map(item => item.data)
       .filter(isNotNull)
       .flatMap(card =>
-        card.result_metadata.map(columnMetadata => [
-          columnMetadata.name,
-          `${card.name} :${columnMetadata.base_type}`,
-        ]),
+        card.result_metadata.map(field => ({
+          card,
+          field,
+        })),
       );
   }, [cardIds, getCard]);
 }
@@ -136,7 +138,7 @@ type LanguageOptions = {
   matchStyle?: string;
   databaseId?: DatabaseId;
   snippets?: NativeQuerySnippet[];
-  getCardColumns: () => Promise<string[][]>;
+  getCardColumns: () => Promise<{ card: Card; field: Field }[]>;
 };
 
 function source(engine?: string) {
@@ -333,17 +335,16 @@ function language({
       return null;
     }
 
-    const results = await getCardColumns().then(items =>
-      items.map(item => [item[0], item[1]]),
-    );
+    const results = await getCardColumns();
+
     return {
       from: word.from,
       validFor(text: string) {
         return text.startsWith(word.text);
       },
-      options: results.map(([value, meta]) => ({
-        label: value,
-        detail: meta,
+      options: results.map(column => ({
+        label: column.field.name,
+        detail: `${column.card.name} :${column.field.base_type}`,
         boost: 50,
       })),
     };
