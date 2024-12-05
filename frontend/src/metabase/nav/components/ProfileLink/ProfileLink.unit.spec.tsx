@@ -19,7 +19,6 @@ import {
 const REGULAR_ITEMS = [
   "Account settings",
   "Help",
-  "How to use Metabase",
   "About Metabase",
   "Sign out",
 ];
