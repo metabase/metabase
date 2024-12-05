@@ -4006,7 +4006,7 @@
       (testing "... again, unless we pass `delete_old_dashcards=true`"
         (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id}))))
 
-  (testing "And, if we don't have permissions on the other dashboard, it fails"
+  (testing "And, if we don't have permissions on the other dashboard, it fails even when we pass `delete_old_dashcards`"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
                      :model/Collection {_coll-id :id} {}

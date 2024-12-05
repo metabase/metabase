@@ -4993,14 +4993,17 @@
 
 (deftest dashboard-internal-cards-test
   ;; setup:
-  ;; - a collection, with a dashboard in it, with a dashboard-internal card in that dashboard
+  ;; - a collection, with a dashboard in it, with two dashboard-internal cards in that dashboard:
+  ;;   - one is archived, one is not
   ;; - another dashboard in the root collection
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
                  :model/Dashboard {other-dash-id :id} {}
                  :model/Card {card-id :id} {:dashboard_id dash-id}
+                 :model/Card {archived-card-id :id} {:dashboard_id dash-id}
                  :model/DashboardCard {_dashcard-id :id} {:card_id card-id
                                                           :dashboard_id dash-id}]
+    (mt/user-http-request :crowberto :put 200 (str "card/" archived-card-id) {:archived true})
     (testing "Cannot add a dashboard internal card to another dashboard"
       (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
                             {:dashcards [{:id -1
@@ -5016,7 +5019,9 @@
       (testing "And un-archive them with their dashboard, too"
         (is (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
                                   {:archived false}))
-        (is (not (t2/select-one-fn :archived :model/Card :id card-id)))))
+        (is (not (t2/select-one-fn :archived :model/Card :id card-id)))
+        (testing "not the one that was already archived before, though!"
+          (is (t2/select-one-fn :archived :model/Card :id archived-card-id)))))
     (testing "Should move dashboard internal cards to new collection along with their dashboard"
       (is (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
                                 {:collection_id nil}))
