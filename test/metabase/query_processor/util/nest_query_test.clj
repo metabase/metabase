@@ -762,3 +762,29 @@
                     (-> query'
                         nest-query/nest-expressions
                         readable-query)))))))))
+
+(deftest ^:parallel nest-expressions-ignores-temporal-units-from-joined-fields
+  (testing "clear temporal units from joined fields #48058"
+      (driver/with-driver :h2
+        (qp.store/with-metadata-provider meta/metadata-provider
+          (is (empty?
+               (->> (lib.tu.macros/mbql-query orders
+                      {:expressions {"double_total" [:* $total 2]}
+                       :breakout    [[:field
+                                      (meta/id :people :created-at)
+                                      {:base-type "type/DateTimeWithLocalTZ",
+                                       :join-alias "p",
+                                       :temporal-unit "hour-of-day",
+                                       :original-temporal-unit "month"}]
+                                     [:expression "double_total"]]
+                       :aggregation [[:count]]
+                       :joins [{:source-table $$people
+                                :alias        "p"
+                                :condition    [:= $user-id &p.people.id]}]})
+                    qp.preprocess/preprocess
+                    add/add-alias-info
+                    nest-expressions
+                    :source-query
+                    :fields
+                    (map #(% 2))
+                    (filter :temporal-unit))))))))
