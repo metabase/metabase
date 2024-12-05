@@ -325,8 +325,8 @@
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard date-col?) (start :guard string?) (end :guard string?)]
       (let [with-time? (or (u.time/matches-date-time? start) (u.time/matches-date-time? end))
-            start      (u.time/coerce-to-time start)
-            end        (u.time/coerce-to-time end)]
+            start      (u.time/coerce-to-timestamp start)
+            end        (u.time/coerce-to-timestamp end)]
         (when (and (u.time/valid? start) (u.time/valid? end))
           {:operator op, :column (ref->col col-ref), :values [start end], :with-time? with-time?})))))
 

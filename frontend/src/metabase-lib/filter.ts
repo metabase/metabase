@@ -156,7 +156,12 @@ export function specificDateFilterClause(
   stageIndex: number,
   { operator, column, values, hasTime }: SpecificDateFilterParts,
 ): ExpressionClause {
-  return ML.specific_date_filter_clause(operator, column, values, hasTime);
+  return ML.specific_date_filter_clause(
+    operator,
+    column,
+    values.map(value => moment(value)),
+    hasTime,
+  );
 }
 
 export function specificDateFilterParts(
@@ -164,7 +169,20 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  return ML.specific_date_filter_parts(query, stageIndex, filterClause);
+  const filterParts = ML.specific_date_filter_parts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (!filterParts) {
+    return null;
+  }
+  return {
+    ...filterParts,
+    values: filterParts.values.map((value: Moment) =>
+      value.local(true).toDate(),
+    ),
+  };
 }
 
 export function relativeDateFilterClause({
