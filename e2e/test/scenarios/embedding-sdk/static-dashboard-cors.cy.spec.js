@@ -1,14 +1,9 @@
+import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  describeEE,
-  getTextCardDetails,
-  restore,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 import { visitFullAppEmbeddingUrl } from "e2e/support/helpers/e2e-embedding-helpers";
 import {
   EMBEDDING_SDK_STORY_HOST,
@@ -21,14 +16,14 @@ import {
 
 const STORYBOOK_ID = "embeddingsdk-cypressstaticdashboardwithcors--default";
 
-describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
     enableJwtAuth();
 
-    const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
+    const textCard = H.getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
       card_id: ORDERS_QUESTION_ID,
