@@ -97,7 +97,15 @@ export const getSegmentRevisions = createSelector(
 export const getTableQuestions = createSelector(
   [getTable, getQuestions],
   (table, questions) =>
-    Object.values(questions).filter(question => question.table_id === table.id),
+    Object.values(questions).filter(question => {
+      if (question.table_id === table.id) {
+        return true
+      }
+      
+      const joins = (question['dataset_query']['query'] && question['dataset_query']['query']['joins']) || []
+    
+      return joins.some(join => join['source-table'] === table.id)
+    }),
 );
 
 const getDatabaseBySegment = createSelector(
