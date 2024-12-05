@@ -43,21 +43,26 @@
 (defn- submit-refresh-task!
   "Submits a job to the thread pool to run a sequence of queries for a single card or dashboard being refreshed.
   This is best-effort; we try each query once and discard failures."
+  [refresh-task-fn]
+  (.submit ^ExecutorService @pool ^Callable refresh-task-fn))
+
+(defn- refresh-task
+  "Returns a function that serially reruns queries based on `refresh-defs`, and discards the results. Each refresh
+  definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
   [refresh-defs]
-  (.submit ^ExecutorService @pool ^Callable
-           (fn []
-             (doseq [{:keys [card-id dashboard-id queries]} refresh-defs
-                     query queries]
-               (try
-                 (qp/process-query
-                  (qp/userland-query
-                   (assoc-in query [:middleware :ignore-cached-results?] true)
-                   {:executed-by  nil
-                    :context      :cache-refresh
-                    :card-id      card-id
-                    :dasbhoard-id dashboard-id}))
-                 (catch Exception e
-                   (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))
+  (fn []
+    (doseq [{:keys [card-id dashboard-id queries]} refresh-defs
+            query queries]
+      (try
+        (qp/process-query
+         (qp/userland-query
+          (assoc-in query [:middleware :ignore-cached-results?] true)
+          {:executed-by  nil
+           :context      :cache-refresh
+           :card-id      card-id
+           :dasbhoard-id dashboard-id}))
+        (catch Exception e
+          (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e)))))))
 
 (defn- duration-ago
   [{:keys [duration unit]}]
@@ -159,7 +164,7 @@
                                          (:dataset_query card)
                                          (scheduled-queries-to-rerun card rerun-cutoff))})
                        cards))]
-    (submit-refresh-task! refresh-defs)))
+    (submit-refresh-task! (refresh-task refresh-defs))))
 
 ;;; ------------------------------------------- Cache invalidation task ------------------------------------------------
 
