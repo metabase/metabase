@@ -334,7 +334,7 @@ const visualizerSlice = createSlice({
       action: PayloadAction<{ full?: boolean } | undefined>,
     ) => {
       if (action.payload?.full) {
-        state = initialState;
+        Object.assign(state, initialState);
       } else {
         state.past = [];
         state.future = [...state.future, state.present];
