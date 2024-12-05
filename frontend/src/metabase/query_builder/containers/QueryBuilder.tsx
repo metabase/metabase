@@ -217,7 +217,7 @@ type QueryBuilderInnerProps = ReduxProps &
   };
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
-  useFavicon({ favicon: props.pageFavicon });
+  useFavicon({ favicon: props.pageFavicon ?? null });
 
   const {
     question,
