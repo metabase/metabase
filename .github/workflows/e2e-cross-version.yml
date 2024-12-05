@@ -14,6 +14,12 @@ jobs:
     outputs:
       e2e_cross_version: ${{ steps.changes.outputs.e2e_cross_version }}
     steps:
+      - name: non-master stub
+        if: github.base_ref != 'refs/heads/master'
+        run: |
+          echo "Not targeting master, don't run cross-version tests"
+          echo "e2e_cross_version=false" >> $GITHUB_ENV
+          exit 0
       - uses: actions/checkout@v4
       - name: Test which files changed
         uses: dorny/paths-filter@v3.0.0
