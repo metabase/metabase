@@ -37,9 +37,11 @@
 (api/defendpoint GET "/"
   "Get a value for the user"
   [namespace key]
-  {key ms/NonBlankString
+  {key (ms/QueryVectorOf ms/NonBlankString)
    namespace ms/NonBlankString}
-  (user-key-value/retrieve api/*current-user-id* namespace key))
+  (into {}
+        (for [k key]
+          [k (user-key-value/retrieve api/*current-user-id* namespace k)])))
 
 (mr/resolve-schema ::types/user-key-value)
 

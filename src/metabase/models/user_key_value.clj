@@ -75,7 +75,6 @@
     value))
 
 (mu/defn retrieve
-  :- [:maybe :string]
   "Retrieves a KV-pair"
   [user-id :- :int
    namespace :- :string
@@ -83,4 +82,11 @@
   (let [{:keys [expires_at value]} (t2/select-one :model/UserKeyValue :user_id user-id :namespace namespace :key k)]
     (when (or (nil? expires_at)
               (.isBefore ^OffsetDateTime (OffsetDateTime/now) expires_at))
-      value)))
+      (:value (mc/decode ::types/user-key-value
+                         {:namespace namespace
+                          :key k
+                          :value value
+                          :expires-at expires_at}
+                         (mtx/transformer
+                          (mtx/default-value-transformer)
+                          {:name :database}))))))
