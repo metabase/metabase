@@ -148,7 +148,7 @@
      :last-edited-by                      (set last_edited_by)
      :limit                               mw.offset-paging/*limit*
      :model-ancestors?                    model_ancestors
-     :models                              models
+     :models                              (not-empty (set models))
      :offset                              mw.offset-paging/*offset*
      :search-engine                       search_engine
      :search-native-query                 search_native_query
