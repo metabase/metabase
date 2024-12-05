@@ -1,9 +1,9 @@
-.tableSearchContainer {
+.TableSearchContainer {
   padding: 0.5rem;
   border-bottom: 1px solid var(--mb-color-border);
 }
 
-.triggerContainer {
+.TriggerContainer {
   width: 100%;
   position: relative;
   padding: 0.5rem 2.625rem 0.5rem 0.6875rem;
@@ -12,7 +12,7 @@
   cursor: pointer;
 }
 
-.triggerContainerIcon {
+.TriggerContainerIcon {
   position: absolute;
   display: flex;
   align-items: center;
@@ -23,7 +23,7 @@
   height: 100%;
 }
 
-.textSchema {
+.TextSchema {
   font-size: 0.75em;
   color: var(--mb-color-text-light);
   line-height: 0.75rem;
@@ -31,7 +31,7 @@
   letter-spacing: 0.06em;
 }
 
-.backButtonLabel {
+.BackButtonLabel {
   font-size: 16px;
   color: var(--mb-color-text-dark);
   margin-left: 0.5rem;
@@ -39,7 +39,7 @@
   word-break: break-word;
   word-wrap: anywhere;
 
-  :hover {
+  &:hover {
     color: var(--mb-color-brand);
   }
 }

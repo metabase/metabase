@@ -28,10 +28,10 @@ export function Trigger({
 }) {
   if (isMantine) {
     return (
-      <Box className={DataSelectorS.triggerContainer}>
+      <Box className={DataSelectorS.TriggerContainer}>
         {children}
         {showDropdownIcon && (
-          <Box className={DataSelectorS.triggerContainerIcon}>
+          <Box className={DataSelectorS.TriggerContainerIcon}>
             <Icon name="chevrondown" size={iconSize} />
           </Box>
         )}
@@ -70,7 +70,7 @@ export function FieldTrigger({
 
   return (
     <div>
-      <Box className={DataSelectorS.textSchema}>
+      <Box className={DataSelectorS.TextSchema}>
         {hasMultipleSchemas && field.table.schema_name + " > "}
         {field.table.display_name}
       </Box>

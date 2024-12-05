@@ -127,7 +127,7 @@ export function RawDataBackButton() {
       <Icon name="chevronleft" size={16} />
       <Box
         component="span"
-        className={DataSelectorS.backButtonLabel}
+        className={DataSelectorS.BackButtonLabel}
       >{t`Raw Data`}</Box>
     </Flex>
   );
@@ -1038,7 +1038,7 @@ export class UnconnectedDataSelector extends Component {
       return (
         <>
           {this.showTableSearch() && (
-            <Box className={DataSelectorS.tableSearchContainer}>
+            <Box className={DataSelectorS.TableSearchContainer}>
               <ListSearchField
                 fullWidth
                 autoFocus
