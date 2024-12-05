@@ -345,9 +345,8 @@
                                      metabase.query-analysis.failure-map}
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
-    metabase.search                #{metabase.search
-                                     ;; deprecating naked metabase.search namespace in favor of this.
-                                     metabase.search.core
+    metabase.search                #{metabase.search.core
+                                     ;; Need to expose this submodule, to break circular dependencies with models.
                                      metabase.search.spec}
     metabase.server                #{metabase.server
                                      metabase.server.handler

@@ -319,7 +319,21 @@
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "appdb" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
-          (is (= "search.engine/appdb" (:engine resp))))))))
+          (is (= "search.engine/appdb" (:engine resp))))))
+
+    (testing "It can use the old search engine name, e.g. for old cookies"
+      (search/init-index! {:force-reset? false :re-populate? false})
+      (with-search-items-in-root-collection "test"
+        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
+          (is (= "search.engine/fulltext" (:engine resp))))))
+
+    (testing "It will not use an unknown search engine"
+      (search/init-index! {:force-reset? false :re-populate? false})
+      (with-search-items-in-root-collection "test"
+        (let [resp (search-request :crowberto :q "test" :search_engine "wut" :limit 1)]
+          (is (#{"search.engine/in-place"
+                 "search.engine/appdb"}
+               (:engine resp))))))))
 
 (defn- get-available-models [& args]
   (set

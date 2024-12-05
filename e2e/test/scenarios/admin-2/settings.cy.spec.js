@@ -1,3 +1,4 @@
+import { H } from "e2e/support";
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -5,33 +6,6 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  WEBHOOK_TEST_URL,
-  describeEE,
-  describeWithSnowplow,
-  echartsContainer,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  isEE,
-  isOSS,
-  main,
-  modal,
-  onlyOnOSS,
-  openNativeEditor,
-  openOrdersTable,
-  popover,
-  resetSnowplow,
-  restore,
-  runNativeQuery,
-  setTokenFeatures,
-  setupMetabaseCloud,
-  setupSMTP,
-  tableHeaderClick,
-  undoToast,
-  updateSetting,
-  visitQuestion,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 import {
   WEBHOOK_TEST_DASHBOARD,
@@ -42,10 +16,10 @@ import {
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
-describeWithSnowplow("scenarios > admin > settings", () => {
+H.describeWithSnowplow("scenarios > admin > settings", () => {
   beforeEach(() => {
-    resetSnowplow();
-    restore();
+    H.resetSnowplow();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -53,11 +27,11 @@ describeWithSnowplow("scenarios > admin > settings", () => {
     "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
-      onlyOnOSS();
+      H.onlyOnOSS();
       cy.visit("/admin/settings/setup");
 
       cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "upsell_viewed",
         promoted_feature: "hosting",
       });
@@ -65,11 +39,11 @@ describeWithSnowplow("scenarios > admin > settings", () => {
         .findAllByRole("link", { name: "Learn more" })
         .click();
       // link opens in new tab
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "upsell_clicked",
         promoted_feature: "hosting",
       });
-      expectNoBadSnowplowEvents();
+      H.expectNoBadSnowplowEvents();
     },
   );
 
@@ -99,7 +73,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
     cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
-    undoToast().contains(/^Error: Invalid site URL/);
+    H.undoToast().contains(/^Error: Invalid site URL/);
   });
 
   it("should save a setting", () => {
@@ -152,13 +126,13 @@ describeWithSnowplow("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover().contains("https://").click({ force: true });
+    H.popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
 
-    restore(); // avoid leaving https site url
+    H.restore(); // avoid leaving https site url
   });
 
   it("should display an error if the https redirect check fails", () => {
@@ -174,7 +148,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover().contains("https://").click({ force: true });
+    H.popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -194,7 +168,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
       .findByText("January 31, 2018")
       .click({ force: true });
 
-    popover().findByText("2018/1/31").click({ force: true });
+    H.popover().findByText("2018/1/31").click({ force: true });
     cy.wait("@saveFormatting");
 
     cy.findAllByTestId("select-button-content").should("contain", "2018/1/31");
@@ -205,7 +179,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("HH:mm").should("be.checked");
 
-    openOrdersTable({ limit: 2 });
+    H.openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
     cy.get("[data-testid=cell-data]")
@@ -222,7 +196,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("h:mm A").should("be.checked");
 
-    openOrdersTable({ limit: 2 });
+    H.openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
     cy.get("[data-testid=cell-data]").and("contain", "2025/2/11, 9:40 PM");
@@ -245,7 +219,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
     });
 
     // Open the orders table
-    openOrdersTable({ limit: 2 });
+    H.openOrdersTable({ limit: 2 });
 
     cy.get("#main-data-grid").within(() => {
       // Items in the total column should have a leading dollar sign
@@ -309,9 +283,9 @@ describeWithSnowplow("scenarios > admin > settings", () => {
     "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
     { tags: "@OSS" },
     () => {
-      isEE && setTokenFeatures("all");
+      H.isEE && H.setTokenFeatures("all");
 
-      const lastItem = isOSS ? "Cloud" : "Appearance";
+      const lastItem = H.isOSS ? "Cloud" : "Appearance";
 
       cy.visit("/admin/settings/setup");
       cy.findByTestId("admin-list-settings-items").within(() => {
@@ -324,7 +298,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
-    setupMetabaseCloud();
+    H.setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -340,7 +314,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide the store link when running Metabase Cloud", () => {
-    setupMetabaseCloud();
+    H.setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -368,8 +342,8 @@ describeWithSnowplow("scenarios > admin > settings", () => {
 
 describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    onlyOnOSS();
-    restore();
+    H.onlyOnOSS();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -382,16 +356,16 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   });
 });
 
-describeEE("scenarios > admin > settings (EE)", () => {
+H.describeEE("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide Enterprise page when running Metabase Cloud", () => {
-    setupMetabaseCloud();
+    H.setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -438,7 +412,7 @@ describe.skip(
 
       cy.findByLabelText("Name").type(name);
 
-      modal().button("Save").click();
+      H.modal().button("Save").click();
 
       cy.findByText("Not now").click();
 
@@ -479,7 +453,7 @@ describe.skip(
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-      restore("postgres-12");
+      H.restore("postgres-12");
       cy.signInAsAdmin();
     });
 
@@ -496,8 +470,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        openNativeEditor({ databaseName: "QA Postgres12" }).type(nativeQuery);
-        runNativeQuery();
+        H.openNativeEditor({ databaseName: "QA Postgres12" }).type(nativeQuery);
+        H.runNativeQuery();
 
         getCellText().then(res => {
           cy.wrap(res).as("tempResult");
@@ -531,7 +505,7 @@ describe.skip(
 
 describe("Cloud settings section", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -539,7 +513,7 @@ describe("Cloud settings section", () => {
     // Setting to none will give us an instance where token-features.hosting is set to true
     // Allowing us to pretend that we are a hosted instance (seems backwards though haha)
 
-    setTokenFeatures("none");
+    H.setTokenFeatures("none");
     cy.visit("/admin");
     cy.findByTestId("admin-list-settings-items").findByText("Cloud").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -553,7 +527,7 @@ describe("Cloud settings section", () => {
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
     cy.visit("/admin");
     cy.findByTestId("admin-list-settings-items").findByText("Cloud").click();
 
@@ -567,7 +541,7 @@ describe("Cloud settings section", () => {
 
 describe("scenarios > admin > settings > email settings", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -588,7 +562,7 @@ describe("scenarios > admin > settings > email settings", () => {
 
     // SMTP settings need to manually be saved
     cy.intercept("PUT", "api/email").as("smtpSaved");
-    main().within(() => {
+    H.main().within(() => {
       cy.findByText("Save changes").click();
     });
     cy.wait("@smtpSaved");
@@ -646,7 +620,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.button("Save changes").should("be.disabled");
 
     // should be able to clear email settings
-    main().findByText("Clear").click();
+    H.main().findByText("Clear").click();
 
     cy.reload();
 
@@ -670,7 +644,7 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-smtp-username": null,
     });
     cy.visit("/admin/settings/email/smtp");
-    main().findByText("Send test email").click();
+    H.main().findByText("Send test email").click();
     cy.findAllByText(
       "Couldn't connect to host, port: localhost, 1234; timeout -1",
     );
@@ -680,10 +654,10 @@ describe("scenarios > admin > settings > email settings", () => {
     "should send a test email for a valid SMTP configuration",
     { tags: "@external" },
     () => {
-      setupSMTP();
+      H.setupSMTP();
       cy.visit("/admin/settings/email/smtp");
-      main().findByText("Send test email").click();
-      main().findByText("Sent!");
+      H.main().findByText("Send test email").click();
+      H.main().findByText("Sent!");
 
       cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
         ({ body }) => {
@@ -711,11 +685,11 @@ describe("scenarios > admin > license and billing", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
-  describeEE("store info", () => {
+  H.describeEE("store info", () => {
     it("should show the user a link to the store for an unlincensed enterprise instance", () => {
       cy.visit("/admin/settings/license");
       cy.findByTestId("license-and-billing-content")
@@ -724,7 +698,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should show the user store info for an self-hosted instance managed by the store", () => {
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -767,7 +741,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should not show license input for cloud-hosted instances", () => {
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -778,7 +752,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should render an error if something fails when fetching billing info", () => {
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -797,11 +771,11 @@ describe("scenarios > admin > license and billing", () => {
 
 describe("scenarios > admin > localization", () => {
   function setFirstWeekDayTo(day) {
-    updateSetting("start-of-week", day.toLowerCase());
+    H.updateSetting("start-of-week", day.toLowerCase());
   }
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     setFirstWeekDayTo("monday");
   });
@@ -833,7 +807,7 @@ describe("scenarios > admin > localization", () => {
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    echartsContainer().get("text").contains("April 25, 2022");
+    H.echartsContainer().get("text").contains("April 25, 2022");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
@@ -865,14 +839,14 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("13604").click();
 
     cy.log("Reported failing on v0.37.0.2 and labeled as `.Regression`");
-    echartsContainer()
+    H.echartsContainer()
       .get("text")
       .contains(/sunday/i)
       .should("not.exist");
-    echartsContainer()
+    H.echartsContainer()
       .get("text")
       .contains(/monday/i);
-    echartsContainer()
+    H.echartsContainer()
       .get("text")
       .contains(/tuesday/i);
   });
@@ -939,9 +913,9 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("US Dollar").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
-    undoToast().findByText("Changes saved").should("be.visible");
+    H.undoToast().findByText("Changes saved").should("be.visible");
 
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "scalar",
       dataset_query: {
         type: "native",
@@ -977,7 +951,7 @@ describe("scenarios > admin > localization", () => {
       cy.findByText("January 31, 2018").click();
     });
 
-    popover().findByText("2018/1/31").click();
+    H.popover().findByText("2018/1/31").click();
     cy.wait("@updateFormatting");
 
     cy.findByTestId("custom-formatting-setting").within(() => {
@@ -992,12 +966,12 @@ describe("scenarios > admin > localization", () => {
       cy.findByDisplayValue("HH:mm").should("be.checked");
     });
 
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
     // create a date filter and set it to the 'On' view to see a specific date
-    tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At");
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Specific dates…").click();
       cy.findByText("On").click();
@@ -1031,7 +1005,7 @@ describe("scenarios > admin > localization", () => {
 
 describe("scenarios > admin > settings > map settings", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -1129,7 +1103,7 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.visit("/admin/settings/maps");
     cy.button("Add a map").click();
 
-    modal().within(() => {
+    H.modal().within(() => {
       // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
       cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
         .clear()
@@ -1146,7 +1120,7 @@ describe("scenarios > admin > settings > map settings", () => {
 // docker run -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000
 describe("notifications", { tags: "@external" }, () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -1164,7 +1138,7 @@ describe("notifications", { tags: "@external" }, () => {
     const COMMON_FIELDS = [
       {
         label: "Webhook URL",
-        value: WEBHOOK_TEST_URL,
+        value: H.WEBHOOK_TEST_URL,
       },
       {
         label: "Give it a name",
@@ -1223,7 +1197,7 @@ describe("notifications", { tags: "@external" }, () => {
         cy.visit("/admin/settings/notifications");
         cy.findByRole("heading", { name: "Add a webhook" }).click();
 
-        modal().within(() => {
+        H.modal().within(() => {
           COMMON_FIELDS.forEach(field => {
             cy.findByLabelText(field.label).type(field.value);
           });
@@ -1253,14 +1227,14 @@ describe("notifications", { tags: "@external" }, () => {
 
     cy.findByRole("heading", { name: "Add a webhook" }).click();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByRole("heading", { name: "New webhook destination" }).should(
         "exist",
       );
 
       cy.findByLabelText("Give it a name").type("Awesome Hook");
       cy.findByLabelText("Description").type("The best hook ever");
-      cy.findByLabelText("Webhook URL").clear().type(WEBHOOK_TEST_URL);
+      cy.findByLabelText("Webhook URL").clear().type(H.WEBHOOK_TEST_URL);
       cy.button("Create destination").click();
     });
 
@@ -1268,7 +1242,7 @@ describe("notifications", { tags: "@external" }, () => {
 
     cy.findByRole("heading", { name: "Awesome Hook" }).click();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByRole("heading", { name: "Edit this webhook" }).should("exist");
       cy.findByLabelText("Give it a name").clear().type("Updated Hook");
       cy.button("Save changes").click();
@@ -1276,7 +1250,7 @@ describe("notifications", { tags: "@external" }, () => {
 
     cy.findByRole("heading", { name: "Updated Hook" }).click();
 
-    modal()
+    H.modal()
       .button(/Delete this destination/)
       .click();
 
@@ -1318,7 +1292,7 @@ describe("admin > settings > updates", () => {
   const currentVersion = "v1.86.70";
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.visit("/admin/settings/updates");
 
@@ -1360,7 +1334,7 @@ describe("admin > settings > updates", () => {
       cy.findByText("Stable releases").click();
     });
 
-    popover().findByText("Beta releases").click();
+    H.popover().findByText("Beta releases").click();
 
     cy.findByTestId("settings-updates").within(() => {
       cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
@@ -1370,7 +1344,7 @@ describe("admin > settings > updates", () => {
       cy.findByText("Beta releases").click();
     });
 
-    popover().findByText("Nightly builds").click();
+    H.popover().findByText("Nightly builds").click();
 
     cy.findByTestId("settings-updates").within(() => {
       cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
