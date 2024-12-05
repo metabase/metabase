@@ -81,5 +81,6 @@
    namespace :- :string
    k :- :string]
   (let [{:keys [expires_at value]} (t2/select-one :model/UserKeyValue :user_id user-id :namespace namespace :key k)]
-    (when-not (.isBefore ^OffsetDateTime expires_at ^OffsetDateTime (OffsetDateTime/now))
+    (when (or (nil? expires_at)
+              (.isBefore ^OffsetDateTime (OffsetDateTime/now) expires_at))
       value)))
