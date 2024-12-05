@@ -18,11 +18,13 @@
       models.notification/hydrate-notification))
 
 (api/defendpoint POST "/"
-  "Create a new notification."
-  [:as {{:keys [payload_type active creator_id payload handlers subscriptions]} :body}]
-  {payload_type (into [:enum models.notification/notification-types])
-   active       ms/BooleanValue
-   payload
-   creator_id   [:maybe ms/PositiveInt]})
+  "Create a new notification, return the created notification."
+  [:as {body :body}]
+  {body models.notification/FullyHydratedNotification}
+  (models.notification/hydrate-notification
+   (models.notification/create-notification!
+    (dissoc body :handlers :subscriptions)
+    (:subscriptions body)
+    (:handlers body))))
 
 (api/define-routes)

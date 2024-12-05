@@ -89,14 +89,15 @@
 (def ^:private Notification
   [:merge
    [:map
-    [:payload_type (into [:enum] notification-types)]]
+    [:payload_type (apply ms/enum-decode-keyword notification-types)]]
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/system-event
      [:map
       [:payload_id {:optional true} nil?]]]
     [:notification/card
      [:map
-      [:payload_id int?]
+      ;; optional during creation
+      [:payload_id {:optional true} int?]
       [:creator_id int?]]]
     [:notification/testing :any]]])
 
@@ -149,16 +150,14 @@
 
 (def ^:private NotificationSubscription
   [:merge [:map
-           [:type            (apply ms/enum-keywords-and-strings subscription-types)]]
+           [:type (apply ms/enum-decode-keyword subscription-types)]]
    [:multi {:dispatch (comp keyword :type)}
     [:notification-subscription/system-event
      [:map
-      [:type                           [:enum :notification-subscription/system-event]]
       [:event_name                     [:or :keyword :string]]
       [:cron_schedule {:optional true} nil?]]]
     [:notification-subscription/cron
      [:map
-      [:type                           [:enum :notification-subscription/cron]]
       [:cron_schedule                  :string]
       [:event_name    {:optional true} nil?]]]]])
 
@@ -255,11 +254,12 @@
 
 (def ^:private NotificationHandler
   [:map
-   [:notification_id               ms/PositiveInt]
-   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]
-   [:channel_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:template_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:active       {:optional true} [:maybe :boolean]]])
+   ;; optional during insertion
+   [:notification_id {:optional true} ms/PositiveInt]
+   [:channel_type                     [:fn #(= "channel" (-> % keyword namespace))]]
+   [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:template_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:active          {:optional true} [:maybe :boolean]]])
 
 (defn- validate-notification-handler
   [notification-handler]
@@ -295,9 +295,9 @@
 (def NotificationRecipient
   "Schema for :model/NotificationRecipient."
   [:merge [:map
-           [:type (into [:enum] notification-recipient-types)]
-           [:notification_handler_id ms/PositiveInt]]
-   [:multi {:dispatch :type}
+           [:type (apply ms/enum-decode-keyword notification-recipient-types)]
+           [:notification_handler_id {:optional true} ms/PositiveInt]]
+   [:multi {:dispatch (comp keyword :type)}
     [:notification-recipient/user
      [:map
       [:user_id                               ms/PositiveInt]
@@ -348,10 +348,16 @@
 (t2/deftransforms :model/NotificationCard
   {:send_condition (mi/transform-validator mi/transform-keyword (partial mi/assert-enum card-subscription-send-conditions))})
 
+(def ^:private NotificationCard
+  [:map
+   [:card_id                         ms/PositiveInt]
+   [:send_condition {:optional true} (apply ms/enum-decode-keyword card-subscription-send-conditions)]
+   [:send_once      {:optional true} :boolean]])
+
 (t2/define-before-insert :model/NotificationCard
   [instance]
   (merge {:send_condition :has_result
-          :run_once       false}
+          :send_once      false}
          instance))
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -364,14 +370,16 @@
    Notification
    [:map
     [:creator       {:optional true} [:maybe :map]]
-    [:payload       {:optional true} :any]
     [:subscriptions {:optional true} [:sequential NotificationSubscription]]
     [:handlers      {:optional true} [:sequential [:merge
                                                    NotificationHandler
                                                    [:map
                                                     [:template   {:optional true} [:maybe :map]]
                                                     [:channel    {:optional true} [:maybe :map]]
-                                                    [:recipients {:optional true} [:sequential NotificationRecipient]]]]]]]])
+                                                    [:recipients {:optional true} [:sequential NotificationRecipient]]]]]]]
+   [:multi {:dispatch (comp keyword :payload_type)}
+    [:notification/card [:map
+                         [:payload NotificationCard]]]]])
 
 (mu/defn hydrate-notification :- FullyHydratedNotification
   "Fully hydrate notificaitons."

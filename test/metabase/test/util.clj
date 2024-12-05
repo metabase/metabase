@@ -205,7 +205,7 @@
 
    :model/NotificationCard
    (fn [_] (default-timestamped
-            {:run_once       false
+            {:send_once      false
              :send_condition :has_result}))
 
    :model/NotificationSubscription
