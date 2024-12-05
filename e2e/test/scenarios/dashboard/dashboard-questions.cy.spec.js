@@ -83,7 +83,14 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().button("Move").click();
       H.undoToast().findByText("Orders in a dashboard");
       cy.findByTestId("edit-bar").button("Save").click();
-      H.dashboardCards().findByText("Total Orders");
+      H.dashboardCards().findByText("Total Orders").click();
+      H.openQuestionActions();
+      H.popover().findByText("Turn into a model").should("not.exist");
+      H.popover().findByText("Add to dashboard").should("not.exist");
+      cy.findByRole("banner", { name: "Navigation bar" }).should(
+        "contain.text",
+        "Orders in a dashboard",
+      );
 
       cy.visit(`/collection/${S.FIRST_COLLECTION_ID}`);
       H.collectionTable().within(() => {
