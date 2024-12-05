@@ -137,7 +137,7 @@ describe("issue 9027", () => {
 
     H.openNativeEditor({ fromCurrentPage: true });
 
-    H.focusNativeEditor().type("select 0");
+    H.NativeEditor.type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     saveQuestion(QUESTION_NAME);

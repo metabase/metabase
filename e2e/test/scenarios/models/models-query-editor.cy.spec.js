@@ -144,7 +144,7 @@ describe("scenarios > models query editor", () => {
       cy.url().should("include", "/query");
       cy.button("Save changes").should("be.disabled");
 
-      H.focusNativeEditor().type("{backspace}2");
+      H.NativeEditor.type("{backspace}2");
 
       H.runNativeQuery();
 
@@ -185,7 +185,7 @@ describe("scenarios > models query editor", () => {
       cy.url().should("include", "/query");
       cy.button("Save changes").should("be.disabled");
 
-      H.focusNativeEditor().type("{backspace}2");
+      H.NativeEditor.type("{backspace}2");
 
       H.runNativeQuery();
 
@@ -230,7 +230,7 @@ describe("scenarios > models query editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
-      H.focusNativeEditor().type("{backspace}".repeat(" FROM".length));
+      H.NativeEditor.type("{backspace}".repeat(" FROM".length));
       H.runNativeQuery();
 
       cy.get("[data-testid=cell-data]").contains(1);

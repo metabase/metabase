@@ -391,9 +391,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // Switch to SQL engine which is supported by the formatter
       H.popover().findByText("Sample Database").click();
 
-      H.focusNativeEditor().type("select * from orders", {
-        parseSpecialCharSequences: false,
-      });
+      H.NativeEditor.type("select * from orders");
 
       // It should load the formatter chunk only when used
       cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
@@ -402,7 +400,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
       cy.wait("@sqlFormatter");
 
-      H.nativeEditor().should("be.visible").get(".ace_line").as("lines");
+      H.NativeEditor.get().should("be.visible").get(".ace_line").as("lines");
 
       cy.get("@lines").eq(0).should("have.text", "SELECT");
       cy.get("@lines").eq(1).should("have.text", "  *");

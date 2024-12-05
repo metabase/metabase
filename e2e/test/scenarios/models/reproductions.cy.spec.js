@@ -413,7 +413,7 @@ describe("issue 22517", () => {
 
     // This will edit the original query and add the `SIZE` column
     // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-    H.focusNativeEditor().type(
+    H.NativeEditor.type(
       "{leftarrow}".repeat(" from orders".length) +
         ", case when quantity > 4 then 'large' else 'small' end size ",
     );
@@ -453,7 +453,7 @@ describe("issue 22518", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
-    H.focusNativeEditor().type(", 'b' bar");
+    H.NativeEditor.type(", 'b' bar");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -718,7 +718,7 @@ describe("issue 23421", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
-    H.nativeEditor().should("be.visible").and("contain", query);
+    H.NativeEditor.get().should("be.visible").and("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
     cy.button("Save changes").should("be.visible");
@@ -731,7 +731,7 @@ describe("issue 23421", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
-    H.nativeEditor().should("be.visible").and("contain", query);
+    H.NativeEditor.get().should("be.visible").and("contain", query);
     cy.findByTestId("visualization-root")
       .findByText("Every field is hidden right now")
       .should("be.visible");
@@ -1593,7 +1593,7 @@ describe("issues 35039 and 37009", () => {
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
     // The repro requires that we update the query in a minor, non-impactful way.
     cy.log("Update the query and save");
-    H.focusNativeEditor().type("{backspace}");
+    H.NativeEditor.type("{backspace}");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -1664,7 +1664,7 @@ describe("issue 37009", () => {
 
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
-    H.focusNativeEditor().type(" WHERE CATEGORY = 'Gadget'");
+    H.NativeEditor.type(" WHERE CATEGORY = 'Gadget'");
     cy.findByTestId("dataset-edit-bar")
       .button("Save changes")
       .should("be.disabled")

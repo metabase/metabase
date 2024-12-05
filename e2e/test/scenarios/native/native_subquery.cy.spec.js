@@ -35,17 +35,17 @@ describe("scenarios > question > native subquery", () => {
           cy.reload();
           cy.findByText("Open Editor").click();
           // placing the cursor inside an existing template tag should open the data reference
-          H.focusNativeEditor().type("{leftarrow}{leftarrow}");
+          H.NativeEditor.type("{leftarrow}{leftarrow}");
           cy.findByText("A People Question");
           // subsequently moving the cursor out from the tag should keep the data reference open
-          H.focusNativeEditor().type("{rightarrow}");
+          H.NativeEditor.type("{rightarrow}");
           cy.findByText("A People Question");
           // typing a template tag id should open the editor
-          H.focusNativeEditor().type(" ").realType("{{#");
+          H.NativeEditor.type(" ").type("{{#");
 
-          H.focusNativeEditor()
-            .type("{leftarrow}{leftarrow}")
-            .realType(questionId2.toString());
+          H.NativeEditor.type("{leftarrow}{leftarrow}").type(
+            questionId2.toString(),
+          );
           cy.findByText("A People Model");
         });
       });
@@ -70,20 +70,20 @@ describe("scenarios > question > native subquery", () => {
       }).then(({ body: { id: questionId2 } }) => {
         H.openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
-        H.focusNativeEditor().realType(" {{#people");
+        H.NativeEditor.type(" {{#people");
 
         // Wait until another explicit autocomplete is triggered
         // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
         // See https://github.com/metabase/metabase/pull/20970
         cy.wait(1000);
 
-        H.nativeEditorCompletions().within(() => {
-          H.nativeEditorCompletion(`${questionId2}-a-`)
+        H.NativeEditor.completions().within(() => {
+          H.NativeEditor.completion(`${questionId2}-a-`)
             .should("be.visible")
             .findByText("Model in Bobby Tables's Personal Collection")
             .should("be.visible");
 
-          H.nativeEditorCompletion(`${questionId1}-a-`)
+          H.NativeEditor.completion(`${questionId1}-a-`)
             .should("be.visible")
             .findByText("Question in Our analytics")
             .should("be.visible");
@@ -130,30 +130,29 @@ describe("scenarios > question > native subquery", () => {
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
           cy.findByText("Open Editor").click();
-          H.focusNativeEditor().realType(" ").realType(" a_");
+          H.NativeEditor.type(" ").type(" a_");
 
           // Wait until another explicit autocomplete is triggered
           // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
           // See https://github.com/metabase/metabase/pull/20970
           cy.wait(1000);
 
-          H.nativeEditorCompletions().findByText("A_UNIQUE");
+          H.NativeEditor.completion("A_UNIQUE").should("be.visible");
 
           // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
           // so type it in two parts
-          H.focusNativeEditor().realType(" {{#");
-          H.focusNativeEditor()
+          H.NativeEditor.type(" {{#")
             .type("{leftarrow}{leftarrow}")
-            .realType(`{{#${questionId2}`);
+            .type(`{{#${questionId2}`);
 
           // Wait until another explicit autocomplete is triggered
           cy.wait(1000);
 
           // Again, typing in in one go doesn't always work
           // so type it in two parts
-          H.focusNativeEditor().realType(" ").realType("another");
+          H.NativeEditor.type(" ").type("another");
 
-          H.nativeEditorCompletions().findByText("ANOTHER");
+          H.NativeEditor.completion("ANOTHER").should("be.visible");
         });
       });
     });
@@ -187,7 +186,7 @@ describe("scenarios > question > native subquery", () => {
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
         cy.get("@questionId").then(questionId => {
-          H.nativeEditor()
+          H.NativeEditor.get()
             .should("be.visible")
             .and("contain", `{{#${questionId}-a-people-question-1}}`);
         });
@@ -202,7 +201,7 @@ describe("scenarios > question > native subquery", () => {
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
         cy.get("@questionId").then(questionId => {
-          H.nativeEditor()
+          H.NativeEditor.get()
             .should("be.visible")
             .and("contain", `{{#${questionId}-a-people-question-1-changed}}`);
         });
@@ -274,7 +273,7 @@ describe("scenarios > question > native subquery", () => {
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         H.startNewNativeQuestion();
-        H.focusNativeEditor().realType(`SELECT * FROM {{${tagID}`);
+        H.NativeEditor.type(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
@@ -298,7 +297,7 @@ describe("scenarios > question > native subquery", () => {
         const tagID = `#${baseQuestionId}`;
 
         H.startNewNativeQuestion();
-        H.focusNativeEditor().realType(`SELECT * FROM {{${tagID}`);
+        H.NativeEditor.type(`SELECT * FROM {{${tagID}`);
 
         H.runNativeQuery();
         cy.findAllByTestId("cell-data").should("contain", "1");

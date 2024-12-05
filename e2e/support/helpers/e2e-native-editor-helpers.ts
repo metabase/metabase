@@ -1,9 +1,9 @@
-export function nativeEditor() {
+function nativeEditor() {
   cy.findAllByTestId("loading-indicator").should("not.exist");
   return cy.get("[data-testid=native-query-editor] .cm-content");
 }
 
-export function focusNativeEditor() {
+function focusNativeEditor() {
   nativeEditor().should("be.visible").click();
 
   nativeEditor().get(".cm-editor").should("have.class", "cm-focused");
@@ -11,30 +11,30 @@ export function focusNativeEditor() {
   return nativeEditor();
 }
 
-export function blurNativeEditor() {
+function blurNativeEditor() {
   nativeEditor().get(".cm-editor").blur();
 }
 
-export function nativeEditorCompletions() {
+function nativeEditorCompletions() {
   return cy.get(".cm-tooltip-autocomplete").should("be.visible");
 }
 
-export function nativeEditorCompletion(label: string) {
+function nativeEditorCompletion(label: string) {
   return cy.get(".cm-completionLabel").contains(label).parent();
 }
 
-export function nativeEditorSelectAll() {
+function nativeEditorSelectAll() {
   focusNativeEditor();
   cy.realPress(["Meta", "A"]);
   cy.get(".cm-selectionBackground").should("exist");
 }
 
-export function clearNativeEditor() {
+function clearNativeEditor() {
   nativeEditorSelectAll();
   cy.realPress(["Backspace"]);
 }
 
-export function nativeEditorType(
+function nativeEditorType(
   text: string,
   { delay = 10 }: { delay?: number } = {},
 ) {
@@ -94,3 +94,29 @@ export function nativeEditorType(
 
   return nativeEditor();
 }
+
+export const NativeEditor = {
+  get: nativeEditor,
+  type(text: string) {
+    nativeEditorType(text);
+    return NativeEditor;
+  },
+  focus() {
+    focusNativeEditor();
+    return NativeEditor;
+  },
+  blur() {
+    blurNativeEditor();
+    return NativeEditor;
+  },
+  selectAll() {
+    nativeEditorSelectAll();
+    return NativeEditor;
+  },
+  clear() {
+    clearNativeEditor();
+    return NativeEditor;
+  },
+  completions: nativeEditorCompletions,
+  completion: nativeEditorCompletion,
+};

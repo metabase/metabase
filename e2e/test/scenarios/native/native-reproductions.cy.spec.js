@@ -68,7 +68,7 @@ describe("issue 15029", () => {
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
     H.openNativeEditor();
-    H.nativeEditorType(
+    H.NativeEditor.type(
       "select * from products where RATING = {{number.of.stars}}",
     );
 
@@ -130,11 +130,11 @@ describe("issue 16914", () => {
       .click();
     cy.button("Done").click();
 
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realType(FAILING_PIECE);
     H.runNativeQuery();
 
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realPress("End");
     Cypress._.range(FAILING_PIECE.length).forEach(() =>
       cy.realPress(["Shift", "ArrowLeft"]),
@@ -189,7 +189,7 @@ describe("issue 17060", () => {
   });
 
   it("should not render duplicated columns (metabase#17060)", () => {
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realPress("Home");
     Cypress._.range(SECTION.length).forEach(() => cy.realPress("ArrowRight"));
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
@@ -231,8 +231,7 @@ describe("issue 18148", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(dbName).click();
 
-    H.focusNativeEditor();
-    cy.realType("select foo");
+    H.NativeEditor.type("select foo");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -364,12 +363,12 @@ describe.skip("issue 20625", { tags: "@quarantine" }, () => {
   // realpress messes with cypress 13
   it("should continue to request more prefix matches (metabase#20625)", () => {
     H.openNativeEditor();
-    cy.realType("s");
+    H.NativeEditor.type("s");
 
     // autocomplete_suggestions?prefix=s
     cy.wait("@autocomplete");
 
-    cy.realType("o");
+    H.NativeEditor.type("o");
 
     // autocomplete_suggestions?prefix=so
     cy.wait("@autocomplete");
@@ -389,8 +388,7 @@ describe("issue 21034", () => {
   });
 
   it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    H.focusNativeEditor();
-    cy.realType("p");
+    H.NativeEditor.type("p");
 
     // Wait until another explicit autocomplete is triggered
     // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
@@ -461,7 +459,7 @@ describe("issue 21597", { tags: "@external" }, () => {
       databaseName,
     });
 
-    H.nativeEditorType("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
+    H.NativeEditor.type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
 
     cy.findByTestId("variable-type-select").click();
     H.popover().within(() => {
@@ -642,18 +640,17 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    H.focusNativeEditor();
-    cy.realType("--");
-    expect(H.focusNativeEditor().findByText("--")).to.exist;
+    H.NativeEditor.type("--");
+    expect(H.NativeEditor.get().findByText("--")).to.exist;
 
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realPress(["Meta", "z"]);
-    H.focusNativeEditor().findByText("--").should("not.exist");
+    H.NativeEditor.get().findByText("--").should("not.exist");
 
     // more undoing does not change to empty editor
-    H.focusNativeEditor();
+    H.NativeEditor.focus();
     cy.realPress(["Meta", "z"]);
-    expect(H.focusNativeEditor().findByText("select")).to.exist;
+    expect(H.NativeEditor.get().findByText("select")).to.exist;
   });
 });
 
@@ -698,8 +695,7 @@ describe("issue 35785", () => {
     cy.findByTestId("native-query-editor-container")
       .findByTestId("visibility-toggler")
       .click();
-    H.focusNativeEditor();
-    cy.realType("{backspace}4");
+    H.NativeEditor.type("{backspace}4");
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
 
@@ -752,7 +748,7 @@ describe("issue 22991", () => {
     H.openNativeEditor();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
-      H.nativeEditorType(`select * from {{${questionId}}}`);
+      H.NativeEditor.type(`select * from {{${questionId}}}`);
     });
 
     cy.get("main").should(

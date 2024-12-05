@@ -1108,7 +1108,7 @@ describe("issue 33208", () => {
 
   it("should not auto-select chart type when saving a native question with parameters that have default values", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    H.focusNativeEditor().type(" ");
+    H.NativeEditor.type(" ");
     H.saveSavedQuestion("top category");
     H.runNativeQuery({ wait: false });
     cy.findByTestId("scalar-value").should("be.visible");

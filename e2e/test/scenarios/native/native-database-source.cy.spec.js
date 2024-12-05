@@ -339,9 +339,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   });
 
   it("can save a native MongoDB query", () => {
-    H.focusNativeEditor().type('[ { $count: "Total" } ]', {
-      parseSpecialCharSequences: false,
-    });
+    H.NativeEditor.type('[ { $count: "Total" } ]');
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");

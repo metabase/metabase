@@ -40,7 +40,7 @@ describe("issue 10803", () => {
       // Add a space at the end of the query to make it "dirty"
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
-      H.focusNativeEditor().type("{movetoend} ");
+      H.NativeEditor.type("{movetoend} ");
 
       H.runNativeQuery();
       H.downloadAndAssert({ fileType, raw: true }, testWorkbookDatetimes);
@@ -440,7 +440,7 @@ describe("issue 19889", () => {
     it("should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
-      H.focusNativeEditor().type(
+      H.NativeEditor.type(
         '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
       );
 
@@ -483,7 +483,7 @@ describe("metabase#28834", () => {
     });
 
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    H.focusNativeEditor().type(', select 2 "column b"');
+    H.NativeEditor.type(', select 2 "column b"');
   });
 
   it("should be able to export unsaved native query results as CSV even after the query has changed", () => {
