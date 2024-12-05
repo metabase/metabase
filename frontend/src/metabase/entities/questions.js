@@ -31,6 +31,8 @@ import {
 
 const FETCH_METADATA = "metabase/entities/questions/FETCH_METADATA";
 const FETCH_ADHOC_METADATA = "metabase/entities/questions/FETCH_ADHOC_METADATA";
+export const INJECT_RTK_QUERY_QUESTION_VALUE =
+  "metabase/entities/questions/FETCH_ADHOC_METADATA";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -223,6 +225,12 @@ const Questions = createEntity({
         }));
       }
     }
+
+    if (type === INJECT_RTK_QUERY_QUESTION_VALUE) {
+      const { id } = payload;
+
+      return updateIn(state, [id], question => ({ ...question, ...payload }));
+    }
     return state;
   },
 
@@ -252,19 +260,6 @@ const Questions = createEntity({
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
-
-  // actionShouldInvalidateLists: action => {
-  //   return (
-  //     action.type === Questions.actionTypes.CREATE_ACTION ||
-  //     action.type === Questions.actionTypes.DELETE_ACTION ||
-  //     action.type === Questions.actionTypes.UPDATE_ACTION ||
-  //     action.type === Questions.actionTypes.INVALIDATE_LISTS_ACTION ||
-  //     cardApi.endpoints.updateCard.matchFulfilled(action) ||
-  //     contentVerificationApi.endpoints.editItemVerification.matchFulfilled(
-  //       action,
-  //     )
-  //   );
-  // },
 });
 
 function getLabel(card) {
