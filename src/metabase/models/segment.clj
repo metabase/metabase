@@ -190,8 +190,7 @@
                   :collection-id false
                   :creator-id    false
                   :database-id   :table.db_id
-                  ;; Matching legacy behavior, where this cannot be filtered on.
-                  ;:created-at    true
+                  :created-at    true
                   :updated-at    true}
    :search-terms [:name :description]
    :render-terms {:table-id          :table_id
