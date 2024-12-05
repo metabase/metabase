@@ -20,13 +20,6 @@
 }
 
 .Tab {
-  --active-tab-color: color-mix(in srgb, var(--mb-color-brand), black 25%);
-  --inactive-tab-color: color-mix(
-    in srgb,
-    var(var(--active-tab-color)),
-    transparent 30%
-  );
-
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -52,8 +45,7 @@
   &.inactive {
     border-color: var(--inactive-tab-color);
 
-    /* TODO: double check if it works correctly or we need &:hover */
-    :hover {
+    &:hover {
       background-color: var(--inactive-tab-color);
     }
   }

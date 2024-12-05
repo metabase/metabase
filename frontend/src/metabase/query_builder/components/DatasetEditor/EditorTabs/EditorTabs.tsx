@@ -1,7 +1,9 @@
 import cx from "classnames";
+import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
+import { alpha, darken } from "metabase/lib/colors";
+import { Icon, useMantineTheme } from "metabase/ui";
 
 import EditorTabsS from "./EditorTabs.module.css";
 
@@ -12,8 +14,21 @@ type Props = {
 };
 
 export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
+  const theme = useMantineTheme();
+
   return (
-    <ul className={EditorTabsS.TabBar}>
+    <ul
+      className={EditorTabsS.TabBar}
+      style={
+        {
+          "--active-tab-color": darken(theme.fn.themeColor("brand")),
+          "--inactive-tab-color": alpha(
+            darken(theme.fn.themeColor("brand")),
+            0.3,
+          ),
+        } as CSSProperties
+      }
+    >
       <li>
         <label
           className={cx(EditorTabsS.Tab, {
@@ -49,6 +64,7 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
         >
           <Icon name="notebook" />
           <input
+            type="radio"
             className={EditorTabsS.RadioInput}
             id="editor-tabs-metadata"
             name="editor-tabs"
