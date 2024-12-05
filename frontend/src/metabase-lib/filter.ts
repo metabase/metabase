@@ -12,6 +12,8 @@ import {
 } from "./column_types";
 import {
   DEFAULT_FILTER_OPERATORS,
+  EXCLUDE_DATE_BUCKETS,
+  EXCLUDE_DATE_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
@@ -20,6 +22,7 @@ import { displayInfo } from "./metadata";
 import { removeClause } from "./query";
 import {
   availableTemporalBuckets,
+  temporalBucket,
   withTemporalBucket,
 } from "./temporal_bucket";
 import type {
@@ -29,9 +32,13 @@ import type {
   CoordinateFilterParts,
   DefaultFilterOperatorName,
   DefaultFilterParts,
+  ExcludeDateFilterOperator,
   ExcludeDateFilterParts,
+  ExcludeDateFilterUnit,
+  ExpressionArg,
   ExpressionClause,
   ExpressionOperatorName,
+  ExpressionParts,
   FilterClause,
   FilterOperator,
   FilterParts,
@@ -256,7 +263,57 @@ export function excludeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
-  return ML.exclude_date_filter_parts(query, stageIndex, filterClause);
+  return (
+    ML.exclude_date_filter_parts(query, stageIndex, filterClause) ??
+    legacyExcludeDateFilterParts(query, stageIndex, filterClause)
+  );
+}
+
+function legacyExcludeDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): ExcludeDateFilterParts | null {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (!isExcludeDateOperator(operator) || args.length < 1) {
+    return null;
+  }
+
+  const [column, ...serializedValues] = args;
+  if (!isColumnMetadata(column)) {
+    return null;
+  }
+
+  const columnWithoutBucket = withTemporalBucket(column, null);
+  if (!isDateOrDateTime(columnWithoutBucket)) {
+    return null;
+  }
+
+  const bucket = temporalBucket(column);
+  if (!bucket) {
+    return serializedValues.length === 0
+      ? { column: columnWithoutBucket, operator, unit: null, values: [] }
+      : null;
+  }
+
+  const bucketInfo = displayInfo(query, stageIndex, bucket);
+  if (!isExcludeDateBucket(bucketInfo.shortName)) {
+    return null;
+  }
+
+  const values = serializedValues.map(value =>
+    deserializeExcludeDatePart(value, bucketInfo.shortName),
+  );
+  if (!isDefinedArray(values)) {
+    return null;
+  }
+
+  return {
+    column: columnWithoutBucket,
+    operator,
+    unit: bucketInfo.shortName,
+    values,
+  };
 }
 
 export function timeFilterClause({
@@ -385,10 +442,21 @@ function isStringLiteralArray(arg: unknown): arg is string[] {
   return Array.isArray(arg) && arg.every(isStringLiteral);
 }
 
+function isNumberLiteral(arg: unknown): arg is number {
+  return typeof arg === "number";
+}
+
 function isSpecificDateOperator(
   operator: ExpressionOperatorName,
 ): operator is SpecificDateFilterOperatorName {
   const operators: ReadonlyArray<string> = SPECIFIC_DATE_FILTER_OPERATORS;
+  return operators.includes(operator);
+}
+
+function isExcludeDateOperator(
+  operator: ExpressionOperatorName,
+): operator is ExcludeDateFilterOperator {
+  const operators: ReadonlyArray<string> = EXCLUDE_DATE_FILTER_OPERATORS;
   return operators.includes(operator);
 }
 
@@ -397,6 +465,13 @@ function isDefaultOperator(
 ): operator is DefaultFilterOperatorName {
   const operators: ReadonlyArray<string> = DEFAULT_FILTER_OPERATORS;
   return operators.includes(operator);
+}
+
+function isExcludeDateBucket(
+  bucketName: string,
+): bucketName is ExcludeDateFilterUnit {
+  const buckets: ReadonlyArray<string> = EXCLUDE_DATE_BUCKETS;
+  return buckets.includes(bucketName);
 }
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -429,6 +504,35 @@ function deserializeDateTime(value: string): Date | null {
   return dateTime.local(true).toDate();
 }
 
+function deserializeExcludeDatePart(
+  value: ExpressionArg | ExpressionParts,
+  temporalUnit: TemporalUnit,
+): number | null {
+  if (temporalUnit === "hour-of-day") {
+    return isNumberLiteral(value) ? value : null;
+  }
+
+  if (!isStringLiteral(value)) {
+    return null;
+  }
+
+  const date = moment(value, DATE_FORMAT, true);
+  if (!date.isValid()) {
+    return null;
+  }
+
+  switch (temporalUnit) {
+    case "day-of-week":
+      return date.isoWeekday();
+    case "month-of-year":
+      return date.month() + 1;
+    case "quarter-of-year":
+      return date.quarter();
+    default:
+      return null;
+  }
+}
+
 type UpdateLatLonFilterBounds = {
   north: number;
   west: number;
@@ -438,7 +542,7 @@ type UpdateLatLonFilterBounds = {
 
 /**
  * Add or update a filter against latitude and longitude columns. Used to power the 'brush filter' for map
-   visualizations.
+ visualizations.
  */
 export function updateLatLonFilter(
   query: Query,

@@ -412,37 +412,13 @@
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
       {:operator op, :column (ref->col col-ref), :values []}
 
-      ;; `:temporal-extract` without extra arguments
+      ;; without `mode`
       [:!= _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard #(every? int? %))]
       {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
 
-      ;; `:temporal-extract` with `:mode`
+      ;; with `:mode`
       [:!= _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
-      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
-
-      ;; Legacy expression based on temporal bucketing; numeric arguments. The expression is supported for backward
-      ;; compatibility only; we do not generate it back with [[exclude-date-filter-clause]].
-      ;; It's important to remove temporal bucketing from the ref before constructing a column to avoid `:display-name`
-      ;; and `:effective-type` changes.
-      [:!= _ (col-ref :guard #(and (date-col? %) (unit-is? % #{:hour-of-day}))) & (args :guard #(every? int? %))]
-      {:operator :!=
-       :column   (-> col-ref (lib.temporal-bucket/with-temporal-bucket nil) ref->col)
-       :unit     :hour-of-day
-       :values   args}
-
-      ;; Legacy expression based on temporal bucketing; date arguments. Temporal unit is used to extract the part of the
-      ;; date that should be excluded, e.g. `:day-of-week` with `2024-12-04` is used to exclude Wednesdays because
-      ;; `2024-12-04` is Wednesday. The dates themselves can be arbitrary. The expression is supported for backward
-      ;; compatibility only; we do not generate it back with [[exclude-date-filter-clause]].
-      [:!= _ (col-ref :guard #(and (date-col? %) (unit-is? % #{:day-of-week :month-of-year :quarter-of-year}))) & (args :guard #(every? string? %))]
-      (let [col  (-> col-ref (lib.temporal-bucket/with-temporal-bucket nil) ref->col)
-            unit (lib.temporal-bucket/raw-temporal-bucket col-ref)
-            args (mapv u.time/coerce-to-timestamp args)]
-        (when (every? u.time/valid? args)
-          {:operator :!=
-           :column   col
-           :unit     unit
-           :values   (mapv #(u.time/extract % unit :iso) args)})))))
+      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args})))
 
 (def ^:private TimeFilterParts
   [:map

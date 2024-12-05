@@ -30,7 +30,6 @@
   unit-diff
   truncate
   add
-  extract
   format-for-base-type
   local-date
   local-date-time
