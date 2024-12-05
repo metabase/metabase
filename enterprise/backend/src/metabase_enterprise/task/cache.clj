@@ -11,6 +11,7 @@
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Callable ExecutorService Executors)
@@ -47,18 +48,65 @@
            (fn []
              (doseq [{:keys [card-id dashboard-id queries]} refresh-defs
                      query queries]
-               (qp/process-query
-                (qp/userland-query
-                 (assoc-in query [:middleware :ignore-cached-results?] true)
-                 {:executed-by  nil
-                  :context      :cache-refresh
-                  :card-id      card-id
-                  :dasbhoard-id dashboard-id}))))))
+               (try
+                 (qp/process-query
+                  (qp/userland-query
+                   (assoc-in query [:middleware :ignore-cached-results?] true)
+                   {:executed-by  nil
+                    :context      :cache-refresh
+                    :card-id      card-id
+                    :dasbhoard-id dashboard-id}))
+                 (catch Exception e
+                   (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))
 
-#_(defn- refresh-duration-caches!
-    "Finds any caches with the :duration cache strategy")
+(defn- duration-ago
+  [{:keys [duration unit]}]
+  (t/minus (t/offset-date-time)
+           (t/duration duration (keyword unit))))
 
-(defn- queries-to-rerun
+(defn- duration-queries-to-rerun-honeysql
+  "HoneySQL query for selecting query definitions that should be rerun, given a list of :duration cache configs."
+  [cache-configs]
+  {:select   [:q.query_hash :q.query [:qe.card_id :card-id]]
+   :from     [[(t2/table-name :model/Query) :q]]
+   :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
+              [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
+   :where    [:and
+              [:not= :qe.context (name :cache-refresh)]
+              (into [:or]
+                    (map
+                     (fn [{:keys [config model model_id]}]
+                       (let [rerun-cutoff (duration-ago config)]
+                         [:and
+                          ;; Is the query_execution row associated with a cached card or dashboard?
+                          (if (= model "question")
+                            [:= :qe.card_id model_id]
+                            [:= :qe.database_id model_id])
+                          ;; Is the existing cache entry for the query expired?
+                          [:<= :qc.updated_at rerun-cutoff]
+                          ;; Was the query executed at least once within the most recent cache duration?
+                          ;; (We won't refresh the cache for a query that hasn't been run recently by any user.)
+                          [:>= :qe.started_at rerun-cutoff]]))
+                     cache-configs))]
+   :group-by [:q.query_hash :q.query :qe.card_id :qe.dashboard_id]})
+
+(defn- duration-queries-to-rerun
+  []
+  (let [cache-configs (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true)]
+    (when (seq cache-configs)
+      (let [query-results (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs))]
+        (->> query-results
+             (group-by :card-id)
+             (map (fn [[card-id queries]]
+                    {:card-id card-id
+                     :queries (dedupe (map :query queries))})))))))
+
+(defn- maybe-refresh-duration-caches!
+  []
+  (when-let [refresh-defs (duration-queries-to-rerun)]
+    (submit-refresh-task! refresh-defs)))
+
+(defn- scheduled-queries-to-rerun
   "Returns a list containing all of the query definitions that we should preemptively rerun for a given card that uses
   :schedule-strategy caching."
   [card rerun-cutoff]
@@ -69,7 +117,7 @@
                             :where    [:and
                                        [:not= :qe.context (name :cache-refresh)]
                                        [:= :qe.card_id (u/the-id card)]
-                                       [:>= :started_at rerun-cutoff]]
+                                       [:>= :qe.started_at rerun-cutoff]]
                             :group-by [:q.query_hash :q.query]
                             :order-by [[[:count :q.query_hash] :desc]
                                        [[:min :qe.started_at] :asc]]
@@ -106,12 +154,9 @@
                        (fn [card]
                          {:dashboard-id dashboard-id
                           :card-id      (u/the-id card)
-                          :queries      (queries-to-rerun card rerun-cutoff)})
+                          :queries      (scheduled-queries-to-rerun card rerun-cutoff)})
                        cards))]
     (submit-refresh-task! refresh-defs)))
-
-(comment
- (refresh-schedule-cache! (t2/select-one :model/CacheConfig :model_id 242)))
 
 ;;; ------------------------------------------- Cache invalidation task ------------------------------------------------
 
@@ -134,16 +179,16 @@
         (t/offset-date-time (t/zone-offset)))))
 
 (defn- refresh-schedule-configs!
-  "Update `invalidated_at` for every cache config with `:schedule` strategy, and maybe rerun cached queries."
+  "Update `invalidated_at` for every cache config with `:schedule` strategy, and maybe rerun cached queries
+  if preemptive caching is enabled."
   []
   (let [now (t/offset-date-time)]
-    (count
-     (for [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
-       (do
-         (t2/update! :model/CacheConfig {:id id}
-                     {:next_run_at     (calc-next-run (:schedule config) now)
-                      :invalidated_at now})
-         (when refresh_automatically (refresh-schedule-cache! cache-config)))))))
+    (doseq [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
+      (t2/update! :model/CacheConfig {:id id}
+                  {:next_run_at     (calc-next-run (:schedule config) now)
+                   :invalidated_at now})
+      (when refresh_automatically (refresh-schedule-cache! cache-config)))
+    (maybe-refresh-duration-caches!)))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc                                   "Refresh 'schedule' caches"}
