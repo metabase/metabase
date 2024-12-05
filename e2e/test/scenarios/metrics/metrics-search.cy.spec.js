@@ -1,13 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  commandPalette,
-  commandPaletteSearch,
-  createQuestion,
-  navigationSidebar,
-  popover,
-  restore,
-  visitMetric,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -23,17 +15,17 @@ const ORDERS_SCALAR_METRIC = {
 
 describe("scenarios > metrics > search", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/search?q=*").as("search");
   });
 
   it("should be able to search for metrics in global search", () => {
-    createQuestion(ORDERS_SCALAR_METRIC);
+    H.createQuestion(ORDERS_SCALAR_METRIC);
     cy.visit("/");
-    commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
-    commandPalette()
+    H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
+    H.commandPalette()
       .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
     cy.wait("@dataset");
@@ -41,16 +33,16 @@ describe("scenarios > metrics > search", () => {
   });
 
   it("should be able to search for metrics on the search page", () => {
-    createQuestion(ORDERS_SCALAR_METRIC);
+    H.createQuestion(ORDERS_SCALAR_METRIC);
     cy.visit("/");
-    commandPaletteSearch(ORDERS_SCALAR_METRIC.name, true);
+    H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, true);
     cy.wait("@search");
     cy.findByTestId("search-app").within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByTestId("type-search-filter").click();
     });
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Metric").click();
       cy.findByText("Apply").click();
     });
@@ -64,13 +56,13 @@ describe("scenarios > metrics > search", () => {
   });
 
   it("should see metrics in recent items in global search", () => {
-    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-      visitMetric(card.id);
+    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
+      H.visitMetric(card.id);
       cy.wait("@dataset");
     });
-    navigationSidebar().findByText("Home").click();
-    commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
-    commandPalette()
+    H.navigationSidebar().findByText("Home").click();
+    H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
+    H.commandPalette()
       .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
     cy.wait("@dataset");
