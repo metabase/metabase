@@ -97,14 +97,14 @@
                   (when-let [original-temporal-unit (::original-temporal-unit opts)]
                     {::original-temporal-unit original-temporal-unit})
                   ;; `:inherited-temporal-unit` is transfered from `:temoral-unit` ref option only when
-                  ;; the [[lib.metadata.calculation/*propagate-inherited-temoral-unit*]] is thruthy, ie. bound. Intent
+                  ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is thruthy, ie. bound. Intent
                   ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
                   ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
                   ;; contained `:temporal-unit` contains no `:inherent-temporal-unit`. If the column like this was used
                   ;; to generate ref for eg. order by it would contain the `:inherent-temporal-unit`, while
                   ;; the original column (eg. in breakout) would not.
                   (let [inherited-temporal-unit-keys (cond-> (list :inherited-temporal-unit)
-                                                       lib.metadata.calculation/*propagate-inherited-temoral-unit*
+                                                       lib.metadata.calculation/*propagate-binning-and-bucketing*
                                                        (conj :temporal-unit))]
                     (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
                       {:inherited-temporal-unit inherited-temporal-unit}))
@@ -113,6 +113,11 @@
                   ;; We should probably be taking that into consideration?
                   (when-let [binning (:binning opts)]
                     {::binning binning})
+                  (let [binning-keys (cond-> (list :was-binned)
+                                       lib.metadata.calculation/*propagate-binning-and-bucketing*
+                                       (conj :binning))]
+                    (when-some [was-binned (some opts binning-keys)]
+                      {:was-binned (boolean was-binned)}))
                   (when-let [unit (:temporal-unit opts)]
                     {::temporal-unit unit})
                   (cond
@@ -259,8 +264,7 @@
                              (str join-display-name " → " field-display-name)
                              field-display-name)
         temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
-        bin-format         (fn [display-name]
-                             (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
+        bin-format         #(lib.binning/ensure-ends-with-binning % binning (:semantic-type field-metadata))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (cond
       (and (not= style :long) hide-bin-bucket?) display-name
@@ -422,6 +426,7 @@
       ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
       (for [strat strategies]
         (cond-> strat
+          (or (:was-binned field-metadata) existing) (dissoc :default)
           (lib.binning/strategy= strat existing) (assoc :selected true))))
     []))
 
@@ -457,6 +462,8 @@
                                    {:inherited-temporal-unit inherited-temporal-unit})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
+                                 (when-let [was-binned (:was-binned metadata)]
+                                   {:was-binned was-binned})
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
                                    {:source-field source-field-id}))
