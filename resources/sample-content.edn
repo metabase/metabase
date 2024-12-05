@@ -63,7 +63,7 @@
    :schema_name nil,
    :table_id nil,
    :perm_value "unrestricted"}
-  {:id 2, :group_id 1, :perm_type "perms/create-queries", :db_id 1, :schema_name nil, :table_id nil, :perm_value "no"}
+  {:id 2, :group_id 1, :perm_type "perms/create-queries", :db_id 1, :schema_name nil, :table_id nil, :perm_value "query-builder-and-native"}
   {:id 3,
    :group_id 1,
    :perm_type "perms/download-results",
