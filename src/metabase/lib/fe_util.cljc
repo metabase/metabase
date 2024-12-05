@@ -152,7 +152,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        string-col? #(ref-clause-with-type? % #{:type/Text :type/TextLike})]
+        string-col? #(ref-clause-with-type? % [:type/Text :type/TextLike])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
@@ -187,7 +187,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        number-col? #(ref-clause-with-type? % #{:type/Number})]
+        number-col? #(ref-clause-with-type? % [:type/Number])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
@@ -231,7 +231,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col        #(column-metadata-from-ref query stage-number %)
-        coordinate-col? #(and (ref-clause-with-type? % #{:type/Number})
+        coordinate-col? #(and (ref-clause-with-type? % [:type/Number])
                               (lib.types.isa/coordinate? (ref->col %)))]
     (lib.util.match/match-one filter-clause
       ;; multiple arguments
@@ -278,7 +278,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col     #(column-metadata-from-ref query stage-number %)
-        boolean-col? #(ref-clause-with-type? % #{:type/Boolean})]
+        boolean-col? #(ref-clause-with-type? % [:type/Boolean])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?)]
@@ -318,7 +318,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        date-col? #(ref-clause-with-type? % #{:type/Date :type/DateTime})]
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
     (lib.util.match/match-one filter-clause
       [:time-interval
        opts
@@ -391,7 +391,7 @@
   does not match the expected shape."
   [query stage-number filter-clause]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        date-col? #(ref-clause-with-type? % #{:type/Date :type/DateTime})
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
         op->unit  {:get-hour :hour-of-day
                    :get-month :month-of-year
                    :get-quarter :quarter-of-year}]
@@ -430,7 +430,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        time-col? #(ref-clause-with-type? % #{:type/Time})]
+        time-col? #(ref-clause-with-type? % [:type/Time])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?)]
