@@ -8214,9 +8214,7 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateUploadsSettings"
 
-  # This migration should be moved whenever the sample content is updated, so that it
-  # matches when the version that the sample content was updated from. See metabase#43200
-  # for an example where the content was updated.
+  # This migration has been moved.
   - changeSet:
       id: v50.2024-05-27T15:55:22
       author: calherries
@@ -10062,7 +10060,18 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
 
-  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  # This migration should be changed to a no-op and a new migration inserted that does the load from edn whenever the
+  # sample content is updated, so that it matches when the version that the sample content was updated from. See
+  # metabase#50829 for an example where the content was updated.
+  - changeSet:
+      id: v52.2024-12-03T15:55:22
+      author: escherize
+      comment: Create New and improved Sample Content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContentV2"
+
+ # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #
