@@ -108,7 +108,7 @@
 
 (defn- scheduled-queries-to-rerun
   "Returns a list containing all of the query definitions that we should preemptively rerun for a given card that uses
-  :schedule-strategy caching."
+  :schedule caching."
   [card rerun-cutoff]
   (let [queries (t2/select :model/Query
                            {:select   [:q.query_hash :q.query [[:count :q.query_hash]]]
@@ -154,7 +154,10 @@
                        (fn [card]
                          {:dashboard-id dashboard-id
                           :card-id      (u/the-id card)
-                          :queries      (scheduled-queries-to-rerun card rerun-cutoff)})
+                          :queries      (cons
+                                         ;; Always try to rerun the card's base query first
+                                         (:dataset_query card)
+                                         (scheduled-queries-to-rerun card rerun-cutoff))})
                        cards))]
     (submit-refresh-task! refresh-defs)))
 
