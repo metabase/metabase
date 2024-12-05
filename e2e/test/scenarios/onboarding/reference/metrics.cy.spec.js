@@ -1,5 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { modal, restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -8,7 +8,7 @@ describe("scenarios > reference > metrics", () => {
   const METRIC_DESCRIPTION = "Count of orders with a total under $100.";
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.request("POST", "/api/legacy-metric", {
@@ -50,7 +50,7 @@ describe("scenarios > reference > metrics", () => {
 
       cy.findByText("Save").click();
 
-      modal().find("textarea").type("Renaming the description");
+      H.modal().find("textarea").type("Renaming the description");
 
       cy.findByText("Save changes").click();
 

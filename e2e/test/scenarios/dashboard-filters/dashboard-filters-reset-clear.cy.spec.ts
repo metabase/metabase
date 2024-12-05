@@ -1,21 +1,9 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  type DashboardDetails,
-  type StructuredQuestionDetails,
-  createDashboardWithTabs,
-  createQuestionAndDashboard,
-  dashboardParameterSidebar,
-  editDashboard,
-  getDashboardCard,
-  popover,
-  restore,
-  updateDashboardCards,
-  visitDashboard,
-} from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { LocalFieldReference } from "metabase-types/api";
@@ -55,7 +43,7 @@ const PEOPLE_CITY_FIELD: LocalFieldReference = [
   },
 ];
 
-const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
+const ORDERS_COUNT_OVER_TIME: H.StructuredQuestionDetails = {
   display: "line",
   query: {
     "source-table": ORDERS_ID,
@@ -64,14 +52,14 @@ const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
   },
 };
 
-const PEOPLE_QUESTION: StructuredQuestionDetails = {
+const PEOPLE_QUESTION: H.StructuredQuestionDetails = {
   query: {
     "source-table": PEOPLE_ID,
     limit: 1,
   },
 };
 
-const ORDERS_QUESTION: StructuredQuestionDetails = {
+const ORDERS_QUESTION: H.StructuredQuestionDetails = {
   query: {
     "source-table": ORDERS_ID,
     limit: 1,
@@ -116,7 +104,7 @@ const DEFAULT_REQUIRED = "default value, required";
 
 describe("scenarios > dashboard > filters > reset & clear", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -202,15 +190,15 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "Thomson",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").invoke("val", "");
-        popover().findByRole("textbox").type(value).blur();
-        popover().button("Add filter").click();
+        H.popover().findByRole("textbox").invoke("val", "");
+        H.popover().findByRole("textbox").type(value).blur();
+        H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").invoke("val", "");
-        popover().findByRole("textbox").type(value).blur();
-        popover().button("Update filter").click();
+        H.popover().findByRole("textbox").invoke("val", "");
+        H.popover().findByRole("textbox").type(value).blur();
+        H.popover().button("Update filter").click();
       },
     });
   });
@@ -249,13 +237,13 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "Washington",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").focus().type(value).blur();
-        popover().button("Add filter").click();
+        H.popover().findByRole("textbox").focus().type(value).blur();
+        H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").clear().type(value).blur();
-        popover().button("Update filter").click();
+        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().button("Update filter").click();
       },
     });
   });
@@ -297,13 +285,13 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").focus().type(value).blur();
-        popover().button("Add filter").click();
+        H.popover().findByRole("textbox").focus().type(value).blur();
+        H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").clear().type(value).blur();
-        popover().button("Update filter").click();
+        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().button("Update filter").click();
       },
     });
   });
@@ -342,13 +330,13 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "3",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").focus().type(value).blur();
-        popover().button("Add filter").click();
+        H.popover().findByRole("textbox").focus().type(value).blur();
+        H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").clear().type(value).blur();
-        popover().button("Update filter").click();
+        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().button("Update filter").click();
       },
     });
   });
@@ -387,13 +375,13 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").focus().type(value).blur();
-        popover().button("Add filter").click();
+        H.popover().findByRole("textbox").focus().type(value).blur();
+        H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").focus().type(value).blur();
-        popover().button("Update filter").click();
+        H.popover().findByRole("textbox").focus().type(value).blur();
+        H.popover().button("Update filter").click();
       },
     });
   });
@@ -476,15 +464,15 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "Gadget",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").invoke("val", "");
-        popover().findByRole("textbox").type(value).blur();
-        popover().button("Add filter").click();
+        H.popover().findByRole("textbox").invoke("val", "");
+        H.popover().findByRole("textbox").type(value).blur();
+        H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").invoke("val", "");
-        popover().findByRole("textbox").type(value).blur();
-        popover().button("Update filter").click();
+        H.popover().findByRole("textbox").invoke("val", "");
+        H.popover().findByRole("textbox").type(value).blur();
+        H.popover().button("Update filter").click();
       },
     });
   });
@@ -523,15 +511,15 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2 selections",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").invoke("val", "");
-        popover().findByRole("textbox").type(value).blur();
-        popover().button("Add filter").click();
+        H.popover().findByRole("textbox").invoke("val", "");
+        H.popover().findByRole("textbox").type(value).blur();
+        H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("textbox").invoke("val", "");
-        popover().findByRole("textbox").type(value).blur();
-        popover().button("Update filter").click();
+        H.popover().findByRole("textbox").invoke("val", "");
+        H.popover().findByRole("textbox").type(value).blur();
+        H.popover().button("Update filter").click();
       },
     });
   });
@@ -539,7 +527,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
 describe("scenarios > dashboard > filters > reset all filters", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -585,17 +573,17 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
 });
 
 function createDashboardWithParameters(
-  questionDetails: StructuredQuestionDetails,
+  questionDetails: H.StructuredQuestionDetails,
   targetField: LocalFieldReference,
-  parameters: DashboardDetails["parameters"],
+  parameters: H.DashboardDetails["parameters"],
 ) {
-  createQuestionAndDashboard({
+  H.createQuestionAndDashboard({
     questionDetails,
     dashboardDetails: {
       parameters,
     },
   }).then(({ body: { dashboard_id, card_id } }) => {
-    updateDashboardCards({
+    H.updateDashboardCards({
       dashboard_id,
       cards: [
         {
@@ -608,7 +596,7 @@ function createDashboardWithParameters(
       ],
     });
 
-    visitDashboard(dashboard_id);
+    H.visitDashboard(dashboard_id);
   });
 }
 
@@ -649,7 +637,7 @@ function checkDashboardParameters<T = string>({
 
   // reset all filters
   cy.button("Move, trash, and more…").click();
-  popover().findByText("Reset all filters").click();
+  H.popover().findByText("Reset all filters").click();
   filter(NO_DEFAULT_NON_REQUIRED).should("have.text", NO_DEFAULT_NON_REQUIRED);
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
   checkResetAllFiltersHidden();
@@ -675,7 +663,7 @@ function checkDashboardParameters<T = string>({
 
   // reset all filters
   cy.button("Move, trash, and more…").click();
-  popover().findByText("Reset all filters").click();
+  H.popover().findByText("Reset all filters").click();
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
 
@@ -703,7 +691,7 @@ function checkDashboardParameters<T = string>({
 
   // reset all filters
   cy.button("Move, trash, and more…").click();
-  popover().findByText("Reset all filters").click();
+  H.popover().findByText("Reset all filters").click();
   filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
@@ -729,7 +717,7 @@ function checkDashboardParameters<T = string>({
 
   // reset all filters
   cy.button("Move, trash, and more…").click();
-  popover().findByText("Reset all filters").click();
+  H.popover().findByText("Reset all filters").click();
   filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
@@ -766,11 +754,11 @@ function checkParameterSidebarDefaultValue<T = string>({
   updateValue: (label: string, value: T) => void;
 }) {
   cy.log("parameter sidebar");
-  editDashboard();
+  H.editDashboard();
 
   cy.log(NO_DEFAULT_NON_REQUIRED);
   editFilter(NO_DEFAULT_NON_REQUIRED);
-  dashboardParameterSidebar().within(() => {
+  H.dashboardParameterSidebar().within(() => {
     filter("Default value").scrollIntoView();
     filter("Default value").should("have.text", "No default");
     checkStatusIcon("Default value", "chevron");
@@ -778,7 +766,7 @@ function checkParameterSidebarDefaultValue<T = string>({
 
   setValue("Default value", otherValue);
 
-  dashboardParameterSidebar().within(() => {
+  H.dashboardParameterSidebar().within(() => {
     filter("Default value").should("have.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
 
@@ -789,7 +777,7 @@ function checkParameterSidebarDefaultValue<T = string>({
 
   cy.log(DEFAULT_NON_REQUIRED);
   editFilter(DEFAULT_NON_REQUIRED);
-  dashboardParameterSidebar().within(() => {
+  H.dashboardParameterSidebar().within(() => {
     filter("Default value").should("have.text", defaultValueFormatted);
     checkStatusIcon("Default value", "clear");
 
@@ -800,14 +788,14 @@ function checkParameterSidebarDefaultValue<T = string>({
 
   setValue("Default value", otherValue);
 
-  dashboardParameterSidebar().within(() => {
+  H.dashboardParameterSidebar().within(() => {
     filter("Default value").should("have.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
   });
 
   cy.log(DEFAULT_REQUIRED);
   editFilter(DEFAULT_REQUIRED);
-  dashboardParameterSidebar().within(() => {
+  H.dashboardParameterSidebar().within(() => {
     filter("Default value").should("have.text", defaultValueFormatted);
     checkStatusIcon("Default value", "clear");
 
@@ -818,7 +806,7 @@ function checkParameterSidebarDefaultValue<T = string>({
 
   updateValue("Default value (required)", otherValue);
 
-  dashboardParameterSidebar().within(() => {
+  H.dashboardParameterSidebar().within(() => {
     filter("Default value").should("have.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
   });
@@ -831,7 +819,7 @@ function createDashboardWithParameterInEachTab({
   autoApplyFilters: boolean;
   parameters: [UiParameter, UiParameter];
 }) {
-  createDashboardWithTabs({
+  H.createDashboardWithTabs({
     tabs: [TAB_A, TAB_B],
     parameters: [parameterA, parameterB],
     auto_apply_filters: autoApplyFilters,
@@ -869,7 +857,7 @@ function createDashboardWithParameterInEachTab({
         ],
       },
     ],
-  }).then(dashboard => visitDashboard(dashboard.id));
+  }).then(dashboard => H.visitDashboard(dashboard.id));
 }
 
 function checkResetAllFiltersWorksAcrossTabs({
@@ -879,8 +867,8 @@ function checkResetAllFiltersWorksAcrossTabs({
 }) {
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
-  getDashboardCard(0).findByText("37.65").should("be.visible");
-  getDashboardCard(0).findByText("116.01").should("not.exist");
+  H.getDashboardCard(0).findByText("37.65").should("be.visible");
+  H.getDashboardCard(0).findByText("116.01").should("not.exist");
 
   addDateFilter(PARAMETER_A.name, "01/01/2024");
   filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
@@ -888,13 +876,13 @@ function checkResetAllFiltersWorksAcrossTabs({
     cy.button("Apply").click();
   }
   checkResetAllFiltersShown();
-  getDashboardCard(0).findByText("116.01").should("be.visible");
-  getDashboardCard(0).findByText("37.65").should("not.exist");
+  H.getDashboardCard(0).findByText("116.01").should("be.visible");
+  H.getDashboardCard(0).findByText("37.65").should("not.exist");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(1).click();
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", PARAMETER_B.name);
-  getDashboardCard(0).findByText("18,760").should("be.visible");
+  H.getDashboardCard(0).findByText("18,760").should("be.visible");
 
   addDateFilter(PARAMETER_B.name, "01/01/2023");
   if (!autoApplyFilters) {
@@ -902,19 +890,19 @@ function checkResetAllFiltersWorksAcrossTabs({
   }
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
-  getDashboardCard(0).findByText("5").should("be.visible");
+  H.getDashboardCard(0).findByText("5").should("be.visible");
 
   cy.button("Move, trash, and more…").click();
-  popover().findByText("Reset all filters").click();
+  H.popover().findByText("Reset all filters").click();
   checkResetAllFiltersHidden();
   filter(PARAMETER_B.name).should("have.text", PARAMETER_B.name);
-  getDashboardCard(0).findByText("18,760").should("be.visible");
+  H.getDashboardCard(0).findByText("18,760").should("be.visible");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(0).click();
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
-  getDashboardCard(0).findByText("37.65").should("be.visible");
-  getDashboardCard(0).findByText("116.01").should("not.exist");
+  H.getDashboardCard(0).findByText("37.65").should("be.visible");
+  H.getDashboardCard(0).findByText("116.01").should("not.exist");
 }
 
 function checkResetAllFiltersToDefaultWorksAcrossTabs({
@@ -924,8 +912,8 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
 }) {
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", "January 5, 2023");
-  getDashboardCard(0).findByText("73.99").should("be.visible");
-  getDashboardCard(0).findByText("116.01").should("not.exist");
+  H.getDashboardCard(0).findByText("73.99").should("be.visible");
+  H.getDashboardCard(0).findByText("116.01").should("not.exist");
 
   updateDateFilter(PARAMETER_A.name, "01/01/2024");
   filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
@@ -933,13 +921,13 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
     cy.button("Apply").click();
   }
   checkResetAllFiltersShown();
-  getDashboardCard(0).findByText("116.01").should("be.visible");
-  getDashboardCard(0).findByText("73.99").should("not.exist");
+  H.getDashboardCard(0).findByText("116.01").should("be.visible");
+  H.getDashboardCard(0).findByText("73.99").should("not.exist");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(1).click();
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", "January 5, 2023");
-  getDashboardCard(0).findByText("4").should("be.visible");
+  H.getDashboardCard(0).findByText("4").should("be.visible");
 
   updateDateFilter(PARAMETER_B.name, "01/01/2023");
   if (!autoApplyFilters) {
@@ -947,30 +935,30 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
   }
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
-  getDashboardCard(0).findByText("5").should("be.visible");
+  H.getDashboardCard(0).findByText("5").should("be.visible");
 
   cy.button("Move, trash, and more…").click();
-  popover().findByText("Reset all filters").click();
+  H.popover().findByText("Reset all filters").click();
   checkResetAllFiltersHidden();
   filter(PARAMETER_B.name).should("have.text", "January 5, 2023");
-  getDashboardCard(0).findByText("4").should("be.visible");
+  H.getDashboardCard(0).findByText("4").should("be.visible");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(0).click();
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", "January 5, 2023");
-  getDashboardCard(0).findByText("73.99").should("be.visible");
-  getDashboardCard(0).findByText("116.01").should("not.exist");
+  H.getDashboardCard(0).findByText("73.99").should("be.visible");
+  H.getDashboardCard(0).findByText("116.01").should("not.exist");
 }
 
 function checkResetAllFiltersShown() {
   cy.button("Move, trash, and more…").click();
-  popover().findByText("Reset all filters").should("be.visible");
+  H.popover().findByText("Reset all filters").should("be.visible");
   cy.button("Move, trash, and more…").click();
 }
 
 function checkResetAllFiltersHidden() {
   cy.button("Move, trash, and more…").click();
-  popover().findByText("Reset all filters").should("not.exist");
+  H.popover().findByText("Reset all filters").should("not.exist");
   cy.button("Move, trash, and more…").click();
 }
 
@@ -1006,14 +994,14 @@ function chevronIcon(label: string) {
 
 function addDateFilter(label: string, value: string) {
   filter(label).click();
-  popover().findByRole("textbox").clear().type(value).blur();
-  popover().button("Add filter").click();
+  H.popover().findByRole("textbox").clear().type(value).blur();
+  H.popover().button("Add filter").click();
 }
 
 function updateDateFilter(label: string, value: string) {
   filter(label).click();
-  popover().findByRole("textbox").clear().type(value).blur();
-  popover().button("Update filter").click();
+  H.popover().findByRole("textbox").clear().type(value).blur();
+  H.popover().button("Update filter").click();
 }
 
 function addRangeFilter(
@@ -1022,9 +1010,9 @@ function addRangeFilter(
   secondValue: string,
 ) {
   filter(label).click();
-  popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-  popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
-  popover().button("Add filter").click();
+  H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+  H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
+  H.popover().button("Add filter").click();
 }
 
 function updateRangeFilter(
@@ -1033,7 +1021,7 @@ function updateRangeFilter(
   secondValue: string,
 ) {
   filter(label).click();
-  popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-  popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
-  popover().button("Update filter").click();
+  H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+  H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
+  H.popover().button("Update filter").click();
 }

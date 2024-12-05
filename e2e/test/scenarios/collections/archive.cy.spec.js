@@ -1,18 +1,10 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  archiveQuestion,
-  modal,
-  navigationSidebar,
-  openNavigationSidebar,
-  popover,
-  restore,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -25,7 +17,7 @@ const getQuestionDetails = collectionId => ({
 // being deleted in #42226
 describe("scenarios > collections > archive", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -57,7 +49,7 @@ describe("scenarios > collections > archive", () => {
         ],
       },
     }).then(({ body: { id } }) => {
-      archiveQuestion(id);
+      H.archiveQuestion(id);
     });
 
     cy.visit("/archive");
@@ -229,22 +221,22 @@ describe("scenarios > collections > archive", () => {
 
   it("should restore bookmarked items without crashing", () => {
     cy.request("POST", `/api/bookmark/card/${ORDERS_QUESTION_ID}`);
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
     cy.findByTestId("qb-header").icon("ellipsis").click();
-    popover().findByText("Archive").click();
-    modal().button("Archive").click();
+    H.popover().findByText("Archive").click();
+    H.modal().button("Archive").click();
 
-    openNavigationSidebar();
-    navigationSidebar().icon("ellipsis").click();
-    popover().findByText("View archive").click();
+    H.openNavigationSidebar();
+    H.navigationSidebar().icon("ellipsis").click();
+    H.popover().findByText("View archive").click();
 
     cy.findByTestId("archive-item-Orders")
       .findByText("Orders")
       .findByLabelText("unarchive icon")
       .click({ force: true });
 
-    navigationSidebar().button("Orders").should("exist");
+    H.navigationSidebar().button("Orders").should("exist");
   });
 });
 

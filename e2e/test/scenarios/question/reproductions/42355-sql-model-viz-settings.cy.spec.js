@@ -1,20 +1,13 @@
-import {
-  createNativeQuestion,
-  openQuestionActions,
-  popover,
-  restore,
-  rightSidebar,
-  visitModel,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 describe("issue 42355", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should allow overriding database fields for models with manually ordered columns (metabase#42355)", () => {
-    createNativeQuestion({
+    H.createNativeQuestion({
       type: "model",
       native: { query: "SELECT ID, PRODUCT_ID FROM ORDERS" },
       visualization_settings: {
@@ -34,26 +27,26 @@ describe("issue 42355", () => {
         ],
         "table.cell_column": "ID",
       },
-    }).then(({ body: card }) => visitModel(card.id));
+    }).then(({ body: card }) => H.visitModel(card.id));
 
     cy.log("update metadata");
-    openQuestionActions();
-    popover().findByText("Edit metadata").click();
-    rightSidebar()
+    H.openQuestionActions();
+    H.popover().findByText("Edit metadata").click();
+    H.rightSidebar()
       .findByText("Database column this maps to")
       .next()
       .findByText("None")
       .click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Orders").click();
       cy.findByText("ID").click();
     });
     cy.button("Save changes").click();
 
     cy.log("check metadata changes are visible");
-    openQuestionActions();
-    popover().findByText("Edit metadata").click();
-    rightSidebar()
+    H.openQuestionActions();
+    H.popover().findByText("Edit metadata").click();
+    H.rightSidebar()
       .findByText("Database column this maps to")
       .next()
       .findByText("Orders → ID")

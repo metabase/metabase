@@ -1,20 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  POPOVER_ELEMENT,
-  createQuestion,
-  echartsContainer,
-  enterCustomColumnDetails,
-  entityPickerModal,
-  entityPickerModalTab,
-  getNotebookStep,
-  modal,
-  openNotebook,
-  popover,
-  restore,
-  startNewQuestion,
-  visitQuestion,
-  visualize,
-} from "e2e/support/helpers";
 import { uuid } from "metabase/lib/uuid";
 import type {
   Aggregation,
@@ -62,7 +47,7 @@ const OFFSET_SUM_TOTAL_AGGREGATION: Aggregation = [
 
 describe("scenarios > question > offset", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
@@ -81,18 +66,18 @@ describe("scenarios > question > offset", () => {
         "order-by": [["asc", ORDERS_TOTAL_FIELD_REF]],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Custom column").click();
-      enterCustomColumnDetails({ formula: prefix });
+      H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in custom columns");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      enterCustomColumnDetails({ formula: expression });
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom columns").should(
           "exist",
@@ -111,32 +96,32 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Custom column").click();
-      enterCustomColumnDetails({ formula: prefix });
+      H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("suggests offset() in custom column expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: expression });
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("OFFSET in a custom expression requires a sort order");
         cy.button("Done").should("be.disabled");
         cy.button("Cancel").click();
       });
 
       cy.button("Sort").click();
-      popover().findByText("ID").click();
-      getNotebookStep("expression").icon("add").click();
-      enterCustomColumnDetails({ formula: expression });
+      H.popover().findByText("ID").click();
+      H.getNotebookStep("expression").icon("add").click();
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.button("Done").should("be.disabled");
 
         cy.findByPlaceholderText("Something nice and descriptive")
@@ -147,12 +132,12 @@ describe("scenarios > question > offset", () => {
       });
 
       cy.log("preview availability");
-      getNotebookStep("data").icon("play").should("be.visible");
-      getNotebookStep("expression").icon("play").should("not.be.visible");
-      getNotebookStep("sort").icon("play").should("be.visible");
-      getNotebookStep("limit").icon("play").should("be.visible");
+      H.getNotebookStep("data").icon("play").should("be.visible");
+      H.getNotebookStep("expression").icon("play").should("not.be.visible");
+      H.getNotebookStep("sort").icon("play").should("be.visible");
+      H.getNotebookStep("limit").icon("play").should("be.visible");
 
-      visualize();
+      H.visualize();
       verifyTableContent([
         ["1", "39.72", ""],
         ["2", "117.03", "39.72"],
@@ -180,7 +165,7 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       cy.log("custom column drills");
       const rowIndex = 1;
@@ -188,32 +173,32 @@ describe("scenarios > question > offset", () => {
       const columnsCount = 10;
       const cellIndex = rowIndex * columnsCount + columnIndex;
       cy.findAllByRole("gridcell").eq(cellIndex).click();
-      cy.get(POPOVER_ELEMENT).should("not.exist");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
-      openNotebook();
+      H.openNotebook();
 
       cy.log("custom column expressions");
-      getNotebookStep("expression").icon("add").click();
+      H.getNotebookStep("expression").icon("add").click();
       verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      popover().button("Cancel").click();
+      H.popover().button("Cancel").click();
 
       cy.log("custom filter expressions");
       cy.icon("filter").click();
-      popover().findByText("Custom Expression").click();
+      H.popover().findByText("Custom Expression").click();
       verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      popover().button("Cancel").click();
+      H.popover().button("Cancel").click();
       cy.realPress("Escape");
 
       cy.log("custom aggregation expressions");
       cy.icon("sum").click();
-      popover().findByText("Custom Expression").click();
+      H.popover().findByText("Custom Expression").click();
       verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      popover().button("Cancel").click();
+      H.popover().button("Cancel").click();
       cy.realPress("Escape");
 
       cy.log("sort clause");
-      getNotebookStep("sort").icon("add").click();
-      popover().should("not.contain", offsettedColumnName);
+      H.getNotebookStep("sort").icon("add").click();
+      H.popover().should("not.contain", offsettedColumnName);
     });
   });
 
@@ -227,19 +212,19 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Filter").click();
-      popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({ formula: prefix });
+      H.popover().findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in filter expressions");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      enterCustomColumnDetails({ formula: expression });
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom filters").should(
           "exist",
@@ -258,24 +243,24 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Summarize").click();
-      getNotebookStep("summarize")
+      H.getNotebookStep("summarize")
         .findByText("Pick the metric you want to see")
         .click();
-      popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({ formula: prefix });
+      H.popover().findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("suggests offset() in aggregation expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: expression });
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.button("Done").should("be.disabled");
 
         cy.findByPlaceholderText("Something nice and descriptive")
@@ -292,7 +277,7 @@ describe("scenarios > question > offset", () => {
         aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyQuestionError(
         "Window function requires either breakouts or order by in the query",
@@ -307,7 +292,7 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -315,8 +300,8 @@ describe("scenarios > question > offset", () => {
         ["May 2022", "52.76"],
       ]);
 
-      openNotebook();
-      getNotebookStep("summarize").icon("play").should("be.visible");
+      H.openNotebook();
+      H.getNotebookStep("summarize").icon("play").should("be.visible");
     });
 
     it("works with a single breakout and sorting by breakout", () => {
@@ -328,7 +313,7 @@ describe("scenarios > question > offset", () => {
         "order-by": [["desc", ORDERS_CREATED_AT_BREAKOUT]],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -346,7 +331,7 @@ describe("scenarios > question > offset", () => {
         "order-by": [["desc", ["aggregation", 0]]],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       /* TODO: assert actual values */
@@ -360,7 +345,7 @@ describe("scenarios > question > offset", () => {
         breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -378,7 +363,7 @@ describe("scenarios > question > offset", () => {
         limit: 9,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -397,9 +382,9 @@ describe("scenarios > question > offset", () => {
     it("works after saving a question (metabase#42323)", () => {
       const breakoutName = "Created At";
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
@@ -409,7 +394,7 @@ describe("scenarios > question > offset", () => {
       });
       addBreakout(breakoutName);
 
-      visualize();
+      H.visualize();
       verifyNoQuestionError();
       verifyLineChart({
         xAxis: breakoutName,
@@ -417,7 +402,7 @@ describe("scenarios > question > offset", () => {
       });
 
       saveQuestion().then(({ response }) => {
-        visitQuestion(response?.body.id);
+        H.visitQuestion(response?.body.id);
         verifyNoQuestionError();
         verifyLineChart({
           xAxis: breakoutName,
@@ -441,9 +426,9 @@ describe("scenarios > question > offset", () => {
         rollingAverageName,
       ];
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
@@ -471,7 +456,7 @@ describe("scenarios > question > offset", () => {
       });
       addBreakout(breakoutName);
 
-      visualize();
+      H.visualize();
       verifyNoQuestionError();
       verifyLineChart({
         xAxis: breakoutName,
@@ -479,7 +464,7 @@ describe("scenarios > question > offset", () => {
       });
 
       saveQuestion().then(({ response }) => {
-        visitQuestion(response?.body.id);
+        H.visitQuestion(response?.body.id);
         verifyNoQuestionError();
         verifyLineChart({
           xAxis: breakoutName,
@@ -495,8 +480,8 @@ describe("scenarios > question > offset", () => {
         "source-table": ORDERS_ID,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Summarize").click();
       addCustomAggregation({ formula, name, isFirst: true });
 
@@ -520,26 +505,28 @@ function addCustomAggregation({
   isFirst?: boolean;
 }) {
   if (isFirst) {
-    getNotebookStep("summarize")
+    H.getNotebookStep("summarize")
       .findByText("Pick the metric you want to see")
       .click();
   } else {
-    getNotebookStep("summarize").icon("add").click();
+    H.getNotebookStep("summarize").icon("add").click();
   }
 
-  popover().findByText("Custom Expression").click();
-  enterCustomColumnDetails({ formula, name });
-  popover().button("Done").click();
+  H.popover().findByText("Custom Expression").click();
+  H.enterCustomColumnDetails({ formula, name });
+  H.popover().button("Done").click();
 }
 
 function addBreakout(name: string) {
-  getNotebookStep("summarize").findByText("Pick a column to group by").click();
-  popover().findByText(name).click();
+  H.getNotebookStep("summarize")
+    .findByText("Pick a column to group by")
+    .click();
+  H.popover().findByText(name).click();
 }
 
 function saveQuestion() {
   cy.button("Save").click();
-  modal().button("Save").click();
+  H.modal().button("Save").click();
   return cy.wait("@saveQuestion");
 }
 
@@ -552,7 +539,7 @@ function verifyLineChart({
   yAxis?: string;
   legendItems?: string[];
 }) {
-  echartsContainer().within(() => {
+  H.echartsContainer().within(() => {
     cy.findByText(xAxis).should("be.visible");
 
     if (yAxis) {
@@ -605,12 +592,12 @@ function verifyInvalidColumnName(
   prefix: string,
   expression: string,
 ) {
-  enterCustomColumnDetails({ formula: prefix });
+  H.enterCustomColumnDetails({ formula: prefix });
   cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-  enterCustomColumnDetails({ formula: expression });
+  H.enterCustomColumnDetails({ formula: expression });
   cy.realPress("Tab");
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByText(`Unknown Field: ${columnName}`).should("be.visible");
     cy.button("Done").should("be.disabled");
   });

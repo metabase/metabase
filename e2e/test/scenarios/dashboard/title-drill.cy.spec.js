@@ -1,20 +1,12 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  addOrUpdateDashboardCard,
-  appBar,
-  filterWidget,
-  getDashboardCard,
-  popover,
-  restore,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > title drill", () => {
   describe("on a native question without connected dashboard parameters", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
 
       const questionDetails = {
@@ -29,7 +21,7 @@ describe("scenarios > dashboard > title drill", () => {
 
       cy.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
-          visitDashboard(dashboard_id);
+          H.visitDashboard(dashboard_id);
         },
       );
     });
@@ -84,7 +76,7 @@ describe("scenarios > dashboard > title drill", () => {
 
   describe("on a native question with a connected dashboard parameter", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
 
       const filter = {
@@ -141,7 +133,7 @@ describe("scenarios > dashboard > title drill", () => {
           ],
         });
 
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
         checkScalarResult("200");
       });
     });
@@ -220,7 +212,7 @@ describe("scenarios > dashboard > title drill", () => {
     };
 
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
@@ -249,7 +241,7 @@ describe("scenarios > dashboard > title drill", () => {
             `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
           ).as("cardQuery");
 
-          visitDashboard(dashboard_id);
+          H.visitDashboard(dashboard_id);
         },
       );
     });
@@ -298,8 +290,8 @@ describe("scenarios > dashboard > title drill", () => {
         cy.findByText("42");
 
         // update the parameter filter to a new value
-        filterWidget().contains("Doohickey").click();
-        popover().within(() => {
+        H.filterWidget().contains("Doohickey").click();
+        H.popover().within(() => {
           cy.get("input").type("{backspace}Gadget{enter}");
           cy.findByText("Update filter").click();
         });
@@ -320,8 +312,8 @@ describe("scenarios > dashboard > title drill", () => {
         cy.findByText("53");
 
         // make sure the unset id parameter works
-        filterWidget().last().click();
-        popover().within(() => {
+        H.filterWidget().last().click();
+        H.popover().within(() => {
           cy.get("input").type("5{enter}");
           cy.findByText("Add filter").click();
         });
@@ -355,7 +347,7 @@ describe("scenarios > dashboard > title drill", () => {
     };
 
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
 
       cy.createQuestion(questionDetails, {
@@ -383,7 +375,7 @@ describe("scenarios > dashboard > title drill", () => {
       );
 
       cy.then(function () {
-        addOrUpdateDashboardCard({
+        H.addOrUpdateDashboardCard({
           card_id: this.nestedQuestionId,
           dashboard_id: this.dashboardId,
           card: {
@@ -401,11 +393,11 @@ describe("scenarios > dashboard > title drill", () => {
 
     it("should lead you to a table question with filtered ID (metabase#17213)", () => {
       const productRecordId = 3;
-      visitDashboard("@dashboardId", { params: { id: productRecordId } });
+      H.visitDashboard("@dashboardId", { params: { id: productRecordId } });
 
-      getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
+      H.getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
 
-      appBar()
+      H.appBar()
         .contains(`Started from ${baseNestedQuestionDetails.name}`)
         .should("be.visible");
       cy.findByTestId("question-row-count")
@@ -418,8 +410,8 @@ describe("scenarios > dashboard > title drill", () => {
 });
 
 function checkFilterLabelAndValue(label, value) {
-  filterWidget().find("legend").invoke("text").should("eq", label);
-  filterWidget().contains(value);
+  H.filterWidget().find("legend").invoke("text").should("eq", label);
+  H.filterWidget().contains(value);
 }
 
 function checkScalarResult(result) {

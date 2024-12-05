@@ -1,7 +1,7 @@
 import _ from "underscore";
 
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -215,7 +215,7 @@ const nestedQuestionWithJoinOnQuestion = card => ({
 
 describe("scenarios > visualizations > table column settings", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -354,7 +354,7 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByText("Product ID").click();
       });
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.icon("gear").click();
         cy.findByDisplayValue("Product ID").clear().type("prod_id");
       });
@@ -768,10 +768,10 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
 
-      openNotebook();
+      H.openNotebook();
       cy.findByTestId("fields-picker").click();
-      popover().findByText("Tax").click();
-      visualize();
+      H.popover().findByText("Tax").click();
+      H.visualize();
 
       openSettings();
 

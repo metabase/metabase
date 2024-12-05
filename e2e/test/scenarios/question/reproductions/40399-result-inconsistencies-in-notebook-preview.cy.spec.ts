@@ -1,21 +1,16 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  getNotebookStep,
-  openNotebook,
-  restore,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 40399", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should not show results from other stages in a stages preview (metabase#40399)", () => {
-    createQuestion(
+    H.createQuestion(
       {
         name: "40399",
         query: {
@@ -41,16 +36,16 @@ describe("issue 40399", () => {
       },
     );
 
-    openNotebook();
+    H.openNotebook();
 
-    getNotebookStep("filter", { stage: 0 }).within(() => {
+    H.getNotebookStep("filter", { stage: 0 }).within(() => {
       cy.icon("play").click();
       cy.findByTestId("preview-root")
         .findAllByText("Widget")
         .should("be.visible");
     });
 
-    getNotebookStep("join", { stage: 0 }).within(() => {
+    H.getNotebookStep("join", { stage: 0 }).within(() => {
       cy.icon("play").click();
       cy.findByTestId("preview-root")
         .findAllByText("Gizmo")
@@ -59,7 +54,7 @@ describe("issue 40399", () => {
       cy.findByTestId("preview-root").findByText("Widget").should("not.exist");
     });
 
-    getNotebookStep("data", { stage: 0 }).within(() => {
+    H.getNotebookStep("data", { stage: 0 }).within(() => {
       cy.icon("play").click();
       cy.findByTestId("preview-root")
         .findAllByText("Gizmo")

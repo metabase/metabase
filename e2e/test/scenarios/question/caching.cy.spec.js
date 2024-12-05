@@ -1,12 +1,5 @@
+import { H } from "e2e/support";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  describeEE,
-  modal,
-  restore,
-  rightSidebar,
-  setTokenFeatures,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 import { interceptRoutes as interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
@@ -15,11 +8,11 @@ import {
   openSidebarCacheStrategyForm,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
-describeEE("scenarios > question > caching", () => {
+H.describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
   });
 
   /**
@@ -28,11 +21,11 @@ describeEE("scenarios > question > caching", () => {
    */
   it("can configure cache for a question, on an enterprise instance", () => {
     interceptPerformanceRoutes();
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
     openSidebarCacheStrategyForm();
 
-    rightSidebar().within(() => {
+    H.rightSidebar().within(() => {
       cy.findByRole("heading", { name: /Caching settings/ }).should(
         "be.visible",
       );
@@ -58,11 +51,11 @@ describeEE("scenarios > question > caching", () => {
 
   it("can click 'Clear cache' for a question", () => {
     interceptPerformanceRoutes();
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
     openSidebarCacheStrategyForm();
 
-    rightSidebar().within(() => {
+    H.rightSidebar().within(() => {
       cy.findByRole("heading", { name: /Caching settings/ }).should(
         "be.visible",
       );
@@ -70,12 +63,12 @@ describeEE("scenarios > question > caching", () => {
         name: /Clear cache for this question/,
       }).click();
     });
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByRole("button", { name: /Clear cache/ }).click();
     });
     cy.wait("@invalidateCache");
 
-    rightSidebar().within(() => {
+    H.rightSidebar().within(() => {
       cy.findByText("Cache cleared").should("be.visible");
     });
   });

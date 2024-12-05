@@ -1,27 +1,15 @@
+import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  closeCommandPalette,
-  commandPalette,
-  commandPaletteButton,
-  commandPaletteInput,
-  openCommandPalette,
-  pressEnd,
-  pressHome,
-  pressPageDown,
-  pressPageUp,
-  restore,
-  visitFullAppEmbeddingUrl,
-} from "e2e/support/helpers";
 
 const { admin } = USERS;
 
 describe("command palette", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -36,12 +24,12 @@ describe("command palette", () => {
     cy.visit("/");
 
     cy.findByRole("button", { name: /Search/ }).click();
-    closeCommandPalette();
+    H.closeCommandPalette();
 
     cy.log("open the command palette with keybinding");
-    openCommandPalette();
-    commandPalette().within(() => {
-      commandPaletteInput().should("exist");
+    H.openCommandPalette();
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("exist");
 
       cy.log("limit to 5 basic actions");
       cy.findByText("New question");
@@ -57,7 +45,7 @@ describe("command palette", () => {
       );
 
       cy.log("Should search entities and docs");
-      commandPaletteInput().type("Orders, Count");
+      H.commandPaletteInput().type("Orders, Count");
 
       cy.findByRole("option", { name: "Orders, Count" })
         .should("contain.text", "Our analytics")
@@ -67,15 +55,15 @@ describe("command palette", () => {
 
       // Since the command palette list is virtualized, we will search for a few
       // to ensure they're reachable
-      commandPaletteInput().clear().type("People");
+      H.commandPaletteInput().clear().type("People");
       cy.findByRole("option", { name: "People" }).should("exist");
 
-      commandPaletteInput().clear().type("Uploads");
+      H.commandPaletteInput().clear().type("Uploads");
       cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
 
       // When entering a query, if there are results that come before search results, highlight
       // the first action, otherwise, highlight the first search result
-      commandPaletteInput().clear().type("Or");
+      H.commandPaletteInput().clear().type("Or");
       cy.findByRole("option", { name: "Performance" }).should(
         "have.attr",
         "aria-selected",
@@ -84,7 +72,7 @@ describe("command palette", () => {
       cy.findByRole("option", { name: /View and filter/ }).should("exist");
 
       // Check that we are not filtering search results by action name
-      commandPaletteInput().clear().type("Company");
+      H.commandPaletteInput().clear().type("Company");
       cy.findByRole("option", { name: /View and filter/ }).should("exist");
       cy.findByRole("option", { name: "PEOPLE" }).should(
         "have.attr",
@@ -93,47 +81,47 @@ describe("command palette", () => {
       );
       cy.findByRole("option", { name: "REVIEWS" }).should("exist");
       cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
-      commandPaletteInput().clear();
+      H.commandPaletteInput().clear();
     });
 
     cy.log("We can close the command palette using escape");
-    closeCommandPalette();
-    commandPalette().should("not.exist");
+    H.closeCommandPalette();
+    H.commandPalette().should("not.exist");
 
-    openCommandPalette();
+    H.openCommandPalette();
     //wait for things to render
-    commandPalette()
+    H.commandPalette()
       .findByRole("option", { name: "New question" })
       .should("exist");
 
-    pressPageDown();
-    commandPalette()
+    H.pressPageDown();
+    H.commandPalette()
       .findByRole("option", { name: "New dashboard" })
       .should("have.attr", "aria-selected", "true");
 
-    pressPageDown();
-    commandPalette()
+    H.pressPageDown();
+    H.commandPalette()
       .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
-    pressPageUp();
-    commandPalette()
+    H.pressPageUp();
+    H.commandPalette()
       .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
 
-    pressPageUp();
-    commandPalette()
+    H.pressPageUp();
+    H.commandPalette()
       .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
 
-    pressEnd();
+    H.pressEnd();
 
-    commandPalette()
+    H.commandPalette()
       .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
-    pressHome();
-    commandPalette()
+    H.pressHome();
+    H.commandPalette()
       .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
   });
@@ -141,10 +129,10 @@ describe("command palette", () => {
   it("should render links to site settings in settings pages", () => {
     cy.visit("/admin");
     cy.findByRole("heading", { name: "Getting set up" }).should("exist");
-    openCommandPalette();
+    H.openCommandPalette();
 
-    commandPalette().within(() => {
-      commandPaletteInput().type("Nested");
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().type("Nested");
       cy.findByRole("option", { name: "Enable Nested Queries" }).click();
     });
 
@@ -153,10 +141,10 @@ describe("command palette", () => {
     cy.location("pathname").should("contain", "settings/general");
     cy.location("hash").should("contain", "#enable-nested-queries");
 
-    openCommandPalette();
+    H.openCommandPalette();
 
-    commandPalette().within(() => {
-      commandPaletteInput().clear().type("Week");
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().clear().type("Week");
       cy.findByRole("option", { name: "First day of the week" }).click();
     });
 
@@ -165,7 +153,7 @@ describe("command palette", () => {
   });
 
   it("should not be accessible when doing full app embedding", () => {
-    visitFullAppEmbeddingUrl({
+    H.visitFullAppEmbeddingUrl({
       url: "/",
       qs: {
         top_nav: true,
@@ -178,8 +166,8 @@ describe("command palette", () => {
 
     cy.get("body").type("{esc}");
 
-    openCommandPalette();
-    commandPalette().should("not.exist");
+    H.openCommandPalette();
+    H.commandPalette().should("not.exist");
   });
 
   it("should not be accessible when a user is not logged in", () => {
@@ -191,8 +179,8 @@ describe("command palette", () => {
 
     cy.findByRole("heading", { name: "Sign in to Metabase" });
 
-    openCommandPalette();
-    commandPalette().should("not.exist");
+    H.openCommandPalette();
+    H.commandPalette().should("not.exist");
 
     cy.get("@database").should("be.null");
     cy.get("@search").should("be.null");
@@ -202,13 +190,13 @@ describe("command palette", () => {
     cy.button("Sign in").click();
     cy.findByTestId("greeting-message");
 
-    openCommandPalette();
-    commandPalette().should("exist");
+    H.openCommandPalette();
+    H.commandPalette().should("exist");
   });
 
   it("The Search button should resize when on mobile", () => {
     cy.viewport("iphone-x");
     cy.visit("/");
-    commandPaletteButton().should("not.contain.text", "search");
+    H.commandPaletteButton().should("not.contain.text", "search");
   });
 });

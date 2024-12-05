@@ -1,22 +1,9 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createPulse,
-  describeEE,
-  modal,
-  modifyPermission,
-  popover,
-  restore,
-  setTokenFeatures,
-  setupSMTP,
-  sidebar,
-  undoToast,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -26,11 +13,11 @@ const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
 
-describeEE("scenarios > admin > permissions > application", () => {
+H.describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
   });
 
   it("shows permissions help", () => {
@@ -55,11 +42,11 @@ describeEE("scenarios > admin > permissions > application", () => {
       beforeEach(() => {
         cy.visit("/admin/permissions/application");
 
-        modifyPermission("All Users", SUBSCRIPTIONS_INDEX, "No");
+        H.modifyPermission("All Users", SUBSCRIPTIONS_INDEX, "No");
 
         cy.button("Save changes").click();
 
-        modal().within(() => {
+        H.modal().within(() => {
           cy.findByText("Save permissions?");
           cy.findByText("Are you sure you want to do this?");
           cy.button("Yes").click();
@@ -71,10 +58,10 @@ describeEE("scenarios > admin > permissions > application", () => {
       });
 
       it("revokes ability to create subscriptions and alerts and manage them", () => {
-        visitDashboard(ORDERS_DASHBOARD_ID);
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
         cy.icon("subscription").should("not.exist");
 
-        visitQuestion(ORDERS_QUESTION_ID);
+        H.visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").should("not.exist");
 
         cy.visit("/account/notifications");
@@ -86,17 +73,17 @@ describeEE("scenarios > admin > permissions > application", () => {
 
     describe("granted", () => {
       it("gives ability to create dashboard subscriptions", () => {
-        setupSMTP();
+        H.setupSMTP();
         cy.signInAsNormalUser();
-        visitDashboard(ORDERS_DASHBOARD_ID);
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
         cy.findByLabelText("subscriptions").click();
 
-        sidebar().findByText("Email this dashboard").should("exist");
+        H.sidebar().findByText("Email this dashboard").should("exist");
       });
 
       it("gives ability to create question alerts", () => {
         cy.signInAsNormalUser();
-        visitQuestion(ORDERS_QUESTION_ID);
+        H.visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").click();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(
@@ -111,11 +98,11 @@ describeEE("scenarios > admin > permissions > application", () => {
       beforeEach(() => {
         cy.visit("/admin/permissions/application");
 
-        modifyPermission("All Users", MONITORING_INDEX, "Yes");
+        H.modifyPermission("All Users", MONITORING_INDEX, "Yes");
 
         cy.button("Save changes").click();
 
-        modal().within(() => {
+        H.modal().within(() => {
           cy.findByText("Save permissions?");
           cy.findByText("Are you sure you want to do this?");
           cy.button("Yes").click();
@@ -136,7 +123,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.visit("/");
         cy.icon("gear").click();
 
-        popover().findByText("Admin settings").click();
+        H.popover().findByText("Admin settings").click();
 
         cy.log("Tools smoke test");
         cy.location("pathname").should("eq", "/admin/tools/errors");
@@ -181,11 +168,11 @@ describeEE("scenarios > admin > permissions > application", () => {
       beforeEach(() => {
         cy.visit("/admin/permissions/application");
 
-        modifyPermission("All Users", SETTINGS_INDEX, "Yes");
+        H.modifyPermission("All Users", SETTINGS_INDEX, "Yes");
 
         cy.button("Save changes").click();
 
-        modal().within(() => {
+        H.modal().within(() => {
           cy.findByText("Save permissions?");
           cy.findByText("Are you sure you want to do this?");
           cy.button("Yes").click();
@@ -213,7 +200,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         // General smoke test
         cy.get("#setting-site-name").clear().type("new name").blur();
 
-        undoToast().findByText("Changes saved").should("be.visible");
+        H.undoToast().findByText("Changes saved").should("be.visible");
       });
     });
   });
@@ -228,7 +215,7 @@ function createSubscription(user_id) {
       },
     },
   }).then(({ body: { card_id, dashboard_id } }) => {
-    createPulse({
+    H.createPulse({
       name: "Subscription",
       dashboard_id,
       cards: [

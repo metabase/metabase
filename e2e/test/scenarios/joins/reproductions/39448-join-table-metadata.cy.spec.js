@@ -1,25 +1,19 @@
-import {
-  entityPickerModal,
-  entityPickerModalTab,
-  getNotebookStep,
-  openOrdersTable,
-  restore,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 describe("issue 39448", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should load joined table metadata for suggested join conditions (metabase#39448)", () => {
-    openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
     cy.findByTestId("action-buttons").button("Join data").click();
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
       cy.findByText("Products").click();
     });
-    getNotebookStep("join").within(() => {
+    H.getNotebookStep("join").within(() => {
       cy.findByLabelText("Right table").should("have.text", "Products");
       cy.findByLabelText("Left column")
         .findByText("Product ID")

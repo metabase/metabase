@@ -1,14 +1,9 @@
+import { H } from "e2e/support";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  echartsContainer,
-  questionInfoButton,
-  restore,
-  visitModel,
-} from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
@@ -17,13 +12,13 @@ describe("scenarios > models > revision history", () => {
   });
 
   it("should allow reverting to a saved question state and back into a model again", () => {
-    visitModel(ORDERS_BY_YEAR_QUESTION_ID);
+    H.visitModel(ORDERS_BY_YEAR_QUESTION_ID);
 
     openRevisionHistory();
     revertTo("You created this");
 
     cy.location("pathname").should("match", /^\/question\/\d+/);
-    echartsContainer();
+    H.echartsContainer();
 
     revertTo("You edited this");
 
@@ -34,7 +29,7 @@ describe("scenarios > models > revision history", () => {
 
 function openRevisionHistory() {
   cy.intercept("GET", "/api/user").as("user");
-  questionInfoButton().click();
+  H.questionInfoButton().click();
   cy.wait("@user");
 
   cy.findByText("History");

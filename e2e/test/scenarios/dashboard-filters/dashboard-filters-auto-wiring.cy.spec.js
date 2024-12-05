@@ -1,29 +1,9 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createNewTab,
-  dashboardHeader,
-  dashboardParametersContainer,
-  editDashboard,
-  entityPickerModal,
-  getDashboardCard,
-  goToTab,
-  modal,
-  openQuestionActions,
-  popover,
-  restore,
-  saveDashboard,
-  selectDashboardFilter,
-  setFilter,
-  undoToast,
-  updateDashboardCards,
-  visitDashboard,
-  visitDashboardAndCreateTab,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID, ORDERS, PEOPLE, PRODUCTS } =
   SAMPLE_DATABASE;
@@ -47,7 +27,7 @@ const cards = [
 
 describe("dashboard filters auto-wiring", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
   });
@@ -55,24 +35,24 @@ describe("dashboard filters auto-wiring", () => {
   describe("when wiring parameter to all cards for a filter", () => {
     it("should automatically wire parameters to cards with matching fields", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
-      editDashboard();
+      H.editDashboard();
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
-      getDashboardCard(0).within(() => {
+      H.getDashboardCard(0).within(() => {
         cy.findByText("User.Name").should("exist");
       });
 
-      getDashboardCard(1).within(() => {
+      H.getDashboardCard(1).within(() => {
         cy.findByText("User.Name").should("exist");
       });
 
-      undoToast()
+      H.undoToast()
         .findByText(
           "This filter has been auto-connected with questions with the same field.",
         )
@@ -81,40 +61,40 @@ describe("dashboard filters auto-wiring", () => {
 
     it("should not automatically wire parameters to cards that already have a parameter, despite matching fields", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
-      editDashboard();
+      H.editDashboard();
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
-      getDashboardCard(0).within(() => {
+      H.getDashboardCard(0).within(() => {
         cy.findByText("User.Name").should("exist");
       });
 
-      undoToast()
+      H.undoToast()
         .findByText(
           "This filter has been auto-connected with questions with the same field.",
         )
         .should("be.visible");
 
-      getDashboardCard(1).within(() => {
+      H.getDashboardCard(1).within(() => {
         cy.findByLabelText("close icon").click();
       });
 
-      selectDashboardFilter(getDashboardCard(1), "Address");
+      H.selectDashboardFilter(H.getDashboardCard(1), "Address");
 
-      getDashboardCard(0).within(() => {
+      H.getDashboardCard(0).within(() => {
         cy.findByText("User.Name").should("exist");
       });
 
-      getDashboardCard(1).within(() => {
+      H.getDashboardCard(1).within(() => {
         cy.findByText("User.Address").should("exist");
       });
 
-      undoToast().should("not.exist");
+      H.undoToast().should("not.exist");
     });
 
     it("should not automatically wire parameters to cards that don't have a matching field", () => {
@@ -140,51 +120,51 @@ describe("dashboard filters auto-wiring", () => {
             },
           ],
         }).then(dashboardId => {
-          visitDashboard(dashboardId);
+          H.visitDashboard(dashboardId);
         });
       });
 
-      editDashboard();
+      H.editDashboard();
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
-      getDashboardCard(0).within(() => {
+      H.getDashboardCard(0).within(() => {
         cy.findByText("User.Name").should("exist");
       });
 
-      getDashboardCard(1).within(() => {
+      H.getDashboardCard(1).within(() => {
         cy.findByText("Select…").should("exist");
       });
 
-      undoToast().should("not.exist");
+      H.undoToast().should("not.exist");
     });
 
     it("should autowire parameters to cards in different tabs", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
-        visitDashboardAndCreateTab({
+        H.visitDashboardAndCreateTab({
           dashboardId,
           save: false,
         });
       });
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
 
       addCardToDashboard();
       goToFilterMapping();
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
-      getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
 
-      goToTab("Tab 1");
+      H.goToTab("Tab 1");
 
       for (let i = 0; i < cards.length; i++) {
-        getDashboardCard(i).findByText("User.Name").should("exist");
+        H.getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
-      undoToast()
+      H.undoToast()
         .findByText(
           "This filter has been auto-connected with questions with the same field.",
         )
@@ -193,28 +173,28 @@ describe("dashboard filters auto-wiring", () => {
 
     it("should undo parameter wiring when 'Undo auto-connection' is clicked", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
-      editDashboard();
+      H.editDashboard();
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
       addCardToDashboard();
       goToFilterMapping();
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
-      getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
 
       for (let i = 0; i < cards.length; i++) {
-        getDashboardCard(i).findByText("User.Name").should("exist");
+        H.getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
-      undoToast().findByText("Undo auto-connection").click();
+      H.undoToast().findByText("Undo auto-connection").click();
 
-      getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
       for (let i = 1; i < cards.length; i++) {
-        getDashboardCard(i).findByText("Select…").should("exist");
+        H.getDashboardCard(i).findByText("Select…").should("exist");
       }
     });
 
@@ -244,59 +224,59 @@ describe("dashboard filters auto-wiring", () => {
       ];
 
       createDashboardWithCards({ cards }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
-      editDashboard();
+      H.editDashboard();
 
       cy.clock();
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
       removeFilterFromDashCard(0);
       removeFilterFromDashCard(1);
 
       cy.tick(2000);
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
       // since we waited 2 seconds earlier, if the toast is still visible after this other delay of 4s,
       // it means the first timeout of 5s was cleared correctly
       cy.tick(4000);
-      undoToast().should("exist");
+      H.undoToast().should("exist");
 
       cy.tick(2000);
 
-      undoToast().should("not.exist");
+      H.undoToast().should("not.exist");
     });
   });
 
   describe("wiring parameters when adding a card", () => {
     it("should automatically wire a parameters to cards that are added to the dashboard", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
-      editDashboard();
+      H.editDashboard();
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
       for (let i = 0; i < cards.length; i++) {
-        getDashboardCard(i).findByText("User.Name").should("exist");
+        H.getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
       addCardToDashboard();
       goToFilterMapping();
 
       for (let i = 0; i < cards.length + 1; i++) {
-        getDashboardCard(i).findByText("User.Name").should("exist");
+        H.getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
-      undoToast()
+      H.undoToast()
         .findByText(
           "Orders Model has been auto-connected with filters with the same field.",
         )
@@ -305,25 +285,25 @@ describe("dashboard filters auto-wiring", () => {
 
     it("should automatically wire parameters to cards that are added to the dashboard in a different tab", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
-      editDashboard();
+      H.editDashboard();
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
       for (let i = 0; i < cards.length; i++) {
-        getDashboardCard(i).findByText("User.Name").should("exist");
+        H.getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
-      createNewTab();
+      H.createNewTab();
       addCardToDashboard();
       goToFilterMapping();
 
-      getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
 
-      undoToast()
+      H.undoToast()
         .findByText(
           "Orders Model has been auto-connected with filters with the same field.",
         )
@@ -332,31 +312,31 @@ describe("dashboard filters auto-wiring", () => {
 
     it("should undo parameter wiring when 'Undo auto-connection' is clicked", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
-      editDashboard();
+      H.editDashboard();
 
-      setFilter("Text or Category", "Is");
+      H.setFilter("Text or Category", "Is");
 
-      selectDashboardFilter(getDashboardCard(0), "Name");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
       for (let i = 0; i < cards.length; i++) {
-        getDashboardCard(i).findByText("User.Name").should("exist");
+        H.getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
       addCardToDashboard();
       goToFilterMapping();
 
       for (let i = 0; i < cards.length + 1; i++) {
-        getDashboardCard(i).findByText("User.Name").should("exist");
+        H.getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
-      undoToast().findByText("Undo auto-connection").click();
+      H.undoToast().findByText("Undo auto-connection").click();
 
-      getDashboardCard(0).findByText("User.Name").should("exist");
-      getDashboardCard(1).findByText("User.Name").should("exist");
-      getDashboardCard(2).findByText("Select…").should("exist");
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(1).findByText("User.Name").should("exist");
+      H.getDashboardCard(2).findByText("Select…").should("exist");
     });
   });
 
@@ -401,10 +381,10 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should autowire and filter cards with foreign keys when added to the dashboard via the sidebar", () => {
-      visitDashboard("@dashboardId");
-      editDashboard();
-      setFilter("ID");
-      selectDashboardFilter(getDashboardCard(0), "ID");
+      H.visitDashboard("@dashboardId");
+      H.editDashboard();
+      H.setFilter("ID");
+      H.selectDashboardFilter(H.getDashboardCard(0), "ID");
 
       addCardToDashboard(["Orders Question", "Reviews Question"]);
 
@@ -412,40 +392,40 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping("ID");
 
-      getDashboardCard(0).findByText("Product.ID").should("exist");
-      getDashboardCard(1).findByText("Product.ID").should("exist");
-      getDashboardCard(2).findByText("Product.ID").should("exist");
+      H.getDashboardCard(0).findByText("Product.ID").should("exist");
+      H.getDashboardCard(1).findByText("Product.ID").should("exist");
+      H.getDashboardCard(2).findByText("Product.ID").should("exist");
 
-      saveDashboard();
+      H.saveDashboard();
 
-      dashboardParametersContainer().findByText("ID").click();
+      H.dashboardParametersContainer().findByText("ID").click();
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByRole("textbox").type("1{enter}");
         cy.button("Add filter").click();
       });
 
       cy.wait("@cardQuery");
 
-      getDashboardCard(0).within(() => {
+      H.getDashboardCard(0).within(() => {
         getTableCell("ID", 0).should("contain", "1");
       });
 
-      getDashboardCard(1).within(() => {
+      H.getDashboardCard(1).within(() => {
         getTableCell("Product ID", 0).should("contain", "1");
       });
 
-      getDashboardCard(2).within(() => {
+      H.getDashboardCard(2).within(() => {
         getTableCell("Product ID", 0).should("contain", "1");
       });
     });
 
     it("should autowire and filter cards with foreign keys when added to the dashboard via the query builder", () => {
-      visitDashboard("@dashboardId");
-      editDashboard();
-      setFilter("ID");
-      selectDashboardFilter(getDashboardCard(0), "ID");
-      saveDashboard();
+      H.visitDashboard("@dashboardId");
+      H.editDashboard();
+      H.setFilter("ID");
+      H.selectDashboardFilter(H.getDashboardCard(0), "ID");
+      H.saveDashboard();
 
       cy.get("@ordersQuestionId").then(ordersQuestionId => {
         addQuestionFromQueryBuilder({ questionId: ordersQuestionId });
@@ -462,30 +442,30 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping("ID");
 
-      getDashboardCard(0).findByText("Product.ID").should("exist");
-      getDashboardCard(1).findByText("Product.ID").should("exist");
-      getDashboardCard(2).findByText("Product.ID").should("exist");
+      H.getDashboardCard(0).findByText("Product.ID").should("exist");
+      H.getDashboardCard(1).findByText("Product.ID").should("exist");
+      H.getDashboardCard(2).findByText("Product.ID").should("exist");
 
-      saveDashboard();
+      H.saveDashboard();
 
-      dashboardParametersContainer().findByText("ID").click();
+      H.dashboardParametersContainer().findByText("ID").click();
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByRole("textbox").type("1{enter}");
         cy.button("Add filter").click();
       });
 
       cy.wait("@cardQuery");
 
-      getDashboardCard(0).within(() => {
+      H.getDashboardCard(0).within(() => {
         getTableCell("ID", 0).should("contain", "1");
       });
 
-      getDashboardCard(1).within(() => {
+      H.getDashboardCard(1).within(() => {
         getTableCell("Product ID", 0).should("contain", "1");
       });
 
-      getDashboardCard(2).within(() => {
+      H.getDashboardCard(2).within(() => {
         getTableCell("Product ID", 0).should("contain", "1");
       });
     });
@@ -538,7 +518,7 @@ describe("dashboard filters auto-wiring", () => {
       dashboardDetails,
       questions: [questionDetails],
     }).then(({ dashboard, questions: [card] }) => {
-      updateDashboardCards({
+      H.updateDashboardCards({
         dashboard_id: dashboard.id,
         cards: [
           {
@@ -547,12 +527,12 @@ describe("dashboard filters auto-wiring", () => {
           },
         ],
       });
-      visitDashboard(dashboard.id);
+      H.visitDashboard(dashboard.id);
     });
 
     cy.log("add a card to the dashboard and auto-wire");
-    editDashboard();
-    dashboardHeader().icon("add").click();
+    H.editDashboard();
+    H.dashboardHeader().icon("add").click();
     cy.findByTestId("add-card-sidebar")
       .findByText(questionDetails.name)
       .click();
@@ -561,11 +541,11 @@ describe("dashboard filters auto-wiring", () => {
     cy.findByTestId("fixed-width-filters")
       .findByText(sourceParameter.name)
       .click();
-    getDashboardCard(1).findByText("User.Source").should("be.visible");
+    H.getDashboardCard(1).findByText("User.Source").should("be.visible");
     cy.findByTestId("fixed-width-filters")
       .findByText(categoryParameter.name)
       .click();
-    getDashboardCard(1).findByText("Product.Category").should("be.visible");
+    H.getDashboardCard(1).findByText("Product.Category").should("be.visible");
   });
 });
 function createDashboardWithCards({
@@ -575,7 +555,7 @@ function createDashboardWithCards({
   return cy
     .createDashboard({ name: dashboardName })
     .then(({ body: { id } }) => {
-      updateDashboardCards({
+      H.updateDashboardCards({
         dashboard_id: id,
         cards,
       });
@@ -600,7 +580,7 @@ function goToFilterMapping(name = "Text") {
 }
 
 function removeFilterFromDashCard(dashcardIndex = 0) {
-  getDashboardCard(dashcardIndex).icon("close").click();
+  H.getDashboardCard(dashcardIndex).icon("close").click();
 }
 
 function getTableCell(columnName, rowIndex) {
@@ -619,19 +599,19 @@ function addQuestionFromQueryBuilder({
   questionId,
   saveDashboardAfterAdd = true,
 }) {
-  visitQuestion(questionId);
+  H.visitQuestion(questionId);
 
-  openQuestionActions();
-  popover().findByText("Add to dashboard").click();
+  H.openQuestionActions();
+  H.popover().findByText("Add to dashboard").click();
 
-  entityPickerModal().within(() => {
-    modal().findByText("Dashboards").click();
-    modal().findByText("36275").click();
+  H.entityPickerModal().within(() => {
+    H.modal().findByText("Dashboards").click();
+    H.modal().findByText("36275").click();
     cy.button("Select").click();
   });
 
-  undoToast().should("be.visible");
+  H.undoToast().should("be.visible");
   if (saveDashboardAfterAdd) {
-    saveDashboard();
+    H.saveDashboard();
   }
 }

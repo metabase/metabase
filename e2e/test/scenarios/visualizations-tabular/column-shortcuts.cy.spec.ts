@@ -1,21 +1,8 @@
 import _ from "underscore";
 
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  describeWithSnowplow,
-  enterCustomColumnDetails,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  getNotebookStep,
-  openNotebook,
-  openOrdersTable,
-  popover,
-  resetSnowplow,
-  restore,
-  visualize,
-} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -94,30 +81,30 @@ const URL_CASES = [
   },
 ];
 
-describeWithSnowplow("extract shortcut", () => {
+H.describeWithSnowplow("extract shortcut", () => {
   beforeEach(() => {
-    restore();
-    resetSnowplow();
+    H.restore();
+    H.resetSnowplow();
 
     cy.signInAsAdmin();
   });
 
   afterEach(() => {
-    expectNoBadSnowplowEvents();
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("date columns", () => {
     describe("should add a date expression for each option", () => {
       DATE_CASES.forEach(({ option, value, example, expressions }) => {
         it(option, () => {
-          openOrdersTable({ limit: 1 });
+          H.openOrdersTable({ limit: 1 });
           extractColumnAndCheck({
             column: "Created At",
             option,
             value,
             example,
           });
-          expectGoodSnowplowEvent({
+          H.expectGoodSnowplowEvent({
             event: "column_extract_via_plus_modal",
             custom_expressions_used: expressions,
             database_id: SAMPLE_DB_ID,
@@ -127,7 +114,7 @@ describeWithSnowplow("extract shortcut", () => {
     });
 
     it("should handle duplicate expression names", () => {
-      openOrdersTable({ limit: 1 });
+      H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
@@ -141,34 +128,34 @@ describeWithSnowplow("extract shortcut", () => {
     });
 
     it("should be able to modify the expression in the notebook editor", () => {
-      openOrdersTable({ limit: 1 });
+      H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Year",
         value: "2,025",
       });
-      openNotebook();
-      getNotebookStep("expression").findByText("Year").click();
-      enterCustomColumnDetails({
+      H.openNotebook();
+      H.getNotebookStep("expression").findByText("Year").click();
+      H.enterCustomColumnDetails({
         name: "custom formula",
         formula: "year([Created At]) + 2",
         blur: true,
       });
-      popover().button("Update").click();
-      visualize();
+      H.popover().button("Update").click();
+      H.visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
     });
   });
 
   describe("email columns", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
     });
 
     EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
       it(option, () => {
-        createQuestion(
+        H.createQuestion(
           {
             query: {
               "source-table": PEOPLE_ID,
@@ -186,7 +173,7 @@ describeWithSnowplow("extract shortcut", () => {
           value,
           example,
         });
-        expectGoodSnowplowEvent({
+        H.expectGoodSnowplowEvent({
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
@@ -197,7 +184,7 @@ describeWithSnowplow("extract shortcut", () => {
 
   describe("url columns", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
 
       // Make the Email column a URL column for these tests, to avoid having to create a new model
@@ -208,7 +195,7 @@ describeWithSnowplow("extract shortcut", () => {
 
     URL_CASES.forEach(({ option, value, example, expressions }) => {
       it(option, () => {
-        createQuestion(
+        H.createQuestion(
           {
             query: {
               "source-table": PEOPLE_ID,
@@ -226,7 +213,7 @@ describeWithSnowplow("extract shortcut", () => {
           value,
           example,
         });
-        expectGoodSnowplowEvent({
+        H.expectGoodSnowplowEvent({
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
@@ -236,7 +223,7 @@ describeWithSnowplow("extract shortcut", () => {
   });
 
   it("should disable the scroll behaviour after it has been rendered", () => {
-    createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
@@ -260,14 +247,14 @@ describeWithSnowplow("extract shortcut", () => {
       .click();
 
     // Change sort direction
-    popover().findAllByRole("button").first().click();
+    H.popover().findAllByRole("button").first().click();
 
     // ID should still be visible (ie. no scrolling to the end should have happened)
     cy.findAllByRole("columnheader", { name: "ID" }).should("be.visible");
   });
 
   it("should be possible to extract columns from a summarized table", () => {
-    createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -293,7 +280,7 @@ describeWithSnowplow("extract shortcut", () => {
   });
 
   it("should be possible to extract columns from table with breakouts", () => {
-    createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -336,14 +323,14 @@ function extractColumnAndCheck({
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   cy.findByLabelText("Add column").click();
 
-  popover().findByText("Extract part of column").click();
-  popover().findAllByText(column).first().click();
+  H.popover().findByText("Extract part of column").click();
+  H.popover().findAllByText(column).first().click();
 
   if (example) {
-    popover().findByText(option).parent().should("contain", example);
+    H.popover().findByText(option).parent().should("contain", example);
   }
 
-  popover().findByText(option).click();
+  H.popover().findByText(option).click();
 
   cy.wait(`@${requestAlias}`);
 
@@ -358,7 +345,7 @@ function extractColumnAndCheck({
   }
 }
 
-describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
+H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   function combineColumns({
     columns,
     example,
@@ -374,16 +361,16 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
     cy.intercept("POST", "/api/dataset").as(requestAlias);
     cy.findByLabelText("Add column").click();
 
-    popover().findByText("Combine columns").click();
+    H.popover().findByText("Combine columns").click();
     for (const column of columns) {
       selectColumn(column);
     }
 
     if (example) {
-      popover().findByTestId("combine-example").should("have.text", example);
+      H.popover().findByTestId("combine-example").should("have.text", example);
     }
 
-    popover().button("Done").click();
+    H.popover().button("Done").click();
 
     cy.wait(`@${requestAlias}`);
 
@@ -398,22 +385,22 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   }
 
   function selectColumn(name: string) {
-    popover().findAllByText("Select a column...").first().click();
-    popover().last().findByText(name).click();
+    H.popover().findAllByText("Select a column...").first().click();
+    H.popover().last().findByText(name).click();
   }
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
-    resetSnowplow();
+    H.resetSnowplow();
   });
 
   afterEach(() => {
-    expectNoBadSnowplowEvents();
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should be possible add a new column through the combine columns shortcut", () => {
-    createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
@@ -436,7 +423,7 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       newValue: "borer-hudson@yahoo.com1",
     });
 
-    expectGoodSnowplowEvent({
+    H.expectGoodSnowplowEvent({
       event: "column_combine_via_plus_modal",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
@@ -444,7 +431,7 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   });
 
   it("should allow combining columns when aggregating", function () {
-    createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -470,7 +457,7 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   });
 
   it("should allow combining columns on a table with just breakouts", () => {
-    createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,

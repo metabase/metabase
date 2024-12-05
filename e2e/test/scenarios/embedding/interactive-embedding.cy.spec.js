@@ -1,28 +1,9 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  adhocQuestionHash,
-  appBar,
-  createDashboardWithTabs,
-  dashboardGrid,
-  describeEE,
-  entityPickerModal,
-  entityPickerModalTab,
-  getDashboardCard,
-  getDashboardCardMenu,
-  getNextUnsavedDashboardCardId,
-  getTextCardDetails,
-  goToTab,
-  navigationSidebar,
-  popover,
-  restore,
-  setTokenFeatures,
-  updateDashboardCards,
-  visitFullAppEmbeddingUrl,
-} from "e2e/support/helpers";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
@@ -30,11 +11,11 @@ import {
 
 const { ORDERS } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding > full app", () => {
+H.describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
     cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
     cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
@@ -43,10 +24,10 @@ describeEE("scenarios > embedding > full app", () => {
 
   describe("home page navigation", () => {
     it("should show the top and side nav by default", () => {
-      visitFullAppEmbeddingUrl({ url: "/" });
+      H.visitFullAppEmbeddingUrl({ url: "/" });
       cy.wait("@getXrayDashboard");
 
-      appBar()
+      H.appBar()
         .should("be.visible")
         .within(() => {
           cy.findByTestId("main-logo").should("be.visible");
@@ -58,28 +39,28 @@ describeEE("scenarios > embedding > full app", () => {
     });
 
     it("should hide the top nav when nothing is shown", () => {
-      visitFullAppEmbeddingUrl({
+      H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: { side_nav: false, logo: false },
       });
       cy.wait("@getXrayDashboard");
-      appBar().should("not.exist");
+      H.appBar().should("not.exist");
     });
 
     it("should hide the top nav by an explicit param", () => {
-      visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: false } });
+      H.visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: false } });
       cy.wait("@getXrayDashboard");
-      appBar().should("not.exist");
+      H.appBar().should("not.exist");
     });
 
     it("should not hide the top nav when the logo is still visible", () => {
-      visitFullAppEmbeddingUrl({
+      H.visitFullAppEmbeddingUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { breadcrumbs: false },
       });
       cy.wait("@getCardQuery");
 
-      appBar().within(() => {
+      H.appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
         cy.findByRole("treeitem", { name: "Our analytics" }).should(
           "not.exist",
@@ -88,7 +69,7 @@ describeEE("scenarios > embedding > full app", () => {
     });
 
     it("should keep showing sidebar toggle button when logo, breadcrumbs, the new button, and search are hidden", () => {
-      visitFullAppEmbeddingUrl({
+      H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: {
           logo: false,
@@ -100,7 +81,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.wait("@getXrayDashboard");
 
       sideNav().should("be.visible");
-      appBar()
+      H.appBar()
         .should("be.visible")
         .within(() => {
           cy.button("Toggle sidebar").should("be.visible").click();
@@ -109,8 +90,8 @@ describeEE("scenarios > embedding > full app", () => {
     });
 
     it("should hide the side nav by a param", () => {
-      visitFullAppEmbeddingUrl({ url: "/", qs: { side_nav: false } });
-      appBar().within(() => {
+      H.visitFullAppEmbeddingUrl({ url: "/", qs: { side_nav: false } });
+      H.appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
         cy.button("Toggle sidebar").should("not.exist");
       });
@@ -130,23 +111,23 @@ describeEE("scenarios > embedding > full app", () => {
     });
 
     it("should show question creation controls by a param", () => {
-      visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
-      appBar().within(() => {
+      H.visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
+      H.appBar().within(() => {
         cy.button(/New/).should("be.visible");
       });
     });
 
     it("should show search controls by a param", () => {
-      visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
-      appBar().within(() => {
+      H.visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
+      H.appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
       });
     });
 
     it("should preserve params when navigating", () => {
-      visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
+      H.visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
 
-      appBar().within(() => {
+      H.appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
       });
 
@@ -156,7 +137,7 @@ describeEE("scenarios > embedding > full app", () => {
         .should("contain", "Orders in a dashboard")
         .and("be.visible");
 
-      appBar().within(() => {
+      H.appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
       });
     });
@@ -164,7 +145,7 @@ describeEE("scenarios > embedding > full app", () => {
 
   describe("browse data", () => {
     it("should hide the top nav when nothing is shown", () => {
-      visitFullAppEmbeddingUrl({
+      H.visitFullAppEmbeddingUrl({
         url: "/browse/databases",
         qs: { side_nav: false, logo: false },
       });
@@ -173,7 +154,7 @@ describeEE("scenarios > embedding > full app", () => {
         "not.exist",
       );
       cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
-      appBar().should("not.exist");
+      H.appBar().should("not.exist");
     });
   });
 
@@ -233,15 +214,15 @@ describeEE("scenarios > embedding > full app", () => {
       });
 
       it("should allow to create a new question from the navbar (metabase#21511)", () => {
-        visitFullAppEmbeddingUrl({
+        H.visitFullAppEmbeddingUrl({
           url: "/collection/root",
           qs: { top_nav: true, new_button: true, side_nav: false },
         });
 
         cy.button("New").click();
-        popover().findByText("Question").click();
-        entityPickerModal().within(() => {
-          entityPickerModalTab("Tables").click();
+        H.popover().findByText("Question").click();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Tables").click();
           cy.findByText("Orders").click();
         });
       });
@@ -258,8 +239,8 @@ describeEE("scenarios > embedding > full app", () => {
           visualization_settings: {},
         };
 
-        visitFullAppEmbeddingUrl({
-          url: `/question#${adhocQuestionHash(newQuestionQuery)}`,
+        H.visitFullAppEmbeddingUrl({
+          url: `/question#${H.adhocQuestionHash(newQuestionQuery)}`,
           qs: { side_nav: false },
         });
 
@@ -320,13 +301,15 @@ describeEE("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
         "not.exist",
       );
-      dashboardGrid().findByText("Rows 1-6 of first 2000").should("be.visible");
+      H.dashboardGrid()
+        .findByText("Rows 1-6 of first 2000")
+        .should("be.visible");
     });
 
     it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
       const FIRST_TAB = { id: 1, name: "Tab 1" };
       const SECOND_TAB = { id: 2, name: "Tab 2" };
-      createDashboardWithTabs({
+      H.createDashboardWithTabs({
         dashboard: {
           name: "Dashboard with tabs",
         },
@@ -348,8 +331,10 @@ describeEE("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
         "not.exist",
       );
-      dashboardGrid().findByText("Rows 1-6 of first 2000").should("be.visible");
-      goToTab(SECOND_TAB.name);
+      H.dashboardGrid()
+        .findByText("Rows 1-6 of first 2000")
+        .should("be.visible");
+      H.goToTab(SECOND_TAB.name);
       cy.findByTestId("dashboard-parameters-and-cards")
         .findByText("There's nothing here, yet.")
         .should("be.visible");
@@ -408,7 +393,7 @@ describeEE("scenarios > embedding > full app", () => {
       };
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          const textDashcard = getTextCardDetails({
+          const textDashcard = H.getTextCardDetails({
             col: 0,
             row: 0,
             size_x: 6,
@@ -416,7 +401,7 @@ describeEE("scenarios > embedding > full app", () => {
             text: "I am a very long text card",
           });
           const dashcard = createMockDashboardCard({
-            id: getNextUnsavedDashboardCardId(),
+            id: H.getNextUnsavedDashboardCardId(),
             col: 8,
             row: 0,
             card_id: ORDERS_QUESTION_ID,
@@ -431,24 +416,26 @@ describeEE("scenarios > embedding > full app", () => {
               },
             ],
           });
-          updateDashboardCards({
+          H.updateDashboardCards({
             dashboard_id: dashboardId,
             cards: [dashcard, textDashcard],
           });
         },
       );
 
-      visitFullAppEmbeddingUrl({ url: "/" });
+      H.visitFullAppEmbeddingUrl({ url: "/" });
 
       cy.log("Navigate to a dashboard via in-app navigation");
-      navigationSidebar().findByText("Our analytics").click();
+      H.navigationSidebar().findByText("Our analytics").click();
       cy.findByRole("main").findByText(dashboardDetails.name).click();
-      navigationSidebar().findByText("Our analytics").should("not.be.visible");
+      H.navigationSidebar()
+        .findByText("Our analytics")
+        .should("not.be.visible");
 
       cy.get("main header")
         .findByText(dashboardDetails.name)
         .should("be.visible");
-      getDashboardCard()
+      H.getDashboardCard()
         .findByText("I am a very long text card")
         .should("be.visible");
 
@@ -458,7 +445,7 @@ describeEE("scenarios > embedding > full app", () => {
       const FPS = 1000 / 60;
       cy.findByRole("main").scrollTo("bottom", { duration: 2 * FPS });
 
-      getDashboardCard()
+      H.getDashboardCard()
         .findByText("I am a very long text card")
         .should("not.be.visible");
       cy.findByTestId("dashboard-parameters-widget-container").then(
@@ -473,7 +460,7 @@ describeEE("scenarios > embedding > full app", () => {
     it("should send `frame` message with dashboard height when the dashboard is resized (metabase#37437)", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };
-      createDashboardWithTabs({
+      H.createDashboardWithTabs({
         tabs: [TAB_1, TAB_2],
         name: "Dashboard",
         dashcards: [
@@ -485,7 +472,7 @@ describeEE("scenarios > embedding > full app", () => {
           }),
         ],
       }).then(dashboard => {
-        visitFullAppEmbeddingUrl({
+        H.visitFullAppEmbeddingUrl({
           url: `/dashboard/${dashboard.id}`,
           onBeforeLoad(window) {
             cy.spy(window.parent, "postMessage").as("postMessage");
@@ -548,10 +535,10 @@ describeEE("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
       });
 
-      getDashboardCard().realHover();
-      getDashboardCardMenu().click();
-      popover().findByText("Download results").click();
-      popover().findByText(".csv").click();
+      H.getDashboardCard().realHover();
+      H.getDashboardCardMenu().click();
+      H.popover().findByText("Download results").click();
+      H.popover().findByText(".csv").click();
 
       cy.wait("@CsvDownload").then(interception => {
         expect(
@@ -582,18 +569,18 @@ describeEE("scenarios > embedding > full app", () => {
 });
 
 const visitQuestionUrl = urlOptions => {
-  visitFullAppEmbeddingUrl(urlOptions);
+  H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getCardQuery");
 };
 
 const visitDashboardUrl = urlOptions => {
-  visitFullAppEmbeddingUrl(urlOptions);
+  H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
 
 const visitXrayDashboardUrl = urlOptions => {
-  visitFullAppEmbeddingUrl(urlOptions);
+  H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getXrayDashboard");
 };
 

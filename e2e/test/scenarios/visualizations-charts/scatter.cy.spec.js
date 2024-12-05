@@ -1,11 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  cartesianChartCircle,
-  popover,
-  restore,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -27,12 +22,12 @@ const testQuery = {
 
 describe("scenarios > visualizations > scatter", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should show correct labels in tooltip (metabase#15150)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "scatter",
       visualization_settings: {
@@ -42,7 +37,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Count:");
       cy.findByText(/Distinct values of Products? → ID:/);
@@ -50,7 +45,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should show correct labels in tooltip when display name has manually set (metabase#11395)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "scatter",
       visualization_settings: {
@@ -68,7 +63,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Orders count:");
       cy.findByText("Products count:");
@@ -76,7 +71,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should not display data points even when enabled in settings (metabase#13247)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "scatter",
       dataset_query: testQuery,
       visualization_settings: {
@@ -92,7 +87,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should respect circle size in a visualization (metabase#22929)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -109,7 +104,7 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
-    cartesianChartCircle().each(([circle], index) => {
+    H.cartesianChartCircle().each(([circle], index) => {
       const { width, height } = circle.getBoundingClientRect();
       const TOLERANCE = 0.1;
       expect(width).to.be.greaterThan(0);
@@ -133,7 +128,7 @@ function triggerPopoverForBubble(index = 13) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
-  cartesianChartCircle()
+  H.cartesianChartCircle()
     .eq(index) // Random bubble
     .trigger("mousemove");
 }

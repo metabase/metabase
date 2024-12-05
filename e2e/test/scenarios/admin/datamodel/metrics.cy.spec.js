@@ -1,26 +1,12 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  entityPickerModal,
-  entityPickerModalTab,
-  filter,
-  filterField,
-  getNotebookStep,
-  hovercard,
-  modal,
-  openOrdersTable,
-  popover,
-  restore,
-  startNewQuestion,
-  summarize,
-  visualize,
-} from "e2e/support/helpers";
 import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > metrics", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
@@ -36,9 +22,9 @@ describe("scenarios > admin > datamodel > metrics", () => {
       },
     });
 
-    openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
 
-    summarize({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Common Metrics").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -53,14 +39,14 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.findByText("Sort").click();
 
     // Sorts ascending by default
-    popover().contains("Revenue").click();
+    H.popover().contains("Revenue").click();
 
     // Let's make sure it's possible to sort descending as well
     cy.icon("arrow_up").click();
 
     cy.icon("arrow_down").parent().contains("Revenue");
 
-    visualize();
+    H.visualize();
     // Visualization will render line chart by default. Switch to the table.
     cy.icon("table2").click();
 
@@ -119,7 +105,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.wait(["@dataset", "@dataset", "@dataset"]);
 
       cy.findByTestId("gui-builder").findByText("Count").click();
-      popover().contains("Custom Expression").click();
+      H.popover().contains("Custom Expression").click();
 
       cy.get(".ace_text-input")
         .click()
@@ -178,8 +164,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.button("Ask a question").click();
 
-      filter();
-      filterField("Total", {
+      H.filter();
+      H.filterField("Total", {
         placeholder: "Min",
         value: "50",
       });
@@ -216,7 +202,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.get("td").filter(":contains(orders < 100)").should("be.visible");
       cy.get("tbody tr").icon("ellipsis").click();
 
-      popover().contains("Edit Metric").click();
+      H.popover().contains("Edit Metric").click();
 
       cy.log('Update the filter from "< 100" to "> 10"');
       cy.location("pathname").should("eq", "/admin/datamodel/metric/1");
@@ -226,8 +212,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
         .click();
 
       cy.findByTestId("select-button").contains("Less than").click();
-      popover().last().findByText("Greater than").click();
-      popover().within(() => {
+      H.popover().last().findByText("Greater than").click();
+      H.popover().within(() => {
         cy.findByDisplayValue("100").type("{backspace}");
         cy.findByDisplayValue("10");
         cy.button("Update filter").click();
@@ -253,7 +239,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.log("Make sure the revision history works (metabase#42633");
       cy.get("tbody tr").icon("ellipsis").click();
-      popover().findByTextEnsureVisible("Revision History").click();
+      H.popover().findByTextEnsureVisible("Revision History").click();
       cy.location("pathname").should(
         "eq",
         "/admin/datamodel/metric/1/revisions",
@@ -268,8 +254,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.log("Clean up");
       cy.get("tbody tr").icon("ellipsis").click();
-      popover().findByTextEnsureVisible("Retire Metric").click();
-      modal().within(() => {
+      H.popover().findByTextEnsureVisible("Retire Metric").click();
+      H.modal().within(() => {
         cy.findByRole("heading").should("have.text", "Retire this metric?");
         cy.get("textarea").type("delete it");
         cy.button("Retire").click();
@@ -377,16 +363,16 @@ describe("scenarios > admin > datamodel > metrics", () => {
         name: "A Metric",
       });
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
 
-      getNotebookStep("summarize")
+      H.getNotebookStep("summarize")
         .findByText("Pick the metric you want to see")
         .click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Common Metrics").click();
 
         cy.findAllByRole("option").eq(0).should("contain", "A Metric");
@@ -418,16 +404,16 @@ describe("scenarios > admin > datamodel > metrics", () => {
         },
       });
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
 
-      getNotebookStep("summarize")
+      H.getNotebookStep("summarize")
         .findByText("Pick the metric you want to see")
         .click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByPlaceholderText("Find...").type("Metric with");
         cy.findByText("Metric with a space").should("be.visible");
 
@@ -460,16 +446,16 @@ describe("scenarios > admin > datamodel > metrics", () => {
           ],
         },
       });
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
 
-      getNotebookStep("summarize")
+      H.getNotebookStep("summarize")
         .findByText("Pick the metric you want to see")
         .click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Common Metrics").click();
         cy.findByText("Metric name").should("be.visible");
         cy.findByText("Metric name").realHover();
@@ -477,7 +463,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
         cy.findByLabelText("More info").should("exist").realHover();
       });
 
-      hovercard().within(() => {
+      H.hovercard().within(() => {
         cy.contains("This is a description").should("be.visible");
         cy.contains("with markdown").should("be.visible");
       });
@@ -487,7 +473,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
 describe("metrics v1 reproductions", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -506,5 +492,5 @@ describe("metrics v1 reproductions", () => {
 
 function selectTable(tableName) {
   cy.findByText("Select a table").click();
-  popover().findByText(tableName).click();
+  H.popover().findByText(tableName).click();
 }

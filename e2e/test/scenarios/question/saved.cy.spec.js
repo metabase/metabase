@@ -1,44 +1,26 @@
+import { H } from "e2e/support";
 import {
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  addSummaryGroupingField,
-  appBar,
-  collectionOnTheGoModal,
-  entityPickerModal,
-  entityPickerModalTab,
-  modal,
-  openNotebook,
-  openOrdersTable,
-  openQuestionActions,
-  popover,
-  queryBuilderHeader,
-  questionInfoButton,
-  restore,
-  rightSidebar,
-  selectFilterOperator,
-  summarize,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "api/card").as("cardCreate");
   });
 
   it("should should correctly display 'Save' modal (metabase#13817)", () => {
-    openOrdersTable();
-    openNotebook();
+    H.openOrdersTable();
+    H.openNotebook();
 
-    summarize({ mode: "notebook" });
-    popover().findByText("Count of rows").click();
-    addSummaryGroupingField({ field: "Total" });
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Count of rows").click();
+    H.addSummaryGroupingField({ field: "Total" });
 
     // Save the question
-    queryBuilderHeader().button("Save").click();
+    H.queryBuilderHeader().button("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
     });
@@ -48,15 +30,15 @@ describe("scenarios > question > saved", () => {
     // Add a filter in order to be able to save question again
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    popover().findByText("Total: Auto binned").click();
-    selectFilterOperator("Greater than");
+    H.popover().findByText("Total: Auto binned").click();
+    H.selectFilterOperator("Greater than");
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("60");
       cy.button("Add filter").click();
     });
 
-    queryBuilderHeader().button("Save").click();
+    H.queryBuilderHeader().button("Save").click();
 
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save question").should("be.visible");
@@ -77,15 +59,15 @@ describe("scenarios > question > saved", () => {
   });
 
   it("view and filter saved question", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
     cy.findAllByText("Orders"); // question and table name appears
 
     // filter to only orders with quantity=100
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity").click();
-    popover().findByText("Filter by this column").click();
-    selectFilterOperator("Equal to");
-    popover().within(() => {
+    H.popover().findByText("Filter by this column").click();
+    H.selectFilterOperator("Equal to");
+    H.popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
       cy.findByText("100").click();
       cy.findByText("Add filter").click();
@@ -118,14 +100,14 @@ describe("scenarios > question > saved", () => {
   it("should duplicate a saved question", () => {
     cy.intercept("POST", "/api/card").as("cardCreate");
 
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
-    openQuestionActions();
-    popover().within(() => {
+    H.openQuestionActions();
+    H.popover().within(() => {
       cy.findByText("Duplicate").click();
     });
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
@@ -141,29 +123,29 @@ describe("scenarios > question > saved", () => {
   it("should duplicate a saved question to a collection created on the go", () => {
     cy.intercept("POST", "/api/card").as("cardCreate");
 
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
-    openQuestionActions();
-    popover().within(() => {
+    H.openQuestionActions();
+    H.popover().within(() => {
       cy.findByText("Duplicate").click();
     });
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
       cy.findByTestId("collection-picker-button").click();
     });
 
-    entityPickerModal().findByText("Create a new collection").click();
+    H.entityPickerModal().findByText("Create a new collection").click();
 
     const NEW_COLLECTION = "Foo";
-    collectionOnTheGoModal().then(() => {
+    H.collectionOnTheGoModal().then(() => {
       cy.findByPlaceholderText("My new collection").type(NEW_COLLECTION);
       cy.findByText("Create").click();
     });
 
-    entityPickerModal().findByText("Select").click();
+    H.entityPickerModal().findByText("Select").click();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
       cy.findByTestId("collection-picker-button").should(
         "have.text",
@@ -185,10 +167,10 @@ describe("scenarios > question > saved", () => {
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
-    visitQuestion(ORDERS_QUESTION_ID);
-    questionInfoButton().click();
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.questionInfoButton().click();
 
-    rightSidebar().within(() => {
+    H.rightSidebar().within(() => {
       cy.findByText("History");
 
       cy.findByPlaceholderText("Add description")
@@ -209,9 +191,9 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    appBar().within(() => cy.findByText("Our analytics").click());
+    H.appBar().within(() => cy.findByText("Our analytics").click());
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
@@ -222,24 +204,24 @@ describe("scenarios > question > saved", () => {
       collection_id: SECOND_COLLECTION_ID,
     });
 
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    appBar().within(() => cy.findByText("Second collection").click());
+    H.appBar().within(() => cy.findByText("Second collection").click());
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
 
   it("should show the question lineage when a saved question is changed", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
-    summarize();
-    rightSidebar().within(() => {
+    H.summarize();
+    H.rightSidebar().within(() => {
       cy.findByText("Quantity").click();
       cy.button("Done").click();
     });
 
-    appBar().within(() => {
+    H.appBar().within(() => {
       cy.findByText("Started from").should("be.visible");
       cy.findByText("Orders").click();
       cy.findByText("Started from").should("not.exist");
@@ -248,7 +230,7 @@ describe("scenarios > question > saved", () => {
 
   it("'read-only' user should be able to resize column width (metabase#9772)", () => {
     cy.signIn("readonly");
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
     cy.findAllByTestId("header-cell")
       .filter(":contains(Tax)")
@@ -273,7 +255,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should always be possible to view the full title text of the saved question", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
     const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
     savedQuestionTitle.clear();
     savedQuestionTitle.type(
@@ -296,8 +278,8 @@ describe("scenarios > question > saved", () => {
       .findByText("Use the notebook editor")
       .click();
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
       cy.findByText("Products").click();
     });
 

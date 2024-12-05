@@ -1,28 +1,12 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  chartPathWithFillColor,
-  chartPathsWithFillColors,
-  createNativeQuestion,
-  createQuestion,
-  cypressWaitAll,
-  echartsContainer,
-  getDraggableElements,
-  getValueLabels,
-  moveDnDKitElement,
-  popover,
-  restore,
-  sidebar,
-  testStackedTooltipRows,
-  visitDashboard,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > bar chart", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -47,7 +31,7 @@ describe("scenarios > visualizations > bar chart", () => {
     }
 
     it("should not show a bar for null values (metabase#12138)", () => {
-      visitQuestionAdhoc(
+      H.visitQuestionAdhoc(
         getQuestion({
           "graph.dimensions": ["a"],
           "graph.metrics": ["b"],
@@ -59,7 +43,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should show an (empty) bar for null values when X axis is ordinal (metabase#12138)", () => {
-      visitQuestionAdhoc(
+      H.visitQuestionAdhoc(
         getQuestion({
           "graph.dimensions": ["a"],
           "graph.metrics": ["b"],
@@ -74,7 +58,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
   describe("with binned dimension (histogram)", () => {
     it("should filter out null values (metabase#16049)", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -88,7 +72,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      chartPathWithFillColor("#509EE3").should("have.length", 5); // there are six bars when null isn't filtered
+      H.chartPathWithFillColor("#509EE3").should("have.length", 5); // there are six bars when null isn't filtered
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -98,7 +82,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
   describe("with very low and high values", () => {
     it("should display correct data values", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         display: "bar",
         dataset_query: {
           type: "native",
@@ -119,7 +103,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      echartsContainer()
+      H.echartsContainer()
         .get("text")
         .should("contain", "19")
         .and("contain", "20.0M");
@@ -128,7 +112,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
   describe("with x-axis series", () => {
     beforeEach(() => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         display: "bar",
         dataset_query: {
           type: "query",
@@ -149,11 +133,11 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       cy.findByTestId("viz-settings-button").click();
-      sidebar().findByText("Data").click();
+      H.sidebar().findByText("Data").click();
     });
 
     it("should allow you to show/hide and reorder columns", () => {
-      moveDnDKitElement(getDraggableElements().eq(0), { vertical: 100 });
+      H.moveDnDKitElement(H.getDraggableElements().eq(0), { vertical: 100 });
 
       cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
       cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
@@ -164,13 +148,13 @@ describe("scenarios > visualizations > bar chart", () => {
 
       const columnIndex = 1;
 
-      getDraggableElements()
+      H.getDraggableElements()
         .eq(columnIndex)
         .within(() => {
           cy.icon("eye_outline").click();
         });
 
-      getDraggableElements()
+      H.getDraggableElements()
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
@@ -178,18 +162,18 @@ describe("scenarios > visualizations > bar chart", () => {
             .findByText(columnName)
             .should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
-          chartPathWithFillColor("#F2A86F").should("be.visible");
-          chartPathWithFillColor("#F9D45C").should("be.visible");
-          chartPathWithFillColor("#88BF4D").should("be.visible");
+          H.chartPathWithFillColor("#F2A86F").should("be.visible");
+          H.chartPathWithFillColor("#F9D45C").should("be.visible");
+          H.chartPathWithFillColor("#88BF4D").should("be.visible");
         });
 
-      getDraggableElements()
+      H.getDraggableElements()
         .eq(columnIndex)
         .within(() => {
           cy.icon("eye_crossed_out").click();
         });
 
-      getDraggableElements()
+      H.getDraggableElements()
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
@@ -197,23 +181,23 @@ describe("scenarios > visualizations > bar chart", () => {
             .findByText(columnName)
             .should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
-          chartPathWithFillColor("#F2A86F").should("be.visible");
-          chartPathWithFillColor("#F9D45C").should("be.visible");
-          chartPathWithFillColor("#88BF4D").should("be.visible");
-          chartPathWithFillColor("#A989C5").should("be.visible");
+          H.chartPathWithFillColor("#F2A86F").should("be.visible");
+          H.chartPathWithFillColor("#F9D45C").should("be.visible");
+          H.chartPathWithFillColor("#88BF4D").should("be.visible");
+          H.chartPathWithFillColor("#A989C5").should("be.visible");
         });
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();
-      popover().findByText("See these Orders").click();
+      H.popover().findByText("See these Orders").click();
       cy.findByTestId("qb-filters-panel")
         .findByText("Product → Category is Gadget")
         .should("exist");
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
+      H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
 
-      getDraggableElements()
+      H.getDraggableElements()
         .eq(1)
         .within(() => {
           cy.icon("eye_outline").click();
@@ -228,7 +212,7 @@ describe("scenarios > visualizations > bar chart", () => {
         cy.findByLabelText("Filter operator").click();
       });
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Is not").click();
       });
 
@@ -239,10 +223,10 @@ describe("scenarios > visualizations > bar chart", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Apply filters").click();
 
-      getDraggableElements().should("have.length", 3);
+      H.getDraggableElements().should("have.length", 3);
 
       //Ensures that "Gizmo" is still hidden, so it's state hasn't changed.
-      getDraggableElements()
+      H.getDraggableElements()
         .eq(0)
         .within(() => {
           cy.icon("eye_crossed_out").click();
@@ -252,18 +236,18 @@ describe("scenarios > visualizations > bar chart", () => {
         cy.icon("close").click();
       });
 
-      getDraggableElements().should("have.length", 4);
+      H.getDraggableElements().should("have.length", 4);
 
       //Re-added items should appear at the end of the list.
-      getDraggableElements().eq(0).should("have.text", "Gizmo");
-      getDraggableElements().eq(3).should("have.text", "Gadget");
+      H.getDraggableElements().eq(0).should("have.text", "Gizmo");
+      H.getDraggableElements().eq(3).should("have.text", "Gadget");
     });
   });
 
   // Note (EmmadUsmani): see `line_chart.cy.spec.js` for more test cases of this
   describe("with split y-axis (metabase#12939)", () => {
     it("should split the y-axis when column settings differ", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -287,14 +271,14 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      echartsContainer().within(() => {
+      H.echartsContainer().within(() => {
         cy.get("text").contains("Average of Total").should("be.visible");
         cy.get("text").contains("Min of Total").should("be.visible");
       });
     });
 
     it("should not split the y-axis when semantic_type, column settings are same and values are not far", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -316,7 +300,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should split the y-axis on native queries with two numeric columns", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         display: "bar",
         dataset_query: {
           type: "native",
@@ -335,7 +319,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      echartsContainer().within(() => {
+      H.echartsContainer().within(() => {
         cy.get("text").contains("m1").should("exist");
         cy.get("text").contains("m2").should("exist");
       });
@@ -344,7 +328,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
   describe("with stacked bars", () => {
     it("should drill-through correctly when stacking", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           type: "query",
@@ -371,7 +355,7 @@ describe("scenarios > visualizations > bar chart", () => {
   });
 
   it("supports up to 100 series (metabase#28796)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "bar",
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -514,7 +498,7 @@ describe("scenarios > visualizations > bar chart", () => {
     }).then(({ dashboard }) => {
       cy.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
         cy.get("@questionId").then(questionId => {
-          cypressWaitAll([
+          H.cypressWaitAll([
             cy.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
               series: [
                 {
@@ -533,7 +517,7 @@ describe("scenarios > visualizations > bar chart", () => {
               size_x: 20,
             }),
           ]).then(() => {
-            visitDashboard(dashboard.id);
+            H.visitDashboard(dashboard.id);
           });
         });
       });
@@ -544,21 +528,21 @@ describe("scenarios > visualizations > bar chart", () => {
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
         // Verify this axis tick exists twice which verifies there are two y-axes
-        echartsContainer().findAllByText("3.0k").should("have.length", 2);
+        H.echartsContainer().findAllByText("3.0k").should("have.length", 2);
       });
 
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Multi Series")
       .within(() => {
-        echartsContainer().findByText("Average Total by Month");
-        echartsContainer().findByText("Sum Total by Month");
+        H.echartsContainer().findByText("Average Total by Month");
+        H.echartsContainer().findByText("Sum Total by Month");
       });
 
     cy.log("Should not produce a split axis graph (#34618)");
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Should not Split")
       .within(() => {
-        getValueLabels()
+        H.getValueLabels()
           .should("contain", "6")
           .and("contain", "13")
           .and("contain", "19");
@@ -597,9 +581,9 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     };
 
-    createQuestion(multiMetric, { visitQuestion: true });
+    H.createQuestion(multiMetric, { visitQuestion: true });
 
-    const [firstMetric, secondMetric] = chartPathsWithFillColors([
+    const [firstMetric, secondMetric] = H.chartPathsWithFillColors([
       "#88BF4D",
       "#98D9D9",
     ]);
@@ -616,8 +600,8 @@ describe("scenarios > visualizations > bar chart", () => {
       });
     });
 
-    chartPathWithFillColor("#88BF4D").first().realHover();
-    popover().within(() => {
+    H.chartPathWithFillColor("#88BF4D").first().realHover();
+    H.popover().within(() => {
       cy.contains("Sum of Total");
       // half of the unscaled metric
       cy.contains("21,078.43");
@@ -629,7 +613,7 @@ describe("scenarios > visualizations > bar chart", () => {
   it("should correctly show tool-tips when stacked bar charts contain a total value that is negative (#39012)", () => {
     cy.signInAsAdmin();
 
-    createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "42948",
         native: {
@@ -647,40 +631,40 @@ describe("scenarios > visualizations > bar chart", () => {
       { visitQuestion: true },
     );
 
-    chartPathWithFillColor("#A989C5").eq(0).realHover();
-    testStackedTooltipRows([
+    H.chartPathWithFillColor("#A989C5").eq(0).realHover();
+    H.testStackedTooltipRows([
       ["blue", "2", "20.00 %"],
       ["yellow", "8", "80.00 %"],
       ["Total", "10", "100 %"],
     ]);
     resetHoverState();
 
-    chartPathWithFillColor("#A989C5").eq(1).realHover();
-    testStackedTooltipRows([
+    H.chartPathWithFillColor("#A989C5").eq(1).realHover();
+    H.testStackedTooltipRows([
       ["blue", "-16", "-200.00 %"],
       ["yellow", "8", "100 %"],
       ["Total", "-8", "-100.00 %"],
     ]);
     resetHoverState();
 
-    chartPathWithFillColor("#A989C5").eq(2).realHover();
-    testStackedTooltipRows([
+    H.chartPathWithFillColor("#A989C5").eq(2).realHover();
+    H.testStackedTooltipRows([
       ["blue", "-7", "-350.00 %"],
       ["yellow", "5", "250.00 %"],
       ["Total", "-2", "-100.00 %"],
     ]);
     resetHoverState();
 
-    chartPathWithFillColor("#A989C5").eq(3).realHover();
-    testStackedTooltipRows([
+    H.chartPathWithFillColor("#A989C5").eq(3).realHover();
+    H.testStackedTooltipRows([
       ["blue", "2", "Infinity %"],
       ["yellow", "-2", "-Infinity %"],
       ["Total", "0", "NaN %"],
     ]);
     resetHoverState();
 
-    chartPathWithFillColor("#A989C5").eq(4).realHover();
-    testStackedTooltipRows([
+    H.chartPathWithFillColor("#A989C5").eq(4).realHover();
+    H.testStackedTooltipRows([
       ["blue", "3", "300.00 %"],
       ["yellow", "-2", "-200.00 %"],
       ["Total", "1", "100 %"],

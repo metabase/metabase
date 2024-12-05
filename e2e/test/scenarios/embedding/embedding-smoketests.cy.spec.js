@@ -1,17 +1,9 @@
+import { H } from "e2e/support";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  modal,
-  openStaticEmbeddingModal,
-  restore,
-  updateSetting,
-  visitDashboard,
-  visitIframe,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
@@ -23,7 +15,7 @@ const embeddingDescription =
 // These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -122,12 +114,12 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should not let you embed the question", () => {
-      visitQuestion(ORDERS_QUESTION_ID);
+      H.visitQuestion(ORDERS_QUESTION_ID);
       ensureEmbeddingIsDisabled();
     });
 
     it("should not let you embed the dashboard", () => {
-      visitDashboard(ORDERS_DASHBOARD_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
       ensureEmbeddingIsDisabled();
     });
   });
@@ -152,7 +144,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
         visitAndEnableSharing(object);
 
-        modal().within(() => {
+        H.modal().within(() => {
           cy.findByRole("tab", { name: "Appearance" }).click();
 
           cy.findByText("Background");
@@ -182,7 +174,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.wait("@embedObject");
         });
 
-        visitIframe();
+        H.visitIframe();
 
         cy.findByTestId("embed-frame").within(() => {
           cy.findByRole("heading", { name: objectName });
@@ -216,7 +208,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.log(`Unpublish ${object}`);
         visitAndEnableSharing(object, false);
 
-        modal().within(() => {
+        H.modal().within(() => {
           cy.findByText(
             `This ${object} is published and ready to be embedded.`,
           );
@@ -227,7 +219,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.findByRole("tab", { name: "Parameters" }).click();
         });
 
-        visitIframe();
+        H.visitIframe();
 
         cy.findByTestId("embed-frame").findByText(
           "Embedding is not enabled for this object.",
@@ -249,7 +241,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
       visitAndEnableSharing("question");
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByRole("tab", { name: "Parameters" }).click();
 
         cy.findByText("Preview").click();
@@ -273,7 +265,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
         cy.button("Regenerate key").click();
 
-        modal().within(() => {
+        H.modal().within(() => {
           cy.intercept("GET", "/api/util/random_token").as("regenerateKey");
           cy.findByRole("heading", { name: "Regenerate embedding key?" });
           cy.findByText(
@@ -307,8 +299,8 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  updateSetting("enable-embedding", false);
-  updateSetting("embedding-secret-key", null);
+  H.updateSetting("enable-embedding", false);
+  H.updateSetting("embedding-secret-key", null);
 }
 
 function getTokenValue() {
@@ -334,14 +326,14 @@ function ensureEmbeddingIsDisabled() {
 
 function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "question") {
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
   }
 
   if (object === "dashboard") {
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
   }
 
-  openStaticEmbeddingModal({ acceptTerms });
+  H.openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {

@@ -1,16 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  cartesianChartCircle,
-  changeBinningForDimension,
-  chartPathWithFillColor,
-  echartsContainer,
-  openTable,
-  restore,
-  snapshot,
-  summarize,
-  visitQuestionAdhoc,
-  visualize,
-} from "e2e/support/helpers";
 
 const questionDetails = {
   name: "SQL Binning",
@@ -24,7 +13,7 @@ let questionId;
 
 describe("scenarios > binning > from a saved sql question", () => {
   before(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(questionDetails, {
@@ -34,27 +23,27 @@ describe("scenarios > binning > from a saved sql question", () => {
 
     cy.get("@questionId").then(id => (questionId = id));
 
-    snapshot("binningSql");
+    H.snapshot("binningSql");
   });
 
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    restore("binningSql");
+    H.restore("binningSql");
     cy.signInAsAdmin();
   });
 
   context("via simple question", () => {
     beforeEach(() => {
-      openTable({
+      H.openTable({
         database: SAMPLE_DB_ID,
         table: `card__${questionId}`,
         mode: "notebook",
       });
 
-      visualize();
+      H.visualize();
       cy.findByTextEnsureVisible("LONGITUDE");
-      summarize();
+      H.summarize();
     });
 
     it("should work for time series", () => {
@@ -62,7 +51,7 @@ describe("scenarios > binning > from a saved sql question", () => {
        * If `result_metadata` is not loaded (SQL question is not run before saving),
        * the granularity is much finer and one can see "by minute" as the default bucket (metabase#16671).
        */
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "CREATED_AT",
         fromBinning: "by month",
         toBinning: "Year",
@@ -72,11 +61,11 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
-      cartesianChartCircle();
+      H.cartesianChartCircle();
     });
 
     it("should work for number", () => {
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "TOTAL",
         fromBinning: "Auto bin",
         toBinning: "50 bins",
@@ -86,11 +75,11 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
-      chartPathWithFillColor("#509EE3");
+      H.chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "LONGITUDE",
         fromBinning: "Auto bin",
         toBinning: "Bin every 10 degrees",
@@ -100,13 +89,13 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
-      chartPathWithFillColor("#509EE3");
+      H.chartPathWithFillColor("#509EE3");
     });
   });
 
   context("via custom question", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(
+      H.visitQuestionAdhoc(
         {
           dataset_query: {
             database: SAMPLE_DB_ID,
@@ -126,7 +115,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
 
     it("should work for time series", () => {
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "CREATED_AT",
         fromBinning: "by month",
         toBinning: "Year",
@@ -135,15 +124,15 @@ describe("scenarios > binning > from a saved sql question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
 
-      visualize(response => {
+      H.visualize(response => {
         assertOnResponse(response);
       });
 
-      cartesianChartCircle();
+      H.cartesianChartCircle();
     });
 
     it("should work for number", () => {
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "TOTAL",
         fromBinning: "Auto bin",
         toBinning: "50 bins",
@@ -152,15 +141,15 @@ describe("scenarios > binning > from a saved sql question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
 
-      visualize(response => {
+      H.visualize(response => {
         assertOnResponse(response);
       });
 
-      chartPathWithFillColor("#509EE3");
+      H.chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
-      changeBinningForDimension({
+      H.changeBinningForDimension({
         name: "LONGITUDE",
         fromBinning: "Auto bin",
         toBinning: "Bin every 10 degrees",
@@ -169,17 +158,17 @@ describe("scenarios > binning > from a saved sql question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
 
-      visualize(response => {
+      H.visualize(response => {
         assertOnResponse(response);
       });
 
-      chartPathWithFillColor("#509EE3");
+      H.chartPathWithFillColor("#509EE3");
     });
   });
 
   context("via column popover", () => {
     beforeEach(() => {
-      openTable({
+      H.openTable({
         database: SAMPLE_DB_ID,
         table: `card__${questionId}`,
       });
@@ -195,7 +184,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       assertOnXYAxisLabels({ xLabel: "CREATED_AT", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Month");
-      cartesianChartCircle();
+      H.cartesianChartCircle();
 
       // Open a popover with bucket options from the time series footer
       cy.findByTestId("timeseries-bucket-button").contains("Month").click();
@@ -217,7 +206,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: Auto binned");
-      chartPathWithFillColor("#509EE3");
+      H.chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
@@ -229,7 +218,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       assertOnXYAxisLabels({ xLabel: "LONGITUDE", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: Auto binned");
-      chartPathWithFillColor("#509EE3");
+      H.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
@@ -237,9 +226,9 @@ describe("scenarios > binning > from a saved sql question", () => {
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  echartsContainer().get("text").contains(xLabel);
+  H.echartsContainer().get("text").contains(xLabel);
 
-  echartsContainer().get("text").contains(yLabel);
+  H.echartsContainer().get("text").contains(yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {

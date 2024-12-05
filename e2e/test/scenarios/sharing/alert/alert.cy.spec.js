@@ -1,25 +1,20 @@
+import { H } from "e2e/support";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  mockSlackConfigured,
-  restore,
-  setupSMTP,
-  visitQuestion,
-} from "e2e/support/helpers";
 
-const channels = { slack: mockSlackConfigured, email: setupSMTP };
+const channels = { slack: H.mockSlackConfigured, email: H.setupSMTP };
 
 describe("scenarios > alert", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
-      visitQuestion(ORDERS_QUESTION_ID);
+      H.visitQuestion(ORDERS_QUESTION_ID);
       cy.icon("bell").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -31,7 +26,7 @@ describe("scenarios > alert", () => {
     it("should say to non-admins that admin must add email credentials", () => {
       cy.signInAsNormalUser();
 
-      visitQuestion(ORDERS_QUESTION_ID);
+      H.visitQuestion(ORDERS_QUESTION_ID);
       cy.icon("bell").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -52,7 +47,7 @@ describe("scenarios > alert", () => {
         );
 
         // Open the first alert screen and create an alert
-        visitQuestion(ORDERS_QUESTION_ID);
+        H.visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").click();
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -75,7 +70,7 @@ describe("scenarios > alert", () => {
         cy.wait("@savedAlert");
 
         // Open the second alert screen
-        visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
         cy.wait("@questionLoaded");
 
         cy.icon("bell").click();

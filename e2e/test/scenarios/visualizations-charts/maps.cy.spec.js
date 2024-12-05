@@ -1,24 +1,19 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  openNativeEditor,
-  popover,
-  restore,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > maps", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should display a pin map for a native query", () => {
     cy.signInAsNormalUser();
     // create a native query with lng/lat fields
-    openNativeEditor().type(
+    H.openNativeEditor().type(
       "select -80 as lng, 40 as lat union all select -120 as lng, 40 as lat",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -33,7 +28,7 @@ describe("scenarios > visualizations > maps", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Map type").next().click();
-    popover().contains("Pin map").click();
+    H.popover().contains("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
@@ -46,11 +41,11 @@ describe("scenarios > visualizations > maps", () => {
     // select both columns
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Latitude field").next().click();
-    popover().contains("LAT").click();
+    H.popover().contains("LAT").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Longitude field").next().click();
-    popover().contains("LNG").click();
+    H.popover().contains("LNG").click();
 
     // check that a map appears
     cy.get(".leaflet-container");
@@ -89,7 +84,7 @@ describe("scenarios > visualizations > maps", () => {
     { tags: "@flaky" },
     () => {
       cy.intercept("/app/assets/geojson/**").as("geojson");
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: {
@@ -139,7 +134,7 @@ describe("scenarios > visualizations > maps", () => {
   );
 
   it("should display a tooltip for a grid map without a metric column (metabase#17940)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "map",
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -187,7 +182,7 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should render grid map visualization for native questions (metabase#8362)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -225,7 +220,7 @@ describe("scenarios > visualizations > maps", () => {
   it("should apply brush filters by dragging map", () => {
     cy.viewport(1280, 800);
 
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         database: SAMPLE_DB_ID,

@@ -1,26 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  dashboardCards,
-  dragField,
-  getIframeBody,
-  getNotebookStep,
-  leftSidebar,
-  main,
-  modal,
-  openNotebook,
-  openPublicLinkPopoverFromMenu,
-  openStaticEmbeddingModal,
-  popover,
-  queryBuilderMain,
-  restore,
-  sidebar,
-  visitDashboard,
-  visitIframe,
-  visitQuestion,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
 const {
@@ -43,13 +23,13 @@ const TEST_CASES = [
 
 describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("createCard");
   });
 
   it("should be created from an ad-hoc question", () => {
-    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+    H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -78,7 +58,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // Switch to "ordinary" table
     cy.findByTestId("view-footer").findByText("Visualization").click();
-    sidebar().icon("table2").should("be.visible").click();
+    H.sidebar().icon("table2").should("be.visible").click();
 
     cy.findByTestId("app-bar").within(() => {
       cy.findByText("Started from");
@@ -122,7 +102,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("=").click());
+    H.popover().within(() => cy.findByText("=").click());
     // filter is applied
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product → Category is Doohickey");
@@ -130,7 +110,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Affiliate").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("≠").click());
+    H.popover().within(() => cy.findByText("≠").click());
     // filter is applied and value is gone from the left header
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User → Source is not Affiliate");
@@ -150,7 +130,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     assertOnPivotSettings();
 
     // Drag the second aggregate (Product category) from table columns to table rows
-    dragField(1, 0);
+    H.dragField(1, 0);
 
     // One field should now be empty
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -168,7 +148,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
   it("should be able to use binned numeric dimension as a grouping (metabase#14136)", () => {
     // Sample database Orders > Count by Subtotal: Auto binned
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -203,7 +183,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     ];
     const b3 = ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }];
 
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -296,7 +276,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       },
     };
 
-    visitQuestionAdhoc(questionDetails);
+    H.visitQuestionAdhoc(questionDetails);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1162").should("be.visible");
     // Collapse "User ID" column
@@ -315,7 +295,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should allow hiding subtotals", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pivot",
       visualization_settings: {
@@ -353,7 +333,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
   it("should uncollapse a value when hiding the subtotals", () => {
     const rows = testQuery.query.breakout;
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pivot",
       visualization_settings: {
@@ -382,7 +362,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should allow column formatting", () => {
-    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+    H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -405,7 +385,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should allow value formatting", () => {
-    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+    H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -435,7 +415,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should not allow sorting of value fields", () => {
-    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+    H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -452,7 +432,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // Pivot by a single column with many values (100 bins).
     // Having many values hides values that are sorted to the end.
     // This lets us assert on presence of a certain value.
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -488,7 +468,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should display an error message for native queries", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: { query: "select 1", "template-tags": {} },
@@ -504,7 +484,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
   describe("custom columns (metabase#14604)", () => {
     it("should work with custom columns as values", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: {
@@ -545,7 +525,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     it("should work with custom columns as pivoted columns", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -591,9 +571,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           size_x: 3,
           size_y: 3,
         },
-      }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
+      }).then(({ body: { dashboard_id } }) => H.visitDashboard(dashboard_id));
 
-      dashboardCards()
+      H.dashboardCards()
         .eq(0)
         .within(() => {
           cy.findByText("Doohickey").scrollIntoView().should("be.visible");
@@ -614,13 +594,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           size_x: 16,
           size_y: 8,
         },
-      }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
+      }).then(({ body: { dashboard_id } }) => H.visitDashboard(dashboard_id));
 
       assertOnPivotFields();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Google").click(); // open drill-through menu
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      popover().within(() => cy.findByText("=").click()); // drill with additional filter
+      H.popover().within(() => cy.findByText("=").click()); // drill with additional filter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User → Source is Google"); // filter was added
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -667,7 +647,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           enable_embedding: true,
         });
 
-        visitQuestion(card_id);
+        H.visitQuestion(card_id);
       });
     });
 
@@ -682,11 +662,11 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         it("should display pivot table in a public link", () => {
           if (test.case === "question") {
             cy.icon("share").click();
-            modal().within(() => {
+            H.modal().within(() => {
               cy.findByText("Save").click();
             });
           }
-          openPublicLinkPopoverFromMenu();
+          H.openPublicLinkPopoverFromMenu();
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
             .invoke("val")
@@ -704,24 +684,24 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           // we use preview endpoints when MB is iframed in itself
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(test.subject);
-          getIframeBody().within(assertOnPivotFields);
+          H.getIframeBody().within(assertOnPivotFields);
         });
 
         it("should display pivot table in an embed URL", () => {
           if (test.case === "question") {
             cy.icon("share").click();
-            modal().within(() => {
+            H.modal().within(() => {
               cy.findByText("Save").click();
             });
           }
 
-          openStaticEmbeddingModal({
+          H.openStaticEmbeddingModal({
             activeTab: "parameters",
             confirmSave: test.confirmSave,
           });
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
-          visitIframe();
+          H.visitIframe();
 
           cy.findByTestId("embed-frame-header").contains(test.subject);
           assertOnPivotFields();
@@ -734,7 +714,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     createTestQuestion();
     cy.icon("download").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("Download full results"));
+    H.popover().within(() => cy.findByText("Download full results"));
   });
 
   it.skip("should work for user without data permissions (metabase#14989)", () => {
@@ -756,7 +736,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.signIn("nodata");
-      visitQuestion(QUESTION_ID);
+      H.visitQuestion(QUESTION_ID);
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -787,7 +767,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       ],
     });
 
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -805,7 +785,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
-    leftSidebar().within(() => {
+    H.leftSidebar().within(() => {
       // This part is still failing. Uncomment when fixed.
       // cy.findByText("Pivot Table")
       //   .parent()
@@ -822,7 +802,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should show stand-alone row values in grouping when rows are collapsed (metabase#15211)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -888,7 +868,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should not show subtotals for flat tables", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -929,7 +909,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should apply conditional formatting", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -1010,7 +990,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "pivot",
     };
 
-    visitQuestionAdhoc(questionDetails);
+    H.visitQuestionAdhoc(questionDetails);
 
     cy.findByTextEnsureVisible("Created At: Year");
     cy.findByTextEnsureVisible("Row totals");
@@ -1021,7 +1001,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     cy.findByTextEnsureVisible("Sort").click();
 
-    popover().contains("Count").click();
+    H.popover().contains("Count").click();
     cy.wait("@pivotDataset");
 
     cy.button("Visualize").click();
@@ -1085,17 +1065,17 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       },
     }).then(({ body: { dashboard_id }, questionId }) => {
       cy.wrap(questionId).as("questionId");
-      visitDashboard(dashboard_id);
+      H.visitDashboard(dashboard_id);
     });
 
-    dashboardCards().within(() => {
+    H.dashboardCards().within(() => {
       cy.findByLabelText(PIVOT_TABLE_BODY_LABEL).scrollTo(10000, 0);
       cy.findByText("Row totals").should("be.visible");
     });
 
-    cy.get("@questionId").then(id => visitQuestion(id));
+    cy.get("@questionId").then(id => H.visitQuestion(id));
 
-    queryBuilderMain().within(() => {
+    H.queryBuilderMain().within(() => {
       cy.findByLabelText(PIVOT_TABLE_BODY_LABEL).scrollTo(10000, 0);
       cy.findByText("Row totals").should("be.visible");
     });
@@ -1106,7 +1086,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       textEl.closest("[data-testid=pivot-table-cell]").width();
 
     it("should persist column sizes in visualization settings", () => {
-      visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+      H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
       const leftHeaderColHandle = cy
         .findAllByTestId("pivot-table-resize-handle")
         .first();
@@ -1165,15 +1145,15 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // confirm that it's loading
-    main().findByText("Doing science...").should("be.visible");
+    H.main().findByText("Doing science...").should("be.visible");
 
     cy.icon("notebook").click();
 
-    main().findByText("User → Source").click();
+    H.main().findByText("User → Source").click();
 
-    popover().findByText("Address").click();
+    H.popover().findByText("Address").click();
 
-    main().findByText("User → Address").should("be.visible");
+    H.main().findByText("User → Address").should("be.visible");
   });
 
   it(
@@ -1193,7 +1173,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         database: SAMPLE_DB_ID,
       };
 
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: query,
         display: "pivot",
         visualization_settings: {
@@ -1258,7 +1238,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         },
       });
 
-      createQuestion(
+      H.createQuestion(
         {
           query: {
             "source-table": PRODUCTS_ID,
@@ -1288,7 +1268,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("does not allow users with no table access to update pivot questions (metabase#37380)", () => {
       cy.signInAsNormalUser();
-      visitQuestion("@questionId");
+      H.visitQuestion("@questionId");
       cy.findByTestId("viz-settings-button").click();
       cy.findByLabelText("Show row totals").click();
 
@@ -1298,7 +1278,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
   describe("issue 38265", () => {
     beforeEach(() => {
-      createQuestion(
+      H.createQuestion(
         {
           query: {
             "source-table": ORDERS_ID,
@@ -1337,7 +1317,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("correctly filters the query when zooming in on a **row** header (metabase#38265)", () => {
       cy.findByTestId("pivot-table").findByText("KS").click();
-      popover().findByText("Zoom in").click();
+      H.popover().findByText("Zoom in").click();
 
       cy.log("Filter pills");
       cy.findByTestId("filter-pill").should("have.text", "User → State is KS");
@@ -1351,7 +1331,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should be possible to switch between notebook and simple views when pivot table is the visualization (metabase#39504)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -1404,8 +1384,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       .and("contain", "Sum of Total")
       .and("contain", "Grand totals");
 
-    openNotebook();
-    getNotebookStep("summarize")
+    H.openNotebook();
+    H.getNotebookStep("summarize")
       .should("be.visible")
       .and("contain", "Sum of Subtotal")
       .and("contain", "Sum of Total");
@@ -1426,7 +1406,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       { "base-type": "type/Text" },
     ];
 
-    createQuestion(
+    H.createQuestion(
       {
         display: "pivot",
         query: {
@@ -1564,7 +1544,7 @@ function dragColumnHeader(el, xDistance = 50) {
 }
 
 function openColumnSettings(columnName) {
-  sidebar()
+  H.sidebar()
     .findByText(columnName)
     .siblings("[data-testid$=settings-button]")
     .click();
@@ -1581,7 +1561,7 @@ function sortColumnResults(column, direction) {
     .findByTestId(`${column}-settings-button`)
     .click();
 
-  popover().icon(iconName).click();
+  H.popover().icon(iconName).click();
   // Click anywhere to dismiss the popover from UI
   cy.get("body").click("topLeft");
 

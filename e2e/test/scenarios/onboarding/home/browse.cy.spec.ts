@@ -1,36 +1,25 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  browseDatabases,
-  describeWithSnowplow,
-  describeWithSnowplowEE,
-  enableTracking,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  navigationSidebar,
-  resetSnowplow,
-  restore,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describeWithSnowplow("scenarios > browse", () => {
+H.describeWithSnowplow("scenarios > browse", () => {
   beforeEach(() => {
-    resetSnowplow();
-    restore();
+    H.resetSnowplow();
+    H.restore();
     cy.signInAsAdmin();
-    enableTracking();
+    H.enableTracking();
   });
 
   it("can browse to a model", () => {
     cy.visit("/");
-    navigationSidebar().findByLabelText("Browse models").click();
+    H.navigationSidebar().findByLabelText("Browse models").click();
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.url().should("include", `/model/${ORDERS_MODEL_ID}-`);
-    expectNoBadSnowplowEvents();
-    expectGoodSnowplowEvent({
+    H.expectNoBadSnowplowEvents();
+    H.expectGoodSnowplowEvent({
       event: "browse_data_model_clicked",
       model_id: ORDERS_MODEL_ID,
     });
@@ -38,13 +27,13 @@ describeWithSnowplow("scenarios > browse", () => {
 
   it("can browse to a table in a database", () => {
     cy.visit("/");
-    browseDatabases().click();
+    H.browseDatabases().click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("button", { name: "Summarize" });
     cy.findByRole("link", { name: /Sample Database/ }).click();
-    expectNoBadSnowplowEvents();
-    expectGoodSnowplowEvent({
+    H.expectNoBadSnowplowEvents();
+    H.expectGoodSnowplowEvent({
       event: "browse_data_table_clicked",
       table_id: PRODUCTS_ID,
     });
@@ -60,7 +49,7 @@ describeWithSnowplow("scenarios > browse", () => {
       cy.spy().as("schemasForOtherDatabases"),
     );
     cy.visit("/");
-    browseDatabases().click();
+    H.browseDatabases().click();
     cy.findByRole("link", { name: /Sample Database/ }).click();
     cy.wait("@schemasForSampleDatabase");
     cy.get("@schemasForOtherDatabases").should("not.have.been.called");
@@ -68,7 +57,7 @@ describeWithSnowplow("scenarios > browse", () => {
 
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
-    browseDatabases().click();
+    H.browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
     cy.go("back");
@@ -79,7 +68,7 @@ describeWithSnowplow("scenarios > browse", () => {
 
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
-    navigationSidebar().findByLabelText("Browse models").click();
+    H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByRole("button", { name: /filter icon/i }).should("not.exist");
     cy.findByRole("switch", { name: /Show verified models only/ }).should(
       "not.exist",
@@ -87,13 +76,13 @@ describeWithSnowplow("scenarios > browse", () => {
   });
 });
 
-describeWithSnowplowEE("scenarios > browse (EE)", () => {
+H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
   beforeEach(() => {
-    resetSnowplow();
-    restore();
+    H.resetSnowplow();
+    H.restore();
     cy.signInAsAdmin();
-    enableTracking();
-    setTokenFeatures("all");
+    H.enableTracking();
+    H.setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting/browse-filter-only-verified-models").as(
       "updateFilter",
     );
@@ -144,7 +133,7 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
   const browseModels = () => {
     cy.visit("/");
 
-    navigationSidebar()
+    H.navigationSidebar()
       .findByRole("listitem", { name: "Browse models" })
       .click();
   };

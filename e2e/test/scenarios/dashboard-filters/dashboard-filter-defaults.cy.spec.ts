@@ -1,20 +1,9 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  type StructuredQuestionDetails,
-  clearFilterWidget,
-  createQuestionAndDashboard,
-  editDashboard,
-  filterWidget,
-  popover,
-  restore,
-  saveDashboard,
-  sidebar,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const QUESTION: StructuredQuestionDetails = {
+const QUESTION: H.StructuredQuestionDetails = {
   name: "Return input value",
   display: "scalar",
   query: {
@@ -47,10 +36,10 @@ const DASHBOARD = {
 
 describe("scenarios > dashboard > filters > reset", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: QUESTION,
       dashboardDetails: DASHBOARD,
     }).then(({ body: dashboardCard }) => {
@@ -71,7 +60,7 @@ describe("scenarios > dashboard > filters > reset", () => {
         ],
       });
 
-      visitDashboard(dashboard_id);
+      H.visitDashboard(dashboard_id);
     });
   });
 
@@ -79,52 +68,52 @@ describe("scenarios > dashboard > filters > reset", () => {
     cy.log("Default dashboard filter");
     cy.location("search").should("eq", "?filter_one=&filter_two=Bar");
 
-    clearFilterWidget(1);
+    H.clearFilterWidget(1);
 
     cy.location("search").should("eq", "?filter_one=&filter_two=");
 
     cy.log(
       "Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder",
     );
-    editDashboard();
+    H.editDashboard();
 
     openFilterOptions("Filter Two");
 
-    sidebar().within(() => {
+    H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
       clearDefaultFilterValue();
       setDefaultFilterValue("Foo");
     });
 
-    popover().button("Add filter").click();
+    H.popover().button("Add filter").click();
 
     cy.location("search").should("eq", "?filter_one=&filter_two=Foo");
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.location("search").should("eq", "?filter_one=&filter_two=Foo");
 
-    filterWidget().contains("Filter One").should("be.visible");
-    filterWidget().contains("Foo").should("be.visible");
+    H.filterWidget().contains("Filter One").should("be.visible");
+    H.filterWidget().contains("Foo").should("be.visible");
 
-    editDashboard();
+    H.editDashboard();
 
     openFilterOptions("Filter One");
 
-    sidebar().within(() => {
+    H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
       setDefaultFilterValue("Quu");
     });
 
-    popover().button("Add filter").click();
+    H.popover().button("Add filter").click();
 
     cy.location("search").should("eq", "?filter_one=Quu&filter_two=Foo");
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.location("search").should("eq", "?filter_one=Quu&filter_two=Foo");
-    filterWidget().contains("Quu").should("be.visible");
-    filterWidget().contains("Foo").should("be.visible");
+    H.filterWidget().contains("Quu").should("be.visible");
+    H.filterWidget().contains("Foo").should("be.visible");
   });
 });
 
