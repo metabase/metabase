@@ -28,8 +28,7 @@ export const ValuesSourceCardModal = ({
     sourceConfig.card_id != null ? { id: sourceConfig.card_id } : skipToken,
   );
 
-  const initialValue =
-    card && getQuestionPickerValue({ id: card.id, type: card.type });
+  const initialValue = card && getQuestionPickerValue(card);
 
   const handleSubmit = useCallback(
     (newQuestion: QuestionPickerValueItem) => {
