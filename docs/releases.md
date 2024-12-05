@@ -220,7 +220,6 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Open Source Edition releases
 
-- [v0.50.35](https://github.com/metabase/metabase/releases/tag/v0.50.35)
 - [v0.51.6](https://github.com/metabase/metabase/releases/tag/v0.51.6)
 - [v0.51.5](https://github.com/metabase/metabase/releases/tag/v0.51.5)
 - [v0.51.4](https://github.com/metabase/metabase/releases/tag/v0.51.4)
