@@ -101,7 +101,8 @@
   :export?    false
   :default    nil
   :type       :json
-  :on-change sync-metadata)
+  :on-change sync-metadata
+  :doc false)
 
 (defn- update-metadata! [new-metadata]
   (if *mocking-tables*
