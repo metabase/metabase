@@ -471,7 +471,9 @@ describe("scenarios > collection defaults", () => {
         cy.findByText(revokedUsersPersonalCollectionName).click();
         H.pickEntity({ path: [revokedUsersPersonalCollectionName] });
         H.pickEntity({ path: ["Collections", "Child"] });
-        H.entityPickerModal().button("Save in this collection").should("be.enabled");
+        H.entityPickerModal()
+          .button("Save in this collection")
+          .should("be.enabled");
         cy.log("Reported failing from v0.34.3");
         cy.findByTestId("entity-picker-modal")
           .findByText("Parent")
@@ -721,7 +723,7 @@ describe("scenarios > collection defaults", () => {
 
           H.entityPickerModal().within(() => {
             cy.log("parent collection should be selected");
-            entityPickerModalTab("Collections").click();
+            H.entityPickerModalTab("Collections").click();
             findPickerItem("Second collection").should(
               "have.attr",
               "data-active",

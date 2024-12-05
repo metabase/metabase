@@ -50,7 +50,7 @@ export const QuestionMoveConfirmModal = ({
       cardDashboards?.filter(
         cd =>
           cd.dashboards.length > 1 || cd.dashboards[0].id !== destination?.id,
-      ),
+      ) ?? [],
     [destination, cardDashboards],
   );
 
@@ -60,7 +60,7 @@ export const QuestionMoveConfirmModal = ({
   // a message and we can automatically confirm. We put onConfirm in a ref so that it doesn't
   // cause the useEffect to fire
   useEffect(() => {
-    if (filteredCards?.length === 0) {
+    if (filteredCards.length === 0) {
       onConfirmRef.current();
     }
   }, [filteredCards, onConfirmRef]);
@@ -76,7 +76,7 @@ export const QuestionMoveConfirmModal = ({
       return ngettext(
         msgid`Move this question?`,
         `Move these questions?`,
-        filteredCards.length,
+        filteredCards?.length ?? 0,
       );
     }
   }, [isLoading, hasError, filteredCards]);
@@ -160,7 +160,7 @@ export const QuestionMoveConfirmModal = ({
 
   return (
     <Modal
-      opened={isLoading || filteredCards?.length > 0}
+      opened={isLoading || filteredCards.length > 0}
       title={heading}
       onClose={onClose}
       size="lg"

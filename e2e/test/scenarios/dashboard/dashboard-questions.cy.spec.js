@@ -1,6 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as S from "e2e/support/cypress_sample_instance_data";
-import * as H from "e2e/support/helpers";
 
 describe("Dashboard > Dashboard Questions", () => {
   beforeEach(() => {
