@@ -296,7 +296,7 @@ export type FilterOperatorName =
   | StringFilterOperator
   | NumberFilterOperator
   | BooleanFilterOperator
-  | SpecificDateFilterOperatorName
+  | SpecificDateFilterOperator
   | ExcludeDateFilterOperator
   | CoordinateFilterOperator;
 
@@ -333,7 +333,7 @@ export type CoordinateFilterOperator =
 
 export type BooleanFilterOperator = "=" | "is-null" | "not-null";
 
-export type SpecificDateFilterOperatorName = "=" | ">" | "<" | "between";
+export type SpecificDateFilterOperator = "=" | ">" | "<" | "between";
 
 export type ExcludeDateFilterOperator = "!=" | "is-null" | "not-null";
 
@@ -406,7 +406,7 @@ export type BooleanFilterParts = {
 };
 
 export type SpecificDateFilterParts = {
-  operator: SpecificDateFilterOperatorName;
+  operator: SpecificDateFilterOperator;
   column: ColumnMetadata;
   values: Date[];
   hasTime: boolean;

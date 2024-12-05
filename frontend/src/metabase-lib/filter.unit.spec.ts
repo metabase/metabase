@@ -134,7 +134,7 @@ describe("filter", () => {
         moment.locale(locale);
       });
 
-      it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
+      it.each<Lib.SpecificDateFilterOperator>(["=", ">", "<"])(
         'should be able to create and destructure a specific date filter with "%s" operator and 1 value',
         operator => {
           const values = [new Date(2018, 2, 10)];
@@ -159,7 +159,7 @@ describe("filter", () => {
         },
       );
 
-      it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
+      it.each<Lib.SpecificDateFilterOperator>(["=", ">", "<"])(
         'should be able to create and destructure a specific datetime filter with "%s" operator and 1 value',
         operator => {
           const values = [new Date(2018, 2, 10, 20, 30)];
@@ -207,7 +207,7 @@ describe("filter", () => {
         expect(bucketInfo).toBe(null);
       });
 
-      it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
+      it.each<Lib.SpecificDateFilterOperator>(["=", ">", "<"])(
         'should remove an existing temporal bucket with "%s" operator and 1 value',
         operator => {
           const values = [new Date(2018, 2, 10)];
@@ -260,7 +260,7 @@ describe("filter", () => {
         expect(bucketInfo).toBe(null);
       });
 
-      it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
+      it.each<Lib.SpecificDateFilterOperator>(["=", ">", "<"])(
         'should set "minute" temporal bucket with "%s" operator and 1 value if there are time parts',
         operator => {
           const values = [new Date(2018, 2, 10, 8)];
