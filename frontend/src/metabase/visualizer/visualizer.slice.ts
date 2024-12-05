@@ -8,6 +8,7 @@ import {
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -79,6 +80,33 @@ const initialState: VisualizerState = {
   present: initialVisualizerHistoryItem,
   future: [],
 };
+
+export const initializeVisualizer = createAsyncThunk(
+  "visualizer/initializeVisualizer",
+  async (urlHash: string, { dispatch }) => {
+    try {
+      const urlData = JSON.parse(b64hash_to_utf8(urlHash));
+      const columnRefs = extractReferencedColumns(urlData.columnValuesMapping);
+      const dataSourceIds = Array.from(
+        new Set(columnRefs.map(ref => ref.sourceId)),
+      );
+      await Promise.all(
+        dataSourceIds
+          .map(sourceId => {
+            const [, cardId] = sourceId.split(":");
+            return [
+              dispatch(fetchCard(Number(cardId))),
+              dispatch(fetchCardQuery(Number(cardId))),
+            ];
+          })
+          .flat(),
+      );
+      return urlData;
+    } catch (err) {
+      console.error("Error parsing visualizer URL hash", err);
+    }
+  },
+);
 
 export const addDataSource = createAsyncThunk(
   "visualizer/dataImporter/addDataSource",
@@ -197,6 +225,12 @@ const visualizerHistoryItemSlice = createSlice({
   },
   extraReducers: builder => {
     builder
+      .addCase(initializeVisualizer.fulfilled, (state, action) => {
+        const urlState = action.payload;
+        if (urlState) {
+          Object.assign(state, urlState);
+        }
+      })
       .addCase(handleDrop, (state, action) => {
         if (!state.display) {
           return;
@@ -378,7 +412,18 @@ const visualizerSlice = createSlice({
         state.future = state.future.slice(1);
       }
     },
-    resetVisualizer: () => initialState,
+    resetVisualizer: (
+      state,
+      action: PayloadAction<{ full?: boolean } | undefined>,
+    ) => {
+      if (action.payload?.full) {
+        state = initialState;
+      } else {
+        state.past = [];
+        state.future = [...state.future, state.present];
+        state.present = initialVisualizerHistoryItem;
+      }
+    },
   },
   extraReducers: builder => {
     builder

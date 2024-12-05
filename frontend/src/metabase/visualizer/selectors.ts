@@ -1,11 +1,15 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import { utf8_to_b64 } from "metabase/lib/encoding";
 import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetData, RawSeries, RowValues } from "metabase-types/api";
-import type { VisualizerState } from "metabase-types/store/visualizer";
+import type {
+  VisualizerHistoryItem,
+  VisualizerState,
+} from "metabase-types/store/visualizer";
 
 import {
   createDataSource,
@@ -22,8 +26,10 @@ const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
 const getCards = (state: State) => state.visualizer.cards;
 
+const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
+
 const getSettings = createSelector(
-  [getVisualizationType, state => getCurrentHistoryItem(state).settings],
+  [getVisualizationType, getRawSettings],
   (display, rawSettings) => {
     if (display && isCartesianChart(display)) {
       // Visualizer wells display labels
@@ -181,3 +187,27 @@ export const getVisualizerComputedSettings = createSelector(
   (rawSeries): ComputedVisualizationSettings =>
     getComputedSettingsForSeries(rawSeries),
 );
+
+export const getVisualizerUrlHash = createSelector(
+  [getCurrentHistoryItem],
+  state => getStateHash(state),
+);
+
+export const getPastVisualizerUrlHashes = createSelector(
+  [state => state.visualizer.past],
+  items => items.map(getStateHash),
+);
+
+export const getFutureVisualizerUrlHashes = createSelector(
+  [state => state.visualizer.future],
+  items => items.map(getStateHash),
+);
+
+function getStateHash(state: VisualizerHistoryItem) {
+  const isDirty =
+    !!state.display ||
+    state.columns.length > 0 ||
+    Object.keys(state.settings).length > 0 ||
+    Object.keys(state.columnValuesMapping).length > 0;
+  return isDirty ? utf8_to_b64(JSON.stringify(state)) : "";
+}

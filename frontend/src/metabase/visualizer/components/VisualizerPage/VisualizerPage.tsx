@@ -8,19 +8,19 @@ import {
 } from "@dnd-kit/core";
 import { useCallback } from "react";
 import type { WithRouterProps } from "react-router";
-import { useKeyPressEvent, useMount, useUnmount } from "react-use";
+import { useKeyPressEvent, useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
+import { useVisualizerUrlSync } from "metabase/visualizer/hooks/use-visualizer-url-sync";
 import {
   getDatasets,
   getDraggedItem,
   getVisualizationType,
 } from "metabase/visualizer/selectors";
-import { isDataSourceId, isValidDraggedItem } from "metabase/visualizer/utils";
+import { isValidDraggedItem } from "metabase/visualizer/utils";
 import {
-  addDataSource,
   handleDrop,
   resetVisualizer,
   setDisplay,
@@ -35,7 +35,7 @@ import { Header } from "../Header";
 import { VisualizationCanvas } from "../VisualizationCanvas";
 import { VisualizationPicker } from "../VisualizationPicker";
 
-export const VisualizerPage = ({ location }: WithRouterProps) => {
+export const VisualizerPage = ({ location, router }: WithRouterProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const display = useSelector(getVisualizationType);
@@ -49,15 +49,10 @@ export const VisualizerPage = ({ location }: WithRouterProps) => {
     activationConstraint: { distance: 10 },
   });
 
-  useMount(() => {
-    const { dataSource } = location?.query ?? {};
-    if (isDataSourceId(dataSource)) {
-      dispatch(addDataSource(dataSource));
-    }
-  });
+  useVisualizerUrlSync(location, router);
 
   useUnmount(() => {
-    dispatch(resetVisualizer());
+    dispatch(resetVisualizer({ full: true }));
   });
 
   useKeyPressEvent("z", event => {
