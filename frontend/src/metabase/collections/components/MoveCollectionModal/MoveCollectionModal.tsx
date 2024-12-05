@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import type { OnMoveWithSourceAndDestination } from "metabase/collections/types";
-import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Collections from "metabase/entities/collections";
@@ -52,15 +52,13 @@ export const MoveCollectionModal = ({
 }) => {
   const dispatch = useDispatch();
   const collectionIdfromUrl = Urls.extractCollectionId(params?.slug);
+  const id = collectionId ?? collectionIdfromUrl;
 
   const {
     data: collection,
     isLoading,
     error,
-  } = useCollectionQuery({
-    id: collectionId ?? collectionIdfromUrl,
-    enabled: Boolean(collectionId || collectionIdfromUrl),
-  });
+  } = useGetCollectionQuery(id ? { id } : skipToken);
 
   if (!collection || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
