@@ -4591,7 +4591,7 @@
    :name "Examples",
    :personal_owner_id nil,
    :type nil,
-   :is_sample false,
+   :is_sample true,
    :id 2,
    :archived_directly nil,
    :entity_id "HyB3nRtqb7pBPhFG26evI",
