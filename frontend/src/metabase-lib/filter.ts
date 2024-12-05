@@ -525,6 +525,7 @@ function deserializeExcludeDatePart(
     case "day-of-week":
       return date.isoWeekday();
     case "month-of-year":
+      // we expect month to be 1-12 but in dayjs it's 0-11
       return date.month() + 1;
     case "quarter-of-year":
       return date.quarter();
