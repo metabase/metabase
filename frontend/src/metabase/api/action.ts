@@ -6,16 +6,60 @@ import type {
 import type { GetPublicAction } from "metabase-types/api/actions";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideActionListTags,
+  provideActionTags,
+} from "./tags";
+
+interface ListActionsRequest {} // TODO
+interface CreateActionRequest {} // TODO
+interface UpdateActionRequest {} // TODO
 
 export const actionApi = Api.injectEndpoints({
   endpoints: builder => ({
+    listActions: builder.query<WritebackAction[], ListActionsRequest>({
+      query: params => ({
+        method: "GET",
+        url: `/api/action`,
+        params,
+      }),
+      providesTags: (collections = []) => provideActionListTags(collections),
+    }),
     getAction: builder.query<WritebackAction, GetActionRequest>({
       query: ({ id }) => ({
         method: "GET",
         url: `/api/action/${id}`,
       }),
-      providesTags: action => (action ? [idTag("action", action.id)] : []),
+      providesTags: action => (action ? provideActionTags(action) : []),
+    }),
+    createAction: builder.mutation<WritebackAction, CreateActionRequest>({
+      query: body => ({
+        method: "PUT",
+        url: "/api/action",
+        body,
+      }),
+      invalidatesTags: (action, error) =>
+        action ? [...invalidateTags(error, [listTag("action")])] : [],
+    }),
+    updateAction: builder.mutation<WritebackAction, UpdateActionRequest>({
+      query: body => ({
+        method: "POST",
+        url: "/api/action",
+        body,
+      }),
+      invalidatesTags: (action, error) =>
+        action ? [...invalidateTags(error, [listTag("action")])] : [],
+    }),
+    deleteAction: builder.mutation<WritebackAction, { id: WritebackActionId }>({
+      query: ({ id }) => ({
+        method: "DELETE",
+        url: `/api/action/${id}`,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("action"), idTag("action", id)]),
     }),
     listPublicActions: builder.query<GetPublicAction[], void>({
       query: () => ({
