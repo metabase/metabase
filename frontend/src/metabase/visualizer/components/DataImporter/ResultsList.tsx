@@ -23,10 +23,9 @@ export const ResultsList = ({
             border: "1px solid var(--mb-color-border)",
             borderRadius: 5,
             cursor: "pointer",
-            backgroundColor:
-              typeof item.id === "number" && dataSourceIds.has(item.id)
-                ? "var(--mb-color-bg-light)"
-                : "transparent",
+            backgroundColor: dataSourceIds.has(item.id)
+              ? "var(--mb-color-bg-light)"
+              : "transparent",
           }}
           key={index}
           component="li"
