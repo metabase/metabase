@@ -227,6 +227,7 @@ export const cardApi = Api.injectEndpoints({
 export const {
   useListCardsQuery,
   useGetCardQuery,
+  useLazyGetCardQuery,
   useGetCardQueryMetadataQuery,
   useGetCardQueryQuery,
   useCreateCardMutation,
