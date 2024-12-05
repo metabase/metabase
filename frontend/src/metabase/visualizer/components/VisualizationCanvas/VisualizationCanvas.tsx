@@ -2,10 +2,11 @@ import { useDroppable } from "@dnd-kit/core";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { Center, Flex, Text } from "metabase/ui";
+import { Center, Flex, Loader, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
+  getIsLoading,
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
@@ -18,10 +19,11 @@ import { VerticalWell } from "./VerticalWell";
 export function VisualizationCanvas() {
   const display = useSelector(getVisualizationType);
   const rawSeries = useSelector(getVisualizerRawSeries);
+  const isLoading = useSelector(getIsLoading);
 
   const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.CANVAS_MAIN });
 
-  if (!display) {
+  if (!display && !isLoading) {
     return (
       <Center h="100%" w="100%" mx="auto">
         <StartFromViz />
@@ -29,10 +31,14 @@ export function VisualizationCanvas() {
     );
   }
 
-  if (rawSeries.length === 0) {
+  if (!display || rawSeries.length === 0) {
     return (
       <Center h="100%" w="100%" mx="auto">
-        <Text>{t`Visualization will appear here`}</Text>
+        {isLoading ? (
+          <Loader size="lg" />
+        ) : (
+          <Text>{t`Visualization will appear here`}</Text>
+        )}
       </Center>
     );
   }

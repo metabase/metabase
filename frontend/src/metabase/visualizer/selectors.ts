@@ -60,6 +60,19 @@ export const getDatasets = (state: State) => state.visualizer.datasets;
 export const getExpandedDataSources = (state: State) =>
   state.visualizer.expandedDataSources;
 
+export const getIsLoading = createSelector(
+  [
+    state => state.visualizer.loadingDataSources,
+    state => state.visualizer.loadingDatasets,
+  ],
+  (loadingDataSources, loadingDatasets) => {
+    return (
+      Object.values(loadingDataSources).includes(true) ||
+      Object.values(loadingDatasets).includes(true)
+    );
+  },
+);
+
 export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
 
 export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
