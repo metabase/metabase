@@ -60,7 +60,7 @@ export const Ellipsified = ({
         data-testid={dataTestId}
         id={id}
         fz="inherit"
-        lh="normal"
+        lh="inherit"
         {...truncatedProps}
       >
         {children}
