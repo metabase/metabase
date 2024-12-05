@@ -111,7 +111,9 @@ function source(engine?: string) {
   switch (engine) {
     case "mongo":
     case "druid":
-      return json();
+      return {
+        language: json(),
+      };
 
     case "bigquery-cloud-sdk":
     case "mysql":
@@ -125,10 +127,12 @@ function source(engine?: string) {
     default: {
       const dialect =
         engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
-      return sql({
-        dialect,
-        upperCaseKeywords: true,
-      });
+      return {
+        language: sql({
+          dialect,
+          upperCaseKeywords: true,
+        }),
+      };
     }
   }
 }
@@ -139,15 +143,15 @@ function language({
   databaseId,
   snippets = [],
 }: LanguageOptions) {
-  const lang = source(engine);
+  const { language } = source(engine);
 
-  if (!lang) {
+  if (!language) {
     return [];
   }
 
   // wrap the language completer so that it does not trigger when we're inside of a tag
   async function fromLanguage(context: CompletionContext) {
-    const facets = context.state.facet(lang.language.data.reader);
+    const facets = context.state.facet(language.language.data.reader);
 
     const complete = facets.find(
       facet => facet.autocomplete && facet.autocomplete !== autocomplete,
@@ -261,12 +265,8 @@ function language({
     return null;
   }
 
-  if (!lang) {
-    return [];
-  }
-
   return [
-    lang,
+    language,
     autocompletion({
       closeOnBlur: false,
       activateOnTyping: true,
