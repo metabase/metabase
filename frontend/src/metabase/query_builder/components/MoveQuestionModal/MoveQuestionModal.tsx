@@ -6,10 +6,7 @@ import _ from "underscore";
 import { useUpdateCardMutation } from "metabase/api";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
-import {
-  canonicalCollectionId,
-  getAffectedDashboardsFromMove,
-} from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { MoveModal } from "metabase/containers/MoveModal";
@@ -95,6 +92,12 @@ export const MoveQuestionModal = ({
       .finally(() => onClose());
   };
 
+  const handleMoveConfirm = () => {
+    if (confirmMoveState?.destination) {
+      handleMove(confirmMoveState?.destination);
+    }
+  };
+
   const handleChooseMoveLocation = async (destination: MoveDestination) => {
     const wasDq = _.isNumber(question.dashboardId());
     const isDq = destination.model === "dashboard";
@@ -109,24 +112,7 @@ export const MoveQuestionModal = ({
       setConfirmMoveState({
         type: "collection-to-dashboard",
         destination,
-        isLoading: true,
       });
-      const dashboards = await getAffectedDashboardsFromMove(
-        [question],
-        destination,
-        dispatch,
-      );
-      if (dashboards.length > 0) {
-        setDeleteOldDashcards(true);
-        setConfirmMoveState({
-          type: "collection-to-dashboard",
-          destination,
-          affectedDashboards: dashboards,
-          isLoading: false,
-        });
-      } else {
-        handleMove(destination);
-      }
     } else {
       handleMove(destination);
     }
@@ -203,10 +189,7 @@ export const MoveQuestionModal = ({
     );
   }
 
-  if (
-    confirmMoveState?.type === "collection-to-dashboard" &&
-    (confirmMoveState.affectedDashboards || confirmMoveState.isLoading)
-  ) {
+  if (confirmMoveState?.type === "collection-to-dashboard") {
     return (
       <QuestionMoveConfirmModal
         selectedItems={[
@@ -216,10 +199,9 @@ export const MoveQuestionModal = ({
             model: "card",
           },
         ]}
-        cardDashboards={confirmMoveState.affectedDashboards}
-        onConfirm={() => handleMove(confirmMoveState.destination)}
+        onConfirm={handleMoveConfirm}
         onClose={onClose}
-        isLoading={confirmMoveState.isLoading}
+        destination={confirmMoveState.destination}
       />
     );
   }
