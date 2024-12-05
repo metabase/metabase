@@ -24,6 +24,9 @@
 
 (set! *warn-on-reflection* true)
 
+;; Make sure the legacy cookies still work.
+(derive :search.engine/fulltext :search.engine/appdb)
+
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or (not config/is-prod?)
            (= "appdb" (some-> (public-settings/search-engine) name)))
