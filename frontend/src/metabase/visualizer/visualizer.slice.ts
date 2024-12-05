@@ -108,18 +108,23 @@ export const initializeVisualizer = createAsyncThunk(
   },
 );
 
-export const addDataSource = createAsyncThunk(
-  "visualizer/dataImporter/addDataSource",
-  async (id: VisualizerDataSourceId, { dispatch }) => {
-    const { type, sourceId } = parseDataSourceId(id);
-    if (type === "card") {
-      await dispatch(fetchCard(sourceId));
-      await dispatch(fetchCardQuery(sourceId));
-    } else {
-      console.warn(`Unsupported data source type: ${type}`);
-    }
-  },
-);
+export const addDataSource = createAsyncThunk<
+  { card: Card; dataset: Dataset },
+  VisualizerDataSourceId
+>("visualizer/dataImporter/addDataSource", async (id, { dispatch }) => {
+  const { type, sourceId } = parseDataSourceId(id);
+  if (type === "card") {
+    const cardAction = await dispatch(fetchCard(sourceId));
+    const cardQueryAction = await dispatch(fetchCardQuery(sourceId));
+
+    // TODO handle rejected requests
+    return {
+      card: cardAction.payload as Card,
+      dataset: cardQueryAction.payload as Dataset,
+    };
+  }
+  throw new Error(`Unsupported data source type: ${type}`);
+});
 
 export const removeDataSource = createAction<VisualizerDataSource>(
   "metabase/visualizer/removeDataSource",
@@ -142,21 +147,18 @@ const fetchCard = createAsyncThunk<Card, CardId>(
   },
 );
 
-const fetchCardQuery = createAsyncThunk<
-  { card?: Card; dataset: Dataset },
-  CardId
->("visualizer/fetchCardQuery", async (cardId, { dispatch, getState }) => {
-  const result = await dispatch(
-    cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
-  );
-  if (result.data != null) {
-    return {
-      dataset: result.data,
-      card: getState().visualizer.cards.find(card => card.id === cardId),
-    };
-  }
-  throw new Error("Failed to fetch card query");
-});
+const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
+  "visualizer/fetchCardQuery",
+  async (cardId, { dispatch }) => {
+    const result = await dispatch(
+      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+    );
+    if (result.data != null) {
+      return result.data;
+    }
+    throw new Error("Failed to fetch card query");
+  },
+);
 
 const visualizerHistoryItemSlice = createSlice({
   name: "present",
@@ -248,6 +250,10 @@ const visualizerHistoryItemSlice = createSlice({
           pivotDropHandler(state, event);
         }
       })
+      .addCase(addDataSource.fulfilled, (state, action) => {
+        const { card, dataset } = action.payload;
+        Object.assign(state, maybeCombineDataset(state, card, dataset));
+      })
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
 
@@ -289,95 +295,6 @@ const visualizerHistoryItemSlice = createSlice({
             );
           }
         });
-      })
-      .addCase(fetchCardQuery.fulfilled, (state, action) => {
-        const { card, dataset } = action.payload;
-
-        if (!card) {
-          return;
-        }
-
-        const source = createDataSource("card", card.id, card.name);
-
-        if (
-          !state.display ||
-          (card.display === state.display && state.columns.length === 0)
-        ) {
-          state.display = card.display;
-
-          state.columns = [];
-          state.columnValuesMapping = {};
-
-          dataset.data.cols.forEach(column => {
-            const columnRef = createVisualizerColumnReference(
-              source,
-              column,
-              extractReferencedColumns(state.columnValuesMapping),
-            );
-            state.columns.push(copyColumn(columnRef.name, column));
-            state.columnValuesMapping[columnRef.name] = [columnRef];
-          });
-
-          const entries = getColumnVizSettings(state.display)
-            .map(setting => {
-              const originalValue = card.visualization_settings[setting];
-
-              if (!originalValue) {
-                return null;
-              }
-
-              if (Array.isArray(originalValue)) {
-                return [
-                  setting,
-                  originalValue.map(originalColumnName => {
-                    const index = dataset.data.cols.findIndex(
-                      col => col.name === originalColumnName,
-                    );
-                    return state.columns[index].name;
-                  }),
-                ];
-              } else {
-                const index = dataset.data.cols.findIndex(
-                  col => col.name === originalValue,
-                );
-                return [setting, state.columns[index].name];
-              }
-            })
-            .filter(isNotNull);
-          state.settings = {
-            ...card.visualization_settings,
-            ...Object.fromEntries(entries),
-          };
-
-          return;
-        }
-
-        if (
-          ["area", "bar", "line"].includes(state.display) &&
-          canCombineCard(state.display, state.columns, state.settings, card)
-        ) {
-          const metrics = card.visualization_settings["graph.metrics"] ?? [];
-          const columns = dataset.data.cols.filter(col =>
-            metrics.includes(col.name),
-          );
-          columns.forEach(column => {
-            const columnRef = createVisualizerColumnReference(
-              source,
-              column,
-              extractReferencedColumns(state.columnValuesMapping),
-            );
-            addMetricColumnToCartesianChart(state, column, columnRef);
-          });
-          return;
-        }
-
-        if (
-          state.display === "funnel" &&
-          canCombineCardWithFunnel(card, dataset)
-        ) {
-          const [column] = dataset.data.cols;
-          addScalarToFunnel(state, source, column);
-        }
       });
   },
 });
@@ -483,7 +400,7 @@ const visualizerSlice = createSlice({
       })
       .addCase(fetchCardQuery.fulfilled, (state, action) => {
         const cardId = action.meta.arg;
-        const { dataset } = action.payload;
+        const dataset = action.payload;
         state.datasets[`card:${cardId}`] = dataset;
         state.loadingDatasets[`card:${cardId}`] = false;
         maybeUpdateHistory(state, action);
@@ -509,6 +426,94 @@ function maybeUpdateHistory(state: VisualizerState, action: Action) {
     state.present = newPresent;
     state.future = [];
   }
+}
+
+function maybeCombineDataset(
+  currentState: VisualizerHistoryItem,
+  card: Card,
+  dataset: Dataset,
+) {
+  const state = { ...currentState };
+  const source = createDataSource("card", card.id, card.name);
+
+  if (
+    !state.display ||
+    (card.display === state.display && state.columns.length === 0)
+  ) {
+    state.display = card.display;
+
+    state.columns = [];
+    state.columnValuesMapping = {};
+
+    dataset.data.cols.forEach(column => {
+      const columnRef = createVisualizerColumnReference(
+        source,
+        column,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+      state.columns.push(copyColumn(columnRef.name, column));
+      state.columnValuesMapping[columnRef.name] = [columnRef];
+    });
+
+    const entries = getColumnVizSettings(state.display)
+      .map(setting => {
+        const originalValue = card.visualization_settings[setting];
+
+        if (!originalValue) {
+          return null;
+        }
+
+        if (Array.isArray(originalValue)) {
+          return [
+            setting,
+            originalValue.map(originalColumnName => {
+              const index = dataset.data.cols.findIndex(
+                col => col.name === originalColumnName,
+              );
+              return state.columns[index].name;
+            }),
+          ];
+        } else {
+          const index = dataset.data.cols.findIndex(
+            col => col.name === originalValue,
+          );
+          return [setting, state.columns[index].name];
+        }
+      })
+      .filter(isNotNull);
+
+    state.settings = {
+      ...card.visualization_settings,
+      ...Object.fromEntries(entries),
+    };
+
+    return state;
+  }
+
+  if (
+    ["area", "bar", "line"].includes(state.display) &&
+    canCombineCard(state.display, state.columns, state.settings, card)
+  ) {
+    const metrics = card.visualization_settings["graph.metrics"] ?? [];
+    const columns = dataset.data.cols.filter(col => metrics.includes(col.name));
+    columns.forEach(column => {
+      const columnRef = createVisualizerColumnReference(
+        source,
+        column,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+      addMetricColumnToCartesianChart(state, column, columnRef);
+    });
+    return state;
+  }
+
+  if (state.display === "funnel" && canCombineCardWithFunnel(card, dataset)) {
+    const [column] = dataset.data.cols;
+    addScalarToFunnel(state, source, column);
+    return state;
+  }
+
+  return state;
 }
 
 export const { setDisplay, updateSettings, removeColumn } =
