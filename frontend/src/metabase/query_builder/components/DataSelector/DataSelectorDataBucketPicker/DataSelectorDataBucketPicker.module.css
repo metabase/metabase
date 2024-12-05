@@ -20,11 +20,11 @@
   color: var(--mb-color-text-dark);
 }
 
-/* TODO: double check if it works */
 .DataBucketListItemContainer {
   &:hover {
     .DataBucketListItemDescription,
-    .DataBucketListItemTitle .DataBucketListItemIcon {
+    .DataBucketListItemTitle,
+    .DataBucketListItemIcon {
       color: var(--mb-color-text-white);
     }
   }
