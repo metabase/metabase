@@ -4,7 +4,7 @@ import { useSetting } from "metabase/common/hooks";
 
 export const LOAD_COMPLETE_FAVICON = "app/assets/img/blue_check.png";
 
-export const useFavicon = ({ favicon }: { favicon: string }) => {
+export const useFavicon = ({ favicon }: { favicon: string | null }) => {
   const defaultFavicon = useSetting("application-favicon-url");
 
   useEffect(() => {
