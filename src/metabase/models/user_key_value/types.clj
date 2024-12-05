@@ -28,6 +28,7 @@
   [:and
    {;; api request comes in, turn `foo` into `:namespace/foo`
     :decode/api-request (partial keyword "namespace")
+    :encode/api-request name
     ;; writing to the DB, turn `:namespace/foo` into `foo`
     :encode/database name
     ;; reading from the DB, turn `foo` into `:namespace/foo`
@@ -61,7 +62,7 @@
     [:expires-at [:maybe ::expires-at]]
     [:namespace ::namespace]
     [:value {:encode/database json/generate-string
-             :decode/database json/parse-string}
+             :decode/database #(json/parse-string % keyword)}
      :any]]
    (into [:multi
           {:dispatch :namespace}]
