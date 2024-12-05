@@ -1,13 +1,13 @@
-import { mockSessionProperty, restore } from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 describe("banner", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("Show a banner when the subscription payment status is `past-due`", () => {
-    mockSessionProperty("token-status", {
+    H.mockSessionProperty("token-status", {
       status: "past-due",
       valid: false,
       trial: false,
@@ -32,7 +32,7 @@ describe("banner", () => {
   });
 
   it("Show a banner when the subscription payment status is `unpaid`", () => {
-    mockSessionProperty("token-status", {
+    H.mockSessionProperty("token-status", {
       status: "unpaid",
       valid: false,
       trial: false,

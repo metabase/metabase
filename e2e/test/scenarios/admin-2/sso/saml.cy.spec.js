@@ -1,11 +1,4 @@
-import {
-  describeEE,
-  modal,
-  popover,
-  restore,
-  setTokenFeatures,
-  typeAndBlurUsingLabel,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 import {
   checkGroupConsistencyAfterDeletingMappings,
@@ -13,11 +6,11 @@ import {
 } from "./shared/group-mappings-widget";
 import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
-describeEE("scenarios > admin > settings > SSO > SAML", () => {
+H.describeEE("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");
@@ -40,7 +33,7 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    typeAndBlurUsingLabel(/SAML Identity Provider URL/, "https://other.test");
+    H.typeAndBlurUsingLabel(/SAML Identity Provider URL/, "https://other.test");
     cy.button("Save changes").click();
     cy.wait("@updateSamlSettings");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -55,12 +48,12 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.visit("/admin/settings/authentication");
 
     getSamlCard().icon("ellipsis").click();
-    popover().findByText("Pause").click();
+    H.popover().findByText("Pause").click();
     cy.wait("@updateSetting");
     getSamlCard().findByText("Paused").should("exist");
 
     getSamlCard().icon("ellipsis").click();
-    popover().findByText("Resume").click();
+    H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getSamlCard().findByText("Active").should("exist");
   });
@@ -70,8 +63,8 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.visit("/admin/settings/authentication");
 
     getSamlCard().icon("ellipsis").click();
-    popover().findByText("Deactivate").click();
-    modal().button("Deactivate").click();
+    H.popover().findByText("Deactivate").click();
+    H.modal().button("Deactivate").click();
     cy.wait("@updateSettings");
 
     getSamlCard().findByText("Set up").should("exist");
@@ -128,7 +121,10 @@ const setupSaml = () => {
 
 const enterSamlSettings = () => {
   getSamlCertificate().then(certificate => {
-    typeAndBlurUsingLabel(/SAML Identity Provider URL/, "https://example.test");
-    typeAndBlurUsingLabel(/SAML Identity Provider Certificate/, certificate);
+    H.typeAndBlurUsingLabel(
+      /SAML Identity Provider URL/,
+      "https://example.test",
+    );
+    H.typeAndBlurUsingLabel(/SAML Identity Provider Certificate/, certificate);
   });
 };

@@ -1,22 +1,9 @@
+import { H } from "e2e/support";
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  closeCommandPalette,
-  commandPalette,
-  commandPaletteSearch,
-  createModerationReview,
-  describeEE,
-  openCommandPalette,
-  openQuestionActions,
-  popover,
-  questionInfoButton,
-  restore,
-  setTokenFeatures,
-  visitQuestion,
-} from "e2e/support/helpers";
 
-describeEE("scenarios > premium > content verification", () => {
+H.describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -41,9 +28,9 @@ describeEE("scenarios > premium > content verification", () => {
       });
 
       cy.log("Gate the UI");
-      visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      openQuestionActions();
-      popover()
+      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      H.openQuestionActions();
+      H.popover()
         .should("contain", "Add to dashboard")
         .and("not.contain", "Verify this question");
 
@@ -56,19 +43,19 @@ describeEE("scenarios > premium > content verification", () => {
       cy.visit(`/model/${ORDERS_COUNT_QUESTION_ID}`);
       cy.wait("@dataset");
 
-      openQuestionActions();
-      popover()
+      H.openQuestionActions();
+      H.popover()
         .should("contain", "Edit query definition")
         .and("not.contain", "Verify this question");
     });
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => setTokenFeatures("all"));
+    beforeEach(() => H.setTokenFeatures("all"));
 
     describe("an admin", () => {
       it("should be able to verify and unverify a saved question", () => {
-        visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
         verifyQuestion();
 
@@ -79,7 +66,7 @@ describeEE("scenarios > premium > content verification", () => {
         });
 
         // 2. Question's history
-        questionInfoButton().click();
+        H.questionInfoButton().click();
         cy.findByTestId("sidebar-right").within(() => {
           cy.findByText("History");
           cy.findAllByText("You verified this")
@@ -88,14 +75,14 @@ describeEE("scenarios > premium > content verification", () => {
         });
 
         // 3. Recently viewed list
-        openCommandPalette();
-        commandPalette()
+        H.openCommandPalette();
+        H.commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled");
-        closeCommandPalette();
+        H.closeCommandPalette();
 
         // 4. Search results
-        commandPaletteSearch("orders");
+        H.commandPaletteSearch("orders");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
           .siblings(".Icon-verified_filled");
@@ -108,7 +95,7 @@ describeEE("scenarios > premium > content verification", () => {
           .icon("verified");
 
         cy.log("Go back to the question and remove the verification");
-        visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
         removeQuestionVerification();
 
@@ -118,7 +105,7 @@ describeEE("scenarios > premium > content verification", () => {
           .should("not.exist");
 
         // 2. Question's history
-        questionInfoButton().click();
+        H.questionInfoButton().click();
         cy.findByTestId("sidebar-right").within(() => {
           cy.findByText("History");
           cy.findByText("You removed verification");
@@ -126,15 +113,15 @@ describeEE("scenarios > premium > content verification", () => {
         });
 
         // 3. Recently viewed list
-        openCommandPalette();
-        commandPalette()
+        H.openCommandPalette();
+        H.commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled")
           .should("not.exist");
-        closeCommandPalette();
+        H.closeCommandPalette();
 
         // 4. Search results
-        commandPaletteSearch("orders");
+        H.commandPaletteSearch("orders");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
           .siblings(".Icon-verified_filed")
@@ -152,7 +139,7 @@ describeEE("scenarios > premium > content verification", () => {
 
     describe("non-admin user", () => {
       beforeEach(() => {
-        createModerationReview({
+        H.createModerationReview({
           status: "verified",
           moderated_item_type: "card",
           moderated_item_id: ORDERS_COUNT_QUESTION_ID,
@@ -162,7 +149,7 @@ describeEE("scenarios > premium > content verification", () => {
       });
 
       it("should be able to see that a question has been verified but can't moderate the question themselves", () => {
-        visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
         cy.findByTestId("qb-header").within(() => {
           cy.findByText("Orders, Count");
@@ -170,17 +157,17 @@ describeEE("scenarios > premium > content verification", () => {
         });
 
         cy.log("Non-admin users cannot change question verification status.");
-        openQuestionActions();
-        popover()
+        H.openQuestionActions();
+        H.popover()
           .should("contain", "Add to dashboard")
           .and("not.contain", "Remove verification");
 
-        questionInfoButton().click();
+        H.questionInfoButton().click();
         cy.findByTestId("sidebar-right")
           .findAllByText("A moderator verified this")
           .should("have.length", 2);
 
-        commandPaletteSearch("orders");
+        H.commandPaletteSearch("orders");
         cy.log("Verified content should show up higher in search results");
         cy.findAllByTestId("search-result-item")
           .first()
@@ -200,31 +187,31 @@ describeEE("scenarios > premium > content verification", () => {
 
   context("token expired or removed", () => {
     beforeEach(() => {
-      setTokenFeatures("all");
-      createModerationReview({
+      H.setTokenFeatures("all");
+      H.createModerationReview({
         status: "verified",
         moderated_item_type: "card",
         moderated_item_id: ORDERS_COUNT_QUESTION_ID,
       });
 
-      setTokenFeatures("none");
+      H.setTokenFeatures("none");
     });
 
     it("should not treat the question as verified anymore", () => {
-      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       cy.findByTestId("qb-header").within(() => {
         cy.findByText("Orders, Count");
         cy.icon("verified").should("not.exist");
       });
 
-      questionInfoButton().click();
+      H.questionInfoButton().click();
       cy.findByTestId("sidebar-right").within(() => {
         cy.contains(/created this./);
         cy.contains(/verified this/).should("not.exist");
       });
 
-      commandPaletteSearch("orders");
+      H.commandPaletteSearch("orders");
       cy.log(
         "The question lost the verification status and does not appear high in search results anymore",
       );
@@ -241,7 +228,7 @@ describeEE("scenarios > premium > content verification", () => {
 function verifyQuestion() {
   cy.intercept("GET", "/api/card/*").as("loadCard");
 
-  openQuestionActions();
+  H.openQuestionActions();
   cy.findByTextEnsureVisible("Verify this question").click();
 
   cy.wait("@loadCard").then(({ response: { body } }) => {
@@ -268,6 +255,6 @@ function verifyQuestion() {
 }
 
 function removeQuestionVerification() {
-  openQuestionActions();
+  H.openQuestionActions();
   cy.findByTextEnsureVisible("Remove verification").click();
 }

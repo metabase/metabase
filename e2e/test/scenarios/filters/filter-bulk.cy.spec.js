@@ -1,18 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  assertQueryBuilderRowCount,
-  filter,
-  filterField,
-  filterFieldPopover,
-  filterSelectField,
-  hovercard,
-  modal,
-  popover,
-  restore,
-  setupBooleanQuery,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -76,15 +64,15 @@ const aggregatedQuestionDetails = {
 
 describe("scenarios > filters > bulk filtering", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should sort database fields by relevance", () => {
-    visitQuestionAdhoc(rawQuestionDetails);
-    filter();
+    H.visitQuestionAdhoc(rawQuestionDetails);
+    H.filter();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findAllByTestId(/filter-column-/)
         .eq(0)
         .should("include.text", "Created At");
@@ -100,11 +88,11 @@ describe("scenarios > filters > bulk filtering", () => {
   });
 
   it("should add a filter for a raw query", () => {
-    visitQuestionAdhoc(rawQuestionDetails);
-    filter();
+    H.visitQuestionAdhoc(rawQuestionDetails);
+    H.filter();
 
-    filterField("Quantity", { operator: "equal to" });
-    filterFieldPopover("Quantity").within(() => {
+    H.filterField("Quantity", { operator: "equal to" });
+    H.filterFieldPopover("Quantity").within(() => {
       cy.findByText("20").click();
     });
 
@@ -117,28 +105,28 @@ describe("scenarios > filters > bulk filtering", () => {
   });
 
   it("should have an info icon on the filter modal filters", () => {
-    visitQuestionAdhoc(rawQuestionDetails);
-    filter();
+    H.visitQuestionAdhoc(rawQuestionDetails);
+    H.filter();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.get("li").findByLabelText("More info").realHover();
     });
 
-    hovercard().within(() => {
+    H.hovercard().within(() => {
       cy.contains("The date and time an order was submitted");
       cy.contains("Creation timestamp");
     });
   });
 
   it("should add a filter for an aggregated query", () => {
-    visitQuestionAdhoc(aggregatedQuestionDetails);
-    filter();
+    H.visitQuestionAdhoc(aggregatedQuestionDetails);
+    H.filter();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Summaries").click();
     });
 
-    filterField("Count", {
+    H.filterField("Count", {
       placeholder: "Min",
       value: "500",
     });
@@ -152,12 +140,12 @@ describe("scenarios > filters > bulk filtering", () => {
   });
 
   it("should add a filter for linked tables", () => {
-    visitQuestionAdhoc(rawQuestionDetails);
-    filter();
+    H.visitQuestionAdhoc(rawQuestionDetails);
+    H.filter();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Product").click({ force: true });
-      filterField("Category").findByText("Gadget").click();
+      H.filterField("Category").findByText("Gadget").click();
     });
 
     applyFilters();
@@ -172,10 +160,10 @@ describe("scenarios > filters > bulk filtering", () => {
   });
 
   it("should update an existing filter", () => {
-    visitQuestionAdhoc(filteredQuestionDetails);
-    filter();
+    H.visitQuestionAdhoc(filteredQuestionDetails);
+    H.filter();
 
-    filterField("Quantity", { order: 1, value: "{backspace}{backspace}25" });
+    H.filterField("Quantity", { order: 1, value: "{backspace}{backspace}25" });
 
     applyFilters();
 
@@ -188,10 +176,10 @@ describe("scenarios > filters > bulk filtering", () => {
   });
 
   it("should remove an existing filter", () => {
-    visitQuestionAdhoc(filteredQuestionDetails);
-    filter();
+    H.visitQuestionAdhoc(filteredQuestionDetails);
+    H.filter();
 
-    filterField("Quantity", { order: 1, value: "{backspace}{backspace}" });
+    H.filterField("Quantity", { order: 1, value: "{backspace}{backspace}" });
 
     applyFilters();
 
@@ -232,16 +220,16 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("should apply and remove segment filter", () => {
-      visitQuestionAdhoc(rawQuestionDetails);
-      filter();
+      H.visitQuestionAdhoc(rawQuestionDetails);
+      H.filter();
 
-      modal().within(() => {
-        filterField("segments").within(() =>
+      H.modal().within(() => {
+        H.filterField("segments").within(() =>
           cy.findByPlaceholderText("Filter segments").click(),
         );
       });
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText(SEGMENT_1_NAME);
         cy.findByText(SEGMENT_2_NAME).click();
       });
@@ -252,10 +240,10 @@ describe("scenarios > filters > bulk filtering", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1,915 rows");
 
-      filter();
+      H.filter();
 
-      modal().within(() => {
-        filterField("segments").within(() =>
+      H.modal().within(() => {
+        H.filterField("segments").within(() =>
           cy.findByText(SEGMENT_2_NAME).next().click(),
         );
       });
@@ -279,11 +267,11 @@ describe("scenarios > filters > bulk filtering", () => {
         },
       };
 
-      visitQuestionAdhoc(segmentFilterQuestion);
-      filter();
+      H.visitQuestionAdhoc(segmentFilterQuestion);
+      H.filter();
 
-      modal().within(() => {
-        filterField("segments").within(() => {
+      H.modal().within(() => {
+        H.filterField("segments").within(() => {
           cy.findByText(SEGMENT_1_NAME);
           cy.findByText(SEGMENT_2_NAME).should("not.exist");
         });
@@ -293,12 +281,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("boolean filters", () => {
     beforeEach(() => {
-      setupBooleanQuery();
-      filter();
+      H.setupBooleanQuery();
+      H.filter();
     });
 
     it("should apply a boolean filter", () => {
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText("True").click();
       });
       applyFilters();
@@ -308,7 +296,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("should change a boolean filter", () => {
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText("True").click();
       });
       applyFilters();
@@ -316,9 +304,9 @@ describe("scenarios > filters > bulk filtering", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 2 rows").should("be.visible");
 
-      filter();
+      H.filter();
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText("False").click();
       });
       applyFilters();
@@ -328,7 +316,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("should remove a boolean filter", () => {
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText("True").click();
       });
       applyFilters();
@@ -336,9 +324,9 @@ describe("scenarios > filters > bulk filtering", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 2 rows").should("be.visible");
 
-      filter();
+      H.filter();
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText("True").click();
       });
       applyFilters();
@@ -350,12 +338,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("date filters", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(rawQuestionDetails);
-      filter();
+      H.visitQuestionAdhoc(rawQuestionDetails);
+      H.filter();
     });
 
     it("can add a date shortcut filter", () => {
-      modal().findByText("Today").click();
+      H.modal().findByText("Today").click();
       applyFilters();
 
       cy.findByTestId("qb-filters-panel")
@@ -364,9 +352,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("can add a date shortcut filter from the popover", () => {
-      filterField("Created At").findByLabelText("More options").click();
-      popover().contains("Last 3 months").findByText("Last 3 months").click();
-      modal().findByText("Previous 3 Months").should("be.visible");
+      H.filterField("Created At").findByLabelText("More options").click();
+      H.popover().contains("Last 3 months").findByText("Last 3 months").click();
+      H.modal().findByText("Previous 3 Months").should("be.visible");
       applyFilters();
 
       cy.findByTestId("qb-filters-panel")
@@ -376,7 +364,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     // if this gets flaky, disable, it's an issue with internal state in the datepicker component
     it.skip("can add a date range filter", () => {
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
           cy.findByLabelText("More options").click();
         });
@@ -386,13 +374,13 @@ describe("scenarios > filters > bulk filtering", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Before").click();
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.get("input").eq(0).clear().type("01/01/2023", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
           cy.findByText("is before January 1, 2023").should("be.visible");
         });
@@ -408,11 +396,11 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("Can cancel adding date filter", () => {
-      filterField("Created At").findByLabelText("More options").click();
+      H.filterField("Created At").findByLabelText("More options").click();
 
-      filterField("Created At").click({ position: "topRight", force: true });
+      H.filterField("Created At").click({ position: "topRight", force: true });
 
-      filterField("Created At").within(() => {
+      H.filterField("Created At").within(() => {
         // there should be no filter so the X should not populate
         cy.get(".Icon-close").should("not.exist");
       });
@@ -421,12 +409,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("category filters", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(peopleQuestion);
-      filter();
+      H.visitQuestionAdhoc(peopleQuestion);
+      H.filter();
     });
 
     it("should show inline category picker for referral source", () => {
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText("Affiliate").click();
       });
       applyFilters();
@@ -438,7 +426,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("should show value picker for state", () => {
-      filterFieldPopover("State").within(() => {
+      H.filterFieldPopover("State").within(() => {
         cy.findByText("AZ").click();
       });
       applyFilters();
@@ -452,12 +440,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("key filters", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(rawQuestionDetails);
-      filter();
+      H.visitQuestionAdhoc(rawQuestionDetails);
+      H.filter();
     });
 
     it("filters by primary keys", () => {
-      filterField("ID", {
+      H.filterField("ID", {
         value: ["17", "18"],
       });
 
@@ -472,7 +460,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("filters by a foreign key", () => {
-      filterField("Product ID", {
+      H.filterField("Product ID", {
         value: "65",
       });
 
@@ -485,12 +473,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("text filters", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(peopleQuestion);
-      filter();
+      H.visitQuestionAdhoc(peopleQuestion);
+      H.filter();
     });
 
     it("adds a contains text filter", () => {
-      filterField("City", {
+      H.filterField("City", {
         operator: "contains",
         value: "Indian",
       });
@@ -502,7 +490,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("adds an ends with text filter", () => {
-      filterField("City", {
+      H.filterField("City", {
         operator: "ends with",
         value: "Valley",
       });
@@ -514,7 +502,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("adds multiple is text filters", () => {
-      filterSelectField("City", {
+      H.filterSelectField("City", {
         operator: "is",
         value: ["Indiantown", "Indian Valley"],
       });
@@ -530,17 +518,17 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("number filters", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(productsQuestion);
-      filter();
+      H.visitQuestionAdhoc(productsQuestion);
+      H.filter();
     });
 
     it("applies a between filter", () => {
-      filterField("Price", {
+      H.filterField("Price", {
         placeholder: "Min",
         value: "50",
       });
 
-      filterField("Price", {
+      H.filterField("Price", {
         placeholder: "Max",
         value: "80",
       });
@@ -551,11 +539,11 @@ describe("scenarios > filters > bulk filtering", () => {
         .findByText("Price is between 50 and 80")
         .should("be.visible");
 
-      assertQueryBuilderRowCount(72);
+      H.assertQueryBuilderRowCount(72);
     });
 
     it("applies a greater than filter", () => {
-      filterField("Price", {
+      H.filterField("Price", {
         operator: "greater than",
         value: "50",
       });
@@ -569,7 +557,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("infers a <= filter from an invalid between filter", () => {
-      filterField("Price", {
+      H.filterField("Price", {
         placeholder: "Max",
         value: "50",
       });
@@ -585,12 +573,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("column search", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(productsQuestion);
-      filter();
+      H.visitQuestionAdhoc(productsQuestion);
+      H.filter();
     });
 
     it("can search for a column", () => {
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText("In").should("not.exist");
         cy.findByText("Category").should("be.visible");
 
@@ -598,23 +586,23 @@ describe("scenarios > filters > bulk filtering", () => {
 
         cy.findByText("Category").should("not.exist");
 
-        filterField("Vendor")
+        H.filterField("Vendor")
           .findByText("in") // "In Products"
           .should("be.visible");
 
-        filterField("Vendor").findByText("Vendor").should("be.visible");
+        H.filterField("Vendor").findByText("Vendor").should("be.visible");
       });
     });
 
     it("can apply a filter from a searched column", () => {
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByPlaceholderText("Search for a column…").clear().type("price");
 
         // need to block until filter is applied
         cy.findByText("Category").should("not.exist");
       });
 
-      filterField("Price", {
+      H.filterField("Price", {
         operator: "greater than",
         value: "90",
       });
@@ -630,7 +618,7 @@ describe("scenarios > filters > bulk filtering", () => {
 });
 
 const applyFilters = () => {
-  modal().within(() => {
+  H.modal().within(() => {
     cy.findByTestId("apply-filters").click();
   });
 

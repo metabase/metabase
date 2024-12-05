@@ -1,27 +1,6 @@
+import { H } from "e2e/support";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  assertDatasetReqIsSandboxed,
-  blockUserGroupPermissions,
-  describeEE,
-  editDashboard,
-  filterWidget,
-  getDashboardCard,
-  openQuestionActions,
-  popover,
-  restore,
-  saveDashboard,
-  setDropdownFilterType,
-  setFilter,
-  setFilterListSource,
-  setFilterQuestionSource,
-  setSearchBoxFilterType,
-  setTokenFeatures,
-  visitDashboard,
-  visitEmbeddedPage,
-  visitPublicDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -60,7 +39,7 @@ const targetQuestion = {
 
 describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -71,17 +50,17 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
-      editDashboard();
-      setFilter("Text or Category", "Is");
+      H.editDashboard();
+      H.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      setFilterQuestionSource({ question: "GUI source", field: "Category" });
-      saveDashboard();
+      H.setFilterQuestionSource({ question: "GUI source", field: "Category" });
+      H.saveDashboard();
       filterDashboard();
 
-      cy.get("@questionId").then(visitQuestion);
+      cy.get("@questionId").then(H.visitQuestion);
       archiveQuestion();
     });
 
@@ -93,7 +72,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
             dashboardDetails: getStructuredDashboard(questionId),
           }).then(({ body: card }) => {
             cy.editDashboardCard(card, getParameterMapping(card));
-            visitEmbeddedPage(getDashboardResource(card));
+            H.visitEmbeddedPage(getDashboardResource(card));
           });
         },
       );
@@ -109,7 +88,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
             dashboardDetails: getStructuredDashboard(questionId),
           }).then(({ body: card }) => {
             cy.editDashboardCard(card, getParameterMapping(card));
-            visitPublicDashboard(card.dashboard_id);
+            H.visitPublicDashboard(card.dashboard_id);
           });
         },
       );
@@ -122,20 +101,20 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
-      editDashboard();
-      setFilter("Text or Category", "Contains");
+      H.editDashboard();
+      H.setFilter("Text or Category", "Contains");
       mapFilterToQuestion();
-      setDropdownFilterType();
-      setFilterQuestionSource({ question: "GUI source", field: "Category" });
-      saveDashboard();
-      getDashboardCard().findByText("200").should("be.visible");
-      filterWidget().click();
-      popover().findByText("Gizmo").click();
-      popover().button("Add filter").click();
-      getDashboardCard().findByText("51").should("be.visible");
+      H.setDropdownFilterType();
+      H.setFilterQuestionSource({ question: "GUI source", field: "Category" });
+      H.saveDashboard();
+      H.getDashboardCard().findByText("200").should("be.visible");
+      H.filterWidget().click();
+      H.popover().findByText("Gizmo").click();
+      H.popover().button("Add filter").click();
+      H.getDashboardCard().findByText("51").should("be.visible");
     });
   });
 
@@ -145,17 +124,17 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
-      editDashboard();
-      setFilter("Text or Category", "Is");
+      H.editDashboard();
+      H.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
-      saveDashboard();
+      H.setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
+      H.saveDashboard();
       filterDashboard();
 
-      cy.get("@questionId").then(visitQuestion);
+      cy.get("@questionId").then(H.visitQuestion);
       archiveQuestion();
     });
 
@@ -167,7 +146,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
             dashboardDetails: getNativeDashboard(questionId),
           }).then(({ body: card }) => {
             cy.editDashboardCard(card, getParameterMapping(card));
-            visitEmbeddedPage(getDashboardResource(card));
+            H.visitEmbeddedPage(getDashboardResource(card));
           });
         },
       );
@@ -183,7 +162,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
             dashboardDetails: getNativeDashboard(questionId),
           }).then(({ body: card }) => {
             cy.editDashboardCard(card, getParameterMapping(card));
-            visitPublicDashboard(card.dashboard_id);
+            H.visitPublicDashboard(card.dashboard_id);
           });
         },
       );
@@ -197,14 +176,14 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
-      editDashboard();
-      setFilter("Text or Category", "Is");
+      H.editDashboard();
+      H.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      setFilterListSource({ values: ["Gadget", "Gizmo", "Widget"] });
-      saveDashboard();
+      H.setFilterListSource({ values: ["Gadget", "Gizmo", "Widget"] });
+      H.saveDashboard();
       filterDashboard();
     });
 
@@ -214,7 +193,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        visitEmbeddedPage(getDashboardResource(card));
+        H.visitEmbeddedPage(getDashboardResource(card));
       });
 
       filterDashboard();
@@ -226,7 +205,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        visitPublicDashboard(card.dashboard_id);
+        H.visitPublicDashboard(card.dashboard_id);
       });
 
       filterDashboard();
@@ -238,25 +217,25 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
-      editDashboard();
-      setFilter("Text or Category", "Is");
+      H.editDashboard();
+      H.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      setSearchBoxFilterType();
-      saveDashboard();
+      H.setSearchBoxFilterType();
+      H.saveDashboard();
       filterDashboard({ isField: true });
     });
   });
 });
 
-describeEE("scenarios > dashboard > filters", () => {
+H.describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
-    blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+    H.setTokenFeatures("all");
+    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
   });
 
   it("should sandbox parameter values in dashboards", () => {
@@ -276,8 +255,8 @@ describeEE("scenarios > dashboard > filters", () => {
           cy.editDashboardCard(card, getParameterMapping(card));
           cy.signOut();
           cy.signInAsSandboxedUser();
-          visitDashboard(card.dashboard_id);
-          assertDatasetReqIsSandboxed({
+          H.visitDashboard(card.dashboard_id);
+          H.assertDatasetReqIsSandboxed({
             requestAlias: `@dashcardQuery${card.id}`,
           });
         });
@@ -290,13 +269,13 @@ describeEE("scenarios > dashboard > filters", () => {
 
 const mapFilterToQuestion = () => {
   cy.findByText("Select…").click();
-  popover().within(() => cy.findByText("Category").click());
+  H.popover().within(() => cy.findByText("Category").click());
 };
 
 const filterDashboard = ({ isField = false, isSandboxed = false } = {}) => {
   cy.findByText("Text").click();
 
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByText("Gizmo").should("be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
     cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
@@ -313,7 +292,7 @@ const filterDashboard = ({ isField = false, isSandboxed = false } = {}) => {
 };
 
 const archiveQuestion = () => {
-  openQuestionActions();
+  H.openQuestionActions();
   cy.findByTestId("archive-button").click();
   cy.findByText(
     "This question will be removed from any dashboards or pulses using it. It will also be removed from the filter that uses it to populate values.",

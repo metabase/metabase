@@ -1,11 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  openTable,
-  restore,
-  setupSMTP,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -14,10 +9,10 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
     cy.intercept("POST", "/api/card").as("saveCard");
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    setupSMTP();
+    H.setupSMTP();
   });
 
   it("should have no alerts set up initially", () => {
@@ -58,7 +53,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should set up an email alert for newly created question", () => {
-    openTable({
+    H.openTable({
       table: PEOPLE_ID,
     });
 
@@ -75,7 +70,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should enable alert to be updated (without updating question) (metabase#36866)", () => {
-    openTable({
+    H.openTable({
       table: PEOPLE_ID,
     });
 
@@ -117,7 +112,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 });
 
 function openAlertForQuestion(id) {
-  visitQuestion(id);
+  H.visitQuestion(id);
   cy.icon("bell").click();
   cy.findByText("Set up an alert").click();
 }

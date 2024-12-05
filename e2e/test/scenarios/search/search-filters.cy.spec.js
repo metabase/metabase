@@ -1,3 +1,4 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -5,18 +6,6 @@ import {
   NORMAL_USER_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  commandPaletteSearch,
-  createAction,
-  createModerationReview,
-  describeEE,
-  expectSearchResultContent,
-  popover,
-  restore,
-  setActionsEnabledForDB,
-  setTokenFeatures,
-  summarize,
-} from "e2e/support/helpers";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
 const typeFilters = [
@@ -89,7 +78,7 @@ const TEST_CREATED_AT_FILTERS = [
 
 describe("scenarios > search", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.intercept("GET", "/api/search?q=*").as("search");
     cy.signInAsAdmin();
   });
@@ -107,14 +96,14 @@ describe("scenarios > search", () => {
 
     describe("type filter", () => {
       beforeEach(() => {
-        setActionsEnabledForDB(SAMPLE_DB_ID);
+        H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
         cy.createQuestion({
           name: "Orders Model",
           query: { "source-table": ORDERS_ID },
           type: "model",
         }).then(({ body: { id } }) => {
-          createAction({
+          H.createAction({
             name: "Update orders quantity",
             description: "Set orders quantity to the same value",
             type: "query",
@@ -177,11 +166,11 @@ describe("scenarios > search", () => {
         it(`should filter results by ${label}`, () => {
           cy.visit("/");
 
-          commandPaletteSearch("e");
+          H.commandPaletteSearch("e");
           cy.wait("@search");
 
           cy.findByTestId("type-search-filter").click();
-          popover().within(() => {
+          H.popover().within(() => {
             cy.findByText(label).click();
             cy.findByText("Apply").click();
           });
@@ -223,7 +212,7 @@ describe("scenarios > search", () => {
 
     describe("created_by filter", () => {
       beforeEach(() => {
-        restore();
+        H.restore();
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
@@ -246,7 +235,7 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").should("exist");
         });
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: NORMAL_USER_TEST_QUESTION.name,
@@ -265,7 +254,7 @@ describe("scenarios > search", () => {
       it("should filter results by one user", () => {
         cy.visit("/");
 
-        commandPaletteSearch("reviews");
+        H.commandPaletteSearch("reviews");
         cy.wait("@search");
 
         expectSearchResultItemNameContent({
@@ -278,13 +267,13 @@ describe("scenarios > search", () => {
 
         cy.findByTestId("created_by-search-filter").click();
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Robert Tableton").click();
           cy.findByText("Apply").click();
         });
         cy.url().should("contain", "created_by");
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: NORMAL_USER_TEST_QUESTION.name,
@@ -298,7 +287,7 @@ describe("scenarios > search", () => {
       it("should filter results by more than one user", () => {
         cy.visit("/");
 
-        commandPaletteSearch("reviews");
+        H.commandPaletteSearch("reviews");
         cy.wait("@search");
 
         expectSearchResultItemNameContent({
@@ -311,14 +300,14 @@ describe("scenarios > search", () => {
 
         cy.findByTestId("created_by-search-filter").click();
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Robert Tableton").click();
           cy.findByText("Bobby Tables").click();
           cy.findByText("Apply").click();
         });
         cy.url().should("contain", "created_by");
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: NORMAL_USER_TEST_QUESTION.name,
@@ -341,7 +330,7 @@ describe("scenarios > search", () => {
 
         cy.wait("@search");
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: NORMAL_USER_TEST_QUESTION.name,
@@ -357,7 +346,7 @@ describe("scenarios > search", () => {
         });
 
         cy.findByTestId("created_by-search-filter").click();
-        popover().within(() => {
+        H.popover().within(() => {
           // remove Robert Tableton from the created_by filter
           cy.findByTestId("search-user-select-box")
             .findByText("Robert Tableton")
@@ -373,7 +362,7 @@ describe("scenarios > search", () => {
       it("should remove created_by filter when `X` is clicked on filter", () => {
         cy.visit(`/search?q=reviews&created_by=${NORMAL_USER_ID}`);
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: NORMAL_USER_TEST_QUESTION.name,
@@ -402,7 +391,7 @@ describe("scenarios > search", () => {
           cy.signIn(userType);
           cy.visit("/");
 
-          commandPaletteSearch("reviews");
+          H.commandPaletteSearch("reviews");
           cy.wait("@search");
 
           expectSearchResultItemNameContent(
@@ -417,13 +406,13 @@ describe("scenarios > search", () => {
 
           cy.findByTestId("created_by-search-filter").click();
 
-          popover().within(() => {
+          H.popover().within(() => {
             cy.findByText("Bobby Tables").click();
             cy.findByText("Apply").click();
           });
           cy.url().should("contain", "created_by");
 
-          expectSearchResultContent({
+          H.expectSearchResultContent({
             expectedSearchResults: [
               {
                 name: ADMIN_TEST_QUESTION.name,
@@ -445,7 +434,7 @@ describe("scenarios > search", () => {
             cy.signOut();
             cy.signInAsNormalUser();
             cy.visit(`/question/${questionId}`);
-            summarize();
+            H.summarize();
             cy.findByTestId("sidebar-right").findByText("Done").click();
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
@@ -461,7 +450,7 @@ describe("scenarios > search", () => {
           ({ body: { id: questionId } }) => {
             cy.signInAsAdmin();
             cy.visit(`/question/${questionId}`);
-            summarize();
+            H.summarize();
             cy.findByTestId("sidebar-right").findByText("Done").click();
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
@@ -485,7 +474,7 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").should("exist");
         });
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
@@ -499,7 +488,7 @@ describe("scenarios > search", () => {
       it("should filter last_edited results by one user", () => {
         cy.visit("/");
 
-        commandPaletteSearch("reviews");
+        H.commandPaletteSearch("reviews");
         cy.wait("@search");
 
         cy.findByTestId("last_edited_by-search-filter").click();
@@ -512,13 +501,13 @@ describe("scenarios > search", () => {
           ],
         });
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Robert Tableton").click();
           cy.findByText("Apply").click();
         });
         cy.url().should("contain", "last_edited_by");
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
@@ -532,7 +521,7 @@ describe("scenarios > search", () => {
       it("should filter last_edited results by more than user", () => {
         cy.visit("/");
 
-        commandPaletteSearch("reviews");
+        H.commandPaletteSearch("reviews");
         cy.wait("@search");
 
         cy.findByTestId("last_edited_by-search-filter").click();
@@ -545,14 +534,14 @@ describe("scenarios > search", () => {
           ],
         });
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Robert Tableton").click();
           cy.findByText("Bobby Tables").click();
           cy.findByText("Apply").click();
         });
         cy.url().should("contain", "last_edited_by");
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
@@ -575,7 +564,7 @@ describe("scenarios > search", () => {
 
         cy.wait("@search");
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
@@ -591,7 +580,7 @@ describe("scenarios > search", () => {
         });
 
         cy.findByTestId("last_edited_by-search-filter").click();
-        popover().within(() => {
+        H.popover().within(() => {
           // remove Robert Tableton from the last_edited_by filter
           cy.findByTestId("search-user-select-box")
             .findByText("Robert Tableton")
@@ -599,7 +588,7 @@ describe("scenarios > search", () => {
           cy.findByText("Apply").click();
         });
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: LAST_EDITED_BY_ADMIN_QUESTION.name,
@@ -615,7 +604,7 @@ describe("scenarios > search", () => {
           `/search?q=reviews&last_edited_by=${NORMAL_USER_ID}&last_edited_by=${ADMIN_USER_ID}`,
         );
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
@@ -649,7 +638,7 @@ describe("scenarios > search", () => {
           cy.signIn(userType);
           cy.visit("/");
 
-          commandPaletteSearch("reviews");
+          H.commandPaletteSearch("reviews");
           cy.wait("@search");
 
           expectSearchResultItemNameContent(
@@ -664,13 +653,13 @@ describe("scenarios > search", () => {
 
           cy.findByTestId("last_edited_by-search-filter").click();
 
-          popover().within(() => {
+          H.popover().within(() => {
             cy.findByText("Bobby Tables").click();
             cy.findByText("Apply").click();
           });
           cy.url().should("contain", "last_edited_by");
 
-          expectSearchResultContent({
+          H.expectSearchResultContent({
             expectedSearchResults: [
               {
                 name: LAST_EDITED_BY_ADMIN_QUESTION.name,
@@ -717,11 +706,11 @@ describe("scenarios > search", () => {
         );
 
         cy.findByTestId("created_at-search-filter").click();
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: NORMAL_USER_TEST_QUESTION.name,
@@ -737,7 +726,7 @@ describe("scenarios > search", () => {
         cy.visit("/search?q=Reviews&created_at=thisday");
         cy.wait("@search");
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: NORMAL_USER_TEST_QUESTION.name,
@@ -777,7 +766,7 @@ describe("scenarios > search", () => {
             cy.signOut();
             cy.signInAsNormalUser();
             cy.visit(`/question/${questionId}`);
-            summarize();
+            H.summarize();
             cy.findByTestId("sidebar-right").findByText("Done").click();
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
@@ -817,11 +806,11 @@ describe("scenarios > search", () => {
         });
 
         cy.findByTestId("last_edited_at-search-filter").click();
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
@@ -837,7 +826,7 @@ describe("scenarios > search", () => {
         cy.visit("/search?q=Reviews&last_edited_at=thisday");
         cy.wait("@search");
 
-        expectSearchResultContent({
+        H.expectSearchResultContent({
           expectedSearchResults: [
             {
               name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
@@ -868,10 +857,10 @@ describe("scenarios > search", () => {
       });
     });
 
-    describeEE("verified filter", () => {
+    H.describeEE("verified filter", () => {
       beforeEach(() => {
-        setTokenFeatures("all");
-        createModerationReview({
+        H.setTokenFeatures("all");
+        H.createModerationReview({
           status: "verified",
           moderated_item_type: "card",
           moderated_item_id: ORDERS_COUNT_QUESTION_ID,
@@ -896,7 +885,7 @@ describe("scenarios > search", () => {
       it("should filter results by verified items", () => {
         cy.visit("/");
 
-        commandPaletteSearch("e");
+        H.commandPaletteSearch("e");
         cy.wait("@search");
 
         cy.findByTestId("verified-search-filter")
@@ -1018,21 +1007,21 @@ describe("scenarios > search", () => {
 
       // add created_by filter
       cy.findByTestId("created_by-search-filter").click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Bobby Tables").click();
         cy.findByText("Apply").click();
       });
 
       // add last_edited_by filter
       cy.findByTestId("last_edited_by-search-filter").click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Bobby Tables").click();
         cy.findByText("Apply").click();
       });
 
       // add type filter
       cy.findByTestId("type-search-filter").click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Question").click();
         cy.findByText("Apply").click();
       });
@@ -1046,7 +1035,7 @@ describe("scenarios > search", () => {
       });
 
       //getSearchBar().clear().type("count{enter}");
-      commandPaletteSearch("count");
+      H.commandPaletteSearch("count");
 
       expectSearchResultItemNameContent({
         itemNames: [

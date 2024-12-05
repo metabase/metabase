@@ -1,4 +1,4 @@
-import { echartsContainer } from "e2e/support/helpers";
+import { H } from "e2e/support";
 import {
   assertTimelineData,
   dismissOkToPlayWithQuestionsModal,
@@ -36,7 +36,7 @@ describe(`smoke test the migration to the version ${version}`, () => {
 
     assertTimelineData(version);
 
-    echartsContainer()
+    H.echartsContainer()
       .should("contain", "20,000")
       .and("contain", "100,000")
       .and("contain", "140,000");
@@ -48,13 +48,13 @@ describe(`smoke test the migration to the version ${version}`, () => {
     cy.wait("@cardQuery");
 
     cy.get(".bar").should("have.length", 4);
-    echartsContainer()
+    H.echartsContainer()
       .should("contain", "Gizmo")
       .and("contain", "Gadget")
       .and("contain", "Doohickey")
       .and("contain", "Widget");
 
-    echartsContainer()
+    H.echartsContainer()
       .should("contain", "3.27")
       .and("contain", "3.3")
       .and("contain", "3.71")

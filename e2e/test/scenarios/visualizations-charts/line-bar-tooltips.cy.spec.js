@@ -1,19 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  POPOVER_ELEMENT,
-  addOrUpdateDashboardCard,
-  cartesianChartCircle,
-  cartesianChartCircleWithColor,
-  chartPathWithFillColor,
-  echartsTriggerBlur,
-  modal,
-  popover,
-  restore,
-  saveDashboard,
-  testPairedTooltipValues,
-  testTooltipPairs,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -29,14 +15,14 @@ const SUM_OF_TOTAL = {
 
 function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   tooltipSelector("#88BF4D", 0);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2022"],
     ["Sum of Total", "42,156.87"],
   ]);
   testTooltipExcludesText("Compared to previous year");
 
   tooltipSelector("#88BF4D", 1);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2023"],
     ["Sum of Total", "205,256.02"],
     ["Compared to previous year", "+386.89%"],
@@ -100,14 +86,14 @@ const AVG_OF_TOTAL = {
 
 function testAvgTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   tooltipSelector("#A989C5", 0);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2022"],
     ["Average of Total", "56.66"],
   ]);
   testTooltipExcludesText("Compared to previous year");
 
   tooltipSelector("#A989C5", 1);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2023"],
     ["Average of Total", "56.86"],
     ["Compared to previous year", "+0.34%"],
@@ -133,7 +119,7 @@ function testCumSumChange(testFirstTooltip = true) {
   // specific spec
   if (testFirstTooltip) {
     showTooltipForCircleInSeries("#88BF4D", 0);
-    testTooltipPairs([
+    H.testTooltipPairs([
       ["Created At", "2022"],
       ["Cumulative sum of Quantity", "3,236"],
     ]);
@@ -141,7 +127,7 @@ function testCumSumChange(testFirstTooltip = true) {
   }
 
   showTooltipForCircleInSeries("#88BF4D", 1);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2023"],
     ["Cumulative sum of Quantity", "17,587"],
     ["Compared to previous year", "+443.48%"],
@@ -163,14 +149,14 @@ const AVG_DISCOUNT_SUM_DISCOUNT = {
 
 function testAvgDiscountChange() {
   showTooltipForCircleInSeries("#509EE3", 0);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2022"],
     ["Average of Discount", "5.03"],
   ]);
   testTooltipExcludesText("Compared to previous year");
 
   showTooltipForCircleInSeries("#509EE3", 1);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2023"],
     ["Average of Discount", "5.41"],
     ["Compared to previous year", "+7.54%"],
@@ -179,14 +165,14 @@ function testAvgDiscountChange() {
 
 function testSumDiscountChange() {
   showTooltipForCircleInSeries("#98D9D9", 0);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2022"],
     ["Sum of Discount", "342.09"],
   ]);
   testTooltipExcludesText("Compared to previous year");
 
   showTooltipForCircleInSeries("#98D9D9", 1);
-  testTooltipPairs([
+  H.testTooltipPairs([
     ["Created At", "2023"],
     ["Sum of Discount", "1,953.08"],
     ["Compared to previous year", "+470.93%"],
@@ -195,7 +181,7 @@ function testSumDiscountChange() {
 
 describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -204,7 +190,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL,
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
     });
 
@@ -219,8 +205,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom", "42,156.87"],
       ];
 
-      cartesianChartCircle().first().realHover();
-      testTooltipPairs(originalTooltipText);
+      H.cartesianChartCircle().first().realHover();
+      H.testTooltipPairs(originalTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -228,8 +214,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      cartesianChartCircle().first().realHover();
-      testTooltipPairs(updatedTooltipText);
+      H.cartesianChartCircle().first().realHover();
+      H.testTooltipPairs(updatedTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -243,7 +229,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         question: SUM_OF_TOTAL,
         addedSeriesQuestion: AVG_OF_TOTAL,
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
     });
 
@@ -267,10 +253,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ];
 
       showTooltipForCircleInSeries("#88BF4D");
-      testTooltipPairs(originalSeriesTooltipText);
+      H.testTooltipPairs(originalSeriesTooltipText);
 
       showTooltipForCircleInSeries("#A989C5");
-      testTooltipPairs(addedSeriesTooltipText);
+      H.testTooltipPairs(addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -280,10 +266,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       showTooltipForCircleInSeries("#88BF4D");
-      testTooltipPairs(updatedOriginalSeriesTooltipText);
+      H.testTooltipPairs(updatedOriginalSeriesTooltipText);
 
       showTooltipForCircleInSeries("#A989C5");
-      testTooltipPairs(updatedAddedSeriesTooltipText);
+      H.testTooltipPairs(updatedAddedSeriesTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -297,7 +283,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
     });
 
@@ -314,8 +300,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom 2", "3,236"],
       ];
 
-      cartesianChartCircle().first().realHover();
-      testTooltipPairs(originalTooltipText);
+      H.cartesianChartCircle().first().realHover();
+      H.testTooltipPairs(originalTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -324,8 +310,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      cartesianChartCircle().first().realHover();
-      testTooltipPairs(updatedTooltipText);
+      H.cartesianChartCircle().first().realHover();
+      H.testTooltipPairs(updatedTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -340,7 +326,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
         addedSeriesQuestion: AVG_DISCOUNT_SUM_DISCOUNT,
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
     });
 
@@ -373,12 +359,12 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       originalSeriesColors.forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        testTooltipPairs(originalSeriesTooltipText);
+        H.testTooltipPairs(originalSeriesTooltipText);
       });
 
       addedSeriesColors.forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        testTooltipPairs(addedSeriesTooltipText);
+        H.testTooltipPairs(addedSeriesTooltipText);
       });
 
       openDashCardVisualizationOptions();
@@ -405,11 +391,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       originalSeriesColors.forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        testTooltipPairs(updatedOriginalSeriesTooltipText);
+        H.testTooltipPairs(updatedOriginalSeriesTooltipText);
       });
       addedSeriesColors.forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        testTooltipPairs(updatedAddedSeriesTooltipText);
+        H.testTooltipPairs(updatedAddedSeriesTooltipText);
       });
     });
 
@@ -426,7 +412,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: { ...SUM_OF_TOTAL, display: "bar" },
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
     });
 
@@ -441,8 +427,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom", "42,156.87"],
       ];
 
-      chartPathWithFillColor("#88BF4D").first().realHover();
-      testTooltipPairs(originalTooltipText);
+      H.chartPathWithFillColor("#88BF4D").first().realHover();
+      H.testTooltipPairs(originalTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -450,8 +436,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      chartPathWithFillColor("#88BF4D").first().realHover();
-      testTooltipPairs(updatedTooltipText);
+      H.chartPathWithFillColor("#88BF4D").first().realHover();
+      H.testTooltipPairs(updatedTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -465,7 +451,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         question: { ...SUM_OF_TOTAL, display: "bar" },
         addedSeriesQuestion: { ...AVG_OF_TOTAL, display: "bar" },
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
     });
 
@@ -491,10 +477,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ];
 
       showTooltipForBarInSeries(originalSeriesColor, 0);
-      testTooltipPairs(originalSeriesTooltipText);
+      H.testTooltipPairs(originalSeriesTooltipText);
 
       showTooltipForBarInSeries(addedSeriesColor, 0);
-      testTooltipPairs(addedSeriesTooltipText);
+      H.testTooltipPairs(addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -504,10 +490,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       showTooltipForBarInSeries(originalSeriesColor, 0);
-      testTooltipPairs(updatedOriginalSeriesTooltipText);
+      H.testTooltipPairs(updatedOriginalSeriesTooltipText);
 
       showTooltipForBarInSeries(addedSeriesColor, 0);
-      testTooltipPairs(updatedAddedSeriesTooltipText);
+      H.testTooltipPairs(updatedAddedSeriesTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -531,11 +517,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           },
         },
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
       showTooltipForCircleInSeries("#88BF4D", 1);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "May 2022"],
         ["Sum of Total", "pref1,265.72suf"],
         ["Compared to previous month", "+2,299.19%"],
@@ -546,18 +532,18 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH,
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
       showTooltipForCircleInSeries("#88BF4D", 0);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "April 2022"],
         ["Sum of Total", "52.76"],
       ]);
       testTooltipExcludesText("Compared to previous month");
 
       showTooltipForCircleInSeries("#88BF4D", 1);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "May 2022"],
         ["Sum of Total", "1,265.72"],
         ["Compared to previous month", "+2,299.19%"],
@@ -568,31 +554,31 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG,
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
       showTooltipForCircleInSeries("#88BF4D", 0);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "April 2022"],
         ["Sum of Total", "52.76"],
       ]);
       testTooltipExcludesText("Compared to previous month");
       showTooltipForCircleInSeries("#88BF4D", 1);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "June 2022"],
         ["Sum of Total", "2,072.94"],
       ]);
       testTooltipExcludesText("Compared to previous month");
 
       showTooltipForCircleInSeries("#88BF4D", 2);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "July 2022"],
         ["Sum of Total", "3,734.69"],
         ["Compared to previous month", "+80.16%"],
       ]);
 
       showTooltipForCircleInSeries("#88BF4D", 3);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "September 2022"],
         ["Sum of Total", "5,372.08"],
       ]);
@@ -603,18 +589,18 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH_ORDINAL,
       }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
       showTooltipForCircleInSeries("#88BF4D", 0);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "April 2022"],
         ["Sum of Total", "52.76"],
       ]);
       testTooltipExcludesText("Compared to previous month");
 
       showTooltipForCircleInSeries("#88BF4D", 1);
-      testTooltipPairs([
+      H.testTooltipPairs([
         ["Created At", "May 2022"],
         ["Sum of Total", "1,265.72"],
       ]);
@@ -679,7 +665,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should not omit percent change on April", () => {
       setup({ question: SUM_OF_TOTAL_APRIL }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
       APRIL_CHANGES.forEach((change, index) => {
@@ -688,13 +674,13 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           testTooltipExcludesText("Compared to previous");
           return;
         }
-        testPairedTooltipValues("Compared to previous month", change);
+        H.testPairedTooltipValues("Compared to previous month", change);
       });
     });
 
     it("should not omit percent change the week after DST begins", () => {
       setup({ question: SUM_OF_TOTAL_DST_WEEK }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
       DST_WEEK_CHANGES.forEach((change, index) => {
@@ -703,13 +689,13 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           testTooltipExcludesText("Compared to previous");
           return;
         }
-        testPairedTooltipValues("Compared to previous week", change);
+        H.testPairedTooltipValues("Compared to previous week", change);
       });
     });
 
     it("should not omit percent change the day after DST begins", () => {
       setup({ question: SUM_OF_TOTAL_DST_DAY }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        H.visitDashboard(dashboardId);
       });
 
       DST_DAY_CHANGES.forEach((change, index) => {
@@ -718,7 +704,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           testTooltipExcludesText("Compared to previous");
           return;
         }
-        testPairedTooltipValues("Compared to previous day", change);
+        H.testPairedTooltipValues("Compared to previous day", change);
       });
     });
   });
@@ -740,7 +726,7 @@ function setup({ question, addedSeriesQuestion }) {
 
 function setupDashboard(cardId, addedSeriesCardId) {
   return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-    return addOrUpdateDashboardCard({
+    return H.addOrUpdateDashboardCard({
       dashboard_id: dashboardId,
       card_id: cardId,
       card: {
@@ -755,25 +741,25 @@ function setupDashboard(cardId, addedSeriesCardId) {
 }
 
 function resetHoverState() {
-  echartsTriggerBlur();
-  cy.get(POPOVER_ELEMENT).should("not.exist");
+  H.echartsTriggerBlur();
+  cy.get(H.POPOVER_ELEMENT).should("not.exist");
   cy.wait(50);
 }
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
   resetHoverState();
-  cy.get(POPOVER_ELEMENT).should("not.exist");
-  cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
+  cy.get(H.POPOVER_ELEMENT).should("not.exist");
+  H.cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
   resetHoverState();
-  cy.get(POPOVER_ELEMENT).should("not.exist");
-  chartPathWithFillColor(seriesColor).eq(index).realHover();
+  cy.get(H.POPOVER_ELEMENT).should("not.exist");
+  H.chartPathWithFillColor(seriesColor).eq(index).realHover();
 }
 
 function testTooltipExcludesText(text) {
-  popover().within(() => {
+  H.popover().within(() => {
     cy.contains(text).should("not.exist");
   });
 }
@@ -789,9 +775,9 @@ function updateColumnTitle(originalText, updatedText) {
 }
 
 function saveDashCardVisualizationOptions() {
-  modal().within(() => {
+  H.modal().within(() => {
     cy.findByText("Done").click();
   });
 
-  saveDashboard();
+  H.saveDashboard();
 }

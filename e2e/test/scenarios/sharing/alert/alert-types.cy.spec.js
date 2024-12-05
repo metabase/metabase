@@ -1,9 +1,9 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { restore, setupSMTP, visitQuestion } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -43,16 +43,16 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    setupSMTP();
+    H.setupSMTP();
   });
 
   describe("rows based alerts", () => {
     rawTestCases.forEach(({ questionType, questionId }) => {
       it(`should be supported for ${questionType}`, () => {
-        visitQuestion(questionId);
+        H.visitQuestion(questionId);
 
         openAlertModal();
 
@@ -78,7 +78,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       });
 
       cy.log("Set the goal on timeseries question");
-      visitQuestion(timeSeriesQuestionId);
+      H.visitQuestion(timeSeriesQuestionId);
       cy.findByTestId("chart-container").should("contain", "Goal");
 
       openAlertModal();

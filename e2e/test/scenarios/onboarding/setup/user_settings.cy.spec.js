@@ -1,15 +1,15 @@
+import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
-import { getFullName, popover, restore } from "e2e/support/helpers";
 
 const { normal } = USERS;
 
 const { first_name, last_name, email, password } = normal;
 
 describe("user > settings", () => {
-  const fullName = getFullName(normal);
+  const fullName = H.getFullName(normal);
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
@@ -122,7 +122,7 @@ describe("user > settings", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use site default").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("Indonesian").click());
+    H.popover().within(() => cy.findByText("Indonesian").click());
 
     cy.button("Update").click();
     cy.wait("@updateUserSettings");

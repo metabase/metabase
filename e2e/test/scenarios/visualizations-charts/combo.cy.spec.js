@@ -1,25 +1,17 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  cartesianChartCircleWithColor,
-  chartPathWithFillColor,
-  echartsContainer,
-  restore,
-  testStackedTooltipRows,
-  testTooltipPairs,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > combo", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should render values on data points", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -48,7 +40,7 @@ describe("scenarios > visualizations > combo", () => {
   });
 
   it("should support stacking", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -92,8 +84,8 @@ describe("scenarios > visualizations > combo", () => {
     });
 
     // First circle of the line series
-    cartesianChartCircleWithColor("#A989C5").eq(0).trigger("mousemove");
-    testTooltipPairs([
+    H.cartesianChartCircleWithColor("#A989C5").eq(0).trigger("mousemove");
+    H.testTooltipPairs([
       ["Created At:", "2022"],
       ["Average of Total:", "56.66"],
       ["Average of Subtotal:", "54.44"],
@@ -104,19 +96,19 @@ describe("scenarios > visualizations > combo", () => {
     ]);
 
     // First circle of stacked area series
-    cartesianChartCircleWithColor("#98D9D9").eq(0).trigger("mousemove");
+    H.cartesianChartCircleWithColor("#98D9D9").eq(0).trigger("mousemove");
 
     // Check the tooltip shows only stacked areas series
-    testStackedTooltipRows([
+    H.testStackedTooltipRows([
       ["Min of Subtotal", "15.69", "56.01 %"],
       ["Min of Total", "12.32", "43.99 %"],
       ["Total", "28.02", "100 %"],
     ]);
 
     // First bar of stacked bar series
-    chartPathWithFillColor("#7172AD").eq(0).realHover();
+    H.chartPathWithFillColor("#7172AD").eq(0).realHover();
 
-    testStackedTooltipRows([
+    H.testStackedTooltipRows([
       ["Max of Subtotal", "98.82", "38.60 %"],
       ["Max of Total", "102.77", "40.14 %"],
       ["Average of Subtotal", "54.44", "21.26 %"],
@@ -127,6 +119,6 @@ describe("scenarios > visualizations > combo", () => {
     cy.findByTestId("chartsettings-sidebar").findByText("Stack - 100%").click();
 
     // Ensure y-axis has 100% tick
-    echartsContainer().findByText("100%");
+    H.echartsContainer().findByText("100%");
   });
 });

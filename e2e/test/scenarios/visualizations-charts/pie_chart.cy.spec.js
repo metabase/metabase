@@ -1,6 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore, visitQuestionAdhoc } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -16,12 +16,12 @@ const testQuery = {
 
 describe("scenarios > visualizations > pie chart", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should render a pie chart (metabase#12506) (#35244)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pie",
     });
@@ -31,7 +31,7 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.log("#35244");
     cy.findByLabelText("Switch to data").click();
     cy.findAllByTestId("header-cell").contains("Count").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByRole("img", { name: /filter/ }).should("exist");
       cy.findByRole("img", { name: /gear/ }).should("not.exist");
       cy.findByRole("img", { name: /eye_crossed_out/ }).should("not.exist");
@@ -39,7 +39,7 @@ describe("scenarios > visualizations > pie chart", () => {
   });
 
   it("should mute items in legend when hovering (metabase#29224)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pie",
     });

@@ -1,18 +1,11 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  entityPickerModal,
-  entityPickerModalTab,
-  getNotebookStep,
-  restore,
-  startNewQuestion,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 36669", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
@@ -25,11 +18,11 @@ describe("issue 36669", () => {
       },
     };
 
-    createQuestion(questionDetails).then(() => {
-      startNewQuestion();
+    H.createQuestion(questionDetails).then(() => {
+      H.startNewQuestion();
     });
 
-    entityPickerModal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByPlaceholderText("Search this collection or everywhere…").type(
         "Orders 36669",
       );
@@ -37,10 +30,10 @@ describe("issue 36669", () => {
       cy.findByRole("tabpanel").findByText("Orders 36669").click();
     });
 
-    getNotebookStep("data").findByText("Orders 36669").click();
+    H.getNotebookStep("data").findByText("Orders 36669").click();
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
 
       cy.log("verify Tables are listed");
       cy.findByRole("tabpanel").should("contain", "Orders");

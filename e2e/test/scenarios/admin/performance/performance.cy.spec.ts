@@ -1,4 +1,4 @@
-import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 import {
   adaptiveRadioButton,
@@ -18,7 +18,7 @@ import {
 
 describe("scenarios > admin > performance", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.intercept("PUT", "/api/cache").as("putCacheConfig");
     cy.intercept("DELETE", "/api/cache").as("deleteCacheConfig");
     cy.intercept("POST", "/api/persist/enable").as("enablePersistence");
@@ -110,9 +110,9 @@ describe("scenarios > admin > performance", { tags: "@OSS" }, () => {
   });
 });
 
-describeEE("EE", () => {
+H.describeEE("EE", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.intercept("PUT", "/api/cache").as("putCacheConfig");
     cy.intercept("DELETE", "/api/cache").as("deleteCacheConfig");
     cy.intercept(
@@ -122,7 +122,7 @@ describeEE("EE", () => {
     cy.intercept("POST", "/api/persist/enable").as("enablePersistence");
     cy.intercept("POST", "/api/persist/disable").as("disablePersistence");
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
   });
 
   const checkInheritanceIfNeeded = (itemName: string, strategyName: string) => {

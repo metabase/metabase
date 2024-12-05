@@ -1,12 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  filterWidget,
-  getDashboardCard,
-  restore,
-  updateDashboardCards,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -52,17 +45,17 @@ describe("issue 32804", () => {
   });
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should retain source query filters when drilling-thru from a dashboard (metabase#32804)", () => {
-    createQuestion(question1Details).then(({ body: card1 }) => {
+    H.createQuestion(question1Details).then(({ body: card1 }) => {
       cy.createDashboardWithQuestions({
         dashboardDetails,
         questions: [getQuestion2Details(card1)],
       }).then(({ dashboard, questions: [card2] }) => {
-        updateDashboardCards({
+        H.updateDashboardCards({
           dashboard_id: dashboard.id,
           cards: [
             {
@@ -71,13 +64,13 @@ describe("issue 32804", () => {
             },
           ],
         });
-        visitDashboard(dashboard.id, {
+        H.visitDashboard(dashboard.id, {
           params: { [parameterDetails.slug]: "4" },
         });
       });
     });
-    filterWidget().findByText("4").should("be.visible");
-    getDashboardCard(0).findByText("Q2").click();
+    H.filterWidget().findByText("4").should("be.visible");
+    H.getDashboardCard(0).findByText("Q2").click();
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Category is Gadget").should("be.visible");
       cy.findByText("Rating is equal to 4").should("be.visible");

@@ -1,27 +1,27 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openReviewsTable, popover, restore } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should display proper drills on cell click for unaggregated query", () => {
-    openReviewsTable({ limit: 3 });
+    H.openReviewsTable({ limit: 3 });
 
     // FK cell drills
     cy.get(".test-Table-FK").findByText("1").first().click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("View this Product's Reviews").should("be.visible");
       cy.findByText("View details").should("be.visible");
     });
 
     // Short text cell drills
     cy.get("[data-testid=cell-data]").contains("christ").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Is christ").should("be.visible");
       cy.findByText("Is not christ").should("be.visible");
       cy.findByText("View details").should("be.visible");
@@ -29,7 +29,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
 
     // Number cell drills
     cy.get("[data-testid=cell-data]").contains("5").first().click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText(">").should("be.visible");
       cy.findByText("<").should("be.visible");
       cy.findByText("=").should("be.visible");
@@ -38,14 +38,14 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     cy.get("[data-testid=cell-data]").contains("Ad perspiciatis quis").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Contains…").should("be.visible");
       cy.findByText("Does not contain…").should("be.visible");
       cy.findByText("View details").should("be.visible");
     });
 
     cy.get("[data-testid=cell-data]").contains("May 15, 20").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Before").should("be.visible");
       cy.findByText("After").should("be.visible");
       cy.findByText("On").should("be.visible");
@@ -54,7 +54,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     cy.get("[data-testid=cell-data]").contains("ID").click({ force: true });
-    popover().within(() => {
+    H.popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -64,7 +64,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     cy.get("[data-testid=cell-data]").contains("Reviewer").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -75,7 +75,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     cy.get("[data-testid=cell-data]").contains("Rating").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -107,13 +107,13 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       .findByText("abbey-heidenreich")
       .click();
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Is abbey-heidenreich").should("be.visible");
       cy.findByText("Is not abbey-heidenreich").should("be.visible");
     });
 
     cy.get("[data-testid=cell-data]").contains("1").first().click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("See this Review").should("be.visible");
 
       cy.findByText("Automatic insights…").should("be.visible");
@@ -125,7 +125,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     cy.get("[data-testid=cell-data]").contains("Reviewer").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -134,7 +134,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     cy.get("[data-testid=cell-data]").contains("Count").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -159,7 +159,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     );
 
     cy.get("[data-testid=cell-data]").contains("June").first().click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Before").should("be.visible");
       cy.findByText("After").should("be.visible");
       cy.findByText("On").should("be.visible");
@@ -167,7 +167,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     cy.get("[data-testid=cell-data]").contains("4").first().click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("See this month by week").should("be.visible");
 
       cy.findByText("Break out by…").should("be.visible");
@@ -197,7 +197,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     );
 
     cy.get("[data-testid=cell-data]").contains("1").first().click();
-    popover()
+    H.popover()
       .findByText("Drill-through doesn’t work on SQL questions.")
       .should("be.visible");
   });

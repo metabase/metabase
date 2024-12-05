@@ -1,11 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  echartsContainer,
-  popover,
-  queryBuilderFooter,
-  restore,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -24,34 +18,34 @@ describe("issue 43294", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should not overwrite viz settings with click actions in raw data mode (metabase#43294)", () => {
-    createQuestion(questionDetails, { visitQuestion: true });
-    queryBuilderFooter().findByLabelText("Switch to data").click();
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
 
     cy.log("extract action");
     cy.button("Add column").click();
-    popover().findByText("Extract part of column").click();
-    popover().within(() => {
+    H.popover().findByText("Extract part of column").click();
+    H.popover().within(() => {
       cy.findByText("Created At: Month").click();
       cy.findByText("Year").click();
     });
 
     cy.log("combine action");
     cy.button("Add column").click();
-    popover().findByText("Combine columns").click();
-    popover().findByText("First column").next().click();
-    popover().last().findByText("Count").click();
-    popover().findByText("Second column").next().click();
-    popover().last().findByText("Count").click();
-    popover().button("Done").click();
+    H.popover().findByText("Combine columns").click();
+    H.popover().findByText("First column").next().click();
+    H.popover().last().findByText("Count").click();
+    H.popover().findByText("Second column").next().click();
+    H.popover().last().findByText("Count").click();
+    H.popover().button("Done").click();
 
     cy.log("check visualization");
-    queryBuilderFooter().findByLabelText("Switch to visualization").click();
-    echartsContainer().within(() => {
+    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+    H.echartsContainer().within(() => {
       cy.findByText("Count").should("be.visible");
       cy.findByText("Created At").should("be.visible");
     });

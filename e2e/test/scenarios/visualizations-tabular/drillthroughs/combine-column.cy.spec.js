@@ -1,32 +1,24 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  popover,
-  resetSnowplow,
-  restore,
-} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
-describeWithSnowplow(
+H.describeWithSnowplow(
   "scenarios > visualizations > drillthroughs > table_drills > combine columns",
   () => {
     beforeEach(() => {
-      restore();
-      resetSnowplow();
+      H.restore();
+      H.resetSnowplow();
       cy.signInAsAdmin();
     });
 
     afterEach(() => {
-      expectNoBadSnowplowEvents();
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should be possible to combine columns from the a table header", () => {
-      createQuestion(
+      H.createQuestion(
         {
           query: {
             "source-table": PEOPLE_ID,
@@ -41,9 +33,9 @@ describeWithSnowplow(
       );
 
       cy.findAllByTestId("header-cell").contains("Email").click();
-      popover().findByText("Combine columns").click();
+      H.popover().findByText("Combine columns").click();
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByTestId("combine-column-example").should(
           "contain",
           "email@example.com12345",
@@ -51,9 +43,9 @@ describeWithSnowplow(
         cy.findByText("ID").click();
       });
 
-      popover().last().findByText("Name").click();
+      H.popover().last().findByText("Name").click();
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Separated by (empty)").click();
         cy.findByLabelText("Separator").type("__");
         cy.findByTestId("combine-column-example").should(
@@ -86,7 +78,7 @@ describeWithSnowplow(
         .last()
         .should("have.text", "Email Name ID");
 
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "column_combine_via_column_header",
         custom_expressions_used: ["concat"],
         database_id: SAMPLE_DB_ID,
@@ -94,7 +86,7 @@ describeWithSnowplow(
     });
 
     it("should handle duplicate column names", () => {
-      createQuestion(
+      H.createQuestion(
         {
           query: {
             "source-table": PEOPLE_ID,
@@ -110,13 +102,13 @@ describeWithSnowplow(
 
       // first combine (email + ID)
       cy.findAllByTestId("header-cell").contains("Email").click();
-      popover().findByText("Combine columns").click();
-      popover().findByText("Done").click();
+      H.popover().findByText("Combine columns").click();
+      H.popover().findByText("Done").click();
 
       // second combine (email + ID)
       cy.findAllByTestId("header-cell").contains("Email").click();
-      popover().findByText("Combine columns").click();
-      popover().findByText("Done").click();
+      H.popover().findByText("Combine columns").click();
+      H.popover().findByText("Done").click();
 
       cy.findAllByTestId("header-cell").contains("Email ID").should("exist");
       cy.findAllByTestId("header-cell").contains("Email ID_2").should("exist");
