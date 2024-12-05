@@ -42,6 +42,8 @@ To run your Open Source Metabase on a different port, say port 12345:
 docker run -d -p 12345:3000 --name metabase metabase/metabase
 ```
 
+If you are trying to connect to database instance running on `localhost` or `127.0.0.1` you might need to use `host.docker.internal` instead.
+
 ## Pro or Enterprise quick start
 
 Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
