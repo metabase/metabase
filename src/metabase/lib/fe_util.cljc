@@ -318,18 +318,18 @@
     (lib.util.match/match-one filter-clause
       ;; exactly 1 argument
       [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) (arg :guard string?)]
-      (let [with-time? (u.time/matches-date-time? arg)
-            arg        (u.time/coerce-to-timestamp arg)]
+      (let [date? (u.time/matches-date? arg)
+            arg   (u.time/coerce-to-timestamp arg)]
         (when (u.time/valid? arg)
-          {:operator op, :column (ref->col col-ref), :values [arg], :with-time? with-time?}))
+          {:operator op, :column (ref->col col-ref), :values [arg], :with-time? (not date?)}))
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard date-col?) (start :guard string?) (end :guard string?)]
-      (let [with-time? (or (u.time/matches-date-time? start) (u.time/matches-date-time? end))
-            start      (u.time/coerce-to-timestamp start)
-            end        (u.time/coerce-to-timestamp end)]
+      (let [date? (or (u.time/matches-date? start) (u.time/matches-date? end))
+            start (u.time/coerce-to-timestamp start)
+            end   (u.time/coerce-to-timestamp end)]
         (when (and (u.time/valid? start) (u.time/valid? end))
-          {:operator op, :column (ref->col col-ref), :values [start end], :with-time? with-time?})))))
+          {:operator op, :column (ref->col col-ref), :values [start end], :with-time? (not date?)})))))
 
 (def ^:private RelativeDateFilterParts
   [:map

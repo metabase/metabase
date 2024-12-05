@@ -51,7 +51,7 @@
 
 (mr/def ::specific-date-filter-operator
   "Specific date filter operators supported by the FE."
-  [:enum :! :> :< :between])
+  [:enum := :> :< :between])
 
 (mr/def ::exclude-date-filter-operator
   "Exclude date filter operators supported by the FE."

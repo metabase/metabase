@@ -28,6 +28,8 @@
   "Given a datetime, check that it's valid."
   [value]
   (or (datetime?      value)
+      (t/local-date?  value)
+      (t/local-date-time?  value)
       (t/offset-time? value)
       (t/local-time?  value)))
 

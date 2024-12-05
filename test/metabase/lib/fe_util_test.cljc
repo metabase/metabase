@@ -270,6 +270,30 @@
         (lib.filter/!= column true)
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
+(defn- format-date-filter-parts
+  [parts]
+  (update parts :values (fn [values] (mapv #(u.time/format-unit % :second) values))))
+
+(deftest ^:parallel specific-date-filter-parts-test
+  (let [query  lib.tu/venues-query
+        column (meta/field-metadata :checkins :date)]
+    (testing "clause to parts roundtrip"
+      (doseq [[clause parts] {(lib.filter/= column "2024-12-05")
+                              {:operator   :=
+                               :column     column
+                               :values     [(u.time/coerce-to-timestamp "2024-12-05")]
+                               :with-time? false}}]
+        (let [{:keys [operator column values with-time?]} parts]
+          (is (=? (format-date-filter-parts parts)
+                  (format-date-filter-parts (lib.fe-util/specific-date-filter-parts query -1 clause))))
+          (is (=? (format-date-filter-parts parts)
+                  (format-date-filter-parts
+                   (lib.fe-util/specific-date-filter-parts
+                    query -1 (lib.fe-util/specific-date-filter-clause operator column values with-time?))))))))
+    (testing "unsupported clauses"
+      (are [clause] (nil? (lib.fe-util/specific-date-filter-parts query -1 clause))
+        (lib.filter/is-null column)))))
+
 (deftest ^:parallel relative-date-filter-parts-test
   (let [query  lib.tu/venues-query
         column (meta/field-metadata :checkins :date)]
