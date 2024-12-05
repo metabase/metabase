@@ -17,9 +17,9 @@ import {
   useDashboardUrlQuery,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
-import { useFavicon } from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import { useFavicon } from "metabase/hooks/use-favicon";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
