@@ -262,9 +262,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.newButton("SQL query").click();
 
       H.focusNativeEditor();
-      cy.get(".ace_content").type(
-        "SELECT COUNT(*) / 2 as half_count FROM ORDERS",
-      );
+      cy.realType("SELECT COUNT(*) / 2 as half_count FROM ORDERS");
 
       H.queryBuilderHeader().button("Save").click();
       H.modal().within(() => {
@@ -342,11 +340,15 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can move a question into a dashboard that already has a dashcard with the same question", () => {
+      cy.intercept("POST", "/api/cards/dashboards").as("cardDashboards");
       H.visitQuestion(S.ORDERS_QUESTION_ID);
       H.openQuestionActions();
       H.popover().findByText("Move").click();
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
+      // Quick check to ensure that the move confirmation modal doesn't hang around
+      cy.wait("@cardDashboards");
+      H.modal().should("not.exist");
       // should only have one instance of this card
       H.dashboardCards().findAllByText("Orders").should("have.length", 1);
     });
@@ -790,12 +792,11 @@ describe("Dashboard > Dashboard Questions", () => {
         "We should get a modal saying that we can't move it into a dashboard because it would move it out of a dashboard that we can't access",
       );
 
-      // FIXME, this should not crash out
       H.main()
         .findByText(/Sorry, you don’t have permission to see that./)
         .should("not.exist");
       H.modal()
-        .findByText(/You can't move this question/i)
+        .findByText(/Can't move this question into a dashboard/i)
         .should("be.visible");
     });
   });
