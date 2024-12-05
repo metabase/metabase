@@ -65,9 +65,9 @@ describe("DateFilterEditor", () => {
       Lib.relativeDateFilterClause({
         column,
         value: "current",
-        bucket: "day",
+        unit: "day",
         offsetValue: null,
-        offsetBucket: null,
+        offsetUnit: null,
         options: {},
       }),
     );
@@ -105,9 +105,9 @@ describe("DateFilterEditor", () => {
       Lib.relativeDateFilterClause({
         column,
         value: -30,
-        bucket: "day",
+        unit: "day",
         offsetValue: null,
-        offsetBucket: null,
+        offsetUnit: null,
         options: {},
       }),
     );
