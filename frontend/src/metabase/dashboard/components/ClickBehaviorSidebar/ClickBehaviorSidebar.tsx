@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 
-import { useDashboardQuery } from "metabase/common/hooks";
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -89,10 +89,10 @@ export function ClickBehaviorSidebar({
 
   const isDashboardLink =
     clickBehavior?.type === "link" && clickBehavior.linkType === "dashboard";
-  const { data: targetDashboard } = useDashboardQuery({
-    enabled: isDashboardLink,
-    id: isDashboardLink ? clickBehavior.targetId : undefined,
-  });
+  const id = isDashboardLink ? clickBehavior.targetId : undefined;
+  const { data: targetDashboard } = useGetDashboardQuery(
+    id != null ? { id } : skipToken,
+  );
 
   const isValidClickBehavior = useMemo(
     () => clickBehaviorIsValid(clickBehavior),

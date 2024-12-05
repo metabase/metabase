@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
-import { useDashboardQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
   ClickMappingsConnected,
@@ -179,10 +179,9 @@ export function LinkedEntityPicker({
     });
   }, [clickBehavior, updateSettings]);
 
-  const { data: targetDashboard } = useDashboardQuery({
-    enabled: isDashboard,
-    id: targetId,
-  });
+  const { data: targetDashboard } = useGetDashboardQuery(
+    isDashboard && targetId != null ? { id: targetId } : skipToken,
+  );
   const dashboardTabs = targetDashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
   const dashboardTabId = isDashboard

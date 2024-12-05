@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import type { DashboardPickerValueItem } from "metabase/common/components/DashboardPicker";
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
-import { useDashboardQuery } from "metabase/common/hooks";
 import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -19,7 +19,9 @@ export const DashboardSelector = ({
   value,
 }: DashboardSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { data: dashboard, isLoading } = useDashboardQuery({ id: value });
+  const { data: dashboard, isLoading } = useGetDashboardQuery(
+    value != null ? { id: value } : skipToken,
+  );
 
   if (isLoading) {
     return (
