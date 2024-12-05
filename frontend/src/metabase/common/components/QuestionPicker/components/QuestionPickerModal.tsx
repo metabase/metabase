@@ -35,7 +35,6 @@ const canSelectItem = (
 ): item is QuestionPickerValueItem => {
   return (
     item != null &&
-    item.can_write !== false &&
     (item.model === "card" ||
       item.model === "dataset" ||
       item.model === "metric")

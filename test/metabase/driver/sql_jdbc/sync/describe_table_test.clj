@@ -25,6 +25,7 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- uses-default-describe-table? [driver]
@@ -757,50 +758,69 @@
 
 (defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
   [_driver _feature _database]
-  false)
+  true)
 
-;; TODO Make all drivers that support materialized-views pass this test
-(doseq [driver [:postgres
-                #_:redshift
-                #_:vertica
-                #_:athena
-                #_:bigquery-cloud-sdk]]
+(defmethod driver/database-supports? [::driver/driver ::describe-view-fields]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:presto-jdbc
+                :h2 ;; TODO
+                :druid
+                :druid-jdbc]]
+  (defmethod driver/database-supports? [driver ::describe-view-fields]
+    [_driver _feature _database]
+    false))
+
+(doseq [driver [:oracle ;; TODO Insufficient privileges
+                :h2 ;; TODO
+                :snowflake ;; Requires enterprise account
+                :presto-jdbc
+                :druid
+                :druid-jdbc
+                :mysql
+                :sqlserver
+                :mongo
+                :sparksql
+                :sqlite
+                :athena]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
-    true))
+    false))
 
-(defmethod driver/database-supports? [:redshift ::describe-materialized-view-fields]
-  [_driver _feature _database]
-  false)
-
-(deftest describe-materialized-view-fields
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
-                                     (mt/sql-jdbc-drivers))
-    (do-with-temporary-dataset
-     (mt/dataset-definition "describe-materialized-views-test"
-                            ["orders"
-                             [{:field-name "amount" :base-type :type/Integer}]
-                             [[1 2]]])
-     (fn []
-       (try
-         ;; Move creating and dropping view to a sql-jdbc defmethod of a metabase.test.data defmulti
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        [(sql.tx/create-materialized-view-of-table-sql driver/*driver* (mt/db) "orders_m" "orders")])
-         (sync/sync-database! (mt/db))
-         (let [orders-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders")
-               orders-m-id (t2/select-one-pk :model/Table :db_id (mt/id) [:lower :name] "orders_m")]
-           (is (= [["id" :type/Integer 0]
-                   ["amount" :type/Integer 1]]
-                  (t2/select-fn-vec
-                   (juxt (comp u/lower-case-en :name) :base_type :database_position)
-                   :model/Field
-                   :table_id orders-id
-                   {:order-by [:database_position]})
-                  (t2/select-fn-vec
-                   (juxt (comp u/lower-case-en :name) :base_type :database_position)
-                   :model/Field
-                   :table_id orders-m-id
-                   {:order-by [:database_position]}))))
-         (finally
-           (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                          [(sql.tx/drop-materialized-view-sql driver/*driver* (mt/db) "orders_m")])))))))
+(deftest describe-view-fields
+  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
+                              (mt/normal-drivers-with-feature ::describe-view-fields))
+    (doseq [materialized? (cond-> []
+                            (driver/database-supports? driver/*driver* ::describe-view-fields nil)
+                            (conj false)
+                            (driver/database-supports? driver/*driver* ::describe-materialized-view-fields nil)
+                            (conj true))
+            :let [view-name (if materialized? "orders_m" "orders_v")
+                  table-name "orders"]]
+      (try
+        (testing (if materialized? "Materialized View" "View")
+          (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})
+          (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
+                orders-m-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db)))
+                non-view-fields (t2/select-fn-vec
+                                 (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                                 :model/Field
+                                 :table_id orders-id
+                                 {:order-by [:database_position]})
+                view-fields (t2/select-fn-vec
+                             (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                             :model/Field
+                             :table_id orders-m-id
+                             {:order-by [:database_position]})]
+            (is (some? orders-m-id))
+            (is (some? orders-id))
+            (is (= 9 (count view-fields)))
+            (is (= non-view-fields view-fields))))
+        (catch Exception e
+          (is (nil? e) "This should not happen")
+          (log/error e "Exception occurred."))
+        (finally
+          (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?}))))))

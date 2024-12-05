@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
@@ -23,10 +23,7 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = {
-  questionHeight?: number;
   plugins?: SdkPluginsConfig;
-  className?: string;
-  style?: CSSProperties;
 
   /**
    * A custom React component to render the question layout.
@@ -36,17 +33,18 @@ export type InteractiveDashboardProps = {
    *       once we have a public-facing question context.
    */
   renderDrillThroughQuestion?: () => ReactNode;
+  drillThroughQuestionHeight?: number;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
   dashboardId,
-  initialParameterValues = {},
+  initialParameters = {},
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
   hiddenParameters = [],
-  questionHeight,
+  drillThroughQuestionHeight,
   plugins,
   onLoad,
   onLoadWithoutCards,
@@ -67,7 +65,7 @@ const InteractiveDashboardInner = ({
     withDownloads,
     withTitle,
     hiddenParameters,
-    initialParameterValues,
+    initialParameters,
   });
 
   const {
@@ -88,7 +86,7 @@ const InteractiveDashboardInner = ({
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
           withTitle={withTitle}
-          height={questionHeight}
+          height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
         >
@@ -102,7 +100,7 @@ const InteractiveDashboardInner = ({
         >
           <PublicOrEmbeddedDashboard
             dashboardId={dashboardId}
-            parameterQueryParams={initialParameterValues}
+            parameterQueryParams={initialParameters}
             hideParameters={displayOptions.hideParameters}
             background={displayOptions.background}
             titled={displayOptions.titled}

@@ -174,9 +174,7 @@ See [Deleting and restoring items](../exploration-and-organization/delete-and-re
 
 ## Verifying a model
 
-{% include plans-blockquote.html feature="Model verification" %}
-
-Just like with a question, admins can verify models. Verifying a model will give it a check mark to let others know an admin vetted the model. If anyone makes any changes to the model, the check mark will disappear. An admin will have to verify the question again to restore the check mark.
+See [content verification](../exploration-and-organization/content-verification.md).
 
 ## Model persistence
 

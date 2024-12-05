@@ -78,8 +78,8 @@ describe("Onboarding (EE with token)", () => {
       expect(learning).not.toBeInTheDocument();
     });
 
-    it("should render the 'help' section for paid plans", () => {
-      setup();
+    it("should render the premium 'help' section for admins of instances on paid plans", () => {
+      setup({ isAdmin: true });
 
       const footer = screen.getByRole("contentinfo");
       const helpSection = within(footer).getByTestId("help-section");
@@ -87,7 +87,23 @@ describe("Onboarding (EE with token)", () => {
       expect(helpSection).toBeInTheDocument();
       expect(within(helpSection).getByRole("link")).toHaveAttribute(
         "href",
-        "mailto:help@metabase.com",
+        "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v1&diag=null",
+      );
+      expect(
+        within(helpSection).getByRole("button", { name: "Get Help" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not render the premium 'help' section for non-admins even if the instance is on a paid plan", () => {
+      setup({ isAdmin: false });
+
+      const footer = screen.getByRole("contentinfo");
+      const helpSection = within(footer).getByTestId("help-section");
+
+      expect(helpSection).toBeInTheDocument();
+      expect(within(helpSection).getByRole("link")).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v1",
       );
       expect(
         within(helpSection).getByRole("button", { name: "Get Help" }),
