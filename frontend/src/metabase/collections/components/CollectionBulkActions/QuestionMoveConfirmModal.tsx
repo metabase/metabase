@@ -160,7 +160,7 @@ export const QuestionMoveConfirmModal = ({
 
   return (
     <Modal
-      opened
+      opened={isLoading || filteredCards?.length > 0}
       title={heading}
       onClose={onClose}
       size="lg"
