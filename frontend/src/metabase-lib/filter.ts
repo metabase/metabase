@@ -302,7 +302,7 @@ export function defaultFilterClause({
   operator,
   column,
 }: DefaultFilterParts): ExpressionClause {
-  return ML.default_filter_parts(operator, column);
+  return ML.default_filter_clause(operator, column);
 }
 
 export function defaultFilterParts(
@@ -310,7 +310,7 @@ export function defaultFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): DefaultFilterParts | null {
-  return ML.default_filter_clause(query, stageIndex, filterClause);
+  return ML.default_filter_parts(query, stageIndex, filterClause);
 }
 
 export function filterParts(
