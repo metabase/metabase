@@ -118,6 +118,16 @@
    options  :- [:maybe :map]]
   (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
 
+(defn- ref-clause-with-type?
+  [maybe-ref types]
+  (and (lib.util/ref-clause? maybe-ref)
+       (some #(lib.util/original-isa? maybe-ref %) types)))
+
+(defn- ref-clause-with-unit?
+  [maybe-ref units]
+  (and (lib.util/ref-clause? maybe-ref)
+       (contains? units (lib.temporal-bucket/raw-temporal-bucket maybe-ref))))
+
 (def ^:private StringFilterParts
   [:map
    [:operator ::lib.schema.filter/string-filter-operator]
@@ -146,10 +156,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        string-col? (fn [maybe-ref]
-                      (and (lib.util/ref-clause? maybe-ref)
-                           (or (lib.util/original-isa? maybe-ref :type/Text)
-                               (lib.util/original-isa? maybe-ref :type/TextLike))))]
+        string-col? #(ref-clause-with-type? % #{:type/Text :type/TextLike})]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
@@ -184,9 +191,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        number-col? (fn [maybe-ref]
-                      (and (lib.util/ref-clause? maybe-ref)
-                           (lib.util/original-isa? maybe-ref :type/Number)))]
+        number-col? #(ref-clause-with-type? % #{:type/Number})]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
@@ -230,10 +235,8 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col        #(column-metadata-from-ref query stage-number %)
-        coordinate-col? (fn [maybe-ref]
-                          (and (lib.util/ref-clause? maybe-ref)
-                               (lib.util/original-isa? maybe-ref :type/Number)
-                               (lib.types.isa/coordinate? (ref->col maybe-ref))))]
+        coordinate-col? #(and (ref-clause-with-type? % #{:type/Number})
+                              (lib.types.isa/coordinate? (ref->col %)))]
     (lib.util.match/match-one filter-clause
       ;; multiple arguments
       [(op :guard #{:= :!=}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
@@ -279,9 +282,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col     #(column-metadata-from-ref query stage-number %)
-        boolean-col? (fn [maybe-ref]
-                       (and (lib.util/ref-clause? maybe-ref)
-                            (lib.util/original-isa? maybe-ref :type/Boolean)))]
+        boolean-col? #(ref-clause-with-type? % #{:type/Boolean})]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?)]
@@ -314,24 +315,14 @@
       (expression-clause :time-interval [column value unit] options)
       (expression-clause :relative-time-interval [column value unit offset-value offset-unit] {}))))
 
-(defn- date-col?
-  [maybe-ref]
-  (and (lib.util/ref-clause? maybe-ref)
-       (or (lib.util/original-isa? maybe-ref :type/Date)
-           (lib.util/original-isa? maybe-ref :type/DateTime))))
-
-(defn- unit-is?
-  [maybe-ref units]
-  (and (lib.util/ref-clause? maybe-ref)
-       (contains? units (lib.temporal-bucket/raw-temporal-bucket maybe-ref))))
-
 (mu/defn relative-date-filter-parts :- [:maybe RelativeDateFilterParts]
   "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col #(column-metadata-from-ref query stage-number %)]
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+        date-col? #(ref-clause-with-type? % #{:type/Date :type/DateTime})]
     (lib.util.match/match-one filter-clause
       [:time-interval
        opts
@@ -403,10 +394,11 @@
   "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
   [query stage-number filter-clause]
-  (let [ref->col #(column-metadata-from-ref query stage-number %)
-        op->unit {:get-hour :hour-of-day
-                  :get-month :month-of-year
-                  :get-quarter :quarter-of-year}]
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+        date-col? #(ref-clause-with-type? % #{:type/Date :type/DateTime})
+        op->unit  {:get-hour :hour-of-day
+                   :get-month :month-of-year
+                   :get-quarter :quarter-of-year}]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
@@ -442,9 +434,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        time-col? (fn [maybe-ref]
-                    (and (lib.util/ref-clause? maybe-ref)
-                         (lib.util/original-isa? maybe-ref :type/Time)))]
+        time-col? #(ref-clause-with-type? % #{:type/Time})]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?)]
@@ -487,7 +477,7 @@
       [:!= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
 
-      [:= _ (x :guard #(unit-is? % lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
+      [:= _ (x :guard #(ref-clause-with-unit? % lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
       [:= _ (x :guard temporal?) (y :guard (some-fn int? string?))]
