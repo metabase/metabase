@@ -269,6 +269,7 @@ export function excludeDateFilterParts(
   );
 }
 
+// TODO remove when #50920 is implemented
 function legacyExcludeDateFilterParts(
   query: Query,
   stageIndex: number,
