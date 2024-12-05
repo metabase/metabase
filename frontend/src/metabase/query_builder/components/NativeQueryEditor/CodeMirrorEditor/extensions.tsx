@@ -97,6 +97,7 @@ const engineToDialect = {
   // redshift: "redshift",
   // snowflake: "snowflake",
   // sparksql: "spark",
+  // h2: "h2",
 };
 
 type LanguageOptions = {
@@ -120,6 +121,7 @@ function source(engine?: string) {
     case "redshift":
     case "snowflake":
     case "sparksql":
+    case "h2":
     default: {
       const dialect =
         engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
