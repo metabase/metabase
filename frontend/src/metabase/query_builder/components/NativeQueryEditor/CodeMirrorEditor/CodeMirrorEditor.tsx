@@ -34,6 +34,7 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
     const extensions = useExtensions({
       engine: query.engine() ?? undefined,
       databaseId: query.datasetQuery()?.database ?? undefined,
+      referencedQuestionIds: query.referencedQuestionIds(),
     });
 
     useImperativeHandle(ref, () => {

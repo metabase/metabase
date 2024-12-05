@@ -22,16 +22,18 @@ import { type Tag, tags } from "@lezer/highlight";
 import type { Extension } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { getNonce } from "get-nonce";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useDeepCompareEffect } from "react-use";
 import slugg from "slugg";
 import { t } from "ttag";
 
-import { useListSnippetsQuery } from "metabase/api";
+import { useLazyGetCardQuery, useListSnippetsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { isNotNull } from "metabase/lib/types";
 import { MetabaseApi } from "metabase/services";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import type {
+  CardId,
   CardType,
   DatabaseId,
   NativeQuerySnippet,
@@ -42,14 +44,17 @@ import { getCardAutocompleteResultMeta, matchTagAtCursor } from "./util";
 type ExtensionOptions = {
   engine?: string;
   databaseId?: DatabaseId;
+  referencedQuestionIds?: CardId[];
 };
 
 export function useExtensions({
   engine,
   databaseId,
+  referencedQuestionIds = [],
 }: ExtensionOptions): Extension[] {
   const matchStyle = useSetting("native-query-autocomplete-match-style");
   const { data: snippets } = useListSnippetsQuery();
+  const getCardColumns = useGetCardColumns(referencedQuestionIds);
 
   return useMemo(() => {
     return [
@@ -59,13 +64,39 @@ export function useExtensions({
         cursorBlinkRate: 1000,
         drawRangeCursor: false,
       }),
-      language({ engine, matchStyle, databaseId, snippets }),
+      language({ engine, matchStyle, databaseId, snippets, getCardColumns }),
       highlighting(),
       tagDecorator(),
     ]
       .flat()
       .filter(isNotNull);
-  }, [engine, matchStyle, databaseId, snippets]);
+  }, [engine, matchStyle, databaseId, snippets, getCardColumns]);
+}
+
+function useGetCardColumns(referencedQuestionIds: CardId[] = []) {
+  const cardIds = useMemoized(referencedQuestionIds);
+  const [getCard] = useLazyGetCardQuery();
+
+  return useCallback(async (): Promise<string[][]> => {
+    const data = await Promise.all(cardIds.map(id => getCard({ id })));
+    return data
+      .map(item => item.data)
+      .filter(isNotNull)
+      .flatMap(card =>
+        card.result_metadata.map(columnMetadata => [
+          columnMetadata.name,
+          `${card.name} :${columnMetadata.base_type}`,
+        ]),
+      );
+  }, [cardIds, getCard]);
+}
+
+function useMemoized<T>(value: T): T {
+  const [memoized, setMemoized] = useState(value);
+  useDeepCompareEffect(() => {
+    setMemoized(value);
+  }, [value]);
+  return memoized;
 }
 
 function nonce() {
@@ -105,6 +136,7 @@ type LanguageOptions = {
   matchStyle?: string;
   databaseId?: DatabaseId;
   snippets?: NativeQuerySnippet[];
+  getCardColumns: () => Promise<string[][]>;
 };
 
 function source(engine?: string) {
@@ -142,6 +174,7 @@ function language({
   matchStyle,
   databaseId,
   snippets = [],
+  getCardColumns,
 }: LanguageOptions) {
   const { language } = source(engine);
 
@@ -189,19 +222,21 @@ function language({
         return null;
       }
 
-      const results: [string, string][] =
-        await MetabaseApi.db_autocomplete_suggestions({
+      const results: [string, string][][] = await Promise.all([
+        MetabaseApi.db_autocomplete_suggestions({
           dbId: databaseId,
           query: word.text.trim(),
           matchStyle,
-        });
+        }),
+        getCardColumns().then(items => items.map(item => [item[0], item[1]])),
+      ]);
 
       return {
         from: word.from,
         validFor(text: string) {
           return text.startsWith(word.text);
         },
-        options: results.map(([value, meta]) => ({
+        options: results.flat().map(([value, meta]) => ({
           label: value,
           detail: meta,
           boost: 50,
