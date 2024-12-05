@@ -1,4 +1,4 @@
-import { openNativeEditor, restore } from "e2e/support/helpers";
+import { restore, startNewNativeQuestion } from "e2e/support/helpers";
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import {
@@ -66,7 +66,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
     cy.signInAsAdmin();
 
-    openNativeEditor();
+    startNewNativeQuestion();
 
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
@@ -130,7 +130,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
     cy.signInAsAdmin();
 
-    openNativeEditor();
+    startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
@@ -189,7 +189,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
     cy.signInAsAdmin();
 
-    openNativeEditor();
+    startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
