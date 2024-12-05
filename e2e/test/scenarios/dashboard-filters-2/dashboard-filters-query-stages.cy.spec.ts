@@ -1947,6 +1947,17 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
     });
 
     it("1st stage explicit join + unit of time parameter", () => {
+      H.createDashboard(
+        {
+          name: "My new dashboard",
+        },
+        { wrapId: true, idAlias: "myNewDash" },
+      );
+
+      cy.get("@myNewDash").then((dashId: number | any) => {
+        H.visitDashboard(dashId);
+      });
+
       H.startNewQuestion();
 
       H.entityPickerModal().within(() => {
@@ -2003,18 +2014,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
       H.visualize(); // need to visualize because startNewQuestion does not set "display" property on a card
       cy.wait("@dataset");
-      H.saveQuestion("test", { addToDashboard: true });
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
-        cy.button(/create a new dashboard/i).click();
-      });
-      H.modal()
-        .last()
-        .within(() => {
-          cy.findByPlaceholderText("My new dashboard").type("Dash");
-          cy.button("Create").click();
-        });
-      H.entityPickerModal().button("Select").click();
+      H.saveQuestion("test"); // added to new dash automatically
 
       cy.findByLabelText("Add a filter or parameter").click();
       H.popover().findByText("Text or Category").click();

@@ -402,53 +402,21 @@ describe("issue 19744", () => {
     },
     display: "bar",
   };
-  function saveQuestion(name) {
-    cy.intercept("POST", "/api/card").as("saveQuestion");
-
-    cy.findByText("Save").click();
-    cy.findByLabelText("Name").type(name);
-
-    H.modal().button("Save").click();
-
-    cy.findByText("Not now").click();
-
-    cy.wait("@saveQuestion").then(({ response: { body } }) => {
-      cy.wrap(body.id).as("questionId");
-    });
-  }
-
-  function addQuestionToDashboardAndVisit() {
-    cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-      cy.get("@questionId").then(card_id => {
-        H.addOrUpdateDashboardCard({
-          card_id,
-          dashboard_id,
-          card: { size_x: 21, size_y: 10 },
-        });
-      });
-
-      H.visitDashboard(dashboard_id);
-    });
-  }
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
-    // For this specific repro, it's crucial to first visit the question in order to load the `results_metadata`...
-    H.visitQuestionAdhoc(questionDetails);
-    // ...and then to save it using the UI
-    saveQuestion("19744");
-
-    addQuestionToDashboardAndVisit();
   });
 
   it("custom column after aggregation shouldn't limit or change the behavior of dashboard filters (metabase#19744)", () => {
-    H.editDashboard();
+    // For this specific repro, it's crucial to first visit the question in order to load the `results_metadata`...
+    H.visitQuestionAdhoc(questionDetails);
+    // ...and then to save it using the UI
+    H.saveQuestion("19744");
 
     H.setFilter("Date picker", "All Options");
 
-    cy.findByTestId("dashcard-container").contains("Select…").click();
+    H.getDashboardCard(1).findByText("Select…").click();
     H.popover().contains("Created At");
   });
 });

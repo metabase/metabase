@@ -231,7 +231,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
       FieldFilter.setWidgetType("String");
       H.setFilterQuestionSource({ question: "SQL source", field: "EAN" });
-      saveQuestion("SQL filter", undefined, {
+      H.saveQuestion("SQL filter", undefined, {
         tab: "Browse",
         path: ["Our analytics"],
       });

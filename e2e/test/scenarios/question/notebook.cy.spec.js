@@ -14,7 +14,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
     H.openOrdersTable();
     // save question initially
-    saveQuestion(undefined, undefined, {
+    H.saveQuestion(undefined, undefined, {
       tab: "Browse",
       path: ["Our analytics"],
     });
