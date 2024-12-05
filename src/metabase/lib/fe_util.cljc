@@ -300,8 +300,8 @@
    created expression with [[specific-date-filter-parts]]."
   [operator   :- ::lib.schema.filter/specific-date-filter-operator
    column     :- ::lib.schema.metadata/column
-   values     :- [:sequential [:fn u.time/valid?]]
-   with-time? :- :boolean]
+   values     :- [:maybe [:sequential [:fn u.time/valid?]]]
+   with-time? :- [:maybe :boolean]]
   (let [column (if with-time? (lib.temporal-bucket/with-temporal-bucket column :minute) column)
         values (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values)]
     (expression-clause operator (into [column] values) {})))
@@ -318,7 +318,7 @@
       ;; exactly 1 argument
       [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) (arg :guard string?)]
       (let [with-time? (u.time/matches-date-time? arg)
-            arg      (u.time/coerce-to-timestamp arg)]
+            arg        (u.time/coerce-to-timestamp arg)]
         (when (u.time/valid? arg)
           {:operator op, :column (ref->col col-ref), :values [arg], :with-time? with-time?}))
 
