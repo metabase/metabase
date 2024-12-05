@@ -1,4 +1,4 @@
-import { navigationSidebar, restore } from "e2e/support/helpers";
+import { H } from "e2e/support";
 import {
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
@@ -6,7 +6,7 @@ import {
 
 describe("nav > what's new notification", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
 
     mockVersions({
       currentVersion: "v0.48.0",
@@ -28,29 +28,29 @@ describe("nav > what's new notification", () => {
     cy.request("PUT", "api/setting/last-acknowledged-version", { value: null });
 
     loadHomepage();
-    navigationSidebar().findByText("See what's new");
+    H.navigationSidebar().findByText("See what's new");
 
     // should persist reloads
     loadHomepage();
-    navigationSidebar().findByText("See what's new");
+    H.navigationSidebar().findByText("See what's new");
 
-    navigationSidebar().icon("close").click();
-    navigationSidebar().findByText("See what's new").should("not.exist");
+    H.navigationSidebar().icon("close").click();
+    H.navigationSidebar().findByText("See what's new").should("not.exist");
 
     loadHomepage();
-    navigationSidebar().findByText("See what's new").should("not.exist");
+    H.navigationSidebar().findByText("See what's new").should("not.exist");
   });
 
   it("it should show the notification for other users after one user dismissed it", () => {
     cy.signInAsAdmin();
     cy.request("PUT", "api/setting/last-acknowledged-version", { value: null });
     loadHomepage();
-    navigationSidebar().findByText("See what's new");
-    navigationSidebar().icon("close").click();
+    H.navigationSidebar().findByText("See what's new");
+    H.navigationSidebar().icon("close").click();
 
     cy.signInAsNormalUser();
     loadHomepage();
-    navigationSidebar().findByText("See what's new");
+    H.navigationSidebar().findByText("See what's new");
   });
 });
 
@@ -72,5 +72,5 @@ function loadHomepage() {
   // make sure page is loaded
   cy.findByText("loading").should("not.exist");
 
-  navigationSidebar().findByText("Home").should("exist");
+  H.navigationSidebar().findByText("Home").should("exist");
 }
