@@ -207,7 +207,7 @@ describe("BooleanFilterEditor", () => {
 });
 
 interface QueryWithFilterOpts {
-  operator: Lib.BooleanFilterOperatorName;
+  operator: Lib.BooleanFilterOperator;
   values: boolean[];
 }
 

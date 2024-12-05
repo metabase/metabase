@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import CS from "metabase/css/core/index.css";
-import SlackChannelField from "metabase/sharing/components/SlackChannelField";
+import { SlackChannelField } from "metabase/sharing/components/SlackChannelField";
 import { Icon, Switch } from "metabase/ui";
 import type { Alert, SlackChannelSpec, User } from "metabase-types/api";
 

@@ -285,7 +285,12 @@
   (sql/format
    {:union-all
     [{:select [[:c.column_name :name]
-               [:c.udt_name :database-type]
+               [[:case
+                 [:in :c.udt_schema [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :c.udt_name]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :c.udt_schema :c.udt_name]]
+                :database-type]
                [[:- :c.ordinal_position [:inline 1]] :database-position]
                [:c.table_schema :table-schema]
                [:c.table_name :table-name]
@@ -327,7 +332,12 @@
               (when schema-names [:in :c.table_schema schema-names])
               (when table-names [:in :c.table_name table-names])]}
      {:select [[:pa.attname :name]
-               [:pt.typname :database-type]
+               [[:case
+                 [:in :ptn.nspname [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :pt.typname]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :ptn.nspname :pt.typname]]
+                :database-type]
                [[:- :pa.attnum [:inline 1]] :database-position]
                [:pn.nspname :table-schema]
                [:pc.relname :table-name]
@@ -338,10 +348,11 @@
       :from [[:pg_catalog.pg_class :pc]]
       :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
              [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
-             [:pg_catalog.pg_type :pt] [:= :pt.oid :pa.atttypid]]
+             [:pg_catalog.pg_type :pt] [:= :pt.oid :pa.atttypid]
+             [:pg_catalog.pg_namespace :ptn] [:= :ptn.oid :pt.typnamespace]]
       :where [:and
               [:= :pc.relkind [:inline "m"]]
-              [:>= :pa.attnum 1]
+              [:>= :pa.attnum [:inline 1]]
               (when schema-names [:in :pn.nspname schema-names])
               (when table-names [:in :pc.relname table-names])]}]
     :order-by [:table-schema :table-name :database-position]}
