@@ -22,8 +22,7 @@ import { type Tag, tags } from "@lezer/highlight";
 import type { Extension } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { getNonce } from "get-nonce";
-import { useCallback, useMemo, useState } from "react";
-import { useDeepCompareEffect } from "react-use";
+import { useCallback, useMemo } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
 
@@ -41,7 +40,11 @@ import type {
   NativeQuerySnippet,
 } from "metabase-types/api";
 
-import { getCardAutocompleteResultMeta, matchTagAtCursor } from "./util";
+import {
+  getCardAutocompleteResultMeta,
+  matchTagAtCursor,
+  useMemoized,
+} from "./util";
 
 type ExtensionOptions = {
   engine?: string;
@@ -91,14 +94,6 @@ function useGetCardColumns(referencedQuestionIds: CardId[] = []) {
         })),
       );
   }, [cardIds, getCard]);
-}
-
-function useMemoized<T>(value: T): T {
-  const [memoized, setMemoized] = useState(value);
-  useDeepCompareEffect(() => {
-    setMemoized(value);
-  }, [value]);
-  return memoized;
 }
 
 function nonce() {
