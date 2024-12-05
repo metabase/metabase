@@ -3,6 +3,7 @@ import type {
   CardId,
   CardQueryMetadata,
   CardQueryRequest,
+  CollectionItem,
   CreateCardRequest,
   DashboardId,
   Dataset,
@@ -235,6 +236,20 @@ export const cardApi = Api.injectEndpoints({
         }),
         forceRefetch: () => true,
       }),
+      getMultipleCardsDashboards: builder.query<
+        {
+          card_id: CollectionItem["id"];
+          dashboards: { id: DashboardId; name: string; error?: string }[];
+        }[],
+        { card_ids: CollectionItem["id"][] }
+      >({
+        query: body => ({
+          method: "POST",
+          url: `/api/cards/dashboards`,
+          body,
+        }),
+        forceRefetch: () => true,
+      }),
     };
   },
 });
@@ -257,6 +272,8 @@ export const {
   useDeleteCardPublicLinkMutation,
   useUpdateCardEmbeddingParamsMutation,
   useUpdateCardEnableEmbeddingMutation,
+  useGetCardDashboardsQuery,
+  useGetMultipleCardsDashboardsQuery,
   endpoints: {
     createCardPublicLink,
     deleteCardPublicLink,

@@ -3,18 +3,17 @@ import { msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
-import {
-  getAffectedDashboardsFromMove,
-  isTrashedCollection,
-} from "metabase/collections/utils";
+import { isTrashedCollection } from "metabase/collections/utils";
 import { BulkActionBar } from "metabase/components/BulkActionBar";
 import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
-import { useDispatch } from "metabase/lib/redux";
-import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
-import { QuestionMoveConfirmModal } from "./QuestionMoveConfirmModal";
+import {
+  type Destination,
+  QuestionMoveConfirmModal,
+} from "./QuestionMoveConfirmModal";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 
 type CollectionBulkActionsProps = {
@@ -27,10 +26,6 @@ type CollectionBulkActionsProps = {
   clearSelected: () => void;
 };
 
-type Destination =
-  | (Pick<Collection, "id"> & { model: "collection" })
-  | (Pick<Dashboard, "id"> & { model: "dashboard" });
-
 export const CollectionBulkActions = memo(
   ({
     selected,
@@ -41,9 +36,6 @@ export const CollectionBulkActions = memo(
     setSelectedAction,
     clearSelected,
   }: CollectionBulkActionsProps) => {
-    const dispatch = useDispatch();
-    const [selectedCards, setSelectedCards] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
     const [rememberedDestination, setRememberedDestination] =
       useState<Destination | null>(null);
 
@@ -58,7 +50,6 @@ export const CollectionBulkActions = memo(
       setSelectedItems(null);
       setSelectedAction(null);
       setRememberedDestination(null);
-      setSelectedCards([]);
       clearSelected();
     };
 
@@ -67,8 +58,8 @@ export const CollectionBulkActions = memo(
 
     const handleConfirmedBulkQuestionMove = async () => {
       if (rememberedDestination) {
-        await doMove(rememberedDestination);
         handleCloseModal();
+        await doMove(rememberedDestination);
       }
     };
 
@@ -92,14 +83,15 @@ export const CollectionBulkActions = memo(
 
         // otherwise, destination is a dashboard
         else if (destination.model === "dashboard") {
+          // ensure that all selected items are cards. This should be enforced by the picker
+          if (!selectedItems.every(item => item.model === "card")) {
+            throw new Error("can't move non-cards into dashboards");
+          }
           //determine if we need to display a confirmation modal
 
           //Check how many items are cards that appear in a dashboard
           const potentialConfirmCards = selectedItems.filter(
-            item =>
-              item.model === "card" &&
-              item.dashboard_count &&
-              item.dashboard_count > 0,
+            item => item.dashboard_count && item.dashboard_count > 0,
           );
 
           //If there are none, then do the move
@@ -109,26 +101,8 @@ export const CollectionBulkActions = memo(
 
           //Otherwise, get the names of the affected dashboards and display the modal
           else {
+            setRememberedDestination(destination);
             setSelectedAction("confirm-move");
-            setIsLoading(true);
-            const cardDashboards = await getAffectedDashboardsFromMove(
-              potentialConfirmCards,
-              destination,
-              dispatch,
-            );
-            setIsLoading(false);
-
-            // If after all the processing, we determine there are affected dashboards,
-            // Set the state to show the info modal.
-            if (cardDashboards.length > 0) {
-              setSelectedCards(cardDashboards);
-              setRememberedDestination(destination);
-            }
-            //If no dashboards are actually affected, then do the move without a confirmation modal
-            else {
-              setSelectedAction(null);
-              await doMove(destination);
-            }
           }
         }
       }
@@ -185,13 +159,14 @@ export const CollectionBulkActions = memo(
           />
         )}
 
-        <QuestionMoveConfirmModal
-          cardDashboards={selectedCards}
-          selectedItems={selectedItems || []}
-          onConfirm={handleConfirmedBulkQuestionMove}
-          onClose={handleCloseModal}
-          isLoading={isLoading}
-        />
+        {hasSelectedItems && selectedAction === "confirm-move" && (
+          <QuestionMoveConfirmModal
+            selectedItems={selectedItems || []}
+            onConfirm={handleConfirmedBulkQuestionMove}
+            onClose={handleCloseModal}
+            destination={rememberedDestination}
+          />
+        )}
       </>
     );
   },
