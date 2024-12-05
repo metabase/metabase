@@ -337,7 +337,7 @@
        (unit :guard keyword?)
        (offset-value :guard number?)
        (offset-unit :guard keyword?)]
-      {:column (ref->col col-ref)
+      {:column       (ref->col col-ref)
        :value        value
        :unit         unit
        :offset-value offset-value
