@@ -311,13 +311,15 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]
-  `(let [table-name# (gen-table-name)]
-     (binding [*mocking-tables* true
-               *indexes*        (atom {:active table-name#})]
-       (try
-         (create-table! table-name#)
-         ~@body
-         (finally
-           (#'drop-table! table-name#))))))
+  `(if @#'*mocking-tables*
+     ~@body
+     (let [table-name# (gen-table-name)]
+       (binding [*mocking-tables* true
+                 *indexes*        (atom {:active table-name#})]
+         (try
+           (create-table! table-name#)
+           ~@body
+           (finally
+             (#'drop-table! table-name#)))))))
