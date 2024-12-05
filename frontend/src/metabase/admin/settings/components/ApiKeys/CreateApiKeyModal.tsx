@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useCreateApiKeyMutation } from "metabase/api";
@@ -17,7 +17,6 @@ import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
 export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
-  const [modal, setModal] = useState<"create" | "secretKey">("create");
   const [createApiKey, response] = useCreateApiKeyMutation();
   const secretKey = response?.data?.unmasked_key || "";
 
@@ -25,17 +24,15 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
     async (vals: { group_id: number | null; name: string }) => {
       if (vals.group_id !== null) {
         await createApiKey(vals as CreateApiKeyRequest);
-        setModal("secretKey");
       }
     },
     [createApiKey],
   );
 
-  if (modal === "secretKey") {
+  if (response.isSuccess) {
     return <SecretKeyModal secretKey={secretKey} onClose={onClose} />;
   }
-
-  if (modal === "create") {
+  if (response.isUninitialized || response.isLoading || response.isError) {
     return (
       <Modal
         size="30rem"
@@ -68,9 +65,18 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
                 size="sm"
               >{t`We don't version the Metabase API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.`}</Text>
               <FormErrorMessage />
+              {response.isError && (
+                <Text role="alert" color="error">
+                  {response?.error?.data?.errors?.name}
+                </Text>
+              )}
               <Group position="right">
                 <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton variant="filled" label={t`Create`} />
+                <FormSubmitButton
+                  variant="filled"
+                  disabled={response.isLoading}
+                  label={t`Create`}
+                />
               </Group>
             </Stack>
           </Form>
