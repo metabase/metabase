@@ -24,7 +24,7 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
+export function getOptionByOperator(operator: Lib.StringFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
@@ -32,7 +32,7 @@ export function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
   availableOptions: OperatorOption[],
-): Lib.StringFilterOperatorName {
+): Lib.StringFilterOperator {
   const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
 
   const desiredOperator =
@@ -45,7 +45,7 @@ export function getDefaultOperator(
 }
 
 export function getDefaultValues(
-  operator: Lib.StringFilterOperatorName,
+  operator: Lib.StringFilterOperator,
   values: string[],
 ): string[] {
   const { type } = OPERATOR_OPTIONS[operator];
@@ -53,7 +53,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.StringFilterOperatorName,
+  operator: Lib.StringFilterOperator,
   column: Lib.ColumnMetadata,
   values: string[] = [],
   options: Lib.StringFilterOptions,
@@ -62,7 +62,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.StringFilterOperatorName,
+  operator: Lib.StringFilterOperator,
   column: Lib.ColumnMetadata,
   values: string[],
   options: Lib.StringFilterOptions,
@@ -72,7 +72,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.StringFilterOperatorName,
+  operator: Lib.StringFilterOperator,
   column: Lib.ColumnMetadata,
   values: string[],
   options: Lib.StringFilterOptions,

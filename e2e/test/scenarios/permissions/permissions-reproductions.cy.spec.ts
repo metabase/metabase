@@ -1,11 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  openReviewsTable,
-  restore,
-  visitQuestion,
-} from "e2e/support/helpers";
 import type {
   ConcreteFieldReference,
   StructuredQuery,
@@ -38,9 +33,9 @@ const QUERY: StructuredQuery = {
 
 describe("issue 11994", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    createQuestion(
+    H.createQuestion(
       {
         database: SAMPLE_DB_ID,
         query: QUERY,
@@ -66,7 +61,7 @@ describe("issue 11994", () => {
       },
       { wrapId: true, idAlias: "pivotQuestionId" },
     );
-    createQuestion(
+    H.createQuestion(
       {
         database: SAMPLE_DB_ID,
         query: QUERY,
@@ -78,13 +73,13 @@ describe("issue 11994", () => {
   });
 
   it("does not show raw data toggle for pivot questions (metabase#11994)", () => {
-    visitQuestion("@pivotQuestionId");
+    H.visitQuestion("@pivotQuestionId");
     cy.icon("table2").should("not.exist");
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
   });
 
   it("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {
-    visitQuestion("@comboQuestionId");
+    H.visitQuestion("@comboQuestionId");
     cy.location().then(questionLocation => {
       cy.icon("table2").click();
       cy.location("href").should("eq", questionLocation.href);
@@ -98,14 +93,14 @@ describe("issue 39221", () => {
     cy.intercept("GET", "/api/setting").as("siteSettings");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
-    restore();
+    H.restore();
   });
 
   ["admin", "normal"].forEach(user => {
     it(`${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`, () => {
       cy.signOut();
       cy.signIn(user as "admin" | "normal");
-      openReviewsTable({ mode: "notebook" });
+      H.openReviewsTable({ mode: "notebook" });
       // Opening a SQL preview sidebar will trigger a user-local setting update
       cy.findByLabelText("View the SQL").click();
 
