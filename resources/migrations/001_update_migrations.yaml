@@ -10067,7 +10067,7 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
-  
+
   - changeSet:
       id: v52.2024-11-25T08:57:20
       author: johnswanson
