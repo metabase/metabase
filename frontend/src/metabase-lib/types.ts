@@ -12,16 +12,10 @@ import type {
 } from "metabase-types/api";
 
 import type {
-  BOOLEAN_FILTER_OPERATORS,
-  COORDINATE_FILTER_OPERATORS,
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  NUMBER_FILTER_OPERATORS,
-  RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS,
-  TIME_FILTER_OPERATORS,
 } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
@@ -304,22 +298,45 @@ declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
 export type FilterOperatorName =
-  | StringFilterOperatorName
-  | NumberFilterOperatorName
-  | BooleanFilterOperatorName
+  | StringFilterOperator
+  | NumberFilterOperator
+  | BooleanFilterOperator
   | SpecificDateFilterOperatorName
   | ExcludeDateFilterOperatorName
-  | CoordinateFilterOperatorName;
+  | CoordinateFilterOperator;
 
-export type StringFilterOperatorName = (typeof STRING_FILTER_OPERATORS)[number];
+export type StringFilterOperator =
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "is-empty"
+  | "not-empty"
+  | "starts-with"
+  | "ends-with";
 
-export type NumberFilterOperatorName = (typeof NUMBER_FILTER_OPERATORS)[number];
+export type NumberFilterOperator =
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | "between"
+  | ">="
+  | "<="
+  | "is-null"
+  | "not-null";
 
-export type CoordinateFilterOperatorName =
-  (typeof COORDINATE_FILTER_OPERATORS)[number];
+export type CoordinateFilterOperator =
+  | "="
+  | "!="
+  | "inside"
+  | ">"
+  | "<"
+  | "between"
+  | ">="
+  | "<=";
 
-export type BooleanFilterOperatorName =
-  (typeof BOOLEAN_FILTER_OPERATORS)[number];
+export type BooleanFilterOperator = "=" | "is-null" | "not-null";
 
 export type SpecificDateFilterOperatorName =
   (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
@@ -327,12 +344,19 @@ export type SpecificDateFilterOperatorName =
 export type ExcludeDateFilterOperatorName =
   (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
 
-export type TimeFilterOperatorName = (typeof TIME_FILTER_OPERATORS)[number];
+export type TimeFilterOperator = ">" | "<" | "between" | "is-null" | "not-null";
 
 export type DefaultFilterOperatorName =
   (typeof DEFAULT_FILTER_OPERATORS)[number];
 
-export type RelativeDateBucketName = (typeof RELATIVE_DATE_BUCKETS)[number];
+export type RelativeDateFilterUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "quarter"
+  | "year";
 
 export type ExcludeDateBucketName = (typeof EXCLUDE_DATE_BUCKETS)[number];
 
@@ -355,31 +379,31 @@ export type FilterParts =
   | DefaultFilterParts;
 
 export type StringFilterParts = {
-  operator: StringFilterOperatorName;
+  operator: StringFilterOperator;
   column: ColumnMetadata;
   values: string[];
   options: StringFilterOptions;
 };
 
 export type StringFilterOptions = {
-  "case-sensitive"?: boolean;
+  caseSensitive?: boolean;
 };
 
 export type NumberFilterParts = {
-  operator: NumberFilterOperatorName;
+  operator: NumberFilterOperator;
   column: ColumnMetadata;
   values: number[];
 };
 
 export type CoordinateFilterParts = {
-  operator: CoordinateFilterOperatorName;
+  operator: CoordinateFilterOperator;
   column: ColumnMetadata;
-  longitudeColumn?: ColumnMetadata;
+  longitudeColumn: ColumnMetadata | null;
   values: number[];
 };
 
 export type BooleanFilterParts = {
-  operator: BooleanFilterOperatorName;
+  operator: BooleanFilterOperator;
   column: ColumnMetadata;
   values: boolean[];
 };
@@ -393,15 +417,15 @@ export type SpecificDateFilterParts = {
 
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
-  bucket: RelativeDateBucketName;
+  unit: RelativeDateFilterUnit;
   value: number | "current";
-  offsetBucket: RelativeDateBucketName | null;
+  offsetUnit: RelativeDateFilterUnit | null;
   offsetValue: number | null;
   options: RelativeDateFilterOptions;
 };
 
 export type RelativeDateFilterOptions = {
-  "include-current"?: boolean;
+  includeCurrent?: boolean;
 };
 
 /*
@@ -419,7 +443,7 @@ export type ExcludeDateFilterParts = {
 };
 
 export type TimeFilterParts = {
-  operator: TimeFilterOperatorName;
+  operator: TimeFilterOperator;
   column: ColumnMetadata;
   values: Date[];
 };

@@ -275,5 +275,6 @@ export const createMockSettings = (
   "query-analysis-enabled": false,
   "check-for-updates": true,
   "update-channel": "latest",
+  "trial-banner-dismissal-timestamp": null,
   ...opts,
 });
