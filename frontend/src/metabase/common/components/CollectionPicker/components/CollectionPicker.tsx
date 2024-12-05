@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
@@ -61,13 +61,12 @@ export const CollectionPickerInner = (
   }, [options.namespace]);
   const path = pathProp ?? defaultPath;
 
+  const id = isValidCollectionId(initialValue?.id) ? initialValue?.id : "root";
   const {
     data: currentCollection,
     error,
     isLoading: loadingCurrentCollection,
-  } = useGetCollectionQuery({
-    id: isValidCollectionId(initialValue?.id) ? initialValue?.id : "root",
-  });
+  } = useGetCollectionQuery(id != null ? { id } : skipToken);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
