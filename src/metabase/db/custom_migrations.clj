@@ -1332,6 +1332,7 @@
 ;; - replace metabase_version "<version>" with metabase_version nil
 ;; - you'll likely need to update the sample collection's :is_sample attribute to be `true`
 
+;; -----------------------------------------------------------------------------
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
