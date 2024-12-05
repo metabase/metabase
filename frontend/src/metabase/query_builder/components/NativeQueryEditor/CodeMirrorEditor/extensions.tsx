@@ -265,9 +265,6 @@ function language({
 
   return [
     lang,
-    lang.language.data.of({
-      autocomplete,
-    }),
     autocompletion({
       closeOnBlur: false,
       activateOnTyping: true,
