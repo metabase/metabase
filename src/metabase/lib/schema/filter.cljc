@@ -49,6 +49,14 @@
   "Boolean filter operators supported by the FE. Note that `:!=` is not supported."
   [:enum :is-null :not-null :=])
 
+(mr/def ::exclude-date-filter-operator
+  "Exclude date filter operators supported by the FE."
+  [:enum :!= :is-null :not-null])
+
+(mr/def ::exclude-date-filter-unit
+  "Temporal extraction units supported by exclude date filters."
+  [:enum :hour-of-day :day-of-week :month-of-year :quarter-of-year])
+
 (mr/def ::time-filter-operator
   "Time filter operators supported by the FE."
   [:enum :is-null :not-null :> :< :between])
