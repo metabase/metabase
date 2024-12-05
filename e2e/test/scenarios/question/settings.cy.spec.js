@@ -1,24 +1,12 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  browseDatabases,
-  entityPickerModal,
-  modal,
-  moveDnDKitElement,
-  openNavigationSidebar,
-  openOrdersTable,
-  popover,
-  restore,
-  sidebar,
-  tableHeaderClick,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > settings", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -29,7 +17,7 @@ describe("scenarios > question > settings", () => {
       // get a really wide window, so we don't need to mess with scrolling the table horizontally
       cy.viewport(1600, 800);
 
-      openOrdersTable();
+      H.openOrdersTable();
       cy.findByTestId("viz-settings-button").click();
 
       // wait for settings sidebar to open
@@ -75,7 +63,7 @@ describe("scenarios > question > settings", () => {
     it("should allow you to re-order columns even when one has been removed (metabase #14238, #29287)", () => {
       cy.viewport(1600, 800);
 
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: {
@@ -104,7 +92,7 @@ describe("scenarios > question > settings", () => {
 
       getSidebarColumns().eq("5").as("total").contains("Total");
 
-      moveDnDKitElement(cy.get("@total"), { vertical: -100 });
+      H.moveDnDKitElement(cy.get("@total"), { vertical: -100 });
 
       getSidebarColumns().eq("3").should("contain.text", "Total");
 
@@ -118,7 +106,7 @@ describe("scenarios > question > settings", () => {
         expect($el.scrollTop).to.eql(0);
       });
 
-      moveDnDKitElement(cy.get("@title"), { vertical: 15 });
+      H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
       cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
@@ -128,7 +116,7 @@ describe("scenarios > question > settings", () => {
     it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1600);
       // Orders join Products
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -173,7 +161,7 @@ describe("scenarios > question > settings", () => {
         .contains(/Products? → Category/);
 
       // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
-      moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
+      H.moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
 
       refreshResultsInHeader();
 
@@ -204,7 +192,7 @@ describe("scenarios > question > settings", () => {
       findColumnAtIndex("User → Address", -1).as("user-address");
 
       // Move it one place up
-      moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
+      H.moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
 
       findColumnAtIndex("User → Address", -3);
 
@@ -219,7 +207,7 @@ describe("scenarios > question > settings", () => {
 
     it("should be okay showing an empty joined table (metabase#29140)", () => {
       // Orders join Products
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -255,7 +243,7 @@ describe("scenarios > question > settings", () => {
     });
 
     it("should change to column formatting when sidebar is already open (metabase#16043)", () => {
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: { "source-table": ORDERS_ID },
@@ -268,9 +256,9 @@ describe("scenarios > question > settings", () => {
       cy.findByText("Conditional Formatting"); // confirm it's open
 
       // cy.get(".test-TableInteractive").findByText("Subtotal").scrollIntoView();
-      tableHeaderClick("Subtotal"); // open subtotal column header actions
+      H.tableHeaderClick("Subtotal"); // open subtotal column header actions
 
-      popover().icon("gear").click(); // open subtotal column settings
+      H.popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -278,9 +266,9 @@ describe("scenarios > question > settings", () => {
 
       cy.findByTestId("head-crumbs-container").findByText("Orders").click(); //Dismiss popover
 
-      tableHeaderClick("Created At"); // open created_at column header actions
+      H.tableHeaderClick("Created At"); // open created_at column header actions
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.icon("gear").click(); // open created_at column settings
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -306,18 +294,18 @@ describe("scenarios > question > settings", () => {
         },
       };
 
-      visitQuestionAdhoc(questionDetails);
+      H.visitQuestionAdhoc(questionDetails);
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
       cy.findByTestId("viz-settings-button").click();
 
-      sidebar().findByText(newColumnTitle);
+      H.sidebar().findByText(newColumnTitle);
     });
 
     it("should respect symbol settings for all currencies", () => {
-      openOrdersTable();
+      H.openOrdersTable();
       cy.findByTestId("viz-settings-button").click();
 
       getSidebarColumns()
@@ -463,19 +451,19 @@ describe("scenarios > question > settings", () => {
   describe("resetting state", () => {
     it("should reset modal state when navigating away", () => {
       // create a question and add it to a modal
-      openOrdersTable();
+      H.openOrdersTable();
 
       cy.findByTestId("qb-header").contains("Save").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
-      modal().findByText("Yes please!").click();
-      entityPickerModal().within(() => {
+      H.modal().findByText("Yes please!").click();
+      H.entityPickerModal().within(() => {
         cy.findByText("Orders in a dashboard").click();
         cy.findByText("Cancel").click();
       });
 
       // create a new question to see if the "add to a dashboard" modal is still there
-      openNavigationSidebar();
-      browseDatabases().click();
+      H.openNavigationSidebar();
+      H.browseDatabases().click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
@@ -485,7 +473,7 @@ describe("scenarios > question > settings", () => {
       // This next assertion might not catch bugs where the modal displays after
       // a quick delay. With the previous presentation of this bug, the modal
       // was immediately visible, so I'm not going to add any waits.
-      modal().should("not.exist");
+      H.modal().should("not.exist");
     });
   });
 });
