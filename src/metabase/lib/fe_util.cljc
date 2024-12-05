@@ -483,6 +483,9 @@
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
+      [:during _ (x :guard temporal?) (y :guard string?) unit]
+      (u.time/format-relative-date-range y 1 unit -1 unit {})
+
       [:= _ (x :guard temporal?) (y :guard (some-fn int? string?))]
       (lib.temporal-bucket/describe-temporal-pair x y)
 
