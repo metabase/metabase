@@ -11,6 +11,7 @@ import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Dashboards from "metabase/entities/dashboards";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
@@ -65,6 +66,10 @@ export const MoveQuestionModal = ({
         // HACK: entity framework would previously keep the qb in sync
         // with changing where the question lived
         dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
+        dispatch({
+          type: INJECT_RTK_QUERY_QUESTION_VALUE,
+          payload: updatedCard,
+        });
 
         dispatch(
           addUndo({
