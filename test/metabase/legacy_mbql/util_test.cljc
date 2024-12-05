@@ -483,6 +483,9 @@
   (t/testing "desugaring :is-empty of not emptyable base-type :type/DateTime"
     (t/is (= [:= [:field 1 {:base-type :type/DateTime}] nil]
              (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/DateTime}]]))))
+  (t/testing "desugaring :is-empty of :type/PostgresEnum #48022"
+    (t/is (= [:= [:field 1 {:base-type :type/PostgresEnum}] nil]
+             (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/PostgresEnum}]]))))
   (t/testing "desugaring :not-empty of nil base-type"
     (t/is (= [:!= [:field 1 nil] nil]
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 nil]]))))
@@ -493,7 +496,9 @@
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/Text}]]))))
   (t/testing "desugaring :not-empty of not emptyable base-type"
     (t/is (= [:!= [:field 1 {:base-type :type/DateTime}] nil]
-             (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]])))))
+             (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]]))))
+  (t/testing "desugaring :not-empty of :type/PostgresEnum #48022"
+    (t/is (= [:!= [:field 1 {:base-type :type/PostgresEnum}] nil] (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/PostgresEnum}]])))))
 
 (t/deftest ^:parallel desugar-does-not-contain-test
   (t/testing "desugaring does-not-contain"
