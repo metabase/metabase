@@ -302,7 +302,8 @@
    column     :- ::lib.schema.metadata/column
    values     :- [:maybe [:sequential [:fn u.time/valid?]]]
    with-time? :- [:maybe :boolean]]
-  (let [column (if with-time? (lib.temporal-bucket/with-temporal-bucket column :minute) column)
+  (let [column (cond-> column
+                 with-time? (lib.temporal-bucket/with-temporal-bucket :minute))
         values (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values)]
     (expression-clause operator (into [column] values) {})))
 
