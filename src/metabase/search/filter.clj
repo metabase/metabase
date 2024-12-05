@@ -43,6 +43,14 @@
             (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
               (:name spec))))))
 
+(defn models-without-collection
+  "A list of the search models which are not associated with collections, even indirectly."
+  []
+  (->> (search.spec/specifications)
+       vals
+       (filter #(-> % :attrs :collection-id false?))
+       (map :name)))
+
 (defn- date-range-filter-clause
   [dt-col dt-val]
   (let [date-range (try
@@ -117,8 +125,10 @@
   "Return a HoneySQL clause corresponding to all the optional search filters."
   [search-context qry]
   (as-> qry qry
-    (sql.helpers/where qry (when (seq (:models search-context))
-                             [:in :search_index.model (:models search-context)]))
+    (sql.helpers/where qry (if (seq (:models search-context))
+                             [:in :search_index.model (:models search-context)]
+                             ;; Ideally, we would not get this far, and bail out earlier.
+                             [:= 1 2]))
     (sql.helpers/where qry (when-let [ids (:ids search-context)]
                              [:and
                               [:in :search_index.model_id ids]
