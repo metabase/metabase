@@ -338,7 +338,7 @@
 (t2/define-before-insert :model/NotificationCard
   [instance]
   (merge {:send_condition :has_result
-          :run_once       false}
+          :send_once      false}
          instance))
 
 ;; ------------------------------------------------------------------------------------------------;;

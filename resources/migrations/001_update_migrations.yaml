@@ -10113,7 +10113,7 @@ databaseChangeLog:
                     foreignKeyName: fk_notification_alert_card_id
                     deleteCascade: true
               - column:
-                  name: run_once
+                  name: send_once
                   type: ${boolean.type}
                   remarks: whether the alert should run once
                   defaultValueBoolean: false
