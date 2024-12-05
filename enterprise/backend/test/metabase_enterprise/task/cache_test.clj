@@ -30,7 +30,7 @@
                 (fn [query info]
                   (qp/process-query (qp/userland-query (assoc query :info info))))))))
 
-(deftest queries-to-rerun-test
+(deftest scheduled-queries-to-rerun-test
   (testing "Given a card, we re-run a limited number of variations of the card's query"
     (binding [qp.util/*execute-async?* false]
       (t2/delete! :model/QueryExecution)
@@ -44,7 +44,7 @@
               params-2    [{:type  :text
                             :target [:variable [:template-tag "date"]]
                             :value param-val-2}]
-              to-rerun    #(@#'task.cache/queries-to-rerun card (t/minus (t/offset-date-time) (t/minutes 10)))
+              to-rerun    #(@#'task.cache/scheduled-queries-to-rerun card (t/minus (t/offset-date-time) (t/minutes 10)))
               param-vals  #(-> % :parameters first :value)]
           ;; Sanity check that the query actually runs
           (is (= [[1000]] (mt/rows (run-query-for-card-with-params (u/the-id card) []))))
