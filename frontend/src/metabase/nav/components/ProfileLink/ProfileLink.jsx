@@ -14,7 +14,10 @@ import EntityMenu from "metabase/components/EntityMenu";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
-import { getCanAccessOnboardingPage } from "metabase/home/selectors";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/home/selectors";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
@@ -31,6 +34,7 @@ import { useHelpLink } from "./useHelpLink";
 const mapStateToProps = state => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
+  isNewInstance: getIsNewInstance(state),
   showOnboardingLink: getIsOnboardingSidebarLinkDismissed(state),
 });
 
@@ -38,9 +42,10 @@ export default connect(mapStateToProps)(ProfileLink);
 
 function ProfileLink({
   adminItems,
+  canAccessOnboardingPage,
+  isNewInstance,
   onLogout,
   showOnboardingLink,
-  canAccessOnboardingPage,
 }) {
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSetting("version");
@@ -79,7 +84,8 @@ function ProfileLink({
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
-      showOnboardingLink &&
+      // If the instance is not new, we're removing the link from the sidebar automatically!
+      (!isNewInstance || showOnboardingLink) &&
         canAccessOnboardingPage && {
           // eslint-disable-next-line no-literal-metabase-strings -- We don't show this to whitelabelled instances
           title: t`How to use Metabase`,
@@ -183,6 +189,7 @@ function ProfileLink({
 ProfileLink.propTypes = {
   adminItems: PropTypes.array,
   canAccessOnboardingPage: PropTypes.bool,
+  isNewInstance: PropTypes.bool,
   onLogout: PropTypes.func.isRequired,
   showOnboardingLink: PropTypes.bool,
 };

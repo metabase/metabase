@@ -73,7 +73,7 @@ H.describeEE("Inaccessible Onboarding checklist", () => {
     H.setTokenFeatures("all");
   });
 
-  it("should not render when embedded in an iframe or when the instance is whitelabelled", () => {
+  it("should not render when embedded in an iframe", () => {
     H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
     cy.findByTestId("main-navbar-root").within(() => {
       cy.findByRole("listitem", { name: "Home" }).should("be.visible");
@@ -101,6 +101,12 @@ H.describeEE("Inaccessible Onboarding checklist", () => {
     cy.log("Redirects to the home page");
     cy.visit("/getting-started");
     cy.location("pathname").should("eq", "/");
+
+    cy.log("The link should not exist in the main settings menu either");
+    cy.findByLabelText("Settings menu").click();
+    H.popover()
+      .should("contain", "About Acme, corp.")
+      .and("not.contain", "How to use Metabase");
   });
 });
 
