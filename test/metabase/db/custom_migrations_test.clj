@@ -1992,9 +1992,7 @@
           (binding [custom-migrations/*create-sample-content* create?]
             (is (false? (sample-content-created?)))
             (migrate!)
-            (if create?
-              (is (true? (sample-content-created?)))
-              (is (false? (sample-content-created?)))))
+            (is (= create? sample-content-created?))
 
           (when (true? create?)
             (testing "The Examples collection has permissions set to grant read-write access to all users"
