@@ -4,9 +4,9 @@ import userEvent, {
 } from "@testing-library/user-event";
 import { useState } from "react";
 
-import { AlertsEmailRecipientsSelector } from "./AlertsEmailRecipientsSelector";
+import { MultipleEmailsInput } from "./MultipleEmailsInput";
 
-describe("AlertsEmailRecipientsSelector", () => {
+describe("MultipleEmailsInput", () => {
   it("should allow to add new emails", async () => {
     const { element, onChangeMock } = setup();
 
@@ -123,9 +123,7 @@ function setup({ initialValue = [] }: { initialValue?: string[] } = {}) {
       setValue(newValue);
     };
 
-    return (
-      <AlertsEmailRecipientsSelector value={value} onChange={handleChange} />
-    );
+    return <MultipleEmailsInput value={value} onChange={handleChange} />;
   };
 
   render(<TestComponent />);

@@ -1,20 +1,18 @@
 import type { StoryFn } from "@storybook/react";
 import { type ComponentProps, useState } from "react";
 
-import { AlertsEmailRecipientsSelector } from "./AlertsEmailRecipientsSelector";
+import { MultipleEmailsInput } from "./MultipleEmailsInput";
 
 export default {
-  title: "Notifications/AlertsEmailRecipientsSelector",
-  component: AlertsEmailRecipientsSelector,
+  title: "Notifications/MultipleEmailsInput",
+  component: MultipleEmailsInput,
 };
 
-const Template: StoryFn<
-  ComponentProps<typeof AlertsEmailRecipientsSelector>
-> = args => {
+const Template: StoryFn<ComponentProps<typeof MultipleEmailsInput>> = args => {
   const [data, setData] = useState(args.value);
 
   return (
-    <AlertsEmailRecipientsSelector
+    <MultipleEmailsInput
       value={data}
       onChange={newValue => {
         setData(newValue);

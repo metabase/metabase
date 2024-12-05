@@ -6,15 +6,15 @@ import { MultiSelect } from "metabase/ui";
 
 const MAX_EMAILS_LIMIT = 50;
 
-export type AlertsEmailSelectorProps = {
+export type MultipleEmailsInputProps = {
   value: string[];
   onChange: (newValue: string[]) => void;
 };
 
-export const AlertsEmailRecipientsSelector = ({
+export const MultipleEmailsInput = ({
   value,
   onChange,
-}: AlertsEmailSelectorProps): JSX.Element => {
+}: MultipleEmailsInputProps): JSX.Element => {
   const handleShouldCreate = useCallback(
     (query: string) => {
       return isEmail(query) && value.length < MAX_EMAILS_LIMIT;
@@ -22,6 +22,7 @@ export const AlertsEmailRecipientsSelector = ({
     [value],
   );
 
+  // TODO: Replace this implementation to https://mantine.dev/core/tags-input/ or https://mantine.dev/core/pills-input/ after https://github.com/metabase/metabase/issues/45941
   return (
     <MultiSelect
       data={value}
