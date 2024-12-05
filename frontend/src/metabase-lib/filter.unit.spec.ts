@@ -109,7 +109,7 @@ describe("filter", () => {
   const query = createQuery({ metadata: METADATA });
 
   describe("default filters", () => {
-    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
+    it.each<Lib.DefaultFilterOperator>(["is-null", "not-null"])(
       'should be able to create and destructure a default filter with unknown column types and "%s" operator',
       operator => {
         const column = findColumn(query, "PEOPLE", UNKNOWN_FIELD.name);
