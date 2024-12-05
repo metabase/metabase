@@ -38,7 +38,7 @@ export const ActionExecuteModal = ({
     error: errorAction,
     isLoading: isLoadingAction,
     data: action,
-  } = useGetActionQuery(actionId == null ? skipToken : { id: actionId });
+  } = useGetActionQuery(actionId != null ? { id: actionId } : skipToken);
 
   const {
     error: errorInitialValues,

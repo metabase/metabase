@@ -58,7 +58,7 @@ export const MoveCollectionModal = ({
     data: collection,
     isLoading,
     error,
-  } = useGetCollectionQuery(id ? { id } : skipToken);
+  } = useGetCollectionQuery(id != null ? { id } : skipToken);
 
   if (!collection || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
