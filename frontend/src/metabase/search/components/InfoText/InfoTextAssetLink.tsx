@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
+import { useGetDatabaseQuery } from "metabase/api";
+import { useTableQuery } from "metabase/common/hooks";
 import {
   browseDatabase,
   browseSchema,
@@ -98,9 +99,7 @@ export const InfoTextTablePath = ({
     data: database,
     isLoading: isDatabaseLoading,
     error: databaseError,
-  } = useDatabaseQuery({
-    id: result.database_id,
-  });
+  } = useGetDatabaseQuery({ id: result.database_id });
 
   if (databaseError) {
     return null;

@@ -10,7 +10,7 @@ import {
   DataPermissionType,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
-import { useDatabaseQuery } from "metabase/common/hooks";
+import { useGetDatabaseQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/lib/redux";
@@ -72,9 +72,7 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
     data: database,
     isLoading: isDatabaseLoading,
     error,
-  } = useDatabaseQuery({
-    id: databaseId,
-  });
+  } = useGetDatabaseQuery({ id: databaseId });
 
   const attributes = useSelector(getUserAttributes);
   const draftImpersonation = useSelector<
