@@ -1157,10 +1157,6 @@
 (defn- internal-user-exists? []
   (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
 
-(define-migration CreateInternalUserNoOp
-  ;; this migration is a no-op because We need to insert entities in [[CreateInternalUser]] after the schema for them has been created.
-  )
-
 (define-migration CreateInternalUser
   ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
   ;; exists already.
