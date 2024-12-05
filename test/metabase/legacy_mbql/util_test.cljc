@@ -338,6 +338,42 @@
                    (mbql.u/desugar-filter-clause
                     [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
 
+(t/deftest ^:parallel desugar-during-test
+  (t/testing "Desugaring during filter produces expected [:and [:>=..] [:<..]] expression"
+    (let [value "2020-01-01T13:24:32"]
+      (doseq [{:keys [unit expected-lower expected-upper]}
+              [{:unit :second
+                :expected-lower "2020-01-01T13:24:32"
+                :expected-upper "2020-01-01T13:24:33"}
+               {:unit :minute
+                :expected-lower "2020-01-01T13:24"
+                :expected-upper "2020-01-01T13:25"}
+               {:unit :hour
+                :expected-lower "2020-01-01T13:00"
+                :expected-upper "2020-01-01T14:00"}
+               {:unit :day
+                :expected-lower "2020-01-01T00:00"
+                :expected-upper "2020-01-02T00:00"}
+               {:unit :month
+                :expected-lower "2020-01-01T00:00"
+                :expected-upper "2020-02-01T00:00"}
+               {:unit :year
+                :expected-lower "2020-01-01T00:00"
+                :expected-upper "2021-01-01T00:00"}]]
+        (t/testing (str "expression reference is transformed correctly for unit " unit)
+          (let [expr-ref [:expression "cc"]]
+            (t/is (= [:and
+                      [:>= expr-ref expected-lower]
+                      [:<  expr-ref expected-upper]]
+                     (mbql.u/desugar-filter-clause [:during expr-ref value unit])))))
+        (t/testing (str "field reference is transformed correctly for unit " unit)
+          (let [field-ref [:field 100 nil]
+                exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
+            (t/is (= [:and
+                      [:>= exp-field-ref expected-lower]
+                      [:<  exp-field-ref expected-upper]]
+                     (mbql.u/desugar-filter-clause [:during exp-field-ref value unit])))))))))
+
 (t/deftest ^:parallel desugar-relative-time-interval-positive-test
   (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
     (let [value           10
