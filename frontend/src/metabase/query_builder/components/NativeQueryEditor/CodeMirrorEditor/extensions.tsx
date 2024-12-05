@@ -137,6 +137,7 @@ type LanguageOptions = {
 };
 
 function source(engine?: string) {
+  // TODO: this should be provided by the engine driver through the API
   switch (engine) {
     case "mongo":
     case "druid":
