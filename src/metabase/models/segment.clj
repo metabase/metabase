@@ -190,7 +190,8 @@
                   :collection-id false
                   :creator-id    false
                   :database-id   :table.db_id
-                  :created-at    true
+                  ;; should probably change this, but will break legacy search tests
+                  :created-at    false
                   :updated-at    true}
    :search-terms [:name :description]
    :render-terms {:table-id          :table_id
