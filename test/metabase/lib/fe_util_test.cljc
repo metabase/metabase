@@ -309,11 +309,11 @@
                                :values     [(u.time/local-date 2024 11 28)]
                                :with-time? false}
 
-                               (lib.filter/between column "2024-11-28" "2024-12-04")
-                               {:operator   :between
-                                :column     column
-                                :values     [(u.time/local-date 2024 11 28) (u.time/local-date 2024 12 4)]
-                                :with-time? false}
+                              (lib.filter/between column "2024-11-28" "2024-12-04")
+                              {:operator   :between
+                               :column     column
+                               :values     [(u.time/local-date 2024 11 28) (u.time/local-date 2024 12 4)]
+                               :with-time? false}
 
                               (lib.filter/between column "2024-11-28T00:00:00" "2024-12-04T00:00:00")
                               {:operator   :between
