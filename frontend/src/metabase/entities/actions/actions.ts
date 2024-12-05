@@ -152,14 +152,6 @@ const Actions = createEntity({
     delete: ({ id }: DeleteActionRequest, dispatch: Dispatch) =>
       entityCompatibleQuery(id, dispatch, actionApi.endpoints.deleteAction),
   },
-  api: {
-    create: (params: CreateActionParams) => ActionsApi.create(params),
-    update: (params: UpdateActionParams) => {
-      // Changing action type is not supported
-      const cleanParams = _.omit(params, "type");
-      return ActionsApi.update(cleanParams);
-    },
-  },
   actions: {
     enableImplicitActionsForModel,
   },
