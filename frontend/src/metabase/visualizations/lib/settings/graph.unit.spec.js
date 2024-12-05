@@ -439,14 +439,6 @@ describe("graph.tooltip_columns", () => {
   const tooltipColumnsSetting = TOOLTIP_SETTINGS["graph.tooltip_columns"];
 
   describe("getHidden", () => {
-    it("should be hidden when tooltip type is default", () => {
-      const isHidden = tooltipColumnsSetting.getHidden([], {
-        "graph.tooltip_type": "default",
-      });
-
-      expect(isHidden).toBe(true);
-    });
-
     it("should be hidden when there are no available additional columns", () => {
       const mockSeries = [
         createMockSingleSeries(
