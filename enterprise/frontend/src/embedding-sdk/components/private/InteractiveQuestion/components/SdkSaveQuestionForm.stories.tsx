@@ -45,7 +45,7 @@ export const Default = {
 
         {isSaveModalOpen && (
           <Modal opened={isSaveModalOpen} onClose={close}>
-            <InteractiveQuestion.SaveQuestionForm onClose={close} />
+            <InteractiveQuestion.SaveQuestionForm onCancel={close} />
           </Modal>
         )}
 

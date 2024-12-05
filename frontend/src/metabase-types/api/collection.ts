@@ -69,6 +69,7 @@ export interface Collection {
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
   is_personal?: boolean;
+  is_sample?: boolean; // true if the collection part of the sample content
 
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access

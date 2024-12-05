@@ -1,28 +1,20 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn, TemporalUnit } from "metabase-types/api";
 
 import {
   isBoolean,
-  isCoordinate,
   isDateOrDateTime,
   isNumeric,
   isStringOrStringLike,
   isTime,
 } from "./column_types";
 import {
-  BOOLEAN_FILTER_OPERATORS,
-  COORDINATE_FILTER_OPERATORS,
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  NUMBER_FILTER_OPERATORS,
-  RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS_WITH_OPTIONS,
-  TIME_FILTER_OPERATORS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
@@ -34,11 +26,9 @@ import {
   withTemporalBucket,
 } from "./temporal_bucket";
 import type {
-  BooleanFilterOperatorName,
   BooleanFilterParts,
   Bucket,
   ColumnMetadata,
-  CoordinateFilterOperatorName,
   CoordinateFilterParts,
   DefaultFilterOperatorName,
   DefaultFilterParts,
@@ -48,23 +38,17 @@ import type {
   ExpressionArg,
   ExpressionClause,
   ExpressionOperatorName,
-  ExpressionOptions,
   ExpressionParts,
   FilterClause,
   FilterOperator,
   FilterParts,
-  NumberFilterOperatorName,
   NumberFilterParts,
   Query,
-  RelativeDateBucketName,
   RelativeDateFilterParts,
   SegmentMetadata,
   SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
-  StringFilterOperatorName,
-  StringFilterOptions,
   StringFilterParts,
-  TimeFilterOperatorName,
   TimeFilterParts,
 } from "./types";
 
@@ -114,11 +98,7 @@ export function stringFilterClause({
   values,
   options,
 }: StringFilterParts): ExpressionClause {
-  return expressionClause(
-    operator,
-    [column, ...values],
-    getStringFilterOptions(operator, options),
-  );
+  return ML.string_filter_clause(operator, column, values, options);
 }
 
 export function stringFilterParts(
@@ -126,30 +106,7 @@ export function stringFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): StringFilterParts | null {
-  const { operator, options, args } = expressionParts(
-    query,
-    stageIndex,
-    filterClause,
-  );
-  if (!isStringOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isStringOrStringLike(column) ||
-    !isStringLiteralArray(values)
-  ) {
-    return null;
-  }
-
-  return {
-    operator,
-    column,
-    values,
-    options: getStringFilterOptions(operator, options),
-  };
+  return ML.string_filter_parts(query, stageIndex, filterClause);
 }
 
 export function numberFilterClause({
@@ -157,7 +114,7 @@ export function numberFilterClause({
   column,
   values,
 }: NumberFilterParts): ExpressionClause {
-  return expressionClause(operator, [column, ...values]);
+  return ML.number_filter_clause(operator, column, values);
 }
 
 export function numberFilterParts(
@@ -165,26 +122,7 @@ export function numberFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): NumberFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isNumberOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isNumeric(column) ||
-    isCoordinate(column) || // coordinates have their own filterParts
-    !isNumberLiteralArray(values)
-  ) {
-    return null;
-  }
-
-  return {
-    operator,
-    column,
-    values,
-  };
+  return ML.number_filter_parts(query, stageIndex, filterClause);
 }
 
 export function coordinateFilterClause({
@@ -193,11 +131,7 @@ export function coordinateFilterClause({
   longitudeColumn,
   values,
 }: CoordinateFilterParts): ExpressionClause {
-  const args =
-    operator === "inside"
-      ? [column, longitudeColumn ?? column, ...values]
-      : [column, ...values];
-  return expressionClause(operator, args);
+  return ML.coordinate_filter_clause(operator, column, longitudeColumn, values);
 }
 
 export function coordinateFilterParts(
@@ -205,33 +139,7 @@ export function coordinateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): CoordinateFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isCoordinateOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...otherArgs] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isNumeric(column) ||
-    !isCoordinate(column)
-  ) {
-    return null;
-  }
-
-  if (operator === "inside") {
-    const [longitudeColumn, ...values] = otherArgs;
-    if (isColumnMetadata(longitudeColumn) && isNumberLiteralArray(values)) {
-      return { operator, column, longitudeColumn, values };
-    }
-  } else {
-    const values = otherArgs;
-    if (isNumberLiteralArray(values)) {
-      return { operator, column, values };
-    }
-  }
-
-  return null;
+  return ML.coordinate_filter_parts(query, stageIndex, filterClause);
 }
 
 export function booleanFilterClause({
@@ -239,7 +147,7 @@ export function booleanFilterClause({
   column,
   values,
 }: BooleanFilterParts): ExpressionClause {
-  return expressionClause(operator, [column, ...values]);
+  return ML.boolean_filter_clause(operator, column, values);
 }
 
 export function booleanFilterParts(
@@ -247,25 +155,7 @@ export function booleanFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): BooleanFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isBooleanOperator(operator) || args.length < 1) {
-    return null;
-  }
-
-  const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isBoolean(column) ||
-    !isBooleanLiteralArray(values)
-  ) {
-    return null;
-  }
-
-  return {
-    operator,
-    column,
-    values,
-  };
+  return ML.boolean_filter_parts(query, stageIndex, filterClause);
 }
 
 export function specificDateFilterClause(
@@ -336,28 +226,19 @@ export function specificDateFilterParts(
 export function relativeDateFilterClause({
   column,
   value,
-  bucket,
+  unit,
   offsetValue,
-  offsetBucket,
+  offsetUnit,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
-  const columnWithoutBucket = withTemporalBucket(column, null);
-
-  if (offsetValue == null || offsetBucket == null) {
-    return expressionClause(
-      "time-interval",
-      [columnWithoutBucket, value, bucket],
-      options,
-    );
-  }
-
-  return expressionClause("relative-time-interval", [
-    columnWithoutBucket,
+  return ML.relative_date_filter_clause(
+    column,
     value,
-    bucket,
+    unit,
     offsetValue,
-    offsetBucket,
-  ]);
+    offsetUnit,
+    options,
+  );
 }
 
 export function relativeDateFilterParts(
@@ -365,12 +246,7 @@ export function relativeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
-  const filterParts = expressionParts(query, stageIndex, filterClause);
-  return (
-    relativeDateFilterPartsWithoutOffset(filterParts) ??
-    relativeDateFilterPartsWithOffset(filterParts) ??
-    relativeDateFilterPartsRelativeTimeInterval(filterParts)
-  );
+  return ML.relative_date_filter_parts(query, stageIndex, filterClause);
 }
 
 export function excludeDateFilterClause(
@@ -444,8 +320,11 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const serializedValues = values.map(value => serializeTime(value));
-  return expressionClause(operator, [column, ...serializedValues]);
+  return ML.time_filter_clause(
+    operator,
+    column,
+    values.map(value => moment(value)),
+  );
 }
 
 export function timeFilterParts(
@@ -453,29 +332,13 @@ export function timeFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isTimeOperator(operator) || args.length < 1) {
+  const filterParts = ML.time_filter_parts(query, stageIndex, filterClause);
+  if (!filterParts) {
     return null;
   }
-
-  const [column, ...serializedValues] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isTime(column) ||
-    !isStringLiteralArray(serializedValues)
-  ) {
-    return null;
-  }
-
-  const values = serializedValues.map(value => deserializeTime(value));
-  if (!isDefinedArray(values)) {
-    return null;
-  }
-
   return {
-    operator,
-    column,
-    values,
+    ...filterParts,
+    values: filterParts.values.map((value: Moment) => value.toDate()),
   };
 }
 
@@ -562,10 +425,6 @@ function findTemporalBucket(
   });
 }
 
-function isExpression(arg: unknown): arg is ExpressionParts {
-  return arg != null && typeof arg === "object";
-}
-
 function isDefined<T>(arg: T | undefined | null): arg is T {
   return arg != null;
 }
@@ -586,59 +445,6 @@ function isNumberLiteral(arg: unknown): arg is number {
   return typeof arg === "number";
 }
 
-function isNumberOrCurrentLiteral(arg: unknown): arg is number | "current" {
-  return isNumberLiteral(arg) || arg === "current";
-}
-
-function isNumberLiteralArray(arg: unknown): arg is number[] {
-  return Array.isArray(arg) && arg.every(isNumberLiteral);
-}
-
-function isBooleanLiteral(arg: unknown): arg is boolean {
-  return typeof arg === "boolean";
-}
-
-function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
-  return Array.isArray(arg) && arg.every(isBooleanLiteral);
-}
-
-function isStringOperator(
-  operator: ExpressionOperatorName,
-): operator is StringFilterOperatorName {
-  const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
-function getStringFilterOptions(
-  operator: ExpressionOperatorName,
-  options: ExpressionOptions,
-): StringFilterOptions {
-  const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS_WITH_OPTIONS;
-  const supportsOptions = operators.includes(operator);
-  return supportsOptions ? { "case-sensitive": true, ...options } : {};
-}
-
-function isNumberOperator(
-  operator: ExpressionOperatorName,
-): operator is NumberFilterOperatorName {
-  const operators: ReadonlyArray<string> = NUMBER_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
-function isCoordinateOperator(
-  operator: ExpressionOperatorName,
-): operator is CoordinateFilterOperatorName {
-  const operators: ReadonlyArray<string> = COORDINATE_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
-function isBooleanOperator(
-  operator: ExpressionOperatorName,
-): operator is BooleanFilterOperatorName {
-  const operators: ReadonlyArray<string> = BOOLEAN_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
 function isSpecificDateOperator(
   operator: ExpressionOperatorName,
 ): operator is SpecificDateFilterOperatorName {
@@ -653,25 +459,11 @@ function isExcludeDateOperator(
   return operators.includes(operator);
 }
 
-function isTimeOperator(
-  operator: ExpressionOperatorName,
-): operator is TimeFilterOperatorName {
-  const operators: ReadonlyArray<string> = TIME_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
 function isDefaultOperator(
   operator: ExpressionOperatorName,
 ): operator is DefaultFilterOperatorName {
   const operators: ReadonlyArray<string> = DEFAULT_FILTER_OPERATORS;
   return operators.includes(operator);
-}
-
-function isRelativeDateBucket(
-  bucketName: string,
-): bucketName is RelativeDateBucketName {
-  const buckets: ReadonlyArray<string> = RELATIVE_DATE_BUCKETS;
-  return buckets.includes(bucketName);
 }
 
 function isExcludeDateBucket(
@@ -683,8 +475,6 @@ function isExcludeDateBucket(
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
-const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
-const TIME_FORMAT_MS = "HH:mm:ss.SSS";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
 function serializeDate(date: Date): string {
@@ -711,158 +501,6 @@ function deserializeDateTime(value: string): Date | null {
   }
 
   return dateTime.local(true).toDate();
-}
-
-function serializeTime(value: Date): string {
-  return moment(value).format(TIME_FORMAT_MS);
-}
-
-function deserializeTime(value: string): Date | null {
-  const time = moment(value, TIME_FORMATS, true);
-  if (!time.isValid()) {
-    return null;
-  }
-
-  return time.toDate();
-}
-
-function relativeDateFilterPartsWithoutOffset({
-  operator,
-  args,
-  options,
-}: ExpressionParts): RelativeDateFilterParts | null {
-  if (operator !== "time-interval" || args.length !== 3) {
-    return null;
-  }
-
-  const [column, value, bucket] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isDateOrDateTime(column) ||
-    !isNumberOrCurrentLiteral(value) ||
-    !isStringLiteral(bucket) ||
-    !isRelativeDateBucket(bucket)
-  ) {
-    return null;
-  }
-
-  return {
-    column,
-    value,
-    bucket,
-    offsetValue: null,
-    offsetBucket: null,
-    options,
-  };
-}
-
-function relativeDateFilterPartsWithOffset({
-  operator,
-  args,
-  options,
-}: ExpressionParts): RelativeDateFilterParts | null {
-  if (operator !== "between" || args.length !== 3) {
-    return null;
-  }
-
-  const [offsetParts, startParts, endParts] = args;
-  if (
-    !isExpression(offsetParts) ||
-    !isExpression(startParts) ||
-    !isExpression(endParts) ||
-    offsetParts.operator !== "+" ||
-    offsetParts.args.length !== 2 ||
-    startParts.operator !== "relative-datetime" ||
-    startParts.args.length !== 2 ||
-    endParts.operator !== "relative-datetime" ||
-    endParts.args.length !== 2
-  ) {
-    return null;
-  }
-
-  const [column, intervalParts] = offsetParts.args;
-  if (
-    !isColumnMetadata(column) ||
-    !isDateOrDateTime(column) ||
-    !isExpression(intervalParts) ||
-    intervalParts.operator !== "interval"
-  ) {
-    return null;
-  }
-
-  const [offsetValue, offsetBucket] = intervalParts.args;
-  if (
-    !isNumberLiteral(offsetValue) ||
-    !isStringLiteral(offsetBucket) ||
-    !isRelativeDateBucket(offsetBucket)
-  ) {
-    return null;
-  }
-
-  const [startValue, startBucket] = startParts.args;
-  const [endValue, endBucket] = endParts.args;
-  if (
-    !isNumberLiteral(startValue) ||
-    !isStringLiteral(startBucket) ||
-    !isRelativeDateBucket(startBucket) ||
-    !isNumberLiteral(endValue) ||
-    !isStringLiteral(endBucket) ||
-    !isRelativeDateBucket(endBucket) ||
-    startBucket !== endBucket ||
-    (startValue !== 0 && endValue !== 0)
-  ) {
-    return null;
-  }
-
-  return {
-    column,
-    value: startValue < 0 ? startValue : endValue,
-    bucket: startBucket,
-    offsetValue: offsetValue * -1,
-    offsetBucket,
-    options,
-  };
-}
-
-function relativeDateFilterPartsRelativeTimeInterval({
-  operator,
-  args,
-  options,
-}: ExpressionParts): RelativeDateFilterParts | null {
-  if (operator !== "relative-time-interval" || args.length !== 5) {
-    return null;
-  }
-
-  const [column, value, bucket, offsetValue, offsetBucket] = args;
-
-  if (!isColumnMetadata(column) || !isDateOrDateTime(column)) {
-    return null;
-  }
-
-  if (
-    !isNumberLiteral(value) ||
-    !isStringLiteral(bucket) ||
-    !isRelativeDateBucket(bucket)
-  ) {
-    return null;
-  }
-
-  if (
-    !isNumberLiteral(offsetValue) ||
-    !isStringLiteral(offsetBucket) ||
-    !isRelativeDateBucket(offsetBucket)
-  ) {
-    return null;
-  }
-
-  return {
-    column,
-    bucket,
-    value,
-    offsetBucket,
-    offsetValue,
-    options,
-  };
 }
 
 function serializeExcludeDatePart(

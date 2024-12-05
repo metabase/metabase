@@ -61,9 +61,9 @@ function getRelativeDateValue(
 
   return {
     type: "relative",
-    unit: filterParts.bucket,
+    unit: filterParts.unit,
     value: filterParts.value,
-    offsetUnit: filterParts.offsetBucket ?? undefined,
+    offsetUnit: filterParts.offsetUnit ?? undefined,
     offsetValue: filterParts.offsetValue ?? undefined,
     options: filterParts.options,
   };
@@ -127,9 +127,9 @@ function getRelativeFilterClause(
 ): Lib.ExpressionClause {
   return Lib.relativeDateFilterClause({
     column,
-    bucket: value.unit,
+    unit: value.unit,
     value: value.value,
-    offsetBucket: value.offsetUnit ?? null,
+    offsetUnit: value.offsetUnit ?? null,
     offsetValue: value.offsetValue ?? null,
     options: value.options ?? {},
   });
