@@ -1,8 +1,18 @@
 import { CreateQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { FIRST_COLLECTION_ID, ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { createQuestion, describeEE, entityPickerModal, entityPickerModalTab, modal, popover } from "e2e/support/helpers";
+import {
+  FIRST_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
+  createQuestion,
+  describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
+  modal,
+  popover,
+} from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -82,17 +92,15 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
   });
 
   it("can save a question in a dashboard", () => {
-    createQuestion(
-      {
-        name: "Total Orders",
-        dashboard_id: ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      }
-    );
+    createQuestion({
+      name: "Total Orders",
+      dashboard_id: ORDERS_DASHBOARD_ID,
+      query: {
+        "source-table": SAMPLE_DATABASE.ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      display: "scalar",
+    });
 
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
