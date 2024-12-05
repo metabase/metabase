@@ -255,21 +255,6 @@
   [& args]
   (map clean-result (apply search-request-data-with identity args)))
 
-(defn- pad-to-length [xs ys]
-  (let [n (max (count xs) (count ys))]
-    (take n (concat xs (repeat n nil)))))
-
-(defn- portal= [x y]
-  (or (= x y)
-      (if (seq? x)
-        (every? true? (map portal=
-                           (pad-to-length x y)
-                           (pad-to-length y x)))
-        (do (tap> ['(sad)
-                   ^{:portal.viewer/default :portal.viewer/diff}
-                   [x y]])
-            false))))
-
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
     (with-search-items-in-root-collection "test"
@@ -433,8 +418,8 @@
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
       ;; We do not synchronously update dashboard count
       (search/reindex!)
-      (is (portal= (sort-by :dashboardcard_count (cleaned-results dashboard-count-results))
-                   (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
+      (is (= (sort-by :dashboardcard_count (cleaned-results dashboard-count-results))
+             (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
 (deftest moderated-status-test
   (let [search-term "moderated-status-test"]
@@ -1072,7 +1057,7 @@
                         set))))
 
           (testing "return nothing if there is no intersection"
-            (is (portal= #{}
+            (is (= #{}
                    (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "table" :models "database")
                         :data
                         (map :model)
@@ -1370,7 +1355,7 @@
                       set))))
 
         (testing "if search-native-query is true, search both dataset_query and the name"
-          (is (portal= #{["card" mbql-card]
+          (is (= #{["card" mbql-card]
                    ["card" native-card-in-name]
                    ["dataset" mbql-model]
                    ["dataset" native-model-in-name]
