@@ -140,7 +140,7 @@ describe("issue 9027", () => {
     H.focusNativeEditor().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    saveQuestion(QUESTION_NAME, undefined, {
+    H.saveQuestion(QUESTION_NAME, undefined, {
       tab: "Browse",
       path: ["Our analytics"],
     });
@@ -277,7 +277,9 @@ describe("issue 14957", { tags: "@external" }, () => {
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {
-    H.openNativeEditor({ databaseName: PG_DB_NAME }).type("select pg_sleep(60)");
+    H.openNativeEditor({ databaseName: PG_DB_NAME }).type(
+      "select pg_sleep(60)",
+    );
     H.saveQuestion("14957", undefined, {
       tab: "Browse",
       path: ["Our analytics"],
