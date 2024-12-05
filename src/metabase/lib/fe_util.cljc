@@ -288,6 +288,48 @@
       [(op :guard #{:=}) _ (col-ref :guard boolean-col?) (arg :guard boolean?)]
       {:operator op, :column (ref->col col-ref), :values [arg]})))
 
+(def ^:private SpecificDateFilterParts
+  [:map
+   [:operator   ::lib.schema.filter/specific-date-filter-operator]
+   [:column     ::lib.schema.metadata/column]
+   [:values     [:sequential [:fn u.time/valid?]]]
+   [:with-time? :boolean]])
+
+(mu/defn specific-date-filter-clause
+  "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[specific-date-filter-parts]]."
+  [operator   :- ::lib.schema.filter/specific-date-filter-operator
+   column     :- ::lib.schema.metadata/column
+   values     :- [:sequential [:fn u.time/valid?]]
+   with-time? :- :boolean]
+  (let [column (if with-time? (lib.temporal-bucket/with-temporal-bucket column :minute) column)
+        values (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values)]
+    (expression-clause operator (into [column] values) {})))
+
+(mu/defn specific-date-filter-parts :- [:maybe SpecificDateFilterParts]
+  "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
+    (lib.util.match/match-one filter-clause
+      ;; exactly 1 argument
+      [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) (arg :guard string?)]
+      (let [with-time? (u.time/matches-date-time? arg)
+            arg      (u.time/coerce-to-timestamp arg)]
+        (when (u.time/valid? arg)
+          {:operator op, :column (ref->col col-ref), :values [arg], :with-time? with-time?}))
+
+      ;; exactly 2 arguments
+      [(op :guard #{:between}) _ (col-ref :guard date-col?) (start :guard string?) (end :guard string?)]
+      (let [with-time? (or (u.time/matches-date-time? start) (u.time/matches-date-time? end))
+            start      (u.time/coerce-to-time start)
+            end        (u.time/coerce-to-time end)]
+        (when (and (u.time/valid? start) (u.time/valid? end))
+          {:operator op, :column (ref->col col-ref), :values [start end], :with-time? with-time?})))))
+
 (def ^:private RelativeDateFilterParts
   [:map
    [:column       ::lib.schema.metadata/column]

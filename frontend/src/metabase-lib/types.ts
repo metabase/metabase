@@ -11,10 +11,7 @@ import type {
   TemporalUnit,
 } from "metabase-types/api";
 
-import type {
-  DEFAULT_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
-} from "./constants";
+import type { DEFAULT_FILTER_OPERATORS } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -336,8 +333,7 @@ export type CoordinateFilterOperator =
 
 export type BooleanFilterOperator = "=" | "is-null" | "not-null";
 
-export type SpecificDateFilterOperatorName =
-  (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
+export type SpecificDateFilterOperatorName = "=" | ">" | "<" | "between";
 
 export type ExcludeDateFilterOperator = "!=" | "is-null" | "not-null";
 
