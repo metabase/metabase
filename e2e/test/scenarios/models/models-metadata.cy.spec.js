@@ -1,26 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  addOrUpdateDashboardCard,
-  createNativeQuestion,
-  main,
-  mapColumnTo,
-  modal,
-  openColumnOptions,
-  openNotebook,
-  openQuestionActions,
-  popover,
-  queryBuilderHeader,
-  questionInfoButton,
-  renameColumn,
-  restore,
-  saveMetadataChanges,
-  setColumnType,
-  setModelMetadata,
-  sidebar,
-  visitDashboard,
-  visitModel,
-  visualize,
-} from "e2e/support/helpers";
 
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
@@ -29,7 +8,7 @@ const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS, ORDERS_ID, ORDERS } =
 
 describe("scenarios > models metadata", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -53,9 +32,9 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should edit GUI model metadata", () => {
-      openQuestionActions();
+      H.openQuestionActions();
 
-      popover().findByTextEnsureVisible("89%").realHover();
+      H.popover().findByTextEnsureVisible("89%").realHover();
 
       cy.findByTestId("tooltip-content").within(() => {
         cy.findByText(
@@ -66,19 +45,19 @@ describe("scenarios > models metadata", () => {
         );
       });
 
-      popover().findByTextEnsureVisible("Edit metadata").click();
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
       cy.url().should("include", "/metadata");
 
-      openColumnOptions("Subtotal");
-      renameColumn("Subtotal", "Pre-tax");
-      setColumnType("No special type", "Cost");
-      saveMetadataChanges();
+      H.openColumnOptions("Subtotal");
+      H.renameColumn("Subtotal", "Pre-tax");
+      H.setColumnType("No special type", "Cost");
+      H.saveMetadataChanges();
 
       cy.log(
         "Ensure that a question created from this model inherits its metadata.",
       );
       startQuestionFromModel("GUI Model");
-      visualize();
+      H.visualize();
 
       cy.findAllByTestId("header-cell")
         .should("contain", "Pre-tax ($)")
@@ -86,15 +65,15 @@ describe("scenarios > models metadata", () => {
     });
 
     it("allows for canceling changes", () => {
-      openQuestionActions();
-      popover().findByTextEnsureVisible("Edit metadata").click();
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
 
-      openColumnOptions("Subtotal");
-      renameColumn("Subtotal", "Pre-tax");
-      setColumnType("No special type", "Cost");
+      H.openColumnOptions("Subtotal");
+      H.renameColumn("Subtotal", "Pre-tax");
+      H.setColumnType("No special type", "Cost");
 
       cy.findByTestId("dataset-edit-bar").button("Cancel").click();
-      modal().button("Discard changes").click();
+      H.modal().button("Discard changes").click();
 
       cy.findAllByTestId("header-cell")
         .should("contain", "Subtotal")
@@ -105,20 +84,20 @@ describe("scenarios > models metadata", () => {
       "clears custom metadata when a model is turned back into a question",
       { tags: "@flaky" },
       () => {
-        openQuestionActions();
-        popover().findByTextEnsureVisible("Edit metadata").click();
+        H.openQuestionActions();
+        H.popover().findByTextEnsureVisible("Edit metadata").click();
 
-        openColumnOptions("Subtotal");
-        renameColumn("Subtotal", "Pre-tax");
-        setColumnType("No special type", "Cost");
-        saveMetadataChanges();
+        H.openColumnOptions("Subtotal");
+        H.renameColumn("Subtotal", "Pre-tax");
+        H.setColumnType("No special type", "Cost");
+        H.saveMetadataChanges();
 
         cy.findAllByTestId("header-cell")
           .should("contain", "Pre-tax ($)")
           .and("not.contain", "Subtotal");
 
-        openQuestionActions();
-        popover()
+        H.openQuestionActions();
+        H.popover()
           .findByTextEnsureVisible("Turn back to saved question")
           .click();
         cy.wait("@cardQuery");
@@ -142,9 +121,9 @@ describe("scenarios > models metadata", () => {
       { visitQuestion: true },
     );
 
-    openQuestionActions();
+    H.openQuestionActions();
 
-    popover().findByTextEnsureVisible("37%").realHover();
+    H.popover().findByTextEnsureVisible("37%").realHover();
 
     cy.findByTestId("tooltip-content").within(() => {
       cy.findByText(
@@ -155,15 +134,15 @@ describe("scenarios > models metadata", () => {
       );
     });
 
-    popover().findByTextEnsureVisible("Edit metadata").click();
+    H.popover().findByTextEnsureVisible("Edit metadata").click();
     cy.url().should("include", "/metadata");
 
-    openColumnOptions("SUBTOTAL");
+    H.openColumnOptions("SUBTOTAL");
 
-    mapColumnTo({ table: "Orders", column: "Subtotal" });
-    renameColumn("Subtotal", "Pre-tax");
-    setColumnType("No special type", "Cost");
-    saveMetadataChanges();
+    H.mapColumnTo({ table: "Orders", column: "Subtotal" });
+    H.renameColumn("Subtotal", "Pre-tax");
+    H.setColumnType("No special type", "Cost");
+    H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")
       .should("contain", "Pre-tax ($)")
@@ -173,7 +152,7 @@ describe("scenarios > models metadata", () => {
       "Ensure that a question created from this model inherits its metadata.",
     );
     startQuestionFromModel("Native Model");
-    visualize();
+    H.visualize();
 
     cy.findAllByTestId("header-cell")
       .should("contain", "Pre-tax ($)")
@@ -191,13 +170,13 @@ describe("scenarios > models metadata", () => {
       },
       { visitQuestion: true },
     );
-    openQuestionActions();
-    popover().findByTextEnsureVisible("Edit metadata").click();
-    openColumnOptions("USER_ID");
-    setColumnType("No special type", "Foreign Key");
-    sidebar().findByText("Select a target").click();
-    popover().findByText("People → ID").click();
-    saveMetadataChanges();
+    H.openQuestionActions();
+    H.popover().findByTextEnsureVisible("Edit metadata").click();
+    H.openColumnOptions("USER_ID");
+    H.setColumnType("No special type", "Foreign Key");
+    H.sidebar().findByText("Select a target").click();
+    H.popover().findByText("People → ID").click();
+    H.saveMetadataChanges();
     // TODO: Not much to do with it at the moment beyond saving it.
     // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
@@ -214,10 +193,10 @@ describe("scenarios > models metadata", () => {
       { visitQuestion: true },
     );
 
-    openQuestionActions();
-    popover().findByTextEnsureVisible("Edit query definition").click();
+    H.openQuestionActions();
+    H.popover().findByTextEnsureVisible("Edit query definition").click();
 
-    main().within(() => {
+    H.main().within(() => {
       cy.get("textarea")
         .focus()
         .invoke("val", "")
@@ -247,10 +226,10 @@ describe("scenarios > models metadata", () => {
       cy.wait("@cardQuery");
     });
 
-    openColumnOptions("SUBTOTAL");
-    mapColumnTo({ table: "Orders", column: "Subtotal" });
-    setColumnType("No special type", "Cost");
-    saveMetadataChanges();
+    H.openColumnOptions("SUBTOTAL");
+    H.mapColumnTo({ table: "Orders", column: "Subtotal" });
+    H.setColumnType("No special type", "Cost");
+    H.saveMetadataChanges();
 
     cy.log("Revision 1");
     cy.findByTestId("TableInteractive-root").within(() => {
@@ -258,14 +237,14 @@ describe("scenarios > models metadata", () => {
       cy.findByText("SUBTOTAL").should("not.exist");
     });
 
-    openQuestionActions();
-    popover().findByTextEnsureVisible("Edit metadata").click();
+    H.openQuestionActions();
+    H.popover().findByTextEnsureVisible("Edit metadata").click();
 
     cy.log("Revision 2");
-    openColumnOptions("TAX");
-    mapColumnTo({ table: "Orders", column: "Tax" });
-    setColumnType("No special type", "Cost");
-    saveMetadataChanges();
+    H.openColumnOptions("TAX");
+    H.mapColumnTo({ table: "Orders", column: "Tax" });
+    H.setColumnType("No special type", "Cost");
+    H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")
       .should("contain", "Subtotal ($)")
@@ -273,7 +252,7 @@ describe("scenarios > models metadata", () => {
       .and("not.contain", "TAX");
 
     cy.reload();
-    questionInfoButton().click();
+    H.questionInfoButton().click();
 
     cy.findByTestId("sidesheet").within(() => {
       cy.findByRole("tab", { name: "History" }).click();
@@ -301,7 +280,7 @@ describe("scenarios > models metadata", () => {
       );
 
       cy.get("@modelId").then(modelId => {
-        setModelMetadata(modelId, field => {
+        H.setModelMetadata(modelId, field => {
           if (field.display_name === "USER_ID") {
             return {
               ...field,
@@ -362,9 +341,9 @@ describe("scenarios > models metadata", () => {
 
         // Drill to People table
         // FK column is mapped to real DB column
-        queryBuilderHeader().button("Filter").click();
+        H.queryBuilderHeader().button("Filter").click();
 
-        modal().within(() => {
+        H.modal().within(() => {
           cy.findByRole("tablist").within(() => {
             cy.get("button").should("have.length", 2); // Just the two we're expecting and not the other fake FK.
             cy.findByText("Native Model").should("exist");
@@ -393,18 +372,18 @@ describe("scenarios > models metadata", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
-          addOrUpdateDashboardCard({
+          H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
             card_id: modelId,
             card: { size_x: 24, size_y: 9 },
           });
 
-          visitDashboard(dashboardId);
+          H.visitDashboard(dashboardId);
 
           // Drill to People table
           // FK column is mapped to real DB column
           drillDashboardFK({ id: 1 });
-          popover().findByText("View details").click();
+          H.popover().findByText("View details").click();
           cy.wait("@dataset");
           cy.findByTestId("object-detail").within(() => {
             cy.findAllByText("1");
@@ -416,7 +395,7 @@ describe("scenarios > models metadata", () => {
           // Drill to Reviews table
           // FK column has a FK semantic type, no mapping to real DB columns
           drillDashboardFK({ id: 7 });
-          popover().findByText("View details").click();
+          H.popover().findByText("View details").click();
           cy.wait("@dataset");
           cy.findByTestId("object-detail").within(() => {
             cy.findAllByText("7");
@@ -443,8 +422,8 @@ describe("scenarios > models metadata", () => {
       cy.createQuestion(questionDetails, { visitQuestion: true });
       cy.findAllByTestId("header-cell").should("not.contain", "Vendor");
 
-      openQuestionActions();
-      popover().findByTextEnsureVisible("Edit metadata").click();
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
 
       cy.findAllByTestId("header-cell")
         .contains(/^Vendor$/)
@@ -453,7 +432,7 @@ describe("scenarios > models metadata", () => {
   });
 
   it("does not confuse the names of various native model columns mapped to the same database field", () => {
-    createNativeQuestion(
+    H.createNativeQuestion(
       {
         type: "model",
         native: {
@@ -464,19 +443,19 @@ describe("scenarios > models metadata", () => {
     );
 
     cy.get("@modelId").then(modelId => {
-      setModelMetadata(modelId, (field, index) => ({
+      H.setModelMetadata(modelId, (field, index) => ({
         ...field,
         id: ORDERS.ID,
         display_name: `ID${index + 1}`,
         semantic_type: "type/PK",
       }));
 
-      visitModel(modelId);
+      H.visitModel(modelId);
     });
 
-    openNotebook();
+    H.openNotebook();
     cy.findByTestId("fields-picker").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("ID1").should("be.visible");
       cy.findByText("ID2").should("be.visible");
       cy.findByText("ID3").should("be.visible");
@@ -486,7 +465,7 @@ describe("scenarios > models metadata", () => {
 
 function drillFK({ id }) {
   cy.get(".test-Table-FK").contains(id).first().click();
-  popover().findByTextEnsureVisible("View details").click();
+  H.popover().findByTextEnsureVisible("View details").click();
 }
 
 function drillDashboardFK({ id }) {
