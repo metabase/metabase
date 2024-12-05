@@ -238,7 +238,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should be able to publish/embed a dashboard with questions saved within it", () => {
-      createQuestion({
+      H.createQuestion({
         name: "Total Orders",
         dashboard_id: ORDERS_DASHBOARD_ID,
         database_id: SAMPLE_DATABASE.id,
@@ -263,14 +263,14 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
       visitAndEnableSharing("dashboard");
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByRole("tab", { name: "Look and Feel" }).click();
         cy.button("Publish").click();
 
         cy.wait("@embedObject");
       });
 
-      visitIframe();
+      H.visitIframe();
       cy.url().should("contain", "/embed/dashboard/");
 
       cy.findByTestId("embed-frame").within(() => {

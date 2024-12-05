@@ -131,7 +131,7 @@ describe("issue 44171", () => {
     cy.findByTestId("dashboard-header")
       .findByLabelText("Add questions")
       .click();
-    popover().findByText("Existing Question").click();
+    H.popover().findByText("Existing Question").click();
 
     H.sidebar().findByText("Metric 44171-A").click();
 

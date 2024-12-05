@@ -146,7 +146,7 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Create").click();
     });
 
-    entityPickerModal()
+    H.entityPickerModal()
       .button(/Select/)
       .click();
 

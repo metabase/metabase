@@ -32,7 +32,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display a dashboard question correctly", () => {
-    createQuestion(
+    H.createQuestion(
       {
         name: "Total Orders",
         dashboard_id: ORDERS_DASHBOARD_ID,
@@ -47,9 +47,9 @@ describe("scenarios > embedding > questions", () => {
       { visitQuestion: true },
     );
 
-    openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    visitIframe();
+    H.visitIframe();
 
     cy.url().should("include", "embed");
 

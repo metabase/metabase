@@ -77,7 +77,7 @@ describe("scenarios > question > native subquery", () => {
           cy.button("Move").click();
         });
 
-        openNativeEditor();
+        H.openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
         H.focusNativeEditor().realType(" {{#people");
 

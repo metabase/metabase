@@ -847,7 +847,7 @@ describe("issue 26091", () => {
       H.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
-    saveQuestion("New model", undefined, {
+    H.saveQuestion("New model", undefined, {
       tab: "Browse",
       path: ["Our analytics"],
     });

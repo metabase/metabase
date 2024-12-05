@@ -500,12 +500,6 @@ describe("Dashboard > Dashboard Questions", () => {
         });
 
         H.visitDashboard(dashboardId);
-
-        // archive it
-        // archive it
-        H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-        // archive it
-        H.visitDashboard(S.ORDERS_DASHBOARD_ID);
         H.openDashboardMenu("Move to trash");
         H.modal().button("Move to trash").click();
         cy.findByText("Dashboard with a title").should("not.exist");
@@ -744,6 +738,11 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("cannot move a question to a dashboard, when it would be removed from a read-only dashboard", () => {
+      cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+      cy.intercept("POST", "/api/cards/dashboards").as(
+        "checkCardsInDashboards",
+      );
+
       cy.signInAsAdmin();
 
       H.createQuestion(
@@ -798,6 +797,9 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.log(
         "We should get a modal saying that we can't move it into a dashboard because it would move it out of a dashboard that we can't access",
       );
+
+      cy.wait("@checkCardsInDashboards");
+      cy.wait("@updateQuestion");
 
       H.main()
         .findByText(/Sorry, you don’t have permission to see that./)

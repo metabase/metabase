@@ -592,7 +592,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     it("should send a dashboard with questions saved in the dashboard", () => {
-      createQuestion({
+      H.createQuestion({
         name: "Total Orders",
         database_id: SAMPLE_DATABASE.id,
         dashboard_id: ORDERS_DASHBOARD_ID,
@@ -604,7 +604,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
 
       assignRecipient();
-      sendEmailAndVisitIt();
+      H.sendEmailAndVisitIt();
 
       cy.get(".container").within(() => {
         cy.findByText("Total Orders");

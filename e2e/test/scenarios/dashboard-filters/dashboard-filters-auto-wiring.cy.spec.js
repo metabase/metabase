@@ -769,7 +769,7 @@ function createDashboardWithCards({
 function addCardToDashboard(dashcardNames = "Orders Model") {
   const dashcardsToSelect =
     typeof dashcardNames === "string" ? [dashcardNames] : dashcardNames;
-  openQuestionsSidebar();
+  H.openQuestionsSidebar();
   for (const dashcardName of dashcardsToSelect) {
     cy.findByTestId("add-card-sidebar").findByText(dashcardName).click();
   }

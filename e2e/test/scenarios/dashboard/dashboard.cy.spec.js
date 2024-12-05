@@ -176,7 +176,7 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByTestId("dashboard-and-collection-picker-button").click();
       });
-      entityPickerModal().within(() => {
+      H.entityPickerModal().within(() => {
         cy.findByText("First collection").click();
         cy.findByText("Select this collection").click();
       });

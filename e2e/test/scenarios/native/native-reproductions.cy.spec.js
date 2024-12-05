@@ -267,7 +267,7 @@ describe("issue 18418", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").click();
 
-    saveQuestion(undefined, undefined, {
+    H.saveQuestion(undefined, undefined, {
       tab: "Browse",
       path: ["Our analytics"],
     });
