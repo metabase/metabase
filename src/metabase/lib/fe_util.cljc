@@ -23,6 +23,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.util :as u]
    [metabase.util.formatting.date :as fmt.date]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -122,11 +123,6 @@
   [maybe-ref types]
   (and (lib.util/ref-clause? maybe-ref)
        (some #(lib.util/original-isa? maybe-ref %) types)))
-
-(defn- ref-clause-with-unit?
-  [maybe-ref units]
-  (and (lib.util/ref-clause? maybe-ref)
-       (contains? units (lib.temporal-bucket/raw-temporal-bucket maybe-ref))))
 
 (def ^:private StringFilterParts
   [:map
@@ -461,6 +457,13 @@
   [query stage-number filter-clause]
   (let [->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)
+        unit-is (fn [unit-or-units]
+                  (let [units (set (u/one-or-many unit-or-units))]
+                    (fn [maybe-clause]
+                      (clojure.core/and
+                       (temporal? maybe-clause)
+                       (lib.util/clause? maybe-clause)
+                       (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))
         ->unit {:get-hour :hour-of-day
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year}]
@@ -477,7 +480,7 @@
       [:!= _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
 
-      [:= _ (x :guard #(ref-clause-with-unit? % lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
+      [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
       [:= _ (x :guard temporal?) (y :guard (some-fn int? string?))]
