@@ -59,7 +59,7 @@ interface ChartSettingSeriesOrderProps {
 
 export const ChartSettingSeriesOrder = ({
   onChange,
-  value: orderedItems,
+  value: orderedItems = [],
   addButtonLabel = t`Add another series`,
   searchPickerPlaceholder = t`Select a series`,
   onShowWidget,

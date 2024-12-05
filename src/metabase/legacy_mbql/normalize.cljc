@@ -193,6 +193,12 @@
     [:get-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
     [:get-week (normalize-tokens field :ignore-path)]))
 
+(defmethod normalize-mbql-clause-tokens :get-day-of-week
+  [[_ field mode]]
+  (if mode
+    [:get-day-of-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
+    [:get-day-of-week (normalize-tokens field :ignore-path)]))
+
 (defmethod normalize-mbql-clause-tokens :temporal-extract
   [[_ field unit mode]]
   (if mode

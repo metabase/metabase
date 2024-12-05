@@ -1,8 +1,6 @@
 (ns metabase.models.interface
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
-   [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -23,6 +21,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -136,12 +135,12 @@
   [obj]
   (if (string? obj)
     obj
-    (json/generate-string obj)))
+    (json/encode obj)))
 
 (defn- json-out [s keywordize-keys?]
   (if (string? s)
     (try
-      (json/parse-string s keywordize-keys?)
+      (json/decode s keywordize-keys?)
       (catch Throwable e
         (log/error e "Error parsing JSON")
         s))
@@ -321,7 +320,7 @@
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
-      (json/parse-string decrypted true)
+      (json/decode+kw decrypted)
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
@@ -343,7 +342,7 @@
    to modern MBQL clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
+            (some-> k u/qualified-name json/decode mbql.normalize/normalize json/encode))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
@@ -747,9 +746,9 @@
 (methodical/defmethod to-json :default
   "Default method for encoding instances of a Toucan model to JSON."
   [instance json-generator]
-  (json.generate/encode-map instance json-generator))
+  (json/generate-map instance json-generator))
 
-(json.generate/add-encoder
+(json/add-encoder
  Instance
  #'to-json)
 

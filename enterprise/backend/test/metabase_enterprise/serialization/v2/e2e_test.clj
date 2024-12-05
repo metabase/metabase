@@ -849,3 +849,43 @@
                          :details {:url         "http://example.com"
                                    :auth-method "none"}}
                         (t2/select-one :model/Channel :name "My HTTP channel")))))))))))
+
+(deftest metric-based-question-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (t2.with-temp/with-temp
+          [Collection {coll-id :id}   {:name "Collection"}
+           Card       {metric-id :id} {:name "Metric Card"
+                                       :collection_id coll-id
+                                       :type :metric
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:count]]
+                                                         :breakout    [$product_id->products.category $created_at]})}
+           Card       _card           {:name "Metric Consuming Question Card"
+                                       :collection_id coll-id
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:metric metric-id]]
+                                                         :breakout    [[:field %orders.user_id nil]]})}]
+          (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+            (storage/store! (seq extraction) dump-dir))
+          (testing "ingest and load"
+            (ts/with-db dest-db
+              (testing "doing ingestion"
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (let [new-coll-id (t2/select-one-pk Collection :name "Collection")
+                      new-metric (t2/select-one Card :name "Metric Card")]
+                  (is (int? new-coll-id))
+                  (is (=? {:name "Metric Card"
+                           :collection_id new-coll-id
+                           :dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:count]]
+                                             :breakout    [$product_id->products.category $created_at]})}
+                          new-metric))
+                  (is (=? {:name "Metric Consuming Question Card"
+                           :collection_id new-coll-id
+                           :dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:metric (:id new-metric)]]
+                                             :breakout    [[:field %orders.user_id nil]]})}
+                          (t2/select-one Card :name "Metric Consuming Question Card"))))))))))))

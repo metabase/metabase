@@ -9,7 +9,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
-   [metabase.search :as search]
+   [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]

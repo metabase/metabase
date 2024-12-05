@@ -1,8 +1,7 @@
 (ns metabase.search.impl
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
-   [metabase.db :as mdb]
+   [metabase.config :as config]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
@@ -13,14 +12,16 @@
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.api :as search.api]
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
+   [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
-   [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -183,7 +184,7 @@
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          (remove-thunks all-scores))
         (update :dataset_query (fn [dataset-query]
-                                 (when-let [query (some-> dataset-query json/parse-string)]
+                                 (when-let [query (some-> dataset-query json/decode)]
                                    (if (get query "type")
                                      (mbql.normalize/normalize query)
                                      (not-empty (lib/normalize query))))))
@@ -206,28 +207,25 @@
     (not (zero? v))
     v))
 
-(defmulti supported-engine? "Does this instance support the given engine?" keyword)
-
-(defmethod supported-engine? :search.engine/in-place [_] true)
-(defmethod supported-engine? :search.engine/fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
-
-(defn- default-engine []
-  (if (public-settings/experimental-fulltext-search-enabled)
-    :search.engine/fulltext
-    :search.engine/in-place))
-
-(defn- known-engine? [engine]
-  (let [registered? #(contains? (methods supported-engine?) %)]
-    (some registered? (cons engine (ancestors engine)))))
+(defn default-engine
+  "In the absence of an explicit engine argument in a request, which engine should be used?"
+  []
+  (if config/is-test?
+    ;; TODO The API tests have not yet been ported to reflect the new search's results.
+    :search.engine/in-place
+    (if-let [s (public-settings/search-engine)]
+      (u/prog1 (keyword "search.engine" (name s))
+        (assert (search.engine/supported-engine? <>)))
+      :search.engine/in-place)))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
         (let [engine (keyword "search.engine" value)]
           (cond
-            (not (known-engine? engine))
+            (not (search.engine/known-engine? engine))
             (log/warnf "Search-engine is unknown: %s" value)
 
-            (not (supported-engine? engine))
+            (not (search.engine/supported-engine? engine))
             (log/warnf "Search-engine is not supported: %s" value)
 
             :else
@@ -243,14 +241,11 @@
     (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
     (assoc search-ctx :search-engine default)))
 
-(defmethod search.api/results :default [search-ctx]
-  (search.api/results (apply-default-engine search-ctx)))
+(defmethod search.engine/results :default [search-ctx]
+  (search.engine/results (apply-default-engine search-ctx)))
 
-(defmethod search.api/model-set :default [search-ctx]
-  (search.api/model-set (apply-default-engine search-ctx)))
-
-(defmethod search.api/score :default [results search-ctx]
-  (search.api/score results (apply-default-engine search-ctx)))
+(defmethod search.engine/model-set :default [search-ctx]
+  (search.engine/model-set (apply-default-engine search-ctx)))
 
 (mr/def ::search-context.input
   [:map {:closed true}
@@ -341,7 +336,11 @@
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
     ;; TODO this is rather hidden, perhaps better to do it further down the stack
-    (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
+    (assoc ctx :models
+           ;; We are not working to keep the legacy engine logic in sync with the new modular approach.
+           (if (= :search.engine/in-place engine)
+             (search.in-place.filter/search-context->applicable-models ctx)
+             (search.filter/search-context->applicable-models ctx)))))
 
 (defn- to-toucan-instance [row]
   (let [model (-> row :model search.config/model-to-db-model :db-model)]
@@ -374,7 +373,7 @@
 (defn- normalize-result-more
   "Additional normalization that is done after we've filtered by permissions, as its more expensive."
   [search-ctx result]
-  (->> (update result :pk_ref json/parse-string)
+  (->> (update result :pk_ref json/decode)
        (add-can-write search-ctx)))
 
 (defn- search-results [search-ctx model-set-fn total-results]
@@ -403,17 +402,17 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
-  (let [reducible-results (search.api/results search-ctx)
+  (let [reducible-results (search.engine/results search-ctx)
         scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
-                           (keep #(search.api/score % scoring-ctx)))
+                           (keep #(search.engine/score scoring-ctx %)))
         total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                             true hydrate-user-metadata
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (map serialize))]
-    (search-results search-ctx search.api/model-set total-results)))
+    (search-results search-ctx search.engine/model-set total-results)))

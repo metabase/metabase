@@ -29,6 +29,7 @@ const ChartSettingFieldPicker = ({
   colors,
   series,
   onChangeSeriesColor,
+  autoOpenWhenUnset = true,
   fieldSettingWidget = null,
 }) => {
   let columnKey;
@@ -91,7 +92,7 @@ const ChartSettingFieldPicker = ({
         onChange={onChange}
         placeholder={t`Select a field`}
         placeholderNoOptions={t`No valid fields`}
-        isInitiallyOpen={value === undefined}
+        isInitiallyOpen={autoOpenWhenUnset && value === undefined}
         hiddenIcons
       />
       {menuWidgetInfo && (
