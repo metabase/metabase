@@ -271,18 +271,31 @@
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
 (defn- format-date-filter-parts
-  [parts]
-  (update parts :values (fn [values] (mapv #(u.time/format-unit % :second) values))))
+  [{:keys [with-time?], :as parts}]
+  (update parts :values
+          (fn [values] (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values))))
 
 (deftest ^:parallel specific-date-filter-parts-test
   (let [query  lib.tu/venues-query
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
-      (doseq [[clause parts] {(lib.filter/= column "2024-12-05")
+      (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
                               {:operator   :=
                                :column     column
-                               :values     [(u.time/coerce-to-timestamp "2024-12-05")]
-                               :with-time? false}}]
+                               :values     [(u.time/local-date 2024 11 28)]
+                               :with-time? false}
+
+                              (lib.filter/= column "2024-11-28T00:00:00")
+                              {:operator   :=
+                               :column     column
+                               :values     [(u.time/local-date-time 2024 11 28 0 0 0)]
+                               :with-time? true}
+
+                              (lib.filter/= column "2024-11-28T10:20:30")
+                              {:operator   :=
+                               :column     column
+                               :values     [(u.time/local-date-time 2024 11 28 10 20 30)]
+                               :with-time? true}}]
         (let [{:keys [operator column values with-time?]} parts]
           (is (=? (format-date-filter-parts parts)
                   (format-date-filter-parts (lib.fe-util/specific-date-filter-parts query -1 clause))))
