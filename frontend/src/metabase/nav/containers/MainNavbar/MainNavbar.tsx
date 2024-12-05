@@ -4,12 +4,17 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { useQuestionQuery } from "metabase/common/hooks";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetCollectionQuery,
+} from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
-import type Question from "metabase-lib/v1/Question";
+import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/v1/Question";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -76,9 +81,13 @@ function MainNavbar({
   onChangeLocation,
   ...props
 }: Props) {
-  const { data: question } = useQuestionQuery({
-    id: questionId,
-  });
+  const { data: card } = useGetCardQuery(
+    questionId != null ? { id: questionId } : skipToken,
+  );
+  const metadata = useSelector(getMetadata);
+  const question = useMemo(() => {
+    return new Question(card, metadata);
+  }, [card, metadata]);
 
   const { data: collection } = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
