@@ -16,7 +16,7 @@ const DataSelectorSectionHeader = ({
     align="center"
     className={DataSelectorSectionHeaderS.DataSelectorSectionHeaderContainer}
   >
-    <Box component="h3" color="var(--mb-color-text-dark)">
+    <Box component="h3" className={DataSelectorSectionHeaderS.Header}>
       {header}
     </Box>
   </Flex>
