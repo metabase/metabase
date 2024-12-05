@@ -132,6 +132,7 @@ Metabase's reference documentation.
 - [Data reference](./exploration-and-organization/data-model-reference.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 - [X-rays](./exploration-and-organization/x-rays.md)
+- [Content verification](./exploration-and-organization/content-verification.md)
 
 ### People
 
