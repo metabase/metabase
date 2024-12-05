@@ -5,7 +5,7 @@ import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { isEmpty } from "metabase/lib/validate";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 import { ImpersonationAlert } from "./ImpersonationWarning.styled";
 

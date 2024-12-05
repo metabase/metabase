@@ -9,7 +9,7 @@ import {
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Icon, Text } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";

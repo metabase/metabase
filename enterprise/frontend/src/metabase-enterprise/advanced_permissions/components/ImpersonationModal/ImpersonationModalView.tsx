@@ -14,8 +14,7 @@ import Link from "metabase/core/components/Link/Link";
 import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { UserAttribute } from "metabase-types/api";
+import type { Database, UserAttribute } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";
 
