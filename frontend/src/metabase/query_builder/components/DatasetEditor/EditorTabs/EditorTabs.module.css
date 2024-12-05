@@ -52,6 +52,7 @@
   &.inactive {
     border-color: var(--inactive-tab-color);
 
+    /* TODO: double check if it works correctly or we need &:hover */
     :hover {
       background-color: var(--inactive-tab-color);
     }

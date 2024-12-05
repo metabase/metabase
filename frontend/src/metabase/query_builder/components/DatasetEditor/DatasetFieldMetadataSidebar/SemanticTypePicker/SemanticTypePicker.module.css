@@ -2,7 +2,7 @@
   margin-right: 6px;
   color: var(--mb-color-brand);
 
-  .ellipsis {
+  &.ellipsis {
     color: var(--mb-color-text-white);
     border-radius: 0.3em;
     padding: 0.2em;
