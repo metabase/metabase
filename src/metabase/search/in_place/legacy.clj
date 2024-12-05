@@ -107,7 +107,10 @@
    :pk_ref              :text
    :model_index_id      :integer
    ;; returned for Card and Action
-   :dataset_query       :text))
+   :dataset_query       :text
+   ;; returned on card, dataset, and metric for the proj-visualizer prototype
+   :result_metadata     :text
+   :visualization_settings :text))
 
 (mu/defn- canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of lists of canonical columns for the search query with the given `model` Will return column names
@@ -339,6 +342,8 @@
 (defmethod columns-for-model "card"
   [_]
   (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
+        ;; added just to help with the proj-visualizer prototype
+        :result_metadata :visualization_settings
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
@@ -385,7 +390,10 @@
 
 (defmethod columns-for-model "metric"
   [_]
-  (concat default-columns table-columns [:creator_id]))
+  (concat default-columns table-columns
+          [:creator_id
+           ;; added just to help with the proj-visualizer prototype
+           :result_metadata :visualization_settings]))
 
 (defmethod columns-for-model "table"
   [_]
