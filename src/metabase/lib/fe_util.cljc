@@ -312,7 +312,7 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+  (let [ref->col  #(column-metadata-from-ref query stage-number (lib.temporal-bucket/with-temporal-bucket % nil))
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
     (lib.util.match/match-one filter-clause
       ;; exactly 1 argument
