@@ -1,7 +1,6 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
@@ -210,13 +209,12 @@
 (defn default-engine
   "In the absence of an explicit engine argument in a request, which engine should be used?"
   []
-  (if config/is-test?
-    ;; TODO The API tests have not yet been ported to reflect the new search's results.
-    :search.engine/in-place
-    (if-let [s (public-settings/search-engine)]
-      (u/prog1 (keyword "search.engine" (name s))
-        (assert (search.engine/supported-engine? <>)))
-      :search.engine/in-place)))
+  (if-let [s (public-settings/search-engine)]
+    (u/prog1 (keyword "search.engine" (name s))
+      (assert (search.engine/supported-engine? <>)))
+    (first (filter search.engine/supported-engine?
+                   [:search.engine/appdb
+                    :search.engine/in-place]))))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
