@@ -2335,7 +2335,7 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
-      H.createDashboard();
+      createDashboard();
       cy.get("@dashboardId").then(dashboardId =>
         H.visitEmbeddedPage({
           resource: { dashboard: dashboardId },
@@ -2352,7 +2352,7 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
-      H.createDashboard({ dashboardDetails: lockedDashboardDetails });
+      createDashboard({ dashboardDetails: lockedDashboardDetails });
       cy.get("@dashboardId").then(dashboardId => {
         H.visitEmbeddedPage({
           resource: { dashboard: dashboardId },
@@ -2368,7 +2368,7 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
-      H.createDashboard();
+      createDashboard();
       cy.get("@dashboardId").then(dashboardId => {
         H.visitEmbeddedPage(
           {
@@ -2394,7 +2394,7 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
-      H.createDashboard();
+      createDashboard();
       cy.get("@dashboardId").then(dashboardId =>
         H.visitPublicDashboard(dashboardId),
       );
@@ -2408,7 +2408,7 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
-      H.createDashboard();
+      createDashboard();
       cy.get("@dashboardId").then(dashboardId => {
         H.visitPublicDashboard(dashboardId, {
           params: { [filterDetails.slug]: filterValue },
@@ -3396,7 +3396,7 @@ describe("issue 45659", () => {
   });
 
   it("should remap initial parameter values in embedded dashboards (metabase#45659)", () => {
-    H.createDashboard().then(({ dashboard }) =>
+    createDashboard().then(({ dashboard }) =>
       H.visitEmbeddedPage({
         resource: { dashboard: dashboard.id },
         params: {},
