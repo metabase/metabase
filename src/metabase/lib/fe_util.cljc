@@ -295,7 +295,7 @@
    [:values     [:sequential [:fn u.time/valid?]]]
    [:with-time? :boolean]])
 
-(mu/defn specific-date-filter-clause
+(mu/defn specific-date-filter-clause :- ::lib.schema.expression/expression
   "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[specific-date-filter-parts]]."
   [operator   :- ::lib.schema.filter/specific-date-filter-operator
