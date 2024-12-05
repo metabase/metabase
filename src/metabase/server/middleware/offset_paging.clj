@@ -17,7 +17,7 @@
 (defn- ensure-single-value
   "For parameters that should have a single value, only return the 1st if multiple values were passed in the request"
   [v]
-  (if (vector? v)
+  (if (sequential? v)
     (first v)
     v))
 
