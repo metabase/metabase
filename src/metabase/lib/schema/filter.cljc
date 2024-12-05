@@ -146,7 +146,6 @@
            [false [:ref ::expression/integer]]]
    #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
 
-
 (mbql-clause/define-mbql-clause :during :- :type/Boolean
   [:tuple
    [:= {:decode/normalize common/normalize-keyword} :during]
