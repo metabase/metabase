@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-import { Flex, Text } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import DataSelectorSectionHeaderS from "./DataSelectorSectionHeader.module.css";
 
@@ -16,9 +16,9 @@ const DataSelectorSectionHeader = ({
     align="center"
     className={DataSelectorSectionHeaderS.DataSelectorSectionHeaderContainer}
   >
-    <Text component="h3" color="var(--mb-color-text-dark)">
+    <Box component="h3" color="var(--mb-color-text-dark)">
       {header}
-    </Text>
+    </Box>
   </Flex>
 );
 

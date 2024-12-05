@@ -19,7 +19,7 @@ import Tables from "metabase/entities/tables";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
@@ -125,10 +125,10 @@ export function RawDataBackButton() {
   return (
     <Flex align="center" className={CS.cursorPointer}>
       <Icon name="chevronleft" size={16} />
-      <Text
+      <Box
         component="span"
         className={DataSelectorS.backButtonLabel}
-      >{t`Raw Data`}</Text>
+      >{t`Raw Data`}</Box>
     </Flex>
   );
 }
