@@ -12,6 +12,14 @@ summary: |
 
 Returns the YAML manifest file that should be used to bootstrap new Slack apps.
 
+## `POST /api/slack/bug-report`
+
+Send diagnostic information to the configured Slack channels.
+
+### PARAMS:
+
+-  **`diagnosticInfo`** map.
+
 ## `PUT /api/slack/settings`
 
 Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
@@ -25,6 +33,8 @@ Update Slack related settings. You must be a superuser to do this. Also updates 
 -  **`slack-app-token`** nullable value must be a non-blank string.
 
 -  **`slack-files-channel`** nullable value must be a non-blank string.
+
+-  **`slack-bug-report-channel`** nullable string.
 
 ---
 

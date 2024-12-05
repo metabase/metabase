@@ -361,12 +361,16 @@
         query              (lib/query metadata-provider query)
         returned-columns   (lib/returned-columns query)
         {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
+        column-alias->index (into {}
+                                  (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
+                                  (concat breakouts aggregations))
         column-name->index (into {}
                                  (map-indexed (fn [i column] [(:name column) i]))
                                  (concat breakouts aggregations))
         process-columns    (fn process-columns [column-names]
                              (when (seq column-names)
-                               (into [] (keep column-name->index) column-names)))
+                               (into [] (keep (fn [n] (or (column-alias->index n)
+                                                          (column-name->index n)))) column-names)))
         pivot-opts         {:pivot-rows     (process-columns rows)
                             :pivot-cols     (process-columns columns)
                             :pivot-measures (process-columns values)}]

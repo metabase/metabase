@@ -208,7 +208,9 @@ Run the query associated with a Card, and return its results as a file in the sp
 
 -  **`parameters`** nullable value must be a valid JSON string.
 
--  **`format_rows`** nullable boolean.
+-  **`pivot_results`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`format_rows`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `POST /api/card/:card-id/refresh`
 
