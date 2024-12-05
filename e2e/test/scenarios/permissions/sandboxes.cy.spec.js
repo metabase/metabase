@@ -244,13 +244,13 @@ H.describeEE("formatting > sandboxes", () => {
       cy.signInAsNormalUser();
 
       // see that the question is in the dashboard
-      visitDashboard(ORDERS_DASHBOARD_ID);
-      dashboardCards().findByText("sql param in a dashboard").should("exist");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("sql param in a dashboard").should("exist");
 
-      openPeopleTable();
+      H.openPeopleTable();
       // 1 row filtered on User ID
       cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 1);
-      assertDatasetReqIsSandboxed({
+      H.assertDatasetReqIsSandboxed({
         columnId: PEOPLE.USER_ID,
         columnAssertion: ATTRIBUTE_VALUE,
       });

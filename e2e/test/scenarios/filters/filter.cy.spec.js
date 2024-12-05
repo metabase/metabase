@@ -794,11 +794,11 @@ describe("scenarios > question > filter", () => {
     cy.findByTestId("save-question-modal")
       .findByLabelText(/Where do you want to save this/)
       .click();
-    pickEntity({
+    H.pickEntity({
       tab: "Browse",
       path: ["Our analytics"],
     });
-    entityPickerModal().findByText("Select this collection").click();
+    H.entityPickerModal().findByText("Select this collection").click();
     cy.findByTestId("save-question-modal").button("Save").click();
 
     assertOnLegendLabels();

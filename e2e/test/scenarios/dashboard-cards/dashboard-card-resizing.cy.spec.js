@@ -204,8 +204,8 @@ describe(
       H.createDashboard().then(({ body: { id: dashId } }) => {
         H.visitDashboard(dashId);
 
-        editDashboard();
-        openQuestionsSidebar();
+        H.editDashboard();
+        H.openQuestionsSidebar();
 
         /**
          * Metabase sorts all questions in the sidebar alphabetically.

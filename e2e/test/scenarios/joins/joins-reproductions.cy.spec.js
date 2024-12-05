@@ -800,7 +800,7 @@ describe("issue 23293", () => {
       tab: "Browse",
       path: ["Our analytics"],
     });
-    entityPickerModal().findByText("Select this collection").click();
+    H.entityPickerModal().findByText("Select this collection").click();
     cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.wait("@saveQuestion").then(({ response }) => {
