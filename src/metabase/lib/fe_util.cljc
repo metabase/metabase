@@ -492,7 +492,6 @@
         (when (and (u.time/valid? start) (u.time/valid? end))
           {:operator op, :column (ref->col col-ref), :values [start end]})))))
 
-
 (def ^:private DefaultFilterParts
   [:map
    [:operator ::lib.schema.filter/default-filter-operator]
