@@ -11,7 +11,8 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.util.time :as u.time]))
 
 (deftest ^:parallel basic-filter-parts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -319,6 +320,56 @@
     (testing "unsupported clauses"
       (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)))))
+
+(defn- format-time-filter-parts
+  [parts]
+  (update parts :values (fn [values] (mapv #(u.time/format-for-base-type % :type/Time) values))))
+
+(deftest ^:parallel time-filter-parts-test
+  (let [query  lib.tu/venues-query
+        column (assoc (meta/field-metadata :checkins :date)
+                      :base-type      :type/Time
+                      :effective-type :type/Time)]
+    (testing "clause to parts roundtrip"
+      (doseq [[clause parts] {(lib.filter/is-null column)
+                              {:operator :is-null, :column column}
+
+                              (lib.filter/not-null column)
+                              {:operator :not-null, :column column}
+
+                              (lib.filter/> column "10:20")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20)]}
+
+                              (lib.filter/> column "10:20:30")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30)]}
+
+                              (lib.filter/> column "10:20:30.123")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30 123)]}
+
+                              ;; timezone should be ignored
+                              (lib.filter/> column "10:20:30.123Z")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30 123)]}
+
+                              (lib.filter/< column "15:40")
+                              {:operator :<, :column column, :values [(u.time/local-time 15 40)]}
+
+                              (lib.filter/between column "10:20" "15:40")
+                              {:operator :between
+                               :column column
+                               :values [(u.time/local-time 10 20) (u.time/local-time 15 40)]}}]
+        (let [{:keys [operator column values]} parts]
+          (is (=? (format-time-filter-parts parts)
+                  (format-time-filter-parts (lib.fe-util/time-filter-parts query -1 clause))))
+          (is (=? (format-time-filter-parts parts)
+                  (format-time-filter-parts (lib.fe-util/time-filter-parts query -1
+                                                                           (lib.fe-util/time-filter-clause operator
+                                                                                                           column
+                                                                                                           values))))))))
+    (testing "unsupported clauses"
+      (are [clause] (nil? (lib.fe-util/time-filter-parts query -1 clause))
+        (lib.filter/= column "10:20")
+        (lib.filter/> "10:20" column)
+        (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)

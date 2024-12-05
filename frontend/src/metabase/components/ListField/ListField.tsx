@@ -8,6 +8,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { delay } from "metabase/lib/delay";
 import { Checkbox, Flex } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
@@ -20,7 +21,7 @@ import {
 import type { ListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
 
-const DEBOUNCE_FILTER_TIME = 100;
+const DEBOUNCE_FILTER_TIME = delay(100);
 
 function createOptionsFromValuesWithoutOptions(
   values: RowValue[],
