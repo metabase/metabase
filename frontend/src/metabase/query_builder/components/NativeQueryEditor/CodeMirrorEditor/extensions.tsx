@@ -80,7 +80,7 @@ function useGetCardColumns(referencedQuestionIds: CardId[] = []) {
   const [getCard] = useLazyGetCardQuery();
 
   return useCallback(async (): Promise<{ card: Card; field: Field }[]> => {
-    const data = await Promise.all(cardIds.map(id => getCard({ id })));
+    const data = await Promise.all(cardIds.map(id => getCard({ id }, true)));
     return data
       .map(item => item.data)
       .filter(isNotNull)
