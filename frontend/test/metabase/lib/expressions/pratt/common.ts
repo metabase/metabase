@@ -6,7 +6,7 @@ import {
   parse,
 } from "metabase-lib/v1/expressions/pratt";
 import {
-  adjustCase,
+  adjustCaseOrIf,
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
@@ -30,7 +30,7 @@ export function compile(source: string, type: Type, opts: Opts = {}) {
     adjustOptions,
     useShorthands,
     adjustOffset,
-    adjustCase,
+    adjustCaseOrIf,
     adjustMultiArgOptions,
   ];
   return newCompile(

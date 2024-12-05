@@ -260,12 +260,13 @@
                                              (lib.schema.expression/type-of value)))]
     (lib.options/ensure-uuid [:value opts value])))
 
-(defmethod ->pMBQL :case
-  [[_tag pred-expr-pairs options]]
-  (let [default (:default options)]
-    (cond-> [:case (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
-      :always lib.options/ensure-uuid
-      (some? default) (conj (->pMBQL default)))))
+(doseq [tag [:case :if]]
+  (defmethod ->pMBQL tag
+    [[_tag pred-expr-pairs options]]
+    (let [default (:default options)]
+      (cond-> [tag (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
+        :always lib.options/ensure-uuid
+        (some? default) (conj (->pMBQL default))))))
 
 (defmethod ->pMBQL :expression
   [[tag value opts]]
@@ -383,9 +384,9 @@
 (defmethod aggregation->legacy-MBQL :default
   [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
-        ;; the default value of the :case expression is in the options
+        ;; the default value of the :case or :if expression is in the options
         ;; in legacy MBQL
-        inner (if (and (= tag :case) (next args))
+        inner (if (and (#{:case :if} tag) (next args))
                 (conj (pop inner) {:default (peek inner)})
                 inner)]
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
@@ -422,7 +423,7 @@
   (lib.hierarchy/derive tag ::aggregation))
 
 (doseq [tag [:+ :- :* :/
-             :case :coalesce
+             :case :if :coalesce
              :abs :log :exp :sqrt :ceil :floor :round :power :interval
              :relative-datetime :time :absolute-datetime :now :convert-timezone
              :get-week :get-year :get-month :get-day :get-hour

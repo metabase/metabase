@@ -345,6 +345,13 @@
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
+(defn desugar-if
+  "Rewrite `:if` filter clauses as `:case` clauses. `:if` is an alias to `:case` with the same semantics."
+  [m]
+  (lib.util.match/replace m
+    [:if & args]
+    (into [:case] args)))
+
 (defn- desugar-divide-with-extra-args [expression]
   (lib.util.match/replace expression
     [:/ x y z & more]
@@ -411,6 +418,7 @@
       desugar-inside
       simplify-compound-filter
       desugar-temporal-extract
+      desugar-if
       maybe-desugar-expression))
 
 (defmulti ^:private negate* first)

@@ -125,6 +125,18 @@ const expression = [
     ],
     "case statement with default",
   ],
+  [
+    'if([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
+    [
+      "if",
+      [
+        [[">", total, 10], "GOOD"],
+        [["<", total, 5], "BAD"],
+      ],
+      { default: "OK" },
+    ],
+    "if statement with default",
+  ],
   // should not compile:
   // ["\"Hell\" + 1", null, "adding a string to a number"],
 
