@@ -2,13 +2,26 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { createActionPublicLink, deleteActionPublicLink } from "metabase/api";
-import { createEntity, undo } from "metabase/lib/entities";
+import {
+  actionApi,
+  createActionPublicLink,
+  deleteActionPublicLink,
+} from "metabase/api";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  undo,
+} from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ActionSchema } from "metabase/schema";
 import { ActionsApi } from "metabase/services";
 import type {
+  CreateActionRequest,
+  DeleteActionRequest,
+  GetActionRequest,
+  ListActionsRequest,
+  UpdateActionRequest,
   WritebackAction,
   WritebackActionId,
   WritebackImplicitQueryAction,
@@ -101,6 +114,38 @@ const Actions = createEntity({
   nameOne: "action",
   schema: ActionSchema,
   path: "/api/action",
+  api: {
+    list: (entityQuery: ListActionsRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        actionApi.endpoints.listActions,
+      ),
+    get: (
+      entityQuery: GetActionRequest,
+      _options: unknown,
+      dispatch: Dispatch,
+    ) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        actionApi.endpoints.getAction,
+      ),
+    create: (entityQuery: CreateActionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        actionApi.endpoints.createAction,
+      ),
+    update: (entityQuery: UpdateActionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        actionApi.endpoints.updateAction,
+      ),
+    delete: ({ id }: DeleteActionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(id, dispatch, actionApi.endpoints.deleteAction),
+  },
   api: {
     create: (params: CreateActionParams) => ActionsApi.create(params),
     update: (params: UpdateActionParams) => {

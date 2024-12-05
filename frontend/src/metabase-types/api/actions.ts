@@ -5,6 +5,13 @@ import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
 
+export interface ListActionsRequest {} // TODO
+export interface CreateActionRequest {} // TODO
+export interface UpdateActionRequest {} // TODO
+export interface DeleteActionRequest {
+  id: WritebackActionId;
+}
+
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
 }

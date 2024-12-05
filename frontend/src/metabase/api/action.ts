@@ -1,5 +1,9 @@
 import type {
+  CreateActionRequest,
+  DeleteActionRequest,
   GetActionRequest,
+  ListActionsRequest,
+  UpdateActionRequest,
   WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
@@ -13,10 +17,6 @@ import {
   provideActionListTags,
   provideActionTags,
 } from "./tags";
-
-interface ListActionsRequest {} // TODO
-interface CreateActionRequest {} // TODO
-interface UpdateActionRequest {} // TODO
 
 export const actionApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -53,7 +53,7 @@ export const actionApi = Api.injectEndpoints({
       invalidatesTags: (action, error) =>
         action ? [...invalidateTags(error, [listTag("action")])] : [],
     }),
-    deleteAction: builder.mutation<WritebackAction, { id: WritebackActionId }>({
+    deleteAction: builder.mutation<WritebackAction, DeleteActionRequest>({
       query: ({ id }) => ({
         method: "DELETE",
         url: `/api/action/${id}`,
