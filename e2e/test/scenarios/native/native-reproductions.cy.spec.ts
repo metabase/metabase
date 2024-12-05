@@ -137,7 +137,7 @@ describe("issue 33327", () => {
       .should("contain", "SELECT --1")
       .realType("{leftarrow}{backspace}{backspace}");
 
-    nativeEditor().should("contain", query);
+    H.nativeEditor().should("contain", query);
 
     getRunQueryButton().click();
     cy.wait("@dataset");

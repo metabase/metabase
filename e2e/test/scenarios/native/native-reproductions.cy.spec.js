@@ -461,7 +461,7 @@ describe("issue 21597", { tags: "@external" }, () => {
       databaseName,
     });
 
-    nativeEditorType("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
+    H.nativeEditorType("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
 
     cy.findByTestId("variable-type-select").click();
     H.popover().within(() => {
@@ -752,7 +752,7 @@ describe("issue 22991", () => {
     H.openNativeEditor();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
-      nativeEditorType(`select * from {{${questionId}}}`);
+      H.nativeEditorType(`select * from {{${questionId}}}`);
     });
 
     cy.get("main").should(

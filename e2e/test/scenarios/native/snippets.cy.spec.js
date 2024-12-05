@@ -197,7 +197,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
 
       cy.wait("@snippetCreated");
 
-      nativeEditor().should("have.text", "{{snippet: one}}");
+      H.nativeEditor().should("have.text", "{{snippet: one}}");
 
       cy.icon("play").first().click();
       cy.findByTestId("scalar-value").contains(1);
