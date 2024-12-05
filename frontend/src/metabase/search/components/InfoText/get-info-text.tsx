@@ -48,7 +48,7 @@ const getCardInfoText = (result: WrappedResult): InfoTextData => {
     };
   }
 
-  return getCollectionInfoText(result);
+  return getCollectionResult(result);
 };
 
 const getActionInfoText = (result: WrappedResult): InfoTextData => {
