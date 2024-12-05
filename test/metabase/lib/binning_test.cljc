@@ -116,5 +116,5 @@
                                       (lib/breakout $ (lib/with-binning
                                                        first-stage-binned-column
                                                        (m/find-first (comp #{binning-name} :display-name)
-                                                                      (lib/available-binning-strategies
-                                                                       $ first-stage-binned-column))))))))))))))
+                                                                     (lib/available-binning-strategies
+                                                                      $ first-stage-binned-column))))))))))))))
