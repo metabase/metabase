@@ -20,7 +20,7 @@ export interface ColorSelectorProps extends ColorSelectorAttributes {
   onChange?: (newValue: string) => void;
 }
 
-const ColorSelector = forwardRef(function ColorSelector(
+export const ColorSelector = forwardRef(function ColorSelector(
   { value, colors, onChange, ...props }: ColorSelectorProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -42,6 +42,3 @@ const ColorSelector = forwardRef(function ColorSelector(
     </Popover>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorSelector;
