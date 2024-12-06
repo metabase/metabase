@@ -19,16 +19,14 @@ import Tables from "metabase/entities/tables";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { Box } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import {
-  EmptyStateContainer,
-  TableSearchContainer,
-} from "./DataSelector.styled";
+import DataSelectorS from "./DataSelector.module.css";
 import DataBucketPicker from "./DataSelectorDataBucketPicker";
 import DatabasePicker from "./DataSelectorDatabasePicker";
 import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
@@ -41,7 +39,7 @@ import {
   TableTrigger,
   Trigger,
 } from "./TriggerComponents";
-import { DATA_BUCKET } from "./constants";
+import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
 import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "./utils";
@@ -1028,7 +1026,7 @@ export class UnconnectedDataSelector extends Component {
       return (
         <>
           {this.showTableSearch() && (
-            <TableSearchContainer>
+            <Box className={DataSelectorS.TableSearchContainer}>
               <ListSearchField
                 fullWidth
                 autoFocus
@@ -1037,7 +1035,7 @@ export class UnconnectedDataSelector extends Component {
                 onChange={e => this.handleSearchTextChange(e.target.value)}
                 onResetClick={() => this.handleSearchTextChange("")}
               />
-            </TableSearchContainer>
+            </Box>
           )}
           {isSearchActive && (
             <SearchResults
@@ -1065,12 +1063,12 @@ export class UnconnectedDataSelector extends Component {
     }
 
     return (
-      <EmptyStateContainer>
+      <Box w={CONTAINER_WIDTH} p="80px 60px">
         <EmptyState
           message={t`To pick some data, you'll need to add some first`}
           icon="database"
         />
-      </EmptyStateContainer>
+      </Box>
     );
   };
 
