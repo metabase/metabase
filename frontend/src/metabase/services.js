@@ -545,7 +545,6 @@ function setDashboardParameterValuesEndpoint(prefix) {
 }
 
 export const ActionsApi = {
-  create: POST("/api/action"),
   execute: POST("/api/action/:id/execute"),
   prefetchValues: GET("/api/action/:id/execute"),
   prefetchDashcardValues: GET(

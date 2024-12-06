@@ -1,6 +1,5 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   actionApi,
@@ -16,7 +15,6 @@ import {
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ActionSchema } from "metabase/schema";
-import { ActionsApi } from "metabase/services";
 import type {
   CreateActionRequest,
   GetActionRequest,
@@ -74,30 +72,39 @@ const enableImplicitActionsForModel =
     // So if we want to show Create, Update, Delete, then we need
     // to create them in the reverse order.
     if (options.delete) {
-      await ActionsApi.create({
-        name: t`Delete`,
-        type: "implicit",
-        kind: "row/delete",
-        model_id: modelId,
-      });
+      await Actions.api.create(
+        {
+          name: t`Delete`,
+          type: "implicit",
+          kind: "row/delete",
+          model_id: modelId,
+        },
+        dispatch,
+      );
     }
 
     if (options.update) {
-      await ActionsApi.create({
-        name: t`Update`,
-        type: "implicit",
-        kind: "row/update",
-        model_id: modelId,
-      });
+      await Actions.api.create(
+        {
+          name: t`Update`,
+          type: "implicit",
+          kind: "row/update",
+          model_id: modelId,
+        },
+        dispatch,
+      );
     }
 
     if (options.insert) {
-      await ActionsApi.create({
-        name: t`Create`,
-        type: "implicit",
-        kind: "row/create",
-        model_id: modelId,
-      });
+      await Actions.api.create(
+        {
+          name: t`Create`,
+          type: "implicit",
+          kind: "row/create",
+          model_id: modelId,
+        },
+        dispatch,
+      );
     }
 
     dispatch(Actions.actions.invalidateLists());
