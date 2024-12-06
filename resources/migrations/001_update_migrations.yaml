@@ -8899,8 +8899,14 @@ databaseChangeLog:
 
   - changeSet:
       id: v51.2024-07-25T12:02:21
+      validCheckSum: ANY
       author: crisptrutski
       comment: Make `field_id` nullable on query fields
+      rollback:
+        - delete:
+            tableName: query_field
+            where: query_field.field_id is NULL
+            remarks: remove stale analysis, so the fields can be non-nullable
       changes:
         - dropNotNullConstraint:
             tableName: query_field
@@ -9174,8 +9180,10 @@ databaseChangeLog:
 
   - changeSet:
       id: v51.2024-08-02T12:02:21
+      validCheckSum: ANY
       author: crisptrutski
       comment: Make `table` nullable on query fields
+      rollback: # we don't need one, the column will be dropped
       changes:
         - dropNotNullConstraint:
             tableName: query_field
