@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Fragment, isValidElement } from "react";
 
 import { Badge } from "metabase/components/Badge";
-import { Flex, Text } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
@@ -76,9 +76,9 @@ export function HeadBreadcrumbs({
 // eslint-disable-next-line react/prop-types
 function Divider({ char = "/" }) {
   return (
-    <Text component="span" className={HeaderBreadcrumbsS.HeaderBreadcrumbs}>
+    <Box component="span" className={HeaderBreadcrumbsS.HeaderBreadcrumbs}>
       {char}
-    </Text>
+    </Box>
   );
 }
 
