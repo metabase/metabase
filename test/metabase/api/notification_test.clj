@@ -146,7 +146,7 @@
                      {:type    "notification-recipient/user"
                       :user_id (mt/user->id :rasta)}]
                     (-> (update-notification (assoc @notification :handlers new-handlers))
-                        :handlers first :recipients)))
+                        :handlers (#(sort-by :channel_type %)) first :recipients)))
             (testing "can remove all recipients"
               (is (= []
                      (-> (update-notification (assoc @notification :handlers [(assoc existing-email-handler :recipients [])]))
@@ -164,8 +164,7 @@
                       :recipients   [{:type    "notification-recipient/user"
                                       :user_id (mt/user->id :rasta)}]}
                     (-> (update-notification (assoc @notification :handlers new-handlers))
-                        :handlers ((fn [x] (sort-by :channel_type x))) last)))))))))
-
+                        :handlers (#(sort-by :channel_type %)) last)))))))))
 
 (deftest update-notification-error-test
   (testing "require auth"
