@@ -18,36 +18,43 @@ Thanks to our amazing user community, Metabase has been translated into many dif
 
 Supported languages include:
 
-| Language         | Code |
-| ---------------- | ---- |
-| English          | `en` |
-| Albanian         | `sq` |
-| Arabic           | `ar` |
-| Bulgarian        | `bg` |
-| Catalan          | `ca` |
-| Chinese          | `zh` |
-| Czech            | `cs` |
-| Dutch            | `nl` |
-| Farsi/Persian    | `fa` |
-| Finnish          | `fi` |
-| French           | `fr` |
-| German           | `de` |
-| Indonesian       | `id` |
-| Italian          | `it` |
-| Japanese         | `ja` |
-| Korean           | `ko` |
-| Latvian          | `lv` |
-| Norwegian Bokmål | `nb` |
-| Polish           | `pl` |
-| Portuguese       | `pt` |
-| Russian          | `ru` |
-| Serbian          | `sr` |
-| Slovak           | `sk` |
-| Spanish          | `es` |
-| Swedish          | `sv` |
-| Turkish          | `tr` |
-| Ukrainian        | `uk` |
-| Vietnamese       | `vi` |
+| Language               | Code    |
+| ---------------------- | ------- |
+| English                | `en`    |
+| Albanian               | `sq`    |
+| Arabic                 | `ar`    |
+| Arabic (Saudi Arabia)  | `ar-SA` |
+| Bulgarian              | `bg`    |
+| Catalan                | `ca`    |
+| Chinese (Traditional)  | `zh`    |
+| Chinese (Taiwanese)    | `zh-TW` |
+| Chinese (Hong Kong)    | `zh-HK` |
+| Chinese (Simplified)   | `zh-CN` |
+| Czech                  | `cs`    |
+| Dutch                  | `nl`    |
+| Farsi/Persian          | `fa`    |
+| Finnish                | `fi`    |
+| French                 | `fr`    |
+| German                 | `de`    |
+| Hebrew                 | `he`    |
+| Hungarian              | `hu`    |
+| Indonesian             | `id`    |
+| Malay                  | `ms`    |
+| Italian                | `it`    |
+| Japanese               | `ja`    |
+| Korean                 | `ko`    |
+| Latvian                | `lv`    |
+| Norwegian Bokmål       | `nb`    |
+| Polish                 | `pl`    |
+| Portuguese (Brazilian) | `pt-BR` |
+| Russian                | `ru`    |
+| Serbian                | `sr`    |
+| Slovak                 | `sk`    |
+| Spanish                | `es`    |
+| Swedish                | `sv`    |
+| Turkish                | `tr`    |
+| Ukrainian              | `uk`    |
+| Vietnamese             | `vi`    |
 
 The locale codes are relevant for setting the language in [static embeds](../embedding/static-embedding-parameters.md#setting-the-language-for-a-static-embed).
 
