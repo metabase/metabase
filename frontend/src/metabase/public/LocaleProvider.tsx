@@ -13,32 +13,29 @@ export const LocaleProvider = ({
   locale,
   shouldWaitForLocale,
 }: PropsWithChildren<LocaleProviderProps>) => {
-  // The state is not used explicitly, but we need to trigger a re-render when the locale changes
-  // as changing the locale in ttag doesn't trigger react components to update
-  const [isLocaleLoaded, setIsLocaleLoaded] = useState(false);
+  const shouldLoadLocale = Boolean(locale);
+  const [isLocaleLoading, setIsLocaleLoading] = useState(shouldLoadLocale);
 
   useEffect(() => {
-    if (locale) {
+    if (shouldLoadLocale) {
       setLocaleHeader(locale);
       loadLocalization(locale)
         .then(translatedObject => {
-          setIsLocaleLoaded(true);
+          setIsLocaleLoading(false);
           setUserLocale(translatedObject);
         })
         .catch(() => {
-          setIsLocaleLoaded(true);
+          setIsLocaleLoading(false);
         });
     }
-  }, [locale]);
+  }, [locale, shouldLoadLocale]);
 
-  if (
-    !locale ||
-    !shouldWaitForLocale ||
-    (shouldWaitForLocale && isLocaleLoaded)
-  ) {
-    // note: we may show a loader here while loading, this would prevent race
-    // conditions and things being rendered for some time with the wrong locale
-    // downside is that it would make the initial load slower
-    return children;
+  if (shouldWaitForLocale && isLocaleLoading) {
+    return null;
   }
+
+  // note: we may show a loader here while loading, this would prevent race
+  // conditions and things being rendered for some time with the wrong locale
+  // downside is that it would make the initial load slower
+  return children;
 };
