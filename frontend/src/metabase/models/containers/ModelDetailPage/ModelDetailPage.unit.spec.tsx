@@ -25,7 +25,6 @@ import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
-import { ActionsApi } from "metabase/services";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
@@ -857,31 +856,34 @@ describe("ModelDetailPage", () => {
     });
 
     it("allows to create implicit actions from the empty state", async () => {
-      const createActionSpy = jest.spyOn(ActionsApi, "create");
       await setupActions({ model: modelCard, actions: [] });
+      fetchMock.post("path:/api/action", {}, { overwriteRoutes: true });
 
       await userEvent.click(
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
-      await waitFor(() => {
-        expect(createActionSpy).toHaveBeenCalledWith({
-          name: "Create",
-          type: "implicit",
-          kind: "row/create",
-          model_id: modelCard.id,
-        });
+      const createActionCalls = fetchMock.calls("path:/api/action", {
+        method: "POST",
       });
-      expect(createActionSpy).toHaveBeenCalledWith({
+      expect(createActionCalls).toHaveLength(3);
+
+      expect(await createActionCalls[0].request?.json()).toEqual({
+        name: "Delete",
+        type: "implicit",
+        kind: "row/delete",
+        model_id: modelCard.id,
+      });
+      expect(await createActionCalls[1].request?.json()).toEqual({
         name: "Update",
         type: "implicit",
         kind: "row/update",
         model_id: modelCard.id,
       });
-      expect(createActionSpy).toHaveBeenCalledWith({
-        name: "Delete",
+      expect(await createActionCalls[2].request?.json()).toEqual({
+        name: "Create",
         type: "implicit",
-        kind: "row/delete",
+        kind: "row/create",
         model_id: modelCard.id,
       });
     });
