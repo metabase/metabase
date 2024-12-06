@@ -213,7 +213,7 @@ If you have multiple params, separated them with an ampersand `&`:
 category=Gadget&state=Vermont#theme=night&locale=ko
 ```
 
-See a [list of supported locales](../configuring-metabase/localization.md#supported-languages)
+The `locale` param only changes the language for Metabase UI elements. The _content_'s language is defined by whomever created the item. So for example Metabase wouldn't translate the name of a question, but Metabase _would_ translate the UI text "Export to PDF".
 
 ## Transparent backgrounds for embeds
 
