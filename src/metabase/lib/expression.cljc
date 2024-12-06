@@ -318,7 +318,6 @@
 (lib.common/defop quarter-name [n])
 (lib.common/defop day-name [n])
 (lib.common/defop offset [x n])
-(lib.common/defop during [t v unit])
 
 (mu/defn- expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query

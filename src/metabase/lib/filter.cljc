@@ -374,6 +374,7 @@
 (lib.common/defop does-not-contain [whole & parts])
 (lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
+(lib.common/defop during [t v unit])
 (lib.common/defop segment [segment-id])
 
 (mu/defn- add-filter-to-stage

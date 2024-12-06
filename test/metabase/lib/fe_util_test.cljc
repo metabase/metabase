@@ -454,11 +454,11 @@
       "Next 10 Days" (lib/time-interval created-at 10 :day)
       "Today" (lib/time-interval created-at :current :day)
       "This Month" (lib/time-interval created-at :current :month)
-      "Dec 5, 2024, 10:50 PM" (lib.expression/during created-at datetime-arg :minute)
-      "Dec 5, 2024, 10:00 PM – 10:59 PM" (lib.expression/during created-at datetime-arg :hour)
-      "Dec 5, 2024" (lib.expression/during created-at datetime-arg :day)
-      "Nov 1–30, 2023" (lib.expression/during created-at date-arg-1 :month)
-      "Jan 1 – Dec 31, 2024" (lib.expression/during created-at date-arg-2 :year))))
+      "Dec 5, 2024, 10:50 PM" (lib.filter/during created-at datetime-arg :minute)
+      "Dec 5, 2024, 10:00 PM – 10:59 PM" (lib.filter/during created-at datetime-arg :hour)
+      "Dec 5, 2024" (lib.filter/during created-at datetime-arg :day)
+      "Nov 1–30, 2023" (lib.filter/during created-at date-arg-1 :month)
+      "Jan 1 – Dec 31, 2024" (lib.filter/during created-at date-arg-2 :year))))
 
 (deftest ^:parallel dependent-metadata-test
   (testing "native query"
