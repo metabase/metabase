@@ -32,9 +32,9 @@ import type {
   CoordinateFilterParts,
   DefaultFilterOperatorName,
   DefaultFilterParts,
-  ExcludeDateBucketName,
-  ExcludeDateFilterOperatorName,
+  ExcludeDateFilterOperator,
   ExcludeDateFilterParts,
+  ExcludeDateFilterUnit,
   ExpressionArg,
   ExpressionClause,
   ExpressionOperatorName,
@@ -249,26 +249,28 @@ export function relativeDateFilterParts(
   return ML.relative_date_filter_parts(query, stageIndex, filterClause);
 }
 
-export function excludeDateFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values, bucket: bucketName }: ExcludeDateFilterParts,
-): ExpressionClause {
-  if (!bucketName) {
-    const columnWithoutBucket = withTemporalBucket(column, null);
-    return expressionClause(operator, [columnWithoutBucket]);
-  }
-
-  const bucket = findTemporalBucket(query, stageIndex, column, bucketName);
-  const columnWithBucket = withTemporalBucket(column, bucket ?? null);
-  const serializedValues = values.map(value =>
-    serializeExcludeDatePart(value, bucketName),
-  );
-
-  return expressionClause(operator, [columnWithBucket, ...serializedValues]);
+export function excludeDateFilterClause({
+  operator,
+  column,
+  unit,
+  values,
+}: ExcludeDateFilterParts): ExpressionClause {
+  return ML.exclude_date_filter_clause(operator, column, unit, values);
 }
 
 export function excludeDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): ExcludeDateFilterParts | null {
+  return (
+    ML.exclude_date_filter_parts(query, stageIndex, filterClause) ??
+    legacyExcludeDateFilterParts(query, stageIndex, filterClause)
+  );
+}
+
+// TODO remove when #50920 is implemented
+function legacyExcludeDateFilterParts(
   query: Query,
   stageIndex: number,
   filterClause: FilterClause,
@@ -291,7 +293,7 @@ export function excludeDateFilterParts(
   const bucket = temporalBucket(column);
   if (!bucket) {
     return serializedValues.length === 0
-      ? { column: columnWithoutBucket, operator, bucket, values: [] }
+      ? { column: columnWithoutBucket, operator, unit: null, values: [] }
       : null;
   }
 
@@ -310,7 +312,7 @@ export function excludeDateFilterParts(
   return {
     column: columnWithoutBucket,
     operator,
-    bucket: bucketInfo.shortName,
+    unit: bucketInfo.shortName,
     values,
   };
 }
@@ -454,7 +456,7 @@ function isSpecificDateOperator(
 
 function isExcludeDateOperator(
   operator: ExpressionOperatorName,
-): operator is ExcludeDateFilterOperatorName {
+): operator is ExcludeDateFilterOperator {
   const operators: ReadonlyArray<string> = EXCLUDE_DATE_FILTER_OPERATORS;
   return operators.includes(operator);
 }
@@ -468,7 +470,7 @@ function isDefaultOperator(
 
 function isExcludeDateBucket(
   bucketName: string,
-): bucketName is ExcludeDateBucketName {
+): bucketName is ExcludeDateFilterUnit {
   const buckets: ReadonlyArray<string> = EXCLUDE_DATE_BUCKETS;
   return buckets.includes(bucketName);
 }
@@ -503,30 +505,6 @@ function deserializeDateTime(value: string): Date | null {
   return dateTime.local(true).toDate();
 }
 
-function serializeExcludeDatePart(
-  value: number,
-  bucketName: ExcludeDateBucketName,
-): ExpressionArg {
-  if (bucketName === "hour-of-day") {
-    return value;
-  }
-
-  const date = moment();
-  switch (bucketName) {
-    case "day-of-week":
-      date.isoWeekday(value);
-      break;
-    case "month-of-year":
-      date.month(value);
-      break;
-    case "quarter-of-year":
-      date.quarter(value);
-      break;
-  }
-
-  return date.format(DATE_FORMAT);
-}
-
 function deserializeExcludeDatePart(
   value: ExpressionArg | ExpressionParts,
   temporalUnit: TemporalUnit,
@@ -548,7 +526,8 @@ function deserializeExcludeDatePart(
     case "day-of-week":
       return date.isoWeekday();
     case "month-of-year":
-      return date.month();
+      // we expect month to be 1-12 but in dayjs it's 0-11
+      return date.month() + 1;
     case "quarter-of-year":
       return date.quarter();
     default:
@@ -565,7 +544,7 @@ type UpdateLatLonFilterBounds = {
 
 /**
  * Add or update a filter against latitude and longitude columns. Used to power the 'brush filter' for map
-   visualizations.
+ visualizations.
  */
 export function updateLatLonFilter(
   query: Query,
