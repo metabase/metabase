@@ -115,7 +115,7 @@ export const Onboarding = () => {
     }
     element.scrollIntoView({
       behavior: "smooth",
-      block: "center",
+      block: "nearest",
     });
   };
 
@@ -152,10 +152,7 @@ export const Onboarding = () => {
 
       // Make sure that the new item always expands inside the viewport
       const newItem = itemRefs[newValue].current;
-      newItem?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
+      scrollElementIntoView(newItem);
     }
 
     setItemValue(newValue);
