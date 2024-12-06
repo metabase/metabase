@@ -6,7 +6,7 @@ import type {
 
 export interface ResultsListProps {
   items: VisualizerDataSource[];
-  onSelect?: (item: VisualizerDataSource) => void;
+  onSelect: (item: VisualizerDataSource) => void;
   dataSourceIds: Set<VisualizerDataSourceId>;
 }
 

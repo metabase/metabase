@@ -202,11 +202,16 @@ function maybeGetTemporalUnit(col: DatasetColumn) {
 
 const areaBarLine = ["area", "bar", "line"];
 
+type CardLike = Pick<
+  Card,
+  "display" | "result_metadata" | "visualization_settings"
+>;
+
 export function canCombineCard(
   display: VisualizationDisplay,
   columns: DatasetColumn[],
   settings: VisualizationSettings,
-  card: Card,
+  card: CardLike,
 ) {
   if (areaBarLine.includes(display) && areaBarLine.includes(card.display)) {
     return areAreaBarLineSeriesCompatible(columns, settings, card);
@@ -228,7 +233,7 @@ export function canCombineCard(
 function areAreaBarLineSeriesCompatible(
   columns: DatasetColumn[],
   settings: VisualizationSettings,
-  card: Card,
+  card: CardLike,
 ) {
   const initialDimensions = (settings["graph.dimensions"] ?? []).map(col =>
     columns.find(c => c.name === col),

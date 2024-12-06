@@ -1,12 +1,20 @@
 import { useMemo } from "react";
+import _ from "underscore";
 
 import { skipToken, useSearchQuery } from "metabase/api";
-import { isNotNull } from "metabase/lib/types";
-import { Loader } from "metabase/ui";
-import { createDataSource } from "metabase/visualizer/utils";
+import { useSelector } from "metabase/lib/redux";
+import { Box, Loader } from "metabase/ui";
+import {
+  getVisualizationType,
+  getVisualizerComputedSettings,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/selectors";
+import { canCombineCard, createDataSource } from "metabase/visualizer/utils";
 import type { VisualizerDataSourceId } from "metabase-types/store/visualizer";
 
-import { ResultsList, type ResultsListProps } from "./ResultsList";
+import { ListItem } from "./ListItem";
+import type { ResultsListProps } from "./ResultsList";
+import { getScoreFn } from "./utils";
 
 interface SearchResultsListProps {
   search: string;
@@ -24,7 +32,7 @@ export function SearchResultsList({
       ? {
           q: search,
           limit: 10,
-          models: ["card"],
+          models: ["card", "dataset", "metric"],
         }
       : skipToken,
     {
@@ -32,28 +40,68 @@ export function SearchResultsList({
     },
   );
 
+  const display = useSelector(getVisualizationType);
+  const columns = useSelector(getVisualizerDatasetColumns);
+  const settings = useSelector(getVisualizerComputedSettings);
+
   const items = useMemo(() => {
-    if (!Array.isArray(result.data)) {
+    if (!Array.isArray(result.data) || result.data.length === 0) {
       return [];
     }
-    return result.data
-      .map(item =>
-        typeof item.id === "number"
-          ? createDataSource("card", item.id, item.name)
-          : null,
-      )
-      .filter(isNotNull);
-  }, [result]);
+    const isEmpty = columns.length === 0;
+    const calcBaseScore = getScoreFn(display);
+    return _.chain(result.data)
+      .map(item => {
+        const cardLike = {
+          id: item.id,
+          name: item.name,
+          dataset_query: item.dataset_query,
+          display: item.display,
+          result_metadata: item.result_metadata,
+          visualization_settings: item.visualization_settings,
+          type: item.model,
+          colleciton: item.collection,
+        };
+        const dataSource = createDataSource("card", cardLike.id, cardLike.name);
+        const isSelected = dataSourceIds.has(dataSource.id);
+        const canCombine =
+          isEmpty ||
+          Boolean(
+            display &&
+              ["line", "area", "bar"].includes(display) &&
+              canCombineCard(display, columns, settings, cardLike),
+          );
+        let score = calcBaseScore(cardLike);
+        if (canCombine || isSelected) {
+          score += 1000;
+        }
+        return {
+          card: cardLike,
+          dataSource,
+          score: -score,
+          canCombine,
+          isSelected,
+        };
+      })
+      .sortBy("score")
+      .value();
+  }, [columns, dataSourceIds, display, result, settings]);
 
   if (items.length === 0) {
     return <Loader />;
   }
 
   return (
-    <ResultsList
-      items={items}
-      onSelect={onSelect}
-      dataSourceIds={dataSourceIds}
-    />
+    <Box component="ul">
+      {items.map(({ card, dataSource, canCombine, isSelected }) => (
+        <ListItem
+          key={card.id}
+          card={card}
+          isMuted={!canCombine && !isSelected}
+          isSelected={isSelected}
+          onSelect={() => onSelect(dataSource)}
+        />
+      ))}
+    </Box>
   );
 }
