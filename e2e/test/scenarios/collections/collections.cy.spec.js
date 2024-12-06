@@ -472,7 +472,7 @@ describe("scenarios > collection defaults", () => {
         H.pickEntity({ path: [revokedUsersPersonalCollectionName] });
         H.pickEntity({ path: ["Collections", "Child"] });
         H.entityPickerModal()
-          .button("Save in this collection")
+          .button("Select this collection")
           .should("be.enabled");
         cy.log("Reported failing from v0.34.3");
         cy.findByTestId("entity-picker-modal")
@@ -528,7 +528,7 @@ describe("scenarios > collection defaults", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByTestId("loading-indicator").should("not.exist");
-        cy.findByRole("tab", { name: /Browse/ }).click();
+        H.entityPickerModalTab("Collections").click();
         cy.wait([
           "@getCollectionItems",
           "@getCollectionItems",
@@ -583,7 +583,7 @@ describe("scenarios > collection defaults", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(0, "Our analytics").click();
         cy.button("Move").click();
         cy.log("Entity picker should show an error message");
@@ -700,7 +700,7 @@ describe("scenarios > collection defaults", () => {
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            cy.findByRole("tab", { name: /Browse/ }).click();
+            H.entityPickerModalTab("Collections").click();
             cy.log("parent collection should be selected");
             findPickerItem("First collection").should(
               "have.attr",
