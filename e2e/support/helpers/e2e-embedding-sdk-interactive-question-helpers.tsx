@@ -29,7 +29,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
     cy.findByTestId("dashboard-and-collection-picker-button").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Collections").click();
+      cy.findByText("Browse").click();
 
       collectionPickerPath.forEach(collectionName =>
         cy.findByText(collectionName).click(),
