@@ -52,7 +52,14 @@ export const actionApi = Api.injectEndpoints({
         body: _.omit(body, "type"), // Changing action type is not supported
       }),
       invalidatesTags: (action, error) =>
-        action ? [...invalidateTags(error, [listTag("action")])] : [],
+        action
+          ? [
+              ...invalidateTags(error, [
+                listTag("action"),
+                idTag("action", action.id),
+              ]),
+            ]
+          : [],
     }),
     deleteAction: builder.mutation<WritebackAction, WritebackActionId>({
       query: id => ({
@@ -81,6 +88,8 @@ export const actionApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("public-action"),
           idTag("public-action", id),
+          listTag("action"),
+          idTag("action", id),
         ]),
     }),
     createActionPublicLink: builder.mutation<
@@ -91,8 +100,12 @@ export const actionApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/action/${id}/public_link`,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("public-card")]),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("public-card"),
+          listTag("action"),
+          idTag("action", id),
+        ]),
     }),
   }),
 });
