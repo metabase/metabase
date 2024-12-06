@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
-import * as EmotionAnimation from "metabase/css/core/animation.styled";
 
 const DEFAULT_MODAL_SPACING = "lg";
 
@@ -12,12 +11,12 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
     classNames: {
       overlay: cx(ZIndex.Overlay, Animation.fadeIn),
-      inner: cx(ZIndex.Overlay),
+      content: cx(ZIndex.Overlay, Animation.popInFromBottom),
     },
     defaultProps: {
       padding: DEFAULT_MODAL_SPACING,
     },
-    styles: (theme, _, { variant }) => ({
+    styles: theme => ({
       root: {
         color: "var(--mb-color-text-dark)",
       },
@@ -30,7 +29,6 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
       },
       content: {
         backgroundColor: "var(--mb-color-background)",
-        //animation: `0.15s ease-out 0s 1 ${variant === "sidesheet" ? EmotionAnimation.slideLeft : EmotionAnimation.popInFromBottom}`,
       },
       header: {
         backgroundColor: "var(--mb-color-background)",
