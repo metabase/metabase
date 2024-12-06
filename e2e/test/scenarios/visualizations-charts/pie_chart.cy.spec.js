@@ -577,7 +577,7 @@ describe("scenarios > visualizations > pie chart", () => {
       union all select 'baz', -200
       union all select 'qux', -200`;
 
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "pie",
       dataset_query: {
         type: "native",
@@ -596,13 +596,13 @@ describe("scenarios > visualizations > pie chart", () => {
       .findByTestId("legend-item-foo")
       .findByText("16.7%");
 
-    echartsContainer().within(() => {
+    H.echartsContainer().within(() => {
       // Negative Total
       cy.findByText("-600");
       cy.findByText("qux").realHover();
     });
 
-    assertEChartsTooltip({
+    H.assertEChartsTooltip({
       header: "X",
       rows: [
         {
