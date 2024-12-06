@@ -1,3 +1,4 @@
+import cx from "classnames";
 import _ from "underscore";
 
 import {
@@ -30,6 +31,8 @@ export const StaticDashboardInner = ({
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
+  style,
+  className,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -52,7 +55,12 @@ export const StaticDashboardInner = ({
   const { font } = useEmbedFont();
 
   return (
-    <Box w="100%" ref={ref} className={CS.overflowAuto}>
+    <Box
+      w="100%"
+      ref={ref}
+      className={cx(CS.overflowAuto, className)}
+      style={style}
+    >
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameters}

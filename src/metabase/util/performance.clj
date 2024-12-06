@@ -1,6 +1,6 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing."
-  (:refer-clojure :exclude [reduce mapv some])
+  (:refer-clojure :exclude [reduce mapv some concat])
   (:import (clojure.lang LazilyPersistentVector RT)))
 
 (set! *warn-on-reflection* true)
@@ -131,3 +131,43 @@
   "Like `clojure.core/some` but uses our custom `reduce` which in turn uses iterators."
   [f coll]
   (unreduced (reduce #(when-let [match (f %2)] (reduced match)) nil coll)))
+
+(defn concat
+  "Like `clojure.core/concat` but accumulates the result into a vector."
+  ([a b]
+   (into (vec a) b))
+  ([a b c]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (persistent! res)))
+  ([a b c d]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (reduce conj! res d)
+     (persistent! res)))
+  ([a b c d e]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (reduce conj! res d)
+     (reduce conj! res e)
+     (persistent! res)))
+  ([a b c d e f]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (reduce conj! res d)
+     (reduce conj! res e)
+     (reduce conj! res f)
+     (persistent! res)))
+  ([a b c d e f & more]
+   (as-> (transient (vec a)) res
+     (reduce conj! res b)
+     (reduce conj! res c)
+     (reduce conj! res d)
+     (reduce conj! res e)
+     (reduce conj! res f)
+     (reduce (fn [res l] (reduce conj! res l)) res more)
+     (persistent! res))))
