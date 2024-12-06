@@ -4,7 +4,6 @@ import * as d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import { getAlerts } from "metabase/alert/selectors";
 import { getDashboardById } from "metabase/dashboard/selectors";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
@@ -13,6 +12,7 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
+import { getAlerts } from "metabase/notifications/redux/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";

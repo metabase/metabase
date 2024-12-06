@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import { unsubscribeFromAlert } from "metabase/alert/alert";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { unsubscribeFromAlert } from "metabase/notifications/redux/alert";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Alert } from "metabase-types/api";

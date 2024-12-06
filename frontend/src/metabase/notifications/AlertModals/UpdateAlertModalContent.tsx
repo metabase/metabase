@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { deleteAlert, updateAlert } from "metabase/alert/alert";
 import { useGetChannelInfoQuery } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import ModalContent from "metabase/components/ModalContent";
@@ -10,6 +9,7 @@ import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/alert";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { deleteAlert, updateAlert } from "metabase/notifications/redux/alert";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
   getQuestion,
