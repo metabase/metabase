@@ -334,10 +334,17 @@ H.describeEE(
 
         cy.findByText("Revoke access").click();
       });
+      // Page leave confirmation should be on top
+      cy.findByTestId("leave-confirmation")
+        .as("leaveConfirmation")
+        .findByText("Discard your changes?")
+        .should("be.visible");
 
       H.selectImpersonatedAttribute("role");
       H.saveImpersonationSettings();
       H.savePermissions();
+      // Cancel
+      cy.get("@leaveConfirmation").findByText("Cancel").click();
 
       H.getPermissionRowPermissions("QA Postgres12")
         .eq(DATA_ACCESS_PERM_IDX)

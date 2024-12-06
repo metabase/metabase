@@ -55,7 +55,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     H.tableHeaderClick("ID");
-    H.popover().within(() => {
+    cy.findByTestId("click-actions-popover-content-for-ID").within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -64,9 +64,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("Distinct values").should("be.visible");
     });
 
-    //cy.get("[data-testid=cell-data]").contains("Reviewer").click();
     H.tableHeaderClick("Reviewer");
-    H.popover().within(() => {
+    cy.findByTestId("click-actions-popover-content-for-Reviewer").within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -76,9 +75,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("Distinct values").should("be.visible");
     });
 
-    // cy.get("[data-testid=cell-data]").contains("Rating").click();
     H.tableHeaderClick("Rating");
-    H.popover().within(() => {
+    cy.findByTestId("click-actions-popover-content-for-Rating").within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -128,7 +126,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     H.tableHeaderClick("Reviewer");
-    H.popover().within(() => {
+    cy.findByTestId("click-actions-popover-content-for-Reviewer").within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -137,7 +135,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     H.tableHeaderClick("Count");
-    H.popover().within(() => {
+    cy.findByTestId("click-actions-popover-content-for-Count").within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
       cy.icon("gear").should("be.visible");
@@ -239,7 +237,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       });
 
       H.tableHeaderClick("ID");
-      H.popover().within(() => {
+      cy.findByTestId("click-actions-popover-content-for-ID").within(() => {
         cy.icon("arrow_down").should("be.visible");
         cy.icon("arrow_up").should("be.visible");
         cy.icon("gear").should("be.visible");
@@ -249,18 +247,20 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       });
 
       H.tableHeaderClick("REVIEWER");
-      H.popover().within(() => {
-        cy.icon("arrow_down").should("be.visible");
-        cy.icon("arrow_up").should("be.visible");
-        cy.icon("gear").should("be.visible");
+      cy.findByTestId("click-actions-popover-content-for-REVIEWER").within(
+        () => {
+          cy.icon("arrow_down").should("be.visible");
+          cy.icon("arrow_up").should("be.visible");
+          cy.icon("gear").should("be.visible");
 
-        cy.findByText("Filter by this column").should("be.visible");
-        cy.findByText("Distribution").should("be.visible");
-        cy.findByText("Distinct values").should("be.visible");
-      });
+          cy.findByText("Filter by this column").should("be.visible");
+          cy.findByText("Distribution").should("be.visible");
+          cy.findByText("Distinct values").should("be.visible");
+        },
+      );
 
       H.tableHeaderClick("RATING");
-      H.popover().within(() => {
+      cy.findByTestId("click-actions-popover-content-for-RATING").within(() => {
         cy.icon("arrow_down").should("be.visible");
         cy.icon("arrow_up").should("be.visible");
         cy.icon("gear").should("be.visible");
@@ -314,16 +314,18 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       });
 
       H.tableHeaderClick("REVIEWER");
-      H.popover().within(() => {
-        cy.icon("arrow_down").should("be.visible");
-        cy.icon("arrow_up").should("be.visible");
-        cy.icon("gear").should("be.visible");
+      cy.findByTestId("click-actions-popover-content-for-REVIEWER").within(
+        () => {
+          cy.icon("arrow_down").should("be.visible");
+          cy.icon("arrow_up").should("be.visible");
+          cy.icon("gear").should("be.visible");
 
-        cy.findByText("Filter by this column").should("be.visible");
-      });
+          cy.findByText("Filter by this column").should("be.visible");
+        },
+      );
 
       H.tableHeaderClick("COUNT");
-      H.popover().within(() => {
+      cy.findByTestId("click-actions-popover-content-for-COUNT").within(() => {
         cy.icon("arrow_down").should("be.visible");
         cy.icon("arrow_up").should("be.visible");
         cy.icon("gear").should("be.visible");

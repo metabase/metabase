@@ -113,7 +113,7 @@ export function setFilter(type: string, subType?: string, name?: string) {
 
   if (subType) {
     sidebar().findByText("Filter operator").next().click();
-    popover().findByText(subType).click();
+    cy.findByRole("listbox").findByText(subType).click();
   }
 
   if (name) {

@@ -10,9 +10,10 @@ import _ from "underscore";
 import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
+import ModalContent from "metabase/components/ModalContent";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Toaster from "metabase/components/Toaster";
-import { FloatingUndoList, UndoToast } from "metabase/containers/UndoListing";
+import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
 import LegacySelect, { Option } from "metabase/core/components/Select";
 import TippyTooltip from "metabase/core/components/Tooltip";
 import { PaletteCard } from "metabase/palette/components/Palette";
@@ -38,7 +39,7 @@ import {
 } from "metabase/ui";
 import { createMockUndo } from "metabase-types/api/mocks";
 
-import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
+import { BulkActionBarPortal } from "../../../components/BulkActionBar/BulkActionBar";
 
 const LauncherGroup = ({
   title,
@@ -210,27 +211,26 @@ export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
     <Stack p="lg">
       <Launchers />
       {undoCount > 0 && (
-        <FloatingUndoList>
+        <UndoListOverlay>
           <UndoToasts undoCount={undoCount} setUndoCount={setUndoCount} />
-        </FloatingUndoList>
+        </UndoListOverlay>
       )}
       {Array.from({ length: actionToastCount }).map((_, index) => (
-        <BulkActionBarInner
+        <BulkActionBarPortal
           key={`simple-bulk-action-bar-${index}`}
           opened
           isNavbarOpen={false}
           message="Action-style toast text content"
           aria-label="Action-style toast content"
+          p="lg"
         >
-          <Box p="lg">
-            <CloseButton
-              onClick={() => setActionToastCount(c => c - 1)}
-              c="#fff"
-              bg="transparent"
-            />
-            {enableNesting && <Launchers />}
-          </Box>
-        </BulkActionBarInner>
+          <CloseButton
+            onClick={() => setActionToastCount(c => c - 1)}
+            c="#fff"
+            bg="transparent"
+          />
+          {enableNesting && <Launchers />}
+        </BulkActionBarPortal>
       ))}
       {Array.from({ length: toastCount }).map((_, index) => (
         <Toaster
@@ -260,31 +260,37 @@ export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
             aria-labelledby={modalTitleId}
             enableTransition={false}
           >
-            <Group style={{ position: "relative" }}>
-              <Title p="md" order={3} id={modalTitleId}>
-                Legacy modal content
-              </Title>
-              <Stack spacing="md" p="md">
-                <Box p="1rem 0">Legacy modal text content</Box>
-                {enableNesting && <Launchers />}
-              </Stack>
-              <CloseButton onClick={() => setLegacyModalCount(c => c - 1)} />
-            </Group>
+            <ModalContent>
+              <Group style={{ position: "relative" }}>
+                <Title p="md" order={3} id={modalTitleId}>
+                  Legacy modal content
+                </Title>
+                <Stack spacing="md" p="md">
+                  <Box p="1rem 0">Legacy modal text content</Box>
+                  {enableNesting && <Launchers />}
+                </Stack>
+                <CloseButton onClick={() => setLegacyModalCount(c => c - 1)} />
+              </Group>
+            </ModalContent>
           </LegacyModal>
         );
       })}
-      {Array.from({ length: mantineModalCount }).map((_, index) => (
-        <SimpleModal
-          key={`mantine-modal-${index}`}
-          title={`Mantine Modal content`}
-          onClose={() => setMantineModalCount(c => c - 1)}
-        >
-          <Stack spacing="md">
-            <Text>Mantine Modal text content</Text>
-            {enableNesting && <Launchers />}
-          </Stack>
-        </SimpleModal>
-      ))}
+      {
+        // TODO: Add a Mantine modal created with <Modal title="title"/> since
+        // it seems the header has a default z-index of 1000
+        Array.from({ length: mantineModalCount }).map((_, index) => (
+          <SimpleModal
+            key={`mantine-modal-${index}`}
+            title={`Mantine Modal content`}
+            onClose={() => setMantineModalCount(c => c - 1)}
+          >
+            <Stack spacing="md">
+              <Text>Mantine Modal text content</Text>
+              {enableNesting && <Launchers />}
+            </Stack>
+          </SimpleModal>
+        ))
+      }
       {Array.from({ length: sidesheetCount }).map((_, index) => (
         <Sidesheet
           key={`sidesheet-${index}`}
@@ -310,7 +316,14 @@ export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
           onConfirm={() => {
             setEntityPickerCount(c => c - 1);
           }}
-        />
+        >
+          <Box p="lg">Entity Picker text content</Box>
+          {enableNesting && (
+            <Box p="lg">
+              <Launchers />
+            </Box>
+          )}
+        </EntityPickerModal>
       ))}
       {Array.from({ length: commandPaletteCount }).map((_, index) => {
         const modalTitleId = `command-palette-title-${index}`;
