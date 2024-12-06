@@ -40,7 +40,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       H.moveDnDKitElement(H.getDraggableElements().contains("ID"), {
-        vertical: 150,
+        vertical: 100,
       });
       const idButton = cy
         .get('[data-testid="draggable-item-ID"]')
@@ -48,6 +48,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
       const userIdButton = cy
         .get('[data-testid="draggable-item-User ID"]')
         .closest("[role=button]");
+      // The ID column should be below the User ID column.
       expect(idButton.prev()[0]).to.equal(userIdButton[0]);
     });
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
