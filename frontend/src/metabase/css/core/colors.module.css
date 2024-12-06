@@ -18,6 +18,7 @@
  * or in any components or CSS properties. They should only be used to define the semantic
  * colors in this file.
 */
+@import "./palette.module.css";
 
 :root {
   /* Semantic colors */
