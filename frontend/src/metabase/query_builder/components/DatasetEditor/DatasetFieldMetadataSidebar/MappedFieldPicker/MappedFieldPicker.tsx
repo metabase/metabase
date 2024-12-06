@@ -64,15 +64,17 @@ function MappedFieldPicker({
 
     return (
       <SelectButton
-        className={
-          fieldObject ? MappedFieldPickerS.StyledSelectButton : undefined
-        }
+        className={cx(MappedFieldPickerS.StyledSelectButton, {
+          [MappedFieldPickerS.hasValue]: fieldObject,
+        })}
         hasValue={!!fieldObject}
         tabIndex={tabIndex}
         ref={selectButtonRef as any}
         onClear={() => onChange(null)}
       >
-        {`${tableName ? `${tableName} → ` : ""}${label}`}
+        <span className={MappedFieldPickerS.StyledSelectButtonContent}>
+          {`${tableName ? `${tableName} → ` : ""}${label}`}
+        </span>
       </SelectButton>
     );
   }, [fieldObject, onChange, tabIndex]);

@@ -1,9 +1,15 @@
 .StyledSelectButton {
-  color: var(--mb-color-text-white) !important;
-  background-color: var(--mb-color-brand);
-  border-color: var(--mb-color-brand);
+  &.hasValue {
+    background-color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
 
-  :global(.Icon) {
-    color: var(--mb-color-text-white);
+    :global(.Icon) {
+      color: var(--mb-color-text-white);
+    }
+
+    /* this class is needed because of high specificity of SelectButton.Content */
+    .StyledSelectButtonContent {
+      color: var(--mb-color-text-white);
+    }
   }
 }
