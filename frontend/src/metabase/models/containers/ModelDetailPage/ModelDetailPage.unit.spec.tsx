@@ -21,7 +21,6 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
@@ -651,7 +650,6 @@ describe("ModelDetailPage", () => {
       });
 
       it("allows to disable implicit actions", async () => {
-        const deleteActionSpy = jest.spyOn(Actions.actions, "delete");
         const model = getModel();
         const actions = createMockImplicitCUDActions(model.id);
         await setupActions({ model, actions });
@@ -660,9 +658,13 @@ describe("ModelDetailPage", () => {
         await userEvent.click(await screen.findByText("Disable basic actions"));
         await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
-        actions.forEach(action => {
-          expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });
-        });
+        for (const action of actions) {
+          expect(
+            fetchMock.called(`path:/api/action/${action.id}`, {
+              method: "DELETE",
+            }),
+          ).toBe(true);
+        }
       });
     });
 
@@ -825,7 +827,7 @@ describe("ModelDetailPage", () => {
     it("allows to create implicit actions", async () => {
       const action = createMockQueryAction({ model_id: modelCard.id });
       await setupActions({ model: modelCard, actions: [action] });
-      fetchMock.post("path:/api/action", [], { overwriteRoutes: true });
+      fetchMock.post("path:/api/action", {}, { overwriteRoutes: true });
 
       await userEvent.click(screen.getByLabelText("Actions menu"));
       await userEvent.click(await screen.findByText("Create basic actions"));
