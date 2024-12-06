@@ -220,7 +220,7 @@ describe("scenarios > question > native query drill", () => {
       cy.wait("@dataset");
       H.echartsContainer().within(() => {
         cy.findByText("Count").should("be.visible");
-        cy.findByText("QUANTITY").should("be.visible");
+        cy.findByText("QUANTITY: 8 bins").should("be.visible");
       });
       H.assertQueryBuilderRowCount(5);
     });
