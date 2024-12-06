@@ -15,7 +15,6 @@ export const ChartSettingSelect = ({
   placeholder,
   placeholderNoOptions,
   id,
-  hiddenIcons,
   searchProp,
   footer,
 }) => {
@@ -51,16 +50,9 @@ export const ChartSettingSelect = ({
       searchable={!!searchProp}
       styles={{
         input: {
-          "&[data-disabled]": hiddenIcons
-            ? {
-                backgroundColor: "transparent !important",
-                border: "none",
-              }
-            : {},
           fontWeight: "bold",
         },
       }}
-      rightSection={hiddenIcons && (() => null)}
     />
   );
 };
