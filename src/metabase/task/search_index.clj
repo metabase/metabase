@@ -9,6 +9,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
+   (java.time Instant)
+   (java.util Date)
    (org.quartz DisallowConcurrentExecution JobDetail Trigger)))
 
 (set! *warn-on-reflection* true)
@@ -105,8 +107,11 @@
         trigger     (triggers/build
                      (triggers/with-identity trigger-key)
                      (triggers/for-job reindex-job-key)
+                     (triggers/start-at (Date/from (.plusSeconds (Instant/now) 3600)))
                      (triggers/with-schedule
-                      (simple/schedule (simple/with-interval-in-hours 1))))]
+                      (simple/schedule
+                       (simple/with-interval-in-hours 1)
+                       (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
 
 (defmethod task/init! ::SearchIndexUpdate [_]
