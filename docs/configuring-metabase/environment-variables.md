@@ -567,13 +567,6 @@ Allow users to explore data using X-rays.
 
 Enumerated field values with cardinality at or below this point are treated as enums in the pseudo-ddl used in some model prompts.
 
-### `MB_EXPERIMENTAL_FULLTEXT_SEARCH_ENABLED`
-
-- Type: boolean
-- Default: `false`
-
-Enables search engines which are still in the experimental stage.
-
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
 - Type: boolean
@@ -1410,6 +1403,13 @@ don't have one.
 - [Configuration file name](./config-file.md): `scim-enabled`
 
 Is SCIM currently enabled?
+
+### `MB_SEARCH_ENGINE`
+
+- Type: keyword
+- Default: `:in-place`
+
+Which engine to use when performing search. Supported values are :in-place and :appdb.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
