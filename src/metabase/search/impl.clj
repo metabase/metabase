@@ -183,6 +183,8 @@
                                   (when collection_effective_ancestors
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          (remove-thunks all-scores))
+        (update :visualization_settings #(some-> % json/decode))
+        (update :result_metadata #(some-> % json/decode))
         (update :dataset_query (fn [dataset-query]
                                  (when-let [query (some-> dataset-query json/decode)]
                                    (if (get query "type")

@@ -12,7 +12,8 @@ import {
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
-import { RecentsList } from "./RecentsList";
+import { QuestionList } from "./QuestionList";
+// import { RecentsList } from "./RecentsList";
 import type { ResultsListProps } from "./ResultsList";
 import { SearchResultsList } from "./SearchResultsList";
 
@@ -57,8 +58,7 @@ export const DataImporter = () => {
     >
       <Box
         style={{
-          borderBottom: `
-        1px solid var(--mb-color-border)`,
+          borderBottom: "1px solid var(--mb-color-border)",
         }}
       >
         <TextInput
@@ -79,9 +79,9 @@ export const DataImporter = () => {
         }}
       >
         {showRecents ? (
-          <RecentsList
-            onSelect={handleDataSourceSelect}
+          <QuestionList
             dataSourceIds={dataSourceIds}
+            onSelect={handleDataSourceSelect}
           />
         ) : (
           <SearchResultsList

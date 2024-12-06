@@ -197,8 +197,9 @@ export const getVisualizerRawSeries = createSelector(
 
 export const getVisualizerComputedSettings = createSelector(
   [getVisualizerRawSeries],
-  (rawSeries): ComputedVisualizationSettings =>
-    getComputedSettingsForSeries(rawSeries),
+  (rawSeries): ComputedVisualizationSettings => {
+    return rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {};
+  },
 );
 
 export const getVisualizerUrlHash = createSelector(
