@@ -9,17 +9,16 @@
 
 (set! *warn-on-reflection* true)
 
-(defn get-notification
+(defn- get-notification
   [id]
-  (models.notification/hydrate-notification
-     (t2/select-one :model/Notification id)))
+  (some-> (t2/select-one :model/Notification id)
+          models.notification/hydrate-notification))
 
 (api/defendpoint GET "/:id"
   "Get a notification by id."
   [id]
   {id  ms/PositiveInt}
   (api/check-404 (get-notification id)))
-
 
 (api/defendpoint POST "/"
   "Create a new notification, return the created notification."

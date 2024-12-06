@@ -164,4 +164,4 @@
                       :recipients   [{:type    "notification-recipient/user"
                                       :user_id (mt/user->id :rasta)}]}
                     (-> (update-notification (assoc @notification :handlers new-handlers))
-                        :handlers first)))))))))
+                        :handlers ((fn [x] (sort-by :channel_type x))) last)))))))))
