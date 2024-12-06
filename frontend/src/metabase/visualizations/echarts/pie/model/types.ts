@@ -21,9 +21,14 @@ export interface PieColumnDescriptors {
 
 export type SliceTreeNode = {
   key: string;
-  name: string; // display name, already formatted
-  value: number; // size of the slice used for rendering
-  displayValue: number; // real metric value of the slice displayed in tooltip or total graphic
+  // Display name, already formatted
+  name: string;
+  // The rendered size of this slice. Due to ECharts limitations with negative values:
+  // - When all values are negative, we use absolute values
+  // - When values are mixed (both positive and negative), negative slices are hidden
+  value: number;
+  // Real metric value of the slice displayed in tooltip or total graphic
+  rawValue: number;
   normalizedPercentage: number;
   visible: boolean;
   color: string;

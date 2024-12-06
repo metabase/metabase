@@ -422,7 +422,7 @@
 (def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
   #{:and :or :not :< :<= :> :>= := :!= :between :starts-with :ends-with :contains :does-not-contain :inside :is-empty
-    :not-empty :is-null :not-null :relative-time-interval :time-interval})
+    :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
@@ -865,6 +865,11 @@
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
 
+(defclause ^:sugar during
+  field   Field
+  value   [:or ::lib.schema.literal/date ::lib.schema.literal/datetime]
+  unit    ::DateTimeUnit)
+
 (defclause ^:sugar relative-time-interval
   col           Field
   value         :int
@@ -888,7 +893,7 @@
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
     ;; SUGAR filters drivers do not need to implement
-   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval))
+   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during))
 
 (mr/def ::Filter
   [:multi

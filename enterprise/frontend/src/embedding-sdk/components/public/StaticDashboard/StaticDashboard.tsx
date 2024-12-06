@@ -17,6 +17,7 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
+import cx from "classnames";
 
 export type StaticDashboardProps = SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
@@ -31,6 +32,8 @@ export const StaticDashboardInner = ({
   onLoad,
   onLoadWithoutCards,
   initialTab,
+  style,
+  className,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -53,7 +56,12 @@ export const StaticDashboardInner = ({
   const { font } = useEmbedFont();
 
   return (
-    <Box w="100%" ref={ref} className={CS.overflowAuto}>
+    <Box
+      w="100%"
+      ref={ref}
+      className={cx(CS.overflowAuto, className)}
+      style={style}
+    >
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameters}

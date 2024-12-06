@@ -6,7 +6,7 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -484,7 +484,7 @@ export const getSelectedTabId = createSelector(
     state => getSetting(state, "site-url"),
     getDashboard,
     state => state.dashboard.selectedTabId,
-    (_, props: { initialTab?: number }) => props?.initialTab,
+    (_, props?: { initialTab?: number }) => props?.initialTab,
   ],
   (isWebApp, siteUrl, dashboard, selectedTabId, initialTab) => {
     if (dashboard && selectedTabId === null) {
