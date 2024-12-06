@@ -2,8 +2,10 @@
 import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
-import EntityObjectLoader from "./EntityObjectLoader";
-import { entityObjectLoaderRtkQuery } from "./rtk-query";
+import {
+  EntityObjectLoaderRtkQuery,
+  entityObjectLoaderRtkQuery,
+} from "./rtk-query";
 
 export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
@@ -20,7 +22,11 @@ export function addEntityContainers(entity) {
     });
 
   entity.Loader = ({ id, ...props }) => (
-    <EntityObjectLoader entityType={entity.name} entityId={id} {...props} />
+    <EntityObjectLoaderRtkQuery
+      entityType={entity.name}
+      entityId={id}
+      {...props}
+    />
   );
   entity.Loader.displayName = `${ObjectName}.Loader`;
 
