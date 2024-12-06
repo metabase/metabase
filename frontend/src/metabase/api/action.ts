@@ -52,7 +52,14 @@ export const actionApi = Api.injectEndpoints({
         body: _.omit(body, "type"), // Changing action type is not supported
       }),
       invalidatesTags: (action, error) =>
-        action ? [...invalidateTags(error, [listTag("action")])] : [],
+        action
+          ? [
+              ...invalidateTags(error, [
+                listTag("action"),
+                idTag("action", action.id),
+              ]),
+            ]
+          : [],
     }),
     deleteAction: builder.mutation<WritebackAction, WritebackActionId>({
       query: id => ({
