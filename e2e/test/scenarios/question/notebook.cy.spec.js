@@ -995,28 +995,30 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByLabelText("close icon").invoke("outerHeight").should("eq", 16);
     }
   });
-  it.only("should let the user navigate back", () => {
-    H.startNewQuestion();
-    H.getNotebookStep("data").within(() => {
-      cy.findByText("Pick your starting data").should("exist");
-      cy.icon("play").should("not.be.visible");
-    });
+
+  it("should let the user navigate back (metabase#50971)", () => {
+    cy.visit("/");
+    H.newButton("Model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+
     H.entityPickerModal().should("be.visible");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-    });
 
-    cy.on("window:before:unload", event => {
-      // Prevent the navigation if this kind of operation is caught
-      delete event.returnValue;
-    });
+    // Cypress can emulate the browser's back button with cy.go('back'), but
+    // this does not trigger a confirmation modal, so we need to perform a
+    // similar action that also triggers the confirmation modal: clicking the
+    // cancel button in the edit bar.
+    cy.log('Triggering a "Discard your changes?" confirmation modal');
+    cy.findByTestId("dataset-edit-bar")
+      .findByRole("button", { name: "Cancel", hidden: true })
+      .click({ force: true });
 
-    cy.window().then(win => {
-      win.history.back();
-    });
-
-    cy.pause();
+    cy.log(
+      'Clicking "Discard changes" in the confirmation modal to verify that this modal is above the data picker modal',
+    );
     H.modal().should("be.visible").contains("Discard changes").click();
+    cy.findByTestId("greeting-message").should("be.visible");
   });
 });
 
