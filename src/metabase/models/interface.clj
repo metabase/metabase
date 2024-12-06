@@ -9,6 +9,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
@@ -19,12 +20,14 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.lib.util.match :as lib.util.match]
    [methodical.core :as methodical]
    [potemkin :as p]
    [taoensso.nippy :as nippy]
@@ -199,6 +202,50 @@
       (and (map? query) (seq query))
       normalize)))
 
+(mu/defn migrate-exclude-date-filter-clause :- mbql.s/Filter
+  "Replaces legacy exclude date filter clauses that rely on temporal bucketing."
+  [filter-clause]
+  (letfn [(date-or-datetime?
+           [field]
+           (some #(isa? % (get-in field [2 :base-type]))
+                 [:metabase.lib.schema.expression/date :metabase.lib.schema.expression/datetime]))
+          (temporal-unit
+            [field]
+            (get-in field [2 :temporal-unit]))
+          (temporal-unit-is?
+           [field units]
+           (contains? units (temporal-unit field)))
+          (remove-temporal-unit
+           [field]
+           (m/dissoc-in field [2 :temporal-unit]))]
+    (lib.util.match/replace filter-clause
+      [:!=
+       (field :guard #(and (date-or-datetime? %) (temporal-unit-is? % #{:hour-of-day})))
+       & (args :guard #(every? number? %))]
+      [:!= [:get-hour (remove-temporal-unit field)] args]
+
+      [:!=
+       (field :guard #(and (date-or-datetime? %) (temporal-unit-is? % #{:day-of-week :month-of-year :quarter-of-year})))
+       & (args :guard #(every? string? %))]
+      [:!= [:get-hour (remove-temporal-unit field)] (mapv #(-> % u.date/parse (u.date/extract (temporal-unit field))) args)])))
+
+(mu/defn migrate-filter-clause :- mbql.s/Filter
+  "Replaces legacy filter clauses."
+  [filter-clause :- mbql.s/Filter]
+  (-> filter-clause
+      migrate-exclude-date-filter-clause))
+
+(defn migrate-query-clauses
+  "For top-level query maps like `Card.dataset_query`. Replaces legacy query clauses."
+  [query]
+  (try
+    (lib.util.match/replace query
+      (filter-clause :guard mbql.preds/Filter?)
+      (migrate-filter-clause filter-clause))
+    (catch Throwable e
+      (log/errorf e "Unable to migrate query:\n%s" (u/pprint-to-str 'red query))
+      query)))
+
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
   invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
@@ -231,7 +278,9 @@
 (def transform-metabase-query
   "Transform for metabase-query."
   {:in  (comp json-in (partial maybe-normalize-query :in))
-   :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
+   :out (comp migrate-query-clauses
+              (catch-normalization-exceptions (partial maybe-normalize-query :out))
+              json-out-without-keywordization)})
 
 (def transform-parameters-list
   "Transform for parameters list."
