@@ -490,7 +490,7 @@ describe("scenarios > question > nested", () => {
     function saveQuestion() {
       cy.intercept("POST", "/api/card").as("cardCreated");
 
-      saveQuestionToCollection();
+      H.saveQuestionToCollection();
 
       cy.wait("@cardCreated").then(({ response: { body } }) => {
         expect(body.error).not.to.exist;
@@ -529,7 +529,7 @@ describe("scenarios > question > nested", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 100 rows");
 
-    saveQuestionToCollection();
+    H.saveQuestionToCollection();
 
     reloadQuestion();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

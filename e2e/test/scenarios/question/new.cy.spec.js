@@ -436,7 +436,7 @@ describe("scenarios > question > new", () => {
         .findByLabelText(/Where do you want to save/)
         .click();
 
-      pickEntity({
+      H.pickEntity({
         path: ["Our analytics"],
         select: true,
         tab: "Browse",

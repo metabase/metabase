@@ -176,9 +176,9 @@ describe("scenarios > alert", () => {
   });
 
   it("can set up an alert for a question saved in a dashboard", () => {
-    setupSMTP();
+    H.setupSMTP();
 
-    createQuestion(
+    H.createQuestion(
       {
         name: "Total Orders",
         database_id: SAMPLE_DATABASE.id,
@@ -192,11 +192,11 @@ describe("scenarios > alert", () => {
       { visitQuestion: true },
     );
 
-    openSharingMenu("Create alert");
-    modal().button("Set up an alert").click();
-    modal().button("Done").click();
+    H.openSharingMenu("Create alert");
+    H.modal().button("Set up an alert").click();
+    H.modal().button("Done").click();
 
-    openSharingMenu("Edit alerts");
-    popover().findByText("You set up an alert").should("be.visible");
+    H.openSharingMenu("Edit alerts");
+    H.popover().findByText("You set up an alert").should("be.visible");
   });
 });
