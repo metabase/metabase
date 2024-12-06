@@ -11,7 +11,7 @@ import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { Box, Flex, Icon, type IconName, Text } from "metabase/ui";
+import { Box, Flex, Icon, type IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -20,6 +20,7 @@ import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
 
 import FieldList from "../FieldList";
+import { NodeListTitleText } from "../NodeList";
 
 import CS from "./QuestionPane.module.css";
 
@@ -77,7 +78,7 @@ const QuestionPane = ({
             rel="noreferrer"
           >
             <Icon className={CS.questionPaneIcon} name="share" />
-            <Text component="span" ml="sm">{t`See it`}</Text>
+            <NodeListTitleText>{t`See it`}</NodeListTitleText>
           </a>
         </Flex>
         <Flex
@@ -87,11 +88,11 @@ const QuestionPane = ({
           fw={700}
         >
           <Icon className={CS.questionPaneIcon} name="label" />
-          <Text
+          <Box
             component="span"
             ml="sm"
             fw="normal"
-          >{t`ID #${question.id()}`}</Text>
+          >{t`ID #${question.id()}`}</Box>
         </Flex>
         <Flex
           color="var(--mb-color-text-medium)"
@@ -100,9 +101,9 @@ const QuestionPane = ({
           fw={700}
         >
           <Icon className={CS.questionPaneIcon} name="collection" />
-          <Text component="span" ml="sm" fw="normal">
+          <Box component="span" ml="sm" fw="normal">
             {collection?.name ?? t`Our analytics`}
-          </Text>
+          </Box>
         </Flex>
         {question.lastEditInfo() && (
           <Flex
@@ -112,7 +113,7 @@ const QuestionPane = ({
             fw={700}
           >
             <Icon className={CS.questionPaneIcon} name="calendar" />
-            <Text component="span" ml="sm" fw="normal">
+            <Box component="span" ml="sm" fw="normal">
               {jt`Last edited ${(
                 <DateTime
                   key="day"
@@ -120,7 +121,7 @@ const QuestionPane = ({
                   value={question.lastEditInfo().timestamp}
                 />
               )}`}
-            </Text>
+            </Box>
           </Flex>
         )}
         {table.fields && (

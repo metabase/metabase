@@ -1,66 +1,66 @@
 import cx from "classnames";
-import type {
-  AnchorHTMLAttributes,
-  ComponentPropsWithRef,
-  ReactNode,
-} from "react";
+import type { AnchorHTMLAttributes } from "react";
 
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import {
+  Box,
+  type BoxProps,
+  Flex,
+  type FlexProps,
+  Icon,
+  type IconProps,
+} from "metabase/ui";
 
 import S from "./NodeList.module.css";
 
-const NodeListTitle = ({ children }: { children: ReactNode }) => {
+const NodeListTitle = ({ children, ...rest }: FlexProps) => {
   return (
-    <Flex align="center" fw={700} p="0.5rem 0.5rem 0.5rem 6px">
+    <Flex align="center" fw={700} p="0.5rem 0.5rem 0.5rem 6px" {...rest}>
       {children}
     </Flex>
   );
 };
 
-const NodeListContainer = ({ children }: { children: ReactNode }) => {
+const NodeListContainer = ({ children, ...rest }: BoxProps) => {
   return (
-    <Box component="ul" pt="md">
+    <Box component="ul" pt="md" {...rest}>
       {children}
     </Box>
   );
 };
 
-const NodeListTitleText = ({ children }: { children: ReactNode }) => {
+const NodeListTitleText = ({ children, ...rest }: BoxProps) => {
   return (
-    <Text component="span" ml="sm">
+    <Box component="span" ml="sm" {...rest}>
       {children}
-    </Text>
+    </Box>
   );
 };
 
-const QuestionId = ({ children }: { children: ReactNode }) => {
+const QuestionId = ({ children, ...rest }: BoxProps) => {
   return (
     <Box
       component="span"
       fz="0.75em"
       color="var(--mb-color-text-medium)"
       ml="xs"
+      {...rest}
     >
       {children}
     </Box>
   );
 };
 
-const NodeListItemName = ({ children }: { children: ReactNode }) => {
+const NodeListItemName = ({ children, ...rest }: BoxProps) => {
   return (
-    <Text fw={700} ml="sm">
+    <Box fw={700} ml="sm" {...rest}>
       {children}
-    </Text>
+    </Box>
   );
 };
 
-const NodeListIcon = (props: ComponentPropsWithRef<typeof Icon>) => (
-  <Icon mt="1px" w="md" {...props} />
-);
+const NodeListIcon = (props: IconProps) => <Icon mt="1px" w="md" {...props} />;
 
-const NodeListItemIcon = (
-  props: ComponentPropsWithRef<typeof Icon> & { disabled?: boolean },
-) => {
+const NodeListItemIcon = (props: IconProps & { disabled?: boolean }) => {
   const { disabled, ...rest } = props;
 
   return (

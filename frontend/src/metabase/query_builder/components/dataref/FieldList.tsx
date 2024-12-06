@@ -5,7 +5,7 @@ import {
   TableColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { IconName } from "metabase/ui";
-import { DelayGroup, Text } from "metabase/ui";
+import { DelayGroup } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 
 import {
@@ -15,7 +15,7 @@ import {
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
-import CS from "./NodeList.module.css";
+import S from "./NodeList.module.css";
 
 interface FieldListProps {
   fields: Field[];
@@ -41,20 +41,18 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
         const iconName = field.icon() as IconName;
         return (
           <HoverParent
-            className={CS.NodeListItem}
+            className={S.NodeListItem}
             as="li"
             key={field.getUniqueId()}
           >
             <NodeListItemLink onClick={() => onFieldClick(field)}>
               <TableColumnInfoIcon
-                className={CS.nodeListInfoIcon}
+                className={S.nodeListInfoIcon}
                 field={field}
                 position="left"
                 icon={iconName}
               />
-              <Text component="span" fw={700} ml="sm">
-                {field.name}
-              </Text>
+              <NodeListTitleText>{field.name}</NodeListTitleText>
             </NodeListItemLink>
           </HoverParent>
         );
