@@ -10068,6 +10068,17 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
 
+  # This migration should be changed to a no-op and a new migration inserted that does the load from edn whenever the
+  # sample content is updated, so that it matches when the version that the sample content was updated from. See
+  # metabase#50829 for an example where the content was updated.
+  - changeSet:
+      id: v52.2024-12-03T15:55:22
+      author: escherize
+      comment: Create New and improved Sample Content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContentV2"
+
   - changeSet:
       id: v52.2024-11-25T08:57:20
       author: johnswanson
@@ -10088,60 +10099,6 @@ databaseChangeLog:
                   remarks: The dashboard that owns the card, if it is a dashboard-internal card.
                   constraints:
                     nullable: true
-
-  # This migration should be changed to a no-op and a new migration inserted that does the load from edn whenever the
-  # sample content is updated, so that it matches when the version that the sample content was updated from. See
-  # metabase#50829 for an example where the content was updated.
-  - changeSet:
-      id: v52.2024-12-03T15:55:22
-      author: escherize
-      comment: Create New and improved Sample Content
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleContentV2"
-
-  - changeSet:
-      id: v51.2024-12-06T07:49:06
-      author: johnswanson
-      comment: Add `report_dashboardcard.is_dashboard_internal_card`
-      changes:
-        - addColumn:
-            tableName: report_dashboardcard
-            columns:
-              - column:
-                  name: is_dashboard_internal_card
-                  type: ${boolean.type}
-                  remarks: |
-                    A denormalized representation that this edge from dashboard<->card should be the *only* edge from its card.
-                    Provides an efficient way to enforce the fact that
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v51.2024-12-06T07:49:10
-      author: johnswanson
-      comment: Add `report_dashboardcard.dashboard_internal_card_id`
-      changes:
-        - sql:
-            # TODO: just add the column normally and adjust `before-insert` to set.
-            sql: >-
-              ALTER TABLE report_dashboardcard
-              ADD COLUMN dashboard_internal_card_id INT GENERATED ALWAYS AS (CASE WHEN is_dashboard_internal_card THEN card_id ELSE NULL END) STORED;
-      rollback:
-        - sql:
-            sql: >-
-              ALTER TABLE report_dashboardcard DROP COLUMN dashboard_internal_card_id;
-
-  - changeSet:
-      id: v51.2024-12-06T07:49:17
-      author: johnswanson
-      comment: Add unique index on `report_dashboardcard.dashboard_internal_card_id`
-      changes:
-        - addUniqueConstraint:
-            tableName: report_dashboardcard
-            columnNames: dashboard_internal_card_id
-            constraintName: unique_dashcard_dashboard_internal_card_id
 
   - changeSet:
       id: v51.2024-12-06T07:49:24
