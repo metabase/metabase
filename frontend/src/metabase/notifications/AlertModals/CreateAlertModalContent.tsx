@@ -22,13 +22,12 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { Flex, Icon } from "metabase/ui";
 import { getDefaultAlert } from "metabase-lib/v1/Alert";
 import type { Alert } from "metabase-types/api";
 
 import { AlertEditForm } from "./AlertEditForm";
 import { AlertEducationalScreen } from "./AlertEducationalScreen";
-import { AlertModalTitle } from "./AlertModalTitle";
-import { AlertModalFooter } from "./AlertModals.styled";
 
 interface CreateAlertModalContentProps {
   onAlertCreated: () => void;
@@ -108,27 +107,34 @@ export const CreateAlertModalContent = ({
     );
   }
 
-  // TODO: Remove PulseEdit css hack
   return (
-    <ModalContent data-testid="alert-create" onClose={onCancel}>
-      <div
-        className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
-        style={{ maxWidth: "550px" }}
-      >
-        <AlertModalTitle text={t`Let's set up your alert`} />
-        <AlertEditForm
-          alertType={question?.alertType(visualizationSettings)}
-          alert={alert}
-          onAlertChange={onAlertChange}
-        />
-        <AlertModalFooter>
+    <ModalContent
+      data-testid="alert-create"
+      title={
+        <Flex gap={10} align="center">
+          <Icon name="alert" />
+          {t`Create new alert`}
+        </Flex>
+      }
+      footer={
+        <Flex justify="space-between" w="100%">
+          {/*<span>{"Send test message now"}</span>*/}
           <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
           <ButtonWithStatus
             titleForState={{ default: t`Done` }}
             disabled={!isValid}
             onClickOperation={onCreateAlert}
           />
-        </AlertModalFooter>
+        </Flex>
+      }
+      onClose={onCancel}
+    >
+      <div className={cx(CS.borderBottom)}>
+        <AlertEditForm
+          alertType={question?.alertType(visualizationSettings)}
+          alert={alert}
+          onAlertChange={onAlertChange}
+        />
       </div>
     </ModalContent>
   );

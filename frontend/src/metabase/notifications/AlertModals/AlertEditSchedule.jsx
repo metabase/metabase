@@ -33,11 +33,11 @@ export function AlertEditSchedule({
 }) {
   return (
     <div>
-      <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
+      <h3 className={cx(CS.mb3, CS.textDark)}>
         {t`How often should we check for results?`}
       </h3>
 
-      <div className={cx(CS.bordered, CS.rounded, CS.mb2)}>
+      <div className={cx(CS.bordered, CS.rounded)}>
         {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
         <div className={cx(CS.p3, CS.bgLight)}>
           <SchedulePicker

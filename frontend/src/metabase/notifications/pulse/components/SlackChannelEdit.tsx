@@ -26,7 +26,7 @@ export const SlackChannelEdit = ({
   const channel = alert.channels[channelIndex];
 
   return (
-    <li className={CS.borderRowDivider}>
+    <div className={CS.borderRowDivider}>
       <div className={cx(CS.flex, CS.alignCenter, CS.p3, CS.borderRowDivider)}>
         <Icon className={cx(CS.mr1, CS.textLight)} name="mail" size={28} />
 
@@ -59,6 +59,6 @@ export const SlackChannelEdit = ({
           <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
         </div>
       ) : null}
-    </li>
+    </div>
   );
 };
