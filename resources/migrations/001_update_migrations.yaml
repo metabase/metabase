@@ -10080,7 +10080,7 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContentV2"
 
   - changeSet:
-      id: v52.2024-11-25T08:57:20
+      id: v52.2024-12-06T07:49:23
       author: johnswanson
       comment: Add `report_card.dashboard_id`
       preConditions:
@@ -10101,7 +10101,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v51.2024-12-06T07:49:24
+      id: v52.2024-12-06T07:49:24
       author: johnswanson
       comment: Make `report_card.dashboard_id` a foreign key
       preConditions:
