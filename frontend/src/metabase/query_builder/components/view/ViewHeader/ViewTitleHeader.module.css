@@ -64,12 +64,12 @@
   }
 }
 
-.backButton {
+.BackButton {
   color: var(--mb-color-brand);
   padding: 0.75rem;
 }
 
-.headerDivider {
+.HeaderDivider {
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: 700;
@@ -78,7 +78,7 @@
   padding-right: 0.25rem;
 }
 
-.adHocViewHeading {
+.AdHocViewHeading {
   margin-bottom: 0.25rem;
   margin-top: 0.25rem;
   margin-right: 1rem;

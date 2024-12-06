@@ -73,7 +73,7 @@ export function SavedQuestionLeftSide({
           <Flex align="center" gap="sm">
             <HeadBreadcrumbs
               divider={
-                <span className={ViewTitleHeaderS.headerDivider}>/</span>
+                <span className={ViewTitleHeaderS.HeaderDivider}>/</span>
               }
               parts={[
                 ...(isAdditionalInfoVisible && isModelOrMetric

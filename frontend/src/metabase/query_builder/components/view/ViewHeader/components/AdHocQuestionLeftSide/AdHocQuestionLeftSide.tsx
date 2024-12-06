@@ -48,7 +48,7 @@ export function AdHocQuestionLeftSide(
     <Box className={AdHocQuestionLeftSideS.AdHocLeftSideRoot}>
       <Flex align="center" wrap="nowrap">
         <ViewHeading
-          className={ViewTitleHeaderS.adHocViewHeading}
+          className={ViewTitleHeaderS.AdHocViewHeading}
           color="medium"
         >
           {isNative ? (

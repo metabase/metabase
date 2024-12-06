@@ -39,7 +39,7 @@ export function DashboardBackButton({
     <Tooltip tooltip={label}>
       <Box mr="0.75rem" component="span">
         <Button
-          className={ViewTitleHeaderS.backButton}
+          className={ViewTitleHeaderS.BackButton}
           {...(noLink
             ? {}
             : {

@@ -8,12 +8,11 @@
 }
 
 .HeaderBadge :global(.Icon) {
-  &.headVariant {
-    /* to add specificity */
-    font-size: 1.25rem !important;
-  }
-
   width: 1em;
   height: 1em;
   margin-right: 0.5em;
+
+  &.headVariant {
+    font-size: 1.25rem;
+  }
 }
