@@ -12,6 +12,7 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListItemLink,
+  NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
@@ -52,7 +53,7 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
                 position="left"
                 icon={iconName}
               />
-              <NodeListTitleText>{field.name}</NodeListTitleText>
+              <NodeListItemName>{field.name}</NodeListItemName>
             </NodeListItemLink>
           </HoverParent>
         );

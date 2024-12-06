@@ -52,7 +52,7 @@ const QuestionId = ({ children, ...rest }: BoxProps) => {
 
 const NodeListItemName = ({ children, ...rest }: BoxProps) => {
   return (
-    <Box fw={700} ml="sm" {...rest}>
+    <Box component="span" fw={700} ml="sm" {...rest}>
       {children}
     </Box>
   );
