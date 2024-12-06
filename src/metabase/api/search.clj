@@ -9,7 +9,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
    ;; Allowing search.config to be accessed for developer API to set weights
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
+   ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.task :as task]
