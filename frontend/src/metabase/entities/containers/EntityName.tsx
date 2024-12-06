@@ -1,11 +1,13 @@
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
-import EntityObjectLoader from "./EntityObjectLoader";
+import { EntityObjectLoaderRtkQuery, type EntityType } from "./rtk-query";
 
 type EntityId = string | number;
 
 interface EntityNameProps {
-  entityType: string;
+  entityType: EntityType;
   entityId: EntityId;
   property?: string;
 }
@@ -14,40 +16,43 @@ interface EntityWrapper {
   getName: () => string;
 }
 
-export const EntityName = ({
-  entityType,
-  entityId,
-  property = "name",
-}: EntityNameProps) => {
+const isEntityWrapper = (value: unknown): value is EntityWrapper =>
+  isObject(value) && "getName" in value && typeof value.getName === "function";
+
+const isQuestion = (value: unknown): value is Question =>
+  value instanceof Question;
+
+export const EntityName = ({ entityType, entityId }: EntityNameProps) => {
   // This is a special case for questions, because we're returning `metabase-lib/v1/Question`
   // from question entity's `getObject` in https://github.com/metabase/metabase/pull/30729.
   // If we wrap it in `EntityWrapper`, we'd lose all properties from `metabase-lib/v1/Question`.
   if (entityType === "questions") {
     return (
-      <EntityObjectLoader
+      <EntityObjectLoaderRtkQuery<Card, Question>
+        ComposedComponent={({ object: question }) => {
+          const name = isQuestion(question)
+            ? question.displayName()
+            : question?.name;
+          return name ? <span>{name}</span> : null;
+        }}
+        entityQuery={{}}
         entityType={entityType}
         entityId={entityId}
-        properties={[property]}
         loadingAndErrorWrapper={false}
-      >
-        {({ object: question }: { object: Question }) =>
-          question ? <span>{question.displayName()}</span> : null
-        }
-      </EntityObjectLoader>
+      />
     );
   }
 
   return (
-    <EntityObjectLoader
+    <EntityObjectLoaderRtkQuery<unknown, EntityWrapper>
+      ComposedComponent={({ object }) => {
+        return isEntityWrapper(object) ? <span>{object.getName()}</span> : null;
+      }}
+      entityQuery={{}}
       entityType={entityType}
       entityId={entityId}
-      properties={[property]}
       loadingAndErrorWrapper={false}
       wrapped
-    >
-      {({ object }: { object: EntityWrapper }) =>
-        object ? <span>{object.getName()}</span> : null
-      }
-    </EntityObjectLoader>
+    />
   );
 };

@@ -53,7 +53,7 @@ export interface Props<Entity, EntityWrapper> {
   entityType: EntityType | EntityTypeSelector;
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
-  LoadingAndErrorWrapper: ComponentType<LoadingAndErrorWrapperProps>;
+  LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
   requestType?: RequestType;
   selectorName?: string;
