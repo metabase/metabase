@@ -251,7 +251,7 @@
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-storybook": "^0.9.0",
-    "eslint-plugin-testing-library": "^5.11.0",
+    "eslint-plugin-testing-library": "^5.11.1",
     "fetch-mock": "^9.11.0",
     "fetch-mock-jest": "^1.5.1",
     "fork-ts-checker-webpack-plugin": "^9.0.2",

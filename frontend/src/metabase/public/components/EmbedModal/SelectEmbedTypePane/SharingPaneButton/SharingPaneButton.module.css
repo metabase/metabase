@@ -1,6 +1,6 @@
 .Container:not([data-css-specificity-hack="🤷"]) {
   cursor: pointer;
-  border-color: var(--mb-color-brand-light);
+  overflow: hidden;
 
   --external-link-icon-color: var(--mb-color-text-light);
 
@@ -10,4 +10,12 @@
 
     --external-link-icon-color: var(--mb-base-color-blue-40);
   }
+}
+
+.Disabled.Container:not([data-css-specificity-hack="🤷"]) {
+  --mb-color-text-primary: var(--mb-color-text-tertiary);
+
+  cursor: not-allowed;
+  border-color: var(--mb-color-border);
+  background-color: var(--mb-color-bg-light);
 }

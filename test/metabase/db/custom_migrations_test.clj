@@ -1981,55 +1981,55 @@
                                   :uploads_table_prefix nil}}
                   (m/index-by :id (t2/select :metabase_database)))))))))
 
+(defn- sample-content-created? []
+  (boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce Insights'"))))
+
 (deftest create-sample-content-test
   (testing "The sample content is created iff *create-sample-content*=true"
     (doseq [create? [true false]]
       (testing (str "*create-sample-content* = " create?)
-        (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
-          (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-            (binding [custom-migrations/*create-sample-content* create?]
-              (is (false? (sample-content-created?)))
-              (migrate!)
-              (is ((if create? true? false?) (sample-content-created?))))
+        (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+          (binding [custom-migrations/*create-sample-content* create?]
+            (is (false? (sample-content-created?)))
+            (migrate!)
+            (is (= create? (sample-content-created?))))
 
-            (when (true? create?)
-              (testing "The Examples collection has permissions set to grant read-write access to all users"
-                (let [id (t2/select-one-pk :model/Collection :is_sample true)]
-                  (is (partial=
-                       {:collection_id id
-                        :perm_type     :perms/collection-access
-                        :perm_value    :read-and-write}
-                       (t2/select-one :model/Permissions :collection_id id)))))))))))
+          (when (true? create?)
+            (testing "The Examples collection has permissions set to grant read-write access to all users"
+              (let [id (t2/select-one-pk :model/Collection :is_sample true)]
+                (is (partial=
+                     {:collection_id id
+                      :perm_type     :perms/collection-access
+                      :perm_value    :read-and-write}
+                     (t2/select-one :model/Permissions :collection_id id))))))))))
 
   (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
-    (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
-      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-        (is (false? (sample-content-created?)))
-        (t2/insert-returning-pks! :metabase_database {:name       "db"
-                                                      :engine     "h2"
-                                                      :created_at :%now
-                                                      :updated_at :%now
-                                                      :details    "{}"})
-        (t2/query {:delete-from :metabase_database})
-        (migrate!)
-        (is (false? (sample-content-created?)))
-        (is (empty? (t2/query "SELECT * FROM metabase_database"))
-            "No database should have been created"))))
+    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+      (is (false? (sample-content-created?)))
+      (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                    :engine     "h2"
+                                                    :created_at :%now
+                                                    :updated_at :%now
+                                                    :details    "{}"})
+      (t2/query {:delete-from :metabase_database})
+      (migrate!)
+      (is (false? (sample-content-created?)))
+      (is (empty? (t2/query "SELECT * FROM metabase_database"))
+          "No database should have been created")))
 
   (testing "The sample content isn't created if a user existed already"
-    (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
-      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-        (is (false? (sample-content-created?)))
-        (t2/insert-returning-pks!
-         :core_user
-         {:first_name    "Rasta"
-          :last_name     "Toucan"
-          :email         "rasta@metabase.com"
-          :password      "password"
-          :password_salt "and pepper"
-          :date_joined   :%now})
-        (migrate!)
-        (is (false? (sample-content-created?)))))))
+    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+      (is (false? (sample-content-created?)))
+      (t2/insert-returning-pks!
+       :core_user
+       {:first_name    "Rasta"
+        :last_name     "Toucan"
+        :email         "rasta@metabase.com"
+        :password      "password"
+        :password_salt "and pepper"
+        :date_joined   :%now})
+      (migrate!)
+      (is (false? (sample-content-created?))))))
 
 (deftest decrypt-cache-settings-test
   (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]

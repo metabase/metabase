@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { createAlert } from "metabase/alert/alert";
 import { useGetChannelInfoQuery } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
@@ -16,6 +15,7 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { createAlert } from "metabase/notifications/redux/alert";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
   getQuestion,

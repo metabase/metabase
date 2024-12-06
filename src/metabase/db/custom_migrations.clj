@@ -1214,29 +1214,36 @@
   true)
 
 (define-migration CreateSampleContent
+  ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
+  )
+
+(defn- replace-temporals [v]
+  (if (isa? (type v) java.time.temporal.Temporal)
+    :%now
+    v))
+
+(defn- table-name->rows [data table-name]
+  (->> (get data table-name)
+       ;; We sort the rows by id and remove them so that auto-incrementing ids are
+       ;; generated in the same order. We can't insert the ids directly in H2 without
+       ;; creating sequences for all the generated id columns.
+       (sort-by :id)
+       (map (fn [row] (-> row
+                          (update-vals replace-temporals)
+                          (dissoc :id))))))
+
+(define-migration CreateSampleContentV2
   ;; Adds sample content to a fresh install. Adds curate permissions to the collection for the 'All Users' group.
   (when *create-sample-content*
     (when (and (config/load-sample-content?)
                (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
                (no-user?)
                (no-db?))
-      (let [table-name->raw-rows  (load-edn "sample-content.edn")
+      (let [table-name->raw-rows (load-edn "sample-content.edn")
             example-dashboard-id  1
-            example-collection-id 2 ; trash collection is 1
+            example-collection-id 2 ;; trash collection is 1
             expected-sample-db-id 1
-            replace-temporals     (fn [v]
-                                    (if (isa? (type v) java.time.temporal.Temporal)
-                                      :%now
-                                      v))
-            table-name->rows      (fn [table-name]
-                                    (->> (table-name->raw-rows table-name)
-                                         ;; We sort the rows by id and remove them so that auto-incrementing ids are
-                                         ;; generated in the same order. We can't insert the ids directly in H2 without
-                                         ;; creating sequences for all the generated id columns.
-                                         (sort-by :id)
-                                         (map (fn [row]
-                                                (dissoc (update-vals row replace-temporals) :id)))))
-            dbs                   (table-name->rows :metabase_database)
+            dbs                   (table-name->rows table-name->raw-rows :metabase_database)
             _                     (t2/query {:insert-into :metabase_database :values dbs})
             db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
@@ -1256,7 +1263,7 @@
                                   :dashboardcard_series
                                   :permissions_group
                                   :data_permissions]]
-                (when-let [values (seq (table-name->rows table-name))]
+                (when-let [values (seq (table-name->rows table-name->raw-rows table-name))]
                   (t2/query {:insert-into table-name :values values})))
               (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
                 (t2/query {:insert-into :permissions
@@ -1271,51 +1278,61 @@
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
+  ;; We know this won't work for binning on a computed column, there may be other limitations as well.
   ;; -----------------------------------------------------------------------------
   ;; Check out a fresh metabase instance on the branch of the major version you're targeting,
   ;; and without the :ee alias so instance analytics content is not created.
   ;; 1. create a collection with dashboards, or import one with (metabase.cmd/import "<path>")
   ;; 2. execute the following to spit out the collection to an EDN file:
-  (let [pretty-spit (fn [file-name data]
-                      (with-open [writer (io/writer file-name)]
-                        (binding [*out* writer]
-                          #_{:clj-kondo/ignore [:discouraged-var]}
-                          (pprint/pprint data))))
-        columns-to-remove [:view_count]
-        data (into {}
-                   (for [table-name [:collection
-                                     :metabase_database
-                                     :metabase_table
-                                     :metabase_field
-                                     :report_dashboard
-                                     :report_dashboardcard
-                                     :report_card
-                                     :parameter_card
-                                     :dashboard_tab
-                                     :dashboardcard_series
-                                     :data_permissions]
-                         :let [query (cond-> {:select [:*] :from table-name}
-                                       (= table-name :collection) (assoc :where [:and
-                                                                                 [:= :namespace nil] ; excludes the analytics namespace
-                                                                                 [:= :personal_owner_id nil]]))]]
-                     [table-name (->> (t2/query query)
-                                      (map (fn [x] (into {} (apply dissoc x columns-to-remove))))
-                                      (keep (fn [x] (and (= table-name :collection)
-                                                         (= (:type x)
-                                                            ;; avoid requiring `metabase.models.collection` in this
-                                                            ;; namespace to deter others using it in migrations
-                                                            #_{:clj-kondo/ignore [:unresolved-namespace]}
-                                                            metabase.models.collection/trash-collection-type))))
-                                      (sort-by :id))]))]
-    (pretty-spit "resources/sample-content.edn" data)))
-  ;; (make sure there's no other content in the file)
-  ;; 3. update the EDN file:
-  ;; - add any columns that need removing to `columns-to-remove` above (use your common sense and list anything that
-  ;;   shouldn't be carried into new instances
-  ;;   instances), and create the EDN file again
-  ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
-  ;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
-  ;; - replace metabase_version "<version>" with metabase_version nil
+
+  (defn- pretty-spit [file-name data]
+    (with-open [writer (io/writer file-name)]
+      (binding [*out* writer]
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (pprint/pprint data))))
+
+  (defn gather-sample-coll-edn-data []
+    (let [columns-to-remove [:view_count]]
+      (into {}
+            (for [table-name [:collection
+                              :metabase_database
+                              :metabase_table
+                              :metabase_field
+                              :report_dashboard
+                              :report_dashboardcard
+                              :report_card
+                              :parameter_card
+                              :dashboard_tab
+                              :dashboardcard_series
+                              :data_permissions]
+                  :let [query (cond-> {:select [:*] :from table-name}
+                                (= table-name :collection) (assoc :where [:and
+                                                                          ;; exclude the analytics namespace
+                                                                          [:= :namespace nil]
+                                                                          ;; exclude personal collections
+                                                                          [:= :personal_owner_id nil]]))]]
+              [table-name (->> (t2/query query)
+                               (map (fn [x] (into {} (apply dissoc x columns-to-remove))))
+                               (remove (fn [x] (and (= table-name :collection)
+                                                    (= (:type x)
+                                                       ;; avoid requiring `metabase.models.collection` in this
+                                                       ;; namespace to deter others using it in migrations
+                                                       #_{:clj-kondo/ignore [:unresolved-namespace]}
+                                                       metabase.models.collection/trash-collection-type))))
+                               (sort-by :id))]))))
+
+  (pretty-spit (gather-sample-coll-edn-data)
+               "resources/sample-content.edn"))
+;; (make sure there's no other content in the file)
+;; 3. update the EDN file:
+;; - add any columns that need removing to `columns-to-remove` above (use your common sense and list anything that
+;;   shouldn't be carried into new instances), and create the EDN file again
+;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
+;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
+;; - replace metabase_version "<version>" with metabase_version nil
+;; - you'll likely need to update the sample collection's :is_sample attribute to be `true`
+
+;; -----------------------------------------------------------------------------
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask

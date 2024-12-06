@@ -7,8 +7,9 @@ import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { ChannelCard } from "metabase/sharing/components/NewPulseSidebar.styled";
 import { Icon } from "metabase/ui";
+
+import { ChannelCard } from "./NewPulseSidebar.styled";
 
 interface NewPulseSidebarProps {
   emailConfigured: boolean;

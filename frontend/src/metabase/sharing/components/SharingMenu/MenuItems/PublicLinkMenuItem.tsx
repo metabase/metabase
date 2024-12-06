@@ -23,7 +23,7 @@ export function PublicLinkMenuItem({
         my="sm"
         icon={
           <Center mr="xs">
-            <Icon name="link" />
+            <Icon name="link" aria-hidden />
           </Center>
         }
         onClick={onClick}
@@ -50,7 +50,7 @@ export function PublicLinkMenuItem({
       my="sm"
       icon={
         <Center mr="xs">
-          <Icon name="link" />
+          <Icon name="link" aria-hidden />
         </Center>
       }
       onClick={onClick}

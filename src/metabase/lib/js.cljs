@@ -1131,6 +1131,26 @@
            :column   column
            :values   (to-array (map clj->js values))})))
 
+(defn ^:export specific-date-filter-clause
+  "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[specific-date-filter-parts]]."
+  [operator column values with-time?]
+  (lib.core/specific-date-filter-clause (keyword operator)
+                                        column
+                                        (js->clj values)
+                                        with-time?))
+
+(defn ^:export specific-date-filter-parts
+  "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/specific-date-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column values with-time?]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))
+           :hasTime  with-time?})))
+
 (defn ^:export relative-date-filter-clause
   "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[relative-date-filter-parts]]."

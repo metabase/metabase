@@ -44,7 +44,7 @@ Click into the question's title to edit the name of your question.
 
 Open the **three dot** (...) menu to:
 
-- [Verify](../../exploration-and-organization/exploration.md#verified-items) this question
+- [Verify](../../exploration-and-organization/content-verification.md) this question
 - Add to [dashboard](../../dashboards/start.md)
 - Move to another [collection](../../exploration-and-organization/collections.md)
 - Turn into a [model](../../data-modeling/models.md)

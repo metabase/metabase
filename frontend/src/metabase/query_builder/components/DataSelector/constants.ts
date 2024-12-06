@@ -2,6 +2,8 @@ import { t } from "ttag";
 
 import type { DataPickerDataType, DataTypeInfoItem } from "./types";
 
+export const CONTAINER_WIDTH = 300;
+
 export const DATA_BUCKET: Record<string, DataPickerDataType> = {
   MODELS: "models",
   RAW_DATA: "raw-data",

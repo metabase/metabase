@@ -32,6 +32,8 @@
   describe-fields-sql
   describe-fks
   describe-fks-sql
+  describe-indexes
+  describe-indexes-sql
   describe-table
   describe-table-fields
   describe-table-fields-xf

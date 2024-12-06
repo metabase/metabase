@@ -320,7 +320,16 @@ function assertLinkMatchesUrl(text, url) {
 
 function ensureEmbeddingIsDisabled() {
   H.openSharingMenu();
-  H.sharingMenu().findByText(/embedding is off/i);
+  H.sharingMenu()
+    .findByRole("menuitem", { name: "Embed" })
+    .should("be.enabled")
+    .click();
+  H.modal()
+    .findByRole("article", { name: "Static embedding" })
+    .within(() => {
+      cy.findByText("Disabled.").should("be.visible");
+      cy.findByText("Enable in admin settings").should("be.visible");
+    });
 }
 
 function visitAndEnableSharing(object, acceptTerms = true) {

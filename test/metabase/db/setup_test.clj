@@ -49,7 +49,7 @@
             (let [data-source (mdb.data-source/raw-connection-string->DataSource (str "jdbc:h2:" (subname)))]
               (mdb.setup/setup-db! :h2 data-source true create-sample-content?)
               (is (= (if create-sample-content?
-                       ["E-commerce insights"]
+                       ["E-commerce Insights"]
                        [])
                      (mapv :name (jdbc/query {:datasource data-source}
                                              "SELECT name FROM report_dashboard ORDER BY name ASC;")))))))))))

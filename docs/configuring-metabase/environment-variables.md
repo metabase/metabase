@@ -43,6 +43,10 @@ Docker:
 docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase metabase/metabase
 ```
 
+## Environment variables on Metabase Cloud
+
+If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium) to adjust environment variables for your Metabase.
+
 ---
 
 ## List of environment variables
@@ -106,6 +110,17 @@ Allowed iframe hosts.
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
 Enable the collection of anonymous usage data in order to help Metabase improve.
+
+### `MB_API_KEY`
+
+- Type: string
+- Default: `null`
+
+When set, this API key is required for all API requests.
+
+Middleware that enforces validation of the client via the request header X-Metabase-Apikey.
+        If the header is available, then it’s validated against MB_API_KEY.
+        When it matches, the request continues; otherwise it’s blocked with a 403 Forbidden response.
 
 ### `MB_APPLICATION_COLORS`
 
@@ -382,6 +397,16 @@ The email address you want to use for the sender of emails.
 
 The name you want to use for the sender of emails.
 
+### `MB_EMAIL_MAX_RECIPIENTS_PER_SECOND`
+
+- Type: integer
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-second`.
+- [Configuration file name](./config-file.md): `email-max-recipients-per-second`
+
+The maximum number of recipients, summed across emails, that can be sent per second.
+                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.
+
 ### `MB_EMAIL_REPLY_TO`
 
 - Type: json
@@ -501,6 +526,15 @@ Allow admins to embed Metabase via static embedding?
 
 Allow logging in by email and password.
 
+### `MB_ENABLE_PIVOTED_EXPORTS`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `enable-pivoted-exports`.
+- [Configuration file name](./config-file.md): `enable-pivoted-exports`
+
+Enable pivoted exports and pivoted subscriptions.
+
 ### `MB_ENABLE_PUBLIC_SHARING`
 
 - Type: boolean
@@ -532,13 +566,6 @@ Allow users to explore data using X-rays.
 - Default: `60`
 
 Enumerated field values with cardinality at or below this point are treated as enums in the pseudo-ddl used in some model prompts.
-
-### `MB_EXPERIMENTAL_FULLTEXT_SEARCH_ENABLED`
-
-- Type: boolean
-- Default: `false`
-
-Enables search engines which are still in the experimental stage.
 
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
@@ -919,7 +946,7 @@ don't have one.
 - [Exported as](../installation-and-operation/serialization.md): `loading-message`.
 - [Configuration file name](./config-file.md): `loading-message`
 
-Choose the message to show while a query is running.
+Choose the message to show while a query is running. Possible values are "doing-science", "running-query", or "loading-results".
 
 ### `MB_LOGIN_PAGE_ILLUSTRATION`
 
@@ -1377,6 +1404,13 @@ don't have one.
 
 Is SCIM currently enabled?
 
+### `MB_SEARCH_ENGINE`
+
+- Type: keyword
+- Default: `:in-place`
+
+Which engine to use when performing search. Supported values are :in-place and :appdb.
+
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
 - Type: boolean
@@ -1539,6 +1573,14 @@ This URL is critical for things like SSO authentication, email links, embedding 
 - [Configuration file name](./config-file.md): `slack-app-token`
 
 Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0.
+
+### `MB_SLACK_BUG_REPORT_CHANNEL`
+
+- Type: string
+- Default: `metabase-bugs`
+- [Configuration file name](./config-file.md): `slack-bug-report-channel`
+
+The name of the channel where bug reports should be posted.
 
 ### `MB_SLACK_FILES_CHANNEL`
 
@@ -1887,11 +1929,9 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
 
-Note: In addtion to enabling this variable, you need to update the com.mchange log level to INFO or higher via a custom log4j configuration in order to see the stack traces in the logs.
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
 
-See the [Metabase log configuration](./log-configuration.md) documentation for how to configure log levels.
-
-See [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds) for setting the timeout after which connections will be killed.
+To set a timeout for how long Metabase should wait before it kills unreturned connections, see [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -2165,3 +2205,4 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
+

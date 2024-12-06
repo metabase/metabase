@@ -7,9 +7,9 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
-import { fetchPulseFormInput } from "metabase/pulse/actions";
-import { PulseEditChannels } from "metabase/pulse/components/PulseEditChannels";
-import { getPulseFormInput } from "metabase/pulse/selectors";
+import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
+import { PulseEditChannels } from "metabase/notifications/pulse/components/PulseEditChannels";
+import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
 import { getUser } from "metabase/selectors/user";
 
 import { getScheduleFromChannel } from "./schedule";

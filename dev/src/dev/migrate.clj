@@ -37,7 +37,7 @@
   ([direction & [version]]
    (mdb/migrate! (mdb/data-source) direction version)
    #_{:clj-kondo/ignore [:discouraged-var]}
-   (println "Migrated up. Latest migration:" (latest-migration))))
+   (println (format "Migrated %s. Latest migration: %s" (name direction) (latest-migration)))))
 
 (defn- rollback-n-migrations!
   [^Integer n]

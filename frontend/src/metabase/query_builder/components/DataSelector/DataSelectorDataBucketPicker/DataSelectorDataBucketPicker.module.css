@@ -1,0 +1,31 @@
+.DataBucketList {
+  width: 300px;
+  padding: 4px 8px 12px;
+}
+
+.DataBucketListItemTitle {
+  color: var(--mb-color-text-dark);
+  font-weight: 700;
+  font-size: 14px;
+  margin-left: 0.5rem;
+}
+
+.DataBucketListItemDescription {
+  color: var(--mb-color-text-light);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.DataBucketListItemIcon {
+  color: var(--mb-color-text-dark);
+}
+
+.DataBucketListItemContainer {
+  &:hover {
+    .DataBucketListItemDescription,
+    .DataBucketListItemTitle,
+    .DataBucketListItemIcon {
+      color: var(--mb-color-text-white);
+    }
+  }
+}
