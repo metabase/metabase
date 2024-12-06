@@ -184,21 +184,3 @@ const EntityObjectLoader = _.compose(
 )(EntityObjectLoaderInner);
 
 export default EntityObjectLoader;
-
-/**
- * @deprecated HOCs are deprecated
- */
-export const entityObjectLoader =
-  eolProps =>
-  ComposedComponent =>
-  // eslint-disable-next-line react/display-name
-  props => (
-    <EntityObjectLoader {...props} {...eolProps}>
-      {childProps => (
-        <ComposedComponent
-          {..._.omit(props, ...CONSUMED_PROPS)}
-          {...childProps}
-        />
-      )}
-    </EntityObjectLoader>
-  );

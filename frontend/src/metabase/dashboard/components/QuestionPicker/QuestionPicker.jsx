@@ -9,8 +9,6 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SelectList from "metabase/components/SelectList";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
@@ -115,13 +113,11 @@ function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
 }
 
 export const QuestionPicker = _.compose(
-  entityObjectLoader({
+  Collections.load({
     id: () => "root",
-    entityType: "collections",
     loadingAndErrorWrapper: false,
   }),
-  entityListLoader({
-    entityType: "collections",
+  Collections.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect((state, props) => ({

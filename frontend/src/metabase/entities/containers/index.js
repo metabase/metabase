@@ -2,7 +2,7 @@
 import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
-import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
+import EntityObjectLoader from "./EntityObjectLoader";
 import { entityObjectLoaderRtkQuery } from "./rtk-query";
 
 export function addEntityContainers(entity) {
@@ -11,26 +11,8 @@ export function addEntityContainers(entity) {
   /**
    * @deprecated HOCs are deprecated
    */
-  entity.load = ({ id, query, ...props } = {}) => {
-    if (!entity.rtk) {
-      return entity.loadLegacy({ id, query, ...props });
-    }
-
-    return entityObjectLoaderRtkQuery({
-      entityType: entity.name,
-      entityId: id,
-      entityQuery: query,
-      ...props,
-    });
-  };
-
-  /**
-   * TODO: remove this in https://github.com/metabase/metabase/issues/50322
-   *
-   * @deprecated HOCs are deprecated
-   */
-  entity.loadLegacy = ({ id, query, ...props } = {}) =>
-    entityObjectLoader({
+  entity.load = ({ id, query, ...props } = {}) =>
+    entityObjectLoaderRtkQuery({
       entityType: entity.name,
       entityId: id,
       entityQuery: query,
