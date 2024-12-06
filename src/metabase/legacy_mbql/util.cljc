@@ -932,8 +932,8 @@
         (into [:!= extract-expr]
               (mapv #(-> % u.time/coerce-to-timestamp (u.time/extract extract-unit)) args))))))
 
-(defn migrate-legacy-filters
-  "Replaces legacy filters in top-level query maps like `Card.dataset_query`."
+(defn migrate-legacy-query
+  "Replaces legacy clauses in top-level query maps like `Card.dataset_query`."
   [query]
   (try
     (lib.util.match/replace query

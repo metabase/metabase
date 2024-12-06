@@ -232,7 +232,7 @@
 (def transform-metabase-query
   "Transform for metabase-query."
   {:in  (comp json-in (partial maybe-normalize-query :in))
-   :out (comp mbql.u/migrate-legacy-filters
+   :out (comp mbql.u/migrate-legacy-query
               (catch-normalization-exceptions (partial maybe-normalize-query :out))
               json-out-without-keywordization)})
 
