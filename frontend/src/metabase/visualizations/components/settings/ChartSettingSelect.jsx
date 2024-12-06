@@ -1,12 +1,10 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
+import { Select, Stack } from "metabase/ui";
 
-import { SelectWithHighlightingIcon } from "./ChartSettingSelect.styled";
-
-const ChartSettingSelect = ({
+export const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
   // uncontrolled component because it's wrapped with Uncontrollable.
   value = null,
@@ -17,27 +15,54 @@ const ChartSettingSelect = ({
   placeholder,
   placeholderNoOptions,
   id,
-  ...props
-}) => (
-  <SelectWithHighlightingIcon
-    className={cx(className, CS.block)}
-    disabled={
-      options.length === 0 ||
-      (options.length === 1 && options[0].value === value)
-    }
-    value={value}
-    onChange={e => onChange(e.target.value)}
-    placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
-    isInitiallyOpen={isInitiallyOpen}
-    buttonProps={{ id }}
-    {...props}
-  >
-    {options.map(option => (
-      <Option key={option.value} name={option.name} value={option.value}>
-        {option.name}
-      </Option>
-    ))}
-  </SelectWithHighlightingIcon>
-);
+  hiddenIcons,
+  searchProp,
+  footer,
+}) => {
+  const disabled =
+    options.length === 0 ||
+    (options.length === 1 && options[0].value === value);
+
+  const data = options.map(({ name, value }) => ({
+    label: name,
+    value,
+  }));
+
+  const dropdownComponent =
+    footer &&
+    (({ children }) => (
+      <Stack p={0} w="100%" spacing={0}>
+        {children}
+        {footer}
+      </Stack>
+    ));
+
+  return (
+    <Select
+      className={cx(className, CS.block)}
+      data={data}
+      dropdownComponent={dropdownComponent}
+      disabled={disabled}
+      value={value}
+      onChange={e => onChange(e)}
+      placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
+      initiallyOpened={isInitiallyOpen}
+      wrapperProps={{ id }}
+      searchable={!!searchProp}
+      styles={{
+        input: {
+          "&[data-disabled]": hiddenIcons
+            ? {
+                backgroundColor: "transparent !important",
+                border: "none",
+              }
+            : {},
+          fontWeight: "bold",
+        },
+      }}
+      rightSection={hiddenIcons && (() => null)}
+    />
+  );
+};
 
 export default ChartSettingSelect;
