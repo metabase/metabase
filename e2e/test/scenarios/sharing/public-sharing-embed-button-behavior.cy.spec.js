@@ -17,16 +17,16 @@ import { H } from "e2e/support";
       });
 
       describe("when user is admin", () => {
-        it(`should disable the embed button for ${resource} and provide a tooltip`, () => {
+        it(`should always show the embed button for ${resource}`, () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
 
           H.openSharingMenu();
-          H.sharingMenu().within(() => {
-            cy.findByText("Embedding is off").should("be.visible");
-            cy.findByText("Enable it in settings").should("be.visible");
-          });
+          H.sharingMenu()
+            .findByRole("menuitem", { name: "Embed" })
+            .should("be.visible")
+            .and("be.enabled");
         });
       });
 
@@ -174,7 +174,7 @@ describe("embed modal display", () => {
   });
 
   H.describeEE("when the user has a paid instance", () => {
-    it("should display a link to the Interactive embedding settings", () => {
+    it("should display a disabled state and a link to the Interactive embedding settings", () => {
       H.setTokenFeatures("all");
       H.visitDashboard("@dashboardId");
 
@@ -184,12 +184,17 @@ describe("embed modal display", () => {
         cy.findByText("Static embedding").should("be.visible");
         cy.findByText("Interactive embedding").should("be.visible");
 
-        cy.findByText("Interactive embedding").click();
-
-        cy.url().should(
-          "equal",
-          Cypress.config().baseUrl +
-            "/admin/settings/embedding-in-other-applications/full-app",
+        cy.findByRole("article", { name: "Interactive embedding" }).within(
+          () => {
+            cy.findByText("Disabled.").should("be.visible");
+            cy.findByText("Enable in admin settings")
+              .should("be.visible")
+              .and(
+                "have.attr",
+                "href",
+                "/admin/settings/embedding-in-other-applications/full-app",
+              );
+          },
         );
       });
     });
@@ -205,10 +210,18 @@ describe("embed modal display", () => {
         cy.findByText("Static embedding").should("be.visible");
         cy.findByText("Interactive embedding").should("be.visible");
 
-        cy.findByRole("link", { name: /Interactive embedding/ }).should(
+        cy.findByRole("link", { name: "Interactive embedding" }).should(
           "have.attr",
           "href",
           "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+        );
+
+        cy.findByRole("article", { name: "Interactive embedding" }).within(
+          () => {
+            cy.findByText("Learn more").should("be.visible");
+            cy.findByText("Disabled.").should("not.exist");
+            cy.findByText("Enable in admin settings").should("not.exist");
+          },
         );
       });
     });
