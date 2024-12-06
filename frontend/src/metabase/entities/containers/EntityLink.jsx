@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import Link from "metabase/core/components/Link";
 
-import EntityObjectLoader from "./EntityObjectLoader";
+import { EntityObjectLoader } from "./rtk-query";
 
 const EntityLink = ({
   entityType,
@@ -13,14 +13,7 @@ const EntityLink = ({
   ...linkProps
 }) => (
   <EntityObjectLoader
-    entityType={entityType}
-    entityId={entityId}
-    properties={[name]}
-    loadingAndErrorWrapper={false}
-    dispatchApiErrorEvent={dispatchApiErrorEvent}
-    wrapped
-  >
-    {({ object }) =>
+    ComposedComponent={({ object }) =>
       object ? (
         <LinkComponent {...linkProps} to={object.getUrl()}>
           <span>{object.getName()}</span>
@@ -29,7 +22,13 @@ const EntityLink = ({
         fallback
       )
     }
-  </EntityObjectLoader>
+    entityType={entityType}
+    entityId={entityId}
+    properties={[name]}
+    loadingAndErrorWrapper={false}
+    dispatchApiErrorEvent={dispatchApiErrorEvent}
+    wrapped
+  />
 );
 
 export default EntityLink;
