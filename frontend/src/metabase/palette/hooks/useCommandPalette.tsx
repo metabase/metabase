@@ -261,15 +261,12 @@ export const useCommandPalette = ({
   ]);
 
   const adminActions = useMemo<PaletteAction[]>(() => {
-    if (!isAdmin) {
-      return [];
-    }
-
     // Subpaths - i.e. paths to items within the main Admin tabs - are needed
     // in the command palette but are not part of the main list of admin paths
-    const adminSubpaths = getPerformanceAdminPaths(
-      PLUGIN_CACHING.getTabMetadata(),
-    );
+    const adminSubpaths = isAdmin
+      ? getPerformanceAdminPaths(PLUGIN_CACHING.getTabMetadata())
+      : [];
+
     const paths = [...adminPaths, ...adminSubpaths];
     return paths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
