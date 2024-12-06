@@ -451,7 +451,7 @@
     metabase.troubleshooting       :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
-    metabase.util                  :any
+    metabase.util                  :any ; TODO -- this should probably be #{}
     metabase.xrays                 :any}
 
    ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
