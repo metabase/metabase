@@ -20,6 +20,7 @@ import {
 } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
+  IS_WATERFALL_TOTAL_DATA_KEY,
   ORIGINAL_INDEX_DATA_KEY,
   OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,
@@ -367,9 +368,8 @@ export const getTooltipModel = (
     return getOtherSeriesTooltipModel(chartModel, settings, dataIndex, datum);
   }
 
-  const hoveredSeries = chartModel.seriesModels.find(
-    s => s.dataKey === seriesDataKey,
-  );
+  const seriesIndex = findSeriesModelIndexById(chartModel, seriesDataKey);
+  const hoveredSeries = chartModel.seriesModels[seriesIndex];
 
   if (!hoveredSeries) {
     return null;
@@ -560,14 +560,18 @@ const getSeriesOnlyTooltipRowColor = (
   display: CardDisplayType,
 ) => {
   const value = datum[seriesModel.dataKey];
+  let color;
   if (display === "waterfall" && typeof value === "number") {
-    const color =
-      value >= 0
-        ? settings["waterfall.increase_color"]
-        : settings["waterfall.decrease_color"];
-    return color ?? seriesModel.color;
+    if (datum[IS_WATERFALL_TOTAL_DATA_KEY]) {
+      color = settings["waterfall.total_color"];
+    } else {
+      color =
+        value >= 0
+          ? settings["waterfall.increase_color"]
+          : settings["waterfall.decrease_color"];
+    }
   }
-  return seriesModel.color;
+  return color ?? seriesModel.color;
 };
 
 export const getStackedTooltipModel = (
