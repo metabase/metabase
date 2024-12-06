@@ -48,8 +48,8 @@ export const actionApi = Api.injectEndpoints({
     }),
     updateAction: builder.mutation<WritebackAction, UpdateActionRequest>({
       query: body => ({
-        method: "POST",
-        url: "/api/action",
+        method: "PUT",
+        url: `/api/action/${body.id}`,
         body: _.omit(body, "type"), // Changing action type is not supported
       }),
       invalidatesTags: (action, error) =>

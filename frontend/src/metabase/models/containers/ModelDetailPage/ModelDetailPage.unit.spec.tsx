@@ -610,7 +610,6 @@ describe("ModelDetailPage", () => {
       });
 
       it("allows to archive a query action", async () => {
-        const updateActionSpy = jest.spyOn(ActionsApi, "update");
         const model = getModel();
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
@@ -627,7 +626,14 @@ describe("ModelDetailPage", () => {
         await waitFor(() =>
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
         );
-        expect(updateActionSpy).toHaveBeenCalledWith({
+
+        expect(
+          fetchMock.calls(`path:/api/action/${action.id}`, { method: "PUT" }),
+        ).toHaveLength(1);
+        const call = fetchMock.lastCall(`path:/api/action/${action.id}`, {
+          method: "PUT",
+        });
+        expect(await call?.request?.json()).toEqual({
           id: action.id,
           archived: true,
         });

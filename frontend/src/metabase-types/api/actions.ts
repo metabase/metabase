@@ -7,7 +7,9 @@ import type { UserId, UserInfo } from "./user";
 
 export interface ListActionsRequest {} // TODO
 export interface CreateActionRequest {} // TODO
-export interface UpdateActionRequest {} // TODO
+export interface UpdateActionRequest {
+  id: WritebackActionId;
+} // TODO
 export interface DeleteActionRequest {
   id: WritebackActionId;
 }
