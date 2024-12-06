@@ -6,6 +6,7 @@
 export * from "./use-action-list-query";
 export * from "./use-action-query";
 export * from "./use-bookmark-list-query";
+export * from "./use-collection-query";
 export * from "./use-dashboard-query";
 export * from "./use-database-list-query";
 export * from "./use-database-query";
