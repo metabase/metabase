@@ -258,6 +258,7 @@
              :minute-of-hour   :minute-of-hour
              :hour-of-day      :hour-of-day
              :day-of-week      (.dayOfWeek (week-fields (start-of-week)))
+             :day-of-week-iso  (.dayOfWeek (week-fields :monday))
              :day-of-month     :day-of-month
              :day-of-year      :day-of-year
              :week-of-year     (.weekOfYear (week-fields (start-of-week)))

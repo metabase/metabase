@@ -792,6 +792,11 @@
     :else
     x))
 
+(defn field-options
+  "Returns options in a `:field`, `:expression`, or `:aggregation` clause."
+  [[_ _ opts]]
+  opts)
+
 (mu/defn update-field-options :- mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args])}
@@ -898,3 +903,43 @@
   [field-or-ref-form]
   (or (unwrap-field-clause field-or-ref-form)
       (lib.util.match/match-one field-or-ref-form :expression)))
+
+(mu/defn ^:private migrate-exclude-date-filter :- mbql.s/Filter
+  "Replaces legacy exclude date filter clauses that rely on temporal bucketing."
+  [filter-clause :- mbql.s/Filter]
+  (letfn [(temporal-unit [field] (-> field field-options :temporal-unit))
+          (temporal-unit-is? [field units] (contains? units (temporal-unit field)))
+          (remove-temporal-unit [field] (update-field-options field dissoc :temporal-unit :original-temporal-unit))]
+    (lib.util.match/replace filter-clause
+      [:!=
+       (field :guard #(and (mbql.preds/Field? %) (temporal-unit-is? % #{:hour-of-day})))
+       & (args :guard #(every? number? %))]
+      (into [:!= [:get-hour (remove-temporal-unit field)]] args)
+
+      [:!=
+       (field :guard #(and (mbql.preds/Field? %) (temporal-unit-is? % #{:day-of-week :month-of-year :quarter-of-year})))
+       & (args :guard #(every? string? %))]
+      (let [unit         (temporal-unit field)
+            field        (remove-temporal-unit field)
+            extract-expr (case unit
+                           :day-of-week     [:get-day-of-week field :iso]
+                           :month-of-year   [:get-month field]
+                           :quarter-of-year [:get-quarter field])
+            extract-unit (case unit
+                           :day-of-week     :day-of-week-iso
+                           :month-of-year   :month-of-year
+                           :quarter-of-year :quarter-of-year)]
+        (into [:!= extract-expr]
+              (mapv #(-> % u.time/coerce-to-timestamp (u.time/extract extract-unit)) args))))))
+
+(defn migrate-legacy-filters
+  "Replaces legacy filters in top-level query maps like `Card.dataset_query`."
+  [query]
+  (try
+    (lib.util.match/replace query
+      (filter-clause :guard mbql.preds/Filter?)
+      (-> filter-clause
+          migrate-exclude-date-filter))
+    (catch #?(:clj Throwable :cljs :default) e
+      (log/errorf e "Unable to migrate query:\n%s" (u/pprint-to-str 'red query))
+      query)))
