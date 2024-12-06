@@ -20,10 +20,14 @@ export const LocaleProvider = ({
   useEffect(() => {
     if (locale) {
       setLocaleHeader(locale);
-      loadLocalization(locale).then(translatedObject => {
-        setIsLocaleLoaded(true);
-        setUserLocale(translatedObject);
-      });
+      loadLocalization(locale)
+        .then(translatedObject => {
+          setIsLocaleLoaded(true);
+          setUserLocale(translatedObject);
+        })
+        .catch(() => {
+          setIsLocaleLoaded(true);
+        });
     }
   }, [locale]);
 
