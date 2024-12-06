@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
-
 import { ViewSubHeading } from "../ViewSection";
 
 export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
@@ -55,19 +53,6 @@ export const SavedQuestionLeftSideRoot = styled.div<{
 
     ${ViewHeaderLeftSubHeading} {
       opacity: 1;
-    }
-  }
-`;
-
-export const ViewHeaderIconButtonContainer = styled.div`
-  ${Button.Root} {
-    padding: 0.25rem 0.5rem;
-    height: 2rem;
-    width: 2rem;
-
-    &:hover {
-      color: var(--mb-color-brand);
-      background-color: var(--mb-color-bg-medium);
     }
   }
 `;

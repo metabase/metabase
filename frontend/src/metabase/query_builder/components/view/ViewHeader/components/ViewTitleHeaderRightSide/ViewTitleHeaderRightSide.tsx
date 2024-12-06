@@ -7,12 +7,11 @@ import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { ViewHeaderIconButtonContainer } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
-import { Button, Flex, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -192,11 +191,15 @@ export function ViewTitleHeaderRightSide({
       }) && <ToggleNativeQueryPreview question={question} />}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
-        <ViewHeaderIconButtonContainer>
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <RunButtonWithTooltip
-            className={cx(ViewTitleHeaderS.ViewRunButtonWithTooltip, {
-              [ViewTitleHeaderS.isDirty]: isResultDirty,
-            })}
+            className={cx(
+              ViewTitleHeaderS.ViewHeaderIconButton,
+              ViewTitleHeaderS.ViewRunButtonWithTooltip,
+              {
+                [ViewTitleHeaderS.isDirty]: isResultDirty,
+              },
+            )}
             iconSize={16}
             onlyIcon
             medium
@@ -208,7 +211,7 @@ export function ViewTitleHeaderRightSide({
             onCancel={cancelQuery}
             getTooltip={getRunButtonLabel}
           />
-        </ViewHeaderIconButtonContainer>
+        </Box>
       )}
       {!isShowingNotebook && <QuestionSharingMenu question={question} />}
       {isSaved && (

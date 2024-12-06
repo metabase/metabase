@@ -141,3 +141,17 @@
     }
   }
 }
+
+.ViewHeaderIconButtonContainer {
+  /* maybe can be merged with ViewRunButtonWithTooltip */
+  .ViewHeaderIconButton {
+    padding: 0.25rem 0.5rem;
+    height: 2rem;
+    width: 2rem;
+
+    &:hover {
+      color: var(--mb-color-brand);
+      background-color: var(--mb-color-bg-medium);
+    }
+  }
+}

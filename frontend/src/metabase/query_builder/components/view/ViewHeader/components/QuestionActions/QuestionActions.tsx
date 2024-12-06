@@ -30,7 +30,7 @@ import { UploadMode } from "metabase-types/store/upload";
 
 import DatasetMetadataStrengthIndicator from "../../../sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 import { shouldShowQuestionSettingsSidebar } from "../../../sidebars/QuestionSettingsSidebar";
-import { ViewHeaderIconButtonContainer } from "../../ViewTitleHeader.styled";
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
 import QuestionActionsS from "./QuestionActions.module.css";
 
@@ -254,17 +254,19 @@ export const QuestionActions = ({
     <>
       <Box className={QuestionActionsS.QuestionActionsDivider} />
       {!question.isArchived() && (
-        <ViewHeaderIconButtonContainer>
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle
+            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onCreateBookmark={onToggleBookmark}
             onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
           />
-        </ViewHeaderIconButtonContainer>
+        </Box>
       )}
       <Tooltip tooltip={t`More info`}>
-        <ViewHeaderIconButtonContainer>
+        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <Button
+            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onlyIcon
             icon="info"
             iconSize={HEADER_ICON_SIZE}
@@ -272,7 +274,7 @@ export const QuestionActions = ({
             color={infoButtonColor}
             data-testid="qb-header-info-button"
           />
-        </ViewHeaderIconButtonContainer>
+        </Box>
       </Tooltip>
       {canAppend && (
         <>
@@ -282,10 +284,11 @@ export const QuestionActions = ({
             onChange={handleFileUpload}
           />
           <Tooltip tooltip={t`Upload data to this model`}>
-            <ViewHeaderIconButtonContainer>
+            <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
               <Menu position="bottom-end">
                 <Menu.Target>
                   <Button
+                    className={ViewTitleHeaderS.ViewHeaderIconButton}
                     onlyIcon
                     icon="upload"
                     iconSize={HEADER_ICON_SIZE}
@@ -309,7 +312,7 @@ export const QuestionActions = ({
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
-            </ViewHeaderIconButtonContainer>
+            </Box>
           </Tooltip>
         </>
       )}
