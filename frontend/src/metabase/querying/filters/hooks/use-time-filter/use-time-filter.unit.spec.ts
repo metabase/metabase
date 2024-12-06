@@ -15,7 +15,7 @@ import {
 import { useTimeFilter } from "./use-time-filter";
 
 interface CreateFilterCase {
-  operator: Lib.TimeFilterOperatorName;
+  operator: Lib.TimeFilterOperator;
   values: Date[];
   expectedDisplayName: string;
 }
@@ -27,13 +27,13 @@ interface UpdateFilterCase {
 }
 
 interface CoerceFilterCase {
-  operator: Lib.TimeFilterOperatorName;
+  operator: Lib.TimeFilterOperator;
   values: Date[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: Lib.TimeFilterOperatorName;
+  operator: Lib.TimeFilterOperator;
   values: (Date | null)[];
 }
 

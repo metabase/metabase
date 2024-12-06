@@ -372,7 +372,8 @@
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
       (m/update-existing :field_ref normalize-field-ref)
-      (m/update-existing :fingerprint walk/keywordize-keys)))
+      (m/update-existing :fingerprint walk/keywordize-keys)
+      (m/update-existing-in [:binning_info :binning_strategy] keyword)))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."

@@ -156,6 +156,7 @@ export const createMockSettings = (
   "application-font-files": [],
   // eslint-disable-next-line no-literal-metabase-strings -- This is a mock
   "application-name": "Metabase",
+  "application-favicon-url": "",
   "available-fonts": [],
   "available-locales": null,
   "bug-reporting-enabled": false,
@@ -212,6 +213,7 @@ export const createMockSettings = (
   "ldap-group-membership-filter": "(member={dn})",
   "loading-message": "doing-science",
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "native-query-autocomplete-match-style": "substring",
   "openai-api-key": null,
   "openai-organization": null,
   "openai-model": null,
@@ -274,5 +276,6 @@ export const createMockSettings = (
   "query-analysis-enabled": false,
   "check-for-updates": true,
   "update-channel": "latest",
+  "trial-banner-dismissal-timestamp": null,
   ...opts,
 });

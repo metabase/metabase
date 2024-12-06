@@ -466,14 +466,19 @@
   [query _stage-number stage-number options]
   (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
-(def ^:dynamic *propagate-inherited-temoral-unit*
-  "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column.
+(def ^:dynamic *propagate-binning-and-bucketing*
+  "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
+  the `:was-binned` option.
 
   Temporal unit should be conveyed into `:inherited-temporal-unit` only when _column is created from ref_ that contains
   that has temporal unit set and column's metadata is generated _under `returned-columns` call_.
 
   Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
   stages.
+
+  `:was-binned` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were binned on
+  previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields when
+  breakout column popover is opened in query builder.
 
   The value is used in [[metabase.lib.field/resolve-field-metadata]]."
   false)
@@ -498,7 +503,7 @@
     x
     options        :- [:maybe ReturnedColumnsOptions]]
    (let [options (merge (default-returned-columns-options query) options)]
-     (binding [*propagate-inherited-temoral-unit* true]
+     (binding [*propagate-binning-and-bucketing* true]
        (returned-columns-method query stage-number x options)))))
 
 (def VisibleColumnsOptions

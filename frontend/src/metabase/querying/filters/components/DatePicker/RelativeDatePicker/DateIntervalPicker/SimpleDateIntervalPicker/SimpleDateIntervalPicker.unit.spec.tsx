@@ -153,7 +153,7 @@ describe("SimpleDateIntervalPicker", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         options: {
-          "include-current": true,
+          includeCurrent: true,
         },
         type: "relative",
         value: 1,
@@ -165,7 +165,7 @@ describe("SimpleDateIntervalPicker", () => {
       const { onChange } = setup({
         value: {
           options: {
-            "include-current": true,
+            includeCurrent: true,
           },
           type: "relative",
           value: 1,
@@ -177,7 +177,7 @@ describe("SimpleDateIntervalPicker", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         options: {
-          "include-current": false,
+          includeCurrent: false,
         },
         type: "relative",
         value: 1,
