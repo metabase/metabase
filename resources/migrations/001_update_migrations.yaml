@@ -9185,10 +9185,7 @@ databaseChangeLog:
       validCheckSum: ANY
       author: crisptrutski
       comment: Make `table` nullable on query fields
-      rollback:
-        - delete:
-            tableName: query_field
-            remarks: remove stale analysis, so the fields can be non-nullable
+      rollback: # we don't need one, the column will be dropped
       changes:
         - dropNotNullConstraint:
             tableName: query_field
