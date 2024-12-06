@@ -98,9 +98,9 @@ export const MoveModal = ({
           );
         }
 
-        onMove({ id: destination.id, model: destination.model });
+        return onMove({ id: destination.id, model: destination.model });
       } else {
-        onMove({
+        return onMove({
           id: destination.id,
           model: destination.model,
         } as MoveDestination);
