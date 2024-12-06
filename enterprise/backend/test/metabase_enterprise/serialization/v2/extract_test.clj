@@ -1,6 +1,5 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -31,6 +30,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (comment
@@ -1238,7 +1238,7 @@
                                                                  :visualization_settings
                                                                  ;; Top-level click behavior for the card.
                                                                  (let [dimension  [:dimension [:field "something" {:base-type "type/Text"}]]
-                                                                       mapping-id (json/generate-string dimension)]
+                                                                       mapping-id (json/encode dimension)]
                                                                    {:click_behavior {:type     "link"
                                                                                      :linkType "question"
                                                                                      :targetId c3-2-id

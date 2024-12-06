@@ -1,24 +1,12 @@
 import _ from "underscore";
 
+import { H } from "e2e/support";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   COLLECTION_GROUP_ID,
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createAlert,
-  createApiKey,
-  createPulse,
-  describeEE,
-  getCurrentUser,
-  getFullName,
-  modal,
-  popover,
-  restore,
-  setTokenFeatures,
-  setupSMTP,
-} from "e2e/support/helpers";
 
 const { sandboxed, normal, admin, nodata, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -34,9 +22,9 @@ const TEST_USER = {
   password: "12341234",
 };
 
-const adminUserName = getFullName(admin);
-const noCollectionUserName = getFullName(nocollection);
-const normalUserName = getFullName(normal);
+const adminUserName = H.getFullName(admin);
+const noCollectionUserName = H.getFullName(nocollection);
+const normalUserName = H.getFullName(normal);
 
 const totalUsers = Object.keys(USERS).length;
 
@@ -44,7 +32,7 @@ describe("scenarios > admin > people", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/permissions/group").as("getGroups");
     cy.intercept("GET", "/api/api-key").as("listApiKeys");
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -122,7 +110,7 @@ describe("scenarios > admin > people", () => {
 
       showUserOptions(noCollectionUserName);
 
-      popover().findByText("Deactivate user").click();
+      H.popover().findByText("Deactivate user").click();
 
       clickButton("Deactivate");
 
@@ -211,7 +199,7 @@ describe("scenarios > admin > people", () => {
     it("should disallow admin to deactivate themselves", () => {
       cy.visit("/admin/people");
       showUserOptions(adminUserName);
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Edit user");
         cy.findByText("Reset password");
         cy.findByText("Deactivate user").should("not.exist");
@@ -223,7 +211,7 @@ describe("scenarios > admin > people", () => {
       cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         is_superuser: true,
       }).then(({ body: user }) => {
-        const FULL_NAME = getFullName(user);
+        const FULL_NAME = H.getFullName(user);
 
         cy.visit("/admin/people");
         showUserOptions(FULL_NAME);
@@ -256,7 +244,7 @@ describe("scenarios > admin > people", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit user").click();
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.log("Should display error messages (metabase#46449)");
         cy.findByLabelText("First name").click().clear().type(" ");
         clickButton("Update");
@@ -288,7 +276,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should not offer to reset passwords when password login is disabled", () => {
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
       cy.request("PUT", "/api/google/settings", {
         "google-auth-auto-create-accounts-domain": null,
         "google-auth-client-id": "example1.apps.googleusercontent.com",
@@ -300,14 +288,14 @@ describe("scenarios > admin > people", () => {
       });
       cy.visit("/admin/people");
       showUserOptions(normalUserName);
-      popover().findByText("Reset password").should("not.exist");
+      H.popover().findByText("Reset password").should("not.exist");
     });
 
     it(
       "should reset user password with SMTP set up",
       { tags: "@external" },
       () => {
-        setupSMTP();
+        H.setupSMTP();
 
         cy.visit("/admin/people");
         showUserOptions(normalUserName);
@@ -360,8 +348,8 @@ describe("scenarios > admin > people", () => {
         cy.findByText("My New Group").closest("tr").icon("ellipsis").click();
       });
 
-      popover().findByText("Remove Group").click();
-      modal().button("Remove group").click();
+      H.popover().findByText("Remove Group").click();
+      H.modal().button("Remove group").click();
 
       cy.wait(["@deleteGroup", "@getGroups"]);
       cy.findByTestId("admin-panel")
@@ -370,7 +358,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should display api keys included in a group and display a warning when deleting the group", () => {
-      createApiKey("MyApiKey", COLLECTION_GROUP_ID);
+      H.createApiKey("MyApiKey", COLLECTION_GROUP_ID);
       cy.visit("/admin/people/groups");
       cy.wait(["@getGroups", "@listApiKeys"]);
 
@@ -385,9 +373,9 @@ describe("scenarios > admin > people", () => {
         .icon("ellipsis")
         .click();
 
-      popover().findByText("Remove Group").click();
+      H.popover().findByText("Remove Group").click();
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText(
           "Are you sure you want remove this group and its API key?",
         );
@@ -407,7 +395,7 @@ describe("scenarios > admin > people", () => {
     describe("email configured", { tags: "@external" }, () => {
       beforeEach(() => {
         // Setup email server, since we show different modal message when email isn't configured
-        setupSMTP();
+        H.setupSMTP();
         setupGoogleAuth();
       });
 
@@ -534,20 +522,20 @@ describe("scenarios > admin > people", () => {
   });
 });
 
-describeEE("scenarios > admin > people", () => {
+H.describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
-    getCurrentUser().then(({ body: { id: user_id } }) => {
+    H.getCurrentUser().then(({ body: { id: user_id } }) => {
       cy.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
-        createAlert(getAlertDetails({ user_id, card_id }));
-        createPulse(getPulseDetails({ card_id, dashboard_id }));
+        H.createAlert(getAlertDetails({ user_id, card_id }));
+        H.createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });
 
@@ -560,11 +548,11 @@ describeEE("scenarios > admin > people", () => {
     cy.visit("/admin/people");
     showUserOptions(adminUserName);
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Unsubscribe from all subscriptions / alerts").click();
     });
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findAllByText(adminUserName, { exact: false });
       cy.findByText("Unsubscribe").click();
       cy.findByText("Unsubscribe").should("not.exist");
@@ -579,7 +567,7 @@ describeEE("scenarios > admin > people", () => {
   });
 
   it("invite member when SSO is configured metabase#23630", () => {
-    setupSMTP();
+    H.setupSMTP();
     setupGoogleAuth();
     cy.request("PUT", "/api/setting", { "enable-password-login": false });
 
@@ -618,9 +606,9 @@ describeEE("scenarios > admin > people", () => {
   });
 });
 
-describeEE("scenarios > admin > people > group managers", () => {
+H.describeEE("scenarios > admin > people > group managers", () => {
   function confirmLosingAbilityToManageGroup() {
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText(
         "You will not be able to manage users of this group anymore.",
       );
@@ -635,9 +623,9 @@ describeEE("scenarios > admin > people > group managers", () => {
   }
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
 
     cy.visit("/admin/people");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -743,7 +731,7 @@ describeEE("scenarios > admin > people > group managers", () => {
         });
 
       // Add the user to a group
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("collection").click();
       });
       cy.get("@userRow").within(() => {
@@ -751,7 +739,7 @@ describeEE("scenarios > admin > people > group managers", () => {
       });
 
       // Remove the user from the group
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("collection").click();
       });
       cy.get("@userRow").within(() => {
@@ -759,7 +747,7 @@ describeEE("scenarios > admin > people > group managers", () => {
       });
 
       // Promote and then demote the user
-      popover().within(() => {
+      H.popover().within(() => {
         cy.icon("arrow_up").click();
         cy.icon("arrow_down").click();
       });
@@ -773,13 +761,13 @@ describeEE("scenarios > admin > people > group managers", () => {
         });
 
       // Demote myself from being manager
-      popover().within(() => {
+      H.popover().within(() => {
         cy.icon("arrow_down").eq(0).click();
       });
       confirmLosingAbilityToManageGroup();
 
       // Remove myself from another group
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("data").click();
       });
       confirmLosingAbilityToManageGroup();
@@ -800,7 +788,7 @@ describeEE("scenarios > admin > people > group managers", () => {
   });
 });
 
-describeEE("issue 23689", () => {
+H.describeEE("issue 23689", () => {
   function findUserByFullName(user) {
     const { first_name, last_name } = user;
     return cy.findByText(`${first_name} ${last_name}`);
@@ -817,9 +805,9 @@ describeEE("issue 23689", () => {
 
     cy.intercept("GET", "/api/permissions/membership").as("membership");
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
 
     visitGroupPermissionsPage(COLLECTION_GROUP);
 

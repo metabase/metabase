@@ -1,6 +1,5 @@
 (ns metabase-enterprise.search.scoring-test
   (:require
-   [cheshire.core :as json]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -9,7 +8,8 @@
    [metabase-enterprise.search.scoring :as ee-scoring]
    [metabase.search.appdb.scoring-test :as appdb.scoring-test]
    [metabase.search.in-place.scoring :as scoring]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel verified-score-test
   (let [score #'ee-scoring/verified-score
@@ -114,7 +114,7 @@
                     all-permutations-all-orders
                     (mapv #(str/join " " %))
                     (remove #{""}))
-        the-query (json/generate-string {:type :query :query {:source-table 1}})
+        the-query (json/encode {:type :query :query {:source-table 1}})
         ->query (fn [n] {:name n :dataset_query the-query})
         results (map ->query corpus)]
     (doseq [search-string corpus]

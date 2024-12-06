@@ -1,5 +1,6 @@
 (ns metabase.config
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]

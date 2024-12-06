@@ -54,7 +54,7 @@ To get Jetty logs, add the following lines to the Log4J2 XML file in the <Logger
 Before running the Metabase Docker image, you'll need to pass the custom `log4j.configurationFile` argument. Add a `JAVA_OPTS=-Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml` to the environment variables of the container, like this:
 
 ```
-docker run -p 3000:3000 -v $PWD/my_log4j2.xml:/tmp/my_log4j2.xml -e JAVA_OPTS=-Dlog4j.configurationFile=file:///tmp/my_log4j2.xml metabase/metabase`
+docker run -p 3000:3000 -v $PWD/my_log4j2.xml:/tmp/my_log4j2.xml -e JAVA_OPTS=-Dlog4j.configurationFile=file:/tmp/my_log4j2.xml metabase/metabase`
 ```
 
 ## Disable emoji or colorized logging

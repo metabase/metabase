@@ -6,7 +6,8 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import [clojure.lang Keyword]))
 
 (comment
   channel/keep-me)
@@ -61,7 +62,7 @@
                                (assoc default-test-channel :details {:return-type  "return-value"
                                                                      :return-value false}))))))
 
-(def ns-keyword->str #(str (.-sym %)))
+(def ns-keyword->str #(str (.-sym ^Keyword %)))
 
 (deftest list-channels-test
   (mt/with-temp [:model/Channel chn-1 default-test-channel

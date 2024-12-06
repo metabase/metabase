@@ -271,7 +271,67 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
   });
+
+  describe("styles should not leak outside of the provider", () => {
+    const elements = [
+      { tag: "body", jsx: undefined }, // no need to render anything specific, the body tag is rendered by cypress
+      { tag: "h1", jsx: <h1>h1 tag text</h1> },
+      { tag: "h2", jsx: <h2>h2 tag text</h2> },
+      { tag: "h3", jsx: <h3>h3 tag text</h3> },
+      { tag: "p", jsx: <p>p tag text</p> },
+      { tag: "button", jsx: <button>button tag text</button> },
+      { tag: "input", jsx: <input placeholder="input tag" type="text" /> },
+      { tag: "div", jsx: <div>div tag text</div> },
+      { tag: "span", jsx: <span>span tag text</span> },
+      { tag: "label", jsx: <label>label tag text</label> },
+      { tag: "select", jsx: <select>select tag text</select> },
+      { tag: "textarea", jsx: <textarea>textarea tag text</textarea> },
+    ];
+
+    it(`no css rule should match ${elements.map(e => e.tag).join(", ")} outside of the provider`, () => {
+      cy.mount(
+        <div>
+          {elements.map(({ jsx }) => jsx)}
+          <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+            <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        </div>,
+      );
+
+      // wait for the question to load, to make sure our bundle and styles have loaded
+      getSdkRoot().findByText("Product ID").should("exist");
+
+      for (const { tag } of elements) {
+        expectElementToHaveNoAppliedCssRules(tag);
+      }
+    });
+  });
 });
+
+const expectElementToHaveNoAppliedCssRules = (selector: string) => {
+  cy.get(selector).then($el => {
+    const rules = getCssRulesThatApplyToElement($el);
+    if (rules.length > 0) {
+      console.warn("rules matching", selector, rules);
+    }
+    expect(rules, `No css rules should match ${selector}`).to.be.empty;
+  });
+};
+
+const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
+  const element = $element[0];
+  const rulesThatMatch: CSSStyleRule[] = Array.from(
+    document.styleSheets,
+  ).flatMap(sheet => {
+    const cssRules = Array.from(sheet.cssRules).filter(
+      rule => rule instanceof CSSStyleRule,
+    ) as CSSStyleRule[];
+
+    return cssRules.filter(rule => element.matches(rule.selectorText));
+  });
+
+  return rulesThatMatch;
+};
 
 function wrapBrowserDefaultFont() {
   cy.mount(<p>paragraph with default browser font</p>);

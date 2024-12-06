@@ -19,7 +19,6 @@
    [ring.core.protocols :as ring.protocols]
    [ring.middleware.cookies :refer [wrap-cookies]]
    [ring.middleware.gzip :refer [wrap-gzip]]
-   [ring.middleware.json :as ring.json]
    [ring.middleware.keyword-params :refer [wrap-keyword-params]]
    [ring.middleware.params :refer [wrap-params]]))
 
@@ -49,7 +48,7 @@
    #'mw.log/log-api-call
    #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
    #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
-   #(ring.json/wrap-json-body % {:keywords? true}) ; extracts json POST body and makes it available on request
+   #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
    #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
    #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
    #'wrap-keyword-params                        ; converts string keys in :params to keyword keys

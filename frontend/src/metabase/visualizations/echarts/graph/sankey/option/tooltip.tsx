@@ -22,21 +22,19 @@ const ChartItemTooltip = ({
   params,
 }: ChartItemTooltipProps) => {
   const data = params.data;
-  let header = "";
-  if (data.name) {
-    header = formatters.node(data.name);
-  } else if (data.source == null) {
-    header = formatters.node(data.target);
-  } else if (data.target == null) {
-    header = formatters.node(data.source);
-  } else {
-    header = `${formatters.node(data.source)} → ${formatters.node(data.target)}`;
-  }
 
-  const value =
-    params.dataType === "node"
-      ? (data.inputColumnValues[metricColumnKey] ?? 0)
-      : params.value;
+  let header = "";
+  let value = null;
+  if (params.dataType === "edge") {
+    header = `${formatters.source(data.source)} → ${formatters.target(data.target)}`;
+    value = params.value;
+  } else if (params.dataType === "node") {
+    header = formatters.node(data);
+    value = Math.max(
+      data.inputColumnValues[metricColumnKey] ?? 0,
+      data.outputColumnValues[metricColumnKey] ?? 0,
+    );
+  }
 
   return (
     <EChartsTooltip

@@ -1,34 +1,10 @@
+import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createDashboard,
-  dashboardGrid,
-  dashboardHeader,
-  describeEE,
-  describeWithSnowplow,
-  enableTracking,
-  entityPickerModal,
-  entityPickerModalTab,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  main,
-  modal,
-  navigationSidebar,
-  openNavigationSidebar,
-  popover,
-  repeatAssertion,
-  resetSnowplow,
-  restore,
-  setTokenFeatures,
-  undoToast,
-  updateSetting,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { admin } = USERS;
 
@@ -45,7 +21,7 @@ describe("scenarios > home > homepage", () => {
 
   describe("after setup", () => {
     beforeEach(() => {
-      restore("setup");
+      H.restore("setup");
     });
 
     it("should display x-rays for the sample database", () => {
@@ -107,7 +83,7 @@ describe("scenarios > home > homepage", () => {
         .findByTestId("loading-indicator")
         .should("not.exist");
 
-      repeatAssertion(() =>
+      H.repeatAssertion(() =>
         cy
           .findByTestId("home-page")
           .findByTestId("loading-indicator", { timeout: 0 })
@@ -144,14 +120,14 @@ describe("scenarios > home > homepage", () => {
 
   describe("after content creation", () => {
     beforeEach(() => {
-      restore("default");
+      H.restore("default");
       cy.signInAsAdmin();
     });
 
     it("should display recent items", () => {
       cy.signInAsAdmin();
 
-      visitDashboard(ORDERS_DASHBOARD_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
 
@@ -184,25 +160,25 @@ describe("scenarios > home > homepage", () => {
       });
 
       cy.intercept("PUT", "/api/user/*/modal/qbnewb").as("modalDismiss");
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      modal()
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.modal()
         .should("be.visible")
         .and("contain", "It's okay to play around with saved questions");
 
       cy.realPress("Escape");
       cy.wait("@modalDismiss");
-      modal().should("not.exist");
+      H.modal().should("not.exist");
     });
 
     // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
-    describeEE("EE", () => {
+    H.describeEE("EE", () => {
       it("should display popular items for a new user", () => {
         cy.signInAsAdmin();
         // Setting this to true so that displaying popular items for new users works.
         // This requires the audit-app feature to be enabled
-        setTokenFeatures("all");
+        H.setTokenFeatures("all");
 
-        visitDashboard(ORDERS_DASHBOARD_ID);
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders in a dashboard");
         cy.signOut();
@@ -223,7 +199,7 @@ describe("scenarios > home > homepage", () => {
     it("should not show pinned questions in recent items when viewed in a collection", () => {
       cy.signInAsAdmin();
 
-      visitDashboard(ORDERS_DASHBOARD_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
 
@@ -280,7 +256,7 @@ describe("scenarios > home > homepage", () => {
 describe("scenarios > home > custom homepage", () => {
   describe("setting custom homepage", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
       cy.intercept("GET", "/api/search*").as("search");
     });
@@ -298,9 +274,9 @@ describe("scenarios > home > custom homepage", () => {
         .findByRole("button")
         .click();
 
-      entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
 
-      undoToast().findByText("Changes saved").should("be.visible");
+      H.undoToast().findByText("Changes saved").should("be.visible");
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
@@ -317,7 +293,7 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText("Disabled").should("exist");
       });
 
-      undoToast().findByText("Changes saved").should("be.visible");
+      H.undoToast().findByText("Changes saved").should("be.visible");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Disabled").should("exist");
@@ -334,7 +310,7 @@ describe("scenarios > home > custom homepage", () => {
         .findByRole("button")
         .click();
 
-      entityPickerModal().findByText("Orders in a dashboard").click();
+      H.entityPickerModal().findByText("Orders in a dashboard").click();
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
@@ -381,13 +357,13 @@ describe("scenarios > home > custom homepage", () => {
       cy.visit("/");
       cy.get("main").findByText("Customize").click();
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByRole("button", { name: "Save" }).should("be.disabled");
         cy.findByText(/Select a dashboard/i).click();
       });
 
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Dashboards").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Dashboards").click();
         //Ensure that personal collections have been removed
         cy.findByText("First collection").should("exist");
         cy.findByText(/personal collection/).should("not.exist");
@@ -402,7 +378,7 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText("Orders in a dashboard").click();
       });
 
-      modal().findByRole("button", { name: "Save" }).click();
+      H.modal().findByRole("button", { name: "Save" }).click();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -421,10 +397,10 @@ describe("scenarios > home > custom homepage", () => {
 
   describe("custom homepage set", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
-      updateSetting("custom-homepage", true);
-      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
+      H.updateSetting("custom-homepage", true);
+      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
     it("should not flash the homescreen before redirecting (#37089)", () => {
@@ -470,11 +446,11 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       cy.log("let the dashboard load");
-      dashboardHeader().findByText("Orders in a dashboard");
+      H.dashboardHeader().findByText("Orders in a dashboard");
 
       cy.log("Ensure that internal state was updated");
-      navigationSidebar().findByText("Home").click();
-      dashboardHeader().findByText("Orders in a dashboard");
+      H.navigationSidebar().findByText("Home").click();
+      H.dashboardHeader().findByText("Orders in a dashboard");
 
       cy.findByTestId("undo-list")
         .contains(/Your admin has set this dashboard as your homepage/)
@@ -482,7 +458,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.log("Ensure that on refresh, the proper settings are given");
       cy.visit("/");
-      dashboardHeader().findByText("Orders in a dashboard");
+      H.dashboardHeader().findByText("Orders in a dashboard");
       cy.findByTestId("undo-list")
         .contains(/Your admin has set this dashboard as your homepage/)
         .should("not.exist");
@@ -511,23 +487,23 @@ describe("scenarios > home > custom homepage", () => {
             "getCollection",
           );
           // Archive dashboard
-          visitDashboard(ORDERS_DASHBOARD_ID);
-          dashboardHeader().findByLabelText("Move, trash, and more…").click();
-          popover().within(() => {
+          H.visitDashboard(ORDERS_DASHBOARD_ID);
+          H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
+          H.popover().within(() => {
             cy.findByText("Move to trash").click();
           });
-          modal().within(() => {
+          H.modal().within(() => {
             cy.findByText("Move to trash").click();
           });
 
           cy.wait(["@getCollection"]);
 
           // Navigate to home
-          openNavigationSidebar();
-          navigationSidebar().within(() => {
+          H.openNavigationSidebar();
+          H.navigationSidebar().within(() => {
             cy.findByText("Home").click();
           });
-          main().within(() => {
+          H.main().within(() => {
             cy.findByText("We're a little lost...").should("not.exist");
             cy.findByText("Customize").should("be.visible");
           });
@@ -546,14 +522,14 @@ describe("scenarios > home > custom homepage", () => {
       ).as("runDashCardQuery");
 
       cy.visit("/");
-      dashboardGrid()
+      H.dashboardGrid()
         .findAllByTestId("loading-indicator")
         .should("have.length", 0);
 
       cy.findByTestId("main-logo-link").click().click();
-      navigationSidebar().findByText("Home").click().click();
+      H.navigationSidebar().findByText("Home").click().click();
 
-      main()
+      H.main()
         .findByText(/Something.s gone wrong/)
         .should("not.exist");
       cy.get("@getDashboardMetadata.all").should("have.length", 1);
@@ -571,27 +547,27 @@ describe("scenarios > home > custom homepage", () => {
       );
 
       const dashboardName = "Test Dashboard";
-      createDashboard({ name: dashboardName }).then(({ body: dashboard }) =>
-        visitDashboard(dashboard.id),
+      H.createDashboard({ name: dashboardName }).then(({ body: dashboard }) =>
+        H.visitDashboard(dashboard.id),
       );
 
-      dashboardHeader().findByText(dashboardName).should("be.visible");
+      H.dashboardHeader().findByText(dashboardName).should("be.visible");
       cy.get("@getDashboard.all").should("have.length", 1);
       cy.get("@getDashboardMetadata.all").should("have.length", 1);
     });
   });
 });
 
-describeWithSnowplow("scenarios > setup", () => {
+H.describeWithSnowplow("scenarios > setup", () => {
   beforeEach(() => {
-    restore();
-    resetSnowplow();
+    H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
-    enableTracking();
+    H.enableTracking();
   });
 
   afterEach(() => {
-    expectNoBadSnowplowEvents();
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should send snowplow events through admin settings", () => {
@@ -602,11 +578,11 @@ describeWithSnowplow("scenarios > setup", () => {
       .findByRole("button")
       .click();
 
-    entityPickerModal().findByText("Orders in a dashboard").click();
+    H.entityPickerModal().findByText("Orders in a dashboard").click();
 
-    undoToast().findByText("Changes saved").should("be.visible");
+    H.undoToast().findByText("Changes saved").should("be.visible");
 
-    expectGoodSnowplowEvent({
+    H.expectGoodSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "admin",
     });
@@ -615,13 +591,13 @@ describeWithSnowplow("scenarios > setup", () => {
   it("should send snowplow events through homepage", () => {
     cy.visit("/");
     cy.get("main").findByText("Customize").click();
-    modal()
+    H.modal()
       .findByText(/Select a dashboard/i)
       .click();
 
-    entityPickerModal().findByText("Orders in a dashboard").click();
-    modal().findByText("Save").click();
-    expectGoodSnowplowEvent({
+    H.entityPickerModal().findByText("Orders in a dashboard").click();
+    H.modal().findByText("Save").click();
+    H.expectGoodSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",
     });
@@ -631,7 +607,7 @@ describeWithSnowplow("scenarios > setup", () => {
 const pinItem = name => {
   cy.findByText(name).closest("tr").icon("ellipsis").click();
 
-  popover().icon("pin").click();
+  H.popover().icon("pin").click();
 };
 
 const getXrayCandidates = () => [

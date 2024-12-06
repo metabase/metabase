@@ -1,3 +1,4 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -8,49 +9,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  addHeadingWhileEditing,
-  addLinkWhileEditing,
-  createDashboardWithTabs,
-  createNewTab,
-  dashboardCards,
-  dashboardGrid,
-  deleteTab,
-  describeWithSnowplow,
-  duplicateTab,
-  editDashboard,
-  enableTracking,
-  expectGoodSnowplowEvent,
-  expectGoodSnowplowEvents,
-  expectNoBadSnowplowEvents,
-  filterWidget,
-  getDashboardCard,
-  getDashboardCards,
-  getHeadingCardDetails,
-  getLinkCardDetails,
-  getTextCardDetails,
-  goToTab,
-  main,
-  modal,
-  moveDashCardToTab,
-  openQuestionsSidebar,
-  openStaticEmbeddingModal,
-  popover,
-  publishChanges,
-  resetSnowplow,
-  restore,
-  saveDashboard,
-  selectDashboardFilter,
-  setFilter,
-  sidebar,
-  undo,
-  updateDashboardCards,
-  updateSetting,
-  visitCollection,
-  visitDashboard,
-  visitDashboardAndCreateTab,
-  visitIframe,
-} from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -95,42 +53,42 @@ const TAB_2 = {
 
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should only display cards on the selected tab", () => {
     // Create new tab
-    visitDashboardAndCreateTab({
+    H.visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,
     });
-    dashboardCards().within(() => {
+    H.dashboardCards().within(() => {
       cy.findByText("Orders").should("not.exist");
       cy.findByText("There's nothing here, yet.").should("be.visible");
     });
 
     // Add card to second tab
     cy.icon("pencil").click();
-    openQuestionsSidebar();
-    sidebar().within(() => {
+    H.openQuestionsSidebar();
+    H.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
-    saveDashboard();
+    H.saveDashboard();
     cy.url().should("match", /\d+\-tab\-2/); // id is not stable
 
     // Go back to first tab
-    goToTab("Tab 1");
-    dashboardCards().within(() => {
+    H.goToTab("Tab 1");
+    H.dashboardCards().within(() => {
       cy.findByText("Orders, count").should("not.exist");
     });
-    dashboardCards().within(() => {
+    H.dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
     });
   });
 
   it("should only display filters mapped to cards on the selected tab", () => {
-    createDashboardWithTabs({
+    H.createDashboardWithTabs({
       tabs: [TAB_1, TAB_2],
       parameters: [
         DASHBOARD_DATE_FILTER,
@@ -158,7 +116,7 @@ describe("scenarios > dashboard > tabs", () => {
           ],
         }),
       ],
-    }).then(dashboard => visitDashboard(dashboard.id));
+    }).then(dashboard => H.visitDashboard(dashboard.id));
 
     assertFiltersVisibility({
       visible: [DASHBOARD_DATE_FILTER, DASHBOARD_TEXT_FILTER],
@@ -172,7 +130,7 @@ describe("scenarios > dashboard > tabs", () => {
       [DASHBOARD_LOCATION_FILTER, undefined],
     ]);
 
-    goToTab(TAB_2.name);
+    H.goToTab(TAB_2.name);
 
     assertFiltersVisibility({
       visible: [DASHBOARD_DATE_FILTER, DASHBOARD_NUMBER_FILTER],
@@ -188,44 +146,44 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should handle canceling adding a new tab (#38055, #38278)", () => {
-    visitDashboardAndCreateTab({
+    H.visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,
     });
 
     cy.findByTestId("edit-bar").button("Cancel").click();
-    modal().button("Discard changes").click();
+    H.modal().button("Discard changes").click();
 
     // Reproduces #38055
-    dashboardGrid().within(() => {
+    H.dashboardGrid().within(() => {
       cy.findByText(/There's nothing here/).should("not.exist");
-      getDashboardCards().should("have.length", 1);
+      H.getDashboardCards().should("have.length", 1);
     });
 
     // Reproduces #38278
-    editDashboard();
-    addHeadingWhileEditing("New heading");
-    saveDashboard();
-    dashboardGrid().within(() => {
+    H.editDashboard();
+    H.addHeadingWhileEditing("New heading");
+    H.saveDashboard();
+    H.dashboardGrid().within(() => {
       cy.findByText("New heading").should("exist");
-      getDashboardCards().should("have.length", 2);
+      H.getDashboardCards().should("have.length", 2);
     });
   });
 
   it("should allow undoing a tab deletion", () => {
-    visitDashboardAndCreateTab({
+    H.visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,
     });
 
     // Delete first tab
-    deleteTab("Tab 1");
+    H.deleteTab("Tab 1");
     cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
 
     // Undo then go back to first tab
-    undo();
-    goToTab("Tab 1");
-    dashboardCards().within(() => {
+    H.undo();
+    H.goToTab("Tab 1");
+    H.dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
     });
   });
@@ -234,39 +192,39 @@ describe("scenarios > dashboard > tabs", () => {
     "should allow moving dashcards between tabs",
     { scrollBehavior: false },
     () => {
-      visitDashboardAndCreateTab({
+      H.visitDashboardAndCreateTab({
         dashboardId: ORDERS_DASHBOARD_ID,
         save: false,
       });
 
-      goToTab("Tab 1");
+      H.goToTab("Tab 1");
 
       cy.log("add second card");
-      addLinkWhileEditing("https://www.metabase.com");
+      H.addLinkWhileEditing("https://www.metabase.com");
 
       cy.log("should stay on the same tab");
       cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
 
-      getDashboardCard(0).then(element => {
+      H.getDashboardCard(0).then(element => {
         cy.wrap({
           width: element.outerWidth(),
           height: element.outerHeight(),
         }).as("card1OriginalSize");
       });
 
-      getDashboardCard(1).then(element => {
+      H.getDashboardCard(1).then(element => {
         cy.wrap(element.offset()).as("card2OriginalPosition");
       });
 
       cy.log("move second card to second tab first, then the first card");
       // moving the second card first to invert their position, this allows us
       // to check if the position is restored when undoing the movement of the second one
-      moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 1 });
-      moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 0 });
+      H.moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 1 });
+      H.moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 0 });
 
       cy.log("fist tab should be empty");
       cy.findAllByTestId("toast-undo").should("have.length", 2);
-      getDashboardCards().should("have.length", 0);
+      H.getDashboardCards().should("have.length", 0);
 
       cy.log("should show undo toast with the correct text");
       cy.findByTestId("undo-list").within(() => {
@@ -275,12 +233,12 @@ describe("scenarios > dashboard > tabs", () => {
       });
 
       cy.log("cards should be in second tab");
-      goToTab("Tab 2");
-      getDashboardCards().should("have.length", 2);
+      H.goToTab("Tab 2");
+      H.getDashboardCards().should("have.length", 2);
 
       cy.log("size should stay the same");
 
-      getDashboardCard(1).then(element => {
+      H.getDashboardCard(1).then(element => {
         cy.get("@card1OriginalSize").then(originalSize => {
           expect({
             width: element.outerWidth(),
@@ -293,13 +251,13 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.findAllByTestId("toast-undo").eq(0).findByRole("button").click();
 
-      goToTab("Tab 1");
+      H.goToTab("Tab 1");
 
-      getDashboardCards().should("have.length", 1);
+      H.getDashboardCards().should("have.length", 1);
 
       cy.log("second card should be in the original position");
 
-      getDashboardCard().then(element => {
+      H.getDashboardCard().then(element => {
         cy.get("@card2OriginalPosition").then(originalPosition => {
           const position = element.offset();
           // approximately to avoid possibly flakiness, we just want it to be in the same grid cell
@@ -316,47 +274,47 @@ describe("scenarios > dashboard > tabs", () => {
     { scrollBehavior: false },
     () => {
       const cards = [
-        getTextCardDetails({
+        H.getTextCardDetails({
           text: "Text card",
           // small card aligned to the left so that move icon is out of the viewport
           // unless the left alignment logic kicks in
           size_x: 1,
         }),
-        getHeadingCardDetails({
+        H.getHeadingCardDetails({
           text: "Heading card",
         }),
-        getLinkCardDetails({
+        H.getLinkCardDetails({
           url: "https://metabase.com",
         }),
       ];
 
       cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-        updateDashboardCards({ dashboard_id, cards });
+        H.updateDashboardCards({ dashboard_id, cards });
 
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
-      editDashboard();
-      createNewTab();
-      goToTab("Tab 1");
+      H.editDashboard();
+      H.createNewTab();
+      H.goToTab("Tab 1");
 
       cy.log("moving dashcards to second tab");
 
       cards.forEach(() => {
-        moveDashCardToTab({ tabName: "Tab 2" });
+        H.moveDashCardToTab({ tabName: "Tab 2" });
       });
 
-      getDashboardCards().should("have.length", 0);
+      H.getDashboardCards().should("have.length", 0);
 
-      goToTab("Tab 2");
+      H.goToTab("Tab 2");
 
-      getDashboardCards().should("have.length", cards.length);
+      H.getDashboardCards().should("have.length", cards.length);
 
       cy.findAllByTestId("toast-undo").should("have.length", cards.length);
 
       cy.log("'Undo' toasts should be dismissed when saving the dashboard");
 
-      saveDashboard();
+      H.saveDashboard();
 
       cy.findAllByTestId("toast-undo").should("have.length", 0);
     },
@@ -376,34 +334,34 @@ describe("scenarios > dashboard > tabs", () => {
       },
     }).then(({ body: { dashboard_id } }) => {
       cy.signInAsNormalUser();
-      visitDashboard(dashboard_id);
+      H.visitDashboard(dashboard_id);
     });
 
-    editDashboard();
-    createNewTab();
+    H.editDashboard();
+    H.createNewTab();
 
-    goToTab("Tab 1");
+    H.goToTab("Tab 1");
 
-    getDashboardCard()
+    H.getDashboardCard()
       .findByText(/you don't have permission/)
       .should("exist");
 
-    moveDashCardToTab({ tabName: "Tab 2" });
+    H.moveDashCardToTab({ tabName: "Tab 2" });
 
-    saveDashboard();
+    H.saveDashboard();
 
-    getDashboardCards().should("have.length", 0);
+    H.getDashboardCards().should("have.length", 0);
   });
 
   it("should leave dashboard if navigating back after initial load", () => {
-    visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });
-    visitCollection("root");
+    H.visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });
+    H.visitCollection("root");
 
-    main().within(() => {
+    H.main().within(() => {
       cy.findByText("Orders in a dashboard").click();
     });
     cy.go("back");
-    main().within(() => {
+    H.main().within(() => {
       cy.findByText("Our analytics").should("be.visible");
     });
   });
@@ -412,21 +370,21 @@ describe("scenarios > dashboard > tabs", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    visitDashboardAndCreateTab({
+    H.visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,
     });
 
     // Add card to second tab
     cy.icon("pencil").click();
-    openQuestionsSidebar();
-    sidebar().within(() => {
+    H.openQuestionsSidebar();
+    H.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
 
     cy.wait("@cardQuery");
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
@@ -464,7 +422,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Visit first tab and confirm only first card was queried
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("not.have.been.called");
@@ -478,7 +436,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Visit second tab and confirm only second card was queried
-    goToTab("Tab 2");
+    H.goToTab("Tab 2");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@secondTabQuery").then(r => {
@@ -491,7 +449,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Go back to first tab, expect no additional queries
-    goToTab("Tab 1");
+    H.goToTab("Tab 1");
     cy.findAllByTestId("dashcard").contains("37.65");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
@@ -504,7 +462,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Go to public dashboard
-    updateSetting("enable-public-sharing", true);
+    H.updateSetting("enable-public-sharing", true);
     cy.request(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/public_link`,
@@ -538,7 +496,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Visit second tab and confirm only second card was queried
-    goToTab("Tab 2");
+    H.goToTab("Tab 2");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@publicSecondTabQuery").then(r => {
@@ -550,7 +508,7 @@ describe("scenarios > dashboard > tabs", () => {
       });
     });
 
-    goToTab("Tab 1");
+    H.goToTab("Tab 1");
     // This is a bug. publicFirstTabQuery should not be called again
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledTwice");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
@@ -568,19 +526,19 @@ describe("scenarios > dashboard > tabs", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    visitDashboardAndCreateTab({
+    H.visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,
     });
 
     // Add card to second tab
     cy.icon("pencil").click();
-    openQuestionsSidebar();
-    sidebar().within(() => {
+    H.openQuestionsSidebar();
+    H.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
     cy.wait("@cardQuery");
-    saveDashboard();
+    H.saveDashboard();
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
@@ -612,12 +570,12 @@ describe("scenarios > dashboard > tabs", () => {
       cy.spy().as("secondTabQuerySpy"),
     ).as("secondTabQuery");
 
-    openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
+    H.openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
 
     // publish the embedded dashboard so that we can directly navigate to its url
-    publishChanges("dashboard", () => {});
+    H.publishChanges("dashboard", () => {});
     // directly navigate to the embedded dashboard, starting on Tab 1
-    visitIframe();
+    H.visitIframe();
     // wait for results
     cy.findAllByTestId("dashcard").contains("37.65");
     cy.signInAsAdmin();
@@ -633,7 +591,7 @@ describe("scenarios > dashboard > tabs", () => {
       });
     });
 
-    goToTab("Tab 2");
+    H.goToTab("Tab 2");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@secondTabQuery").then(r => {
@@ -645,7 +603,7 @@ describe("scenarios > dashboard > tabs", () => {
       });
     });
 
-    goToTab("Tab 1");
+    H.goToTab("Tab 1");
     // This is a bug. firstTabQuery should not be called again
     cy.get("@firstTabQuerySpy").should("have.been.calledTwice");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
@@ -660,22 +618,22 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
-    visitDashboard(ORDERS_DASHBOARD_ID);
-    editDashboard();
-    createNewTab();
-    saveDashboard();
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.createNewTab();
+    H.saveDashboard();
 
-    goToTab("Tab 2");
-    editDashboard();
-    openQuestionsSidebar();
-    sidebar().within(() => {
+    H.goToTab("Tab 2");
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
 
-    setFilter("Date picker", "Relative Date");
+    H.setFilter("Date picker", "Relative Date");
 
-    selectDashboardFilter(getDashboardCard(0), "Created At");
-    saveDashboard();
+    H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
+    H.saveDashboard();
 
     cy.intercept(
       "POST",
@@ -683,11 +641,11 @@ describe("scenarios > dashboard > tabs", () => {
       delayResponse(500),
     ).as("saveCard");
 
-    filterWidget().click();
-    popover().findByText("Previous 7 days").click();
+    H.filterWidget().click();
+    H.popover().findByText("Previous 7 days").click();
 
     // Loader in the 2nd tab
-    getDashboardCard(0).within(() => {
+    H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
       cy.findAllByTestId("table-row").should("exist");
@@ -695,18 +653,18 @@ describe("scenarios > dashboard > tabs", () => {
 
     // we do not auto-wire automatically in different tabs anymore, so first tab
     // should not show a loader and re-run query
-    goToTab("Tab 1");
-    getDashboardCard(0).within(() => {
+    H.goToTab("Tab 1");
+    H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findAllByTestId("table-row").should("exist");
     });
   });
 
   it("should allow me to rearrange long tabs (#34970)", () => {
-    visitDashboard(ORDERS_DASHBOARD_ID);
-    editDashboard();
-    createNewTab();
-    createNewTab();
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.createNewTab();
+    H.createNewTab();
 
     // Assert initial tab order
     cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText("Tab 1");
@@ -746,7 +704,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 1");
     cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
 
-    saveDashboard();
+    H.saveDashboard();
 
     // Confirm positions are the same after saving
     cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText(longName);
@@ -755,27 +713,27 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should allow users to duplicate and delete tabs more than once (#45364)", () => {
-    visitDashboard(ORDERS_DASHBOARD_ID);
-    editDashboard();
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
 
-    duplicateTab("Tab 1");
+    H.duplicateTab("Tab 1");
 
     cy.findAllByRole("tab").eq(0).should("have.text", "Tab 1");
     cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
 
-    duplicateTab("Tab 1");
+    H.duplicateTab("Tab 1");
 
     cy.findAllByRole("tab").eq(0).should("have.text", "Tab 1");
     cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
     cy.findAllByRole("tab").eq(2).should("have.text", "Copy of Tab 1");
 
-    deleteTab("Tab 1");
+    H.deleteTab("Tab 1");
 
     cy.findAllByRole("tab").eq(0).should("have.text", "Copy of Tab 1");
     cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
 
     cy.findAllByRole("tab").eq(0).findByRole("button").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Delete").click();
     });
 
@@ -783,56 +741,56 @@ describe("scenarios > dashboard > tabs", () => {
   });
 });
 
-describeWithSnowplow("scenarios > dashboard > tabs", () => {
+H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
   const PAGE_VIEW_EVENT = 1;
 
   beforeEach(() => {
-    restore();
-    resetSnowplow();
+    H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
-    enableTracking();
+    H.enableTracking();
   });
 
   afterEach(() => {
-    expectNoBadSnowplowEvents();
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should send snowplow events when dashboard tabs are created and deleted", () => {
-    visitDashboard(ORDERS_DASHBOARD_ID);
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
 
-    editDashboard();
-    createNewTab();
-    saveDashboard();
-    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 1);
-    expectGoodSnowplowEvent({ event: "dashboard_tab_created" }, 1);
+    H.editDashboard();
+    H.createNewTab();
+    H.saveDashboard();
+    H.expectGoodSnowplowEvent({ event: "dashboard_saved" }, 1);
+    H.expectGoodSnowplowEvent({ event: "dashboard_tab_created" }, 1);
 
-    editDashboard();
-    deleteTab("Tab 2");
-    saveDashboard();
-    expectGoodSnowplowEvent({ event: "dashboard_saved" }, 2);
-    expectGoodSnowplowEvent({ event: "dashboard_tab_deleted" }, 1);
+    H.editDashboard();
+    H.deleteTab("Tab 2");
+    H.saveDashboard();
+    H.expectGoodSnowplowEvent({ event: "dashboard_saved" }, 2);
+    H.expectGoodSnowplowEvent({ event: "dashboard_tab_deleted" }, 1);
   });
 
   it("should send snowplow events when cards are moved between tabs", () => {
     const cardMovedEventName = "card_moved_to_tab";
 
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    expectGoodSnowplowEvent(
+    H.expectGoodSnowplowEvent(
       {
         event: cardMovedEventName,
       },
       0,
     );
 
-    editDashboard();
-    createNewTab();
-    goToTab("Tab 1");
+    H.editDashboard();
+    H.createNewTab();
+    H.goToTab("Tab 1");
 
-    moveDashCardToTab({ tabName: "Tab 2" });
+    H.moveDashCardToTab({ tabName: "Tab 2" });
 
-    expectGoodSnowplowEvent(
+    H.expectGoodSnowplowEvent(
       {
         event: cardMovedEventName,
       },
@@ -905,7 +863,7 @@ function assertFiltersVisibility({ visible = [], hidden = [] }) {
   });
 
   // Ensure all filters are visible in edit mode
-  editDashboard();
+  H.editDashboard();
   cy.findByTestId("edit-dashboard-parameters-widget-container", () => {
     [...visible, ...hidden].forEach(filter =>
       cy.findByText(filter.name).should("exist"),

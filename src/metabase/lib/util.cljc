@@ -94,7 +94,8 @@
          clause])
       (lib.options/update-options (fn [opts]
                                     (-> opts
-                                        (assoc :lib/expression-name a-name)
+                                        (assoc :lib/expression-name a-name
+                                               :ident (u/generate-nano-id))
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -551,7 +552,10 @@
                    query stage-number
                    update location
                    (fn [summary-clauses]
-                     (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
+                     (->> a-summary-clause
+                          lib.common/->op-arg
+                          lib.common/ensure-ident
+                          (conj (vec summary-clauses)))))]
     (if new-summary?
       (-> new-query
           (update-query-stage

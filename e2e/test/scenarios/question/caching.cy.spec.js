@@ -1,11 +1,5 @@
+import { H } from "e2e/support";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  describeEE,
-  restore,
-  setTokenFeatures,
-  sidesheet,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
@@ -14,11 +8,11 @@ import {
   openSidebarCacheStrategyForm,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
-describeEE("scenarios > question > caching", () => {
+H.describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
   });
 
   /**
@@ -27,11 +21,11 @@ describeEE("scenarios > question > caching", () => {
    */
   it("can configure cache for a question, on an enterprise instance", () => {
     interceptPerformanceRoutes();
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
     openSidebarCacheStrategyForm("question");
 
-    sidesheet().within(() => {
+    H.sidesheet().within(() => {
       cy.findByText(/Caching settings/).should("be.visible");
       durationRadioButton().click();
       cy.findByLabelText("Cache results for this many hours").type("48");
@@ -61,11 +55,11 @@ describeEE("scenarios > question > caching", () => {
 
   it("can click 'Clear cache' for a question", () => {
     interceptPerformanceRoutes();
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
     openSidebarCacheStrategyForm("question");
 
-    sidesheet().within(() => {
+    H.sidesheet().within(() => {
       cy.findByText(/Caching settings/).should("be.visible");
       cy.findByRole("button", {
         name: /Clear cache for this question/,
@@ -74,6 +68,6 @@ describeEE("scenarios > question > caching", () => {
     cy.findByTestId("confirm-modal").button("Clear cache").click();
     cy.wait("@invalidateCache");
 
-    sidesheet().findByText("Cache cleared").should("be.visible");
+    H.sidesheet().findByText("Cache cleared").should("be.visible");
   });
 });

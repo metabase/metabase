@@ -17,33 +17,33 @@ import {
 import { useNumberFilter } from "./use-number-filter";
 
 interface CreateFilterCase {
-  operator: Lib.NumberFilterOperatorName;
+  operator: Lib.NumberFilterOperator;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: Lib.NumberFilterOperatorName;
+  operator: Lib.NumberFilterOperator;
   expression: Lib.ExpressionClause;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
-  operator: Lib.NumberFilterOperatorName;
+  operator: Lib.NumberFilterOperator;
   values: (number | "")[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: Lib.NumberFilterOperatorName;
+  operator: Lib.NumberFilterOperator;
   values: (number | "")[];
 }
 
 interface DefaultOperatorCase {
   title: string;
   column: Lib.ColumnMetadata;
-  expectedOperator: Lib.NumberFilterOperatorName;
+  expectedOperator: Lib.NumberFilterOperator;
 }
 
 const METADATA = createMockMetadata({

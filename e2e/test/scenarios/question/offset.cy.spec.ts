@@ -1,28 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  POPOVER_ELEMENT,
-  type StructuredQuestionDetails,
-  addSummaryField,
-  addSummaryGroupingField,
-  createQuestion,
-  createSegment,
-  echartsContainer,
-  enterCustomColumnDetails,
-  entityPickerModal,
-  entityPickerModalTab,
-  getNotebookStep,
-  modal,
-  openNotebook,
-  openTable,
-  popover,
-  restore,
-  startNewQuestion,
-  startSort,
-  summarize,
-  visitMetric,
-  visitQuestion,
-  visualize,
-} from "e2e/support/helpers";
 import { uuid } from "metabase/lib/uuid";
 import type {
   Aggregation,
@@ -70,7 +47,7 @@ const OFFSET_SUM_TOTAL_AGGREGATION: Aggregation = [
 
 describe("scenarios > question > offset", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
@@ -89,18 +66,18 @@ describe("scenarios > question > offset", () => {
         "order-by": [["asc", ORDERS_TOTAL_FIELD_REF]],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Custom column").click();
-      enterCustomColumnDetails({ formula: prefix });
+      H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in custom columns");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      enterCustomColumnDetails({ formula: expression });
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom columns").should(
           "exist",
@@ -119,32 +96,32 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Custom column").click();
-      enterCustomColumnDetails({ formula: prefix });
+      H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("suggests offset() in custom column expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: expression });
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("OFFSET in a custom expression requires a sort order");
         cy.button("Done").should("be.disabled");
         cy.button("Cancel").click();
       });
 
       cy.button("Sort").click();
-      popover().findByText("ID").click();
-      getNotebookStep("expression").icon("add").click();
-      enterCustomColumnDetails({ formula: expression });
+      H.popover().findByText("ID").click();
+      H.getNotebookStep("expression").icon("add").click();
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.button("Done").should("be.disabled");
 
         cy.findByPlaceholderText("Something nice and descriptive")
@@ -155,12 +132,12 @@ describe("scenarios > question > offset", () => {
       });
 
       cy.log("preview availability");
-      getNotebookStep("data").icon("play").should("be.visible");
-      getNotebookStep("expression").icon("play").should("not.be.visible");
-      getNotebookStep("sort").icon("play").should("be.visible");
-      getNotebookStep("limit").icon("play").should("be.visible");
+      H.getNotebookStep("data").icon("play").should("be.visible");
+      H.getNotebookStep("expression").icon("play").should("not.be.visible");
+      H.getNotebookStep("sort").icon("play").should("be.visible");
+      H.getNotebookStep("limit").icon("play").should("be.visible");
 
-      visualize();
+      H.visualize();
       verifyTableContent([
         ["1", "39.72", ""],
         ["2", "117.03", "39.72"],
@@ -188,7 +165,7 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       cy.log("custom column drills");
       const rowIndex = 1;
@@ -196,32 +173,32 @@ describe("scenarios > question > offset", () => {
       const columnsCount = 10;
       const cellIndex = rowIndex * columnsCount + columnIndex;
       cy.findAllByRole("gridcell").eq(cellIndex).click();
-      cy.get(POPOVER_ELEMENT).should("not.exist");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
-      openNotebook();
+      H.openNotebook();
 
       cy.log("custom column expressions");
-      getNotebookStep("expression").icon("add").click();
+      H.getNotebookStep("expression").icon("add").click();
       verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      popover().button("Cancel").click();
+      H.popover().button("Cancel").click();
 
       cy.log("custom filter expressions");
       cy.icon("filter").click();
-      popover().findByText("Custom Expression").click();
+      H.popover().findByText("Custom Expression").click();
       verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      popover().button("Cancel").click();
+      H.popover().button("Cancel").click();
       cy.realPress("Escape");
 
       cy.log("custom aggregation expressions");
       cy.icon("sum").click();
-      popover().findByText("Custom Expression").click();
+      H.popover().findByText("Custom Expression").click();
       verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      popover().button("Cancel").click();
+      H.popover().button("Cancel").click();
       cy.realPress("Escape");
 
       cy.log("sort clause");
-      getNotebookStep("sort").icon("add").click();
-      popover().should("not.contain", offsettedColumnName);
+      H.getNotebookStep("sort").icon("add").click();
+      H.popover().should("not.contain", offsettedColumnName);
     });
   });
 
@@ -235,19 +212,19 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Filter").click();
-      popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({ formula: prefix });
+      H.popover().findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in filter expressions");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      enterCustomColumnDetails({ formula: expression });
+      H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom filters").should(
           "exist",
@@ -266,24 +243,24 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Summarize").click();
-      getNotebookStep("summarize")
+      H.getNotebookStep("summarize")
         .findByText("Pick a function or metric")
         .click();
-      popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({ formula: prefix, blur: false });
+      H.popover().findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({ formula: prefix, blur: false });
 
       cy.log("suggests offset() in aggregation expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: expression, blur: false });
+      H.enterCustomColumnDetails({ formula: expression, blur: false });
       cy.realPress("Tab");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.button("Done").should("be.disabled");
 
         cy.findByPlaceholderText("Something nice and descriptive")
@@ -300,7 +277,7 @@ describe("scenarios > question > offset", () => {
         aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyQuestionError(
         "Window function requires either breakouts or order by in the query",
@@ -316,9 +293,9 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
-      openNotebook();
+      H.openNotebook();
 
       cy.findByLabelText("View the SQL").click();
       cy.wait("@sqlPreview");
@@ -337,7 +314,7 @@ describe("scenarios > question > offset", () => {
         limit: 5,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -345,8 +322,8 @@ describe("scenarios > question > offset", () => {
         ["May 2022", "52.76"],
       ]);
 
-      openNotebook();
-      getNotebookStep("summarize").icon("play").should("be.visible");
+      H.openNotebook();
+      H.getNotebookStep("summarize").icon("play").should("be.visible");
     });
 
     it("works with a single breakout and sorting by breakout", () => {
@@ -358,7 +335,7 @@ describe("scenarios > question > offset", () => {
         "order-by": [["desc", ORDERS_CREATED_AT_BREAKOUT]],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -376,7 +353,7 @@ describe("scenarios > question > offset", () => {
         "order-by": [["desc", ["aggregation", 0]]],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -402,7 +379,7 @@ describe("scenarios > question > offset", () => {
         breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -420,7 +397,7 @@ describe("scenarios > question > offset", () => {
         limit: 9,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -439,9 +416,9 @@ describe("scenarios > question > offset", () => {
     it("works after saving a question (metabase#42323)", () => {
       const breakoutName = "Created At";
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
@@ -451,7 +428,7 @@ describe("scenarios > question > offset", () => {
       });
       addBreakout(breakoutName);
 
-      visualize();
+      H.visualize();
       verifyNoQuestionError();
       verifyLineChart({
         xAxis: breakoutName + ": Month",
@@ -459,7 +436,7 @@ describe("scenarios > question > offset", () => {
       });
 
       saveQuestion().then(({ response }) => {
-        visitQuestion(response?.body.id);
+        H.visitQuestion(response?.body.id);
         verifyNoQuestionError();
         verifyLineChart({
           xAxis: breakoutName + ": Month",
@@ -483,9 +460,9 @@ describe("scenarios > question > offset", () => {
         rollingAverageName,
       ];
 
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
@@ -513,7 +490,7 @@ describe("scenarios > question > offset", () => {
       });
       addBreakout(breakoutName);
 
-      visualize();
+      H.visualize();
       verifyNoQuestionError();
       verifyLineChart({
         xAxis: breakoutName + ": Month",
@@ -522,7 +499,7 @@ describe("scenarios > question > offset", () => {
 
       // checking data after saveQuestion is not necessary as it's covered by "works after saving a question (metabase#42323)"
       saveQuestion().then(({ response }) => {
-        visitQuestion(response?.body.id);
+        H.visitQuestion(response?.body.id);
         verifyNoQuestionError();
         verifyLineChart({
           xAxis: breakoutName + ": Month",
@@ -538,8 +515,8 @@ describe("scenarios > question > offset", () => {
         "source-table": ORDERS_ID,
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
       cy.button("Summarize").click();
       addCustomAggregation({ formula, name, isFirst: true });
 
@@ -554,45 +531,45 @@ describe("scenarios > question > offset", () => {
     });
 
     it("should create filter and CC with offset aggregation and sort correctly", () => {
-      openTable({ table: ORDERS_ID });
+      H.openTable({ table: ORDERS_ID });
 
-      openNotebook();
+      H.openNotebook();
 
-      summarize({ mode: "notebook" });
+      H.summarize({ mode: "notebook" });
       addCustomAggregation({
         formula: "Offset(Sum([Total]), -1)",
         name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         isOpened: true,
       });
 
-      addSummaryGroupingField({ field: "Created At" });
-      addSummaryGroupingField({
+      H.addSummaryGroupingField({ field: "Created At" });
+      H.addSummaryGroupingField({
         table: "Product",
         field: "Category",
       });
       cy.findAllByLabelText("Custom column").last().click();
 
-      enterCustomColumnDetails({
+      H.enterCustomColumnDetails({
         formula: `[${OFFSET_SUM_TOTAL_AGGREGATION_NAME}] * 2`,
         name: `${OFFSET_SUM_TOTAL_AGGREGATION_NAME} * 2`,
       });
-      popover().findByText("Done").click();
+      H.popover().findByText("Done").click();
 
       cy.findAllByTestId("action-buttons").last().icon("filter").click();
-      popover().findByText("Custom Expression").click();
+      H.popover().findByText("Custom Expression").click();
 
-      enterCustomColumnDetails({
+      H.enterCustomColumnDetails({
         formula: `[${OFFSET_SUM_TOTAL_AGGREGATION_NAME}] > 1000`,
       });
-      popover().findByText("Done").click();
+      H.popover().findByText("Done").click();
 
       cy.findAllByTestId("action-buttons").last().icon("sort").click();
-      popover().findByText(OFFSET_SUM_TOTAL_AGGREGATION_NAME).click();
-      getNotebookStep("sort", { stage: 1, index: 0 })
+      H.popover().findByText(OFFSET_SUM_TOTAL_AGGREGATION_NAME).click();
+      H.getNotebookStep("sort", { stage: 1, index: 0 })
         .findByText(OFFSET_SUM_TOTAL_AGGREGATION_NAME)
         .click();
 
-      visualize();
+      H.visualize();
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -622,25 +599,25 @@ describe("scenarios > question > offset", () => {
         ],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
 
-      summarize({ mode: "notebook" });
-      addSummaryField({ metric: "Sum of ...", field: "Total" });
+      H.summarize({ mode: "notebook" });
+      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
       addCustomAggregation({
         formula: "Offset(Sum([Total]), -1)",
         name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
       });
 
-      addSummaryGroupingField({
+      H.addSummaryGroupingField({
         table: "Products",
         field: "Category",
       });
 
-      addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+      H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
 
       addSorting({ field: "Created At" });
-      visualize();
+      H.visualize();
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -654,8 +631,8 @@ describe("scenarios > question > offset", () => {
         ["Widget", "2023", "59,095.56", "12,523.37"],
       ]);
 
-      openNotebook();
-      getNotebookStep("summarize").icon("play").should("be.visible");
+      H.openNotebook();
+      H.getNotebookStep("summarize").icon("play").should("be.visible");
     });
 
     it("offset expression is in the first place in aggregation", () => {
@@ -677,28 +654,28 @@ describe("scenarios > question > offset", () => {
         ],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
-      openNotebook();
+      H.createQuestion({ query }, { visitQuestion: true });
+      H.openNotebook();
 
-      summarize({ mode: "notebook" });
+      H.summarize({ mode: "notebook" });
       addCustomAggregation({
         formula: "Offset(Sum([Total]), -1)",
         name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         isOpened: true,
       });
-      addSummaryField({ metric: "Sum of ...", field: "Total" });
+      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
 
-      addSummaryGroupingField({
+      H.addSummaryGroupingField({
         table: "Products",
         field: "Category",
       });
 
-      addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+      H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
 
-      startSort();
-      popover().contains("Created At").click();
+      H.startSort();
+      H.popover().contains("Created At").click();
 
-      visualize();
+      H.visualize();
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -712,8 +689,8 @@ describe("scenarios > question > offset", () => {
         ["Widget", "2023", "12,523.37", "59,095.56"],
       ]);
 
-      openNotebook();
-      getNotebookStep("summarize").icon("play").should("be.visible");
+      H.openNotebook();
+      H.getNotebookStep("summarize").icon("play").should("be.visible");
     });
 
     it("offset and avg function applied to custom column", () => {
@@ -737,32 +714,32 @@ describe("scenarios > question > offset", () => {
         ],
       };
 
-      createQuestion({ query }, { visitQuestion: true });
+      H.createQuestion({ query }, { visitQuestion: true });
 
-      openNotebook();
+      H.openNotebook();
       addCustomColumn({
         name: customColumnName,
         formula: "[Products → Rating]",
       });
 
-      summarize({ mode: "notebook" });
-      addSummaryField({ metric: "Average of ...", field: customColumnName });
+      H.summarize({ mode: "notebook" });
+      H.addSummaryField({ metric: "Average of ...", field: customColumnName });
 
       addCustomAggregation({
         formula: `Offset(Average([${customColumnName}]), -1)`,
         name: "offsetted avg product rating",
       });
 
-      addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
-      addSummaryGroupingField({
+      H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+      H.addSummaryGroupingField({
         field: customColumnName,
       });
 
-      startSort();
-      popover().contains(customColumnName).click();
-      getNotebookStep("sort").findByText(customColumnName).click();
+      H.startSort();
+      H.popover().contains(customColumnName).click();
+      H.getNotebookStep("sort").findByText(customColumnName).click();
 
-      visualize();
+      H.visualize();
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -777,13 +754,13 @@ describe("scenarios > question > offset", () => {
     describe("when custom column is in the first place of breakout", () => {
       it("works with custom column that contains a function", () => {
         const customColumnName = "CC Product Category";
-        openTable({ table: ORDERS_ID });
+        H.openTable({ table: ORDERS_ID });
 
-        openNotebook();
+        H.openNotebook();
 
-        summarize({ mode: "notebook" });
+        H.summarize({ mode: "notebook" });
 
-        addSummaryField({ metric: "Sum of ...", field: "Total" });
+        H.addSummaryField({ metric: "Sum of ...", field: "Total" });
         addCustomAggregation({
           formula: "Offset(Sum([Total]), -1)",
           name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
@@ -794,13 +771,13 @@ describe("scenarios > question > offset", () => {
           name: customColumnName,
         });
 
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({
           field: customColumnName,
         });
-        addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+        H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
 
         addSorting({ field: "Created At" });
-        visualize();
+        H.visualize();
 
         verifyNoQuestionError();
         verifyTableContent([
@@ -814,19 +791,19 @@ describe("scenarios > question > offset", () => {
           ["Widget from products", "2023", "59,095.56", "12,523.37"],
         ]);
 
-        openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        H.openNotebook();
+        H.getNotebookStep("summarize").icon("play").should("be.visible");
       });
 
       it("works with custom column that contains a column", () => {
         const customColumnName = "CC Product Category";
-        openTable({ table: ORDERS_ID });
+        H.openTable({ table: ORDERS_ID });
 
-        openNotebook();
+        H.openNotebook();
 
-        summarize({ mode: "notebook" });
+        H.summarize({ mode: "notebook" });
 
-        addSummaryField({ metric: "Sum of ...", field: "Total" });
+        H.addSummaryField({ metric: "Sum of ...", field: "Total" });
         addCustomAggregation({
           formula: "Offset(Sum([Total]), -1)",
           name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
@@ -837,13 +814,13 @@ describe("scenarios > question > offset", () => {
           name: customColumnName,
         });
 
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({
           field: customColumnName,
         });
-        addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+        H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
 
         addSorting({ field: "Created At" });
-        visualize();
+        H.visualize();
 
         verifyNoQuestionError();
         verifyTableContent([
@@ -857,8 +834,8 @@ describe("scenarios > question > offset", () => {
           ["Widget", "2023", "59,095.56", "12,523.37"],
         ]);
 
-        openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        H.openNotebook();
+        H.getNotebookStep("summarize").icon("play").should("be.visible");
       });
 
       it("works when custom column is a simple expression (metabase#47870)", () => {
@@ -866,49 +843,49 @@ describe("scenarios > question > offset", () => {
         const customColumnName2 = "constant";
         const customColumnName3 = "string";
 
-        openTable({ table: ORDERS_ID });
+        H.openTable({ table: ORDERS_ID });
 
-        openNotebook();
+        H.openNotebook();
 
         addCustomColumn({
           name: customColumnName,
           formula: "1+1",
         });
-        getNotebookStep("expression").icon("add").click();
-        enterCustomColumnDetails({
+        H.getNotebookStep("expression").icon("add").click();
+        H.enterCustomColumnDetails({
           name: customColumnName2,
           formula: "0+1",
         });
-        popover().findByText("Done").click();
+        H.popover().findByText("Done").click();
 
-        getNotebookStep("expression").icon("add").click();
-        enterCustomColumnDetails({
+        H.getNotebookStep("expression").icon("add").click();
+        H.enterCustomColumnDetails({
           name: customColumnName3,
           formula: "concat('a','b')",
         });
-        popover().findByText("Done").click();
+        H.popover().findByText("Done").click();
 
-        summarize({ mode: "notebook" });
+        H.summarize({ mode: "notebook" });
 
-        addSummaryField({ metric: "Sum of ...", field: "Total" });
+        H.addSummaryField({ metric: "Sum of ...", field: "Total" });
         addCustomAggregation({
           formula: "Offset(Sum([Total]), -1)",
           name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
 
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({
           field: customColumnName,
         });
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({
           field: customColumnName2,
         });
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({
           field: customColumnName3,
         });
-        addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+        H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
         addSorting({ field: "Created At" });
 
-        visualize();
+        H.visualize();
 
         verifyNoQuestionError();
 
@@ -918,8 +895,8 @@ describe("scenarios > question > offset", () => {
           ["2", "1", "ab", "2024", "510,045.03", "205,256.02"],
         ]);
 
-        openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        H.openNotebook();
+        H.getNotebookStep("summarize").icon("play").should("be.visible");
       });
 
       it("works when custom column is a simple expression with CC not in the first place", () => {
@@ -927,49 +904,49 @@ describe("scenarios > question > offset", () => {
         const customColumnName2 = "constant";
         const customColumnName3 = "string";
 
-        openTable({ table: ORDERS_ID });
-        openNotebook();
+        H.openTable({ table: ORDERS_ID });
+        H.openNotebook();
 
         addCustomColumn({
           name: customColumnName,
           formula: "1+1",
         });
 
-        getNotebookStep("expression").icon("add").click();
-        enterCustomColumnDetails({
+        H.getNotebookStep("expression").icon("add").click();
+        H.enterCustomColumnDetails({
           name: customColumnName2,
           formula: "0+1",
         });
-        popover().findByText("Done").click();
+        H.popover().findByText("Done").click();
 
-        getNotebookStep("expression").icon("add").click();
-        enterCustomColumnDetails({
+        H.getNotebookStep("expression").icon("add").click();
+        H.enterCustomColumnDetails({
           name: customColumnName3,
           formula: "concat('a','b')",
         });
-        popover().findByText("Done").click();
+        H.popover().findByText("Done").click();
 
-        summarize({ mode: "notebook" });
+        H.summarize({ mode: "notebook" });
 
-        addSummaryField({ metric: "Sum of ...", field: "Total" });
+        H.addSummaryField({ metric: "Sum of ...", field: "Total" });
         addCustomAggregation({
           formula: "Offset(Sum([Total]), -1)",
           name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
 
-        addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+        H.addSummaryGroupingField({
           field: customColumnName,
         });
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({
           field: customColumnName2,
         });
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({
           field: customColumnName3,
         });
         addSorting({ field: "Created At" });
 
-        visualize();
+        H.visualize();
 
         verifyNoQuestionError();
 
@@ -979,8 +956,8 @@ describe("scenarios > question > offset", () => {
           ["2024", "2", "1", "ab", "510,045.03", "205,256.02"],
         ]);
 
-        openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        H.openNotebook();
+        H.getNotebookStep("summarize").icon("play").should("be.visible");
       });
     });
 
@@ -988,30 +965,30 @@ describe("scenarios > question > offset", () => {
       it("works with custom column that contains a function", () => {
         const customColumnName = "CC Product Category";
 
-        openTable({ table: ORDERS_ID });
+        H.openTable({ table: ORDERS_ID });
 
-        openNotebook();
+        H.openNotebook();
 
         addCustomColumn({
           name: customColumnName,
           formula: 'concat([Product → Category], " from products")',
         });
 
-        summarize({ mode: "notebook" });
+        H.summarize({ mode: "notebook" });
 
-        addSummaryField({ metric: "Sum of ...", field: "Total" });
+        H.addSummaryField({ metric: "Sum of ...", field: "Total" });
         addCustomAggregation({
           formula: "Offset(Sum([Total]), -1)",
           name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
 
-        addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+        H.addSummaryGroupingField({
           field: customColumnName,
         });
         addSorting({ field: "Created At" });
 
-        visualize();
+        H.visualize();
 
         verifyNoQuestionError();
         verifyTableContent([
@@ -1020,36 +997,36 @@ describe("scenarios > question > offset", () => {
           ["2022", "Gizmo from products", "9,929.32", ""],
         ]);
 
-        openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        H.openNotebook();
+        H.getNotebookStep("summarize").icon("play").should("be.visible");
       });
 
       it("works with custom column that contains a column", () => {
         const customColumnName = "CC Product Category";
-        openTable({ table: ORDERS_ID });
+        H.openTable({ table: ORDERS_ID });
 
-        openNotebook();
+        H.openNotebook();
 
         addCustomColumn({
           name: customColumnName,
           formula: "[Product → Category]",
         });
 
-        summarize({ mode: "notebook" });
+        H.summarize({ mode: "notebook" });
 
-        addSummaryField({ metric: "Sum of ...", field: "Total" });
+        H.addSummaryField({ metric: "Sum of ...", field: "Total" });
         addCustomAggregation({
           formula: "Offset(Sum([Total]), -1)",
           name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
 
-        addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+        H.addSummaryGroupingField({
           field: customColumnName,
         });
         addSorting({ field: "Created At" });
 
-        visualize();
+        H.visualize();
 
         verifyNoQuestionError();
         verifyTableContent([
@@ -1058,37 +1035,37 @@ describe("scenarios > question > offset", () => {
           ["2022", "Gizmo", "9,929.32", ""],
         ]);
 
-        openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        H.openNotebook();
+        H.getNotebookStep("summarize").icon("play").should("be.visible");
       });
 
       it("works when custom column is a simple expression", () => {
         const customColumnName = "1 + 1";
 
-        openTable({ table: ORDERS_ID });
+        H.openTable({ table: ORDERS_ID });
 
-        openNotebook();
+        H.openNotebook();
 
         addCustomColumn({
           name: customColumnName,
           formula: "1+1",
         });
 
-        summarize({ mode: "notebook" });
+        H.summarize({ mode: "notebook" });
 
-        addSummaryField({ metric: "Sum of ...", field: "Total" });
+        H.addSummaryField({ metric: "Sum of ...", field: "Total" });
         addCustomAggregation({
           formula: "Offset(Sum([Total]), -1)",
           name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
 
-        addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
-        addSummaryGroupingField({
+        H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+        H.addSummaryGroupingField({
           field: customColumnName,
         });
         addSorting({ field: "Created At" });
 
-        visualize();
+        H.visualize();
 
         verifyNoQuestionError();
         verifyTableContent([
@@ -1097,8 +1074,8 @@ describe("scenarios > question > offset", () => {
           ["2024", "2", "510,045.03", "205,256.02"],
         ]);
 
-        openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        H.openNotebook();
+        H.getNotebookStep("summarize").icon("play").should("be.visible");
       });
     });
   });
@@ -1107,16 +1084,16 @@ describe("scenarios > question > offset", () => {
     it("works with avg", () => {
       const customColumnName = "CC Product Price";
 
-      openTable({ table: ORDERS_ID });
+      H.openTable({ table: ORDERS_ID });
 
-      openNotebook();
+      H.openNotebook();
 
       addCustomColumn({
         name: customColumnName,
         formula: "[Product → Rating]",
       });
 
-      summarize({ mode: "notebook" });
+      H.summarize({ mode: "notebook" });
 
       addCustomAggregation({
         formula: `Average([${customColumnName}])`,
@@ -1128,13 +1105,13 @@ describe("scenarios > question > offset", () => {
         name: "offsetted average product rating",
       });
 
-      addSummaryGroupingField({
+      H.addSummaryGroupingField({
         field: customColumnName,
       });
-      addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+      H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
       addSorting({ field: customColumnName, order: "desc" });
 
-      visualize();
+      H.visualize();
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -1154,34 +1131,34 @@ describe("scenarios > question > offset", () => {
     it("works with 3 breakouts", () => {
       const customColumnName = "CC Product Rating";
 
-      openTable({ table: ORDERS_ID });
+      H.openTable({ table: ORDERS_ID });
 
-      openNotebook();
+      H.openNotebook();
 
       addCustomColumn({
         name: customColumnName,
         formula: "[Product → Rating]",
       });
 
-      summarize({ mode: "notebook" });
+      H.summarize({ mode: "notebook" });
 
-      addSummaryField({ metric: "Sum of ...", field: "Total" });
+      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
       addCustomAggregation({
         formula: "Offset(Sum([Total]), -1)",
         name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
       });
 
-      addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
-      addSummaryGroupingField({
+      H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+      H.addSummaryGroupingField({
         field: customColumnName,
       });
-      addSummaryGroupingField({
+      H.addSummaryGroupingField({
         table: "User",
         field: "Source",
       });
       addSorting({ field: "Created At", order: "desc" });
 
-      visualize();
+      H.visualize();
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -1193,7 +1170,7 @@ describe("scenarios > question > offset", () => {
 
   it("works with filtering using segment", () => {
     const segmentName = "Orders < 100";
-    createSegment({
+    H.createSegment({
       name: segmentName,
       // @ts-expect-error convert helper to ts
       description: "All orders with a total under $100.",
@@ -1207,42 +1184,42 @@ describe("scenarios > question > offset", () => {
 
     const customColumnName = "CC Product Rating";
 
-    openTable({ table: ORDERS_ID });
+    H.openTable({ table: ORDERS_ID });
 
-    openNotebook();
+    H.openNotebook();
 
     cy.findAllByTestId("action-buttons").first().icon("filter").click();
-    popover().findByText("Custom Expression").click();
+    H.popover().findByText("Custom Expression").click();
 
-    enterCustomColumnDetails({
+    H.enterCustomColumnDetails({
       formula: `[${segmentName}]`,
     });
-    popover().findByText("Done").click();
+    H.popover().findByText("Done").click();
 
     addCustomColumn({
       name: customColumnName,
       formula: "[Product → Rating]",
     });
 
-    summarize({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
 
-    addSummaryField({ metric: "Sum of ...", field: "Total" });
+    H.addSummaryField({ metric: "Sum of ...", field: "Total" });
     addCustomAggregation({
       formula: "Offset(Sum([Total]), -1)",
       name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
     });
 
-    addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
-    addSummaryGroupingField({
+    H.addSummaryGroupingField({ field: "Created At", bucketSize: "Year" });
+    H.addSummaryGroupingField({
       field: customColumnName,
     });
-    addSummaryGroupingField({
+    H.addSummaryGroupingField({
       table: "User",
       field: "Source",
     });
     addSorting({ field: "Created At", order: "desc" });
 
-    visualize();
+    H.visualize();
 
     verifyNoQuestionError();
     verifyTableContent([
@@ -1253,7 +1230,7 @@ describe("scenarios > question > offset", () => {
 
   it("should work with metrics (metabase#47854)", () => {
     const metricName = "Count of orders";
-    const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
+    const ORDERS_SCALAR_METRIC: H.StructuredQuestionDetails = {
       name: metricName,
       type: "metric",
       description: "A metric",
@@ -1271,18 +1248,18 @@ describe("scenarios > question > offset", () => {
       display: "scalar",
     };
 
-    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-      visitMetric(card.id),
+    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+      H.visitMetric(card.id),
     );
 
-    openNotebook();
+    H.openNotebook();
 
     addCustomAggregation({
       formula: `Offset([${metricName}], -1)`,
       name: "Count of orders (previous month)",
     });
 
-    visualize();
+    H.visualize();
 
     cy.findByTestId("chart-container").should("contain", "January 2024");
   });
@@ -1301,27 +1278,29 @@ function addCustomAggregation({
 }) {
   if (!isOpened) {
     if (isFirst) {
-      getNotebookStep("summarize")
+      H.getNotebookStep("summarize")
         .findByText("Pick a function or metric")
         .click();
     } else {
-      getNotebookStep("summarize").icon("add").first().click();
+      H.getNotebookStep("summarize").icon("add").first().click();
     }
   }
 
-  popover().findByText("Custom Expression").click();
-  enterCustomColumnDetails({ formula, name });
-  popover().button("Done").click();
+  H.popover().findByText("Custom Expression").click();
+  H.enterCustomColumnDetails({ formula, name });
+  H.popover().button("Done").click();
 }
 
 function addBreakout(name: string) {
-  getNotebookStep("summarize").findByText("Pick a column to group by").click();
-  popover().findByText(name).click();
+  H.getNotebookStep("summarize")
+    .findByText("Pick a column to group by")
+    .click();
+  H.popover().findByText(name).click();
 }
 
 function saveQuestion() {
   cy.button("Save").click();
-  modal().button("Save").click();
+  H.modal().button("Save").click();
   return cy.wait("@saveQuestion");
 }
 
@@ -1334,7 +1313,7 @@ function verifyLineChart({
   yAxis?: string;
   legendItems?: string[];
 }) {
-  echartsContainer().within(() => {
+  H.echartsContainer().within(() => {
     cy.findByText(xAxis).should("be.visible");
 
     if (yAxis) {
@@ -1387,12 +1366,12 @@ function verifyInvalidColumnName(
   prefix: string,
   expression: string,
 ) {
-  enterCustomColumnDetails({ formula: prefix });
+  H.enterCustomColumnDetails({ formula: prefix });
   cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-  enterCustomColumnDetails({ formula: expression });
+  H.enterCustomColumnDetails({ formula: expression });
   cy.realPress("Tab");
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByText(`Unknown Field: ${columnName}`).should("be.visible");
     cy.button("Done").should("be.disabled");
   });
@@ -1413,20 +1392,20 @@ function addSorting({
   field: string;
   order?: "asc" | "desc";
 }) {
-  startSort();
-  popover().contains(field).click();
+  H.startSort();
+  H.popover().contains(field).click();
 
   if (order === "desc") {
-    getNotebookStep("sort").contains(field).click();
+    H.getNotebookStep("sort").contains(field).click();
   }
 }
 
 function addCustomColumn({ name, formula }: { name: string; formula: string }) {
   cy.findAllByLabelText("Custom column").last().click();
 
-  enterCustomColumnDetails({
+  H.enterCustomColumnDetails({
     formula,
     name,
   });
-  popover().findByText("Done").click();
+  H.popover().findByText("Done").click();
 }

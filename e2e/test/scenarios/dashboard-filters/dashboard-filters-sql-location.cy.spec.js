@@ -1,14 +1,4 @@
-import {
-  clearFilterWidget,
-  editDashboard,
-  filterWidget,
-  popover,
-  restore,
-  saveDashboard,
-  setFilter,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -23,68 +13,68 @@ describe("scenarios > dashboard > filters > location", () => {
       "dashcardQuery",
     );
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
-        visitQuestion(card_id);
+        H.visitQuestion(card_id);
 
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       },
     );
 
-    editDashboard();
+    H.editDashboard();
   });
 
   it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(([filter]) => {
-      setFilter("Location", filter);
+      H.setFilter("Location", filter);
 
       cy.findByText("Select…").click();
-      popover().contains(filter).click();
+      H.popover().contains(filter).click();
     });
 
-    saveDashboard();
+    H.saveDashboard();
 
     Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        filterWidget().eq(index).click();
+        H.filterWidget().eq(index).click();
         addWidgetStringFilter(value);
 
         cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
-        clearFilterWidget(index);
+        H.clearFilterWidget(index);
         cy.wait("@dashcardQuery");
       },
     );
   });
 
   it("should work when set as the default filter", () => {
-    setFilter("Location", "Is");
+    H.setFilter("Location", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
-    popover().contains("Is").click();
+    H.popover().contains("Is").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     addWidgetStringFilter("Rye");
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.findByTestId("dashcard").within(() => {
       cy.contains("Arnold Adams");
     });
 
-    clearFilterWidget();
+    H.clearFilterWidget();
 
     cy.url().should("not.include", "Rye");
 
-    filterWidget().click();
+    H.filterWidget().click();
 
     addWidgetStringFilter("Pittsburg", { buttonLabel: "Update filter" });
 

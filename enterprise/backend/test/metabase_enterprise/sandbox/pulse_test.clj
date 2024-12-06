@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.pulse-test
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]

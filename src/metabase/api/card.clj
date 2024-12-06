@@ -1,7 +1,6 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -43,6 +42,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -713,7 +713,7 @@
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
-   :parameters  (json/parse-string parameters keyword)
+   :parameters  (json/decode+kw parameters)
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true

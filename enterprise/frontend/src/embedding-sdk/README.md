@@ -29,7 +29,7 @@ docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
 You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
 
 ```sh
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 By default, Metabase will run at `http://localhost:3000`.

@@ -170,7 +170,10 @@
    collection        (mu/with [:maybe (ms/QueryVectorOf
                                        [:or
                                         ms/PositiveInt
-                                        [:re {:error/message "value must be string with `eid:<...>` prefix"} "^eid:.{21}$"]])]
+                                        [:re {:error/message "if you are passing entity_id, it should be exactly 21 chars long"}
+                                         "^.{21}$"]
+                                        [:re {:error/message "value must be string with `eid:<...>` prefix"}
+                                         "^eid:.{21}$"]])]
                               {:description "collections' db ids/entity-ids to serialize"})
    all_collections   (mu/with [:maybe ms/BooleanValue]
                               {:default     true

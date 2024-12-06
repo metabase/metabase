@@ -1,6 +1,5 @@
 (ns metabase-enterprise.sandbox.api.permissions-test
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.models.group-table-access-policy
@@ -13,6 +12,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))

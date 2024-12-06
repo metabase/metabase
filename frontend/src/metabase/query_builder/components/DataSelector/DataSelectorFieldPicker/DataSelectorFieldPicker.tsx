@@ -8,11 +8,12 @@ import {
 import AccordionList from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
-import { Box, DelayGroup, Icon, Text } from "metabase/ui";
+import { Box, DelayGroup, Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import DataSelectorLoading from "../DataSelectorLoading";
+import { CONTAINER_WIDTH } from "../constants";
 
 import DataSelectorFieldPickerS from "./DataSelectorFieldPicker.module.css";
 
@@ -77,7 +78,7 @@ const DataSelectorFieldPicker = ({
     );
 
   return (
-    <Box className={DataSelectorFieldPickerS.Container}>
+    <Box w={CONTAINER_WIDTH} className={DataSelectorFieldPickerS.Container}>
       <DelayGroup>
         <AccordionList
           id="FieldPicker"
@@ -106,9 +107,9 @@ function renderItemWrapper(content: ReactNode) {
 const Header = ({ onBack, selectedTable }: HeaderProps) => (
   <Box className={DataSelectorFieldPickerS.HeaderContainer} onClick={onBack}>
     {onBack && <Icon name="chevronleft" size={18} />}
-    <Text component="span" className={DataSelectorFieldPickerS.HeaderName}>
+    <Box component="span" className={DataSelectorFieldPickerS.HeaderName}>
       {selectedTable?.display_name || t`Fields`}
-    </Text>
+    </Box>
   </Box>
 );
 

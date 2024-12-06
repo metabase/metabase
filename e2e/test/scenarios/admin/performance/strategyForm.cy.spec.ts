@@ -1,13 +1,8 @@
+import { H } from "e2e/support";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  describeEE,
-  restore,
-  setTokenFeatures,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 import {
   interceptPerformanceRoutes,
@@ -30,7 +25,7 @@ import {
 describe("scenarios > admin > performance > strategy form", () => {
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       interceptPerformanceRoutes();
       cy.signInAsAdmin();
       cy.visit("/admin");
@@ -116,12 +111,12 @@ describe("scenarios > admin > performance > strategy form", () => {
     });
   });
 
-  describeEE("ee", () => {
+  H.describeEE("ee", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       interceptPerformanceRoutes();
       cy.signInAsAdmin();
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
     });
 
     it("has the right tabs", () => {
@@ -366,7 +361,7 @@ describe("scenarios > admin > performance > strategy form", () => {
           .contains(
             "No dashboards or questions have their own caching policies yet.",
           );
-        visitQuestion(ORDERS_QUESTION_ID);
+        H.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("99");
@@ -393,7 +388,7 @@ describe("scenarios > admin > performance > strategy form", () => {
           .contains(
             "No dashboards or questions have their own caching policies yet.",
           );
-        visitQuestion(ORDERS_QUESTION_ID);
+        H.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("99");
@@ -407,7 +402,7 @@ describe("scenarios > admin > performance > strategy form", () => {
         adaptiveRadioButton().click();
         saveCacheStrategyForm({ strategyType: "ttl", model: "database" });
 
-        visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("24");

@@ -1,15 +1,10 @@
-import {
-  modal,
-  popover,
-  restore,
-  typeAndBlurUsingLabel,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 const CLIENT_ID_SUFFIX = "apps.googleusercontent.com";
 
 describe("scenarios > admin > settings > SSO > Google", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
@@ -19,13 +14,13 @@ describe("scenarios > admin > settings > SSO > Google", () => {
   it("should save the client id on subsequent tries (metabase#15974)", () => {
     cy.visit("/admin/settings/authentication/google");
 
-    typeAndBlurUsingLabel("Client ID", "example1.apps.googleusercontent.com");
+    H.typeAndBlurUsingLabel("Client ID", "example1.apps.googleusercontent.com");
     cy.button("Save and enable").click();
     cy.wait("@updateGoogleSettings");
     cy.reload();
     cy.findByDisplayValue(`example1.${CLIENT_ID_SUFFIX}`).should("be.visible");
 
-    typeAndBlurUsingLabel("Client ID", `example2.${CLIENT_ID_SUFFIX}`);
+    H.typeAndBlurUsingLabel("Client ID", `example2.${CLIENT_ID_SUFFIX}`);
     cy.button("Save changes").click();
     cy.wait("@updateGoogleSettings");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -37,12 +32,12 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.visit("/admin/settings/authentication");
 
     getGoogleCard().icon("ellipsis").click();
-    popover().findByText("Pause").click();
+    H.popover().findByText("Pause").click();
     cy.wait("@updateSetting");
     getGoogleCard().findByText("Paused").should("exist");
 
     getGoogleCard().icon("ellipsis").click();
-    popover().findByText("Resume").click();
+    H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getGoogleCard().findByText("Active").should("exist");
   });
@@ -52,8 +47,8 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.visit("/admin/settings/authentication");
 
     getGoogleCard().icon("ellipsis").click();
-    popover().findByText("Deactivate").click();
-    modal().button("Deactivate").click();
+    H.popover().findByText("Deactivate").click();
+    H.modal().button("Deactivate").click();
     cy.wait("@updateSettings");
 
     getGoogleCard().findByText("Set up").should("exist");
@@ -62,7 +57,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
   it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {
     cy.visit("/admin/settings/authentication/google");
 
-    typeAndBlurUsingLabel("Client ID", "fake-client-id");
+    H.typeAndBlurUsingLabel("Client ID", "fake-client-id");
     cy.button("Save and enable").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(

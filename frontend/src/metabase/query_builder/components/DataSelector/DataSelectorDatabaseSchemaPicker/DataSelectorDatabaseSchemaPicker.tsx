@@ -10,8 +10,8 @@ import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 
-import { RawDataBackButton } from "../DataSelector";
 import DataSelectorLoading from "../DataSelectorLoading";
+import { RawDataBackButton } from "../RawDataBackButton";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];
@@ -63,9 +63,9 @@ const DataSelectorDatabaseSchemaPicker = ({
     items:
       !database.is_saved_questions && database.getSchemas().length > 1
         ? database.getSchemas().map(schema => ({
-            schema,
-            name: schema.displayName() ?? "",
-          }))
+          schema,
+          name: schema.displayName() ?? "",
+        }))
         : [],
     className: database.is_saved_questions ? CS.bgLight : null,
     icon: database.is_saved_questions ? "collection" : "database",

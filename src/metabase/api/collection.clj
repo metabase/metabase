@@ -4,7 +4,6 @@
   `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
   endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`)."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [compojure.core :refer [GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
@@ -36,6 +35,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -464,7 +464,7 @@
 (defmethod post-process-collection-children :dataset
   [_ collection rows]
   (let [queries-before (map :dataset_query rows)
-        queries-parsed (map (comp mbql.normalize/normalize json/parse-string) queries-before)]
+        queries-parsed (map (comp mbql.normalize/normalize json/decode) queries-before)]
     ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
@@ -509,7 +509,7 @@
   "Given a Card, returns `true` if its query is fully parameterized."
   [row]
   (let [parsed-query (cond-> (:dataset_query row)
-                       (string? (:dataset_query row)) json/parse-string)
+                       (string? (:dataset_query row)) json/decode)
         ;; TODO TB handle pMBQL native queries
         native-query (when (contains? parsed-query "native")
                        (-> parsed-query mbql.normalize/normalize :native))]

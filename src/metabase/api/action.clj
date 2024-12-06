@@ -1,7 +1,6 @@
 (ns metabase.api.action
   "`/api/action/` endpoints."
   (:require
-   [cheshire.core :as json]
    [compojure.core :as compojure :refer [POST]]
    [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
@@ -13,6 +12,7 @@
    [metabase.models.collection :as collection]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -208,7 +208,7 @@
   (actions/check-actions-enabled! action-id)
   (-> (action/select-action :id action-id :archived false)
       api/read-check
-      (actions/fetch-values (json/parse-string parameters))))
+      (actions/fetch-values (json/decode parameters))))
 
 (api/defendpoint POST "/:id/execute"
   "Execute the Action.

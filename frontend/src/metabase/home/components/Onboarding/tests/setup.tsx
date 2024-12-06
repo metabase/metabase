@@ -7,6 +7,7 @@ import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockTokenStatus,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createMockAppState,
@@ -17,6 +18,7 @@ import { Onboarding } from "../Onboarding";
 import type { ChecklistItemValue } from "../types";
 
 export type SetupProps = {
+  isAdmin?: boolean;
   applicationName?: string;
   enableXrays?: boolean;
   hasEnterprisePlugins?: boolean;
@@ -28,6 +30,7 @@ export type SetupProps = {
 };
 
 export const setup = ({
+  isAdmin = true,
   applicationName,
   enableXrays = true,
   hasEnterprisePlugins = false,
@@ -48,6 +51,7 @@ export const setup = ({
         "last-opened-onboarding-checklist-item": openItem,
       },
     }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
       "application-name": applicationName,
       "enable-xrays": enableXrays,

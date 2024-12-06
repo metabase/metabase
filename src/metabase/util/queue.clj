@@ -82,6 +82,5 @@
   ([queue max-items]
    (take-delayed-batch* queue max-items 0 []))
   ([^DelayQueue queue max-items ^long max-first-ms ^long max-next-ms]
-   (if-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
-     (take-delayed-batch* queue max-items max-next-ms [(:value fst)])
-     nil)))
+   (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
+     (take-delayed-batch* queue max-items max-next-ms [(:value fst)]))))

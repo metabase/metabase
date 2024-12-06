@@ -1,24 +1,17 @@
+import { H } from "e2e/support";
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  createTestRoles,
-  describeEE,
-  openNativeEditor,
-  restore,
-  runNativeQuery,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const PG_DB_ID = 2;
 
-describeEE("impersonated permission", () => {
+H.describeEE("impersonated permission", () => {
   describe("admins", () => {
     beforeEach(() => {
-      restore("postgres-12");
-      createTestRoles({ type: "postgres" });
+      H.restore("postgres-12");
+      H.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
     });
 
     describe("impersonated users", () => {
@@ -51,10 +44,10 @@ describeEE("impersonated permission", () => {
       };
 
       beforeEach(() => {
-        restore("postgres-12");
-        createTestRoles({ type: "postgres" });
+        H.restore("postgres-12");
+        H.createTestRoles({ type: "postgres" });
         cy.signInAsAdmin();
-        setTokenFeatures("all");
+        H.setTokenFeatures("all");
 
         setImpersonatedPermission();
 
@@ -79,10 +72,10 @@ describeEE("impersonated permission", () => {
         cy.findAllByTestId("header-cell").contains("Subtotal");
 
         // No access through the native query builder
-        openNativeEditor({ databaseName: "QA Postgres12" }).type(
+        H.openNativeEditor({ databaseName: "QA Postgres12" }).type(
           "select * from reviews",
         );
-        runNativeQuery();
+        H.runNativeQuery();
 
         cy.findByTestId("query-builder-main").within(() => {
           cy.findByText("An error occurred in your query");
@@ -94,7 +87,7 @@ describeEE("impersonated permission", () => {
           .type("{selectall}{backspace}", { delay: 50 })
           .type("select * from orders");
 
-        runNativeQuery();
+        H.runNativeQuery();
 
         cy.findAllByTestId("header-cell").contains("subtotal");
       });

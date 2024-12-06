@@ -94,7 +94,7 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defmethod channel/render-notification [:channel/slack :notification/alert] :- [:sequential SlackMessage]
+(mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload]} _template channel-ids]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
@@ -146,7 +146,7 @@
           :when attachment]
       attachment)))
 
-(mu/defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription] :- [:sequential SlackMessage]
+(mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload creator]} _template channel-ids]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)]

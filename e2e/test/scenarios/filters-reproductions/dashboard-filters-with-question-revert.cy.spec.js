@@ -1,23 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  editDashboard,
-  filterWidget,
-  getDashboardCard,
-  getIframeBody,
-  modal,
-  openSharingMenu,
-  popover,
-  questionInfoButton,
-  restore,
-  saveDashboard,
-  setFilter,
-  snapshot,
-  updateSetting,
-  visitDashboard,
-  visitEmbeddedPage,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -70,7 +53,7 @@ describe("issue 35954", () => {
     "dashboard filter that loses connection should not crash the UI (metabase#35954)",
     () => {
       before(() => {
-        restore();
+        H.restore();
         cy.signInAsAdmin();
 
         cy.createQuestionAndDashboard({
@@ -86,16 +69,16 @@ describe("issue 35954", () => {
 
           cy.request("PUT", `/api/card/${card_id}`, updatedQuestionDetails);
 
-          visitDashboard(dashboard_id);
-          editDashboard();
+          H.visitDashboard(dashboard_id);
+          H.editDashboard();
           cy.log("Add the number filter");
-          setFilter("Number");
+          H.setFilter("Number");
           connectFilterToColumn("Field-mapped Rating");
-          saveDashboard();
+          H.saveDashboard();
 
           cy.log("Give it a value and make sure that the filer applies");
-          filterWidget().click();
-          popover().within(() => {
+          H.filterWidget().click();
+          H.popover().within(() => {
             cy.findByText("3").click();
             cy.button("Add filter").click();
           });
@@ -113,7 +96,7 @@ describe("issue 35954", () => {
 
           cy.log("Revert the question to its original (GUI) version");
           cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
-          questionInfoButton().click();
+          H.questionInfoButton().click();
           cy.findByRole("tab", { name: "History" }).click();
 
           cy.findByTestId("saved-question-history-list")
@@ -155,36 +138,36 @@ describe("issue 35954", () => {
           cy.log(
             "Make sure the UI shows the filter is not connected to the GUI card",
           );
-          editDashboard();
+          H.editDashboard();
 
           cy.findByTestId("fixed-width-filters").icon("gear").click();
-          getDashboardCard().should("contain", "Unknown Field");
+          H.getDashboardCard().should("contain", "Unknown Field");
 
-          snapshot("35954");
+          H.snapshot("35954");
         });
       });
 
       beforeEach(() => {
-        restore("35954");
+        H.restore("35954");
         cy.signInAsAdmin();
       });
 
       it("should be able to remove the broken connection and connect the filter to the GUI question", function () {
-        visitDashboard(this.dashboardId);
-        editDashboard();
+        H.visitDashboard(this.dashboardId);
+        H.editDashboard();
         openFilterSettings();
-        getDashboardCard().findByLabelText("Disconnect").click();
+        H.getDashboardCard().findByLabelText("Disconnect").click();
         connectFilterToColumn("Rating");
-        saveDashboard();
+        H.saveDashboard();
 
         cy.location("search").should("eq", "?equal_to=3");
         assertFilterIsApplied();
       });
 
       it("filter should automatically be re-connected when the question is reverted back to the SQL version", function () {
-        visitQuestion(this.questionId);
+        H.visitQuestion(this.questionId);
 
-        questionInfoButton().click();
+        H.questionInfoButton().click();
         cy.findByRole("tab", { name: "History" }).click();
         cy.findByTestId("saved-question-history-list")
           .find("li")
@@ -195,7 +178,7 @@ describe("issue 35954", () => {
         cy.location("search").should("eq", "?RATING=");
         assertFilterIsDisconnected();
 
-        visitDashboard(this.dashboardId);
+        H.visitDashboard(this.dashboardId);
         cy.location("search").should("eq", "?equal_to=3");
         assertFilterIsApplied();
       });
@@ -222,11 +205,11 @@ describe("issue 35954", () => {
         });
 
         // Discard the legalese modal so we don't need to do an extra click in the UI
-        updateSetting("show-static-embed-terms", false);
+        H.updateSetting("show-static-embed-terms", false);
 
-        visitDashboard(id);
-        openSharingMenu("Embed");
-        modal().findByText("Static embedding").click();
+        H.visitDashboard(id);
+        H.openSharingMenu("Embed");
+        H.modal().findByText("Static embedding").click();
 
         cy.findByTestId("embedding-preview").within(() => {
           cy.intercept("GET", "api/preview_embed/dashboard/**").as(
@@ -238,12 +221,12 @@ describe("issue 35954", () => {
           cy.wait(["@previewEmbed", "@previewEmbed"]);
         });
 
-        getIframeBody().within(() => {
+        H.getIframeBody().within(() => {
           cy.findByRole("heading", { name: dashboardDetails.name });
 
           assertFilterIsDisconnected();
 
-          filterWidget().click();
+          H.filterWidget().click();
           cy.findByPlaceholderText("Enter a number").type("3{enter}");
           cy.button("Add filter").click();
 
@@ -266,10 +249,10 @@ describe("issue 35954", () => {
           params: {},
         };
 
-        visitEmbeddedPage(payload);
+        H.visitEmbeddedPage(payload);
         assertFilterIsDisconnected();
 
-        filterWidget().click();
+        H.filterWidget().click();
         cy.findByPlaceholderText("Enter a number").type("3{enter}");
         cy.button("Add filter").click();
 
@@ -291,7 +274,7 @@ describe("issue 35954", () => {
           params: { equal_to: [3] },
         };
 
-        visitEmbeddedPage(payload);
+        H.visitEmbeddedPage(payload);
         assertFilterIsDisconnected();
       });
     },
@@ -299,12 +282,12 @@ describe("issue 35954", () => {
 });
 
 function connectFilterToColumn(column, index = 0) {
-  getDashboardCard().within(() => {
+  H.getDashboardCard().within(() => {
     cy.findByText("Column to filter on");
     cy.findByText("Select…").click();
   });
 
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findAllByText(column).eq(index).click();
   });
 }

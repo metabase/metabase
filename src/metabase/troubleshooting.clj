@@ -47,5 +47,5 @@
    (when (premium-features/airgap-enabled)
      {:airgap-token       :enabled
       :max-users          (premium-features/max-users-allowed)
-      :current-user-count (premium-features/cached-active-users-count)
+      :current-user-count (premium-features/active-users-count)
       :valid-thru         (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :valid-thru)})))

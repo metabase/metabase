@@ -69,7 +69,7 @@ export const getSankeyData = (
     row: RowValue[],
   ): SankeyNode {
     const node = valueToNode.get(value) ?? {
-      value,
+      rawName: value,
       level,
       hasInputs: false,
       hasOutputs: false,

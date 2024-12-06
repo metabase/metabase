@@ -10,7 +10,7 @@ export interface SankeyChartColumns {
 }
 
 export interface SankeyNode {
-  value: RowValue;
+  rawName: RowValue;
   level: number;
   hasInputs: boolean;
   hasOutputs: boolean;
@@ -37,9 +37,11 @@ export interface SankeyDataModel {
 export type Formatter = (value: RowValue) => string;
 
 export interface SankeyFormatters {
-  node: Formatter;
   value: Formatter;
   valueCompact: Formatter;
+  source: Formatter;
+  target: Formatter;
+  node: (node: SankeyNode) => string;
 }
 
 export interface SankeyChartModel {

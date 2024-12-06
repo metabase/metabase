@@ -9,7 +9,6 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { waitTimeContext } from "metabase/context/wait-time";
 import LegacyTooltip from "metabase/core/components/Tooltip";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
@@ -42,7 +41,6 @@ export default {
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
-    FasterExplicitSizeUpdateDecorator,
     WaitForResizeToStopDecorator,
     MockIsEmbeddingDecorator,
   ],
@@ -59,18 +57,9 @@ function ReduxDecorator(Story: StoryFn) {
   );
 }
 
-function FasterExplicitSizeUpdateDecorator(Story: StoryFn) {
-  return (
-    <waitTimeContext.Provider value={0}>
-      <Story />
-    </waitTimeContext.Provider>
-  );
-}
-
 /**
  * This is an arbitrary number, it should be big enough to pass CI tests.
- * This value works together with FasterExplicitSizeUpdateDecorator which
- * make sure we finish resizing any ExplicitSize components the fastest.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {

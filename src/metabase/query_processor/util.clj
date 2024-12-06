@@ -3,7 +3,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
@@ -14,6 +13,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -114,7 +114,7 @@
                   (throw (ex-info "Error hashing query. Is this a valid query?"
                                   {:query query}
                                   e))))]
-    (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query)))))
+    (buddy-hash/sha3-256 (json/encode (select-keys-for-hashing query)))))
 
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
 

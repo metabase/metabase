@@ -1,7 +1,6 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -49,6 +48,7 @@
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -1224,7 +1224,7 @@
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
    (api/check-404 (action/dashcard->action dashcard-id))
-   (json/parse-string parameters)))
+   (json/decode parameters)))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
@@ -1279,7 +1279,7 @@
               :card-id       card-id
               :dashcard-id   dashcard-id
               :export-format export-format
-              :parameters    (json/parse-string parameters keyword)
+              :parameters    (json/decode+kw parameters)
               :context       (api.dataset/export-format->context export-format)
               :constraints   nil
               ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to

@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.streaming.csv-test
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -11,7 +10,8 @@
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.json :as json])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
@@ -52,7 +52,7 @@
             ["4" "March 11, 2014"     "5" "4"]
             ["5" "May 5, 2013"        "3" "49"]]
            (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                              (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5}))
+                                              (json/encode (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5}))
                                               :format_rows true)]
              (take 5 (parse-and-sort-csv result)))))))
 
@@ -77,7 +77,7 @@
   (testing "NULL values should be written correctly"
     (mt/dataset defs/test-data-null-date
       (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                         (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5}))
+                                         (json/encode (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5}))
                                          :format_rows true)]
         (is (= [["1" "April 7, 2014"      "" "5" "12"]
                 ["2" "September 18, 2014" "" "1" "31"]
@@ -88,7 +88,7 @@
 
 (deftest datetime-fields-are-untouched-when-exported
   (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                     (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5}))
+                                     (json/encode (mt/mbql-query users {:order-by [[:asc $id]], :limit 5}))
                                      :format_rows true)]
     (is (= [["1" "Plato Yeshua" "April 1, 2014, 8:30 AM"]
             ["2" "Felipinho Asklepios" "December 5, 2014, 3:15 PM"]
@@ -101,7 +101,7 @@
   (testing "Ensure CSV longitude and latitude values are correctly exported"
     (let [result (mt/user-http-request
                   :rasta :post 200 "dataset/csv" :query
-                  (json/generate-string
+                  (json/encode
                    {:database (mt/id)
                     :type     :query
                     :query    {:source-table (mt/id :venues)

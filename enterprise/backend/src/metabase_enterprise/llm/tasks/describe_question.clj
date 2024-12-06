@@ -1,11 +1,11 @@
 (ns metabase-enterprise.llm.tasks.describe-question
   "LLM task(s) for generating question descriptions"
   (:require
-   [cheshire.core :as json]
    [clojure.set :refer [rename-keys]]
    [metabase-enterprise.llm.client :as llm-client]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (defn- question->prompt-data
   "Create a data-oriented summary of a question as input to an LLM for summarization."
@@ -30,7 +30,7 @@
         summary-with-prompts (merge description
                                     {:friendly_title   "%%FILL_THIS_TITLE_IN%%"
                                      :friendly_summary "%%FILL_THIS_SUMMARY_IN%%"})
-        json-str             (json/generate-string summary-with-prompts)
+        json-str             (json/encode summary-with-prompts)
         client               (-> (llm-client/create-chat-completion)
                                  (llm-client/wrap-parse-json
                                   (fn [rsp] (rename-keys rsp {:friendly_title   :title

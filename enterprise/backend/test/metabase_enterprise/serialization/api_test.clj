@@ -98,7 +98,14 @@
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                              ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
+                  (is (= #{:log :dir :dashboard :card :collection}
+                         (tar-file-types f)))))
+
+              (testing "We can export that collection using entity id"
+                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                              :collection (:entity_id coll) :data_model false :settings false)]
                   (is (= #{:log :dir :dashboard :card :collection}
                          (tar-file-types f)))))
 

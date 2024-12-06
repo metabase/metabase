@@ -14,7 +14,7 @@ import { DataStepIconButton } from "./DataStep.styled";
 export const DataStep = ({
   query,
   step,
-  readOnly,
+  readOnly = false,
   color,
   updateQuery,
 }: NotebookStepProps) => {
@@ -64,11 +64,13 @@ export const DataStep = ({
         data-testid="data-step-cell"
       >
         <NotebookDataPicker
-          title={t`Pick your starting data`}
           query={query}
           stageIndex={stageIndex}
           table={table}
+          title={t`Pick your starting data`}
+          canChangeDatabase
           hasMetrics
+          isDisabled={readOnly}
           onChange={handleTableChange}
         />
       </NotebookCellItem>

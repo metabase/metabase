@@ -1,4 +1,4 @@
-import { visualize } from "e2e/support/helpers";
+import { H } from "e2e/support";
 import {
   fillAreaUnderLineChart,
   newQuestion,
@@ -49,7 +49,7 @@ it("should create questions", () => {
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Category").click();
 
-  visualize();
+  H.visualize();
 
   cy.get(".bar").should("have.length", 4);
 
@@ -107,7 +107,7 @@ it("should create questions", () => {
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Created At: Quarter");
 
-  visualize();
+  H.visualize();
   cy.get("circle");
 
   cy.findByTestId("viz-type-button").click();

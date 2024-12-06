@@ -1,6 +1,5 @@
 (ns metabase.models.params.chain-filter-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.models :refer [Field FieldValues]]
    [metabase.models.field-values :as field-values]
@@ -8,6 +7,7 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -521,7 +521,7 @@
           (testing "should search for the values of linked-filter FieldValues"
             (t2/update! FieldValues {:field_id field-id
                                      :type     "linked-filter"}
-                        {:values (json/generate-string ["Good" "Bad"])
+                        {:values (json/encode ["Good" "Bad"])
                          ;; HACK: currently this is hardcoded to true for linked-filter
                          ;; in [[params.field-values/fetch-advanced-field-values]]
                          ;; we want this to false to test this case

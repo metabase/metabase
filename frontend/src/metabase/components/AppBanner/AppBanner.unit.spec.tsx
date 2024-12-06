@@ -3,7 +3,7 @@ import { Route } from "react-router";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { TokenStatusStatus } from "metabase-types/api";
+import type { TokenStatus } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenStatus,
@@ -18,8 +18,7 @@ interface SetupOpts {
   isAdmin: boolean;
   isHosted?: boolean;
   isReadOnly?: boolean;
-  tokenStatusStatus?: TokenStatusStatus;
-  tokenError?: string;
+  tokenStatus?: TokenStatus | null;
 }
 const TEST_DB = createSampleDatabase();
 
@@ -28,9 +27,8 @@ const DATA_WAREHOUSE_DB = createMockDatabase({ id: 2 });
 function setup({
   isAdmin,
   isHosted = false,
-  tokenStatusStatus,
-  tokenError,
   isReadOnly = false,
+  tokenStatus,
 }: SetupOpts) {
   setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
 
@@ -39,11 +37,7 @@ function setup({
     settings: mockSettings({
       "is-hosted?": isHosted,
       "read-only-mode": isReadOnly,
-      "token-status": createMockTokenStatus({
-        status: tokenStatusStatus,
-        valid: false,
-        "error-details": tokenError,
-      }),
+      "token-status": createMockTokenStatus(tokenStatus ?? {}),
     }),
   });
 
@@ -62,10 +56,15 @@ describe("AppBanner", () => {
   });
 
   describe("PaymentBanner", () => {
+    const token = {
+      valid: false,
+      trial: false,
+    };
+
     it("should render past-due banner for admin user with tokenStatusStatus: past-due", () => {
       setup({
         isAdmin: true,
-        tokenStatusStatus: "past-due",
+        tokenStatus: { ...token, status: "past-due" },
       });
 
       expect(
@@ -81,7 +80,7 @@ describe("AppBanner", () => {
     it("should render unpaid banner for admin user with tokenStatusStatus: unpaid", () => {
       setup({
         isAdmin: true,
-        tokenStatusStatus: "unpaid",
+        tokenStatus: { ...token, status: "unpaid" },
       });
 
       expect(
@@ -97,8 +96,11 @@ describe("AppBanner", () => {
     it("should render an error with details when the token is `invalid`", () => {
       setup({
         isAdmin: true,
-        tokenStatusStatus: "invalid",
-        tokenError: "This is a critical damage.",
+        tokenStatus: {
+          ...token,
+          status: "invalid",
+          "error-details": "This is a critical damage.",
+        },
       });
 
       expect(
@@ -109,16 +111,7 @@ describe("AppBanner", () => {
     it("should not render for admin user with tokenStatusStatus: something-else", () => {
       setup({
         isAdmin: true,
-        tokenStatusStatus: "something-else",
-      });
-
-      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-    });
-
-    it("should not render when token status is missing", () => {
-      setup({
-        isAdmin: true,
-        tokenStatusStatus: undefined,
+        tokenStatus: { ...token, status: "something-else" },
       });
 
       expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
@@ -130,7 +123,7 @@ describe("AppBanner", () => {
         setup({
           isAdmin: true,
           isHosted: true,
-          tokenStatusStatus: status,
+          tokenStatus: { ...token, status },
         });
 
         expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
@@ -150,6 +143,71 @@ describe("AppBanner", () => {
           "Metabase is under maintenance and is operating in read-only mode. It should only take up to 30 minutes.",
         ),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("TrialBanner", () => {
+    const token = {
+      status: "Token is valid",
+      valid: true,
+      trial: true,
+    };
+
+    it("should not render if there is no information about the token", () => {
+      setup({
+        isAdmin: true,
+        isHosted: true,
+        tokenStatus: null,
+      });
+
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
+
+    it("should not render for self-hosted instances", () => {
+      setup({
+        isAdmin: true,
+        isHosted: false,
+        tokenStatus: token,
+      });
+
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
+
+    it("should not render if token is not in trial", () => {
+      setup({
+        isAdmin: true,
+        isHosted: true,
+        tokenStatus: { ...token, trial: false },
+      });
+
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
+
+    it("should not render if token expiry date is not present", () => {
+      setup({
+        isAdmin: true,
+        isHosted: true,
+        tokenStatus: { ...token, "valid-thru": undefined },
+      });
+
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
+
+    it("should render if it is a valid instance in a trial period", () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date("2024-12-15"));
+
+      setup({
+        isAdmin: true,
+        isHosted: true,
+        tokenStatus: {
+          ...token,
+          "valid-thru": "2024-12-31T23:00:00.000Z",
+        },
+      });
+
+      expect(screen.getByTestId("app-banner")).toBeInTheDocument();
+      jest.useRealTimers();
     });
   });
 });

@@ -12,14 +12,17 @@ import { jt, t } from "ttag";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
 import {
   getDocsUrl,
   getIsPaidPlan,
   getSetting,
 } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getApplicationName,
   getShowMetabaseLinks,
@@ -48,9 +51,10 @@ export const Onboarding = () => {
   const applicationName = useSelector(getApplicationName);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isPaidPlan = useSelector(getIsPaidPlan);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const isHosted = useSelector(getIsHosted);
-  const shouldConfigureCommunicationChannels = !isHosted;
+  const shouldConfigureCommunicationChannels = isAdmin && !isHosted;
 
   const isXrayEnabled = useSelector(getIsXrayEnabled);
 
@@ -78,7 +82,7 @@ export const Onboarding = () => {
 
   const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(null);
 
-  const DEFAULT_ITEM = "database";
+  const DEFAULT_ITEM = isAdmin ? "database" : "x-ray";
 
   const newQuestionUrl = Urls.newQuestion({
     mode: "notebook",
@@ -189,6 +193,13 @@ export const Onboarding = () => {
     }),
   );
 
+  const helpLink = useHelpLink();
+
+  const disabledXrayCopy = (isAdmin: boolean) =>
+    isAdmin
+      ? t`You need to enable this feature first.`
+      : t`An admin needs to enable this feature first.`;
+
   return (
     <Box
       mih="100%"
@@ -212,81 +223,86 @@ export const Onboarding = () => {
             handleValueChange(value)
           }
         >
-          <Box mb={64}>
-            <Title order={2} mb="lg">{t`Set up your ${applicationName}`}</Title>
-            <Accordion.Item value="database" data-testid="database-item">
-              <Accordion.Control icon={<Icon name="add_data" />}>
-                {t`Connect to your database`}
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Stack spacing="lg">
-                  <img
-                    alt={`${applicationName} data stack`}
-                    className={S.image}
-                    loading="lazy"
-                    src="app/assets/img/onboarding_data_diagram.png"
-                    srcSet="app/assets/img/onboarding_data_diagram@2x.png 2x"
-                    width="100%"
-                  />
+          {isAdmin && (
+            <Box mb={64}>
+              <Title
+                order={2}
+                mb="lg"
+              >{t`Set up your ${applicationName}`}</Title>
+              <Accordion.Item value="database" data-testid="database-item">
+                <Accordion.Control icon={<Icon name="add_data" />}>
+                  {t`Connect to your database`}
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Stack spacing="lg">
+                    <img
+                      alt={`${applicationName} ${t`data stack`}`}
+                      className={S.image}
+                      loading="lazy"
+                      src="app/assets/img/onboarding_data_diagram.png"
+                      srcSet="app/assets/img/onboarding_data_diagram@2x.png 2x"
+                      width="100%"
+                    />
 
-                  <Text>
-                    {t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. ${applicationName} connects to more than 15 popular databases.`}
-                  </Text>
-                  <Box data-testid="database-cta">
-                    <Link
-                      to="/admin/databases/create"
-                      onClick={() => trackChecklistItemCTAClicked("database")}
-                    >
-                      <Button variant="outline">{t`Add Database`}</Button>
-                    </Link>
-                  </Box>
-                </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
-            <Accordion.Item value="invite" data-testid="invite-item">
-              <Accordion.Control icon={<Icon name="group" />}>
-                {t`Invite people`}
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Stack spacing="lg">
-                  <img
-                    alt={`Admin panel with the "Invite someone" button`}
-                    className={S.image}
-                    loading="lazy"
-                    src="app/assets/img/onboarding_invite.png"
-                    srcSet="app/assets/img/onboarding_invite@2x.png 2x"
-                    width="100%"
-                  />
-                  {!isPaidPlan ? (
-                    // eslint-disable-next-line no-literal-metabase-strings -- OSS doesn't have whitelabeling option
-                    <Text>{t`Don't be shy with invites. Metabase makes self-service analytics easy.`}</Text>
-                  ) : (
-                    // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins
-                    <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
-                  )}
+                    <Text>
+                      {t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. ${applicationName} connects to more than 15 popular databases.`}
+                    </Text>
+                    <Box data-testid="database-cta">
+                      <Link
+                        to="/admin/databases/create"
+                        onClick={() => trackChecklistItemCTAClicked("database")}
+                      >
+                        <Button variant="outline">{t`Add Database`}</Button>
+                      </Link>
+                    </Box>
+                  </Stack>
+                </Accordion.Panel>
+              </Accordion.Item>
+              <Accordion.Item value="invite" data-testid="invite-item">
+                <Accordion.Control icon={<Icon name="group" />}>
+                  {t`Invite people`}
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Stack spacing="lg">
+                    <img
+                      alt={t`Admin panel with the "Invite someone" button`}
+                      className={S.image}
+                      loading="lazy"
+                      src="app/assets/img/onboarding_invite.png"
+                      srcSet="app/assets/img/onboarding_invite@2x.png 2x"
+                      width="100%"
+                    />
+                    {!isPaidPlan ? (
+                      // eslint-disable-next-line no-literal-metabase-strings -- OSS doesn't have whitelabeling option
+                      <Text>{t`Don't be shy with invites. Metabase makes self-service analytics easy.`}</Text>
+                    ) : (
+                      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins
+                      <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
+                    )}
 
-                  <Group spacing={0} data-testid="invite-cta">
-                    <Link
-                      to="/admin/people"
-                      onClick={() =>
-                        trackChecklistItemCTAClicked("invite", "primary")
-                      }
-                    >
-                      <Button variant="outline">{t`Invite people`}</Button>
-                    </Link>
-                    <Link
-                      to="/admin/settings/authentication"
-                      onClick={() =>
-                        trackChecklistItemCTAClicked("invite", "secondary")
-                      }
-                    >
-                      <Button variant="subtle">{t`Set up Single Sign-on`}</Button>
-                    </Link>
-                  </Group>
-                </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Box>
+                    <Group spacing={0} data-testid="invite-cta">
+                      <Link
+                        to="/admin/people"
+                        onClick={() =>
+                          trackChecklistItemCTAClicked("invite", "primary")
+                        }
+                      >
+                        <Button variant="outline">{t`Invite people`}</Button>
+                      </Link>
+                      <Link
+                        to="/admin/settings/authentication"
+                        onClick={() =>
+                          trackChecklistItemCTAClicked("invite", "secondary")
+                        }
+                      >
+                        <Button variant="subtle">{t`Set up Single Sign-on`}</Button>
+                      </Link>
+                    </Group>
+                  </Stack>
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Box>
+          )}
 
           <Box mb={64}>
             <Title order={2} mb="lg">{t`Start visualizing your data`}</Title>
@@ -315,17 +331,21 @@ export const Onboarding = () => {
                           />
                         )}. ${applicationName} will create a bunch of charts based on that data and arrange them on a dashboard.`}
                       </Text>
-                      <Box data-testid="x-ray-cta">
-                        <Link
-                          to="/browse/databases"
-                          onClick={() => trackChecklistItemCTAClicked("x-ray")}
-                        >
-                          <Button variant="outline">{t`Browse data`}</Button>
-                        </Link>
-                      </Box>
+                      {isAdmin && (
+                        <Box data-testid="x-ray-cta">
+                          <Link
+                            to="/browse/databases"
+                            onClick={() =>
+                              trackChecklistItemCTAClicked("x-ray")
+                            }
+                          >
+                            <Button variant="outline">{t`Browse data`}</Button>
+                          </Link>
+                        </Box>
+                      )}
                     </>
                   ) : (
-                    <Text>{t`You need to enable this feature first.`}</Text>
+                    <Text>{disabledXrayCopy(isAdmin)}</Text>
                   )}
                 </Stack>
               </Accordion.Panel>
@@ -349,14 +369,16 @@ export const Onboarding = () => {
                       <b key="drill-through">{t`drill-through the chart`}</b>
                     )} to explore the data further.`}
                   </Text>
-                  <Box data-testid="notebook-cta">
-                    <Link
-                      to={newQuestionUrl}
-                      onClick={() => trackChecklistItemCTAClicked("notebook")}
-                    >
-                      <Button variant="outline">{t`New question`}</Button>
-                    </Link>
-                  </Box>
+                  {isAdmin && (
+                    <Box data-testid="notebook-cta">
+                      <Link
+                        to={newQuestionUrl}
+                        onClick={() => trackChecklistItemCTAClicked("notebook")}
+                      >
+                        <Button variant="outline">{t`New question`}</Button>
+                      </Link>
+                    </Box>
+                  )}
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
@@ -389,14 +411,16 @@ export const Onboarding = () => {
                       )
                     }, and reference the results of models or other saved question in your code.`}
                   </Text>
-                  <Box data-testid="sql-cta">
-                    <Link
-                      to={newNativeQuestionUrl}
-                      onClick={() => trackChecklistItemCTAClicked("sql")}
-                    >
-                      <Button variant="outline">{t`New native query`}</Button>
-                    </Link>
-                  </Box>
+                  {isAdmin && (
+                    <Box data-testid="sql-cta">
+                      <Link
+                        to={newNativeQuestionUrl}
+                        onClick={() => trackChecklistItemCTAClicked("sql")}
+                      >
+                        <Button variant="outline">{t`New native query`}</Button>
+                      </Link>
+                    </Box>
+                  )}
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
@@ -429,7 +453,7 @@ export const Onboarding = () => {
                     </ul>
                   </Text>
 
-                  {exampleDashboardId && (
+                  {isAdmin && exampleDashboardId && (
                     <Box data-testid="dashboard-cta">
                       <Link
                         to={`/dashboard/${exampleDashboardId}`}
@@ -466,11 +490,13 @@ export const Onboarding = () => {
                     <Text data-testid="subscription-communication-setup">
                       {jt`${(
                         <Link
+                          className={CS.link}
                           key="subscription-email"
                           to="/admin/settings/email/smtp"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
+                          className={CS.link}
                           key="subscription-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
@@ -494,7 +520,7 @@ export const Onboarding = () => {
                       />
                     )} ${(<b key="subscriptions">{t`Subscriptions`}</b>)}.`}
                   </Text>
-                  {exampleDashboardId && (
+                  {isAdmin && exampleDashboardId && (
                     <Box data-testid="subscription-cta">
                       <Link
                         to="/dashboard/1"
@@ -525,11 +551,13 @@ export const Onboarding = () => {
                     <Text data-testid="alert-communication-setup">
                       {jt`${(
                         <Link
+                          className={CS.link}
                           key="alert-email"
                           to="/admin/settings/email/smtp"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
+                          className={CS.link}
                           key="alert-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
@@ -589,7 +617,7 @@ export const Onboarding = () => {
                     </ul>
                   </Text>
                   {/* If the example dashboard is not available, there's a high chance that this question isn't either */}
-                  {exampleDashboardId && (
+                  {isAdmin && exampleDashboardId && (
                     <Box data-testid="alert-cta">
                       <Link
                         // The product decision was to hard code this question id, since we don't have the
@@ -624,15 +652,15 @@ export const Onboarding = () => {
                 </Text>
               </Box>
             )}
-            {isPaidPlan && (
+            {helpLink.visible && (
               <Box className={S.support} data-testid="help-section" p="lg">
                 <Stack spacing="xs">
                   <Title order={4}>{t`Need to talk with someone?`}</Title>
                   <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
                 </Stack>
-                <Link to="mailto:help@metabase.com" key="help">
+                <ExternalLink href={helpLink.href} key="help">
                   <Button variant="filled">{t`Get Help`}</Button>
-                </Link>
+                </ExternalLink>
               </Box>
             )}
           </Box>

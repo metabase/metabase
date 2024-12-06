@@ -1,26 +1,17 @@
+import { H } from "e2e/support";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  checkFilterLabelAndValue,
-  editDashboard,
-  filterWidget,
-  popover,
-  restore,
-  saveDashboard,
-  setFilter,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 describe("scenarios > dashboard > filters > ID", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    editDashboard();
-    setFilter("ID");
+    H.editDashboard();
+    H.setFilter("ID");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -40,14 +31,14 @@ describe("scenarios > dashboard > filters > ID", () => {
 
   describe("should work for the primary key", () => {
     beforeEach(() => {
-      popover().contains("ID").first().click();
+      H.popover().contains("ID").first().click();
     });
 
     it("when set through the filter widget", () => {
-      saveDashboard();
+      H.saveDashboard();
       cy.wait("@dashboardData");
 
-      filterWidget().click();
+      H.filterWidget().click();
       addWidgetStringFilter("15");
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
@@ -60,7 +51,7 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("15");
 
-      saveDashboard();
+      H.saveDashboard();
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
@@ -70,20 +61,20 @@ describe("scenarios > dashboard > filters > ID", () => {
 
   describe("should work for the foreign key", () => {
     beforeEach(() => {
-      popover().contains("User ID").click();
+      H.popover().contains("User ID").click();
     });
 
     it("when set through the filter widget", () => {
-      saveDashboard();
+      H.saveDashboard();
       cy.wait("@dashboardData");
 
-      filterWidget().click();
+      H.filterWidget().click();
       addWidgetStringFilter("4");
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByTestId("dashcard").should("contain", "47.68");
-      checkFilterLabelAndValue("ID", "Arnold Adams - 4");
+      H.checkFilterLabelAndValue("ID", "Arnold Adams - 4");
     });
 
     it("when set as the default filter", () => {
@@ -91,18 +82,18 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("4");
 
-      saveDashboard();
+      H.saveDashboard();
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByTestId("dashcard").should("contain", "47.68");
-      checkFilterLabelAndValue("ID", "Arnold Adams - 4");
+      H.checkFilterLabelAndValue("ID", "Arnold Adams - 4");
     });
   });
 
   describe("should work on the implicit join", () => {
     beforeEach(() => {
-      popover().within(() => {
+      H.popover().within(() => {
         // There are three of these, and the order is fixed:
         // "own" column first, then implicit join on People and User alphabetically.
         // We select index 1 to get the Product.ID.
@@ -111,10 +102,10 @@ describe("scenarios > dashboard > filters > ID", () => {
     });
 
     it("when set through the filter widget", () => {
-      saveDashboard();
+      H.saveDashboard();
       cy.wait("@dashboardData");
 
-      filterWidget().click();
+      H.filterWidget().click();
       addWidgetStringFilter("10");
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
@@ -127,7 +118,7 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("10");
 
-      saveDashboard();
+      H.saveDashboard();
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 

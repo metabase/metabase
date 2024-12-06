@@ -354,23 +354,26 @@
   ([m]
    (into {} (disqualify) m)))
 
+(def ^:private options-preserved-in-legacy
+  "Map of option keys in pMBQL to their legacy names. Keys are renamed before [[disqualify]] drops all namespaced keys."
+  {:metabase.lib.field/original-temporal-unit :original-temporal-unit})
+
 (defn- options->legacy-MBQL
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
   [m]
-  (not-empty
-   (-> (into {}
-             (comp (disqualify)
-                   (remove (fn [[k _v]]
-                             (= k :effective-type))))
-             ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where
-             ;; those were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
-             (if (contains? m :metabase.lib.query/transformation-added-base-type)
-               (dissoc m
-                       :metabase.lib.query/transformation-added-base-type
-                       :base-type)
-               m))
-       (m/assoc-some :original-temporal-unit (:metabase.lib.field/original-temporal-unit m)))))
+  (->> (cond-> m
+         ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
+         ;; were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
+         (contains? m :metabase.lib.query/transformation-added-base-type)
+         (dissoc :metabase.lib.query/transformation-added-base-type :base-type)
+
+         ;; Removing the namespaces from a few
+         true (update-keys #(get options-preserved-in-legacy % %)))
+       (into {} (comp (disqualify)
+                      (remove (fn [[k _v]]
+                                (#{:effective-type :ident} k)))))
+       not-empty))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}

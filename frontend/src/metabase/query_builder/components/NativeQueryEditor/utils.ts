@@ -1,9 +1,7 @@
 import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
-import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { CardType } from "metabase-types/api";
 
 import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
 
@@ -115,22 +113,3 @@ export function formatQuery(queryText: string, engine: string) {
     },
   });
 }
-
-export const getAutocompleteResultMeta = (
-  type: CardType,
-  collectionName: string,
-) => {
-  if (type === "question") {
-    return t`Question in ${collectionName}`;
-  }
-
-  if (type === "model") {
-    return t`Model in ${collectionName}`;
-  }
-
-  if (type === "metric") {
-    return t`Metric in ${collectionName}`;
-  }
-
-  throw new Error(`Unknown question.type(): ${type}`);
-};

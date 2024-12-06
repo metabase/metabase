@@ -1,106 +1,82 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  addCustomColumn,
-  addSummaryField,
-  addSummaryGroupingField,
-  assertJoinValid,
-  assertQueryBuilderRowCount,
-  enterCustomColumnDetails,
-  entityPickerModal,
-  filter,
-  getNotebookStep,
-  join,
-  joinTable,
-  openNotebook,
-  openOrdersTable,
-  popover,
-  queryBuilderMain,
-  restore,
-  saveQuestion,
-  selectFilterOperator,
-  selectSavedQuestionsToJoin,
-  startNewQuestion,
-  summarize,
-  visitQuestionAdhoc,
-  visualize,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > joined questions", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should join raw tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
-    openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
 
-    join();
-    joinTable("Reviews", "Product ID", "Product ID");
+    H.join();
+    H.joinTable("Reviews", "Product ID", "Product ID");
 
-    visualize();
-    assertJoinValid({
+    H.visualize();
+    H.assertJoinValid({
       lhsTable: "Orders",
       rhsTable: "Reviews",
       lhsSampleColumn: "Product ID",
       rhsSampleColumn: "Reviews - Product → ID",
     });
 
-    openNotebook();
-    getNotebookStep("join").icon("chevrondown").click();
-    popover().within(() => {
+    H.openNotebook();
+    H.getNotebookStep("join").icon("chevrondown").click();
+    H.popover().within(() => {
       cy.findByText("Product ID").click();
       cy.findByText("Body").click();
       cy.findByText("Created At").click();
     });
-    visualize();
+    H.visualize();
 
-    assertJoinValid({
+    H.assertJoinValid({
       lhsTable: "Orders",
       rhsTable: "Reviews",
       lhsSampleColumn: "Product ID",
       rhsSampleColumn: "Reviews - Product → Reviewer",
     });
-    queryBuilderMain().findByText("Body").should("not.exist");
+    H.queryBuilderMain().findByText("Body").should("not.exist");
 
     // Post-join filters on the joined table (metabase#12221, metabase#15570)
-    openNotebook();
-    filter({ mode: "notebook" });
-    popover().within(() => {
+    H.openNotebook();
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
       cy.findByText("Reviews").click();
       cy.findByText("Rating").click();
     });
-    selectFilterOperator("Equal to");
-    popover().within(() => {
+    H.selectFilterOperator("Equal to");
+    H.popover().within(() => {
       cy.findByLabelText("2").click();
       cy.button("Add filter").click();
     });
 
     // Post-join aggregation (metabase#11452):
-    summarize({ mode: "notebook" });
-    addSummaryField({
+    H.summarize({ mode: "notebook" });
+    H.addSummaryField({
       metric: "Average of ...",
       table: "Reviews",
       field: "Rating",
     });
-    addSummaryGroupingField({ table: "Reviews", field: "Reviewer" });
+    H.addSummaryGroupingField({ table: "Reviews", field: "Reviewer" });
 
-    visualize();
+    H.visualize();
 
     cy.findByTestId("qb-filters-panel").findByText(
       "Reviews - Product → Rating is equal to 2",
     );
-    assertQueryBuilderRowCount(89);
+    H.assertQueryBuilderRowCount(89);
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
-    saveQuestion();
+    H.saveQuestion();
 
     cy.findByTestId("qb-filters-panel").findByText(
       "Reviews - Product → Rating is equal to 2",
     );
-    assertQueryBuilderRowCount(89);
+    H.assertQueryBuilderRowCount(89);
   });
 
   it("should join a native question (metabase#37100)", () => {
@@ -114,56 +90,56 @@ describe("scenarios > question > joined questions", () => {
       native: { query: "select * from products" },
     });
 
-    startNewQuestion();
-    selectSavedQuestionsToJoin("question a", "question b");
-    popover().findByText("PRODUCT_ID").click();
-    popover().findByText("ID").click();
+    H.startNewQuestion();
+    H.selectSavedQuestionsToJoin("question a", "question b");
+    H.popover().findByText("PRODUCT_ID").click();
+    H.popover().findByText("ID").click();
 
-    visualize();
+    H.visualize();
 
-    assertJoinValid({
+    H.assertJoinValid({
       lhsTable: "question a",
       rhsTable: "question b",
       lhsSampleColumn: "TOTAL",
       rhsSampleColumn: "question b - PRODUCT_ID → ID",
     });
 
-    openNotebook();
-    getNotebookStep("join").icon("chevrondown").click();
-    popover().within(() => {
+    H.openNotebook();
+    H.getNotebookStep("join").icon("chevrondown").click();
+    H.popover().within(() => {
       cy.findByText("EAN").click();
       cy.findByText("VENDOR").click();
       cy.findByText("PRICE").click();
       cy.findByText("CATEGORY").click();
       cy.findByText("CREATED_AT").click();
     });
-    visualize();
-    assertJoinValid({
+    H.visualize();
+    H.assertJoinValid({
       lhsTable: "question a",
       rhsTable: "question b",
       lhsSampleColumn: "TOTAL",
       rhsSampleColumn: "question b - PRODUCT_ID → Rating",
     });
-    queryBuilderMain().findByText("EAN").should("not.exist");
+    H.queryBuilderMain().findByText("EAN").should("not.exist");
 
-    openNotebook();
-    filter({ mode: "notebook" });
-    popover().within(() => {
+    H.openNotebook();
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
       cy.findByText("question b").click();
       cy.findByText("CATEGORY").click();
     });
-    selectFilterOperator("Is");
-    popover().within(() => {
+    H.selectFilterOperator("Is");
+    H.popover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Gadget");
       cy.button("Add filter").click();
     });
 
-    summarize({ mode: "notebook" });
-    addSummaryGroupingField({
+    H.summarize({ mode: "notebook" });
+    H.addSummaryGroupingField({
       table: "question b",
       field: "CATEGORY",
     });
-    visualize();
+    H.visualize();
 
     cy.findByTestId("qb-filters-panel")
       .findByText("question b - PRODUCT_ID → Category is Gadget")
@@ -196,50 +172,50 @@ describe("scenarios > question > joined questions", () => {
       },
     });
 
-    startNewQuestion();
-    selectSavedQuestionsToJoin("Q1", "Q2");
-    visualize();
+    H.startNewQuestion();
+    H.selectSavedQuestionsToJoin("Q1", "Q2");
+    H.visualize();
 
-    assertJoinValid({
+    H.assertJoinValid({
       lhsTable: "Q1",
       rhsTable: "Q2",
       lhsSampleColumn: "Product ID",
       rhsSampleColumn: "Q2 - Product → ID",
     });
 
-    openNotebook();
-    getNotebookStep("join").icon("chevrondown").click();
-    popover().findByText("ID").click();
-    visualize();
+    H.openNotebook();
+    H.getNotebookStep("join").icon("chevrondown").click();
+    H.popover().findByText("ID").click();
+    H.visualize();
 
-    assertJoinValid({
+    H.assertJoinValid({
       lhsTable: "Q1",
       rhsTable: "Q2",
       lhsSampleColumn: "Product ID",
       rhsSampleColumn: "Q2 - Product → Sum of Total",
     });
-    queryBuilderMain().findByText("Q2 → ID").should("not.exist");
+    H.queryBuilderMain().findByText("Q2 → ID").should("not.exist");
 
-    openNotebook();
+    H.openNotebook();
     // add a custom column on top of the steps from the #13000 repro which was simply asserting
     // that a question could be made by joining two previously saved questions
-    addCustomColumn();
-    enterCustomColumnDetails({
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
       formula: "[Q2 - Product → Sum of Rating] / [Sum of Total]",
       name: "Sum Divide",
     });
-    popover().button("Done").click();
+    H.popover().button("Done").click();
 
-    filter({ mode: "notebook" });
-    popover().within(() => {
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
       cy.findByText("Q2").click();
       cy.findByText("ID").click();
       cy.findByPlaceholderText("Enter an ID").type("12");
       cy.button("Add filter").click();
     });
 
-    visualize();
-    queryBuilderMain().findByText("Sum Divide");
+    H.visualize();
+    H.queryBuilderMain().findByText("Sum Divide");
 
     cy.findByTestId("qb-filters-panel")
       .findByText("Q2 - Product → ID is 12")
@@ -247,64 +223,64 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should handle joins on different stages", () => {
-    openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
 
-    join();
-    joinTable("Products");
+    H.join();
+    H.joinTable("Products");
 
-    summarize({ mode: "notebook" });
-    addSummaryField({ metric: "Count of rows" });
-    addSummaryGroupingField({ table: "Products", field: "ID" });
+    H.summarize({ mode: "notebook" });
+    H.addSummaryField({ metric: "Count of rows" });
+    H.addSummaryGroupingField({ table: "Products", field: "ID" });
 
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
-    joinTable("Reviews");
-    visualize();
+    H.joinTable("Reviews");
+    H.visualize();
 
-    assertJoinValid({
+    H.assertJoinValid({
       lhsSampleColumn: "Count",
       rhsSampleColumn: "Reviews → ID",
     });
-    assertQueryBuilderRowCount(1136);
+    H.assertQueryBuilderRowCount(1136);
   });
 
   it("should allow joins with multiple conditions", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
 
-    join();
-    joinTable("Products");
+    H.join();
+    H.joinTable("Products");
     selectJoinStrategy("Inner join");
 
-    getNotebookStep("join").icon("add").click();
-    popover().findByText("Created At").click();
-    popover().findByText("Created At").click();
+    H.getNotebookStep("join").icon("add").click();
+    H.popover().findByText("Created At").click();
+    H.popover().findByText("Created At").click();
 
-    visualize();
+    H.visualize();
 
-    assertJoinValid({
+    H.assertJoinValid({
       lhsTable: "Orders",
       rhsTable: "Products",
       lhsSampleColumn: "Product ID",
       rhsSampleColumn: "Products → ID",
     });
-    assertQueryBuilderRowCount(415);
+    H.assertQueryBuilderRowCount(415);
   });
 
   it("should sync join condition's date-time column units", () => {
-    openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
 
-    join();
-    joinTable("Products");
+    H.join();
+    H.joinTable("Products");
     selectJoinStrategy("Inner join");
 
     // Test LHS column infers RHS column's temporal unit
 
     cy.findByLabelText("Left column").click();
-    popover().findByText("Created At").click();
+    H.popover().findByText("Created At").click();
 
     cy.findByLabelText("Right column").click();
-    popover().findByText("by month").click({ force: true });
-    popover().last().findByText("Week").click();
+    H.popover().findByText("by month").click({ force: true });
+    H.popover().last().findByText("Week").click();
 
     assertJoinColumnName("left", "Created At: Week");
     assertJoinColumnName("right", "Created At: Week");
@@ -312,22 +288,22 @@ describe("scenarios > question > joined questions", () => {
     // Test changing a temporal unit on one column would update a second one
 
     cy.findByLabelText("Right column").click();
-    popover().findByText("by week").click({ force: true });
-    popover().last().findByText("Day").click();
+    H.popover().findByText("by week").click({ force: true });
+    H.popover().last().findByText("Day").click();
 
     assertJoinColumnName("left", "Created At: Day");
     assertJoinColumnName("right", "Created At: Day");
 
-    summarize({ mode: "notebook" });
-    addSummaryField({ metric: "Count of rows" });
+    H.summarize({ mode: "notebook" });
+    H.addSummaryField({ metric: "Count of rows" });
 
-    visualize();
+    H.visualize();
 
     cy.findByTestId("scalar-value").contains("2,087");
   });
 
   it("should remove a join when changing the source table", () => {
-    visitQuestionAdhoc(
+    H.visitQuestionAdhoc(
       {
         dataset_query: {
           type: "query",
@@ -352,13 +328,13 @@ describe("scenarios > question > joined questions", () => {
       { mode: "notebook" },
     );
 
-    getNotebookStep("data").findByTestId("data-step-cell").click();
-    entityPickerModal().findByText("People").click();
+    H.getNotebookStep("data").findByTestId("data-step-cell").click();
+    H.entityPickerModal().findByText("People").click();
 
-    getNotebookStep("join").should("not.exist");
+    H.getNotebookStep("join").should("not.exist");
 
-    visualize();
-    queryBuilderMain()
+    H.visualize();
+    H.queryBuilderMain()
       .findAllByText(/Product/)
       .should("have.length", 0);
   });
@@ -366,7 +342,7 @@ describe("scenarios > question > joined questions", () => {
 
 function selectJoinStrategy(strategy) {
   cy.findByLabelText("Change join type").click();
-  popover().findByText(strategy).click();
+  H.popover().findByText(strategy).click();
 }
 
 function assertJoinColumnName(side, name) {

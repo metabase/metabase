@@ -140,6 +140,6 @@ export function formatDateRange({
     unit,
     offsetValue,
     offsetUnit,
-    includeCurrent: options?.["include-current"],
+    includeCurrent: options?.includeCurrent,
   });
 }

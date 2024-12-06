@@ -1,16 +1,11 @@
+import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
-import {
-  describeEE,
-  mockCurrentUserProperty,
-  restore,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 
 const { admin } = USERS;
 
 describe("scenarios > auth > signin > SSO", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     // Set fake Google client ID and enable Google auth
     cy.request("PUT", "/api/google/settings", {
@@ -21,7 +16,7 @@ describe("scenarios > auth > signin > SSO", () => {
 
   ["ldap_auth", "google_auth"].forEach(auth => {
     it(`login history tab should be available with ${auth} enabled (metabase#15558)`, () => {
-      mockCurrentUserProperty(auth, true);
+      H.mockCurrentUserProperty(auth, true);
       cy.visit("/account/profile");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Login History");
@@ -74,9 +69,9 @@ describe("scenarios > auth > signin > SSO", () => {
     });
   });
 
-  describeEE("EE", () => {
+  H.describeEE("EE", () => {
     beforeEach(() => {
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
       // Disable password log-in
       cy.request("PUT", "api/setting/enable-password-login", {
         value: false,

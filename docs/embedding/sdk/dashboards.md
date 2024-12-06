@@ -22,15 +22,15 @@ You can embed a dashboard using the one of the dashboard components:
 
 ## Dashboard component props
 
-| Prop                         | Type                                            | Description                                                                                                                                                                                                                                                                                                                      |
-| ---------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prop                          | Type                                            | Description                                                                                                                                                                                                                                                                                                                      |
+|-------------------------------| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | dashboardId                  | `number \| string`                              | The ID of the dashboard. This is either:<br>- the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`<br>- the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data |
-| initialParameterValues       | `Record<string, string \| string[]>`            | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
+| initialSqlParameters         | `Record<string, string \| string[]>`            | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
 | withTitle                    | `boolean`                                       | Whether the dashboard should display a title.                                                                                                                                                                                                                                                                                    |
 | withCardTitle                | `boolean`                                       | Whether the dashboard cards should display a title.                                                                                                                                                                                                                                                                              |
 | withDownloads                | `boolean \| null`                               | Whether to hide the download button.                                                                                                                                                                                                                                                                                             |
 | hiddenParameters             | `string[] \| null`                              | A list of [parameters to hide](../../questions/sharing/public-links.md#appearance-parameters).                                                                                                                                                                                                                                   |
-| questionHeight\*             | `number \| null`                                | Height of a question component when drilled from the dashboard to a question level.                                                                                                                                                                                                                                              |
+| drillThroughQuestionHeight\* | `number \| null`                                | Height of a question component when drilled from the dashboard to a question level.                                                                                                                                                                                                                                              |
 | questionPlugins\*            | `{ mapQuestionClickActions: Function } \| null` | Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.                                                                                                                                                                                                     |
 | onLoad                       | `(dashboard: Dashboard \| null) => void`        | Event handler that triggers after dashboard loads with all visible cards and their content.                                                                                                                                                                                                                                      |
 | onLoadWithoutCards           | `(dashboard: Dashboard \| null) => void`        | Event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.                                                                                                                                                  |
@@ -60,7 +60,7 @@ const config = {...}
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
-    const initialParameterValues = {}; // Define your query parameters here
+    const initialSqlParameters = {}; // Define your query parameters here
 
     // choose parameter names that are in your dashboard
     const hiddenParameters = ["location", "city"]
@@ -69,7 +69,7 @@ export default function App() {
         <MetabaseProvider config={config}>
             <InteractiveDashboard
                 dashboardId={dashboardId}
-                initialParameterValues={initialParameterValues}
+                initialSqlParameters={initialSqlParameters}
                 withTitle={false}
                 withDownloads={false}
                 hiddenParameters={hideParameters}

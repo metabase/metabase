@@ -104,7 +104,7 @@ describe("ExcludeDatePicker", () => {
       type: "exclude",
       operator: "!=",
       unit: "month-of-year",
-      values: [0, 11],
+      values: [1, 12],
     });
   });
 

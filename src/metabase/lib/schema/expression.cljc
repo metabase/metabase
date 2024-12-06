@@ -196,7 +196,8 @@
    [:cat
     #_tag :any
     #_opts [:map
-            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]
+            [:ident               [:string {:decode/normalize common/normalize-string-key}]]]
     #_args [:* :any]]])
 
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage

@@ -1,19 +1,9 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  appBar,
-  entityPickerModal,
-  getNotebookStep,
-  popover,
-  queryWritableDB,
-  relativeDatePicker,
-  resetTestTable,
-  restore,
-  resyncDatabase,
-} from "e2e/support/helpers";
 
 describe("issue 26470", { tags: "@external" }, () => {
   beforeEach(() => {
-    restore("postgres_12");
+    H.restore("postgres_12");
     cy.signInAsAdmin();
     cy.request("POST", "/api/persist/enable");
   });
@@ -30,7 +20,7 @@ describe("issue 26470", { tags: "@external" }, () => {
 
 describe("issue 33035", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.request("GET", "/api/user/current").then(({ body: { id: user_id } }) => {
       cy.request("PUT", `/api/user/${user_id}`, { locale: "de" });
@@ -45,7 +35,7 @@ describe("issue 33035", () => {
 
 describe("issue 21532", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -78,31 +68,31 @@ describe("issue 41765", { tags: ["@external"] }, () => {
   const COLUMN_DISPLAY_NAME = "Another Column";
 
   beforeEach(() => {
-    resetTestTable({ type: "postgres", table: TEST_TABLE });
-    restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
+    H.restore("postgres-writable");
     cy.signInAsAdmin();
 
-    resyncDatabase({
+    H.resyncDatabase({
       dbId: WRITABLE_DB_ID,
       tableName: TEST_TABLE,
     });
   });
 
   function enterAdmin() {
-    appBar().icon("gear").click();
-    popover().findByText("Admin settings").click();
+    H.appBar().icon("gear").click();
+    H.popover().findByText("Admin settings").click();
   }
 
   function exitAdmin() {
-    appBar().findByText("Exit admin").click();
+    H.appBar().findByText("Exit admin").click();
   }
 
   function openWritableDatabaseQuestion() {
     // start new question without navigating
-    appBar().findByText("New").click();
-    popover().findByText("Question").click();
+    H.appBar().findByText("New").click();
+    H.popover().findByText("Question").click();
 
-    entityPickerModal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.findByText(WRITABLE_DB_DISPLAY_NAME).click();
       cy.findByText(TEST_TABLE_DISPLAY_NAME).click();
@@ -112,33 +102,33 @@ describe("issue 41765", { tags: ["@external"] }, () => {
   it("re-syncing a database should invalidate the table cache (metabase#41765)", () => {
     cy.visit("/");
 
-    queryWritableDB(
+    H.queryWritableDB(
       `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
       "postgres",
     );
 
     openWritableDatabaseQuestion();
 
-    getNotebookStep("data").button("Pick columns").click();
-    popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
 
     enterAdmin();
 
-    appBar().findByText("Databases").click();
+    H.appBar().findByText("Databases").click();
     cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
     cy.button("Sync database schema now").click();
 
     exitAdmin();
     openWritableDatabaseQuestion();
 
-    getNotebookStep("data").button("Pick columns").click();
-    popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
   });
 });
 
 describe("(metabase#45042)", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -172,14 +162,14 @@ describe("(metabase#45042)", () => {
 
 describe("(metabase#46714)", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.visit("/admin/datamodel/segment/create");
 
     cy.findByTestId("segment-editor").findByText("Select a table").click();
 
-    entityPickerModal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByText("Orders").click();
     });
 
@@ -189,21 +179,21 @@ describe("(metabase#46714)", () => {
   });
 
   it("should allow users to apply relative date options in the segment date picker", () => {
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Created At").click();
       cy.findByText("Relative dates…").click();
       cy.findByRole("tab", { name: "Previous" }).click();
       cy.findByLabelText("Starting from…").click();
     });
 
-    relativeDatePicker.setValue({ value: 68, unit: "day" });
+    H.relativeDatePicker.setValue({ value: 68, unit: "day" });
 
-    relativeDatePicker.setStartingFrom({
+    H.relativeDatePicker.setStartingFrom({
       value: 70,
       unit: "day",
     });
 
-    popover().findByText("Add filter").click();
+    H.popover().findByText("Add filter").click();
 
     cy.findByTestId("filter-pill").should(
       "have.text",
@@ -212,17 +202,17 @@ describe("(metabase#46714)", () => {
   });
 
   it("should not hide operator select menu behind the main filter popover", () => {
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Total").click();
     });
 
     cy.findByLabelText("Filter operator")
       .should("have.text", "Between")
       .click();
-    popover().last().findByText("Less than").click();
+    H.popover().last().findByText("Less than").click();
     cy.findByLabelText("Filter operator").should("have.text", "Less than");
-    popover().findByPlaceholderText("Enter a number").clear().type("1000");
-    popover().findByText("Add filter").click();
+    H.popover().findByPlaceholderText("Enter a number").clear().type("1000");
+    H.popover().findByText("Add filter").click();
 
     cy.findByTestId("filter-pill").should(
       "have.text",

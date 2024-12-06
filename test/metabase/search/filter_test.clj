@@ -62,10 +62,17 @@
 (deftest with-filters-test
   (testing "The kitchen sink context is complete"
     (is (empty? (remove kitchen-sink-filter-context (filter-keys)))))
-  (testing "We leave the query alone if there are no filters"
+
+  (testing "In the general case, we simply filter by models"
     (is (= {:select [:some :stuff]
-            :from   :somewhere}
-           (search.filter/with-filters {} {:select [:some :stuff], :from :somewhere}))))
+            :from   :somewhere
+            :where [:= 1 2]}
+           (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
+    (is (= {:select [:some :stuff]
+            :from   :somewhere
+            :where [:in :search_index.model ["a"]]}
+           (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
+
   (testing "We can insert appropriate constraints for all the filters"
     (is (= {:select [:some :stuff]
             :from   :somewhere

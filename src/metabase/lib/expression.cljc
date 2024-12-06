@@ -69,7 +69,7 @@
           :lib/source          :source/expressions}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
-         (when lib.metadata.calculation/*propagate-inherited-temoral-unit*
+         (when lib.metadata.calculation/*propagate-binning-and-bucketing*
            (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
              {:inherited-temporal-unit unit}))))
 
@@ -298,7 +298,7 @@
 (lib.common/defop get-minute [t])
 (lib.common/defop get-second [t])
 (lib.common/defop get-quarter [t])
-(lib.common/defop get-day-of-week [t])
+(lib.common/defop get-day-of-week [t] [t mode])
 (lib.common/defop datetime-add [t i unit])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])

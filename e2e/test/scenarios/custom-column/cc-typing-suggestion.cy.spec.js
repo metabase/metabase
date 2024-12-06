@@ -1,28 +1,22 @@
-import {
-  enterCustomColumnDetails,
-  openProductsTable,
-  popover,
-  restore,
-  summarize,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 describe("scenarios > question > custom column > typing suggestion", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    openProductsTable({ mode: "notebook" });
+    H.openProductsTable({ mode: "notebook" });
   });
 
   it("should not suggest arithmetic operators", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "[Price] " });
+    H.enterCustomColumnDetails({ formula: "[Price] " });
     cy.findByTestId("expression-suggestions-list").should("not.exist");
   });
 
   it("should correctly accept the chosen field suggestion", () => {
     addCustomColumn();
-    enterCustomColumnDetails({
+    H.enterCustomColumnDetails({
       formula: "[Rating]{leftarrow}{leftarrow}{leftarrow}",
       blur: false,
     });
@@ -38,7 +32,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should correctly accept the chosen function suggestion", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "LTRIM([Title])", blur: false });
+    H.enterCustomColumnDetails({ formula: "LTRIM([Title])", blur: false });
 
     // Place the cursor between "is" and "empty"
     cy.get("@formula").type("{leftarrow}".repeat(13));
@@ -52,7 +46,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should correctly insert function suggestion with the opening parenthesis", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "BET{enter}" });
+    H.enterCustomColumnDetails({ formula: "BET{enter}" });
 
     cy.findByTestId("expression-editor-textfield").should(
       "contain",
@@ -62,7 +56,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should show expression function helper if a proper function is typed", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "lower(", blur: false });
+    H.enterCustomColumnDetails({ formula: "lower(", blur: false });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("lower(text)");
@@ -84,10 +78,10 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   });
 
   it("should not show suggestions for an unfocused field (metabase#31643)", () => {
-    summarize({ mode: "notebook" });
-    popover().findByText("Custom Expression").click();
-    enterCustomColumnDetails({ formula: "Count{enter}" });
-    popover().findByLabelText("Name").focus();
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({ formula: "Count{enter}" });
+    H.popover().findByLabelText("Name").focus();
     cy.findByTestId("expression-suggestions-list").should("not.exist");
   });
 });

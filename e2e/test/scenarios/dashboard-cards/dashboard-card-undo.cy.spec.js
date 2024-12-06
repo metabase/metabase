@@ -1,21 +1,8 @@
-import {
-  createNewTab,
-  editDashboard,
-  getDashboardCard,
-  getDashboardCards,
-  getTextCardDetails,
-  goToTab,
-  moveDashCardToTab,
-  removeDashboardCard,
-  restore,
-  undo,
-  updateDashboardCards,
-  visitDashboard,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 describe("scenarios > dashboard cards > undo", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -24,35 +11,35 @@ describe("scenarios > dashboard cards > undo", () => {
     { scrollBehavior: false },
     () => {
       const checkOrder = () => {
-        getDashboardCard(0).findByText("Text card 1");
-        getDashboardCard(1).findByText("Text card 2");
-        getDashboardCard(2).findByText("Text card 3");
-        getDashboardCard(3).findByText("Text card 4");
+        H.getDashboardCard(0).findByText("Text card 1");
+        H.getDashboardCard(1).findByText("Text card 2");
+        H.getDashboardCard(2).findByText("Text card 3");
+        H.getDashboardCard(3).findByText("Text card 4");
       };
 
       const cards = [
-        getTextCardDetails({
+        H.getTextCardDetails({
           text: "Text card 1",
           size_x: 4,
           size_y: 1,
           row: 0,
           col: 1,
         }),
-        getTextCardDetails({
+        H.getTextCardDetails({
           text: "Text card 2",
           size_x: 4,
           size_y: 1,
           row: 1,
           col: 0,
         }),
-        getTextCardDetails({
+        H.getTextCardDetails({
           text: "Text card 3",
           size_x: 4,
           size_y: 1,
           row: 2,
           col: 3,
         }),
-        getTextCardDetails({
+        H.getTextCardDetails({
           text: "Text card 4",
           size_x: 4,
           size_y: 1,
@@ -62,36 +49,36 @@ describe("scenarios > dashboard cards > undo", () => {
       ];
 
       cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-        updateDashboardCards({ dashboard_id, cards });
+        H.updateDashboardCards({ dashboard_id, cards });
 
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
       checkOrder();
 
-      editDashboard();
+      H.editDashboard();
 
       for (let i = 0; i < cards.length; i++) {
-        removeDashboardCard(i);
-        getDashboardCards().should("have.length", cards.length - 1);
+        H.removeDashboardCard(i);
+        H.getDashboardCards().should("have.length", cards.length - 1);
 
-        undo();
-        getDashboardCards().should("have.length", cards.length);
+        H.undo();
+        H.getDashboardCards().should("have.length", cards.length);
         checkOrder();
         // Seems to be needed to allow the UI to catch up before hovering the next element.
         // TODO: improve this.
         cy.wait(200);
       }
 
-      createNewTab();
-      goToTab("Tab 1");
+      H.createNewTab();
+      H.goToTab("Tab 1");
 
       for (let i = 0; i < cards.length; i++) {
-        moveDashCardToTab({ dashcardIndex: i, tabName: "Tab 2" });
-        getDashboardCards().should("have.length", cards.length - 1);
+        H.moveDashCardToTab({ dashcardIndex: i, tabName: "Tab 2" });
+        H.getDashboardCards().should("have.length", cards.length - 1);
 
-        undo();
-        getDashboardCards().should("have.length", cards.length);
+        H.undo();
+        H.getDashboardCards().should("have.length", cards.length);
         checkOrder();
         cy.wait(200);
       }

@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -59,6 +58,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
@@ -3108,7 +3108,7 @@
                            :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
           (t2/update! 'Card {:id model-id}
-                      {:result_metadata (json/generate-string
+                      {:result_metadata (json/encode
                                          (assoc-in metadata [0 :id]
                                                    (mt/id :products :category)))}))
         ;; ...so instead we create a question on top of this model (note that
@@ -3679,8 +3679,8 @@
                       (mt/user-real-request :rasta :post 200 url
                                             {:request-options {:as :byte-array}}
                                             :format_rows true
-                                            :parameters (json/generate-string [{:id    "_PRICE_"
-                                                                                :value 4}]))
+                                            :parameters (json/encode [{:id    "_PRICE_"
+                                                                       :value 4}]))
                       export-format))))))))))
 
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
@@ -3785,7 +3785,8 @@
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))
               (testing "Should handle errors"
-                (is (= {:remote-status 400}
+                (is (= {:remote-status 400
+                        :message       "oops"}
                        (mt/user-http-request :crowberto :post 400 execute-path
                                              {:parameters {"id" 1 "fail" "true"}}))))
               (testing "Extra parameter should fail gracefully"
@@ -3794,11 +3795,11 @@
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
                 (is (has-valid-action-execution-error-message?
-                     (mt/user-http-request :crowberto :post 500 execute-path
+                     (mt/user-http-request :crowberto :post 400 execute-path
                                            {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
                 (is (has-valid-action-execution-error-message?
-                     (mt/user-http-request :crowberto :post 500 execute-path
+                     (mt/user-http-request :crowberto :post 400 execute-path
                                            {:parameters {"id" "BAD"}})))))))))))
 
 (deftest dashcard-implicit-action-execution-insert-test

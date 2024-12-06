@@ -1,12 +1,12 @@
 (ns metabase.channel.impl.http
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]))
@@ -50,7 +50,7 @@
                (= "query-param" auth-method)  (update :query-params merge auth-info)))]
     (http/request (cond-> req
                     (or (map? (:body req))
-                        (sequential? (:body req))) (update :body json/generate-string)))))
+                        (sequential? (:body req))) (update :body json/encode)))))
 
 (defmethod channel/can-connect? :channel/http
   [_channel-type details]
@@ -76,7 +76,7 @@
     {:cols (map :name (:cols data))
      :rows (:rows data)}))
 
-(mu/defmethod channel/render-notification [:channel/http :notification/alert]
+(mu/defmethod channel/render-notification [:channel/http :notification/card]
   [_channel-type {:keys [payload creator]} _template _recipients]
   (let [{:keys [card alert card_part]} payload
         request-body {:type               "alert"

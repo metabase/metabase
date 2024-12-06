@@ -2,11 +2,11 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
-import * as alert from "metabase/alert/alert";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
+import * as alert from "metabase/notifications/redux/alert";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -33,10 +33,3 @@ export const isBaseEntityID = (id: unknown): id is BaseEntityId => {
     NANOID_ALPHABET.test(id)
   );
 };
-
-export const asBaseEntityID = (id: string): BaseEntityId => {
-  if (!isBaseEntityID(id)) {
-    throw new Error("Invalid BaseEntityId");
-  }
-  return id as BaseEntityId;
-};

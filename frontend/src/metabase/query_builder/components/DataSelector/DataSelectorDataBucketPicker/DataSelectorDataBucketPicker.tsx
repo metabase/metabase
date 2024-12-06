@@ -1,5 +1,5 @@
 import SelectList from "metabase/components/SelectList";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 
 import type { DataTypeInfoItem } from "../types";
 
@@ -52,20 +52,20 @@ const DataBucketListItem = ({
         name={icon}
         size={18}
       />
-      <Text
+      <Box
         component="span"
         className={DataSelectorDataBucketPickerS.DataBucketListItemTitle}
       >
         {name}
-      </Text>
+      </Box>
     </Flex>
     <Box mt="xs">
-      <Text
+      <Box
         component="span"
         className={DataSelectorDataBucketPickerS.DataBucketListItemDescription}
       >
         {description}
-      </Text>
+      </Box>
     </Box>
   </SelectList.BaseItem>
 );

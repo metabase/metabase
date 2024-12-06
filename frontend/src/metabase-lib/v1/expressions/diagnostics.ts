@@ -13,6 +13,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
   adjustCase,
+  adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
   useShorthands,
@@ -231,6 +232,7 @@ function prattCompiler({
       useShorthands,
       adjustOffset,
       adjustCase,
+      adjustMultiArgOptions,
       expression =>
         resolve({
           expression,

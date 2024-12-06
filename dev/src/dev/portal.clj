@@ -1,6 +1,8 @@
 (ns dev.portal
   (:require [portal.api :as p]))
 
+(set! *warn-on-reflection* true)
+
 (defonce
   ^{:doc "The handle to portal. Can be used as @p to get the selected item."}
   p
@@ -33,6 +35,7 @@
                 line   -1
                 column -1
                 time   (java.util.Date.)}}]
+   #_{:clj-kondo/ignore [:discouraged-var]}
    (tap> {:result value
           :level  level
           :ns     ns
@@ -68,3 +71,19 @@
                 {:portal.viewer/default :portal.viewer/diff})
               (update (meta middleware-var) :ns #(.name %)))
     (send-log event)))
+
+(defmacro diff->
+  "Drop-in replacement for `->` that sends diffs to Portal at each stage."
+  [x & forms]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (loop [x x, forms forms]
+    (if forms
+      (let [form     (first forms)
+            threaded `(let [before# ~x
+                            after#  (-> before# ~form)]
+                        (tap> [~(list `quote form)
+                               ^{:portal.viewer/default :portal.viewer/diff}
+                               [before# after#]])
+                        after#)]
+        (recur threaded (next forms)))
+      x)))

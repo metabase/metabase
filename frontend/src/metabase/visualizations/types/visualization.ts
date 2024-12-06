@@ -140,9 +140,6 @@ export interface VisualizationProps {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
 
-  "graph.dimensions"?: string[];
-  "graph.metrics"?: string[];
-
   canRemoveSeries?: (seriesIndex: number) => boolean;
   canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;

@@ -1,29 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  type DashboardDetails,
-  type StructuredQuestionDetails,
-  assertQueryBuilderRowCount,
-  assertTableData,
-  createDashboard,
-  createQuestion,
-  editDashboard,
-  enterCustomColumnDetails,
-  entityPickerModal,
-  entityPickerModalTab,
-  getDashboardCard,
-  getNotebookStep,
-  modal,
-  openNotebook,
-  popover,
-  queryBuilderHeader,
-  restore,
-  saveDashboard,
-  showDashboardCardActions,
-  sidebar,
-  tableHeaderClick,
-  visitDashboard,
-  visualize,
-} from "e2e/support/helpers";
 import type { CardId, DashboardParameterMapping } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -34,7 +10,7 @@ describe("scenarios > custom column > boolean functions", () => {
   const expressionName = "Boolean column";
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
@@ -42,7 +18,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
   describe("expression editor", () => {
     const stringQuestionColumns = ["Category"];
-    const stringQuestionDetails: StructuredQuestionDetails = {
+    const stringQuestionDetails: H.StructuredQuestionDetails = {
       query: {
         "source-table": PRODUCTS_ID,
         fields: [["field", PRODUCTS.CATEGORY, null]],
@@ -52,7 +28,7 @@ describe("scenarios > custom column > boolean functions", () => {
     };
 
     const numberQuestionColumns = ["Total"];
-    const numberQuestionDetails: StructuredQuestionDetails = {
+    const numberQuestionDetails: H.StructuredQuestionDetails = {
       query: {
         "source-table": ORDERS_ID,
         fields: [["field", ORDERS.TOTAL, null]],
@@ -62,7 +38,7 @@ describe("scenarios > custom column > boolean functions", () => {
     };
 
     const dateQuestionColumns = ["Created At"];
-    const dateQuestionDetails: StructuredQuestionDetails = {
+    const dateQuestionDetails: H.StructuredQuestionDetails = {
       query: {
         "source-table": ORDERS_ID,
         fields: [["field", ORDERS.CREATED_AT, null]],
@@ -79,50 +55,50 @@ describe("scenarios > custom column > boolean functions", () => {
       modifiedExpression,
       modifiedExpressionRows,
     }: {
-      questionDetails: StructuredQuestionDetails;
+      questionDetails: H.StructuredQuestionDetails;
       questionColumns: string[];
       newExpression: string;
       newExpressionRows: string[][];
       modifiedExpression: string;
       modifiedExpressionRows: string[][];
     }) {
-      createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
 
       cy.log("add a new custom column");
-      openNotebook();
-      getNotebookStep("data").button("Custom column").click();
-      enterCustomColumnDetails({
+      H.openNotebook();
+      H.getNotebookStep("data").button("Custom column").click();
+      H.enterCustomColumnDetails({
         formula: newExpression,
         name: expressionName,
       });
-      popover().button("Done").click();
-      visualize();
+      H.popover().button("Done").click();
+      H.visualize();
       cy.wait("@dataset");
-      assertTableData({
+      H.assertTableData({
         columns: [...questionColumns, expressionName],
         firstRows: newExpressionRows,
       });
 
       cy.log("modify an existing custom column");
-      openNotebook();
-      getNotebookStep("expression").findByText(expressionName).click();
-      enterCustomColumnDetails({
+      H.openNotebook();
+      H.getNotebookStep("expression").findByText(expressionName).click();
+      H.enterCustomColumnDetails({
         formula: modifiedExpression,
         name: expressionName,
       });
-      popover().button("Update").click();
-      visualize();
+      H.popover().button("Update").click();
+      H.visualize();
       cy.wait("@dataset");
-      assertTableData({
+      H.assertTableData({
         columns: [...questionColumns, expressionName],
         firstRows: modifiedExpressionRows,
       });
 
       cy.log("assert that the question can be saved");
-      queryBuilderHeader().button("Save").click();
-      modal().button("Save").click();
+      H.queryBuilderHeader().button("Save").click();
+      H.modal().button("Save").click();
       cy.wait("@updateCard");
-      queryBuilderHeader().button("Save").should("not.exist");
+      H.queryBuilderHeader().button("Save").should("not.exist");
     }
 
     it("isNull", () => {
@@ -216,7 +192,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
   describe("query builder", () => {
     describe("same stage", () => {
-      const questionDetails: StructuredQuestionDetails = {
+      const questionDetails: H.StructuredQuestionDetails = {
         query: {
           "source-table": PRODUCTS_ID,
           fields: [
@@ -234,29 +210,29 @@ describe("scenarios > custom column > boolean functions", () => {
       };
 
       it("should be able to add a same-stage custom column", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
-        openNotebook();
+        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.openNotebook();
 
         cy.log("add an identity column");
-        getNotebookStep("expression").icon("add").click();
-        enterCustomColumnDetails({
+        H.getNotebookStep("expression").icon("add").click();
+        H.enterCustomColumnDetails({
           formula: `[${expressionName}]`,
           name: "Identity column",
         });
-        popover().button("Done").click();
+        H.popover().button("Done").click();
 
         cy.log("add a simple expression");
-        getNotebookStep("expression").icon("add").click();
-        enterCustomColumnDetails({
+        H.getNotebookStep("expression").icon("add").click();
+        H.enterCustomColumnDetails({
           formula: `[${expressionName}] != True`,
           name: "Simple expression",
         });
-        popover().button("Done").click();
+        H.popover().button("Done").click();
 
         cy.log("assert query results");
-        visualize();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: [
             "Category",
             expressionName,
@@ -268,50 +244,50 @@ describe("scenarios > custom column > boolean functions", () => {
       });
 
       it("should be able to add a same-stage filter", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
-        assertQueryBuilderRowCount(200);
-        tableHeaderClick(expressionName);
-        popover().within(() => {
+        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.assertQueryBuilderRowCount(200);
+        H.tableHeaderClick(expressionName);
+        H.popover().within(() => {
           cy.findByText("Filter by this column").click();
           cy.findByLabelText("True").click();
           cy.findByText("Add filter").click();
         });
-        assertQueryBuilderRowCount(51);
+        H.assertQueryBuilderRowCount(51);
       });
 
       it("should be able to add a same-stage aggregation", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
-        openNotebook();
-        getNotebookStep("expression").button("Summarize").click();
-        popover().findByText("Minimum of ...").click();
-        popover().findByText(expressionName).click();
-        getNotebookStep("summarize")
+        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.openNotebook();
+        H.getNotebookStep("expression").button("Summarize").click();
+        H.popover().findByText("Minimum of ...").click();
+        H.popover().findByText(expressionName).click();
+        H.getNotebookStep("summarize")
           .findByTestId("aggregate-step")
           .icon("add")
           .click();
-        popover().findByText("Maximum of ...").click();
-        popover().findByText(expressionName).click();
-        visualize();
+        H.popover().findByText("Maximum of ...").click();
+        H.popover().findByText(expressionName).click();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: [`Min of ${expressionName}`, `Max of ${expressionName}`],
           firstRows: [["false", "true"]],
         });
       });
 
       it("should be able to add a same-stage breakout", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
-        openNotebook();
-        getNotebookStep("expression").button("Summarize").click();
-        popover().findByText("Count of rows").click();
-        getNotebookStep("summarize")
+        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.openNotebook();
+        H.getNotebookStep("expression").button("Summarize").click();
+        H.popover().findByText("Count of rows").click();
+        H.getNotebookStep("summarize")
           .findByTestId("breakout-step")
           .findByText("Pick a column to group by")
           .click();
-        popover().findByText(expressionName).click();
-        visualize();
+        H.popover().findByText(expressionName).click();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: [expressionName, "Count"],
           firstRows: [
             ["false", "149"],
@@ -321,13 +297,13 @@ describe("scenarios > custom column > boolean functions", () => {
       });
 
       it("should be able to add a same-stage sorting", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
-        openNotebook();
-        getNotebookStep("expression").button("Sort").click();
-        popover().findByText(expressionName).click();
-        visualize();
+        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.openNotebook();
+        H.getNotebookStep("expression").button("Sort").click();
+        H.popover().findByText(expressionName).click();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: ["Category", expressionName],
           firstRows: [["Doohickey", "false"]],
         });
@@ -335,7 +311,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
 
     describe("previous stage", () => {
-      const questionDetails: StructuredQuestionDetails = {
+      const questionDetails: H.StructuredQuestionDetails = {
         query: {
           "source-table": PRODUCTS_ID,
           expressions: {
@@ -353,17 +329,17 @@ describe("scenarios > custom column > boolean functions", () => {
       };
 
       it("should be able to add a post-aggregation custom column", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
-        openNotebook();
-        getNotebookStep("summarize").button("Custom column").click();
-        enterCustomColumnDetails({
+        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.openNotebook();
+        H.getNotebookStep("summarize").button("Custom column").click();
+        H.enterCustomColumnDetails({
           formula: `not([${expressionName}])`,
           name: "Simple expression",
         });
-        popover().button("Done").click();
-        visualize();
+        H.popover().button("Done").click();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: [expressionName, "Count", "Simple expression"],
           firstRows: [
             ["false", "149", "true"],
@@ -373,46 +349,46 @@ describe("scenarios > custom column > boolean functions", () => {
       });
 
       it("should be able to add a post-aggregation filter", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
-        assertQueryBuilderRowCount(2);
-        tableHeaderClick(expressionName);
-        popover().within(() => {
+        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.assertQueryBuilderRowCount(2);
+        H.tableHeaderClick(expressionName);
+        H.popover().within(() => {
           cy.findByText("Filter by this column").click();
           cy.findByLabelText("True").click();
           cy.findByText("Add filter").click();
         });
-        assertQueryBuilderRowCount(1);
+        H.assertQueryBuilderRowCount(1);
       });
 
       it("should be able to add a post-aggregation aggregation", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
-        openNotebook();
-        getNotebookStep("summarize").button("Summarize").click();
-        popover().findByText("Minimum of ...").click();
-        popover().findByText(expressionName).click();
-        visualize();
+        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.openNotebook();
+        H.getNotebookStep("summarize").button("Summarize").click();
+        H.popover().findByText("Minimum of ...").click();
+        H.popover().findByText(expressionName).click();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: [`Min of ${expressionName}`],
           firstRows: [["false"]],
         });
       });
 
       it("should be able to add a post-aggregation breakout and sorting", () => {
-        createQuestion(questionDetails, { visitQuestion: true });
+        H.createQuestion(questionDetails, { visitQuestion: true });
 
         cy.log("add a breakout");
-        openNotebook();
-        getNotebookStep("summarize").button("Summarize").click();
-        popover().findByText("Count of rows").click();
-        getNotebookStep("summarize", { stage: 1 })
+        H.openNotebook();
+        H.getNotebookStep("summarize").button("Summarize").click();
+        H.popover().findByText("Count of rows").click();
+        H.getNotebookStep("summarize", { stage: 1 })
           .findByTestId("breakout-step")
           .findByText("Pick a column to group by")
           .click();
-        popover().findByText(expressionName).click();
-        visualize();
+        H.popover().findByText(expressionName).click();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: [expressionName, "Count"],
           firstRows: [
             ["false", 1],
@@ -421,12 +397,12 @@ describe("scenarios > custom column > boolean functions", () => {
         });
 
         cy.log("add sorting");
-        openNotebook();
-        getNotebookStep("summarize", { stage: 1 }).button("Sort").click();
-        popover().findByText(expressionName).click();
-        getNotebookStep("sort", { stage: 1 }).icon("arrow_up").click();
-        visualize();
-        assertTableData({
+        H.openNotebook();
+        H.getNotebookStep("summarize", { stage: 1 }).button("Sort").click();
+        H.popover().findByText(expressionName).click();
+        H.getNotebookStep("sort", { stage: 1 }).icon("arrow_up").click();
+        H.visualize();
+        H.assertTableData({
           columns: [expressionName, "Count"],
           firstRows: [
             ["true", 1],
@@ -437,7 +413,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
 
     describe("source card", () => {
-      const questionDetails: StructuredQuestionDetails = {
+      const questionDetails: H.StructuredQuestionDetails = {
         name: "Source",
         query: {
           "source-table": PRODUCTS_ID,
@@ -453,7 +429,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
       function getNestedQuestionDetails(
         cardId: number,
-      ): StructuredQuestionDetails {
+      ): H.StructuredQuestionDetails {
         return {
           name: "Nested",
           query: {
@@ -463,97 +439,97 @@ describe("scenarios > custom column > boolean functions", () => {
       }
 
       it("should be able to add a custom column for a boolean column", () => {
-        createQuestion(questionDetails).then(({ body: card }) =>
-          createQuestion(getNestedQuestionDetails(card.id), {
+        H.createQuestion(questionDetails).then(({ body: card }) =>
+          H.createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
           }),
         );
 
         cy.log("add a custom column");
-        openNotebook();
-        getNotebookStep("data").button("Custom column").click();
-        enterCustomColumnDetails({
+        H.openNotebook();
+        H.getNotebookStep("data").button("Custom column").click();
+        H.enterCustomColumnDetails({
           formula: `[${expressionName}] != True`,
           name: "Simple expression",
         });
-        popover().button("Done").click();
-        visualize();
+        H.popover().button("Done").click();
+        H.visualize();
         cy.wait("@dataset");
-        assertQueryBuilderRowCount(200);
+        H.assertQueryBuilderRowCount(200);
 
         cy.log("use the new custom column in a filter");
-        tableHeaderClick("Simple expression");
-        popover().within(() => {
+        H.tableHeaderClick("Simple expression");
+        H.popover().within(() => {
           cy.findByText("Filter by this column").click();
           cy.findByLabelText("True").click();
           cy.findByText("Add filter").click();
         });
-        assertQueryBuilderRowCount(149);
+        H.assertQueryBuilderRowCount(149);
       });
 
       it("should be able to add a filter for a boolean column", () => {
-        createQuestion(questionDetails).then(({ body: card }) =>
-          createQuestion(getNestedQuestionDetails(card.id), {
+        H.createQuestion(questionDetails).then(({ body: card }) =>
+          H.createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
           }),
         );
-        assertQueryBuilderRowCount(200);
-        tableHeaderClick(expressionName);
-        popover().within(() => {
+        H.assertQueryBuilderRowCount(200);
+        H.tableHeaderClick(expressionName);
+        H.popover().within(() => {
           cy.findByText("Filter by this column").click();
           cy.findByLabelText("True").click();
           cy.findByText("Add filter").click();
         });
-        assertQueryBuilderRowCount(51);
+        H.assertQueryBuilderRowCount(51);
       });
 
       it("should be able to add an aggregation for a boolean column", () => {
-        createQuestion(questionDetails).then(({ body: card }) =>
-          createQuestion(getNestedQuestionDetails(card.id), {
+        H.createQuestion(questionDetails).then(({ body: card }) =>
+          H.createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
           }),
         );
-        openNotebook();
-        getNotebookStep("data").button("Summarize").click();
-        popover().findByText("Minimum of ...").click();
-        popover().findByText(expressionName).click();
-        visualize();
+        H.openNotebook();
+        H.getNotebookStep("data").button("Summarize").click();
+        H.popover().findByText("Minimum of ...").click();
+        H.popover().findByText(expressionName).click();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: [`Min of ${expressionName}`],
           firstRows: [["false"]],
         });
       });
 
       it.skip("should be able to add a breakout and sorting for a boolean column (metabase#49305)", () => {
-        createQuestion(questionDetails).then(({ body: card }) =>
-          createQuestion(getNestedQuestionDetails(card.id), {
+        H.createQuestion(questionDetails).then(({ body: card }) =>
+          H.createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
           }),
         );
 
         cy.log("add a breakout");
-        openNotebook();
-        getNotebookStep("data").button("Summarize").click();
-        getNotebookStep("summarize")
+        H.openNotebook();
+        H.getNotebookStep("data").button("Summarize").click();
+        H.getNotebookStep("summarize")
           .findByTestId("breakout-step")
           .findByText("Pick a column to group by")
           .click();
-        popover().findByText(expressionName).click();
-        visualize();
+        H.popover().findByText(expressionName).click();
+        H.visualize();
         cy.wait("@dataset");
-        assertTableData({
+        H.assertTableData({
           columns: [expressionName],
           firstRows: [["false"], ["true"]],
         });
 
         cy.log("add sorting");
-        openNotebook();
-        getNotebookStep("summarize").button("Sort").click();
-        popover().findByText(expressionName).click();
-        getNotebookStep("sort").icon("arrow_up").click();
-        visualize();
-        assertTableData({
+        H.openNotebook();
+        H.getNotebookStep("summarize").button("Sort").click();
+        H.popover().findByText(expressionName).click();
+        H.getNotebookStep("sort").icon("arrow_up").click();
+        H.visualize();
+        H.assertTableData({
           columns: [expressionName],
           firstRows: [["true"], ["false"]],
         });
@@ -562,7 +538,7 @@ describe("scenarios > custom column > boolean functions", () => {
   });
 
   describe("dashboards", () => {
-    const questionDetails: StructuredQuestionDetails = {
+    const questionDetails: H.StructuredQuestionDetails = {
       name: "Q1",
       query: {
         "source-table": PEOPLE_ID,
@@ -588,7 +564,7 @@ describe("scenarios > custom column > boolean functions", () => {
       sectionId: "string",
     };
 
-    const dashboardDetails: DashboardDetails = {
+    const dashboardDetails: H.DashboardDetails = {
       name: "D1",
       parameters: [parameterDetails],
     };
@@ -604,10 +580,10 @@ describe("scenarios > custom column > boolean functions", () => {
       };
     }
 
-    function createDashboardWithQuestion(opts?: DashboardDetails) {
-      return createDashboard({ ...dashboardDetails, ...opts }).then(
+    function createDashboardWithQuestion(opts?: H.DashboardDetails) {
+      return H.createDashboard({ ...dashboardDetails, ...opts }).then(
         ({ body: dashboard }) => {
-          return createQuestion(questionDetails).then(({ body: card }) => {
+          return H.createQuestion(questionDetails).then(({ body: card }) => {
             return cy
               .request("PUT", `/api/dashboard/${dashboard.id}`, {
                 dashcards: [
@@ -631,31 +607,31 @@ describe("scenarios > custom column > boolean functions", () => {
 
     it("should be able setup an 'open question' click behavior", () => {
       createDashboardWithQuestion().then(dashboard =>
-        visitDashboard(dashboard.id),
+        H.visitDashboard(dashboard.id),
       );
 
       cy.log("setup click behavior");
-      editDashboard();
-      showDashboardCardActions();
-      getDashboardCard().findByLabelText("Click behavior").click();
-      sidebar().within(() => {
+      H.editDashboard();
+      H.showDashboardCardActions();
+      H.getDashboardCard().findByLabelText("Click behavior").click();
+      H.sidebar().within(() => {
         cy.findByText(expressionName).click();
         cy.findByText("Go to a custom destination").click();
         cy.findByText("Saved question").click();
       });
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Questions").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Questions").click();
         cy.findByText("Q1").click();
       });
-      sidebar()
+      H.sidebar()
         .findByTestId("click-mappings")
         .findByText(expressionName)
         .click();
-      popover().findByText(expressionName).click();
-      saveDashboard();
+      H.popover().findByText(expressionName).click();
+      H.saveDashboard();
 
       cy.log("verify click behavior");
-      getDashboardCard().findAllByText("false").first().click();
+      H.getDashboardCard().findAllByText("false").first().click();
       cy.wait("@dataset");
       cy.findByTestId("qb-filters-panel")
         .findByText(`${expressionName} is false`)
@@ -664,36 +640,36 @@ describe("scenarios > custom column > boolean functions", () => {
 
     it("should be able setup an 'open dashboard' click behavior for the same dashboard", () => {
       createDashboardWithQuestion().then(dashboard =>
-        visitDashboard(dashboard.id),
+        H.visitDashboard(dashboard.id),
       );
 
       cy.log("setup click behavior");
-      editDashboard();
-      showDashboardCardActions();
-      getDashboardCard().findByLabelText("Click behavior").click();
-      sidebar().within(() => {
+      H.editDashboard();
+      H.showDashboardCardActions();
+      H.getDashboardCard().findByLabelText("Click behavior").click();
+      H.sidebar().within(() => {
         cy.findByText(expressionName).click();
         cy.findByText("Go to a custom destination").click();
         cy.findByText("Dashboard").click();
       });
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Dashboards").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Dashboards").click();
         cy.findByText("D1").click();
       });
-      sidebar()
+      H.sidebar()
         .findByTestId("click-mappings")
         .findByText(parameterDetails.name)
         .click();
-      popover().findByText(expressionName).click();
-      saveDashboard();
+      H.popover().findByText(expressionName).click();
+      H.saveDashboard();
 
       cy.log("verify click behavior");
-      getDashboardCard().within(() => {
+      H.getDashboardCard().within(() => {
         cy.findByText("Hudson Borer").should("be.visible");
         cy.findByText("Sydney Rempel").should("not.exist");
         cy.findAllByText("false").first().click();
       });
-      getDashboardCard().within(() => {
+      H.getDashboardCard().within(() => {
         cy.findByText("Hudson Borer").should("not.exist");
         cy.findByText("Sydney Rempel").should("be.visible");
       });
@@ -702,37 +678,37 @@ describe("scenarios > custom column > boolean functions", () => {
     it("should be able setup an 'open dashboard' click behavior for another dashboard", () => {
       createDashboardWithQuestion({ name: "D2" });
       createDashboardWithQuestion({ name: "D1" }).then(dashboard =>
-        visitDashboard(dashboard.id),
+        H.visitDashboard(dashboard.id),
       );
 
       cy.log("setup click behavior");
-      editDashboard();
-      showDashboardCardActions();
-      getDashboardCard().findByLabelText("Click behavior").click();
-      sidebar().within(() => {
+      H.editDashboard();
+      H.showDashboardCardActions();
+      H.getDashboardCard().findByLabelText("Click behavior").click();
+      H.sidebar().within(() => {
         cy.findByText(expressionName).click();
         cy.findByText("Go to a custom destination").click();
         cy.findByText("Dashboard").click();
       });
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Dashboards").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Dashboards").click();
         cy.findByText("D2").click();
       });
-      sidebar()
+      H.sidebar()
         .findByTestId("click-mappings")
         .findByText(parameterDetails.name)
         .click();
-      popover().findByText(expressionName).click();
-      saveDashboard();
+      H.popover().findByText(expressionName).click();
+      H.saveDashboard();
 
       cy.log("verify click behavior");
-      getDashboardCard().within(() => {
+      H.getDashboardCard().within(() => {
         cy.findByText("Hudson Borer").should("be.visible");
         cy.findByText("Sydney Rempel").should("not.exist");
         cy.findAllByText("false").first().click();
       });
       cy.findByTestId("dashboard-name-heading").should("have.value", "D2");
-      getDashboardCard().within(() => {
+      H.getDashboardCard().within(() => {
         cy.findByText("Hudson Borer").should("not.exist");
         cy.findByText("Sydney Rempel").should("be.visible");
       });

@@ -2,7 +2,7 @@ import type { FilterOperatorOption } from "metabase/querying/filters/utils/opera
 import type * as Lib from "metabase-lib";
 
 export interface OperatorOption
-  extends FilterOperatorOption<Lib.TimeFilterOperatorName> {
+  extends FilterOperatorOption<Lib.TimeFilterOperator> {
   valueCount: number;
 }
 

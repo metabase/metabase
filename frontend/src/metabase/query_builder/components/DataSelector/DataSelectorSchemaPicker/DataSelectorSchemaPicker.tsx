@@ -4,6 +4,8 @@ import { Box, Icon } from "metabase/ui";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { SchemaId } from "metabase-types/api";
 
+import { CONTAINER_WIDTH } from "../constants";
+
 type DataSelectorSchemaPickerProps = {
   hasBackButton: boolean;
   hasFiltering: boolean;
@@ -34,7 +36,7 @@ const DataSelectorSchemaPicker = ({
   ];
 
   return (
-    <Box w={300}>
+    <Box w={CONTAINER_WIDTH}>
       <AccordionList
         id="SchemaPicker"
         key="schemaPicker"

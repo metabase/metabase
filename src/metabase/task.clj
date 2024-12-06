@@ -22,7 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -190,15 +190,30 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- reschedule-task!
+  "Assuming that [[job]] is already registered, ensure that [[new-trigger]] is scheduled to trigger it."
   [job         :- (ms/InstanceOfClass JobDetail)
    new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
-      ;; TODO: a job could have multiple triggers, so the first trigger is not guaranteed to be the one we want to
-      ;; replace. Should we check that the key name is matching?
-      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey ^JobDetail job)))]
-        (log/debugf "Rescheduling job %s" (-> ^JobDetail job .getKey .getName))
-        (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
+      (let [job-key          (.getKey ^JobDetail job)
+            new-trigger-key  (.getKey ^Trigger new-trigger)
+            triggers         (qs/get-triggers-of-job scheduler job-key)
+            matching-trigger (first (filter (comp #{new-trigger-key} #(.getKey ^Trigger %)) triggers))
+            replaced-trigger (or matching-trigger (first triggers))]
+        (when replaced-trigger
+          (log/debugf "Rescheduling job %s" (.getName job-key))
+          (let [replaced-key (.getKey ^Trigger replaced-trigger)]
+            (when-not matching-trigger
+              (log/warnf "Replacing trigger %s with trigger %s%s"
+                         (.getName replaced-key)
+                         (.getName new-trigger-key)
+                         (when (> (count triggers) 1)
+                           ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
+                           ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
+                           ;; The current behavior is especially confounding if replacing N triggers with M ones.
+                           (str " (chosen randomly from " (count triggers) " existing ones)")))
+              matching-trigger)
+            (.rescheduleJob scheduler (.getKey ^Trigger matching-trigger) new-trigger)))))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
 
@@ -216,12 +231,12 @@
   (when-let [scheduler (scheduler)]
     (try
       (qs/schedule scheduler job trigger)
-      (catch org.quartz.ObjectAlreadyExistsException _
+      (catch ObjectAlreadyExistsException _
         (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
         (reschedule-task! job trigger)))))
 
 (mu/defn trigger-now!
-  "Immediatley trigger exeuction of task"
+  "Immediately trigger execution of task"
   [job-key :- (ms/InstanceOfClass JobKey)]
   (try
     (when-let [scheduler (scheduler)]

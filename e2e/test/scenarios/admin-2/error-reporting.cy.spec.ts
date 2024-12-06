@@ -1,25 +1,16 @@
+import { H } from "e2e/support";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  commandPaletteAction,
-  commandPaletteButton,
-  commandPaletteInput,
-  createQuestion,
-  modal,
-  restore,
-  visitDashboard,
-  visitFullAppEmbeddingUrl,
-} from "e2e/support/helpers";
 
 const downloadsFolder = Cypress.config("downloadsFolder");
 
 describe("error reporting modal", () => {
   beforeEach(() => {
     cy.deleteDownloadsFolder();
-    restore();
+    H.restore();
   });
 
   it('should show an error reporting modal when pressing "Ctrl + F1" on the home page', () => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.visit("/");
 
@@ -30,7 +21,7 @@ describe("error reporting modal", () => {
 
     cy.realPress(["Control", "F1"]);
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Download diagnostic information").should("be.visible");
       cy.button(/Download/i).click();
     });
@@ -46,7 +37,7 @@ describe("error reporting modal", () => {
   });
 
   it("should allow you to open the error reporting modal via the command palette", () => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.visit("/");
 
@@ -54,9 +45,9 @@ describe("error reporting modal", () => {
       .findByText(/see what metabase can do/i)
       .should("exist");
 
-    commandPaletteButton().click();
-    commandPaletteInput().type("Error");
-    commandPaletteAction(/Open error diagnostic modal/).click();
+    H.commandPaletteButton().click();
+    H.commandPaletteInput().type("Error");
+    H.commandPaletteAction(/Open error diagnostic modal/).click();
 
     cy.findByRole("dialog", { name: "Download diagnostic information" }).should(
       "be.visible",
@@ -64,9 +55,9 @@ describe("error reporting modal", () => {
   });
 
   it("should not show error reporting modal in embedding", () => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    visitFullAppEmbeddingUrl({
+    H.visitFullAppEmbeddingUrl({
       url: "/",
       qs: {
         top_nav: true,
@@ -80,12 +71,12 @@ describe("error reporting modal", () => {
 
     cy.realPress(["Control", "F1"]);
 
-    modal().should("not.exist");
+    H.modal().should("not.exist");
   });
 
   it("should include question-specific data when triggered on the question page", () => {
     cy.signInAsAdmin();
-    createQuestion(
+    H.createQuestion(
       {
         name: "Diagnostic Question 1",
         query: { "source-table": 1, limit: 10 },
@@ -96,7 +87,7 @@ describe("error reporting modal", () => {
     cy.findByTestId("TableInteractive-root").realClick();
     cy.realPress(["Control", "F1"]);
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Download diagnostic information").should("be.visible");
       cy.findByLabelText("Query results").should("not.be.checked");
       cy.button(/Download/i).click();
@@ -117,7 +108,7 @@ describe("error reporting modal", () => {
 
     cy.realPress(["Control", "F1"]);
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Download diagnostic information").should("be.visible");
       cy.findByLabelText("Query results").should("not.be.checked");
       cy.findByLabelText("Query results").click(); // off by default
@@ -139,7 +130,7 @@ describe("error reporting modal", () => {
 
   it("can include query data on question pages", () => {
     cy.signInAsAdmin();
-    createQuestion(
+    H.createQuestion(
       {
         name: "Diagnostic Question 1",
         query: { "source-table": 1, limit: 10 },
@@ -150,7 +141,7 @@ describe("error reporting modal", () => {
     cy.findByTestId("TableInteractive-root").realClick();
     cy.realPress(["Control", "F1"]);
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Download diagnostic information").should("be.visible");
       cy.findByLabelText("Query results").should("not.be.checked");
       cy.findByLabelText("Query results").click(); // off by default
@@ -172,12 +163,12 @@ describe("error reporting modal", () => {
 
   it("should not include backend logs for non-admin users", () => {
     cy.signInAsNormalUser();
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.findByTestId("dashboard-grid").realClick();
 
     cy.realPress(["Control", "F1"]);
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Download diagnostic information").should("be.visible");
       cy.findByLabelText("Dashboard definition").should("be.visible");
       cy.findByLabelText("Query results").should("not.exist");

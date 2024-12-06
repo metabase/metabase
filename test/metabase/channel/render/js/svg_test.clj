@@ -6,11 +6,11 @@
   the svg png renderer does not understand nested html elements so we ensure that there are no divs, spans, etc in the
   resulting svg."
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.channel.render.js.engine :as js.engine]
-   [metabase.channel.render.js.svg :as js.svg])
+   [metabase.channel.render.js.svg :as js.svg]
+   [metabase.util.json :as json])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
    (org.graalvm.polyglot Context Value)
@@ -89,9 +89,9 @@
                       (js.engine/execute-fn-name
                        context
                        "progress"
-                       (json/generate-string {:value value :goal goal})
-                       (json/generate-string settings)
-                       (json/generate-string {})))]
+                       (json/encode {:value value :goal goal})
+                       (json/encode settings)
+                       (json/encode {})))]
       (validate-svg-string :progress svg-string))))
 
 (deftest parse-svg-sanitizes-characters-test

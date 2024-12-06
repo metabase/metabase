@@ -189,7 +189,7 @@ describe("StringFilterPicker", () => {
         operator: "contains",
         column: expect.anything(),
         values: ["green"],
-        options: { "case-sensitive": false },
+        options: { caseSensitive: false },
       });
       expect(getNextFilterColumnName()).toBe("Product → Description");
     });
@@ -210,7 +210,7 @@ describe("StringFilterPicker", () => {
         operator: "does-not-contain",
         column: expect.anything(),
         values: ["Ga"],
-        options: { "case-sensitive": true },
+        options: { caseSensitive: true },
       });
       expect(getNextFilterColumnName()).toBe("Product → Description");
     });
@@ -295,7 +295,7 @@ describe("StringFilterPicker", () => {
         operator: "starts-with",
         column: expect.anything(),
         values: ["123"],
-        options: { "case-sensitive": false },
+        options: { caseSensitive: false },
       });
     });
 
@@ -344,7 +344,7 @@ describe("StringFilterPicker", () => {
       const opts = createQueryWithStringFilter({
         operator: "contains",
         values: ["abc"],
-        options: { "case-sensitive": false },
+        options: { caseSensitive: false },
       });
 
       it("should render a filter", () => {
@@ -376,7 +376,7 @@ describe("StringFilterPicker", () => {
           operator: "contains",
           column: expect.anything(),
           values: ["foo"],
-          options: { "case-sensitive": true },
+          options: { caseSensitive: true },
         });
         expect(getNextFilterColumnName()).toBe("Product → Description");
       });

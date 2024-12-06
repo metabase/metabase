@@ -57,6 +57,7 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
+  CanAccessOnboarding,
   CanAccessSettings,
   IsAdmin,
   IsAuthenticated,
@@ -131,7 +132,7 @@ export const getRoutes = store => {
           <Route
             path="getting-started"
             title={t`Getting Started`}
-            component={IsAdmin}
+            component={CanAccessOnboarding}
           >
             <IndexRoute component={Onboarding} />
           </Route>

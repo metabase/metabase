@@ -1,7 +1,6 @@
 (ns metabase.channel.impl.email
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
@@ -18,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -52,9 +52,9 @@
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/generate-string {:salt     (public-settings/site-uuid-for-unsubscribing-url)
-                           :email    email
-                           :pulse-id pulse-id}))))
+    (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+                  :email    email
+                  :pulse-id pulse-id}))))
 
 (defn- unsubscribe-url-for-non-user
   [dashboard-subscription-id non-user-email]
@@ -162,7 +162,7 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
+(mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [card_part
                 alert
@@ -235,7 +235,7 @@
       (for [row rows]
         [:tr {} row])])))
 
-(mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
+(mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
                 dashboard_subscription

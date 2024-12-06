@@ -1,11 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  getBinningButtonForDimension,
-  popover,
-  restore,
-  rightSidebar,
-  summarize,
-} from "e2e/support/helpers";
 
 import { TIME_OPTIONS } from "./shared/constants";
 
@@ -26,14 +20,14 @@ const questionDetails = {
  */
 describe("scenarios > binning > correctness > time series", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    summarize();
+    H.summarize();
 
     openPopoverFromDefaultBucketSize("Created At", "by month");
   });
@@ -41,7 +35,7 @@ describe("scenarios > binning > correctness > time series", () => {
   Object.entries(TIME_OPTIONS).forEach(
     ([bucketSize, { selected, isHiddenByDefault, representativeValues }]) => {
       it(`should return correct values for ${bucketSize}`, () => {
-        popover().within(() => {
+        H.popover().within(() => {
           if (isHiddenByDefault) {
             cy.button("More…").click();
           }
@@ -49,12 +43,12 @@ describe("scenarios > binning > correctness > time series", () => {
           cy.wait("@dataset");
         });
 
-        getBinningButtonForDimension({
+        H.getBinningButtonForDimension({
           name: "Created At",
           isSelected: true,
         }).should("have.text", selected);
 
-        rightSidebar().button("Done").click();
+        H.rightSidebar().button("Done").click();
 
         getTitle(`Count by Created At: ${bucketSize}`);
 
@@ -68,7 +62,7 @@ describe("scenarios > binning > correctness > time series", () => {
 });
 
 function openPopoverFromDefaultBucketSize(name, bucket) {
-  getBinningButtonForDimension({ name })
+  H.getBinningButtonForDimension({ name })
     .should("have.text", bucket)
     .click({ force: true });
 }

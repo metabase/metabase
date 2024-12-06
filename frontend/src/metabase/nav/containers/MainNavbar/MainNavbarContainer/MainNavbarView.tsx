@@ -1,15 +1,10 @@
-import dayjs from "dayjs";
 import type { MouseEvent } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {
-  useHasTokenFeature,
-  useSetting,
-  useUserSetting,
-} from "metabase/common/hooks";
+import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
@@ -17,14 +12,16 @@ import {
   PERSONAL_COLLECTIONS,
   getCollectionIcon,
 } from "metabase/entities/collections";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { getHasOwnDatabase } from "metabase/selectors/data";
-import { getIsEmbedded } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
-import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import type { IconName, IconProps } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -124,24 +121,9 @@ export function MainNavbarView({
   );
 
   const ONBOARDING_URL = "/getting-started";
-
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const instanceCreated = useSetting("instance-creation");
-
-  useEffect(() => {
-    const daysSinceCreation = dayjs().diff(dayjs(instanceCreated), "days");
-    const isNewInstance = daysSinceCreation <= 30;
-
-    if (isNewInstance) {
-      setShowOnboarding(true);
-    }
-  }, [instanceCreated]);
-
-  const isEmbedded = useSelector(getIsEmbedded);
-  const isWhiteLabelled = useSelector(getIsWhiteLabeling);
-
-  const showOnboardingChecklist =
-    isAdmin && showOnboarding && !isEmbedded && !isWhiteLabelled;
+  const isNewInstance = useSelector(getIsNewInstance);
+  const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
+  const showOnboardingLink = isNewInstance && canAccessOnboarding;
 
   // Instances with DWH enabled already have uploads enabled by default.
   // It is not possible to turn the uploads off, nor to delete the attached database.
@@ -183,7 +165,7 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
-            {showOnboardingChecklist && (
+            {showOnboardingLink && (
               <PaddedSidebarLink
                 icon="learn"
                 url={ONBOARDING_URL}

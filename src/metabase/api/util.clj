@@ -2,7 +2,6 @@
   "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks."
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [compojure.core :refer [GET POST]]
    [crypto.random :as crypto-random]
@@ -16,6 +15,7 @@
    [metabase.logger :as logger]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.troubleshooting :as troubleshooting]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -61,9 +61,9 @@
    email :- [:maybe ms/NonBlankString]]
   (try (http/post (product-feedback-url)
                   {:content-type :json
-                   :body         (json/generate-string {:comments comments
-                                                        :source   source
-                                                        :email    email})})
+                   :body         (json/encode {:comments comments
+                                               :source   source
+                                               :email    email})})
        (catch Exception e
          (log/warn e)
          (throw e))))

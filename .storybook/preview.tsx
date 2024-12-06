@@ -3,6 +3,10 @@ import { ThemeProvider } from "metabase/ui";
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
 
+// @ts-expect-error: See metabase/lib/delay
+// This will skip the skippable delays in stories
+window.METABASE_REMOVE_DELAYS = true;
+
 if (!isEmbeddingSDK) {
   require("metabase/css/core/index.css");
   require("metabase/css/vendor.css");
@@ -42,15 +46,20 @@ const globalStyles = css`
 export const decorators = isEmbeddingSDK
   ? [] // No decorators for Embedding SDK stories, as we want to simulate real use cases
   : [
-      renderStory => (
-        <EmotionCacheProvider>
-          <ThemeProvider>
-            <Global styles={globalStyles} />
-            <CssVariables />
-            {renderStory()}
-          </ThemeProvider>
-        </EmotionCacheProvider>
-      ),
+      renderStory => {
+        if (!document.body.classList.contains("mb-wrapper")) {
+          document.body.classList.add("mb-wrapper");
+        }
+        return (
+          <EmotionCacheProvider>
+            <ThemeProvider>
+              <Global styles={globalStyles} />
+              <CssVariables />
+              {renderStory()}
+            </ThemeProvider>
+          </EmotionCacheProvider>
+        );
+      },
     ];
 
 function CssVariables() {

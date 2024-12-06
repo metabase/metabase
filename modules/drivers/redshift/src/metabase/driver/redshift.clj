@@ -1,7 +1,6 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -25,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
@@ -447,11 +447,11 @@
 (defmethod qp.util/query->remark :redshift
   [_ {{:keys [executed-by card-id dashboard-id]} :info, :as query}]
   (str "/* partner: \"metabase\", "
-       (json/generate-string {:dashboard_id        dashboard-id
-                              :chart_id            card-id
-                              :optional_user_id    executed-by
-                              :optional_account_id (public-settings/site-uuid)
-                              :filter_values       (field->parameter-value query)})
+       (json/encode {:dashboard_id        dashboard-id
+                     :chart_id            card-id
+                     :optional_user_id    executed-by
+                     :optional_account_id (public-settings/site-uuid)
+                     :filter_values       (field->parameter-value query)})
        " */ "
        (qp.util/default-query->remark query)))
 

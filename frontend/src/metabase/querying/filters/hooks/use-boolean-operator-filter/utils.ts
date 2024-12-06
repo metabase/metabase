@@ -20,13 +20,13 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(operator: Lib.BooleanFilterOperatorName) {
+export function getOptionByOperator(operator: Lib.BooleanFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
-): Lib.BooleanFilterOperatorName {
+): Lib.BooleanFilterOperator {
   return getDefaultAvailableOperator(availableOptions, "=");
 }
 
@@ -35,7 +35,7 @@ export function getDefaultValues() {
 }
 
 export function getFilterClause(
-  operator: Lib.BooleanFilterOperatorName,
+  operator: Lib.BooleanFilterOperator,
   column: Lib.ColumnMetadata,
   values: boolean[],
 ) {
@@ -44,7 +44,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.BooleanFilterOperatorName,
+  operator: Lib.BooleanFilterOperator,
   column: Lib.ColumnMetadata,
   values: boolean[],
 ): Lib.BooleanFilterParts | undefined {

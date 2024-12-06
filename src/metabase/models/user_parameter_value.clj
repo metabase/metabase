@@ -1,10 +1,10 @@
 (ns metabase.models.user-parameter-value
   (:require
-   [cheshire.core :as json]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util.grouper :as grouper]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -24,7 +24,7 @@
   [s]
   (if (string? s)
     (try
-      (json/parse-string s true)
+      (json/decode+kw s)
       (catch Throwable _e
         s))
     s))

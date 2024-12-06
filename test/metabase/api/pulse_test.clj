@@ -1,5 +1,6 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

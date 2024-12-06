@@ -39,7 +39,11 @@ export const InteractiveAdHocQuestion = ({
       onNavigateBack={onNavigateBack}
     >
       {children ?? (
-        <InteractiveQuestionResult height={height} withTitle={withTitle} />
+        <InteractiveQuestionResult
+          height={height}
+          withTitle={withTitle}
+          withChartTypeSelector
+        />
       )}
     </InteractiveQuestionProviderWithLocation>
   );

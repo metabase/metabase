@@ -65,6 +65,11 @@ export function getTableCellClickedObject(
       data: clickedRowData,
     };
   } else {
+    // Clicks on aggregation columns can wind up here if the query has stages after the aggregation / breakout
+    // stage. In that case, column.source will be something like "fields", and it's up to the drill to check
+    // the underlying column and construct the dimensions from the passed in clickedRowData. Currently, only
+    // the underlying_records drill handles this, but other drills should be updated if they care about the
+    // column's underlying source.
     return {
       value,
       column,

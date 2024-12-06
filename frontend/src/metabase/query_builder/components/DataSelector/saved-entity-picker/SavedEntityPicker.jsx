@@ -19,7 +19,7 @@ import { Box, Icon } from "metabase/ui";
 import SavedEntityList from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
-import { findCollectionByName } from "./utils";
+import { findCollectionById } from "./utils";
 
 const propTypes = {
   type: PropTypes.string,
@@ -29,7 +29,7 @@ const propTypes = {
   currentUser: PropTypes.object.isRequired,
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
-  collectionName: PropTypes.string,
+  collectionId: PropTypes.number,
   rootCollection: PropTypes.object,
 };
 
@@ -53,7 +53,7 @@ function SavedEntityPicker({
   currentUser,
   databaseId,
   tableId,
-  collectionName,
+  collectionId,
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
@@ -93,8 +93,7 @@ function SavedEntityPicker({
   }, [collections, rootCollection, currentUser, type]);
 
   const initialCollection = useMemo(
-    () =>
-      findCollectionByName(collectionTree, collectionName) ?? collectionTree[0],
+    () => findCollectionById(collectionTree, collectionId) ?? collectionTree[0],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -110,10 +109,10 @@ function SavedEntityPicker({
   }, []);
 
   return (
-    <Box className={SavedEntityPickerS.savedEntityPickerRoot}>
-      <Box className={SavedEntityPickerS.collectionsContainer}>
+    <Box className={SavedEntityPickerS.SavedEntityPickerRoot}>
+      <Box className={SavedEntityPickerS.CollectionsContainer}>
         <a
-          className={SavedEntityPickerS.backButton}
+          className={SavedEntityPickerS.BackButton}
           onClick={onBack}
           data-testid="saved-entity-back-navigation"
         >

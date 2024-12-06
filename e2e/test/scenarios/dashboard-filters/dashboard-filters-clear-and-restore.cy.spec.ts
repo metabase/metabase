@@ -1,29 +1,17 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  checkFilterListSourceHasValue,
-  createQuestionAndDashboard,
-  editDashboard,
-  modal,
-  popover,
-  restore,
-  saveDashboard,
-  setFilter,
-  setFilterListSource,
-  sidebar,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("dashboard filters values source config clearing and restoring", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should clear and restore parameter static-list values when the type changes", () => {
-    createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         display: "scalar",
         query: {
@@ -32,27 +20,27 @@ describe("dashboard filters values source config clearing and restoring", () => 
         },
       },
     }).then(({ body: { dashboard_id } }) => {
-      visitDashboard(dashboard_id);
+      H.visitDashboard(dashboard_id);
 
-      editDashboard();
-      setFilter("Number", "Equal to", "Foo");
+      H.editDashboard();
+      H.setFilter("Number", "Equal to", "Foo");
       mapFilterToQuestion();
-      setFilterListSource({
+      H.setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
-      saveDashboard();
+      H.saveDashboard();
 
-      editDashboard();
+      H.editDashboard();
       editFilter("Foo");
 
       editFilterType("Text or Category", "Is");
-      checkFilterListSourceHasValue({ values: [] });
+      H.checkFilterListSourceHasValue({ values: [] });
 
       mapFilterToQuestion("Email");
       setFilterSourceFromConnectedFields();
 
       editFilterType("Number", "Equal to");
-      checkFilterListSourceHasValue({
+      H.checkFilterListSourceHasValue({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
     });
@@ -60,8 +48,8 @@ describe("dashboard filters values source config clearing and restoring", () => 
 });
 
 function setFilterSourceFromConnectedFields() {
-  sidebar().findByText("Edit").click();
-  modal().within(() => {
+  H.sidebar().findByText("Edit").click();
+  H.modal().within(() => {
     cy.findByText("From connected fields").click();
     cy.button("Done").click();
   });
@@ -69,7 +57,7 @@ function setFilterSourceFromConnectedFields() {
 
 const mapFilterToQuestion = (column = "Quantity") => {
   cy.findByText("Select…").click();
-  popover().within(() => cy.findByText(column).click());
+  H.popover().within(() => cy.findByText(column).click());
 };
 
 function editFilter(name: string) {
@@ -79,9 +67,9 @@ function editFilter(name: string) {
 }
 
 function editFilterType(type: string, subType: string) {
-  sidebar().findByText("Filter or parameter type").next().click();
-  popover().findByText(type).click();
+  H.sidebar().findByText("Filter or parameter type").next().click();
+  H.popover().findByText(type).click();
 
-  sidebar().findByText("Filter operator").next().click();
-  popover().findByText(subType).click();
+  H.sidebar().findByText("Filter operator").next().click();
+  H.popover().findByText(subType).click();
 }

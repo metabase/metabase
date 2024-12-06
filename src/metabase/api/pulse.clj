@@ -1,6 +1,8 @@
-(ns metabase.api.pulse
+(ns ^:deprecated metabase.api.pulse
   "`/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
-  see [[metabase.api.pulse.unsubscribe]]."
+  see [[metabase.api.pulse.unsubscribe]].
+
+  Deprecated: will soon be migrated to notification APIs."
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.set :refer [difference]]

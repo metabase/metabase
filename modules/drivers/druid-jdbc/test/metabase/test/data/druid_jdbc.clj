@@ -1,9 +1,9 @@
 (ns metabase.test.data.druid-jdbc
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [metabase.test.data.dataset-definitions :as defs]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util.json :as json]))
 
 (tx/add-test-extensions! :druid-jdbc)
 
@@ -14,7 +14,7 @@
 
 (defn- already-loaded []
   (let [{:keys [host port]} (tx/dbdef->connection-details :druid-jdbc)]
-    (set (json/parse-string (:body (http/get (format "%s:%s/druid/v2/datasources" host port)))))))
+    (set (json/decode (:body (http/get (format "%s:%s/druid/v2/datasources" host port)))))))
 
 (def built-in-datasets #{"checkins" "json"})
 

@@ -3,7 +3,6 @@
    column metadata, and visualization-settings are known. These functions can be used for uniform rendering of all
    artifacts such as generated CSV or image files that need consistent formatting across the board."
   (:require
-   [cheshire.core :as json]
    [clojure.pprint :refer [cl-format]]
    [clojure.string :as str]
    [hiccup.util]
@@ -13,6 +12,7 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.types :as types]
    [metabase.util.currency :as currency]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]

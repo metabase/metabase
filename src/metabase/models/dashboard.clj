@@ -26,7 +26,7 @@
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.search :as search]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]

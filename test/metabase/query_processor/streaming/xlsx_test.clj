@@ -1,6 +1,5 @@
 (ns metabase.query-processor.streaming.xlsx-test
   (:require
-   [cheshire.generate :as json.generate]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -9,7 +8,8 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.json :as json])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    com.sun.management.ThreadMXBean
@@ -638,14 +638,14 @@
 
 (defrecord ^:private SampleNastyClass [^String v])
 
-(json.generate/add-encoder
+(json/add-encoder
  SampleNastyClass
  (fn [obj, ^JsonGenerator json-generator]
    (.writeString json-generator (str (:v obj)))))
 
 (defrecord ^:private SampleNastyClass2 [^Number v])
 
-(json.generate/add-encoder
+(json/add-encoder
  SampleNastyClass2
  (fn [obj, ^JsonGenerator json-generator]
    (.writeNumber json-generator (long (:v obj)))))

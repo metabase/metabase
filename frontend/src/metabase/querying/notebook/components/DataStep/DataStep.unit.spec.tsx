@@ -403,9 +403,7 @@ describe("DataStep", () => {
           const dataSource = screen.getByText("Orders");
           fireEvent.click(dataSource, clickConfig);
 
-          expect(
-            await screen.findByTestId("entity-picker-modal"),
-          ).toBeInTheDocument();
+          expect(await screen.findByText("Products")).toBeInTheDocument();
           expect(mockWindowOpen).not.toHaveBeenCalled();
           mockWindowOpen.mockClear();
         },
@@ -421,12 +419,8 @@ describe("DataStep", () => {
           bubbles: true,
           button: 1,
         });
-
         fireEvent(dataSource, middleClick);
 
-        expect(
-          await screen.findByTestId("entity-picker-modal"),
-        ).toBeInTheDocument();
         expect(mockWindowOpen).not.toHaveBeenCalled();
         mockWindowOpen.mockClear();
       });

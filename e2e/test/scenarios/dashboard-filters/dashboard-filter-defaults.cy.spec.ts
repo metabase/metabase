@@ -1,20 +1,9 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  type StructuredQuestionDetails,
-  clearFilterWidget,
-  createQuestionAndDashboard,
-  editDashboard,
-  filterWidget,
-  popover,
-  restore,
-  saveDashboard,
-  sidebar,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const QUESTION: StructuredQuestionDetails = {
+const QUESTION: H.StructuredQuestionDetails = {
   name: "Return input value",
   display: "scalar",
   query: {
@@ -47,12 +36,12 @@ const DASHBOARD = {
 
 describe("scenarios > dashboard > filters > reset", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should reset a filters value when editing the default", () => {
-    createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: QUESTION,
       dashboardDetails: DASHBOARD,
     }).then(({ body: dashboardCard }) => {
@@ -72,7 +61,7 @@ describe("scenarios > dashboard > filters > reset", () => {
           },
         ],
       }).then(() => {
-        visitDashboard(dashboard_id, {
+        H.visitDashboard(dashboard_id, {
           params: {
             filter_one: "",
             filter_two: "Bar",
@@ -83,42 +72,42 @@ describe("scenarios > dashboard > filters > reset", () => {
 
     cy.log("Default dashboard filter");
 
-    filterWidget().contains("Filter One").should("be.visible");
-    filterWidget().contains("Bar").should("be.visible");
+    H.filterWidget().contains("Filter One").should("be.visible");
+    H.filterWidget().contains("Bar").should("be.visible");
 
     cy.location("search").should("eq", "?filter_one=&filter_two=Bar");
 
-    clearFilterWidget(1);
+    H.clearFilterWidget(1);
 
     cy.location("search").should("eq", "?filter_one=&filter_two=");
 
     cy.log(
       "Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder",
     );
-    editDashboard();
+    H.editDashboard();
 
     openFilterOptions("Filter Two");
 
-    sidebar().within(() => {
+    H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
       clearDefaultFilterValue();
       setDefaultFilterValue("Foo");
     });
 
-    popover().button("Add filter").click();
+    H.popover().button("Add filter").click();
 
     cy.location("search").should("eq", "?filter_one=&filter_two=Foo");
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.location("search").should("eq", "?filter_one=&filter_two=Foo");
 
-    filterWidget().contains("Filter One").should("be.visible");
-    filterWidget().contains("Foo").should("be.visible");
+    H.filterWidget().contains("Filter One").should("be.visible");
+    H.filterWidget().contains("Foo").should("be.visible");
   });
 
   it("should reset a filters value when editing the default, and leave other filters alone", () => {
-    createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: QUESTION,
       dashboardDetails: DASHBOARD,
     }).then(({ body: dashboardCard }) => {
@@ -138,7 +127,7 @@ describe("scenarios > dashboard > filters > reset", () => {
           },
         ],
       }).then(() => {
-        visitDashboard(dashboard_id, {
+        H.visitDashboard(dashboard_id, {
           params: {
             filter_one: "",
             filter_two: "Bar",
@@ -149,33 +138,33 @@ describe("scenarios > dashboard > filters > reset", () => {
 
     cy.log("Default dashboard filter");
 
-    filterWidget().contains("Filter One").should("be.visible");
-    filterWidget().contains("Bar").should("be.visible");
+    H.filterWidget().contains("Filter One").should("be.visible");
+    H.filterWidget().contains("Bar").should("be.visible");
 
     cy.location("search").should("eq", "?filter_one=&filter_two=Bar");
 
     cy.log(
       "Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder",
     );
-    editDashboard();
+    H.editDashboard();
 
     openFilterOptions("Filter One");
 
-    sidebar().within(() => {
+    H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
       setDefaultFilterValue("Foo");
     });
 
-    popover().button("Add filter").click();
+    H.popover().button("Add filter").click();
 
     cy.location("search").should("eq", "?filter_one=Foo&filter_two=Bar");
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.location("search").should("eq", "?filter_one=Foo&filter_two=Bar");
 
-    filterWidget().contains("Filter One").should("be.visible");
-    filterWidget().contains("Foo").should("be.visible");
+    H.filterWidget().contains("Filter One").should("be.visible");
+    H.filterWidget().contains("Foo").should("be.visible");
   });
 });
 

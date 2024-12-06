@@ -20,27 +20,27 @@ import {
 import { useStringFilter } from "./use-string-filter";
 
 interface CreateFilterCase {
-  operator: Lib.StringFilterOperatorName;
+  operator: Lib.StringFilterOperator;
   values: string[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: Lib.StringFilterOperatorName;
+  operator: Lib.StringFilterOperator;
   expression: Lib.ExpressionClause;
   values: string[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: Lib.StringFilterOperatorName;
+  operator: Lib.StringFilterOperator;
   values: string[];
 }
 
 interface DefaultOperatorCase {
   title: string;
   column: Lib.ColumnMetadata;
-  expectedOperator: Lib.StringFilterOperatorName;
+  expectedOperator: Lib.StringFilterOperator;
 }
 
 const METADATA = createMockMetadata({

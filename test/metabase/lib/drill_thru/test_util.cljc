@@ -225,13 +225,13 @@
     [:expected [:map
                 [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
 
-(defn- drop-uuids [form]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
+(defn- drop-uuids-and-idents [form]
+  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid :ident))
                  form))
 
 (defn- clean-expected-query [form]
   (-> form
-      drop-uuids
+      drop-uuids-and-idents
       (dissoc :lib/metadata)))
 
 (defn- clean-expected-query-on-drill [form query-kind]

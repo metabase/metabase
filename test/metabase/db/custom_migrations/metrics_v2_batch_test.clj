@@ -1,6 +1,5 @@
 (ns ^:mb/once metabase.db.custom-migrations.metrics-v2-batch-test
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -9,7 +8,8 @@
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.db.custom-migrations.metrics-v2-test :as metrics-v2-test]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.json :as json])
   (:import
    (java.net URI)
    (java.nio.file Files FileSystem FileSystems NoSuchFileException)))
@@ -38,7 +38,7 @@
           metrics (into {}
                         (map (fn [[instance id definition]]
                                (.add instances instance)
-                               [(parse-long id) (json/parse-string definition true)]))
+                               [(parse-long id) (json/decode+kw definition)]))
                         (csv/read-csv r))]
       (when (not= (.size instances) 1)
         (throw (ex-info "unexpected number of instances"
@@ -75,7 +75,7 @@
                      (throw (ex-info "unexpected instance"
                                      {:expected instance
                                       :actual inst})))
-                   (let [dataset-query (json/parse-string dataset-query true)]
+                   (let [dataset-query (json/decode+kw dataset-query)]
                      [(parse-long id) dataset-query])))
             (csv/read-csv r)))
     (catch NoSuchFileException _
@@ -106,7 +106,7 @@
      (let [metric {:description "desc of just a metric"
                    :archived false
                    :table_id (:source-table definition)
-                   :definition (json/generate-string definition)
+                   :definition (json/encode definition)
                    :show_in_getting_started false
                    :name "just a metric"
                    :caveats "caveats"
@@ -158,7 +158,7 @@
          (printf "%s,%d,%d%n" instance-name (count v2-metrics) (count cards)))
        (doseq [{:keys [input metric-card]} v2-metrics
                :let [{:keys [dataset_query]} metric-card
-                     parsed-query (json/parse-string dataset_query true)]]
+                     parsed-query (json/decode+kw dataset_query)]]
          (testing (str "metric conversion: " (pr-str {:instance instance-name
                                                       :metric {:id (first input)
                                                                :definition (second input)}

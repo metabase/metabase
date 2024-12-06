@@ -7,7 +7,7 @@ import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/typ
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
-import type { CardEntityId, CardId } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 
@@ -39,7 +39,7 @@ export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
 
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
-    Omit<LoadSdkQuestionParams, "cardId"> & { cardId?: CardId | CardEntityId }
+    Omit<LoadSdkQuestionParams, "cardId"> & { cardId?: CardId | string }
 >;
 
 export type InteractiveQuestionContextType = Omit<

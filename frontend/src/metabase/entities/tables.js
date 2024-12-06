@@ -1,9 +1,15 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { updateIn } from "icepick";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { databaseApi, tableApi } from "metabase/api";
+import {
+  databaseApi,
+  tableApi,
+  useGetTableQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 import Segments from "metabase/entities/segments";
@@ -16,6 +22,8 @@ import {
 import {
   compose,
   createThunkAction,
+  useDispatch,
+  useSelector,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
@@ -50,6 +58,32 @@ const Tables = createEntity({
   nameOne: "table",
   path: "/api/table",
   schema: TableSchema,
+
+  rtk: {
+    getUseGetQuery: fetchType => {
+      if (fetchType === "fetchMetadata") {
+        return {
+          useGetQuery: useGetTableQueryMetadataQuery,
+        };
+      }
+
+      if (fetchType === "fetchMetadataDeprecated") {
+        return {
+          useGetQuery: useGetTableQueryMetadataQuery,
+        };
+      }
+
+      if (fetchType === "fetchMetadataAndForeignTables") {
+        return {
+          useGetQuery: useGetMetadataAndForeignTables,
+        };
+      }
+
+      return {
+        useGetQuery: useGetTableQuery,
+      };
+    },
+  },
 
   api: {
     list: async ({ dbId, schemaName, ...params } = {}, dispatch) => {
@@ -338,6 +372,41 @@ const Tables = createEntity({
     ),
   },
 });
+
+const useGetMetadataAndForeignTables = (entityQuery, options) => {
+  const dispatch = useDispatch();
+  const table = useSelector(state =>
+    Tables.selectors[options.selectorName || "getObjectUnfiltered"](state, {
+      entityId: entityQuery.id,
+    }),
+  );
+
+  const result = useGetTableQueryMetadataQuery(entityQuery, options);
+
+  const tableForeignKeyTableIds = useMemo(
+    () => (table ? getTableForeignKeyTableIds(table) : []),
+    [table],
+  );
+  const tableForeignKeyFieldIds = useMemo(
+    () => (table ? getTableForeignKeyFieldIds(table) : []),
+    [table],
+  );
+
+  // fetch foreign key linked tables metadata as well
+  useEffect(() => {
+    for (const id of tableForeignKeyTableIds) {
+      dispatch(Tables.actions.fetchMetadataDeprecated({ id }, options));
+    }
+  }, [dispatch, options, tableForeignKeyTableIds]);
+
+  useEffect(() => {
+    for (const id of tableForeignKeyFieldIds) {
+      dispatch(Fields.actions.fetch({ id }, options));
+    }
+  }, [dispatch, options, tableForeignKeyFieldIds]);
+
+  return result;
+};
 
 function getTableForeignKeyTableIds(table) {
   return _.chain(table.fields)

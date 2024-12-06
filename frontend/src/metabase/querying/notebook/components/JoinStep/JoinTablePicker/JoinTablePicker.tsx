@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { Icon, Popover, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
 import { NotebookDataPicker } from "../../NotebookDataPicker";
@@ -29,7 +29,6 @@ export function JoinTablePicker({
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
-  const databaseId = useMemo(() => Lib.databaseID(query), [query]);
   const isDisabled = isReadOnly;
 
   return (
@@ -52,8 +51,9 @@ export function JoinTablePicker({
         query={query}
         stageIndex={stageIndex}
         table={table}
-        databaseId={databaseId ?? undefined}
         placeholder={t`Pick data…`}
+        canChangeDatabase={false}
+        hasMetrics={false}
         isDisabled={isDisabled}
         onChange={onChange}
       />

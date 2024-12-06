@@ -21,7 +21,7 @@ You can:
 - Add metrics to [dashboards](../dashboards/introduction.md).
 - View metrics in the [database browser](../exploration-and-organization/exploration.md#browse-your-databases).
 - Pick metrics as aggregation columns in the Summarize block when creating questions, modify them or combine.
-- [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to mark metrics as verified.
+- [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to [mark metrics as verified](../exploration-and-organization/content-verification.md).
 
 ### Metrics in the query builder
 
@@ -85,6 +85,10 @@ Like questions, models, and dashboards, whether a group can view or edit a metri
 By "editing" a metric, we mean [editing the metric's query definition](#editing-a-metric).
 
 These collection permissions also interact with the group's [data permissions](../permissions/data.md), which define whether the group can view or query the metric's source data.
+
+## Verifying a metric
+
+See [content verification](../exploration-and-organization/content-verification.md).
 
 ## Further reading
 

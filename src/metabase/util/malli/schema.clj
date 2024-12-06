@@ -4,7 +4,6 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)
   "
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -15,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]))
 
@@ -261,7 +261,7 @@
    [:and
     :string
     [:fn #(try
-            (json/parse-string %)
+            (json/decode %)
             true
             (catch Throwable _
               false))]]

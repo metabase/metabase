@@ -39,7 +39,7 @@
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
-   [metabase.search :as search]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]

@@ -1,13 +1,13 @@
+import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { restore, visitDashboard, visitQuestion } from "e2e/support/helpers";
 
 describe("scenarios > collection items metadata", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
   });
 
   describe("last edit date", () => {
@@ -16,14 +16,14 @@ describe("scenarios > collection items metadata", () => {
     });
 
     it("should display last edit moment for dashboards", () => {
-      visitDashboard(ORDERS_DASHBOARD_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
       changeDashboard();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited a few seconds ago/i);
     });
 
     it("should display last edit moment for questions", () => {
-      visitQuestion(ORDERS_QUESTION_ID);
+      H.visitQuestion(ORDERS_QUESTION_ID);
       changeQuestion();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited a few seconds ago/i);
@@ -33,10 +33,10 @@ describe("scenarios > collection items metadata", () => {
   describe("last editor", () => {
     it("should display if user is the last editor", () => {
       cy.signInAsAdmin();
-      visitDashboard(ORDERS_DASHBOARD_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited .* by you/i);
-      visitQuestion(ORDERS_QUESTION_ID);
+      H.visitQuestion(ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited .* by you/i);
       cy.signOut();
@@ -48,10 +48,10 @@ describe("scenarios > collection items metadata", () => {
       const expectedName = `${first_name} ${last_name.charAt(0)}.`;
 
       cy.signIn("normal");
-      visitDashboard(ORDERS_DASHBOARD_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
-      visitQuestion(ORDERS_QUESTION_ID);
+      H.visitQuestion(ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
     });

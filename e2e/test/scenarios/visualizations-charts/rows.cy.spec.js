@@ -1,8 +1,8 @@
-import { restore } from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 

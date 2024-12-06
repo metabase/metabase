@@ -85,7 +85,7 @@ The [Numbers](./visualizations/numbers.md) option is for displaying a single num
 
 A [pie chart or donut chart](./visualizations/pie-or-donut-chart.md) can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like accounts by plan.
 
-A [sunburst chart](./visualizations/pie-or-donut-chart.md) chart is a pie chart with more than one ring to show the data broken out by additional dimensions.
+A [sunburst chart](./visualizations/pie-or-donut-chart.md) is a pie chart with more than one ring to show the data broken out by additional dimensions.
 
 ![Donut](../images/pie-sunburst-demo.png)
 

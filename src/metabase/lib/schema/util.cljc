@@ -68,8 +68,7 @@
           ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
           (reduce-kv (fn [acc k _]
                        (if (or (qualified-keyword? k)
-                               (= k :base-type)
-                               (= k :effective-type))
+                               (#{:base-type :effective-type :ident} k))
                          (dissoc acc k)
                          acc))
                      options options)))))))

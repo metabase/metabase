@@ -3,9 +3,9 @@
 import { combineReducers } from "@reduxjs/toolkit";
 
 import admin from "metabase/admin/admin";
-import alert from "metabase/alert/alert";
+import * as pulse from "metabase/notifications/pulse/reducers";
+import alert from "metabase/notifications/redux/alert";
 import { PLUGIN_REDUCERS } from "metabase/plugins";
-import * as pulse from "metabase/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
 import revisions from "metabase/redux/revisions";
 import reference from "metabase/reference/reference";

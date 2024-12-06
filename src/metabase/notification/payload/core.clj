@@ -34,7 +34,7 @@
         ;; TODO: event-info schema for each event type
         [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
         [:event_info  [:maybe :map]]]]]]
-    [:notification/alert
+    [:notification/card
      [:map
       ;; replacement of pulse
       [:alert      [:map
@@ -48,7 +48,7 @@
                     [:format_rows      {:optional true} [:maybe ms/BooleanValue]]
                     [:pivot_results    {:optional true} [:maybe ms/BooleanValue]]]]
       [:creator_id ms/PositiveInt]]]
-    [:notification/dashboard-subscription
+    [:notification/dashboard
      [:map
       [:creator_id ms/PositiveInt]
       ;; replacement of pulse
@@ -83,7 +83,7 @@
         [:event_topic                   [:fn #(= "event" (-> % keyword namespace))]]
         [:event_info                    [:maybe :map]]
         [:custom       {:optional true} [:maybe :map]]]]]]
-    [:notification/dashboard-subscription
+    [:notification/dashboard
      [:map
       [:payload [:map
                  [:dashboard_parts             [:sequential notification.payload.execute/Part]]
@@ -91,7 +91,7 @@
                  [:dashboard_subscription      :map]
                  [:style                       :map]
                  [:parameters {:optional true} [:maybe [:sequential :map]]]]]]]
-    [:notification/alert
+    [:notification/card
      [:map
       [:payload [:map
                  [:card_part [:maybe notification.payload.execute/Part]]

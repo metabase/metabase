@@ -9,6 +9,8 @@ title: API changelog
 - `POST /api/user/:id/send_invite` has been removed.
 - `GET /:id/fields` now includes the Table ID.
 
+- APIs under `/api/pulse` and `/api/alert` will be removed in a future version as we're tranitioning to a new architecture.
+
 ## Metabase 0.51.0
 
 - `GET /api/dashboard/:id/query_metadata`

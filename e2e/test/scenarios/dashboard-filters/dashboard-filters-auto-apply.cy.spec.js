@@ -1,28 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  closeDashboardSettingsSidebar,
-  dashboardHeader,
-  dashboardParametersContainer,
-  describeWithSnowplow,
-  editDashboard,
-  enableTracking,
-  expectGoodSnowplowEvents,
-  expectNoBadSnowplowEvents,
-  filterWidget,
-  getDashboardCard,
-  openDashboardSettingsSidebar,
-  popover,
-  resetSnowplow,
-  restore,
-  saveDashboard,
-  setFilter,
-  sidebar,
-  sidesheet,
-  undoToast,
-  visitDashboard,
-  visitEmbeddedPage,
-  visitPublicDashboard,
-} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -66,7 +43,7 @@ describe(
   { tags: "@slow" },
   () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsNormalUser();
       cy.intercept(
         "PUT",
@@ -84,82 +61,82 @@ describe(
         cy.log(
           "changing parameter values by default should reload affected questions",
         );
-        filterWidget().findByText(FILTER.name).click();
-        popover().within(() => {
+        H.filterWidget().findByText(FILTER.name).click();
+        H.popover().within(() => {
           cy.findByText("Gadget").click();
           cy.button("Add filter").click();
           cy.wait("@cardQuery");
         });
-        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
         cy.log(
           "parameter values should be preserved when disabling auto applying filters",
         );
-        openDashboardSettingsSidebar();
-        sidesheet().within(() => {
+        H.openDashboardSettingsSidebar();
+        H.sidesheet().within(() => {
           cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
-        closeDashboardSettingsSidebar();
-        filterWidget().findByText("Gadget").should("be.visible");
-        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.closeDashboardSettingsSidebar();
+        H.filterWidget().findByText("Gadget").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
         cy.log("draft parameter values should be applied manually");
-        filterWidget().findByText("Gadget").click();
-        popover().within(() => {
+        H.filterWidget().findByText("Gadget").click();
+        H.popover().within(() => {
           cy.findByText("Widget").click();
           cy.button("Update filter").click();
         });
-        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
-        dashboardParametersContainer().within(() => {
+        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.dashboardParametersContainer().within(() => {
           cy.button("Apply").click();
           cy.wait("@cardQuery");
         });
-        getDashboardCard().findByText("Rows 1-4 of 107").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 107").should("be.visible");
         cy.get("@cardQuery.all").should("have.length", 3);
 
         cy.log(
           "draft parameter values should be applied when enabling auto-applying filters",
         );
-        filterWidget().findByText("2 selections").click();
-        popover().within(() => {
+        H.filterWidget().findByText("2 selections").click();
+        H.popover().within(() => {
           cy.findByText("Gadget").click();
           cy.button("Update filter").click();
         });
-        filterWidget().findByText("Widget").should("be.visible");
-        dashboardParametersContainer().button("Apply").should("be.visible");
+        H.filterWidget().findByText("Widget").should("be.visible");
+        H.dashboardParametersContainer().button("Apply").should("be.visible");
 
-        openDashboardSettingsSidebar();
-        sidesheet().within(() => {
+        H.openDashboardSettingsSidebar();
+        H.sidesheet().within(() => {
           cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
-        closeDashboardSettingsSidebar();
+        H.closeDashboardSettingsSidebar();
 
-        filterWidget().findByText("Widget").should("be.visible");
-        getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
+        H.filterWidget().findByText("Widget").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
         cy.get("@cardQuery.all").should("have.length", 4);
 
         cy.log(
           "last applied parameter values should be used when disabling auto applying filters, even if previously there were draft parameter values",
         );
-        filterWidget().findByText("Widget").click();
-        popover().within(() => {
+        H.filterWidget().findByText("Widget").click();
+        H.popover().within(() => {
           cy.findByText("Gadget").click();
           cy.button("Update filter").click();
         });
 
-        openDashboardSettingsSidebar();
-        sidesheet().within(() => {
+        H.openDashboardSettingsSidebar();
+        H.sidesheet().within(() => {
           cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
-        closeDashboardSettingsSidebar();
+        H.closeDashboardSettingsSidebar();
 
-        filterWidget().findByText("2 selections").should("be.visible");
+        H.filterWidget().findByText("2 selections").should("be.visible");
         cy.get("@cardQuery.all").should("have.length", 5);
 
         cy.get("@updateDashboardSpy").should("have.callCount", 3);
@@ -170,17 +147,17 @@ describe(
       createDashboard({ dashboardDetails: { auto_apply_filters: false } });
       openDashboard();
 
-      filterWidget().findByText(FILTER.name).click();
-      popover().within(() => {
+      H.filterWidget().findByText(FILTER.name).click();
+      H.popover().within(() => {
         cy.findByText("Gadget").click();
         cy.button("Add filter").click();
       });
-      dashboardParametersContainer().button("Apply").should("be.visible");
+      H.dashboardParametersContainer().button("Apply").should("be.visible");
 
       cy.log("verify filter value is not saved");
 
-      visitDashboard("@dashboardId");
-      filterWidget().should("not.contain", "Gadget");
+      H.visitDashboard("@dashboardId");
+      H.filterWidget().should("not.contain", "Gadget");
     });
 
     describe("modifying dashboard and dashboard cards", () => {
@@ -188,23 +165,23 @@ describe(
         createDashboard({ dashboardDetails: { auto_apply_filters: false } });
         openDashboard();
 
-        filterWidget().findByText(FILTER.name).click();
-        popover().within(() => {
+        H.filterWidget().findByText(FILTER.name).click();
+        H.popover().within(() => {
           cy.findByText("Gadget").click();
           cy.button("Add filter").click();
         });
-        dashboardParametersContainer().button("Apply").should("be.visible");
+        H.dashboardParametersContainer().button("Apply").should("be.visible");
 
-        editDashboard();
+        H.editDashboard();
 
-        setFilter("Text or Category", "Is");
+        H.setFilter("Text or Category", "Is");
 
-        sidebar().findByDisplayValue("Text").clear().type("Vendor");
-        getDashboardCard().findByText("Select…").click();
-        popover().findByText("Vendor").click();
-        saveDashboard();
+        H.sidebar().findByDisplayValue("Text").clear().type("Vendor");
+        H.getDashboardCard().findByText("Select…").click();
+        H.popover().findByText("Vendor").click();
+        H.saveDashboard();
 
-        dashboardParametersContainer().within(() => {
+        H.dashboardParametersContainer().within(() => {
           cy.findByText("Category").should("be.visible");
           cy.findByText("Vendor").should("be.visible");
           cy.findByText("Gadget").should("not.exist");
@@ -220,17 +197,17 @@ describe(
         createDashboard({ dashboardDetails: { auto_apply_filters: false } });
         openDashboard();
 
-        filterWidget().findByText(FILTER.name).click();
-        popover().within(() => {
+        H.filterWidget().findByText(FILTER.name).click();
+        H.popover().within(() => {
           cy.findByText("Gadget").click();
           cy.button("Add filter").click();
         });
-        dashboardParametersContainer().button("Apply").should("be.visible");
+        H.dashboardParametersContainer().button("Apply").should("be.visible");
 
-        editDashboard();
+        H.editDashboard();
         cy.findByTestId("edit-bar").button("Cancel").click();
-        filterWidget().findByText("Gadget").should("be.visible");
-        dashboardParametersContainer().button("Apply").should("be.visible");
+        H.filterWidget().findByText("Gadget").should("be.visible");
+        H.dashboardParametersContainer().button("Apply").should("be.visible");
       });
     });
 
@@ -242,45 +219,45 @@ describe(
       it("should handle toggling auto applying filters on and off", () => {
         openDashboard();
 
-        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
         cy.log(
           "parameter with default value should still be applied after turning auto-apply filter off",
         );
-        openDashboardSettingsSidebar();
-        sidesheet().within(() => {
+        H.openDashboardSettingsSidebar();
+        H.sidesheet().within(() => {
           cy.findByLabelText(filterToggleLabel).should("be.checked");
           cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
-        closeDashboardSettingsSidebar();
+        H.closeDashboardSettingsSidebar();
 
-        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
         cy.log(
           "card result should be updated after manually updating the filter",
         );
-        filterWidget().icon("close").click();
-        dashboardParametersContainer()
+        H.filterWidget().icon("close").click();
+        H.dashboardParametersContainer()
           .button("Apply")
           .should("be.visible")
           .click();
 
-        getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
 
         cy.log(
           "should not use the default parameter after turning auto-apply filter on again since the parameter was manually updated",
         );
-        openDashboardSettingsSidebar();
-        sidesheet().within(() => {
+        H.openDashboardSettingsSidebar();
+        H.sidesheet().within(() => {
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
           cy.findAllByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
 
-        getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
       });
 
       it.skip("should display a toast when a dashboard takes longer than 15s to load even without parameter values (but has parameters with default values)", () => {
@@ -289,18 +266,20 @@ describe(
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().within(() => {
+        H.undoToast().within(() => {
           cy.findByText(TOAST_MESSAGE).should("be.visible");
           cy.button("Turn off").click();
           cy.wait("@updateDashboard");
         });
 
-        openDashboardSettingsSidebar();
-        sidesheet().findByLabelText(filterToggleLabel).should("not.be.checked");
+        H.openDashboardSettingsSidebar();
+        H.sidesheet()
+          .findByLabelText(filterToggleLabel)
+          .should("not.be.checked");
         // Gadget
         const filterDefaultValue = FILTER_WITH_DEFAULT_VALUE.default[0];
-        filterWidget().findByText(filterDefaultValue).should("be.visible");
-        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.filterWidget().findByText(filterDefaultValue).should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
       });
 
       it.skip("should not display the toast when we clear out parameter default value", () => {
@@ -309,8 +288,8 @@ describe(
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().should("not.exist");
-        getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+        H.undoToast().should("not.exist");
+        H.getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
       });
     });
 
@@ -322,17 +301,19 @@ describe(
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().within(() => {
+        H.undoToast().within(() => {
           cy.findByText(TOAST_MESSAGE).should("be.visible");
           cy.button("Turn off").click();
           cy.wait("@updateDashboard");
         });
 
-        openDashboardSettingsSidebar();
-        sidesheet().findByLabelText(filterToggleLabel).should("not.be.checked");
-        closeDashboardSettingsSidebar();
-        filterWidget().findByText("Gadget").should("be.visible");
-        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.openDashboardSettingsSidebar();
+        H.sidesheet()
+          .findByLabelText(filterToggleLabel)
+          .should("not.be.checked");
+        H.closeDashboardSettingsSidebar();
+        H.filterWidget().findByText("Gadget").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
       });
 
       it.skip("should display the toast indefinitely unless dismissing manually", () => {
@@ -342,13 +323,13 @@ describe(
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().findByText(TOAST_MESSAGE).should("be.visible");
+        H.undoToast().findByText(TOAST_MESSAGE).should("be.visible");
 
         cy.tick(100 * TOAST_TIMEOUT);
-        undoToast().findByText(TOAST_MESSAGE).should("be.visible");
+        H.undoToast().findByText(TOAST_MESSAGE).should("be.visible");
 
-        undoToast().icon("close").click();
-        undoToast().should("not.exist");
+        H.undoToast().icon("close").click();
+        H.undoToast().should("not.exist");
       });
 
       it.skip("should not display the toast when auto applying filters is disabled", () => {
@@ -358,9 +339,9 @@ describe(
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().should("not.exist");
-        filterWidget().findByText("Gadget").should("be.visible");
-        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.undoToast().should("not.exist");
+        H.filterWidget().findByText("Gadget").should("be.visible");
+        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
       });
 
       it.skip("should not display the toast if there are no parameter values", () => {
@@ -370,7 +351,7 @@ describe(
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().should("not.exist");
+        H.undoToast().should("not.exist");
       });
 
       it.skip("should not display the same toast twice for a dashboard", () => {
@@ -380,19 +361,19 @@ describe(
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().within(() => {
+        H.undoToast().within(() => {
           cy.button("Turn off").should("be.visible");
           cy.icon("close").click();
         });
-        filterWidget().findByText("Gadget").click();
-        popover().within(() => {
+        H.filterWidget().findByText("Gadget").click();
+        H.popover().within(() => {
           cy.findByText("Widget").click();
           cy.findByText("Update filter").click();
         });
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().should("not.exist");
+        H.undoToast().should("not.exist");
       });
     });
 
@@ -407,8 +388,8 @@ describe(
         cy.wait("@cardQuery");
 
         // shouldn't even show settings as an option for this user
-        dashboardHeader().icon("ellipsis").click();
-        popover().findByText("Edit settings").should("not.exist");
+        H.dashboardHeader().icon("ellipsis").click();
+        H.popover().findByText("Edit settings").should("not.exist");
       });
 
       it.skip("should not display a toast even when a dashboard takes longer than 15s to load", () => {
@@ -417,7 +398,7 @@ describe(
 
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
-        undoToast().should("not.exist");
+        H.undoToast().should("not.exist");
       });
     });
 
@@ -430,32 +411,36 @@ describe(
         it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
           createDashboard({ dashboardDetails: { auto_apply_filters: false } });
           cy.get("@dashboardId").then(dashboardId => {
-            visitPublicDashboard(dashboardId);
+            H.visitPublicDashboard(dashboardId);
           });
 
-          dashboardParametersContainer().button("Apply").should("not.exist");
-          filterWidget().findByText("Category").click();
-          popover().within(() => {
+          H.dashboardParametersContainer().button("Apply").should("not.exist");
+          H.filterWidget().findByText("Category").click();
+          H.popover().within(() => {
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
-          dashboardParametersContainer()
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 200")
+            .should("be.visible");
+          H.dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 54")
+            .should("be.visible");
         });
 
         it("should not show toast", () => {
           createDashboard();
           cy.clock();
           openSlowPublicDashboard({ [FILTER.slug]: "Gadget" });
-          filterWidget().findByText("Gadget").should("be.visible");
+          H.filterWidget().findByText("Gadget").should("be.visible");
 
           cy.tick(TOAST_TIMEOUT);
           cy.wait("@cardQuery");
-          undoToast().should("not.exist");
+          H.undoToast().should("not.exist");
         });
       });
 
@@ -475,21 +460,25 @@ describe(
               resource: { dashboard: dashboardId },
               params: {},
             };
-            visitEmbeddedPage(embeddingPayload);
+            H.visitEmbeddedPage(embeddingPayload);
           });
 
-          dashboardParametersContainer().button("Apply").should("not.exist");
-          filterWidget().findByText("Category").click();
-          popover().within(() => {
+          H.dashboardParametersContainer().button("Apply").should("not.exist");
+          H.filterWidget().findByText("Category").click();
+          H.popover().within(() => {
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
-          dashboardParametersContainer()
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 200")
+            .should("be.visible");
+          H.dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 54")
+            .should("be.visible");
         });
 
         it("should not show toast", () => {
@@ -504,11 +493,11 @@ describe(
 
           cy.clock();
           openSlowEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
-          filterWidget().findByText("Gadget").should("be.visible");
+          H.filterWidget().findByText("Gadget").should("be.visible");
 
           cy.tick(TOAST_TIMEOUT);
           cy.wait("@cardQuery");
-          undoToast().should("not.exist");
+          H.undoToast().should("not.exist");
         });
       });
 
@@ -536,18 +525,22 @@ describe(
           // Ensure that we're viewing the dashboard in full-app embedding mode, since `logo` is a full-app embedding parameter.
           cy.findByTestId("main-logo").should("not.exist");
 
-          dashboardParametersContainer().button("Apply").should("not.exist");
-          filterWidget().findByText("Category").click();
-          popover().within(() => {
+          H.dashboardParametersContainer().button("Apply").should("not.exist");
+          H.filterWidget().findByText("Category").click();
+          H.popover().within(() => {
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
-          dashboardParametersContainer()
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 200")
+            .should("be.visible");
+          H.dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 54")
+            .should("be.visible");
         });
 
         it.skip("should display a toast when a dashboard takes longer than 15s to load", () => {
@@ -557,7 +550,7 @@ describe(
           openSlowFullAppEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
           cy.tick(TOAST_TIMEOUT);
           cy.wait("@cardQuery");
-          undoToast().within(() => {
+          H.undoToast().within(() => {
             cy.findByText(TOAST_MESSAGE).should("be.visible");
             cy.button("Turn off").click();
             cy.wait("@updateDashboard");
@@ -568,22 +561,26 @@ describe(
           // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
           cy.tick();
 
-          openDashboardSettingsSidebar();
-          sidesheet()
+          H.openDashboardSettingsSidebar();
+          H.sidesheet()
             .findByLabelText(filterToggleLabel)
             .should("not.be.checked");
-          filterWidget().findByText("Gadget").should("be.visible");
+          H.filterWidget().findByText("Gadget").should("be.visible");
 
-          getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 53")
+            .should("be.visible");
 
           // Card result should be updated after manually updating the filter
-          filterWidget().icon("close").click();
-          dashboardParametersContainer()
+          H.filterWidget().icon("close").click();
+          H.dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
 
-          getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 200")
+            .should("be.visible");
         });
 
         it.skip("should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard", () => {
@@ -594,33 +591,35 @@ describe(
           openSlowFullAppEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
           cy.tick(TOAST_TIMEOUT);
           cy.wait("@cardQuery");
-          undoToast().should("not.exist");
+          H.undoToast().should("not.exist");
 
           // In embedding we'll load bookmark after the dashboard is loaded, it's the opposite in normal app because bookmark is cached from somewhere else.
           // And somehow, dashboard card query will be completed before the dashboard even start to load, and in entity loader it uses `setTimeout`,
           // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
           cy.tick();
 
-          getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+          H.getDashboardCard()
+            .findByText("Rows 1-4 of 53")
+            .should("be.visible");
         });
       });
     });
   },
 );
 
-describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
+H.describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
   const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS = 2;
 
   beforeEach(() => {
-    restore();
-    resetSnowplow();
+    H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
-    enableTracking();
+    H.enableTracking();
     cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
   });
 
   afterEach(() => {
-    expectNoBadSnowplowEvents();
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should send snowplow events when disabling auto-apply filters", () => {
@@ -628,15 +627,15 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
     openDashboard();
     cy.wait("@cardQuery");
 
-    openDashboardSettingsSidebar();
-    sidesheet().within(() => {
-      expectGoodSnowplowEvents(
+    H.openDashboardSettingsSidebar();
+    H.sidesheet().within(() => {
+      H.expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
       );
       cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("not.be.checked");
-      expectGoodSnowplowEvents(
+      H.expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS + 1,
       );
     });
@@ -647,15 +646,15 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
     openDashboard();
     cy.wait("@cardQuery");
 
-    openDashboardSettingsSidebar();
-    sidesheet().within(() => {
-      expectGoodSnowplowEvents(
+    H.openDashboardSettingsSidebar();
+    H.sidesheet().within(() => {
+      H.expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
       );
       cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("be.checked");
-      expectGoodSnowplowEvents(
+      H.expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
       );
     });
@@ -694,7 +693,7 @@ const openDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  visitDashboard("@dashboardId", { params });
+  H.visitDashboard("@dashboardId", { params });
 };
 
 const openSlowDashboard = (params = {}) => {
@@ -709,7 +708,7 @@ const openSlowDashboard = (params = {}) => {
     });
   });
 
-  getDashboardCard().should("be.visible");
+  H.getDashboardCard().should("be.visible");
 };
 
 const openSlowPublicDashboard = (params = {}) => {
@@ -718,10 +717,10 @@ const openSlowPublicDashboard = (params = {}) => {
   );
 
   cy.get("@dashboardId").then(dashboardId => {
-    visitPublicDashboard(dashboardId, { params });
+    H.visitPublicDashboard(dashboardId, { params });
   });
 
-  getDashboardCard().should("be.visible");
+  H.getDashboardCard().should("be.visible");
 };
 
 const openSlowEmbeddingDashboard = (params = {}) => {
@@ -734,12 +733,12 @@ const openSlowEmbeddingDashboard = (params = {}) => {
       resource: { dashboard: dashboardId },
       params: {},
     };
-    visitEmbeddedPage(embeddingPayload, {
+    H.visitEmbeddedPage(embeddingPayload, {
       setFilters: params,
     });
   });
 
-  getDashboardCard().should("be.visible");
+  H.getDashboardCard().should("be.visible");
 };
 
 const openSlowFullAppEmbeddingDashboard = (params = {}) => {
@@ -754,7 +753,7 @@ const openSlowFullAppEmbeddingDashboard = (params = {}) => {
     });
   });
 
-  getDashboardCard().should("be.visible");
+  H.getDashboardCard().should("be.visible");
 };
 
 const visitFullAppEmbeddingUrl = ({ url, qs }) => {

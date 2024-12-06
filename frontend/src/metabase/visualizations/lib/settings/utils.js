@@ -42,7 +42,12 @@ export function getDefaultColumn(
 
 export function fieldSetting(
   id,
-  { fieldFilter = DEFAULT_FIELD_FILTER, showColumnSetting, ...def } = {},
+  {
+    fieldFilter = DEFAULT_FIELD_FILTER,
+    showColumnSetting,
+    autoOpenWhenUnset,
+    ...def
+  } = {},
 ) {
   return {
     [id]: {
@@ -54,7 +59,8 @@ export function fieldSetting(
       getProps: ([{ card, data }], vizSettings) => ({
         options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: data.cols,
-        showColumnSetting: showColumnSetting,
+        showColumnSetting,
+        autoOpenWhenUnset,
       }),
       ...def,
     },

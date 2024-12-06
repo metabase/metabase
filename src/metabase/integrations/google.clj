@@ -1,6 +1,5 @@
 (ns metabase.integrations.google
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -13,6 +12,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -81,7 +81,7 @@
    (let [{:keys [status body]} token-info-response]
      (when-not (= status 200)
        (throw (ex-info (tru "Invalid Google Sign-In token.") {:status-code 400})))
-     (u/prog1 (json/parse-string body keyword)
+     (u/prog1 (json/decode+kw body)
        (let [audience (:aud <>)
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)

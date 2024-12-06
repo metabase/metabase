@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.api.action-test
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
@@ -10,6 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))

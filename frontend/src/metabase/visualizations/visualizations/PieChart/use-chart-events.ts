@@ -49,7 +49,7 @@ export const getTooltipModel = (
     .filter(node => node.visible)
     .map(slice => ({
       name: slice.name,
-      value: slice.displayValue,
+      value: slice.rawValue,
       color: nodes.length === 1 ? slice.color : undefined,
       formatter: formatters.formatMetric,
       key: slice.key,
@@ -145,7 +145,7 @@ function handleClick(
       : undefined;
 
   if (data != null) {
-    data[chartModel.colDescs.metricDesc.index].value = sliceTreeNode.value;
+    data[chartModel.colDescs.metricDesc.index].value = sliceTreeNode.rawValue;
   }
 
   const clickObject: ClickObject = {

@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -44,6 +43,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -2041,9 +2041,9 @@
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 (def ^:private ^:const ^String encoded-params
-  (json/generate-string [{:type   :number
-                          :target [:variable [:template-tag :category]]
-                          :value  2}]))
+  (json/encode [{:type   :number
+                 :target [:variable [:template-tag :category]]
+                 :value  2}]))
 
 (deftest csv-download-test
   (testing "no parameters"
@@ -2462,7 +2462,7 @@
   [url]
   (-> (client/client-full-response (test.users/username->token :rasta)
                                    :post 200 url
-                                   :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+                                   :query (json/encode (mt/mbql-query checkins {:limit 1})))
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"

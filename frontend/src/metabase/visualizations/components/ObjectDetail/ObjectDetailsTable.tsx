@@ -107,7 +107,7 @@ export function DetailsTableCell({
   };
 
   return (
-    <div>
+    <div data-testid="object-details-table-cell">
       <span
         className={cx(
           {

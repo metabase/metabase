@@ -1,7 +1,6 @@
 (ns metabase.api.public
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
-   [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.actions.core :as actions]
@@ -36,6 +35,7 @@
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [throttle.core :as throttle]
@@ -183,7 +183,7 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)))
+  (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
@@ -197,7 +197,7 @@
   (process-query-for-card-with-public-uuid
    uuid
    export-format
-   (json/parse-string parameters keyword)
+   (json/decode+kw parameters)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -279,7 +279,7 @@
                   :constraints (qp.constraints/default-query-constraints)}
                  options
                  {:parameters    (cond-> parameters
-                                   (string? parameters) (json/parse-string keyword))
+                                   (string? parameters) json/decode+kw)
                   :export-format export-format
                   :qp            qp
                   :make-run      process-query-for-card-with-id-run-fn})]
@@ -343,7 +343,7 @@
   (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
   (actions/fetch-values
    (api/check-404 (action/dashcard->action dashcard-id))
-   (json/parse-string parameters)))
+   (json/decode parameters)))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 
@@ -632,7 +632,7 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)
+  (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
                                            :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"

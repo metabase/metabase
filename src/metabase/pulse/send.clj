@@ -47,13 +47,13 @@
 (defn- get-template
   [channel-type payload-type]
   (case [channel-type payload-type]
-    [:channel/email :notification/dashboard-subscription]
+    [:channel/email :notification/dashboard]
     {:channel_type :channel/email
      :details      {:type    :email/handlebars-resource
                     :subject "{{payload.dashboard.name}}"
                     :path    "metabase/email/dashboard_subscription.hbs"}}
 
-    [:channel/email :notification/alert]
+    [:channel/email :notification/card]
     {:channel_type :channel/email
      :details      {:type    :email/handlebars-resource
                     :subject "{{computed.subject}}"
@@ -73,7 +73,7 @@
   [pulse dashboard pulse-channel]
   (if (= :pulse (alert-or-pulse pulse))
     {:id                     (:id pulse)
-     :payload_type           :notification/dashboard-subscription
+     :payload_type           :notification/dashboard
      :creator_id             (:creator_id pulse)
      :dashboard_subscription {:id                               (:id pulse)
                               :dashboard_id                     (:id dashboard)
@@ -83,15 +83,15 @@
                                                                  #(merge {:card_id (:id %)}
                                                                          (select-keys % [:include_xls :include_csv :pivot_results :format_rows]))
                                                                  (:cards pulse))}
-     :handlers               [(get-notification-handler pulse-channel :notification/dashboard-subscription)]}
+     :handlers               [(get-notification-handler pulse-channel :notification/dashboard)]}
     {:id           (:id pulse)
-     :payload_type :notification/alert
+     :payload_type :notification/card
      :creator_id   (:creator_id pulse)
      :alert        (merge (assoc (select-keys pulse [:id :alert_condition :alert_above_goal :alert_first_only])
                                  :card_id (some :id (:cards pulse))
                                  :schedule (select-keys pulse-channel [:schedule_type :schedule_hour :schedule_day :schedule_frame]))
                           (select-keys (-> pulse :cards first) [:include_xls :include_csv :pivot_results :format_rows]))
-     :handlers     [(get-notification-handler pulse-channel :notification/alert)]}))
+     :handlers     [(get-notification-handler pulse-channel :notification/card)]}))
 
 (def ^:private send-notification! (requiring-resolve 'metabase.notification.core/send-notification!))
 

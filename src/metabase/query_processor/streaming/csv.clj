@@ -116,7 +116,7 @@
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
 
           ;; write the column names for non-pivot tables
-          (when (not opts)
+          (when (or (not opts) (not (public-settings/enable-pivoted-exports)))
             (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
               (write-csv writer [header])
               (.flush writer)))))

@@ -1,6 +1,5 @@
 (ns metabase.server.middleware.session-test
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
@@ -21,6 +20,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]
@@ -553,7 +553,7 @@
 
 (deftest session-timeout-env-var-validation-test
   (let [set-and-get! (fn [timeout]
-                       (mt/with-temp-env-var-value! [mb-session-timeout (json/generate-string timeout)]
+                       (mt/with-temp-env-var-value! [mb-session-timeout (json/encode timeout)]
                          (mw.session/session-timeout)))]
     (testing "Setting the session timeout with env var should work with valid timeouts"
       (doseq [timeout [{:unit "hours", :amount 1}

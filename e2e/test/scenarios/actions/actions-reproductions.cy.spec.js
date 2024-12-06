@@ -1,20 +1,7 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  createAction,
-  editDashboard,
-  getActionCardDetails,
-  getDashboardCard,
-  getNextUnsavedDashboardCardId,
-  modal,
-  restore,
-  saveDashboard,
-  setActionsEnabledForDB,
-  undoToast,
-  updateDashboardCards,
-  visitDashboard,
-} from "e2e/support/helpers";
 import {
   createMockActionParameter,
   createMockParameter,
@@ -32,15 +19,15 @@ describe("metabase#31587", () => {
   viewports.forEach(([width, height]) => {
     describe(`Testing on resolution ${width} x ${height}`, () => {
       beforeEach(() => {
-        restore();
+        H.restore();
         cy.signInAsAdmin();
-        setActionsEnabledForDB(SAMPLE_DB_ID);
+        H.setActionsEnabledForDB(SAMPLE_DB_ID);
         cy.viewport(width, height);
       });
 
       it("should not allow action buttons to overflow when editing dashboard", () => {
-        visitDashboard(ORDERS_DASHBOARD_ID);
-        editDashboard();
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.editDashboard();
         cy.button("Add action").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
@@ -63,11 +50,11 @@ describe("metabase#31587", () => {
       });
 
       it("should not allow action buttons to overflow when viewing info sidebar", () => {
-        visitDashboard(ORDERS_DASHBOARD_ID);
-        editDashboard();
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.editDashboard();
         cy.findByLabelText("Add action").click();
 
-        saveDashboard();
+        H.saveDashboard();
         cy.icon("info").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
@@ -165,11 +152,11 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
     );
 
     cy.then(function () {
-      updateDashboardCards({
+      H.updateDashboardCards({
         dashboard_id: this.dashboardId,
         cards: [
           {
-            id: getNextUnsavedDashboardCardId(),
+            id: H.getNextUnsavedDashboardCardId(),
             card_id: this.modelId,
             // Map dashboard parameter to PRODUCTS.ID
             parameter_mappings: [
@@ -180,7 +167,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
               },
             ],
           },
-          getActionCardDetails({
+          H.getActionCardDetails({
             label: QUERY_ACTION.name,
             action_id: this.actionId,
             // Map action's ID parameter to dashboard parameter
@@ -200,18 +187,18 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   }
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.createQuestion(MODEL_DETAILS, {
       wrapId: true,
       idAlias: "modelId",
     });
-    setActionsEnabledForDB(SAMPLE_DB_ID, true);
+    H.setActionsEnabledForDB(SAMPLE_DB_ID, true);
   });
 
   it("can submit query action linked with dashboard parameters (metabase#32974)", () => {
     cy.get("@modelId").then(modelId => {
-      createAction({ ...QUERY_ACTION, model_id: modelId }).then(
+      H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
         ({ body: { id: actionId } }) => {
           cy.wrap(actionId).as("actionId");
         },
@@ -220,15 +207,15 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 
     setupDashboard();
 
-    visitDashboard("@dashboardId", { params: { id: 1 } });
+    H.visitDashboard("@dashboardId", { params: { id: 1 } });
 
     cy.log("Execute action");
     cy.button(QUERY_ACTION.name).click();
-    modal().button(QUERY_ACTION.name).click();
+    H.modal().button(QUERY_ACTION.name).click();
 
     cy.log("Assertions");
-    getDashboardCard().findByText(EXPECTED_UPDATED_VALUE).should("exist");
-    modal().should("not.exist");
-    undoToast().findByText("Query action ran successfully").should("exist");
+    H.getDashboardCard().findByText(EXPECTED_UPDATED_VALUE).should("exist");
+    H.modal().should("not.exist");
+    H.undoToast().findByText("Query action ran successfully").should("exist");
   });
 });

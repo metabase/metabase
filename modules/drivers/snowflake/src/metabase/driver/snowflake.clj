@@ -2,7 +2,6 @@
   "Snowflake Driver."
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -37,6 +36,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
@@ -724,16 +724,16 @@
   [_ {{:keys [context executed-by card-id pulse-id dashboard-id query-hash]} :info,
       query-type :type,
       database-id :database}]
-  (json/generate-string {:client      "Metabase"
-                         :context     context
-                         :queryType   query-type
-                         :userId      executed-by
-                         :pulseId     pulse-id
-                         :cardId      card-id
-                         :dashboardId dashboard-id
-                         :databaseId  database-id
-                         :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
-                         :serverId    (public-settings/site-uuid)}))
+  (json/encode {:client      "Metabase"
+                :context     context
+                :queryType   query-type
+                :userId      executed-by
+                :pulseId     pulse-id
+                :cardId      card-id
+                :dashboardId dashboard-id
+                :databaseId  database-id
+                :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
+                :serverId    (public-settings/site-uuid)}))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

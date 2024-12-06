@@ -60,13 +60,16 @@ describe("Onboarding (EE without token)", () => {
       );
     });
 
-    it("should not render the 'help' section", () => {
+    it("should not render the premium 'help' section", () => {
       setup();
 
       const footer = screen.getByRole("contentinfo");
-      expect(
-        within(footer).queryByTestId("help-section"),
-      ).not.toBeInTheDocument();
+      const helpSection = within(footer).getByTestId("help-section");
+      expect(helpSection).toBeInTheDocument();
+      expect(within(helpSection).getByRole("link")).toHaveProperty(
+        "href",
+        "https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v1",
+      );
     });
   });
 });

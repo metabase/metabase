@@ -61,9 +61,9 @@ function getRelativeDateValue(
 
   return {
     type: "relative",
-    unit: filterParts.bucket,
+    unit: filterParts.unit,
     value: filterParts.value,
-    offsetUnit: filterParts.offsetBucket ?? undefined,
+    offsetUnit: filterParts.offsetUnit ?? undefined,
     offsetValue: filterParts.offsetValue ?? undefined,
     options: filterParts.options,
   };
@@ -86,7 +86,7 @@ function getExcludeDateValue(
   return {
     type: "exclude",
     operator: filterParts.operator,
-    unit: filterParts.bucket ?? undefined,
+    unit: filterParts.unit ?? undefined,
     values: filterParts.values,
   };
 }
@@ -127,9 +127,9 @@ function getRelativeFilterClause(
 ): Lib.ExpressionClause {
   return Lib.relativeDateFilterClause({
     column,
-    bucket: value.unit,
+    unit: value.unit,
     value: value.value,
-    offsetBucket: value.offsetUnit ?? null,
+    offsetUnit: value.offsetUnit ?? null,
     offsetValue: value.offsetValue ?? null,
     options: value.options ?? {},
   });
@@ -141,9 +141,9 @@ function getExcludeFilterClause(
   column: Lib.ColumnMetadata,
   value: ExcludeDatePickerValue,
 ): Lib.ExpressionClause {
-  return Lib.excludeDateFilterClause(query, stageIndex, {
+  return Lib.excludeDateFilterClause({
     operator: value.operator,
-    bucket: value.unit ?? null,
+    unit: value.unit ?? null,
     column,
     values: value.values,
   });
