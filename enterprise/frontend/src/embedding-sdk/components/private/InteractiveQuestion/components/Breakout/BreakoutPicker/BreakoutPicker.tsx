@@ -30,8 +30,7 @@ export const BreakoutPickerInner = ({
   return (
     <Stack spacing={0} w="18.75rem">
       <Button
-        py="md"
-        px="md"
+        p="md"
         fz="lg"
         color="text-medium"
         variant="subtle"
