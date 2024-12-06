@@ -92,7 +92,7 @@
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.
-  For the list of supported models, check [[metabase.search/all-models]].
+  For the list of supported models, check [[metabase.search.config/all-models]].
 
   Filters:
   - `archived`: set to true to search archived items only, default is false
@@ -132,33 +132,30 @@
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    calculate_available_models          [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (let  [models-set (if (seq models)
-                      (set models)
-                      search/all-models)]
-    (search/search
-     (search/search-context
-      {:archived                            archived
-       :context                             context
-       :created-at                          created_at
-       :created-by                          (set created_by)
-       :current-user-id                     api/*current-user-id*
-       :is-impersonated-user?               (premium-features/impersonated-user?)
-       :is-sandboxed-user?                  (premium-features/sandboxed-user?)
-       :is-superuser?                       api/*is-superuser?*
-       :current-user-perms                  @api/*current-user-permissions-set*
-       :filter-items-in-personal-collection filter_items_in_personal_collection
-       :last-edited-at                      last_edited_at
-       :last-edited-by                      (set last_edited_by)
-       :limit                               mw.offset-paging/*limit*
-       :model-ancestors?                    model_ancestors
-       :models                              models-set
-       :offset                              mw.offset-paging/*offset*
-       :search-engine                       search_engine
-       :search-native-query                 search_native_query
-       :search-string                       q
-       :table-db-id                         table_db_id
-       :verified                            verified
-       :ids                                 (set ids)
-       :calculate-available-models?         calculate_available_models}))))
+  (search/search
+   (search/search-context
+    {:archived                            archived
+     :context                             context
+     :created-at                          created_at
+     :created-by                          (set created_by)
+     :current-user-id                     api/*current-user-id*
+     :is-impersonated-user?               (premium-features/impersonated-user?)
+     :is-sandboxed-user?                  (premium-features/sandboxed-user?)
+     :is-superuser?                       api/*is-superuser?*
+     :current-user-perms                  @api/*current-user-permissions-set*
+     :filter-items-in-personal-collection filter_items_in_personal_collection
+     :last-edited-at                      last_edited_at
+     :last-edited-by                      (set last_edited_by)
+     :limit                               mw.offset-paging/*limit*
+     :model-ancestors?                    model_ancestors
+     :models                              (not-empty (set models))
+     :offset                              mw.offset-paging/*offset*
+     :search-engine                       search_engine
+     :search-native-query                 search_native_query
+     :search-string                       q
+     :table-db-id                         table_db_id
+     :verified                            verified
+     :ids                                 (set ids)
+     :calculate-available-models?         calculate_available_models})))
 
 (api/define-routes +engine-cookie)
