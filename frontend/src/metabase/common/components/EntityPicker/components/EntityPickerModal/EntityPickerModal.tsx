@@ -179,14 +179,6 @@ export function EntityPickerModal<
     },
   );
 
-  // const tabModels = useMemo(
-  //   () =>
-  //     passedTabs
-  //       .flatMap(t => (t.additionalModels || []).concat(t.model || []))
-  //       .filter(Boolean),
-  //   [passedTabs],
-  // );
-
   const finalSearchResults = useMemo(() => {
     if (searchScope === "folder") {
       if (!scopedSearchResults) {

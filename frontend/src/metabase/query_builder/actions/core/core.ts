@@ -1,7 +1,6 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
-import { cardApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
@@ -60,21 +59,6 @@ export { SOFT_RELOAD_CARD };
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
-
-    // It's not entierly clear why this is necessary, but when dispatching
-    // Questions.actions.fetch (or it's non hook RTK counterpart), if we alreacy
-    // have a value in the cache, we will always be returned that value, along
-    // with some not very helpful information that there is a query pending.
-    // Clearning the cache before making the request allows our await to
-    // resolve with accurate data, which we then use
-
-    dispatch(
-      cardApi.internalActions.removeQueryResult({
-        queryCacheKey: Object.assign(`getCard({"id":${outdatedCard.id}})`, {
-          _type: "queryCacheKey" as const,
-        }),
-      }),
-    );
 
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),

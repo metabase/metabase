@@ -87,7 +87,7 @@ export const MoveQuestionModal = ({
           dispatch(
             push(
               Urls.dashboard(
-                { id: destination.id, name: "TODO" },
+                { id: destination.id, name: "" },
                 { editMode: true },
               ),
             ),

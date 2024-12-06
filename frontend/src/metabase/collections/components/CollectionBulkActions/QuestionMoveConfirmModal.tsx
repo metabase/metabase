@@ -45,7 +45,7 @@ export const QuestionMoveConfirmModal = ({
       },
     );
 
-  const filteredCards = useMemo(
+  const cardsThatAppearInOtherDashboards = useMemo(
     () =>
       cardDashboards?.filter(
         cd =>
@@ -54,19 +54,23 @@ export const QuestionMoveConfirmModal = ({
     [destination, cardDashboards],
   );
 
-  const hasNoFilteredCards =
-    !isLoading && Array.isArray(filteredCards) && filteredCards.length === 0;
+  const hasNoCardsThatAppearInOtherDashboards =
+    !isLoading &&
+    Array.isArray(cardsThatAppearInOtherDashboards) &&
+    cardsThatAppearInOtherDashboards.length === 0;
 
-  // This is kinda gross, but I'm not sure what a better solution looks like.
   // Based on the results of fetching the data, if we find that the only dashboard
   // that will be affected is the destination dashboard, there is no need to display
   // a message and we can automatically confirm. We put onConfirm in a ref so that it doesn't
   // cause the useEffect to fire
-  useEffect(() => {
-    if (hasNoFilteredCards) {
-      onConfirmRef.current();
-    }
-  }, [hasNoFilteredCards, onConfirmRef]);
+  useEffect(
+    function autoConfirmIfUserConsentNotRequired() {
+      if (hasNoCardsThatAppearInOtherDashboards) {
+        onConfirmRef.current();
+      }
+    },
+    [hasNoCardsThatAppearInOtherDashboards, onConfirmRef],
+  );
 
   const hasError = cardDashboards?.some(cd => cd.dashboards.some(d => d.error));
 
@@ -75,69 +79,23 @@ export const QuestionMoveConfirmModal = ({
       return null;
     } else if (hasError) {
       return t`Can't move this question into a dashboard`;
-    } else if (filteredCards) {
+    } else if (cardsThatAppearInOtherDashboards) {
       return ngettext(
         msgid`Move this question?`,
         `Move these questions?`,
-        filteredCards?.length ?? 0,
+        cardsThatAppearInOtherDashboards?.length ?? 0,
       );
     }
-  }, [isLoading, hasError, filteredCards]);
+  }, [isLoading, hasError, cardsThatAppearInOtherDashboards]);
 
   const content = useMemo(() => {
-    if (hasError) {
-      return (
-        <>
-          <Text>{t`This question currently appears in a dashboard that you don't have permission to edit.`}</Text>
-          <Flex justify="end" gap="1rem" mt="1rem">
-            <Button onClick={onClose}>{t`Okay`}</Button>
-          </Flex>
-        </>
-      );
-    } else if (
-      !isLoading &&
-      destination &&
-      filteredCards &&
-      filteredCards?.length > 0
+    // a bunch of weird checks to keep TS happy. destination should never be null if we're displaying the modal,
+    // is isLoading will never be true if cardsThatAppearInOtherDashboards is defined.
+    if (
+      isLoading ||
+      !Array.isArray(cardsThatAppearInOtherDashboards) ||
+      !destination
     ) {
-      return (
-        <>
-          <Text my="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
-          <List>
-            {filteredCards.map(cd => {
-              const card = selectedItems.find(
-                item => item.id === cd.card_id && item.model === "card",
-              );
-
-              const dashboardNames = cd.dashboards
-                .filter(d => d.id !== destination.id)
-                .map(d => d.name);
-
-              return (
-                <List.Item key={`card-${cd.card_id}`}>
-                  <Text>{jt`${(
-                    <Text span fw={700}>
-                      {card?.name}
-                    </Text>
-                  )} will be removed from ${(
-                    <DashboardNames names={dashboardNames} />
-                  )}`}</Text>
-                </List.Item>
-              );
-            })}
-          </List>
-
-          <Flex justify="end" gap="1rem" mt="1rem">
-            <Button variant="subtle" onClick={onClose}>
-              {t`Cancel`}
-            </Button>
-            <Button variant="filled" onClick={onConfirm}>
-              {ngettext(msgid`Move it`, `Move them`, filteredCards.length)}
-            </Button>
-          </Flex>
-        </>
-      );
-    } else if (isLoading) {
       return (
         <Flex
           direction="column"
@@ -150,10 +108,63 @@ export const QuestionMoveConfirmModal = ({
           <Title>{t`Checking on some things...`}</Title>
         </Flex>
       );
+    } else {
+      if (hasError) {
+        return (
+          <>
+            <Text>{t`This question currently appears in a dashboard that you don't have permission to edit.`}</Text>
+            <Flex justify="end" gap="1rem" mt="1rem">
+              <Button onClick={onClose}>{t`Okay`}</Button>
+            </Flex>
+          </>
+        );
+      } else {
+        return (
+          <>
+            <Text my="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
+            <List>
+              {cardsThatAppearInOtherDashboards.map(cd => {
+                const card = selectedItems.find(
+                  item => item.id === cd.card_id && item.model === "card",
+                );
+
+                const dashboardNames = cd.dashboards
+                  .filter(d => d.id !== destination.id)
+                  .map(d => d.name);
+
+                return (
+                  <List.Item key={`card-${cd.card_id}`}>
+                    <Text>{jt`${(
+                      <Text span fw={700}>
+                        {card?.name}
+                      </Text>
+                    )} will be removed from ${(
+                      <DashboardNames names={dashboardNames} />
+                    )}`}</Text>
+                  </List.Item>
+                );
+              })}
+            </List>
+
+            <Flex justify="end" gap="1rem" mt="1rem">
+              <Button variant="subtle" onClick={onClose}>
+                {t`Cancel`}
+              </Button>
+              <Button variant="filled" onClick={onConfirm}>
+                {ngettext(
+                  msgid`Move it`,
+                  `Move them`,
+                  cardsThatAppearInOtherDashboards.length,
+                )}
+              </Button>
+            </Flex>
+          </>
+        );
+      }
     }
   }, [
     isLoading,
-    filteredCards,
+    cardsThatAppearInOtherDashboards,
     onClose,
     onConfirm,
     destination,
@@ -163,7 +174,7 @@ export const QuestionMoveConfirmModal = ({
 
   return (
     <Modal
-      opened={isLoading || !hasNoFilteredCards}
+      opened={isLoading || !hasNoCardsThatAppearInOtherDashboards}
       title={heading}
       onClose={onClose}
       size="lg"
