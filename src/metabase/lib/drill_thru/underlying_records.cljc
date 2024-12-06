@@ -34,6 +34,7 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -186,20 +187,27 @@
         ;; The column-ref should be an aggregation ref - look up the full aggregation.
         aggregation (when-let [agg-uuid (last column-ref)]
                       (m/find-first #(= (lib.options/uuid %) agg-uuid)
-                                    (lib.aggregation/aggregations query -1)))]
-    ;; Apply the filters derived from the aggregation.
-    (reduce #(lib.filter/filter %1 -1 %2)
-            filtered
-            ;; If we found an aggregation, check if it implies further filtering.
-            ;; Simple aggregations like :sum don't add more filters; metrics or fancy aggregations like :sum-where do.
-            (when aggregation
-              (case (first aggregation)
-                ;; Fancy aggregations that filter the input - the filter is the last part of the aggregation.
-                (:sum-where :count-where :share)
-                [(last aggregation)]
+                                    (lib.aggregation/aggregations query -1)))
+        ;; Apply the filters derived from the aggregation.
+        agg-filtered (reduce #(lib.filter/filter %1 -1 %2)
+                             filtered
+                             ;; If we found an aggregation, check if it implies further filtering.
+                             ;; Simple aggregations like :sum don't add more filters; metrics or fancy aggregations like :sum-where do.
+                             (when aggregation
+                               (case (first aggregation)
+                                 ;; Fancy aggregations that filter the input - the filter is the last part of the aggregation.
+                                 (:sum-where :count-where :share)
+                                 [(last aggregation)]
 
-                ;; Default: no filters to add.
-                nil)))))
+                                 ;; Default: no filters to add.
+                                 nil)))
+        ;; make all joins include all fields
+        new-joins (mapv #(lib.join/with-join-fields % :all)
+                        (lib.join/joins agg-filtered))]
+    ;; if we have new joins to add, update query with the new joins
+    (if (empty? new-joins)
+      agg-filtered
+      (lib.util/update-query-stage agg-filtered -1 assoc :joins new-joins))))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
   [query _stage-number context & _]

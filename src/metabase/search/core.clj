@@ -1,20 +1,42 @@
 (ns metabase.search.core
   (:require
    [metabase.search.appdb.core :as search.engines.appdb]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
+   [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [potemkin :as p]))
 
-;; Import the engine implementations
 (comment
+  ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
+  search.engine/keep-me
   search.engines.appdb/keep-me
-  search.legacy/keep-me)
+  search.legacy/keep-me
+
+  search.config/keep-me
+  search.impl/keep-me)
 
 (p/import-vars
- search.ingestion/process-next-batch!)
+ [search.config
+  SearchableModel
+  all-models]
+
+ [search.engine
+  model-set]
+
+ [search.impl
+  search
+  ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
+  search-context]
+
+ [search.ingestion
+  process-next-batch!]
+
+ [search.spec
+  define-spec])
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"

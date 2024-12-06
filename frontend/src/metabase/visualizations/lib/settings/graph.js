@@ -304,39 +304,45 @@ export const LEGEND_SETTINGS = {
 
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
-    getDefault: () => "series_comparison",
+    getDefault: ([{ card }]) => {
+      const shouldShowComparisonTooltip = !["scatter", "waterfall"].includes(
+        card.display,
+      );
+      return shouldShowComparisonTooltip ? "series_comparison" : "default";
+    },
     hidden: true,
   },
   "graph.tooltip_columns": {
     section: t`Display`,
+
     title: t`Additional tooltip metrics`,
     placeholder: t`Enter metric names`,
     widget: "multiselect",
     useRawSeries: true,
     getValue: getComputedAdditionalColumnsValue,
     getHidden: (rawSeries, vizSettings) => {
-      // Default tooltip shows all columns
-      if (vizSettings["graph.tooltip_type"] === "default") {
-        return true;
-      }
-      return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
+      const isAggregatedChart = rawSeries[0].card.display !== "scatter";
+      return (
+        getAvailableAdditionalColumns(rawSeries, vizSettings, isAggregatedChart)
+          .length === 0
+      );
     },
     getProps: (rawSeries, vizSettings) => {
-      const options = getAvailableAdditionalColumns(rawSeries, vizSettings).map(
-        col => ({
-          label: col.display_name,
-          value: getColumnKey(col),
-        }),
-      );
+      const isAggregatedChart = rawSeries[0].card.display !== "scatter";
+      const options = getAvailableAdditionalColumns(
+        rawSeries,
+        vizSettings,
+        isAggregatedChart,
+      ).map(col => ({
+        label: col.display_name,
+        value: getColumnKey(col),
+      }));
+
       return {
         options,
       };
     },
-    readDependencies: [
-      "graph.metrics",
-      "graph.dimensions",
-      "graph.tooltip_type",
-    ],
+    readDependencies: ["graph.metrics", "graph.dimensions"],
   },
 };
 
