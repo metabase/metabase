@@ -3,6 +3,7 @@ import { Component } from "react";
 
 import { connect } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Flex } from "metabase/ui";
 
 import { AlertEditChannels } from "./AlertEditChannels";
 import { AlertEditSchedule } from "./AlertEditSchedule";
@@ -27,7 +28,7 @@ class AlertEditFormInner extends Component {
     const schedule = getScheduleFromChannel(alert.channels[0]);
 
     return (
-      <div>
+      <Flex gap={40} direction="column">
         <AlertGoalToggles
           alertType={alertType}
           alert={alert}
@@ -42,7 +43,7 @@ class AlertEditFormInner extends Component {
         {isAdmin && (
           <AlertEditChannels alert={alert} onAlertChange={onAlertChange} />
         )}
-      </div>
+      </Flex>
     );
   }
 }

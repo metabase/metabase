@@ -1,13 +1,9 @@
-/* eslint "react/prop-types": "warn" */
-import cx from "classnames";
 import { assoc, updateIn } from "icepick";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListChannelsQuery } from "metabase/api/channel";
-import CS from "metabase/css/core/index.css";
 import { createChannel } from "metabase/lib/pulse";
-import type { IconName } from "metabase/ui";
+import { Accordion } from "metabase/ui";
 import type {
   Alert,
   Channel,
@@ -21,40 +17,37 @@ import { EmailChannelEdit } from "./EmailChannelEdit";
 import { SlackChannelEdit } from "./SlackChannelEdit";
 import { WebhookChannelEdit } from "./WebhookChannelEdit";
 
-export const CHANNEL_ICONS: Record<ChannelType, IconName> = {
-  email: "mail",
-  slack: "slack",
-  http: "webhook",
+const DEFAULT_CHANNELS_CONFIG = {
+  email: { name: t`Email`, type: "email" },
+  slack: { name: t`Slack`, type: "slack" },
+  http: { name: t`Http`, type: "http" },
 };
 
-interface PulseEditChannelsProps {
+interface NotificationChannelsPickerProps {
   pulse: Alert;
-  pulseId: Alert["id"];
-  pulseIsValid: boolean;
-  formInput: ChannelApiResponse;
+  channels: ChannelApiResponse["channels"] | undefined;
   user: User;
   users: User[];
   setPulse: (value: Alert) => void;
-  hideSchedulePicker: boolean;
   emailRecipientText: string;
   invalidRecipientText: (domains: string) => string;
 }
 
-export const PulseEditChannels = ({
+export const NotificationChannelsPicker = ({
   pulse,
-  formInput,
+  channels: nullableChannels,
   user,
   users,
   setPulse,
   invalidRecipientText,
-}: PulseEditChannelsProps) => {
+}: NotificationChannelsPickerProps) => {
   const { data: notificationChannels = [] } = useListChannelsQuery();
 
   const addChannel = (
     type: ChannelType,
     notification?: NotificationChannel,
   ) => {
-    const channelSpec = formInput.channels[type];
+    const channelSpec = channels[type];
     if (!channelSpec) {
       return;
     }
@@ -109,41 +102,57 @@ export const PulseEditChannels = ({
   };
 
   // Default to show the default channels until full formInput is loaded
-  const channels = formInput.channels || {
-    email: { name: t`Email`, type: "email" },
-    slack: { name: t`Slack`, type: "slack" },
-    http: { name: t`Http`, type: "http" },
-  };
+  const channels = (nullableChannels ||
+    DEFAULT_CHANNELS_CONFIG) as ChannelApiResponse["channels"];
 
   return (
-    <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
-      <EmailChannelEdit
-        user={user}
-        users={users}
-        toggleChannel={toggleChannel}
-        onChannelPropertyChange={onChannelPropertyChange}
-        channelSpec={channels.email}
-        alert={pulse}
-        invalidRecipientText={invalidRecipientText}
-      />
+    <Accordion defaultValue={["email", "slack"]} variant="separated" multiple>
+      <Accordion.Item value="email">
+        <Accordion.Control>{t`Email`}</Accordion.Control>
+        <Accordion.Panel>
+          <EmailChannelEdit
+            user={user}
+            users={users}
+            toggleChannel={toggleChannel}
+            onChannelPropertyChange={onChannelPropertyChange}
+            channelSpec={channels.email}
+            alert={pulse}
+            invalidRecipientText={invalidRecipientText}
+          />
+        </Accordion.Panel>
+      </Accordion.Item>
+
       {channels.slack.configured && (
-        <SlackChannelEdit
-          user={user}
-          toggleChannel={toggleChannel}
-          onChannelPropertyChange={onChannelPropertyChange}
-          channelSpec={channels.slack}
-          alert={pulse}
-        />
+        <Accordion.Item value="slack">
+          <Accordion.Control>{t`Slack`}</Accordion.Control>
+          <Accordion.Panel>
+            <SlackChannelEdit
+              user={user}
+              toggleChannel={toggleChannel}
+              onChannelPropertyChange={onChannelPropertyChange}
+              channelSpec={channels.slack}
+              alert={pulse}
+            />
+          </Accordion.Panel>
+        </Accordion.Item>
       )}
+
       {notificationChannels.map(notification => (
-        <WebhookChannelEdit
+        <Accordion.Item
           key={`webhook-${notification.id}`}
-          toggleChannel={toggleChannel}
-          channelSpec={channels.http}
-          alert={pulse}
-          notification={notification}
-        />
+          value={`webhook-${notification.id}`}
+        >
+          <Accordion.Control>{notification.name}</Accordion.Control>
+          <Accordion.Panel>
+            <WebhookChannelEdit
+              toggleChannel={toggleChannel}
+              channelSpec={channels.http}
+              alert={pulse}
+              notification={notification}
+            />
+          </Accordion.Panel>
+        </Accordion.Item>
       ))}
-    </ul>
+    </Accordion>
   );
 };

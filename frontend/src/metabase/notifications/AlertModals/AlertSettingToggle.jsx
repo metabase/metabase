@@ -12,7 +12,7 @@ export const AlertSettingToggle = ({
   falseText,
   setting,
 }) => (
-  <div className={cx(CS.mb4, CS.pb2)}>
+  <div /*className={cx(CS.mb4, CS.pb2)}*/>
     <h3 className={cx(CS.textDark, CS.mb1)}>{title}</h3>
     <Radio
       value={alert[setting]}

@@ -72,11 +72,7 @@ export const AlertPopover = forwardRef(function _AlertPopover(
           />
         </Popover.Dropdown>
       </Popover>
-      <Modal
-        medium
-        isOpen={showingElement === "create-modal"}
-        onClose={onClose}
-      >
+      <Modal isOpen={showingElement === "create-modal"} onClose={onClose}>
         <CreateAlertModalContent onCancel={onClose} onAlertCreated={onClose} />
       </Modal>
 

@@ -221,7 +221,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <Modal medium onClose={onCloseModal}>
+        <Modal onClose={onCloseModal}>
           <CreateAlertModalContent
             onCancel={onCloseModal}
             onAlertCreated={onCloseModal}

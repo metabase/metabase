@@ -1,0 +1,20 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Accordion, Stack, Text } from "metabase/ui";
+import * as AccordionStories from "./Accordion.stories";
+
+<Meta of={AccordionStories} />
+
+# Accordion
+
+Our themed wrapper around [Mantine Accordion](https://v6.mantine.dev/core/accordion/).
+
+## Docs
+
+- [Mantine Accordion Docs](https://v6.mantine.dev/core/accordion/)
+
+## Examples
+
+<Canvas>
+  <Story of={AccordionStories.Default} />
+</Canvas>
