@@ -6,8 +6,8 @@ import { checkNumber, isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+  INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
-  ORIGINAL_INDEX_DATA_KEY,
   OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
@@ -185,7 +185,10 @@ export const getJoinedCardsDataset = (
     }
   });
 
-  return Array.from(groupedData.values());
+  return Array.from(groupedData.values()).map((datum, index) => ({
+    ...datum,
+    [INDEX_KEY]: index,
+  }));
 };
 
 type TransformFn = (
@@ -508,15 +511,12 @@ export function filterNullDimensionValues(
 ) {
   const filteredDataset: ChartDataset = [];
 
-  dataset.forEach((datum, originalIndex) => {
+  dataset.forEach(datum => {
     if (datum[X_AXIS_DATA_KEY] == null) {
       showWarning?.(nullDimensionWarning().text);
       return;
     }
-    filteredDataset.push({
-      ...datum,
-      [ORIGINAL_INDEX_DATA_KEY]: originalIndex,
-    });
+    filteredDataset.push(datum);
   });
 
   return filteredDataset;
@@ -616,10 +616,7 @@ const interpolateTimeSeriesData = (
 
   for (let i = 0; i < dataset.length; i++) {
     const datum = dataset[i];
-    result.push({
-      ...datum,
-      [ORIGINAL_INDEX_DATA_KEY]: datum[ORIGINAL_INDEX_DATA_KEY] ?? i,
-    });
+    result.push(datum);
 
     if (i === dataset.length - 1) {
       break;

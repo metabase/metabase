@@ -21,8 +21,7 @@ export const OTHER_DATA_KEY = `${NULL_CHAR}_other` as const;
 // In some cases a datum in `chartModel.transformedDataset` may include this
 // key, its value is equal to the index of that same datum in the original
 // dataset (e.g. `chartModel.dataset`)
-export const ORIGINAL_INDEX_DATA_KEY =
-  `${NULL_CHAR}_original_dataset_key` as const;
+export const INDEX_KEY = `${NULL_CHAR}_index` as const;
 
 // For ticks we want to pick the largest interval that exist 3 times in the
 // range. For example, if data has week granularity but the range is more than 3
