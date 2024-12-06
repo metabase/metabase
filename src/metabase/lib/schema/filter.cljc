@@ -50,6 +50,10 @@
   "Boolean filter operators supported by the FE. Note that `:!=` is not supported."
   [:enum :is-null :not-null :=])
 
+(mr/def ::specific-date-filter-operator
+  "Specific date filter operators supported by the FE."
+  [:enum := :> :< :between])
+
 (mr/def ::exclude-date-filter-operator
   "Exclude date filter operators supported by the FE."
   [:enum :!= :is-null :not-null])
