@@ -1,14 +1,13 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { ViewHeaderLeftSubHeading } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { ViewHeading } from "../../../ViewSection";
+import { ViewHeading, ViewSubHeading } from "../../../ViewSection";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
@@ -64,7 +63,7 @@ export function AdHocQuestionLeftSide(
           )}
         </ViewHeading>
       </Flex>
-      <ViewHeaderLeftSubHeading>
+      <ViewSubHeading className={ViewTitleHeaderS.ViewHeaderLeftSubHeading}>
         {isSummarized && (
           <QuestionDataSource
             question={question}
@@ -73,7 +72,7 @@ export function AdHocQuestionLeftSide(
             subHead
           />
         )}
-      </ViewHeaderLeftSubHeading>
+      </ViewSubHeading>
     </Box>
   );
 }
