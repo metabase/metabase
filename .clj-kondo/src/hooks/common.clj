@@ -373,6 +373,28 @@
                 body))]
     {:node node*}))
 
+(defn with-used-first-two-args
+  "For macros like
+
+    (with-limit-and-offset limit offset
+      ...)
+
+    =>
+
+    (let [_123 limit
+         [_456 offset]
+      ...)
+
+  where the first arg should be linted and appear to be used."
+  [{{[_ x y & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node [(hooks/token-node (gensym "_")) x
+                                    (hooks/token-node (gensym "_")) y])
+                body))]
+    {:node node*}))
+
 (defn with-vec-first-binding
   "For macros like
 

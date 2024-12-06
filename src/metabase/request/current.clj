@@ -13,10 +13,16 @@
   *request*)
 
 (defn do-with-current-request
-  "Execute `thunk` with [[current-request]] bound to `request`."
+  "Impl for [[with-current-request]]."
   [request thunk]
   (binding [*request* request]
     (thunk)))
+
+(defmacro with-current-request
+  "Execute `body` with [[current-request]] bound to `request`."
+  {:style/indent :defn}
+  [request & body]
+  `(do-with-current-request ~request (^:once fn* [] ~@body)))
 
 (def ^:private ^:dynamic *limit*
   nil)
@@ -44,9 +50,15 @@
   *paged?*)
 
 (defn do-with-limit-and-offset
-  "Execute `thunk` with [[limit]] and [[offset]] bound."
+  "Impl for [[with-limit-and-offset]]."
   [limit offset thunk]
   (binding [*limit*  limit
             *offset* offset
             *paged?* (boolean (or limit offset))]
     (thunk)))
+
+(defmacro with-limit-and-offset
+  "Execute `body` with [[limit]] and [[offset]] bound."
+  {:style/indent :defn}
+  [limit offset & body]
+  `(do-with-limit-and-offset ~limit ~offset (^:once fn* [] ~@body)))

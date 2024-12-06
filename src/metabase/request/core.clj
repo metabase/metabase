@@ -28,11 +28,11 @@
   set-session-timeout-cookie]
  [metabase.request.current
   current-request
-  do-with-current-request
-  do-with-limit-and-offset
   limit
   offset
-  paged?]
+  paged?
+  with-current-request
+  with-limit-and-offset]
  [metabase.request.session
   as-admin
   do-with-current-user

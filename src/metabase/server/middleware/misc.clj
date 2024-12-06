@@ -83,7 +83,5 @@
   "Ring middleware that binds `*request*` for the duration of this Ring request."
   [handler]
   (fn [request respond raise]
-    (request/do-with-current-request
-     request
-     (^:once fn* []
-       (handler request respond raise)))))
+    (request/with-current-request request
+      (handler request respond raise))))

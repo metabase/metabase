@@ -35,8 +35,7 @@
   [handler]
   (fn [request respond raise]
     (if-let [{:keys [limit offset] :as paging-params} (parse-paging-params request)]
-      (request/do-with-limit-and-offset
-       limit offset
-       (^:once fn* []
-         (handler (with-paging-params request paging-params) respond raise)))
+      (request/with-limit-and-offset
+        limit offset
+        (handler (with-paging-params request paging-params) respond raise))
       (handler request respond raise))))
