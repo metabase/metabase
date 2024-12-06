@@ -51,7 +51,7 @@
 (defn- all-indexes->field-ids
   [database-id indexes]
   (when (seq indexes)
-    (let [normal-indexes (map (juxt (or :table-schema "__null__") :table-name :field-name) indexes)
+    (let [normal-indexes (map (juxt #(:table-schema % "__null__") :table-name :field-name) indexes)
           query (t2/reducible-query {:select [[:f.id]]
                                      :from [[(t2/table-name :model/Field) :f]]
                                      :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
