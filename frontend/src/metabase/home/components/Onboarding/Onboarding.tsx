@@ -115,7 +115,7 @@ export const Onboarding = () => {
     }
     element.scrollIntoView({
       behavior: "smooth",
-      block: "nearest",
+      block: "center",
     });
   };
 
