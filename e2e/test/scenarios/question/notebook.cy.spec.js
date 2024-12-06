@@ -995,6 +995,29 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByLabelText("close icon").invoke("outerHeight").should("eq", 16);
     }
   });
+  it.only("should let the user navigate back", () => {
+    H.startNewQuestion();
+    H.getNotebookStep("data").within(() => {
+      cy.findByText("Pick your starting data").should("exist");
+      cy.icon("play").should("not.be.visible");
+    });
+    H.entityPickerModal().should("be.visible");
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+    });
+
+    cy.on("window:before:unload", event => {
+      // Prevent the navigation if this kind of operation is caught
+      delete event.returnValue;
+    });
+
+    cy.window().then(win => {
+      win.history.back();
+    });
+
+    cy.pause();
+    H.modal().should("be.visible").contains("Discard changes").click();
+  });
 });
 
 function assertTableRowCount(expectedCount) {
