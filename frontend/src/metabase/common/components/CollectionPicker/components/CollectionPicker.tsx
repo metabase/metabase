@@ -89,7 +89,6 @@ export const CollectionPickerInner = (
       onPathChange,
       options.namespace,
       userPersonalCollectionId,
-      path,
       models,
     ],
   );

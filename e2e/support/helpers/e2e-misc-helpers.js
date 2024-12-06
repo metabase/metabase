@@ -1,5 +1,5 @@
-import { focusNativeEditor } from "./e2e-native-editor-helpers";
 import { pickEntity } from "./e2e-collection-helpers";
+import { focusNativeEditor } from "./e2e-native-editor-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
