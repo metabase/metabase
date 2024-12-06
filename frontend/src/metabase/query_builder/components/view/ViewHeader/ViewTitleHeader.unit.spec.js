@@ -614,6 +614,7 @@ describe("View Header | Hidden tables", () => {
             joins: [
               {
                 alias: "Orders",
+                ident: "3Q-699fD5ZhmyLL1fPle2",
                 fields: "all",
                 "source-table": ORDERS_ID,
                 condition: [
@@ -644,6 +645,7 @@ describe("View Header | Inaccessible Cards", () => {
             joins: [
               {
                 alias: "Orders",
+                ident: "uAysG9UfH3RUnErkkOw77",
                 fields: "all",
                 "source-table": ORDERS_ID,
                 condition: [

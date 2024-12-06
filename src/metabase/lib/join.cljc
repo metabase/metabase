@@ -571,6 +571,7 @@
   by default."
   ([joinable]
    (-> (join-clause-method joinable)
+       (u/assoc-default :ident (u/generate-nano-id))
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]

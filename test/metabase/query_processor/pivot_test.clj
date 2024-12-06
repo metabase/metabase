@@ -103,20 +103,17 @@
 
 (defn- test-query []
   (mt/dataset test-data
-    (mt/$ids orders
-      {:database     (mt/id)
-       :type         :query
-       :query        {:source-table $$orders
-                      :aggregation  [[:count]]
-                      :breakout     [$product_id->products.category
-                                     $user_id->people.source
-                                     !year.created_at]
-                      :filter       [:and
-                                     [:= $user_id->people.source "Facebook" "Google"]
-                                     [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                     [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]}
-       :pivot-rows [0 1 2]
-       :pivot-cols []})))
+    (merge (mt/mbql-query orders
+             {:aggregation  [[:count]]
+              :breakout     [$product_id->products.category
+                             $user_id->people.source
+                             !year.created_at]
+              :filter       [:and
+                             [:= $user_id->people.source "Facebook" "Google"]
+                             [:= $product_id->products.category "Doohickey" "Gizmo"]
+                             [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]})
+           {:pivot-rows [0 1 2]
+            :pivot-cols []})))
 
 (deftest ^:parallel allow-snake-case-test
   (testing "make sure the stuff works with either normal lisp-case keys or snake_case"
@@ -374,10 +371,9 @@
   (->> (mt/rows
         (mt/dataset test-data
           (qp/process-query
-           {:database (mt/id)
-            :type     :query
-            :query    {:source-table (mt/id table)
-                       :breakout     [[:field (mt/id table col) nil]]}})))
+           (mt/mbql-query nil
+             {:source-table (mt/id table)
+              :breakout     [[:field (mt/id table col) nil]]}))))
        (map first)
        set))
 
@@ -632,17 +628,15 @@
   (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
     ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
-    (let [query (mt/$ids orders
-                  {:database   (mt/id)
-                   :type       :query
-                   :query      {:source-table $$orders
-                                :aggregation  [[:count]]
-                                :breakout     [!year.created_at
-                                               $product_id->products.category
-                                               $user_id->people.source]
-                                :limit        1}
-                   :pivot_rows [0 1 2]
-                   :pivot_cols []})]
+    (let [query (merge
+                 (mt/mbql-query orders
+                   {:aggregation  [[:count]]
+                    :breakout     [!year.created_at
+                                   $product_id->products.category
+                                   $user_id->people.source]
+                    :limit        1})
+                 {:pivot_rows [0 1 2]
+                  :pivot_cols []})]
       (is (= (mt/$ids orders
                [[:field %created_at {:temporal-unit :year}]
                 [:field %products.category {:source-field %product_id}]
@@ -655,21 +649,19 @@
   (testing "field_refs in the result metadata should preserve :base-type if it was specified for some reason, otherwise FE will break"
     ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
-    (let [query (mt/$ids orders
-                  {:database   (mt/id)
-                   :type       :query
-                   :query      {:source-table $$orders
-                                :aggregation  [[:count]]
-                                :breakout     [[:field
-                                                (mt/id :products :category)
-                                                {:source-field (mt/id :orders :product_id)
-                                                 :base-type    :type/Text}]
-                                               [:field
-                                                (mt/id :people :source)
-                                                {:source-field (data/id :orders :user_id)
-                                                 :base-type    :type/Text}]]}
-                   :pivot_rows [0 1]
-                   :pivot_cols []})]
+
+    (let [query (merge (mt/mbql-query orders
+                         {:aggregation  [[:count]]
+                          :breakout     [[:field
+                                          (mt/id :products :category)
+                                          {:source-field (mt/id :orders :product_id)
+                                           :base-type    :type/Text}]
+                                         [:field
+                                          (mt/id :people :source)
+                                          {:source-field (data/id :orders :user_id)
+                                           :base-type    :type/Text}]]})
+                       {:pivot_rows [0 1]
+                        :pivot_cols []})]
       (is (= (mt/$ids orders
                [[:field %products.category {:source-field %product_id, :base-type :type/Text}]
                 [:field %people.source {:source-field %user_id, :base-type :type/Text}]

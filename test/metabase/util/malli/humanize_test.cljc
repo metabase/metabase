@@ -177,9 +177,11 @@
       {:stages [{:joins [{:stages [{:lib/type    ["missing required key"]
                                     :malli/error ["Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
                                                   "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]}]
-                          :alias  ["missing required key"]}]}]}
+                          :alias  ["missing required key"]
+                          :ident  ["missing required key"]}]}]}
 
       mu.humanize/humanize
       {:stages [{:joins [{:stages
                           [[{:lib/type "missing required key"} "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]],
-                          :alias "missing required key"}]}]})))
+                          :alias "missing required key"
+                          :ident "missing required key"}]}]})))
