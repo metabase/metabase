@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { CopyTextInput } from "metabase/components/CopyTextInput";
-import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import CS from "metabase/css/core/index.css";
 import { Button, Flex, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -16,7 +15,6 @@ export const SecretKeyModal = ({
 }) => (
   <Modal
     size="30rem"
-    zIndex={DEFAULT_Z_INDEX} // prevents CopyWidgetButton's Tippy popover from being obscured
     opened
     onClose={onClose}
     title={t`Copy and save the API key`}

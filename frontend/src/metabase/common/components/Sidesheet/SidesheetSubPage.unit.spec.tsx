@@ -94,6 +94,7 @@ describe("Sidesheet", () => {
         title="Subpage title"
         onClose={closeSpy}
         onBack={jest.fn()}
+        withOverlay
       >
         hello world
       </SidesheetSubPage>,

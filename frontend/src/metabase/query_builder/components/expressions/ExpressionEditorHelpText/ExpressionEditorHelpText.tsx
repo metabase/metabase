@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { DEFAULT_POPOVER_Z_INDEX } from "metabase/ui";
 import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 
@@ -109,7 +108,6 @@ export const ExpressionEditorHelpText = ({
       reference={target}
       placement="bottom-start"
       visible
-      zIndex={DEFAULT_POPOVER_Z_INDEX}
       content={<ExpressionEditorHelpTextContent helpText={helpText} />}
     />
   );
