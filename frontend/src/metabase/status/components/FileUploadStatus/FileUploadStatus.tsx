@@ -1,8 +1,7 @@
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { useTableQuery } from "metabase/common/hooks";
+import { useCollectionQuery, useTableQuery } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isUploadAborted, isUploadInProgress } from "metabase/lib/uploads";
 import { isEmpty } from "metabase/lib/validate";
@@ -77,12 +76,9 @@ const FileUploadStatusContent = ({
     id: tableId,
     enabled: !isEmpty(tableId),
   });
-  const { isLoading: collectionLoading, data: collection } =
-    useGetCollectionQuery(
-      collectionId != null && !isEmpty(collectionId)
-        ? { id: collectionId }
-        : skipToken,
-    );
+  const { isLoading: collectionLoading, data: collection } = useCollectionQuery(
+    { id: collectionId, enabled: !isEmpty(collectionId) },
+  );
 
   const isLoading = !!(tableLoading || collectionLoading);
   const hasData = !!(table || collection);
