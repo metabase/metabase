@@ -155,6 +155,7 @@ export const createMockSettings = (
   "application-font-files": [],
   // eslint-disable-next-line no-literal-metabase-strings -- This is a mock
   "application-name": "Metabase",
+  "application-favicon-url": "",
   "available-fonts": [],
   "available-locales": null,
   "bcc-enabled?": true,
@@ -272,5 +273,6 @@ export const createMockSettings = (
   "query-analysis-enabled": false,
   "check-for-updates": true,
   "update-channel": "latest",
+  "trial-banner-dismissal-timestamp": null,
   ...opts,
 });
