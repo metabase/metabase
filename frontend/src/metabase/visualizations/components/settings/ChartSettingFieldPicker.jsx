@@ -12,7 +12,7 @@ import {
   GrabberHandle,
   SettingsButton,
 } from "./ChartSettingFieldPicker.styled";
-import ChartSettingSelect from "./ChartSettingSelect";
+import { ChartSettingSelect } from "./ChartSettingSelect";
 
 const ChartSettingFieldPicker = ({
   value,
