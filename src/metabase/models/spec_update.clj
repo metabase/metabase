@@ -1,7 +1,6 @@
 (ns metabase.models.spec-update
   "Perform Creation/Update/Deletion with a spec."
   (:require
-   [clojure.data :refer [diff]]
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -93,8 +92,7 @@
       (doseq [row to-update]
         (with-enter-path (:id row)
           (let [new-row (sanitize-row row)]
-            (log/debugf "%s Updating %s" (current-path) new-row)
-            (log/tracef "%s %s" (current-path) new-row)
+            (log/debugf "%s Updating" (current-path))
             (t2/update! model (:id row) new-row))
           (when nested-specs
             (let [existing-row (first (filter #(= (:id row) (:id %)) existing-rows))]
@@ -133,8 +131,7 @@
       ;; update
       (not= new-data-clean existing-data-clean)
       (with-enter-path (:id existing-data)
-        (log/debugf "%s Updating %s" (current-path) (second (diff existing-data-clean new-data-clean)))
-        #_(log/tracef "%s %s" (current-path) new-data-clean)
+        (log/debugf "%s Updating" (current-path))
         (t2/update! model (:id existing-data) new-data-clean))
 
       :else
