@@ -1111,6 +1111,71 @@ H.describeEE("issue 8490", () => {
     });
   });
 
+  it("static embeddings with `#locale` should show translate the loading message (metabase#50182)", () => {
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/embed/dashboard/*",
+        middleware: true,
+      },
+      req => {
+        req.on("response", res => {
+          const MINUTE = 60 * 1000;
+          res.setDelay(MINUTE);
+        });
+      },
+    ).as("dashboardRequest");
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/embed/card/*",
+        middleware: true,
+      },
+      req => {
+        req.on("response", res => {
+          const MINUTE = 60 * 1000;
+          res.setDelay(MINUTE);
+        });
+      },
+    ).as("questionRequest");
+
+    cy.log("test a static embedded dashboard");
+    cy.get("@dashboardId").then(dashboardId => {
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: dashboardId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    // Loading...
+    cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
+
+    cy.log("test a static embedded question");
+    cy.get("@lineChartQuestionId").then(lineChartQuestionId => {
+      H.visitEmbeddedPage(
+        {
+          resource: { question: lineChartQuestionId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    // Loading...
+    cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
+  });
+
   it("static embeddings should respect `#locale` hash parameter (metabase#8490, metabase#50182)", () => {
     cy.log("test a static embedded dashboard");
     cy.get("@dashboardId").then(dashboardId => {
