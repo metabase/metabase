@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.notification.test-util :as notification.tu]
    [metabase.sync.sync-metadata]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (deftest get-notication-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel
@@ -60,7 +59,7 @@
     (is (= "Unauthenticated" (mt/client :get 401 "notification/1"))))
   (testing "404 on unknown notification"
     (is (= "Not found."
-           (mt/user-http-request :crowberto :get (format "notification/%d" (inc (t2/count :model/Notification))))))))
+           (mt/user-http-request :crowberto :get (format "notification/%d" Integer/MAX_VALUE))))))
 
 (deftest create-simple-card-notification-test
   (mt/with-model-cleanup [:model/Notification]
