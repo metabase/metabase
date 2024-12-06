@@ -1,5 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import {
+  InteractiveQuestion,
+  type MetabaseQuestion,
+} from "@metabase/embedding-sdk-react";
 import type { ComponentProps } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -23,7 +26,6 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Flex, Modal, Popover } from "metabase/ui";
-import { MetabaseQuestion } from "../../../../enterprise/frontend/src/embedding-sdk/types/public/question";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
