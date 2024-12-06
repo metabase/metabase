@@ -8901,6 +8901,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v51.2024-07-25T12:02:21
+      validCheckSum: ANY
       author: crisptrutski
       comment: Make `field_id` nullable on query fields
       rollback:
@@ -9181,6 +9182,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v51.2024-08-02T12:02:21
+      validCheckSum: ANY
       author: crisptrutski
       comment: Make `table` nullable on query fields
       rollback:
