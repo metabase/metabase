@@ -210,7 +210,7 @@ export const useGetInitialContainer = (
   return {
     currentDashboard: currentDashboard,
     currentCollection,
-    isLoading: !currentCollection,
+    isLoading: !currentCollection && !collectionError,
     error: dashboardError ?? collectionError,
   };
 };
