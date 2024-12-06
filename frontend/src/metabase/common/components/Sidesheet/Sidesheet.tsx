@@ -42,7 +42,12 @@ export function Sidesheet({
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
   return (
-    <Modal.Root opened={isOpen} onClose={onClose} h="100dvh">
+    <Modal.Root
+      variant="sidesheet"
+      opened={isOpen}
+      onClose={onClose}
+      h="100dvh"
+    >
       {withOverlay && <Modal.Overlay data-testid="modal-overlay" />}
       <Modal.Content
         transitionProps={{ duration: 0 }}
