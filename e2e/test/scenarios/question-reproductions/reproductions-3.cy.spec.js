@@ -1800,8 +1800,11 @@ describe("issue 45063", () => {
     H.popover()
       .findByPlaceholderText(`Search by ${fieldDisplayName}`)
       .type(fieldValueLabel);
-    H.popover().last().findByText(fieldValueLabel).click();
-    H.popover().first().click().button("Add filter").click();
+    H.selectDropdown().findByText(fieldValueLabel).click();
+    cy.findByTestId("number-filter-picker")
+      .click()
+      .button("Add filter")
+      .click();
     cy.findByTestId("qb-filters-panel")
       .findByText(`${fieldDisplayName} is ${fieldValue}`)
       .should("be.visible");

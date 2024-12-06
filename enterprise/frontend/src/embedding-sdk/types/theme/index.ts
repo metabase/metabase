@@ -196,8 +196,9 @@ export type MetabaseComponentTheme = {
   };
 
   /** Popover */
-  popover?: {
-    /** z-index of the popover. Useful for embedding components in a modal. Defaults to 4. */
+  popover: {
+    /** z-index of overlays. Useful for embedding components in a modal.
+     * Defaults to 200. */
     zIndex?: number;
   };
 

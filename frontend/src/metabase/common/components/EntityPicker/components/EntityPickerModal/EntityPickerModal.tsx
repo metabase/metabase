@@ -2,10 +2,10 @@ import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce, usePreviousDistinct } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
@@ -61,9 +61,6 @@ export const defaultOptions: EntityPickerModalOptions = {
   hasRecents: true,
 };
 
-// needs to be above popovers and bulk actions
-export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
-
 export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
   "selections",
   "views",
@@ -96,6 +93,7 @@ export interface EntityPickerModalProps<
   onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
   isLoadingTabs?: boolean;
+  children?: React.ReactNode;
 }
 
 export function EntityPickerModal<
@@ -120,6 +118,7 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
+  children,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchScope, setSearchScope] =
@@ -339,6 +338,8 @@ export function EntityPickerModal<
     { capture: true, once: true },
   );
 
+  const titleId = useMemo(() => _.uniqueId("entity-picker-modal-title-"), []);
+
   return (
     <Modal.Root
       opened={open}
@@ -355,10 +356,9 @@ export function EntityPickerModal<
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       xOffset="10vw"
       yOffset="10dvh"
-      zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
-      <ModalContent h="100%">
+      <ModalContent h="100%" aria-labelledby={titleId}>
         <Modal.Header
           px="1.5rem"
           pt="1rem"
@@ -366,7 +366,9 @@ export function EntityPickerModal<
           bg="var(--mb-color-background)"
         >
           <GrowFlex justify="space-between">
-            <Modal.Title lh="2.5rem">{title}</Modal.Title>
+            <Modal.Title id={titleId} lh="2.5rem">
+              {title}
+            </Modal.Title>
             {hydratedOptions.showSearch && (
               <TextInput
                 type="search"
@@ -381,6 +383,7 @@ export function EntityPickerModal<
           </GrowFlex>
           <Modal.CloseButton size={21} pos="relative" top="1px" />
         </Modal.Header>
+        {children}
         <ModalBody p="0">
           {!isLoadingTabs && !isLoadingRecentItems ? (
             <ErrorBoundary>
