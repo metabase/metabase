@@ -237,7 +237,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
     });
 
-    it("should be able to publish/embed a dashboard with questions saved within it", () => {
+    it("should be able to publish/embed a dashboard with a dashboard question saved within it", () => {
       H.createQuestion({
         name: "Total Orders",
         dashboard_id: ORDERS_DASHBOARD_ID,
