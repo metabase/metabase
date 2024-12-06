@@ -1,8 +1,8 @@
 import CS from "metabase/css/core/index.css";
-import { Button } from "metabase/ui";
+import { Button, Center, Icon, type IconName } from "metabase/ui";
 
 interface ChartSettingSegmentedControlProps {
-  options: { name: string; value: string }[];
+  options: { name: string; value: string; icon?: IconName }[];
   onChange: (value: string) => void;
   value: string;
 }
@@ -22,7 +22,9 @@ export const ChartSettingSegmentedControl = ({
         key={elem.value}
         onClick={() => onChange(elem.value)}
       >
-        {elem.name}
+        <Center>
+          {elem.icon ? <Icon name={elem.icon} size={16}></Icon> : elem.name}
+        </Center>
       </Button>
     ))}
   </Button.Group>
