@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ColorSelector from "metabase/core/components/ColorSelector";
+import { ColorSelector } from "metabase/core/components/ColorSelector";
 import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
