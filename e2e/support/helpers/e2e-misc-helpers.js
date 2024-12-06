@@ -1,3 +1,4 @@
+import { pickEntity } from "./e2e-collection-helpers";
 import { focusNativeEditor } from "./e2e-native-editor-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
@@ -309,32 +310,56 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
 export function saveQuestion(
   name,
   { addToDashboard = false, wrapId = false, idAlias = "questionId" } = {},
+  pickEntityOptions,
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByTestId("qb-header").button("Save").click();
 
-  cy.findByTestId("save-question-modal").within(modal => {
+  cy.findByTestId("save-question-modal").within(() => {
     if (name) {
       cy.findByLabelText("Name").clear().type(name);
     }
-    cy.findByText("Save").click();
+
+    if (pickEntityOptions) {
+      cy.findByLabelText(/Where do you want to save this/).click();
+    }
   });
+
+  if (pickEntityOptions) {
+    pickEntity({ ...pickEntityOptions, select: true });
+  }
+
+  cy.findByTestId("save-question-modal").button("Save").click();
 
   cy.wait("@saveQuestion").then(({ response: { body } }) => {
     if (wrapId) {
       cy.wrap(body.id).as(idAlias);
     }
-  });
 
-  cy.get("#QuestionSavedModal").within(() => {
-    cy.findByText(/add this to a dashboard/i).should("be.visible");
+    // if this question is saved to a dashboard
+    // we don't need to worry about the add to dash modal
+    const wasSavedToCollection = !body.dashboard_id;
 
-    if (addToDashboard) {
-      cy.button("Yes please!").click();
-    } else {
-      cy.button("Not now").click();
+    if (wasSavedToCollection) {
+      cy.get("#QuestionSavedModal").within(() => {
+        cy.findByText(/add this to a dashboard/i).should("be.visible");
+
+        if (addToDashboard) {
+          cy.button("Yes please!").click();
+        } else {
+          cy.button("Not now").click();
+        }
+      });
     }
   });
+}
+
+export function saveQuestionToCollection(
+  name,
+  pickEntityOptions = { tab: "Browse", path: ["Our analytics"] },
+  reqInfo,
+) {
+  saveQuestion(name, reqInfo, pickEntityOptions);
 }
 
 export function saveSavedQuestion() {

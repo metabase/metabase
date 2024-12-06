@@ -640,6 +640,9 @@
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
                 [{:collection_id       (:id collection)
+                  :dashboard_count     0
+                  :dashboard           nil
+                  :dashboard_id        nil
                   :can_write           true
                   :can_delete          false
                   :can_restore         false
@@ -1102,6 +1105,21 @@
           (t2.with-temp/with-temp [:model/Dashboard _ {:collection_id id2}]
             (testing "when the item has a dashboard, that's reflected in `here` too"
               (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
+
+(deftest dashboards-include-here
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection with items"}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (testing "sanity check, only the dashboard is there"
+        (is (= 1 (:total (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))))))
+      (testing "the dashboard has 'here'"
+        (is (= [{:here ["card"]
+                 :id dash-id}]
+               (->> (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
+                    :data
+                    (map #(select-keys % [:here :id])))))))))
 
 (deftest children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
@@ -2318,3 +2336,59 @@
                                     {:revision (c-perm-revision/latest-id)
                                      :groups {}}))
       "PUTs with skip_graph should not return the coll permission graph."))
+
+(deftest dashboard-internal-cards-do-not-appear-in-collection-items
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card {normal-card-id :id} {:collection_id coll-id}
+                 :model/Card {dashboard-question-card-id :id} {:dashboard_id dash-id}]
+    (testing "The dashboard appears and the normal card appears, but the dashboard-internal card does not"
+      (is (= #{[normal-card-id "card"]
+               [dash-id "dashboard"]}
+             (set (map (juxt :id :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))))
+    (testing "If I specifically ask to see dashboard questions, they appear"
+      (is (= #{[normal-card-id "card"]
+               [dashboard-question-card-id "card"]
+               [dash-id "dashboard"]}
+             (set (map (juxt :id :model)
+                       (:data
+                        (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true")))))))))
+  (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
+                 :model/Collection {coll-id :id} {:location (collection/children-location parent)}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card _ {:dashboard_id dash-id}]
+    (testing "Here and below are correct (they don't say a collection has a card if it's internal)"
+      (is (= ["dashboard"]
+             (:here (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items")))))))
+      (testing "unless I ask to show dashboard questions!"
+        (is (= ["dashboard" "card"]
+               (:here
+                (first
+                 (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show_dashboard_questions=true")))))))))))
+
+(deftest dashboard-questions-have-dashboard-hydrated
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id
+                                   dash-name :name} {:collection_id coll-id}
+                 :model/Card _ {:dashboard_id dash-id}]
+    (testing "The card's dashboard details are hydrated"
+      (is (= {:name dash-name
+              :id dash-id
+              :moderation_status nil}
+             (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+                  :data
+                  (filter #(= (:model %) "card"))
+                  first
+                  :dashboard))))
+    (testing "If there are moderation reviews they're included too"
+      (mt/with-temp [:model/ModerationReview _ {:moderated_item_type "dashboard"
+                                                :moderated_item_id   dash-id
+                                                :status              "verified"
+                                                :moderator_id        (mt/user->id :rasta)
+                                                :most_recent         true}]
+        (is (= {:name dash-name :id dash-id :moderation_status "verified"}
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+                    :data
+                    (filter #(= (:model %) "card"))
+                    first
+                    :dashboard)))))))

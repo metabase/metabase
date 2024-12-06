@@ -695,14 +695,15 @@
     (let [collection-ids (visible-collection-ids {:include-archived-items :all
                                                   :include-trash-collection? true})]
       (for [collection collections]
-        (assoc collection :effective_location
-               (when-not (or (nil? collection) (collection.root/is-root-collection? collection))
-                 (let [real-location-path (if (:archived_directly collection)
-                                            (trash-path)
-                                            (:location collection))]
-                   (apply location-path (for [id    (location-path->ids real-location-path)
-                                              :when (contains? collection-ids id)]
-                                          id)))))))))
+        (when (some? collection)
+          (assoc collection :effective_location
+                 (when-not (collection.root/is-root-collection? collection)
+                   (let [real-location-path (if (:archived_directly collection)
+                                              (trash-path)
+                                              (:location collection))]
+                     (apply location-path (for [id    (location-path->ids real-location-path)
+                                                :when (contains? collection-ids id)]
+                                            id))))))))))
 
 (defn effective-location-path
   "Given a collection, returns the effective location (hiding parts of the path that the current user doesn't have access to)."

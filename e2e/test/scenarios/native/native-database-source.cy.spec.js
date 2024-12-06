@@ -286,21 +286,8 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.contains("37.65");
 
     // Save the query
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
-
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").focus().type("sql count");
-      cy.findByText("Save").should("not.be.disabled").click();
-    });
-
-    cy.wait("@createQuestion");
-
-    cy.findByTextEnsureVisible("Not now").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").should("not.exist");
-    cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
+    H.saveQuestion("sql count", { wrapId: true });
+    cy.url().should("match", /\/dashboard\/\d+#edit/);
   });
 });
 

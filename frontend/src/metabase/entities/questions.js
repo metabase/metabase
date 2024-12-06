@@ -31,6 +31,8 @@ import {
 
 const FETCH_METADATA = "metabase/entities/questions/FETCH_METADATA";
 const FETCH_ADHOC_METADATA = "metabase/entities/questions/FETCH_ADHOC_METADATA";
+export const INJECT_RTK_QUERY_QUESTION_VALUE =
+  "metabase/entities/questions/FETCH_ADHOC_METADATA";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -49,18 +51,24 @@ const Questions = createEntity({
         dispatch,
         cardApi.endpoints.getCard,
       ),
-    create: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
-        entityQuery,
+    create: (entityQuery, dispatch) => {
+      const { dashboard_id, collection_id, ...rest } = entityQuery;
+
+      const destination = dashboard_id ? { dashboard_id } : { collection_id };
+
+      return entityCompatibleQuery(
+        { ...rest, ...destination },
         dispatch,
         cardApi.endpoints.createCard,
-      ),
-    update: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
+      );
+    },
+    update: (entityQuery, dispatch) => {
+      return entityCompatibleQuery(
         entityQuery,
         dispatch,
         cardApi.endpoints.updateCard,
-      ),
+      );
+    },
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard),
   },
@@ -109,15 +117,31 @@ const Questions = createEntity({
         undo(opts, getLabel(card), archived ? t`trashed` : t`restored`),
       ),
 
-    setCollection: (card, collection, opts) => {
+    // NOTE: standard questions (i.e. not models, metrics, etc.) can live in dashboards as well as collections.
+    // this function name is incorrectly but maintained for consistency with other entities.
+    setCollection: (card, destination, opts) => {
       return async dispatch => {
+        const archived =
+          destination.model === "collection" &&
+          isRootTrashCollection(destination);
+
+        const update =
+          destination.model === "dashboard"
+            ? {
+                dashboard_id: destination.id,
+                archived,
+                delete_old_dashcards: true,
+              }
+            : {
+                collection_id: canonicalCollectionId(destination.id),
+                dashboard_id: null,
+                archived,
+              };
+
         const result = await dispatch(
           Questions.actions.update(
             { id: card.id },
-            {
-              collection_id: canonicalCollectionId(collection && collection.id),
-              archived: isRootTrashCollection(collection),
-            },
+            update,
             undo(opts, getLabel(card), t`moved`),
           ),
         );
@@ -189,6 +213,12 @@ const Questions = createEntity({
         }));
       }
     }
+
+    if (type === INJECT_RTK_QUERY_QUESTION_VALUE) {
+      const { id } = payload;
+
+      return updateIn(state, [id], question => ({ ...question, ...payload }));
+    }
     return state;
   },
 
@@ -207,9 +237,11 @@ const Questions = createEntity({
     "enable_embedding",
     "embedding_params",
     "collection_id",
+    "dashboard_id",
     "collection_position",
     "collection_preview",
     "result_metadata",
+    "delete_old_dashcards",
   ],
 
   getAnalyticsMetadata([object], { action }, getState) {

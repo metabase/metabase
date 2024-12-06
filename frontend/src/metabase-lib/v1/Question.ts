@@ -65,6 +65,7 @@ export type QuestionCreatorOpts = {
   cardType?: CardType;
   tableId?: TableId;
   collectionId?: CollectionId;
+  dashboardId?: DashboardId;
   metadata?: Metadata;
   parameterValues?: ParameterValuesMap;
   type?: "query" | "native";
@@ -494,6 +495,18 @@ class Question {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
+  dashboardId(): DashboardId | null {
+    return this._card.dashboard_id;
+  }
+
+  dashboardCount(): number {
+    return this._card.dashboard_count;
+  }
+
+  setDashboardId(dashboardId: DashboardId | null | undefined) {
+    return this.setCard(assoc(this.card(), "dashboard_id", dashboardId));
+  }
+
   id(): number {
     return this._card && this._card.id;
   }
@@ -714,6 +727,7 @@ class Question {
       name: this._card.name,
       description: this._card.description,
       collection_id: this._card.collection_id,
+      dashboard_id: this._card.dashboard_id,
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       ...(_.isEmpty(this._card.parameters)
@@ -850,6 +864,7 @@ class Question {
     databaseId,
     tableId,
     collectionId,
+    dashboardId,
     metadata,
     parameterValues,
     type = "query",
@@ -864,6 +879,7 @@ class Question {
     let card: CardObject = {
       name,
       collection_id: collectionId,
+      dashboard_id: dashboardId,
       display,
       visualization_settings,
       dataset_query,

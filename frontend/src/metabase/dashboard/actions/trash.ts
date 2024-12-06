@@ -5,6 +5,7 @@ import { getTrashUndoMessage } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
@@ -16,7 +17,7 @@ export const setArchivedDashboard = createThunkAction(
   SET_ARCHIVED_DASHBOARD,
   function (archived = true, undoing = false) {
     return async function (dispatch, getState) {
-      const { dashboardId, dashboards } = getState().dashboard;
+      const { dashboardId, dashboards, dashcards } = getState().dashboard;
       const dashboard = dashboardId
         ? dashboards[dashboardId]
         : { name: "Dashboard" };
@@ -45,6 +46,22 @@ export const setArchivedDashboard = createThunkAction(
           options: { preserveParameters: true },
         }),
       );
+
+      const dashboardQuestionIds = Object.values(dashcards)
+        .filter(dc => _.isNumber(dc.card.dashboard_id))
+        .map(dc => dc.card_id);
+
+      // HACK: workaround for entity system as it has stale values for dashboard questions
+      // that are now archived due to the dashboard itself being archived
+      try {
+        await Promise.all(
+          _.uniq(dashboardQuestionIds).map(id =>
+            dispatch(Questions.actions.fetch({ id }, { reload: true })),
+          ),
+        );
+      } catch (err) {
+        console.error(err);
+      }
     };
   },
 );

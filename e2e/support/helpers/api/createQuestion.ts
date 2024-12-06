@@ -30,6 +30,11 @@ export type QuestionDetails = {
    * Parent collection in which to store this question.
    */
   collection_id?: Card["collection_id"];
+
+  /**
+   * Parent dashboard in which to store this question.
+   */
+  dashboard_id?: Card["dashboard_id"];
   /**
    * Used on the frontend to determine whether the question is pinned or not.
    */
@@ -119,6 +124,7 @@ export const question = (
     parameters,
     visualization_settings = {},
     collection_id,
+    dashboard_id,
     collection_position,
     embedding_params,
     enable_embedding = false,
@@ -140,6 +146,7 @@ export const question = (
       parameters,
       visualization_settings,
       collection_id,
+      dashboard_id,
       collection_position,
     })
     .then(({ body }) => {
