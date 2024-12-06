@@ -19,6 +19,16 @@ title: Driver interface changelog
   when running Metabase to disable some of these new security checks. If your tests run into issues with Java 21
   without the flag set, try running with it set -- this might fix the problems.
 
+## Metabase 0.51.4
+
+- Another driver feature has been added: `describe-indexes`. If a driver opts-in to supporting this feature, The
+  multimethod `metabase.driver/describe-indexes` must be implemented, as a replacement for
+  `metabase.driver/describe-table-indexes`.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-indexes-sql` has been added. The method needs
+  to be implemented if the driver supports `describe-indexes` and you want to use the default JDBC implementation of
+  `metabase.driver/describe-indexes`.
+
 ## Metabase 0.51.0
 
 - New optional method `metabase.driver/query-result-metadata` has been added for efficiently calculating metadata for
