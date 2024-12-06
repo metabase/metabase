@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import type {
   CreateActionRequest,
-  DeleteActionRequest,
   GetActionRequest,
   ListActionsRequest,
   UpdateActionRequest,
@@ -55,12 +54,12 @@ export const actionApi = Api.injectEndpoints({
       invalidatesTags: (action, error) =>
         action ? [...invalidateTags(error, [listTag("action")])] : [],
     }),
-    deleteAction: builder.mutation<WritebackAction, DeleteActionRequest>({
-      query: ({ id }) => ({
+    deleteAction: builder.mutation<WritebackAction, WritebackActionId>({
+      query: id => ({
         method: "DELETE",
         url: `/api/action/${id}`,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("action"), idTag("action", id)]),
     }),
     listPublicActions: builder.query<GetPublicAction[], void>({

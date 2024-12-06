@@ -10,7 +10,6 @@ export interface CreateActionRequest {} // TODO
 export interface UpdateActionRequest {
   id: WritebackActionId;
 } // TODO
-export type DeleteActionRequest = WritebackActionId;
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;

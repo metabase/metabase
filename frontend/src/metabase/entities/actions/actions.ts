@@ -19,7 +19,6 @@ import { ActionSchema } from "metabase/schema";
 import { ActionsApi } from "metabase/services";
 import type {
   CreateActionRequest,
-  DeleteActionRequest,
   GetActionRequest,
   ListActionsRequest,
   UpdateActionRequest,
@@ -149,7 +148,7 @@ const Actions = createEntity({
         dispatch,
         actionApi.endpoints.updateAction,
       ),
-    delete: (id: DeleteActionRequest, dispatch: Dispatch) =>
+    delete: (id: WritebackActionId, dispatch: Dispatch) =>
       entityCompatibleQuery(id, dispatch, actionApi.endpoints.deleteAction),
   },
   actions: {
