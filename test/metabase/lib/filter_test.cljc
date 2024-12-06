@@ -510,14 +510,24 @@
     (check-display-names
      [{:clause [:= (created-at-with :year) "2023-10-02T00:00:00.000Z"]
        :name "Created At is Jan 1 – Dec 31, 2023"}
+      {:clause [:during created-at "2023-10-02" :year]
+       :name "Created At is Jan 1 – Dec 31, 2023"}
       {:clause [:= (created-at-with :month) "2023-10-02T00:00:00.000Z"]
+       :name "Created At is Oct 1–31, 2023"}
+      {:clause [:during created-at "2023-10-02T00:00:00" :month]
        :name "Created At is Oct 1–31, 2023"}
       {:clause [:= (created-at-with :day) "2023-10-02T00:00:00.000Z"]
        :name "Created At is Oct 2, 2023"}
+      {:clause [:during created-at "2023-10-02" :day]
+       :name "Created At is Oct 2, 2023"}
       {:clause [:= (created-at-with :hour) "2023-10-02T00:00:00.000Z"]
        :name "Created At is Oct 2, 2023, 12:00 AM – 12:59 AM"}
+      {:clause [:during created-at "2023-10-02T00:00" :hour]
+       :name "Created At is Oct 2, 2023, 12:00 AM – 12:59 AM"}
       {:clause [:= (created-at-with :minute) "2023-10-02T00:00:00.000Z"]
-       :name "Created At is Oct 2, 2023, 12:00 AM"}])))
+       :name "Created At is Oct 2, 2023, 12:00 AM"}
+      {:clause [:during created-at "2023-10-02T03:15:45" :minute]
+       :name "Created At is Oct 2, 2023, 3:15 AM"}])))
 
 (deftest ^:parallel exclude+equal-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
