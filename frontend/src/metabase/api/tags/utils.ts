@@ -37,6 +37,7 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
+  WritebackAction,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -73,6 +74,18 @@ export function invalidateTags(
 // ----------------------------------------------------------------------- //
 // Keep the below list of entity-specific functions alphabetically sorted. //
 // ----------------------------------------------------------------------- //
+
+export function provideActionListTags(
+  actions: WritebackAction[],
+): TagDescription<TagType>[] {
+  return [listTag("action"), ...actions.flatMap(provideActionTags)];
+}
+
+export function provideActionTags(
+  action: WritebackAction,
+): TagDescription<TagType>[] {
+  return [idTag("action", action.id)];
+}
 
 export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
