@@ -1066,8 +1066,8 @@
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape. To avoid mistakes the function returns `options` for all operators even though they might not be
   used. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
-  [a-query stage-string a-filter-clause]
-  (when-let [filter-parts (lib.core/string-filter-parts a-query stage-string a-filter-clause)]
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/string-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [operator column values options]} filter-parts]
       #js {:operator (name operator)
            :column   column
@@ -1131,6 +1131,26 @@
            :column   column
            :values   (to-array (map clj->js values))})))
 
+(defn ^:export specific-date-filter-clause
+  "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[specific-date-filter-parts]]."
+  [operator column values with-time?]
+  (lib.core/specific-date-filter-clause (keyword operator)
+                                        column
+                                        (js->clj values)
+                                        with-time?))
+
+(defn ^:export specific-date-filter-parts
+  "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/specific-date-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column values with-time?]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))
+           :hasTime  with-time?})))
+
 (defn ^:export relative-date-filter-clause
   "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[relative-date-filter-parts]]."
@@ -1145,8 +1165,8 @@
 (defn ^:export relative-date-filter-parts
   "Destructures a relative date filter clause created by [[relative-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
-  [a-query stage-string a-filter-clause]
-  (when-let [filter-parts (lib.core/relative-date-filter-parts a-query stage-string a-filter-clause)]
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/relative-date-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [column value unit offset-value offset-unit options]} filter-parts]
       #js {:column      column
            :value       (if (keyword? value) (name value) value)
@@ -1154,6 +1174,44 @@
            :offsetValue offset-value
            :offsetUnit  (some-> offset-unit name)
            :options     (cljs-map->js-obj options)})))
+
+(defn ^:export exclude-date-filter-clause
+  "Creates an exclude date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[exclude-date-filter-parts]]."
+  [operator column unit values]
+  (lib.core/exclude-date-filter-clause (keyword operator)
+                                       column
+                                       (some-> unit keyword)
+                                       (js->clj values)))
+
+(defn ^:export exclude-date-filter-parts
+  "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.core/exclude-date-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [operator column unit values]} filter-parts]
+      #js {:operator    (name operator)
+           :column      column
+           :unit        (some-> unit name)
+           :values      (to-array (map clj->js values))})))
+
+(defn ^:export time-filter-clause
+  "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[time-filter-parts]]."
+  [operator column values]
+  (lib.core/time-filter-clause (keyword operator)
+                               column
+                               (js->clj values)))
+
+(defn ^:export time-filter-parts
+  "Destructures a time filter clause created by [[time-filter-clause]]. Returns `nil` if the clause does not match the
+  expected shape."
+  [a-query stage-boolean a-filter-clause]
+  (when-let [filter-parts (lib.core/time-filter-parts a-query stage-boolean a-filter-clause)]
+    (let [{:keys [operator column values]} filter-parts]
+      #js {:operator (name operator)
+           :column   column
+           :values   (to-array (map clj->js values))})))
 
 ;; TODO remove once all filter-parts are migrated to MBQL lib
 (defn ^:export is-column-metadata

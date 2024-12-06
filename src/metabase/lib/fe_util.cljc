@@ -5,6 +5,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -118,6 +119,11 @@
    options  :- [:maybe :map]]
   (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
 
+(defn- ref-clause-with-type?
+  [maybe-ref types]
+  (and (lib.util/ref-clause? maybe-ref)
+       (some #(lib.util/original-isa? maybe-ref %) types)))
+
 (def ^:private StringFilterParts
   [:map
    [:operator ::lib.schema.filter/string-filter-operator]
@@ -133,9 +139,10 @@
    column   :- ::lib.schema.metadata/column
    values   :- [:maybe [:sequential :string]]
    options  :- [:maybe ::lib.schema.filter/string-filter-options]]
-  (if (#{:is-empty :not-empty := :!=} operator)
-    (expression-clause operator (into [column] values) {})
-    (expression-clause operator (into [column] values) options)))
+  (expression-clause operator (into [column] values)
+                     (if (#{:is-empty :not-empty := :!=} operator)
+                       {}
+                       options)))
 
 (mu/defn string-filter-parts :- [:maybe StringFilterParts]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
@@ -145,10 +152,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        string-col? (fn [maybe-ref]
-                      (and (lib.util/ref-clause? maybe-ref)
-                           (or (lib.util/original-isa? maybe-ref :type/Text)
-                               (lib.util/original-isa? maybe-ref :type/TextLike))))]
+        string-col? #(ref-clause-with-type? % [:type/Text :type/TextLike])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
@@ -183,9 +187,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        number-col? (fn [maybe-ref]
-                      (and (lib.util/ref-clause? maybe-ref)
-                           (lib.util/original-isa? maybe-ref :type/Number)))]
+        number-col? #(ref-clause-with-type? % [:type/Number])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
@@ -229,10 +231,8 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col        #(column-metadata-from-ref query stage-number %)
-        coordinate-col? (fn [maybe-ref]
-                          (and (lib.util/ref-clause? maybe-ref)
-                               (lib.util/original-isa? maybe-ref :type/Number)
-                               (lib.types.isa/coordinate? (ref->col maybe-ref))))]
+        coordinate-col? #(and (ref-clause-with-type? % [:type/Number])
+                              (lib.types.isa/coordinate? (ref->col %)))]
     (lib.util.match/match-one filter-clause
       ;; multiple arguments
       [(op :guard #{:= :!=}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
@@ -278,9 +278,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col     #(column-metadata-from-ref query stage-number %)
-        boolean-col? (fn [maybe-ref]
-                       (and (lib.util/ref-clause? maybe-ref)
-                            (lib.util/original-isa? maybe-ref :type/Boolean)))]
+        boolean-col? #(ref-clause-with-type? % [:type/Boolean])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?)]
@@ -289,6 +287,49 @@
       ;; exactly 1 argument
       [(op :guard #{:=}) _ (col-ref :guard boolean-col?) (arg :guard boolean?)]
       {:operator op, :column (ref->col col-ref), :values [arg]})))
+
+(def ^:private SpecificDateFilterParts
+  [:map
+   [:operator   ::lib.schema.filter/specific-date-filter-operator]
+   [:column     ::lib.schema.metadata/column]
+   [:values     [:sequential [:fn u.time/valid?]]]
+   [:with-time? :boolean]])
+
+(mu/defn specific-date-filter-clause :- ::lib.schema.expression/expression
+  "Creates a specific date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[specific-date-filter-parts]]."
+  [operator   :- ::lib.schema.filter/specific-date-filter-operator
+   column     :- ::lib.schema.metadata/column
+   values     :- [:maybe [:sequential [:fn u.time/valid?]]]
+   with-time? :- [:maybe :boolean]]
+  (let [column (cond-> column
+                 with-time? (lib.temporal-bucket/with-temporal-bucket :minute))
+        values (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values)]
+    (expression-clause operator (into [column] values) {})))
+
+(mu/defn specific-date-filter-parts :- [:maybe SpecificDateFilterParts]
+  "Destructures a specific date filter clause created by [[specific-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col  #(column-metadata-from-ref query stage-number (lib.temporal-bucket/with-temporal-bucket % nil))
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
+    (lib.util.match/match-one filter-clause
+      ;; exactly 1 argument
+      [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) (arg :guard string?)]
+      (let [date? (u.time/matches-date? arg)
+            arg   (u.time/coerce-to-timestamp arg)]
+        (when (u.time/valid? arg)
+          {:operator op, :column (ref->col col-ref), :values [arg], :with-time? (not date?)}))
+
+      ;; exactly 2 arguments
+      [(op :guard #{:between}) _ (col-ref :guard date-col?) (start :guard string?) (end :guard string?)]
+      (let [date? (or (u.time/matches-date? start) (u.time/matches-date? end))
+            start (u.time/coerce-to-timestamp start)
+            end   (u.time/coerce-to-timestamp end)]
+        (when (and (u.time/valid? start) (u.time/valid? end))
+          {:operator op, :column (ref->col col-ref), :values [start end], :with-time? (not date?)})))))
 
 (def ^:private RelativeDateFilterParts
   [:map
@@ -320,10 +361,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        date-col? (fn [maybe-ref]
-                    (and (lib.util/ref-clause? maybe-ref)
-                         (or (lib.util/original-isa? maybe-ref :type/Date)
-                             (lib.util/original-isa? maybe-ref :type/DateTime))))]
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
     (lib.util.match/match-one filter-clause
       [:time-interval
        opts
@@ -342,7 +380,7 @@
        (unit :guard keyword?)
        (offset-value :guard number?)
        (offset-unit :guard keyword?)]
-      {:column (ref->col col-ref)
+      {:column       (ref->col col-ref)
        :value        value
        :unit         unit
        :offset-value offset-value
@@ -366,6 +404,93 @@
        :offset-value (- offset-value)
        :offset-unit  offset-unit
        :options      {}})))
+
+(def ^:private ExcludeDateFilterParts
+  [:map
+   [:operator ::lib.schema.filter/exclude-date-filter-operator]
+   [:column   ::lib.schema.metadata/column]
+   [:unit     {:optional true} [:maybe ::lib.schema.filter/exclude-date-filter-unit]]
+   [:values   [:sequential number?]]])
+
+(mu/defn exclude-date-filter-clause :- ::lib.schema.expression/expression
+  "Creates an exclude date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[exclude-date-filter-parts]]."
+  [operator :- ::lib.schema.filter/exclude-date-filter-operator
+   column   :- ::lib.schema.metadata/column
+   unit     :- [:maybe ::lib.schema.filter/exclude-date-filter-unit]
+   values   :- [:maybe [:sequential number?]]]
+  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)
+        expr   (if (= operator :!=)
+                 (case unit
+                   :hour-of-day (lib.expression/get-hour column)
+                   :day-of-week (lib.expression/get-day-of-week column :iso)
+                   :month-of-year (lib.expression/get-month column)
+                   :quarter-of-year (lib.expression/get-quarter column))
+                 column)]
+    (expression-clause operator (into [expr] values) {})))
+
+(mu/defn exclude-date-filter-parts :- [:maybe ExcludeDateFilterParts]
+  "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [query stage-number filter-clause]
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
+        op->unit  {:get-hour :hour-of-day
+                   :get-month :month-of-year
+                   :get-quarter :quarter-of-year}]
+    (lib.util.match/match-one filter-clause
+      ;; no arguments
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
+      {:operator op, :column (ref->col col-ref), :values []}
+
+      ;; without `mode`
+      [:!= _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard #(every? int? %))]
+      {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
+
+      ;; with `:mode`
+      [:!= _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
+      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args})))
+
+(def ^:private TimeFilterParts
+  [:map
+   [:operator ::lib.schema.filter/time-filter-operator]
+   [:column   ::lib.schema.metadata/column]
+   [:values   [:sequential [:fn u.time/valid?]]]])
+
+(mu/defn time-filter-clause :- ::lib.schema.expression/expression
+  "Creates a time filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[time-filter-parts]]."
+  [operator :- ::lib.schema.filter/time-filter-operator
+   column   :- ::lib.schema.metadata/column
+   values   :- [:maybe [:sequential [:fn u.time/valid?]]]]
+  (let [format-time #(u.time/format-for-base-type % :type/Time)]
+    (expression-clause operator (into [column] (map format-time) values) {})))
+
+(mu/defn time-filter-parts :- [:maybe TimeFilterParts]
+  "Destructures a time filter clause created by [[time-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+        time-col? #(ref-clause-with-type? % [:type/Time])]
+    (lib.util.match/match-one filter-clause
+      ;; no arguments
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?)]
+      {:operator op, :column (ref->col col-ref), :values []}
+
+      ;; exactly 1 argument
+      [(op :guard #{:> :<}) _ (col-ref :guard time-col?) (arg :guard string?)]
+      (let [arg (u.time/coerce-to-time arg)]
+        (when (u.time/valid? arg)
+          {:operator op, :column (ref->col col-ref), :values [arg]}))
+
+      ;; exactly 2 arguments
+      [(op :guard #{:between}) _ (col-ref :guard time-col?) (start :guard string?) (end :guard string?)]
+      (let [start (u.time/coerce-to-time start)
+            end   (u.time/coerce-to-time end)]
+        (when (and (u.time/valid? start) (u.time/valid? end))
+          {:operator op, :column (ref->col col-ref), :values [start end]})))))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.

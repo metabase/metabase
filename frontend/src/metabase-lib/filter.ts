@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn, TemporalUnit } from "metabase-types/api";
@@ -14,28 +14,21 @@ import {
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
-  TIME_FILTER_OPERATORS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
 import { removeClause } from "./query";
-import {
-  availableTemporalBuckets,
-  temporalBucket,
-  withTemporalBucket,
-} from "./temporal_bucket";
+import { temporalBucket, withTemporalBucket } from "./temporal_bucket";
 import type {
   BooleanFilterParts,
-  Bucket,
   ColumnMetadata,
   CoordinateFilterParts,
   DefaultFilterOperatorName,
   DefaultFilterParts,
-  ExcludeDateBucketName,
-  ExcludeDateFilterOperatorName,
+  ExcludeDateFilterOperator,
   ExcludeDateFilterParts,
+  ExcludeDateFilterUnit,
   ExpressionArg,
   ExpressionClause,
   ExpressionOperatorName,
@@ -47,10 +40,8 @@ import type {
   Query,
   RelativeDateFilterParts,
   SegmentMetadata,
-  SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
   StringFilterParts,
-  TimeFilterOperatorName,
   TimeFilterParts,
 } from "./types";
 
@@ -165,22 +156,12 @@ export function specificDateFilterClause(
   stageIndex: number,
   { operator, column, values, hasTime }: SpecificDateFilterParts,
 ): ExpressionClause {
-  const serializedValues = hasTime
-    ? values.map(value => serializeDateTime(value))
-    : values.map(value => serializeDate(value));
-
-  const minuteBucket = hasTime
-    ? findTemporalBucket(query, stageIndex, column, "minute")
-    : undefined;
-  const columnWithOrWithoutBucket =
-    hasTime && minuteBucket
-      ? withTemporalBucket(column, minuteBucket)
-      : withTemporalBucket(column, null);
-
-  return expressionClause(operator, [
-    columnWithOrWithoutBucket,
-    ...serializedValues,
-  ]);
+  return ML.specific_date_filter_clause(
+    operator,
+    column,
+    values.map(value => moment(value)),
+    hasTime,
+  );
 }
 
 export function specificDateFilterParts(
@@ -188,41 +169,20 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isSpecificDateOperator(operator) || args.length < 1) {
+  const filterParts = ML.specific_date_filter_parts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (!filterParts) {
     return null;
   }
-
-  const [column, ...serializedValues] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isDateOrDateTime(column) ||
-    !isStringLiteralArray(serializedValues)
-  ) {
-    return null;
-  }
-
-  const dateValues = serializedValues.map(deserializeDate);
-  if (isDefinedArray(dateValues)) {
-    return {
-      operator,
-      column,
-      values: dateValues,
-      hasTime: false,
-    };
-  }
-
-  const dateTimeValues = serializedValues.map(deserializeDateTime);
-  if (isDefinedArray(dateTimeValues)) {
-    return {
-      operator,
-      column,
-      values: dateTimeValues,
-      hasTime: true,
-    };
-  }
-
-  return null;
+  return {
+    ...filterParts,
+    values: filterParts.values.map((value: Moment) =>
+      value.local(true).toDate(),
+    ),
+  };
 }
 
 export function relativeDateFilterClause({
@@ -251,26 +211,28 @@ export function relativeDateFilterParts(
   return ML.relative_date_filter_parts(query, stageIndex, filterClause);
 }
 
-export function excludeDateFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values, bucket: bucketName }: ExcludeDateFilterParts,
-): ExpressionClause {
-  if (!bucketName) {
-    const columnWithoutBucket = withTemporalBucket(column, null);
-    return expressionClause(operator, [columnWithoutBucket]);
-  }
-
-  const bucket = findTemporalBucket(query, stageIndex, column, bucketName);
-  const columnWithBucket = withTemporalBucket(column, bucket ?? null);
-  const serializedValues = values.map(value =>
-    serializeExcludeDatePart(value, bucketName),
-  );
-
-  return expressionClause(operator, [columnWithBucket, ...serializedValues]);
+export function excludeDateFilterClause({
+  operator,
+  column,
+  unit,
+  values,
+}: ExcludeDateFilterParts): ExpressionClause {
+  return ML.exclude_date_filter_clause(operator, column, unit, values);
 }
 
 export function excludeDateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): ExcludeDateFilterParts | null {
+  return (
+    ML.exclude_date_filter_parts(query, stageIndex, filterClause) ??
+    legacyExcludeDateFilterParts(query, stageIndex, filterClause)
+  );
+}
+
+// TODO remove when #50920 is implemented
+function legacyExcludeDateFilterParts(
   query: Query,
   stageIndex: number,
   filterClause: FilterClause,
@@ -293,7 +255,7 @@ export function excludeDateFilterParts(
   const bucket = temporalBucket(column);
   if (!bucket) {
     return serializedValues.length === 0
-      ? { column: columnWithoutBucket, operator, bucket, values: [] }
+      ? { column: columnWithoutBucket, operator, unit: null, values: [] }
       : null;
   }
 
@@ -312,7 +274,7 @@ export function excludeDateFilterParts(
   return {
     column: columnWithoutBucket,
     operator,
-    bucket: bucketInfo.shortName,
+    unit: bucketInfo.shortName,
     values,
   };
 }
@@ -322,8 +284,11 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const serializedValues = values.map(value => serializeTime(value));
-  return expressionClause(operator, [column, ...serializedValues]);
+  return ML.time_filter_clause(
+    operator,
+    column,
+    values.map(value => moment(value)),
+  );
 }
 
 export function timeFilterParts(
@@ -331,29 +296,13 @@ export function timeFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isTimeOperator(operator) || args.length < 1) {
+  const filterParts = ML.time_filter_parts(query, stageIndex, filterClause);
+  if (!filterParts) {
     return null;
   }
-
-  const [column, ...serializedValues] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isTime(column) ||
-    !isStringLiteralArray(serializedValues)
-  ) {
-    return null;
-  }
-
-  const values = serializedValues.map(value => deserializeTime(value));
-  if (!isDefinedArray(values)) {
-    return null;
-  }
-
   return {
-    operator,
-    column,
-    values,
+    ...filterParts,
+    values: filterParts.values.map((value: Moment) => value.toDate()),
   };
 }
 
@@ -428,18 +377,6 @@ export function isSegmentFilter(
   return operator === "segment";
 }
 
-function findTemporalBucket(
-  query: Query,
-  stageIndex: number,
-  column: ColumnMetadata,
-  temporalUnit: TemporalUnit,
-): Bucket | undefined {
-  return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
-    const bucketInfo = displayInfo(query, stageIndex, bucket);
-    return bucketInfo.shortName === temporalUnit;
-  });
-}
-
 function isDefined<T>(arg: T | undefined | null): arg is T {
   return arg != null;
 }
@@ -452,32 +389,14 @@ function isStringLiteral(arg: unknown): arg is string {
   return typeof arg === "string";
 }
 
-function isStringLiteralArray(arg: unknown): arg is string[] {
-  return Array.isArray(arg) && arg.every(isStringLiteral);
-}
-
 function isNumberLiteral(arg: unknown): arg is number {
   return typeof arg === "number";
 }
 
-function isSpecificDateOperator(
-  operator: ExpressionOperatorName,
-): operator is SpecificDateFilterOperatorName {
-  const operators: ReadonlyArray<string> = SPECIFIC_DATE_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
 function isExcludeDateOperator(
   operator: ExpressionOperatorName,
-): operator is ExcludeDateFilterOperatorName {
+): operator is ExcludeDateFilterOperator {
   const operators: ReadonlyArray<string> = EXCLUDE_DATE_FILTER_OPERATORS;
-  return operators.includes(operator);
-}
-
-function isTimeOperator(
-  operator: ExpressionOperatorName,
-): operator is TimeFilterOperatorName {
-  const operators: ReadonlyArray<string> = TIME_FILTER_OPERATORS;
   return operators.includes(operator);
 }
 
@@ -490,79 +409,12 @@ function isDefaultOperator(
 
 function isExcludeDateBucket(
   bucketName: string,
-): bucketName is ExcludeDateBucketName {
+): bucketName is ExcludeDateFilterUnit {
   const buckets: ReadonlyArray<string> = EXCLUDE_DATE_BUCKETS;
   return buckets.includes(bucketName);
 }
 
 const DATE_FORMAT = "YYYY-MM-DD";
-const TIME_FORMAT = "HH:mm:ss";
-const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
-const TIME_FORMAT_MS = "HH:mm:ss.SSS";
-const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
-
-function serializeDate(date: Date): string {
-  return moment(date).format(DATE_FORMAT);
-}
-
-function serializeDateTime(date: Date): string {
-  return moment(date).format(DATE_TIME_FORMAT);
-}
-
-function deserializeDate(value: string): Date | null {
-  const date = moment(value, DATE_FORMAT, true);
-  if (!date.isValid()) {
-    return null;
-  }
-
-  return date.toDate();
-}
-
-function deserializeDateTime(value: string): Date | null {
-  const dateTime = moment.parseZone(value, moment.ISO_8601, true);
-  if (!dateTime.isValid()) {
-    return null;
-  }
-
-  return dateTime.local(true).toDate();
-}
-
-function serializeTime(value: Date): string {
-  return moment(value).format(TIME_FORMAT_MS);
-}
-
-function deserializeTime(value: string): Date | null {
-  const time = moment(value, TIME_FORMATS, true);
-  if (!time.isValid()) {
-    return null;
-  }
-
-  return time.toDate();
-}
-
-function serializeExcludeDatePart(
-  value: number,
-  bucketName: ExcludeDateBucketName,
-): ExpressionArg {
-  if (bucketName === "hour-of-day") {
-    return value;
-  }
-
-  const date = moment();
-  switch (bucketName) {
-    case "day-of-week":
-      date.isoWeekday(value);
-      break;
-    case "month-of-year":
-      date.month(value);
-      break;
-    case "quarter-of-year":
-      date.quarter(value);
-      break;
-  }
-
-  return date.format(DATE_FORMAT);
-}
 
 function deserializeExcludeDatePart(
   value: ExpressionArg | ExpressionParts,
@@ -585,7 +437,8 @@ function deserializeExcludeDatePart(
     case "day-of-week":
       return date.isoWeekday();
     case "month-of-year":
-      return date.month();
+      // we expect month to be 1-12 but in dayjs it's 0-11
+      return date.month() + 1;
     case "quarter-of-year":
       return date.quarter();
     default:
@@ -602,7 +455,7 @@ type UpdateLatLonFilterBounds = {
 
 /**
  * Add or update a filter against latitude and longitude columns. Used to power the 'brush filter' for map
-   visualizations.
+ visualizations.
  */
 export function updateLatLonFilter(
   query: Query,
