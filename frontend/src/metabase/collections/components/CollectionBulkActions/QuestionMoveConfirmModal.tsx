@@ -50,9 +50,12 @@ export const QuestionMoveConfirmModal = ({
       cardDashboards?.filter(
         cd =>
           cd.dashboards.length > 1 || cd.dashboards[0].id !== destination?.id,
-      ) ?? [],
+      ),
     [destination, cardDashboards],
   );
+
+  const hasNoFilteredCards =
+    !isLoading && Array.isArray(filteredCards) && filteredCards.length === 0;
 
   // This is kinda gross, but I'm not sure what a better solution looks like.
   // Based on the results of fetching the data, if we find that the only dashboard
@@ -60,10 +63,10 @@ export const QuestionMoveConfirmModal = ({
   // a message and we can automatically confirm. We put onConfirm in a ref so that it doesn't
   // cause the useEffect to fire
   useEffect(() => {
-    if (filteredCards.length === 0) {
+    if (hasNoFilteredCards) {
       onConfirmRef.current();
     }
-  }, [filteredCards, onConfirmRef]);
+  }, [hasNoFilteredCards, onConfirmRef]);
 
   const hasError = cardDashboards?.some(cd => cd.dashboards.some(d => d.error));
 
@@ -160,7 +163,7 @@ export const QuestionMoveConfirmModal = ({
 
   return (
     <Modal
-      opened={isLoading || filteredCards.length > 0}
+      opened={isLoading || !hasNoFilteredCards}
       title={heading}
       onClose={onClose}
       size="lg"
