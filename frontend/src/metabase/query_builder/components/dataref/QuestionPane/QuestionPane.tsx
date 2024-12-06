@@ -22,7 +22,7 @@ import type { State } from "metabase-types/store";
 import FieldList from "../FieldList";
 import { NodeListTitleText } from "../NodeList";
 
-import CS from "./QuestionPane.module.css";
+import S from "./QuestionPane.module.css";
 
 interface QuestionPaneProps {
   onItemClick: (type: string, item: unknown) => void;
@@ -72,12 +72,12 @@ const QuestionPane = ({
           fw={700}
         >
           <a
-            className={CS.questionPaneDetailLink}
+            className={S.QuestionPaneDetailLink}
             href={ML_Urls.getUrl(question)}
             target="_blank"
             rel="noreferrer"
           >
-            <Icon className={CS.questionPaneIcon} name="share" />
+            <Icon className={S.QuestionPaneIcon} name="share" />
             <NodeListTitleText>{t`See it`}</NodeListTitleText>
           </a>
         </Flex>
@@ -87,7 +87,7 @@ const QuestionPane = ({
           p="0.25rem 0.5rem"
           fw={700}
         >
-          <Icon className={CS.questionPaneIcon} name="label" />
+          <Icon className={S.QuestionPaneIcon} name="label" />
           <Box
             component="span"
             ml="sm"
@@ -100,7 +100,7 @@ const QuestionPane = ({
           p="0.25rem 0.5rem"
           fw={700}
         >
-          <Icon className={CS.questionPaneIcon} name="collection" />
+          <Icon className={S.QuestionPaneIcon} name="collection" />
           <Box component="span" ml="sm" fw="normal">
             {collection?.name ?? t`Our analytics`}
           </Box>
@@ -112,7 +112,7 @@ const QuestionPane = ({
             p="0.25rem 0.5rem"
             fw={700}
           >
-            <Icon className={CS.questionPaneIcon} name="calendar" />
+            <Icon className={S.QuestionPaneIcon} name="calendar" />
             <Box component="span" ml="sm" fw="normal">
               {jt`Last edited ${(
                 <DateTime

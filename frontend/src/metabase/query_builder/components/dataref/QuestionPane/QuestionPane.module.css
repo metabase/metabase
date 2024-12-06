@@ -1,10 +1,10 @@
-.questionPaneDetailLink {
+.QuestionPaneDetailLink {
   display: flex;
   align-items: center;
   color: var(--mb-color-brand);
 }
 
-.questionPaneIcon {
+.QuestionPaneIcon {
   margin-top: 1px;
   width: 12px;
 }
