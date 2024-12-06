@@ -4,16 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Icon, Text } from "metabase/ui";
+import { Box, Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 
-import {
-  TextSchema,
-  TriggerContainer,
-  TriggerContainerIcon,
-} from "./DataSelector.styled";
+import DataSelectorS from "./DataSelector.module.css";
 
 export function Trigger({
   className,
@@ -32,14 +28,14 @@ export function Trigger({
 }) {
   if (isMantine) {
     return (
-      <TriggerContainer>
+      <Box className={DataSelectorS.TriggerContainer}>
         {children}
         {showDropdownIcon && (
-          <TriggerContainerIcon>
+          <Box className={DataSelectorS.TriggerContainerIcon}>
             <Icon name="chevrondown" size={iconSize} />
-          </TriggerContainerIcon>
+          </Box>
         )}
-      </TriggerContainer>
+      </Box>
     );
   }
 
@@ -74,10 +70,10 @@ export function FieldTrigger({
 
   return (
     <div>
-      <TextSchema>
+      <Box className={DataSelectorS.TextSchema}>
         {hasMultipleSchemas && field.table.schema_name + " > "}
         {field.table.display_name}
-      </TextSchema>
+      </Box>
       <Text lh="1.2rem">{field.display_name}</Text>
     </div>
   );
