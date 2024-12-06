@@ -31,17 +31,17 @@ export default function App() {
 
     return (
         <MetabaseProvider config={config}>
-            <StaticQuestion questionId={questionId} showVisualizationSelector={false}/>
+            <StaticQuestion questionId={questionId} withChartTypeSelector={false}/>
         </MetabaseProvider>
     );
 }
 ```
 
-You can pass parameter values to questions defined with SQL via `parameterValues` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
+You can pass parameter values to questions defined with SQL via `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
 
 ```jsx
 {% raw %}
-<StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
+<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
 {% endraw %}
 ```
 
@@ -69,7 +69,7 @@ export default function App() {
 ## Question props
 
 | Prop                  | Type                                                                 | Description                                                                                                                                                                                                                                                                                                        |
-|-----------------------|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | questionId            | number or string                                                     | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.<br>- The `entity_id` key of the question object. You can find a question's entity ID in the info panel when viewing a question. |
 | plugins               | `{ mapQuestionClickActions: Function }` or null                      | Additional mapper function to override or add drill-down menu.                                                                                                                                                                                                                                                     |
 | height                | number or string                                                     | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
@@ -140,19 +140,21 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 | Component               | Info                                                                                                                         |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
-| `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
-| `Filter`                | The Filter pane containing all possible filters                                                                              |
+| `Filter`                | A set of badges for adding, viewing, and editing the filters of the current question                                         |
 | `FilterPicker`          | Picker for adding a new filter to the question                                                                               |
-| `FilterButton`          | The button used in the default layout to open the Filter pane. You can replace this button with your own implementation.     |
+| `FilterDropdown`        | A button which has a dropdown for adding, viewing, and editing the filters of the current question                           |
 | `ResetButton`           | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
 | `Title`                 | The question's title                                                                                                         |
 | `SaveButton`            | Button for saving the question.                                                                                              |
-| `Summarize`             | The Summarize pane containing all possible aggregations                                                                      |
-| `SummarizeButton`       | The button used in the default layout to open the Summarize pane. You can replace this button with your own implementation.  |
+| `Breakout`              | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
+| `BreakoutDropdown`      | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
+| `Summarize`             | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
+| `SummarizeDropdown`     | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
 | `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
 | `QuestionSettings`      | The settings for the current visualization                                                                                   |
+| `ChartTypeDropdown`     | A dropdown containing the possible visualization options for the current question                                            |
 
 ## Interactive question plugins
 

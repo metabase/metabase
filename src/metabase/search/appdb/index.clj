@@ -42,7 +42,7 @@
   []
   @*pending-table*)
 
-(defmethod search.engine/reset-tracking! :search.engine/fulltext [_]
+(defmethod search.engine/reset-tracking! :search.engine/appdb [_]
   (reset! *active-table* nil)
   (reset! *pending-table* nil))
 
@@ -101,7 +101,8 @@
   :export?    false
   :default    nil
   :type       :json
-  :on-change sync-metadata)
+  :on-change sync-metadata
+  :doc false)
 
 (defn- update-metadata! [new-metadata]
   (if *mocking-tables*
@@ -206,7 +207,7 @@
     (when (or active-updated? pending-updated?)
       (->> entries (map :model) frequencies))))
 
-(defmethod search.engine/consume! :search.engine/fulltext [_engine document-reducible]
+(defmethod search.engine/consume! :search.engine/appdb [_engine document-reducible]
   (transduce (comp (partition-all insert-batch-size)
                    (map batch-update!))
              (partial merge-with +)

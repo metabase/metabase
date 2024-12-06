@@ -27,9 +27,9 @@ import type { CardId, Dataset } from "metabase-types/api";
 
 export type StaticQuestionProps = {
   questionId: CardId | string;
-  showVisualizationSelector?: boolean;
+  withChartTypeSelector?: boolean;
   height?: string | number;
-  parameterValues?: Record<string, string | number>;
+  initialSqlParameters?: Record<string, string | number>;
 };
 
 type StaticQuestionVisualizationSelectorProps = {
@@ -68,9 +68,9 @@ const StaticQuestionVisualizationSelector = ({
 
 const StaticQuestionInner = ({
   questionId: initId,
-  showVisualizationSelector,
+  withChartTypeSelector,
   height,
-  parameterValues,
+  initialSqlParameters,
 }: StaticQuestionProps): JSX.Element | null => {
   const { isLoading: isValidatingEntityId, id: questionId } =
     useValidatedEntityId({
@@ -81,7 +81,7 @@ const StaticQuestionInner = ({
   const metadata = useSelector(getMetadata);
 
   const { card, loading, result, error, updateQuestion } =
-    useLoadStaticQuestion(questionId, parameterValues);
+    useLoadStaticQuestion(questionId, initialSqlParameters);
 
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
 
@@ -107,7 +107,7 @@ const StaticQuestionInner = ({
       bg="var(--mb-color-bg-question)"
     >
       <Group h="100%" pos="relative" align="flex-start">
-        {showVisualizationSelector && (
+        {withChartTypeSelector && (
           <StaticQuestionVisualizationSelector
             question={question}
             result={result}
