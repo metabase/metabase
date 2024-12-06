@@ -120,7 +120,7 @@ export const getThemeSpecificCssVariables = (theme: MantineTheme) => css`
       const value = getIn(theme.other, themeKey.split("."));
 
       if (cssVar === "--mb-overlay-z-index") {
-        return `${cssVar}: ${value ?? OVERLAY_Z_INDEX ?? 200};`;
+        return `${cssVar}: ${value ?? OVERLAY_Z_INDEX};`;
       }
 
       return value ? `${cssVar}: ${value};` : "";
