@@ -119,6 +119,6 @@
 
   This is possible because as of now users can't modify notifications or channel template."
   []
-  #_(t2/with-transaction []
-      (truncate-notification-related-tables!)
-      (seed-notification!)))
+  (t2/with-transaction []
+    (truncate-notification-related-tables!)
+    (seed-notification!)))
