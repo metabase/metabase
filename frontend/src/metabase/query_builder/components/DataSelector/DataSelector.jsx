@@ -19,7 +19,7 @@ import Tables from "metabase/entities/tables";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
@@ -39,7 +39,7 @@ import {
   TableTrigger,
   Trigger,
 } from "./TriggerComponents";
-import { DATA_BUCKET } from "./constants";
+import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
 import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "./utils";
@@ -118,18 +118,6 @@ export function FieldDataSelector(props) {
       getTriggerElementContent={FieldTrigger}
       {...props}
     />
-  );
-}
-
-export function RawDataBackButton() {
-  return (
-    <Flex align="center" className={CS.cursorPointer}>
-      <Icon name="chevronleft" size={16} />
-      <Box
-        component="span"
-        className={DataSelectorS.BackButtonLabel}
-      >{t`Raw Data`}</Box>
-    </Flex>
   );
 }
 
@@ -1075,7 +1063,7 @@ export class UnconnectedDataSelector extends Component {
     }
 
     return (
-      <Box w="300px" p="80px 60px">
+      <Box w={CONTAINER_WIDTH} p="80px 60px">
         <EmptyState
           message={t`To pick some data, you'll need to add some first`}
           icon="database"

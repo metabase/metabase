@@ -19,6 +19,7 @@ import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
+import { CONTAINER_WIDTH } from "../constants";
 
 type DataSelectorTablePickerProps = {
   hasFiltering?: boolean;
@@ -136,7 +137,7 @@ const DataSelectorTablePicker = ({
     );
   } else {
     return (
-      <Box component="section" w={300}>
+      <Box component="section" w={CONTAINER_WIDTH}>
         <DataSelectorSectionHeader header={header} />
         <Box p="4rem" ta="center">{t`No tables found in this database.`}</Box>
       </Box>
