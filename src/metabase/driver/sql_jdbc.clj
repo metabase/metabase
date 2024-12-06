@@ -98,6 +98,10 @@
   [driver database & {:as args}]
   (sql-jdbc.sync/describe-fields driver database args))
 
+(defmethod driver/describe-indexes :sql-jdbc
+  [driver database & {:as args}]
+  (sql-jdbc.sync/describe-indexes driver database args))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]

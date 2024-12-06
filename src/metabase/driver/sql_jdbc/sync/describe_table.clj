@@ -312,6 +312,24 @@
      (describe-fields-xf driver db)
      (sql-jdbc.execute/reducible-query db (describe-fields-sql driver (assoc args :details (:details db)))))))
 
+(defmulti describe-indexes-sql
+  "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-indexes]],
+ i.e. [[describe-indexes]]."
+  {:added    "0.51.4"
+   :arglists '([driver & {:keys [schema-names table-names details]}])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defn describe-indexes
+  "Default implementation of [[metabase.driver/describe-indexes]] for JDBC drivers."
+  [driver db & {:keys [schema-names table-names] :as args}]
+  (if (or (and schema-names (empty? schema-names))
+          (and table-names (empty? table-names)))
+    []
+    (eduction
+     (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
+     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (:details db)))))))
+
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   (into
