@@ -10115,7 +10115,7 @@ databaseChangeLog:
               - column:
                   name: send_once
                   type: ${boolean.type}
-                  remarks: whether the alert should run once
+                  remarks: whether the alert should only run once
                   defaultValueBoolean: false
                   constraints:
                     nullable: false

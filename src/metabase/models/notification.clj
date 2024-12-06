@@ -65,8 +65,8 @@
         payload-type+id->payload (into {}
                                        (for [[payload-type payload-ids] payload-type->ids]
                                          (case payload-type
-                                           :notification/systen-event
-                                           {[:notification/systen-event nil] nil}
+                                           :notification/system-event
+                                           {[:notification/system-event nil] nil}
                                            :notification/card
                                            (t2/select-fn->fn (fn [x] [payload-type (:id x)]) identity
                                                              :model/NotificationCard :id [:in payload-ids]))))]
@@ -346,7 +346,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (defn hydrate-notification
-  "Fully hydrate notificaitons."
+  "Fully hydrate notifications."
   [notification-or-notifications]
   (t2/hydrate notification-or-notifications
               :creator
