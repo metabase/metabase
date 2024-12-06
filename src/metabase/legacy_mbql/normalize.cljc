@@ -212,6 +212,10 @@
    (normalize-tokens y :ignore-path)
    (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :during
+  [[_ field value unit]]
+  [:during (normalize-tokens field :ignore-path) value (maybe-normalize-token unit)])
+
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
   ;; See https://github.com/metabase/metabase/issues/23354 for details
