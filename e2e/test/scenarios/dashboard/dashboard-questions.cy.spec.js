@@ -799,8 +799,6 @@ describe("Dashboard > Dashboard Questions", () => {
       );
 
       cy.wait("@checkCardsInDashboards");
-      cy.wait("@updateQuestion");
-
       H.main()
         .findByText(/Sorry, you don’t have permission to see that./)
         .should("not.exist");
