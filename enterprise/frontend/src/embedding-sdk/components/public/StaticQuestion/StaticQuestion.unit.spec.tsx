@@ -70,10 +70,10 @@ const VISUALIZATION_TYPES: Record<
 };
 
 const setup = ({
-  showVisualizationSelector = false,
+  withChartTypeSelector = false,
   isValidCard = true,
   card = createMockCard(),
-  parameterValues,
+  initialSqlParameters,
 }: Partial<StaticQuestionProps> & {
   card?: Card;
   isValidCard?: boolean;
@@ -89,8 +89,8 @@ const setup = ({
   return renderWithProviders(
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
-      showVisualizationSelector={showVisualizationSelector}
-      parameterValues={parameterValues}
+      withChartTypeSelector={withChartTypeSelector}
+      initialSqlParameters={initialSqlParameters}
     />,
     {
       mode: "sdk",
@@ -130,20 +130,20 @@ describe("StaticQuestion", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render a visualization selector if showVisualizationSelector is true", async () => {
-    setup({ showVisualizationSelector: true });
+  it("should render a visualization selector if withChartTypeSelector is true", async () => {
+    setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
     expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
   });
 
-  it("should not render a visualization selector if showVisualizationSelector is false", async () => {
+  it("should not render a visualization selector if withChartTypeSelector is false", async () => {
     setup();
     await waitForLoaderToBeRemoved();
     expect(screen.queryByTestId("chart-type-settings")).not.toBeInTheDocument();
   });
 
   it("should change the visualization if a different visualization is selected", async () => {
-    setup({ showVisualizationSelector: true });
+    setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
     expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
 
@@ -160,7 +160,7 @@ describe("StaticQuestion", () => {
 
   it("should query with the parameters in a parameterized question", async () => {
     const card = createMockCard({ parameters: [TEST_PARAM] });
-    setup({ card, parameterValues: { product_id: 1024 } });
+    setup({ card, initialSqlParameters: { product_id: 1024 } });
 
     await waitForLoaderToBeRemoved();
 
