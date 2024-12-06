@@ -310,7 +310,14 @@ export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
           onConfirm={() => {
             setEntityPickerCount(c => c - 1);
           }}
-        />
+        >
+          <Box p="lg">Entity Picker text content</Box>
+          {enableNesting && (
+            <Box p="lg">
+              <Launchers />
+            </Box>
+          )}
+        </EntityPickerModal>
       ))}
       {Array.from({ length: commandPaletteCount }).map((_, index) => {
         const modalTitleId = `command-palette-title-${index}`;
