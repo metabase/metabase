@@ -9,6 +9,13 @@ const DEFAULT_MODAL_SPACING = "lg";
 
 export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
+    // FIXME:
+    // FIXME:
+    // FIXME:
+    // FIXME:
+    // FIXME:
+    // FIXME:
+    // Make sidesheets slide left. Currently the pop in from bottom animation is taking precedence
     classNames: {
       overlay: cx(ZIndex.Overlay, Animation.fadeIn),
       inner: cx(ZIndex.Overlay, Animation.popInFromBottom),
