@@ -39,7 +39,7 @@ export const actionApi = Api.injectEndpoints({
     }),
     createAction: builder.mutation<WritebackAction, CreateActionRequest>({
       query: body => ({
-        method: "PUT",
+        method: "POST",
         url: "/api/action",
         body,
       }),
