@@ -9,8 +9,8 @@ import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDas
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
 import * as Urls from "metabase/lib/urls";
+import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";

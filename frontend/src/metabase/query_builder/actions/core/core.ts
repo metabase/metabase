@@ -1,7 +1,6 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
-import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import { cardApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";

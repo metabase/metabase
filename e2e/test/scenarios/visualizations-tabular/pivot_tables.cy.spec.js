@@ -1076,7 +1076,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
       });
 
-      saveQuestion(undefined, undefined, {
+      H.saveQuestion(undefined, undefined, {
         tab: "Browse",
         path: ["Our analytics"],
       });
@@ -1150,7 +1150,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       "Showing 205 rows",
     );
 
-    saveQuestion(undefined, undefined, {
+    H.saveQuestion(undefined, undefined, {
       tab: "Browse",
       path: ["Our analytics"],
     });
