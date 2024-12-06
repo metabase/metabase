@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { defer } from "metabase/lib/promise";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -1178,6 +1179,18 @@ H.describeEE("issue 8490", () => {
 
   it("static embeddings should respect `#locale` hash parameter (metabase#8490, metabase#50182)", () => {
     cy.log("test a static embedded dashboard");
+    const {
+      promise: dashboardLoaderPromise,
+      resolve: resolveDashboardLoaderPromise,
+    } = defer();
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/embed/dashboard/*",
+      },
+      () => dashboardLoaderPromise,
+    ).as("dashboardRequest");
+
     cy.get("@dashboardId").then(dashboardId => {
       H.visitEmbeddedPage(
         {
@@ -1193,6 +1206,14 @@ H.describeEE("issue 8490", () => {
     });
 
     cy.findByTestId("embed-frame").within(() => {
+      cy.log(
+        "static embeddings with `#locale` should show a translated the loading message",
+      );
+      // Loading...
+      cy.findByText("로딩...")
+        .should("be.visible")
+        .then(resolveDashboardLoaderPromise);
+
       // PDF export
       cy.findByText("PDF로 내보내기").should("be.visible");
 
@@ -1224,6 +1245,17 @@ H.describeEE("issue 8490", () => {
     });
 
     cy.log("test a static embedded question");
+    const {
+      promise: questionLoaderPromise,
+      resolve: resolveQuestionLoaderPromise,
+    } = defer();
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/embed/card/*",
+      },
+      () => questionLoaderPromise,
+    ).as("questionRequest");
 
     cy.log("assert the line chart");
     cy.get("@lineChartQuestionId").then(lineChartQuestionId => {
@@ -1241,6 +1273,14 @@ H.describeEE("issue 8490", () => {
     });
 
     cy.findByTestId("embed-frame").within(() => {
+      cy.log(
+        "static embeddings with `#locale` should show a translated the loading message",
+      );
+      // Loading...
+      cy.findByText("로딩...")
+        .should("be.visible")
+        .then(resolveQuestionLoaderPromise);
+
       // X-axis labels: Jan 2023 (or some other year)
       cy.findByText(/11월 20\d\d\b/).should("be.visible");
       // Aggregation "count"
