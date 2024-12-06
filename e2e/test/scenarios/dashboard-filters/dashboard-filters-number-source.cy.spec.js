@@ -1,18 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  editDashboard,
-  filterWidget,
-  getDashboardCard,
-  popover,
-  restore,
-  saveDashboard,
-  setFilter,
-  setFilterListSource,
-  sidebar,
-  visitDashboard,
-  visitEmbeddedPage,
-  visitPublicDashboard,
-} from "e2e/support/helpers";
 
 const { ACCOUNTS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -34,7 +21,7 @@ const targetQuestion = {
 
 describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -44,20 +31,20 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
-      editDashboard();
-      setFilter("Number", "Equal to", "Number");
+      H.editDashboard();
+      H.setFilter("Number", "Equal to", "Number");
       mapFilterToQuestion();
-      setFilterListSource({
+      H.setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
-      saveDashboard();
+      H.saveDashboard();
 
       filterDashboard({ isDropdown: true });
-      filterWidget().findByText("Twenty").should("be.visible");
-      getDashboardCard().findByText("4").should("be.visible");
+      H.filterWidget().findByText("Twenty").should("be.visible");
+      H.getDashboardCard().findByText("4").should("be.visible");
     });
 
     it("should be able to use a static list source when embedded", () => {
@@ -66,11 +53,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        visitEmbeddedPage(getDashboardResource(card));
+        H.visitEmbeddedPage(getDashboardResource(card));
       });
 
       filterDashboard({ isDropdown: true });
-      filterWidget().findByText("Twenty").should("be.visible");
+      H.filterWidget().findByText("Twenty").should("be.visible");
     });
 
     it("should be able to use a static list source when embedded", () => {
@@ -79,11 +66,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        visitEmbeddedPage(getDashboardResource(card));
+        H.visitEmbeddedPage(getDashboardResource(card));
       });
 
       filterDashboard({ isDropdown: true });
-      filterWidget().findByText("Twenty").should("be.visible");
+      H.filterWidget().findByText("Twenty").should("be.visible");
     });
 
     it("should be able to use a static list source when public", () => {
@@ -92,11 +79,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        visitPublicDashboard(card.dashboard_id);
+        H.visitPublicDashboard(card.dashboard_id);
       });
 
       filterDashboard({ isDropdown: true });
-      filterWidget().findByText("Twenty").should("be.visible");
+      H.filterWidget().findByText("Twenty").should("be.visible");
     });
   });
 
@@ -105,20 +92,20 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       });
 
-      editDashboard();
-      setFilter("Number", "Equal to", "Number");
+      H.editDashboard();
+      H.setFilter("Number", "Equal to", "Number");
       mapFilterToQuestion();
-      sidebar().findByText("Search box").click();
-      setFilterListSource({
+      H.sidebar().findByText("Search box").click();
+      H.setFilterListSource({
         values: [[10, "Ten"], [20, "Twenty"], 30],
       });
-      saveDashboard();
+      H.saveDashboard();
 
       filterDashboard({ isLabeled: true });
-      filterWidget().findByText("Twenty").should("be.visible");
+      H.filterWidget().findByText("Twenty").should("be.visible");
     });
 
     it("should be able to use a static list source when embedded", () => {
@@ -127,11 +114,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        visitEmbeddedPage(getDashboardResource(card));
+        H.visitEmbeddedPage(getDashboardResource(card));
       });
 
       filterDashboard({ isLabeled: true });
-      filterWidget().findByText("Twenty").should("be.visible");
+      H.filterWidget().findByText("Twenty").should("be.visible");
     });
 
     it("should be able to use a static list source when public", () => {
@@ -140,25 +127,25 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        visitPublicDashboard(card.dashboard_id);
+        H.visitPublicDashboard(card.dashboard_id);
       });
 
       filterDashboard({ isLabeled: true });
-      filterWidget().findByText("Twenty").should("be.visible");
+      H.filterWidget().findByText("Twenty").should("be.visible");
     });
   });
 });
 
 const mapFilterToQuestion = (column = "Quantity") => {
   cy.findByText("Select…").click();
-  popover().within(() => cy.findByText(column).click());
+  H.popover().within(() => cy.findByText(column).click());
 };
 
 const filterDashboard = ({ isLabeled = false, isDropdown = false } = {}) => {
-  filterWidget().click();
+  H.filterWidget().click();
 
   if (isDropdown) {
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByPlaceholderText("Search the list");
 
       cy.findByText("Ten").should("be.visible");
@@ -171,13 +158,13 @@ const filterDashboard = ({ isLabeled = false, isDropdown = false } = {}) => {
   }
 
   if (isLabeled) {
-    popover().first().findByPlaceholderText("Enter a number").type("T");
-    popover().last().findByText("Twenty").click();
-    popover().first().button("Add filter").click();
+    H.popover().first().findByPlaceholderText("Enter a number").type("T");
+    H.popover().last().findByText("Twenty").click();
+    H.popover().first().button("Add filter").click();
     return;
   }
 
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByPlaceholderText("Enter a number").type("20");
     cy.button("Add filter").click();
   });

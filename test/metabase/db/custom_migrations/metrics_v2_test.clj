@@ -1,6 +1,5 @@
 (ns metabase.db.custom-migrations.metrics-v2-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [malli.error :as me]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
@@ -8,6 +7,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
@@ -25,7 +25,7 @@
           metric-v1 {:description "basic description"
                      :archived false
                      :table_id 5
-                     :definition (json/generate-string metric-definition)
+                     :definition (json/encode metric-definition)
                      :show_in_getting_started false
                      :name "orders 3 tax subtotal sum"
                      :caveats nil
@@ -56,7 +56,7 @@
                      :parameters "[]"
                      :created_at #t "2024-05-02T19:26:15.490874Z"}]
       (is (= metric-v2 (-> (#'metrics-v2/convert-metric-v2 metric-v1 1)
-                           (update :dataset_query json/parse-string true)))))))
+                           (update :dataset_query json/decode+kw)))))))
 
 (deftest ^:mb/once rewrite-single-metric-consuming-card-test
   (doseq [metric-tag ["metric" "METRIC" "meTriC"]]
@@ -75,7 +75,7 @@
                          :name "orders 3 tax subtotal sum"
                          :type "metric"
                          :creator_id 1
-                         :dataset_query (json/generate-string metric-dataset-query)
+                         :dataset_query (json/encode metric-dataset-query)
                          :parameter_mappings "[]"
                          :display "line"
                          :visualization_settings "{}"
@@ -88,9 +88,9 @@
                                    :filter ["<" ["field" 33 nil] 100]}}
             rewritten-dataset-query (assoc-in dataset-query [:query :aggregation 1 1] 11)]
         (is (= rewritten-dataset-query
-               (-> (#'metrics-v2/rewrite-metric-consuming-card (json/generate-string dataset-query)
+               (-> (#'metrics-v2/rewrite-metric-consuming-card (json/encode dataset-query)
                                                                {1 (:id metric-card)})
-                   (json/parse-string true))))))))
+                   json/decode+kw)))))))
 
 (deftest ^:mb/once rewrite-multi-metric-consuming-card-test
   (let [metric1-dataset-query {:type "query"
@@ -107,7 +107,7 @@
                       :name "orders 3 tax subtotal sum"
                       :type "metric"
                       :creator_id 1
-                      :dataset_query (json/generate-string metric1-dataset-query)
+                      :dataset_query (json/encode metric1-dataset-query)
                       :parameter_mappings "[]"
                       :display "line"
                       :visualization_settings "{}"
@@ -126,7 +126,7 @@
                       :name "orders total average"
                       :type "metric"
                       :creator_id 1
-                      :dataset_query (json/generate-string metric2-dataset-query)
+                      :dataset_query (json/encode metric2-dataset-query)
                       :parameter_mappings "[]"
                       :display "line"
                       :visualization_settings "{}"
@@ -141,10 +141,10 @@
                                     (assoc-in [:query :aggregation 0 1 1] 22)
                                     (assoc-in [:query :aggregation 0 2 1] 11))]
     (is (= rewritten-dataset-query
-           (-> (#'metrics-v2/rewrite-metric-consuming-card (json/generate-string dataset-query)
+           (-> (#'metrics-v2/rewrite-metric-consuming-card (json/encode dataset-query)
                                                            {1 (:id metric1-card)
                                                             2 (:id metric2-card)})
-               (json/parse-string true))))))
+               json/decode+kw)))))
 
 (def query-validator
   (mr/validator mbql.s/MBQLQuery))
@@ -192,7 +192,7 @@
                      {:description "metric description"
                       :archived false
                       :table_id table-id
-                      :definition (json/generate-string metric-definition)
+                      :definition (json/encode metric-definition)
                       :name "orders 3 tax subtotal sum"
                       :creator_id user-id})
           metric-id (t2/insert-returning-pk! :metric metric-v1)
@@ -209,13 +209,13 @@
                  :name "orders 3 tax subtotal sum"
                  :type "metric"
                  :creator_id user-id
-                 :dataset_query (json/generate-string dataset-query)
+                 :dataset_query (json/encode dataset-query)
                  :display "line"
                  :visualization_settings "{}"})
           card-id (t2/insert-returning-pk! :report_card card)
           original-query (:dataset_query card)
           normalized-query #(-> %
-                                (json/parse-string true)
+                                json/decode+kw
                                 mbql.normalize/normalize
                                 :query)]
       (testing "sanity"
