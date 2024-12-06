@@ -18,7 +18,7 @@ const AddFilterPopover = () => {
         <AddBadgeListItem name={t`Add another filter`} onClick={toggle} />
       </Popover.Target>
       <Popover.Dropdown>
-        <FilterPicker onClose={close} />
+        <FilterPicker onClose={close} onBack={close} />
       </Popover.Dropdown>
     </Popover>
   );
