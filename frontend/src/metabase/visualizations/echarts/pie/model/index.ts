@@ -262,7 +262,7 @@ export function getPieChartModel(
   const colDescs = getPieColumns(rawSeries, settings);
 
   const areAllNegative = dataRows.every(
-    row => getNumberOr(row[colDescs.metricDesc.index], 0) <= 0,
+    row => getNumberOr(row[colDescs.metricDesc.index], 0) < 0,
   );
 
   const rowIndiciesByKey = new Map<string | number, number>();
@@ -371,7 +371,9 @@ export function getPieChartModel(
         endAngle: 0,
       };
     })
-    .filter(slice => areAllNegative || slice.rawValue > 0)
+    .filter(
+      slice => slice.rawValue !== 0 && (areAllNegative || slice.rawValue > 0),
+    )
     .partition(slice => slice != null && !slice.isOther)
     .value();
 
