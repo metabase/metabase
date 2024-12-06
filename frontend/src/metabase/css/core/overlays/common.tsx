@@ -60,6 +60,7 @@ const _Launchers = ({
   setActionToastCount,
   setLegacyModalCount,
   setMantineModalCount,
+  setMantineModalWithTitlePropCount,
   setSidesheetCount,
   setEntityPickerCount,
   setCommandPaletteCount,
@@ -73,6 +74,7 @@ const _Launchers = ({
   setSidesheetCount: Dispatch<SetStateAction<number>>;
   setEntityPickerCount: Dispatch<SetStateAction<number>>;
   setCommandPaletteCount: Dispatch<SetStateAction<number>>;
+  setMantineModalWithTitlePropCount: Dispatch<SetStateAction<number>>;
 }) => {
   const mantinePopoverDropdownTitleId = _.uniqueId(
     "mantine-popover-dropdown-title",
@@ -168,6 +170,11 @@ const _Launchers = ({
         <Button onClick={() => setMantineModalCount(c => c + 1)}>
           Mantine Modal
         </Button>
+        <MantineTooltip label="This kind of modal sets its title via a prop">
+          <Button onClick={() => setMantineModalWithTitlePropCount(c => c + 1)}>
+            Mantine Modal variant
+          </Button>
+        </MantineTooltip>
         <Button onClick={() => setLegacyModalCount(c => c + 1)}>
           Legacy modal
         </Button>
@@ -186,6 +193,8 @@ const _Launchers = ({
 export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
   const [legacyModalCount, setLegacyModalCount] = useState(0);
   const [mantineModalCount, setMantineModalCount] = useState(0);
+  const [mantineModalWithTitlePropCount, setMantineModalWithTitlePropCount] =
+    useState(0);
   const [toastCount, setToastCount] = useState(0);
   const [actionToastCount, setActionToastCount] = useState(0);
   const [sidesheetCount, setSidesheetCount] = useState(0);
@@ -202,6 +211,7 @@ export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
       setSidesheetCount={setSidesheetCount}
       setEntityPickerCount={setEntityPickerCount}
       setCommandPaletteCount={setCommandPaletteCount}
+      setMantineModalWithTitlePropCount={setMantineModalWithTitlePropCount}
       nestedLaunchers={enableNesting ? <Launchers /> : <></>}
     />
   );
@@ -273,18 +283,35 @@ export const OverlaysDemo = ({ enableNesting }: { enableNesting: boolean }) => {
           </LegacyModal>
         );
       })}
-      {Array.from({ length: mantineModalCount }).map((_, index) => (
-        <SimpleModal
-          key={`mantine-modal-${index}`}
-          title={`Mantine Modal content`}
-          onClose={() => setMantineModalCount(c => c - 1)}
-        >
-          <Stack spacing="md">
+      {
+        // TODO: Add a Mantine modal created with <Modal title="title"/> since
+        // it seems the header has a default z-index of 1000
+        Array.from({ length: mantineModalCount }).map((_, index) => (
+          <SimpleModal
+            key={`mantine-modal-${index}`}
+            title={`Mantine Modal content`}
+            onClose={() => setMantineModalCount(c => c - 1)}
+          >
+            <Stack spacing="md">
+              <Text>Mantine Modal text content</Text>
+              {enableNesting && <Launchers />}
+            </Stack>
+          </SimpleModal>
+        ))
+      }
+      {Array.from({ length: mantineModalWithTitlePropCount }).map(
+        (_, index) => (
+          <MantineModal
+            opened
+            key={`mantine-modal-with-title-prop-${index}`}
+            title="Mantine Modal content"
+            onClose={() => setMantineModalWithTitlePropCount(c => c - 1)}
+          >
             <Text>Mantine Modal text content</Text>
             {enableNesting && <Launchers />}
-          </Stack>
-        </SimpleModal>
-      ))}
+          </MantineModal>
+        ),
+      )}
       {Array.from({ length: sidesheetCount }).map((_, index) => (
         <Sidesheet
           key={`sidesheet-${index}`}
