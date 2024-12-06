@@ -2,7 +2,7 @@ import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { EntityObjectLoaderRtkQuery, type EntityType } from "./rtk-query";
+import { EntityObjectLoader, type EntityType } from "./rtk-query";
 
 type EntityId = string | number;
 
@@ -28,7 +28,7 @@ export const EntityName = ({ entityType, entityId }: EntityNameProps) => {
   // If we wrap it in `EntityWrapper`, we'd lose all properties from `metabase-lib/v1/Question`.
   if (entityType === "questions") {
     return (
-      <EntityObjectLoaderRtkQuery<Card, Question>
+      <EntityObjectLoader<Card, Question>
         ComposedComponent={({ object: question }) => {
           const name = isQuestion(question)
             ? question.displayName()
@@ -44,7 +44,7 @@ export const EntityName = ({ entityType, entityId }: EntityNameProps) => {
   }
 
   return (
-    <EntityObjectLoaderRtkQuery<unknown, EntityWrapper>
+    <EntityObjectLoader<unknown, EntityWrapper>
       ComposedComponent={({ object }) => {
         return isEntityWrapper(object) ? <span>{object.getName()}</span> : null;
       }}

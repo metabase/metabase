@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import Link from "metabase/core/components/Link";
 
-import { EntityObjectLoaderRtkQuery } from "./rtk-query";
+import { EntityObjectLoader } from "./rtk-query";
 
 const EntityLink = ({
   entityType,
@@ -12,7 +12,7 @@ const EntityLink = ({
   fallback = null,
   ...linkProps
 }) => (
-  <EntityObjectLoaderRtkQuery
+  <EntityObjectLoader
     ComposedComponent={({ object }) =>
       object ? (
         <LinkComponent {...linkProps} to={object.getUrl()}>
