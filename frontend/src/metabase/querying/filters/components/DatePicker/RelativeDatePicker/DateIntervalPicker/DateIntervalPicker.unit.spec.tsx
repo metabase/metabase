@@ -176,7 +176,7 @@ describe("DateIntervalPicker", () => {
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
           options: {
-            "include-current": true,
+            includeCurrent: true,
           },
         });
         expect(onSubmit).not.toHaveBeenCalled();
@@ -213,7 +213,7 @@ describe("DateIntervalPicker", () => {
         setup({
           value: {
             ...defaultValue,
-            options: { "include-current": true },
+            options: { includeCurrent: true },
           },
         });
 
