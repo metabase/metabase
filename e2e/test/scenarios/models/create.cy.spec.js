@@ -1,17 +1,11 @@
+import { H } from "e2e/support";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  entityPickerModal,
-  entityPickerModalTab,
-  modal,
-  restore,
-  visitCollection,
-} from "e2e/support/helpers";
 
 const modelName = "A name";
 
 describe("scenarios > models > create", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -23,7 +17,7 @@ describe("scenarios > models > create", () => {
 
     // Cancel creation with confirmation modal
     cy.findByTestId("dataset-edit-bar").button("Cancel").click();
-    modal().button("Discard changes").click();
+    H.modal().button("Discard changes").click();
 
     // Now we will create a model
     navigateToNewModelPage();
@@ -31,7 +25,7 @@ describe("scenarios > models > create", () => {
     // Clicking on metadata should not work until we run a query
     cy.findByTestId("editor-tabs-metadata").should("be.disabled");
 
-    cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
+    H.focusNativeEditor().type("select * from ORDERS");
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
@@ -50,10 +44,10 @@ describe("scenarios > models > create", () => {
   });
 
   it("suggest the currently viewed collection when saving a new native query", () => {
-    visitCollection(THIRD_COLLECTION_ID);
+    H.visitCollection(THIRD_COLLECTION_ID);
 
     navigateToNewModelPage();
-    cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
+    H.focusNativeEditor().type("select * from ORDERS");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -69,12 +63,12 @@ describe("scenarios > models > create", () => {
   });
 
   it("suggest the currently viewed collection when saving a new structured query", () => {
-    visitCollection(THIRD_COLLECTION_ID);
+    H.visitCollection(THIRD_COLLECTION_ID);
 
     navigateToNewModelPage("structured");
 
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
@@ -102,7 +96,7 @@ function navigateToNewModelPage(queryType = "native") {
 }
 
 function checkIfPinned() {
-  visitCollection("root");
+  H.visitCollection("root");
 
   cy.findByText(modelName)
     .closest("a")

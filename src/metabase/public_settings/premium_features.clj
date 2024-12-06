@@ -1,7 +1,6 @@
 (ns metabase.public-settings.premium-features
   "Settings related to checking premium token validity and which premium features it allows."
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
@@ -16,6 +15,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -59,34 +59,27 @@
 
 (declare premium-embedding-token)
 
-(def ^:private ^:const active-users-count-cache-ttl
-  "Amount of time before we re-fetch the count of active users."
-  (u/minutes->ms 5))
-
 ;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
 ;; at a time.
-(let [f        (fn []
-                 {:post [(integer? %)]}
-                 (log/debug (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
-                 (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
-                 ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
-                 ;; is from a different thread and is invalid by the time we get to use it
-                 (let [result (binding [t2.conn/*current-connectable* nil]
-                                (t2/count :model/User :is_active true :type :personal))]
-                   (log/debug (u/colorize :green "=>") result)
-                   result))
-      memoized (memoize/ttl
-                f
-                :ttl/threshold (u/minutes->ms active-users-count-cache-ttl))
-      lock     (Object.)]
-  (defn- cached-active-users-count'
-    "Returns a count of users on the system, cached for 5 minutes."
+(let [f    (fn []
+             {:post [(integer? %)]}
+             (log/debug (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
+             (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+             ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
+             ;; is from a different thread and is invalid by the time we get to use it
+             (let [result (binding [t2.conn/*current-connectable* nil]
+                            (t2/count :model/User :is_active true :type :personal))]
+               (log/debug (u/colorize :green "=>") result)
+               result))
+      lock (Object.)]
+  (defn- locking-active-user-count
+    "Returns a count of users on the system"
     []
     (locking lock
-      (memoized))))
+      (f))))
 
-(defsetting cached-active-users-count
-  (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
+(defsetting active-users-count
+  (deferred-tru "Number of active users")
   :visibility :admin
   :type       :integer
   :audit      :never
@@ -96,7 +89,7 @@
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
                   0
-                  (cached-active-users-count'))))
+                  (locking-active-user-count))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -119,23 +112,23 @@
   "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
   (u/hours->ms 12))
 
-(def ^{:arglists '([token base-url site-uuid active-users-count])} fetch-token-and-parse-body*
+(def ^{:arglists '([token base-url site-uuid])} fetch-token-and-parse-body*
   "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
   cached, but may trigger the *store-circuit-breaker*."
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[token base-url site-uuid _active-users-count]]
+   ^{::memoize/args-fn (fn [[token base-url site-uuid]]
                          [token base-url site-uuid])}
-   (fn [token base-url site-uuid active-users-count]
+   (fn [token base-url site-uuid]
      (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
      (let [{:keys [body status] :as resp} (some-> (token-status-url token base-url)
-                                                  (http/get {:query-params     {:users      active-users-count
+                                                  (http/get {:query-params     {:users      (active-users-count)
                                                                                 :site-uuid  site-uuid
                                                                                 :mb-version (:tag config/mb-version-info)}
                                                              :throw-exceptions false}))]
        (cond
-         (http/success? resp) (some-> body (json/parse-string keyword))
+         (http/success? resp) (some-> body json/decode+kw)
 
-         (<= 400 status 499) (some-> body (json/parse-string keyword))
+         (<= 400 status 499) (some-> body json/decode+kw)
 
          ;; exceptions are not cached.
          :else (throw (ex-info "An unknown error occurred when validating token." {:status status
@@ -166,25 +159,24 @@
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
-  (let [active-user-count (cached-active-users-count)]
-    (try
-      (dh/with-circuit-breaker *store-circuit-breaker*
-        (dh/with-timeout {:timeout-ms fetch-token-status-timeout-ms
-                          :interrupt? true}
-          (try (fetch-token-and-parse-body* token base-url site-uuid active-user-count)
-               (catch Exception e
-                 (throw e)))))
-      (catch dev.failsafe.TimeoutExceededException _e
-        {:valid         false
-         :status        (tru "Unable to validate token")
-         :error-details (tru "Token validation timed out.")})
-      (catch dev.failsafe.CircuitBreakerOpenException _e
-        {:valid         false
-         :status        (tru "Unable to validate token")
-         :error-details (tru "Token validation is currently unavailable.")})
-      ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before rethrowing.
-      (catch dev.failsafe.FailsafeException e
-        (throw (.getCause e))))))
+  (try
+    (dh/with-circuit-breaker *store-circuit-breaker*
+      (dh/with-timeout {:timeout-ms fetch-token-status-timeout-ms
+                        :interrupt? true}
+        (try (fetch-token-and-parse-body* token base-url site-uuid)
+             (catch Exception e
+               (throw e)))))
+    (catch dev.failsafe.TimeoutExceededException _e
+      {:valid         false
+       :status        (tru "Unable to validate token")
+       :error-details (tru "Token validation timed out.")})
+    (catch dev.failsafe.CircuitBreakerOpenException _e
+      {:valid         false
+       :status        (tru "Unable to validate token")
+       :error-details (tru "Token validation is currently unavailable.")})
+    ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before rethrowing.
+    (catch dev.failsafe.FailsafeException e
+      (throw (.getCause e)))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -226,7 +218,7 @@
                       ;; complicated
                       (catch Exception e2
                         (log/errorf e2 "Error fetching token status from %s:" store-url)
-                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                        (let [body (u/ignore-exceptions (some-> (ex-data e1) :body json/decode+kw))]
                           (or
                            body
                            {:valid         false

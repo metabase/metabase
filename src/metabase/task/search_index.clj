@@ -9,15 +9,19 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
+   (java.time Instant)
+   (java.util Date)
    (org.quartz DisallowConcurrentExecution JobDetail Trigger)))
 
 (set! *warn-on-reflection* true)
 
-;; This is problematic multi-instance deployments, see below.
-(def ^:private recreated? (atom false))
-
+(def ^:private init-stem "metabase.task.search-index.init")
 (def ^:private reindex-stem "metabase.task.search-index.reindex")
 (def ^:private update-stem "metabase.task.search-index.update")
+
+(def init-job-key
+  "Key used to define and trigger a job that ensures there is an active index."
+  (jobs/key (str init-stem ".job")))
 
 (def reindex-job-key
   "Key used to define and trigger a job that rebuilds the entire index from scratch."
@@ -33,27 +37,28 @@
   (doseq [[model cnt] report]
     (prometheus/inc! :metabase-search/index {:model model} cnt)))
 
+(defn init!
+  "Create a new index, if necessary"
+  []
+  (when (search/supports-index?)
+    (let [timer  (u/start-timer)
+          report (search/init-index! {:force-reset? false, :re-populate? false})]
+      (if (seq report)
+        (do (report->prometheus! report)
+            (log/infof "Done indexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report))
+            true)
+        (log/info "Found existing search index, and using it.")))))
+
 (defn reindex!
   "Reindex the whole AppDB"
-  ([]
-   (let [recreate? (not @recreated?)]
-     (u/prog1 (reindex! recreate?)
-       (when recreate?
-         (reset! recreated? true)))))
-  ([recreate?]
-   (when (search/supports-index?)
-     (let [timer  (u/start-timer)
-           report (if recreate?
-                    (do (log/info "Recreating search index from the latest schema")
-                        ;; Each instance in a multi-instance deployment will recreate the table the first time it is
-                        ;; selected to run the job, resulting in a momentary lack of search results.  One solution to
-                        ;; this would be to store metadata about the index in another table, which we can use to
-                        ;; determine whether it was built by another version of Metabase and should be rebuilt.
-                        (search/init-index! {:force-reset? recreate?}))
-                    (do (log/info "Reindexing searchable entities")
-                        (search/reindex!)))]
-       (report->prometheus! report)
-       (log/infof "Done indexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report))))))
+  []
+  (when (search/supports-index?)
+    (log/info "Reindexing searchable entities")
+    (let [timer  (u/start-timer)
+          report (search/reindex!)]
+      (report->prometheus! report)
+      (log/infof "Done reindexing in %.0fms %s" (u/since-ms timer) (sort-by (comp - val) report))
+      report)))
 
 (defn- update-index! []
   (when (search/supports-index?)
@@ -71,8 +76,12 @@
   (task/add-job! job)
   (task/add-trigger! trigger))
 
+(jobs/defjob ^{:doc "Ensure a Search Index exists"}
+  SearchIndexInit [_ctx]
+  (init!))
+
 (jobs/defjob ^{DisallowConcurrentExecution true
-               :doc                        "Populate Search Index"}
+               :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
   (reindex!))
 
@@ -80,6 +89,14 @@
                :doc                        "Keep Search Index updated"}
   SearchIndexUpdate [_ctx]
   (update-index!))
+
+(defmethod task/init! ::SearchIndexInit [_]
+  (let [job (jobs/build
+             (jobs/of-type SearchIndexInit)
+             (jobs/store-durably)
+             (jobs/with-identity init-job-key))]
+    (task/add-job! job)
+    (task/trigger-now! init-job-key)))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
@@ -90,10 +107,12 @@
         trigger     (triggers/build
                      (triggers/with-identity trigger-key)
                      (triggers/for-job reindex-job-key)
-                     (triggers/start-now)
+                     (triggers/start-at (Date/from (.plusSeconds (Instant/now) 3600)))
                      (triggers/with-schedule
-                      (simple/schedule (simple/with-interval-in-hours 1))))]
-    (force-scheduled-task! job trigger)))
+                      (simple/schedule
+                       (simple/with-interval-in-hours 1)
+                       (simple/repeat-forever))))]
+    (task/schedule-task! job trigger)))
 
 (defmethod task/init! ::SearchIndexUpdate [_]
   (let [job         (jobs/build
