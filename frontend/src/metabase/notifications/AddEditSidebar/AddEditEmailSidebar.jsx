@@ -9,9 +9,9 @@ import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
+import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
+import { RecipientPicker } from "metabase/notifications/pulse/components/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { RecipientPicker } from "metabase/pulse/components/RecipientPicker";
-import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
 import { Icon } from "metabase/ui";
 
 import { CaveatMessage } from "./CaveatMessage";
