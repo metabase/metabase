@@ -165,3 +165,20 @@
                                       :user_id (mt/user->id :rasta)}]}
                     (-> (update-notification (assoc @notification :handlers new-handlers))
                         :handlers ((fn [x] (sort-by :channel_type x))) last)))))))))
+
+
+(deftest update-notification-error-test
+  (testing "require auth"
+    (is (= "Unauthenticated" (mt/client :put 401 "notification/1"))))
+
+  (testing "404 on unknown notification"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :put (format "notification/%d" Integer/MAX_VALUE)
+                                 {:creator_id   (mt/user->id :crowberto)
+                                  :payload      {:card_id 1}
+                                  :payload_type "notification/card"}))))
+  (testing "400 on invalid payload"
+    (is (=? {:specific-errors {:body {:payload {:card_id ["missing required key, received: nil"]}}}}
+            (mt/user-http-request :crowberto :put 400 "notification/1" {:creator_id   (mt/user->id :crowberto)
+                                                                        :payload      {}
+                                                                        :payload_type "notification/card"})))))
