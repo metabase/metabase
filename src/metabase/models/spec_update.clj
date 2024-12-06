@@ -9,7 +9,7 @@
    [toucan2.core :as t2]))
 
 (def ^{:dynamic true
-       :private true} *current-path* ["root"])
+       :private true} *current-path* [])
 
 (defn- current-path
   []
@@ -29,11 +29,11 @@
    [:ref ::spec]])
 
 (defmacro ^:private with-enter-path
- [path & body]
- `(binding [*current-path* (conj *current-path* ~path)]
-    (log/debugf "%s enter" (current-path))
-    (u/prog1 ~@body
-      (log/debugf "%s exit" (current-path)))))
+  [path & body]
+  `(binding [*current-path* (conj *current-path* ~path)]
+     (log/debugf "%s enter" (current-path))
+     (u/prog1 ~@body
+       (log/debugf "%s exit" (current-path)))))
 
 (declare do-map-update!)
 (declare do-update!*)
@@ -84,7 +84,7 @@
             (log/trace (current-path) rows)
             (t2/insert! model rows)))))
     (when (seq to-delete)
-      ;; TODO: cascade updates?
+      ;; TODO: cascade deletes?
       (log/debugf "%s Deleting %d rows with ids %s" (current-path) (count to-delete) (str/join ", " (map :id to-delete)))
       (t2/delete! model :id [:in (map :id to-delete)]))
 
@@ -147,13 +147,14 @@
 
 (defn- do-update!*
   [existing-data new-data spec]
-  (if (:multi-row? spec)
-    (do
-      (log/debugf "%s multi-row spec found" (current-path))
-      (do-sequential-updates! existing-data new-data spec))
-    (do
-      (log/debugf "%s single row spec found" (current-path))
-      (do-map-update! existing-data new-data spec))))
+  (with-enter-path "root"
+    (if (:multi-row? spec)
+      (do
+        (log/debugf "%s multi-row spec found" (current-path))
+        (do-sequential-updates! existing-data new-data spec))
+      (do
+        (log/debugf "%s single row spec found" (current-path))
+        (do-map-update! existing-data new-data spec)))))
 
 (mu/defn do-update!
   "Update data in the database based on the diff between existing and new data.
