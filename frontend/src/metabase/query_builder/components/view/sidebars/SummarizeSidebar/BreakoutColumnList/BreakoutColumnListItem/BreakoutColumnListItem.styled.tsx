@@ -17,14 +17,6 @@ export const Content = styled.div`
   }
 `;
 
-export const TitleContainer = styled.div`
-  display: flex;
-  align-items: center;
-  margin-left: 0.5rem;
-  padding: 0.5rem 0;
-  flex-grow: 1;
-`;
-
 export const RemoveButton = styled(Button)`
   color: var(--mb-color-text-white);
   background-color: transparent;
@@ -59,13 +51,6 @@ AddButton.defaultProps = {
 
 export const ColumnTypeIcon = styled(QueryColumnInfoIcon)`
   color: var(--mb-color-text-medium);
-`;
-
-export const Title = styled.div`
-  margin: 0 0.5rem;
-  word-break: break-word;
-  font-size: 0.875rem;
-  font-weight: 700;
 `;
 
 const getSelectedStyle = (theme: Theme) => css`

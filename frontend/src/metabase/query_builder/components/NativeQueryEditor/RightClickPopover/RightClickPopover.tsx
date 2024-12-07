@@ -1,12 +1,9 @@
 import { t } from "ttag";
 
 import Popover from "metabase/components/Popover";
+import { Flex, Icon } from "metabase/ui";
 
-import {
-  Anchor,
-  Container,
-  IconStyled as Icon,
-} from "./RightClickPopover.styled";
+import RightClickPopoverS from "./RightClickPopover.module.css";
 
 interface RightClickPopoverProps {
   isOpen: boolean;
@@ -24,17 +21,20 @@ export const RightClickPopover = ({
   canSaveSnippets,
 }: RightClickPopoverProps) => (
   <Popover isOpen={isOpen} target={target}>
-    <Container>
-      <Anchor onClick={runQuery}>
-        <Icon name="play" size={16} />
+    <Flex direction="column">
+      <a className={RightClickPopoverS.Anchor} onClick={runQuery}>
+        <Icon mr="sm" name="play" size={16} />
         <h4>{t`Run selection`}</h4>
-      </Anchor>
+      </a>
       {canSaveSnippets && (
-        <Anchor onClick={openSnippetModalWithSelectedText}>
-          <Icon name="snippet" size={16} />
+        <a
+          className={RightClickPopoverS.Anchor}
+          onClick={openSnippetModalWithSelectedText}
+        >
+          <Icon mr="sm" name="snippet" size={16} />
           <h4>{t`Save as snippet`}</h4>
-        </Anchor>
+        </a>
       )}
-    </Container>
+    </Flex>
   </Popover>
 );

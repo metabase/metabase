@@ -17,8 +17,7 @@ import {
   NodeListTitle,
   NodeListTitleText,
   QuestionId,
-} from "./NodeList.styled";
-import { PaneContent } from "./Pane.styled";
+} from "./NodeList";
 
 export interface DatabaseTablesPaneProps {
   onBack: () => void;
@@ -56,7 +55,7 @@ export const DatabaseTablesPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <PaneContent>
+      <SidebarContent.Pane>
         <NodeListContainer>
           {models.length ? (
             <>
@@ -103,7 +102,10 @@ export const DatabaseTablesPane = ({
                   disabled={table.initial_sync_status !== "complete"}
                   onClick={() => onItemClick("table", table)}
                 >
-                  <NodeListItemIcon name="table" />
+                  <NodeListItemIcon
+                    disabled={table.initial_sync_status !== "complete"}
+                    name="table"
+                  />
                   <NodeListItemName
                     data-disabled={table.initial_sync_status !== "complete"}
                   >
@@ -114,7 +116,7 @@ export const DatabaseTablesPane = ({
             ))}
           </ul>
         </NodeListContainer>
-      </PaneContent>
+      </SidebarContent.Pane>
     </SidebarContent>
   );
 };

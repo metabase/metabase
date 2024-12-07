@@ -57,17 +57,6 @@ const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
 const FIELD_STEP = "FIELD";
 
-export function DataSourceSelector(props) {
-  return (
-    <DataSelector
-      steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
-      combineDatabaseSchemaSteps
-      getTriggerElementContent={TableTrigger}
-      {...props}
-    />
-  );
-}
-
 export function DatabaseDataSelector(props) {
   return (
     <DataSelector
@@ -118,6 +107,18 @@ export function FieldDataSelector(props) {
       getTriggerElementContent={FieldTrigger}
       {...props}
     />
+  );
+}
+
+export function RawDataBackButton() {
+  return (
+    <Flex align="center" className={CS.cursorPointer}>
+      <Icon name="chevronleft" size={16} />
+      <Text
+        component="span"
+        className={DataSelectorS.backButtonLabel}
+      >{t`Raw Data`}</Text>
+    </Flex>
   );
 }
 

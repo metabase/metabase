@@ -1,0 +1,19 @@
+.HeaderBreadcrumbs {
+  color: var(--mb-color-text-light);
+  font-size: 0.8em;
+  font-weight: bold;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+  user-select: none;
+}
+
+.HeaderBadge :global(.Icon) {
+  &.headVariant {
+    /* to add specificity */
+    font-size: 1.25rem !important;
+  }
+
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+}
