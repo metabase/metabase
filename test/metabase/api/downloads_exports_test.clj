@@ -20,6 +20,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
    [metabase.public-settings :as public-settings]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.interface :as qp.i]
