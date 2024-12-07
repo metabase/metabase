@@ -313,7 +313,6 @@
 
 ;;; ----------------------------------------------   with-current-user -------------------------------------------------
 
-
 (deftest bind-locale-test
   (let [handler        (-> (fn [_ respond _]
                              (respond i18n/*user-locale*))

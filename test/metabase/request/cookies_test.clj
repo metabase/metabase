@@ -224,7 +224,7 @@
   (testing "The session timeout should be a minimum of 30 seconds"
     (is (= 60
            (request.cookies/session-timeout->seconds {:amount 0
-                                                     :unit   "minutes"})))))
+                                                      :unit   "minutes"})))))
 
 (deftest session-timeout-test-3
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
