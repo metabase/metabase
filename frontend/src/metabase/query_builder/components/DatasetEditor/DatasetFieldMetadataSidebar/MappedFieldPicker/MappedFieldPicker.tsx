@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { useGetFieldQuery } from "metabase/api";
+import SelectButton from "metabase/core/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Text } from "metabase/ui";
@@ -11,7 +12,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldId } from "metabase-types/api";
 
-import { StyledSelectButton } from "./MappedFieldPicker.styled";
+import MappedFieldPickerS from "./MappedFieldPicker.module.css";
 
 type MappedFieldPickerProps = {
   name: string;
@@ -62,14 +63,19 @@ function MappedFieldPicker({
     const tableName = fieldObject?.table?.display_name;
 
     return (
-      <StyledSelectButton
+      <SelectButton
+        className={cx(MappedFieldPickerS.StyledSelectButton, {
+          [MappedFieldPickerS.hasValue]: fieldObject,
+        })}
         hasValue={!!fieldObject}
         tabIndex={tabIndex}
         ref={selectButtonRef as any}
         onClear={() => onChange(null)}
       >
-        {`${tableName ? `${tableName} → ` : ""}${label}`}
-      </StyledSelectButton>
+        <span className={MappedFieldPickerS.StyledSelectButtonContent}>
+          {`${tableName ? `${tableName} → ` : ""}${label}`}
+        </span>
+      </SelectButton>
     );
   }, [fieldObject, onChange, tabIndex]);
 
