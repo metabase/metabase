@@ -312,10 +312,9 @@
                   (qp/process-query query)))))))))
 
 (deftest multiple-limits
-  (let [total_count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
+  (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
                         :data count)
-        result_count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=2&limit=3")
+        result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=2&limit=3")
                          :data count)]
-    (is (and
-           (> total_count result_count)
-           (= 2 result_count)))))
+    (is (> total-count result-count))
+    (is (= 2 result-count))))
