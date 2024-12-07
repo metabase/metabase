@@ -926,8 +926,10 @@
                                      :uploads_enabled uploads-enabled?
                                      :uploads_schema_name "public"}]
             (let [result (get-all :crowberto "database" old-ids)]
-              (is (= (:total result) 1))
-              (is (= uploads-enabled? (-> result :data first :can_upload))))))))))
+              (is (= 1
+                     (:total result)))
+              (is (= uploads-enabled?
+                     (-> result :data first :can_upload))))))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"

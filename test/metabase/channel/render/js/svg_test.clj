@@ -42,13 +42,15 @@
                                      (getChildNodes)
                                      (item 0))]
     (is (.hasAttribute line "fill"))
-    (is (= (.getAttribute line "fill") "transparent"))
+    (is (= "transparent"
+           (.getAttribute line "fill")))
     ;; unfortunately these objects are mutable. It does return the line but want to emphasize that is works by
     ;; mutation
     (#'js.svg/fix-fill line)
     (is (not (.hasAttribute line "fill")))
     (is (.hasAttribute line "fill-opacity"))
-    (is (= (.getAttribute line "fill-opacity") "0.0"))))
+    (is (= "0.0"
+           (.getAttribute line "fill-opacity")))))
 
 (def ^Context context (#'js.svg/context))
 

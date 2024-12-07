@@ -1035,7 +1035,8 @@
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
                                                                        query))]
-              (is (= @called 1))
+              (is (= 1
+                     @called))
               (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
                       card))
               (mt/user-http-request
@@ -1046,7 +1047,8 @@
                       :cache_ttl 20000
                       :display "table"
                       :collection_position 1))
-              (is (= @called 1)))))))))
+              (is (= 1
+                     @called)))))))))
 
 (deftest updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]

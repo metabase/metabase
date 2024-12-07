@@ -492,7 +492,8 @@
             (is (= @unhidden-ids #{id-2}))
 
             (set-many-vis! [id-1 id-2] "hidden")
-            (is (= @unhidden-ids #{})) ;; no syncing when they are hidden
+            (is (= #{}
+                   @unhidden-ids)) ;; no syncing when they are hidden
 
             (set-many-vis! [id-1 id-2] nil) ;; both are made unhidden so both synced
             (is (= @unhidden-ids #{id-1 id-2}))))))))

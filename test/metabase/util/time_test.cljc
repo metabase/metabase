@@ -433,7 +433,7 @@
       "2024-11-04T12:34:56.789" (shared.ut/local-date-time 2024 11 4 12 34 56 789))))
 
 (deftest ^:parallel format-for-base-type-test
-  (are [exp-str t base-type] (= (shared.ut/format-for-base-type t base-type) exp-str)
+  (are [exp-str t base-type] (= exp-str (shared.ut/format-for-base-type t base-type))
     "10:20:30.500"            (shared.ut/local-time 10 20 30 500)                :type/Time
     "2020-04-18"              (shared.ut/local-date 2020 4 18)                   :type/Date
     "2020-04-18"              (shared.ut/local-date-time 2020 4 18 0 0 0)        :type/Date

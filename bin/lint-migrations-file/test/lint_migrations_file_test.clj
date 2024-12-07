@@ -314,8 +314,8 @@
                                     (when (= (:val problem) bad-value)
                                       problem))))]
         (is (not= :ok ex-info))
-        (is (= (take-last 2 (:via specific))
-               [:change.strict/customChange :custom-change/class]))))))
+        (is (= [:change.strict/customChange :custom-change/class]
+               (take-last 2 (:via specific))))))))
 
 (deftest forbidden-new-types-test
   (testing "should throw if changes contains text type"

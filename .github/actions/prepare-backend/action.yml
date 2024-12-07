@@ -5,7 +5,7 @@ inputs:
     default: '21'
   clojure-version:
     required: true
-    default: '1.12.0.1456'
+    default: '1.12.0.1488'
   m2-cache-key:
     description: 'Key to cache M2 packages from Maven Central'
     required: true
@@ -22,8 +22,8 @@ runs:
     - name: Install Clojure CLI
       shell: bash
       run: |
-        curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
-        sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
+        curl -O https://github.com/clojure/brew-install/releases/download/${{ inputs.clojure-version }}/linux-install.sh &&
+        sudo bash ./linux-install.sh
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
       run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"

@@ -11,6 +11,7 @@
   :condition-always-true        {:level :warning}
   :def-fn                       {:level :warning}
   :dynamic-var-not-earmuffed    {:level :warning}
+  :equals-expected-position     {:level :warning, :only-in-test-assertion true}
   :keyword-binding              {:level :warning}
   :main-without-gen-class       {:level :warning}
   :minus-one                    {:level :warning}
@@ -40,11 +41,10 @@
   ;; with [[metabase.lib.util.match/match]] and friends -- we need to write a custom hook for those macros so Kondo
   ;; can understand them.
 
-  ;; :docstring-leading-trailing-whitespace {:level :warning}
-  ;; :equals-expected-position              {:level :warning, :only-in-test-assertion true}
-  ;; :equals-false                          {:level :warning}
-  ;; :equals-true                           {:level :warning}
-  ;; :used-underscored-binding              {:level :warning}
+  #_:docstring-leading-trailing-whitespace
+  #_:equals-false
+  #_:equals-true
+  #_:used-underscored-binding
 
   ;;
   ;; disabled linters

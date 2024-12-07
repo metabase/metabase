@@ -42,7 +42,8 @@
            (fn [{:keys [body request-method]}]
                ;; slurp it to progress the upload
              (slurp body)
-             (is (= request-method :put))
+             (is (= :put
+                    request-method))
              {:status 200})
            (cloud-migration/migration-url (:external_id migration) "/uploaded")
            (constantly {:status 201})}
