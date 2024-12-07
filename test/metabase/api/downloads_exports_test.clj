@@ -39,12 +39,14 @@
 (defn- read-xlsx
   [pivot result]
   (with-open [in (io/input-stream result)]
-    (->> (spreadsheet/load-workbook in)
-         (spreadsheet/select-sheet (if pivot "data" "Query result"))
-         (spreadsheet/row-seq)
-         (mapv (fn [r]
-                 (->>  (spreadsheet/cell-seq r)
-                       (mapv read-cell-with-formatting)))))))
+    (let [workbook (spreadsheet/load-workbook in)
+          sheet (if pivot
+                  (spreadsheet/select-sheet "data" workbook)
+                  (first (spreadsheet/sheet-seq workbook)))]
+      (->> sheet
+           (spreadsheet/row-seq)
+           (mapv (fn [r]
+                   (mapv read-cell-with-formatting (spreadsheet/cell-seq r))))))))
 
 (defn- tabulate-maps
   [result]
@@ -64,16 +66,16 @@
 (defn card-download
   "Provides the result of the card download via the card api in `export-format`,
   formatting rows if `format-rows` is true, and pivoting the results if `pivot` is true."
-  [{:keys [id] :as _card} {:keys [export-format format-rows pivot]}]
-  (->> (mt/user-http-request (or api/*current-user-id* (mt/user->id :crowberto)) :post 200
+  [{:keys [id] :as _card} {:keys [export-format format-rows pivot user-id]}]
+  (->> (mt/user-http-request (or user-id (mt/user->id :crowberto)) :post 200
                              (format "card/%d/query/%s" id (name export-format))
                              :format_rows   format-rows
                              :pivot_results pivot)
        (process-results pivot export-format)))
 
 (defn- unsaved-card-download
-  [card {:keys [export-format format-rows pivot]}]
-  (->> (mt/user-http-request (or api/*current-user-id* (mt/user->id :crowberto)) :post 200
+  [card {:keys [export-format format-rows pivot user-id]}]
+  (->> (mt/user-http-request (or user-id (mt/user->id :crowberto)) :post 200
                              (format "dataset/%s" (name export-format))
                              :visualization_settings (json/encode
                                                       (:visualization_settings card))
@@ -88,13 +90,13 @@
        (process-results pivot export-format)))
 
 (defn public-question-download
-  [card {:keys [export-format format-rows pivot]
+  [card {:keys [export-format format-rows pivot user-id]
          :or   {format-rows false
                 pivot       false}}]
   (let [public-uuid  (str (random-uuid))
         cleaned-card (dissoc card :id :entity_id)]
     (mt/with-temp [:model/Card _ (assoc cleaned-card :public_uuid public-uuid)]
-      (->> (mt/user-http-request (or api/*current-user-id* (mt/user->id :crowberto)) :get 200
+      (->> (mt/user-http-request (or user-id (mt/user->id :crowberto)) :get 200
                                  (format "public/card/%s/query/%s?format_rows=%s&pivot_results=%s"
                                          public-uuid (name export-format)
                                          format-rows
@@ -102,11 +104,11 @@
            (process-results pivot export-format)))))
 
 (defn- dashcard-download
-  [card-or-dashcard {:keys [export-format format-rows pivot]}]
+  [card-or-dashcard {:keys [export-format format-rows pivot user-id]}]
   (letfn [(dashcard-download* [{dashcard-id  :id
                                 card-id      :card_id
                                 dashboard-id :dashboard_id}]
-            (->> (mt/user-http-request (or api/*current-user-id* (mt/user->id :crowberto)) :post 200
+            (->> (mt/user-http-request (or user-id (mt/user->id :crowberto)) :post 200
                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s" dashboard-id dashcard-id card-id (name export-format))
                                        :format_rows   format-rows
                                        :pivot_results pivot)
@@ -119,11 +121,11 @@
         (dashcard-download* dashcard)))))
 
 (defn- public-dashcard-download
-  [card-or-dashcard {:keys [export-format format-rows pivot]}]
+  [card-or-dashcard {:keys [export-format format-rows pivot user-id]}]
   (let [public-uuid (str (random-uuid))]
     (letfn [(public-dashcard-download* [{dashcard-id  :id
                                          card-id      :card_id}]
-              (->> (mt/user-http-request (or api/*current-user-id* (mt/user->id :crowberto)) :post 200
+              (->> (mt/user-http-request (or user-id (mt/user->id :crowberto)) :post 200
                                          (format "public/dashboard/%s/dashcard/%d/card/%d/%s"
                                                  public-uuid dashcard-id card-id (name export-format))
                                          :format_rows   format-rows
@@ -156,14 +158,14 @@
             msgs))))
 
 (defn- alert-attachment!
-  [card {:keys [export-format format-rows pivot]}]
+  [card {:keys [export-format format-rows pivot user-id]}]
   (letfn [(alert-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
                  (process-results pivot export-format)))]
     (mt/with-temp [:model/Pulse {pulse-id :id
                                  :as      pulse} {:name            "Test Alert"
                                                   :alert_condition "rows"
-                                                  :creator_id      (or api/*current-user-id* (mt/user->id :crowberto))}
+                                                  :creator_id      (or user-id (mt/user->id :crowberto))}
                    :model/PulseCard _ (merge
                                        (when (= :csv  export-format) {:include_csv true})
                                        (when (= :xlsx export-format) {:include_xls true})
@@ -179,7 +181,7 @@
       (alert-attachment* pulse))))
 
 (defn- subscription-attachment!
-  [card-or-dashcard {:keys [export-format format-rows pivot]}]
+  [card-or-dashcard {:keys [export-format format-rows pivot user-id]}]
   (letfn [(subscription-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
                  (process-results pivot export-format)))]
@@ -188,7 +190,7 @@
       (mt/with-temp [:model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
                                                     :dashboard_id (:dashboard_id card-or-dashcard)
-                                                    :creator_id   (or api/*current-user-id* (mt/user->id :crowberto))}
+                                                    :creator_id   (or user-id (mt/user->id :crowberto))}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
                                          (when (= :xlsx export-format) {:include_xls true})
@@ -210,7 +212,7 @@
                      :model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
                                                     :dashboard_id dashboard-id
-                                                    :creator_id   (or api/*current-user-id* (mt/user->id :crowberto))}
+                                                    :creator_id   (or user-id (mt/user->id :crowberto))}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
                                          (when (= :xlsx export-format) {:include_xls true})
@@ -1403,21 +1405,23 @@
         (mt/with-temporary-setting-values [public-settings/site-locale site-locale]
           (mt/dataset test-data
             (mt/with-temp [:model/User {user-id :id} {:locale user-locale}
-                           :model/Card card
-                           {:display       :table
-                            :dataset_query {:database (mt/id)
-                                            :type     :query
-                                            :query
-                                            {:source-table (mt/id :products)
-                                             :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                             :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                            [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+                           :model/Card card {:creator_id    user-id
+                                             :dataset_query {:database (mt/id)
+                                                             :type     :query
+                                                             :query
+                                                             {:source-table (mt/id :products)
+                                                              :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                              :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                                             [:field (mt/id :products :created_at) {:base-type     :type/DateTime
+                                                                                                                    :temporal-unit :month}]]}}}]
               (binding [api/*current-user-id* user-id
                         i18n/*user-locale*    user-locale]
                 (is (= user-locale
                        (str (i18n/user-locale))))
                 (testing "Downloads use the user's locale."
-                  (doseq [export-format [:csv :xlsx :json]]
+                  ;; :xlsx locales are dependent on the user's Excel environment, the cell data does not change, nor does the cellStyle.
+                  ;; so, we exclude it here
+                  (doseq [export-format [:csv :json]]
                     (testing (format "export format is: %s" export-format)
                       (is (= [[["Category" "Created At: Monat" "Summe von Price"]
                                ["Doohickey" "Mai, 2016" "144.12"]
@@ -1432,12 +1436,12 @@
                               #{:unsaved-card-download :card-download :dashcard-download
                                 :public-question-download :public-dashcard-download}]
                              (->> (update-vals
-                                   (all-downloads card {:export-format export-format :format-rows true :pivot false})
+                                   (all-downloads card {:export-format export-format :format-rows true :pivot false :user-id user-id})
                                    (fn [rows] (take 10 rows)))
                                   (group-by second)
                                   ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                                   (apply concat)))))))
-                #_(testing "Subscription/Alert attachments use the site locale."
+                (testing "Subscription/Alert attachments use the site locale."
                   (let [expected [["Category" "Created At: Month" "Sum of Price"]
                                   ["Doohickey" "May, 2016" "144.12"]
                                   ["Doohickey" "June, 2016" "82.92"]
@@ -1450,10 +1454,10 @@
                                   ["Doohickey" "February, 2017" "102.42"]]]
                     (testing "alerts"
                       (is (= expected
-                             (take 10 (alert-attachment! card {:export-format :csv :format-rows true :pivot false})))))
+                             (take 10 (alert-attachment! card {:export-format :csv :format-rows true :pivot false :user-id user-id})))))
                     (testing "subscriptions"
                       (is (= expected
-                             (take 10 (subscription-attachment! card {:export-format :csv :format-rows true :pivot false})))))))))))))))
+                             (take 10 (subscription-attachment! card {:export-format :csv :format-rows true :pivot false :user-id user-id})))))))))))))))
 
 (defn- pivot-card-with-scalar [scalar]
   {:display                :pivot
