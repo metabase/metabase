@@ -9,7 +9,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
+   [metabase.models.persisted-info :refer [PersistedInfo]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.task.persist-refresh :as task.persist-refresh]

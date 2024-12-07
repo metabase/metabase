@@ -262,7 +262,7 @@
                                         ["varargs"
                                          #js [(name tag) (clj->js opts) js-field "hotel" "motel"]
                                          [tag opts field "hotel" "motel"]]]]
-    (testing (str (str tag) " in " label " form with" (when (empty? opts) "out") " options")
+    (testing (str tag " in " label " form with" (when (empty? opts) "out") " options")
       (let [legacy-query      #js {:type  "query"
                                    :query #js {:source_table (meta/id :venues)
                                                :filter       legacy-expr}}

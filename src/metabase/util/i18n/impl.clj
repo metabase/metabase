@@ -68,12 +68,13 @@
   (log/info "Reading available locales from locales.clj...")
   (some-> (io/resource "locales.clj") slurp edn/read-string :locales (->> (apply sorted-set))))
 
-(def ^{:arglists '([])} available-locale-names
-  "Return sorted set of available locales, as Strings.
+(let [locales (delay (available-locale-names*))]
+  (defn available-locale-names
+    "Return sorted set of available locales, as Strings.
 
     (available-locale-names) ; -> #{\"en\" \"nl\" \"pt-BR\" \"zh\"}"
-  (let [locales (delay (available-locale-names*))]
-    (fn [] @locales)))
+    []
+    @locales))
 
 (defn- find-fallback-locale*
   ^Locale [^Locale a-locale]

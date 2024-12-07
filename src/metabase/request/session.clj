@@ -7,7 +7,7 @@
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.setting :as setting :refer [*user-local-values*]]
+   [metabase.models.setting :refer [*user-local-values*]]
    [metabase.models.user :as user]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))

@@ -15,7 +15,7 @@
 (defn- accept-ref [schema [k :as _children] options]
   (or (description schema)
       (if (contains? (::parent-refs options) k)
-        (str "recursive " (str k))
+        (str "recursive " k)
         (describe (mr/resolve-schema schema)
                   (update options ::parent-refs #(conj (set %) k))))))
 

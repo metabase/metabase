@@ -13,7 +13,7 @@
    [metabase.request.core :as request]
    [metabase.server.instance :as server]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import

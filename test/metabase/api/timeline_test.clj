@@ -163,7 +163,7 @@
                      (-> (t2/select-one Timeline :collection_id id) :name))))
             (testing "Check that the icon is 'star' by default"
               (is (= "star"
-                     (-> (t2/select-one-fn :icon Timeline :collection_id id)))))))))))
+                     (t2/select-one-fn :icon Timeline :collection_id id))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"

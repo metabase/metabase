@@ -327,7 +327,7 @@
             (if (= mode "prod")
               (is (false? (mu.fn/instrument-ns? n)))
               (is (true? (mu.fn/instrument-ns? n))))))
-        (testing (str "\na namespace with :instrument/always meta should not be skipped")
+        (testing "\na namespace with :instrument/always meta should not be skipped"
           (let [n (doto ^clojure.lang.Namespace (create-ns (symbol (mt/random-name)))
                     (.resetMeta {:instrument/always true}))]
             (is (true? (mu.fn/instrument-ns? n)))))))))

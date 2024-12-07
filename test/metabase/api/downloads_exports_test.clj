@@ -1068,7 +1068,7 @@
                    {:card-download     (mapv #(nth % 3) (take 2 card-result))
                     :dashcard-download (mapv #(nth % 3) (take 2 dashcard-result))}))))))))
 
-(deftest column-settings-on-aggregated-columns-test
+(deftest ^:parallel column-settings-on-aggregated-columns-test
   (testing "Column settings on aggregated columns are applied"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card  {:display                :table
@@ -1092,7 +1092,7 @@
           (is (= "2,185.89 Canadian dollars"
                  (-> (card-download card {:export-format :xlsx :format-rows true}) second second))))))))
 
-(deftest table-metadata-affects-column-formatting-properly
+(deftest ^:parallel table-metadata-affects-column-formatting-properly
   (testing "A Table's configured metadata (eg. Semantic Type of currency) can affect column formatting"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card  {:display                :table
@@ -1117,11 +1117,11 @@
                                                                                      {:currency_in_header false}}}}]
         (testing "for csv"
           (is (= [["Discount"] ["$6.42"]]
-                 (-> (card-download card {:export-format :csv :format-rows true})))))
+                 (card-download card {:export-format :csv :format-rows true}))))
         (testing "for xlsx"
           ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
           (is (= [["Discount"] ["[$$]6.42"]]
-                 (-> (card-download card {:export-format :xlsx :format-rows true})))))))))
+                 (card-download card {:export-format :xlsx :format-rows true}))))))))
 
 (deftest clean-errors-test
   (testing "Queries that error should not include visualization settings (metabase-private #233)"

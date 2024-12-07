@@ -13,6 +13,8 @@
   "test"
   "enterprise/backend"
   "bin/build"
+  "bin/lint-migrations-file"
+  "bin/release-list"
   "modules/drivers"
   ".clj-kondo/src"
   ".clj-kondo/test"
@@ -275,6 +277,7 @@
   metabase.upload.types/with-currency                                                  [[:default]]
   metabase.upload.types/with-parens                                                    [[:default]]
   metabase.util/auto-retry                                                             [[:block 1]]
+  metabase.util/case-enum                                                              [[:block 1]]
   metabase.util/ignore-exceptions                                                      [[:block 0]]
   metabase.util/or-with                                                                [[:block 1]]
   metabase.util/profile                                                                [[:block 1]]

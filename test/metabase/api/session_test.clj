@@ -413,8 +413,8 @@
         (is (= 36 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
 
     (testing "reset-token-ttl-hours-test is set to large positive value"
-      (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours (+ Integer/MAX_VALUE 1)]
-        (is (= (+ Integer/MAX_VALUE 1) (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
+      (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours (inc Integer/MAX_VALUE)]
+        (is (= (inc Integer/MAX_VALUE) (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
 
     (testing "reset-token-ttl-hours-test is set to zero"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours 0]

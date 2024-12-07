@@ -30,10 +30,10 @@
          (some-> (slurp "/tmp/out.edn")
                  (str/split-lines)))))
 
-(deftest backend-message?
+(deftest ^:parallel backend-message?
   (testing "messages present in any .clj and .cljc files are detected as backend messages"
-    (are [source-references expected] (= (@#'backend/backend-message? {:source-references source-references})
-                                         expected)
+    (are [source-references expected] (= expected
+                                         (@#'backend/backend-message? {:source-references source-references}))
       ;; Simple .clj and .cljc files with and without line numbers
       ["test.clj"]                                                                  true
       ["test.clj:123"]                                                              true

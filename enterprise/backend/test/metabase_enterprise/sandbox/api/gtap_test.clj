@@ -19,7 +19,7 @@
              (client/client :get 401 "mt/gtap")))
 
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 (str "mt/gtap")))))))
+             (mt/user-http-request :rasta :get 403 "mt/gtap"))))))
 
 (def ^:private default-gtap-results
   {:id                   true

@@ -544,13 +544,11 @@
                                                 :email            email
                                                 :login_attributes {:test "value"}})]
                 (is (= (merge @user-defaults
-                              (merge
-                               @user-defaults
-                               {:email                  email
-                                :first_name             user-name
-                                :last_name              user-name
-                                :common_name            (str user-name " " user-name)
-                                :login_attributes       {:test "value"}}))
+                              {:email                  email
+                               :first_name             user-name
+                               :last_name              user-name
+                               :common_name            (str user-name " " user-name)
+                               :login_attributes       {:test "value"}})
                        (-> resp
                            mt/boolean-ids-and-timestamps
                            (dissoc :user_group_memberships))))

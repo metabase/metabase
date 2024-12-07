@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.http-client :as client]
    [metabase.models :refer [Database Revision Table]]
-   [metabase.models.segment :as segment :refer [Segment]]
+   [metabase.models.segment :refer [Segment]]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]

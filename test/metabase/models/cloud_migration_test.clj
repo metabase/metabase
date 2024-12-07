@@ -44,7 +44,7 @@
              (slurp body)
              (is (= request-method :put))
              {:status 200})
-           (str (cloud-migration/migration-url (:external_id migration) "/uploaded"))
+           (cloud-migration/migration-url (:external_id migration) "/uploaded")
            (constantly {:status 201})}
           (#'cloud-migration/migrate! migration)
           (is (-> @progress-calls :upload count (> 3))
@@ -53,8 +53,9 @@
               "progress calls are between 50 (inclusive) and 100 (exclusive)")
           (is (= {:setup [1] :dump [20] :done [100]}
                  (dissoc @progress-calls :upload))
-              "one progress call during other stages")))))
+              "one progress call during other stages"))))))
 
+(deftest migrate!-test-2
   (testing "exits early on terminal state"
     (let [migration (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
       (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")

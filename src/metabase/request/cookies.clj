@@ -7,7 +7,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.request.util :as request.util]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.response :as response]))

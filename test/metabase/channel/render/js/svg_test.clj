@@ -72,7 +72,7 @@
         tag-set    (set tag-seq)]
     (testing (str chart " String is valid")
       (is (string? svg-string) "Svg did not return a string"))
-    (testing (str " String contains normal svg elements")
+    (testing " String contains normal svg elements"
       (is (normal-svg-elements tag-set) "Did not contain normal svg elements #{svg g line}"))
     (testing (str chart "String cannot contain html elements as svg renderer errors")
       (is (no-html-elements tag-set) (str "Contained html elements: "
