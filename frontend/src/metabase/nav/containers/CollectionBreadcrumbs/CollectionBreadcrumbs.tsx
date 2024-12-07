@@ -12,7 +12,6 @@ const collectionProps = {
     return getCollectionId(state) ?? "root";
   },
   loadingAndErrorWrapper: false,
-  properties: ["name", "authority_level"],
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

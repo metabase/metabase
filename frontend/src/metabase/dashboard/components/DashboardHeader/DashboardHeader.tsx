@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useCollectionQuery } from "metabase/common/hooks";
+import { useGetCollectionQuery } from "metabase/api";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import {
@@ -75,7 +75,7 @@ export const DashboardHeaderInner = ({
   );
 
   const { data: collection, isLoading: isLoadingCollection } =
-    useCollectionQuery({ id: dashboard.collection_id || "root" });
+    useGetCollectionQuery({ id: dashboard.collection_id || "root" });
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
