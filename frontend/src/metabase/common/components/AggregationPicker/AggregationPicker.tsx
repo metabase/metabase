@@ -420,7 +420,7 @@ function renderItemIcon(item: ListItem) {
       >
         <span aria-label={t`More info`}>
           <PopoverDefaultIcon name="empty" size={18} />
-          <PopoverHoverTarget name="info_filled" hasDescription size={18} />
+          <PopoverHoverTarget name="info_filled" size={18} />
         </span>
       </Popover>
     </Flex>
