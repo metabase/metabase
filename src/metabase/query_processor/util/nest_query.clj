@@ -24,7 +24,7 @@
    add/normalize-clause
    (lib.util.match/match (walk/prewalk (fn [x]
                                          (if (map? x)
-                                           (dissoc x :source-query :source-metadata)
+                                           (dissoc x :source-query :source-metadata :temporal-unit)
                                            x))
                                        inner-query)
      [:field _ (_ :guard :join-alias)]
