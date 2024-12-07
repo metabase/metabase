@@ -101,7 +101,6 @@
                         boolean)]
         (is (= expected actual))))))
 
-(def ^:private embedded-session-cookie request.cookies/metabase-embedded-session-cookie)
 (def ^:private anti-csrf-token-header request.cookies/anti-csrf-token-header)
 
 (def ^:private test-anti-csrf-token "84482ddf1bb178186ed9e1c0b1e05a2d")

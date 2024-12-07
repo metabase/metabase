@@ -18,22 +18,22 @@
 
 (set! *warn-on-reflection* true)
 
-(def parse-svg #'js.svg/parse-svg-string)
-
 (use-fixtures :each
   (fn warn-possible-rebuild
     [thunk]
     (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
       (thunk))))
 
-(deftest post-process-test
+(def ^:private parse-svg #'js.svg/parse-svg-string)
+
+(deftest ^:parallel post-process-test
   (let [svg   "<svg xmlns=\"http://www.w3.org/2000/svg\"><g><line/></g><g><rect/></g><g><circle/></g></svg>"
         nodes (atom [])]
     (#'js.svg/post-process (parse-svg svg)
                            (fn [^Node node] (swap! nodes conj (.getNodeName node))))
     (is (= ["svg" "g" "line" "g" "rect" "g" "circle"] @nodes))))
 
-(deftest fix-fill-test
+(deftest ^:parallel fix-fill-test
   (let [svg "<svg xmlns=\"http://www.w3.org/2000/svg\"><line x1=\"0\" y1=\"260\" x2=\"540\" y2=\"260\" fill=\"transparent\"></line></svg>"
 
         ^SVGOMDocument document (parse-svg svg)
@@ -52,9 +52,7 @@
     (is (= "0.0"
            (.getAttribute line "fill-opacity")))))
 
-(def ^Context context (#'js.svg/context))
-
-(defn document-tag-seq [^SVGOMDocument document]
+(defn- document-tag-seq [^SVGOMDocument document]
   (map #(.getNodeName ^Node %)
        (tree-seq #(instance? Element %)
                  (fn [^Node node]
@@ -63,13 +61,13 @@
                              [] (range (.getLength children)))))
                  (.getDocumentElement document))))
 
-(defn normal-svg-elements [tag-set]
+(defn- normal-svg-elements [tag-set]
   (set/subset? #{"svg" "g"} tag-set))
 
-(defn no-html-elements [tag-set]
+(defn- no-html-elements [tag-set]
   (= #{} (set/intersection #{"div" "span" "p"} tag-set)))
 
-(defn validate-svg-string [chart svg-string]
+(defn- validate-svg-string [chart svg-string]
   (let [tag-seq    (-> svg-string parse-svg document-tag-seq)
         tag-set    (set tag-seq)]
     (testing (str chart " String is valid")
@@ -80,7 +78,10 @@
       (is (no-html-elements tag-set) (str "Contained html elements: "
                                           (set/intersection #{"div" "span" "p"}))))))
 
-(deftest progress-test
+(defn- context ^Context []
+  (#'js.svg/context))
+
+(deftest ^:parallel progress-test
   (let [value    1234
         goal     1337
         settings {:color "#333333"}]
@@ -89,14 +90,14 @@
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString ^Value
                       (js.engine/execute-fn-name
-                       context
+                       (context)
                        "progress"
                        (json/encode {:value value :goal goal})
                        (json/encode settings)
                        (json/encode {})))]
       (validate-svg-string :progress svg-string))))
 
-(deftest parse-svg-sanitizes-characters-test
+(deftest ^:parallel parse-svg-sanitizes-characters-test
   (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"
     (#'js.svg/parse-svg-string
      "<svg xmlns=\"http://www.w3.org/2000/svg\">\u001F</svg>")))
