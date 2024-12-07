@@ -32,6 +32,7 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
@@ -39,7 +40,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -907,6 +909,59 @@
                       e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             LEGACY FILTER CLAUSES                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- temporal-unit
+  [field]
+  (-> field mbql.u/field-options :temporal-unit))
+
+(defn- temporal-unit-is?
+  [field units]
+  (contains? units (temporal-unit field)))
+
+(defn- remove-temporal-unit
+  [field]
+  (mbql.u/update-field-options field dissoc :temporal-unit :original-temporal-unit))
+
+(mu/defn ^:private replace-exclude-date-filter :- mbql.s/Filter
+  "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
+  [filter-clause :- mbql.s/Filter]
+  (lib.util.match/replace filter-clause
+    [:!=
+     (field :guard #(and (mbql.preds/Field? %) (temporal-unit-is? % #{:hour-of-day})))
+     & (args :guard #(every? number? %))]
+    (into [:!= [:get-hour (remove-temporal-unit field)]] args)
+
+    [:!=
+     (field :guard #(and (mbql.preds/Field? %) (temporal-unit-is? % #{:day-of-week :month-of-year :quarter-of-year})))
+     & (args :guard #(every? string? %))]
+    (let [unit         (temporal-unit field)
+          field        (remove-temporal-unit field)
+          extract-expr (case unit
+                         :day-of-week     [:get-day-of-week field :iso]
+                         :month-of-year   [:get-month field]
+                         :quarter-of-year [:get-quarter field])
+          extract-unit (case unit
+                         :day-of-week     :day-of-week-iso
+                         :month-of-year   :month-of-year
+                         :quarter-of-year :quarter-of-year)]
+      (into [:!= extract-expr]
+            (mapv #(-> % u.time/coerce-to-timestamp (u.time/extract extract-unit)) args)))))
+
+(defn- replace-legacy-filters
+  "Replaces legacy filter clauses with modern alternatives."
+  [query]
+  (try
+    (lib.util.match/replace query
+      (filter-clause :guard mbql.preds/Filter?)
+      (replace-exclude-date-filter filter-clause))
+    (catch #?(:clj Throwable :cljs :default) e
+      (throw (ex-info (i18n/tru "Error replacing legacy filters")
+                      {:query query}
+                      e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -999,6 +1054,7 @@
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
   (let [normalize* (comp remove-empty-clauses
+                         replace-legacy-filters
                          perform-whole-query-transformations
                          canonicalize
                          normalize-tokens)]
