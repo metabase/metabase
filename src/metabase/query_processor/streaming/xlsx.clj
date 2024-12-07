@@ -549,16 +549,16 @@
 ;; Possible Functions: https://poi.apache.org/apidocs/dev/org/apache/poi/ss/usermodel/DataConsolidateFunction.html
 ;; I'm only including the keys that seem to work for our Pivot Tables as of 2024-06-06
 (defn- col->aggregation-fn
-  [{agg-name :name source :source}]
+  [{agg-name :name source :source display-name :display_name}]
   (when (= :aggregation source)
     (let [agg-name (u/lower-case-en agg-name)]
       (cond
-        (str/starts-with? agg-name "sum")    DataConsolidateFunction/SUM
-        (str/starts-with? agg-name "avg")    DataConsolidateFunction/AVERAGE
-        (str/starts-with? agg-name "min")    DataConsolidateFunction/MIN
-        (str/starts-with? agg-name "max")    DataConsolidateFunction/MAX
-        (str/starts-with? agg-name "count")  DataConsolidateFunction/COUNT
-        (str/starts-with? agg-name "stddev") DataConsolidateFunction/STD_DEV))))
+        (str/starts-with? agg-name "sum")    {:agg-name agg-name, :aggregation-function DataConsolidateFunction/SUM, :display-name display-name}
+        (str/starts-with? agg-name "avg")    {:agg-name agg-name, :aggregation-function DataConsolidateFunction/AVERAGE, :display-name display-name}
+        (str/starts-with? agg-name "min")    {:agg-name agg-name, :aggregation-function DataConsolidateFunction/MIN, :display-name display-name}
+        (str/starts-with? agg-name "max")    {:agg-name agg-name, :aggregation-function DataConsolidateFunction/MAX, :display-name display-name}
+        (str/starts-with? agg-name "count")  {:agg-name agg-name, :aggregation-function DataConsolidateFunction/COUNT, :display-name display-name}
+        (str/starts-with? agg-name "stddev") {:agg-name agg-name, :aggregation-function DataConsolidateFunction/STD_DEV, :display-name display-name}))))
 
 (defn pivot-opts->pivot-spec
   "Utility that adds :pivot-grouping-key to the pivot-opts map internal to the xlsx streaming response writer."
@@ -618,7 +618,12 @@
     (doseq [idx pivot-cols]
       (.addColLabel pivot-table idx))
     (doseq [idx pivot-measures]
-      (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
+      (let [consolidate-function (get _aggregation-functions idx)
+            column-title (::mb.viz/column-title (get col-settings {::mb.viz/column-name (get consolidate-function :agg-name)}))
+            ;;Set value field name. if custom column-title is null, then get display-name.
+            value-field-name (if (nil? column-title) (get consolidate-function :display-name) column-title)]
+        (.addColumnLabel pivot-table (get consolidate-function :aggregation-function) idx value-field-name)))
+
     (doseq [[idx sort-setting] column-sort-order]
       (let [setting (case sort-setting
                       :ascending  STFieldSortType/ASCENDING
