@@ -22,11 +22,10 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.api-key :as api-key]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]
@@ -249,61 +248,6 @@
 ;;; |                                              reset-cookie-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- check-session-timeout
-  "Returns nil if the [[session-timeout]] value is valid. Otherwise returns an error key."
-  [timeout]
-  (when (some? timeout)
-    (let [{:keys [unit amount]} timeout
-          units-in-24-hours (case unit
-                              "seconds" (* 60 60 24)
-                              "minutes" (* 60 24)
-                              "hours"   24)
-          units-in-100-years (* units-in-24-hours 365.25 100)]
-      (cond
-        (not (pos? amount))
-        :amount-must-be-positive
-        (>= amount units-in-100-years)
-        :amount-must-be-less-than-100-years))))
-
-(defsetting session-timeout
-  ;; Should be in the form "{\"amount\":60,\"unit\":\"minutes\"}" where the unit is one of "seconds", "minutes" or "hours".
-  ;; The amount is nillable.
-  (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
-  :encryption :no
-  :type       :json
-  :default    nil
-  :getter     (fn []
-                (let [value (setting/get-value-of-type :json :session-timeout)]
-                  (if-let [error-key (check-session-timeout value)]
-                    (do (log/warn (case error-key
-                                    :amount-must-be-positive            "Session timeout amount must be positive."
-                                    :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
-                        nil)
-                    value)))
-  :setter     (fn [new-value]
-                (when-let [error-key (check-session-timeout new-value)]
-                  (throw (ex-info (case error-key
-                                    :amount-must-be-positive            "Session timeout amount must be positive."
-                                    :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
-                                  {:status-code 400})))
-                (setting/set-value-of-type! :json :session-timeout new-value))
-  :doc        "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
-
-(defn session-timeout->seconds
-  "Convert the session-timeout setting value to seconds."
-  [{:keys [unit amount]}]
-  (when amount
-    (-> (case unit
-          "seconds" amount
-          "minutes" (* amount 60)
-          "hours"   (* amount 3600))
-        (max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
-
-(defn session-timeout-seconds
-  "Returns the number of seconds before a session times out. An alternative to calling `(session-timeout) directly`"
-  []
-  (session-timeout->seconds (session-timeout)))
-
 (defn reset-session-timeout*
   "Implementation for `reset-cookie-timeout` respond handler."
   [request response request-time]
@@ -320,7 +264,8 @@
    Will not change anything if the session-timeout setting is nil, or the timeout cookie has already expired."
   [handler]
   (fn [request respond raise]
-    (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the response.
+    (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the
+          ;; response.
           request-time (t/zoned-date-time (t/zone-id "GMT"))]
       (handler request
                (fn [response]

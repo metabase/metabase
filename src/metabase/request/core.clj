@@ -24,6 +24,8 @@
   metabase-embedded-session-cookie
   metabase-session-cookie
   metabase-session-timeout-cookie
+  session-timeout
+  session-timeout!
   set-session-cookies
   set-session-timeout-cookie]
  [metabase.request.current
