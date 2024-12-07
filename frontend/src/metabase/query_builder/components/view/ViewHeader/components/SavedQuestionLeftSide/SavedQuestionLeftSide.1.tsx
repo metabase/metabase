@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 import { Box, Flex } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import { ViewSubHeading } from "../../../ViewSection";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
@@ -13,16 +12,9 @@ import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 import { HeaderCollectionBadge } from "../HeaderCollectionBadge";
 import { QuestionDataSource } from "../QuestionDataSource";
 
+import type { SavedQuestionLeftSideProps } from "./SavedQuestionLeftSide";
 import SavedQuestionLeftSideS from "./SavedQuestionLeftSide.module.css";
 import { ViewOnlyTag } from "./ViewOnly";
-
-export interface SavedQuestionLeftSideProps {
-  question: Question;
-  isObjectDetail?: boolean;
-  isAdditionalInfoVisible?: boolean;
-  onOpenQuestionInfo: () => void;
-  onSave: (newQuestion: Question) => any;
-}
 
 export function SavedQuestionLeftSide({
   question,
@@ -100,7 +92,11 @@ export function SavedQuestionLeftSide({
         </Box>
       </Flex>
       {isAdditionalInfoVisible && (
-        <ViewSubHeading className={ViewTitleHeaderS.ViewHeaderLeftSubHeading}>
+        <ViewSubHeading
+          className={cx(ViewTitleHeaderS.ViewHeaderLeftSubHeading, {
+            [ViewTitleHeaderS.showSubHeader]: showSubHeader,
+          })}
+        >
           {QuestionDataSource.shouldRender({ question, isObjectDetail }) &&
             !isModelOrMetric && (
               <QuestionDataSource
