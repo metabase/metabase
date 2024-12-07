@@ -236,7 +236,7 @@
     {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2024.08.29"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2024.11.14"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.58.3"}                    ; ui for inspecting values
@@ -430,7 +430,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2024.08.29"}}
+   {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}
@@ -640,16 +640,7 @@
   ;;
   ;;    clj -T:cljfmt check
   :cljfmt
-  {:deps       {#_io.github.weavejester/cljfmt
-                #_{:git/tag "0.12.0", :git/sha "434408f6909924f524c8027b37422d32bb49622d"}
-                ;; using my fork of cljfmt until these PRs are merged upstream:
-                ;; - https://github.com/weavejester/cljfmt/pull/346
-                ;; - https://github.com/weavejester/cljfmt/pull/347
-                ;; - https://github.com/weavejester/cljfmt/pull/348
-                ;; - https://github.com/weavejester/cljfmt/pull/350
-                ;; - https://github.com/weavejester/cljfmt/pull/352
-                io.github.camsaul/cljfmt
-                {:git/sha "77ede1e49c8718c9e1c9ac35cb6f34d0b02a65f3"}}
+  {:deps       {io.github.weavejester/cljfmt {:git/sha "fc3340da3c8344b3fbb336d190ce696ef40e42d4"}}
    :ns-default cljfmt.tool
    :exec-fn    cljfmt.tool/fix}
 

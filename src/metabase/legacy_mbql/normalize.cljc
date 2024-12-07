@@ -999,20 +999,20 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^{:arglists '([outer-query])} normalize
+(defn normalize
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
-  (let [normalize* (comp remove-empty-clauses
-                         perform-whole-query-transformations
-                         canonicalize
-                         normalize-tokens)]
-    (fn [query]
-      (try
-        (normalize* query)
-        (catch #?(:clj Throwable :cljs js/Error) e
-          (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
-                          {:query query}
-                          e)))))))
+  [query]
+  (try
+    (-> query
+        normalize-tokens
+        canonicalize
+        perform-whole-query-transformations
+        remove-empty-clauses)
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
+                      {:query query}
+                      e)))))
 
 (mu/defn normalize-or-throw :- ::mbql.s/Query
   "Like [[normalize]], but checks the result against the Malli schema for a legacy query, which will cause it to throw

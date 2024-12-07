@@ -422,13 +422,13 @@
 
 (defn- number-type [t]
   (u/case-enum t
-               JsonParser$NumberType/INT         Long
-               JsonParser$NumberType/LONG        Long
-               JsonParser$NumberType/FLOAT       Double
-               JsonParser$NumberType/DOUBLE      Double
-               JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
+    JsonParser$NumberType/INT         Long
+    JsonParser$NumberType/LONG        Long
+    JsonParser$NumberType/FLOAT       Double
+    JsonParser$NumberType/DOUBLE      Double
+    JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
     ;; there seem to be no way to encounter this, search in tests for `BigDecimal`
-               JsonParser$NumberType/BIG_DECIMAL BigDecimal))
+    JsonParser$NumberType/BIG_DECIMAL BigDecimal))
 
 (defn- json-object?
   "Return true if the string `s` is a JSON where value is an object.
@@ -465,22 +465,22 @@
 
             :else
             (u/case-enum token
-                         JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
-                         JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
-                         JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
-                         JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
-                         JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
-                         JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
-                                                                                (type-by-parsing-string (.getText p))))
-                         JsonToken/FIELD_NAME         (recur path (.getText p) res)
-                         JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
-                         JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
-             ;; We put top-level array row type semantics on JSON roadmap but skip for now
-                         JsonToken/START_ARRAY        (do (.skipChildren p)
-                                                          (if field
-                                                            (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
-                                                            (recur path field res)))
-                         JsonToken/END_ARRAY          (recur path field res))))))))
+              JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+              JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+              JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
+              JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
+              JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
+              JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
+                                                                     (type-by-parsing-string (.getText p))))
+              JsonToken/FIELD_NAME         (recur path (.getText p) res)
+              JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
+              JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
+                         ;; We put top-level array row type semantics on JSON roadmap but skip for now
+              JsonToken/START_ARRAY        (do (.skipChildren p)
+                                               (if field
+                                                 (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
+                                                 (recur path field res)))
+              JsonToken/END_ARRAY          (recur path field res))))))))
 
 (defn- json-map->types [json-map]
   (apply merge (map #(json->types (second %) [(first %)]) json-map)))
