@@ -69,7 +69,7 @@
 (defn- set-weights! [context overrides]
   (api/check-superuser)
   (when (= context :all)
-    (throw (ex-info (str "Cannot set weights for all context")
+    (throw (ex-info "Cannot set weights for all context"
                     {:status-code 400})))
   (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
         rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
