@@ -66,7 +66,7 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
     onArchiveAction: (action: WritebackAction) =>
       dispatch(Actions.objectActions.setArchived(action, true)),
     onDeleteAction: (action: WritebackAction) =>
-      dispatch(Actions.actions.delete({ id: action.id })),
+      dispatch(Actions.actions.delete(action.id)),
   };
 }
 
