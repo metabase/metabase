@@ -935,20 +935,20 @@
 
     [:!=
      (field :guard #(and (mbql.preds/Field? %) (temporal-unit-is? % #{:day-of-week :month-of-year :quarter-of-year})))
-     & (args :guard #(every? string? %))]
-    (let [unit         (temporal-unit field)
-          field        (remove-temporal-unit field)
-          extract-expr (case unit
-                         :day-of-week     [:get-day-of-week field :iso]
-                         :month-of-year   [:get-month field]
-                         :quarter-of-year [:get-quarter field])
-          extract-unit (case unit
-                         :day-of-week     :day-of-week-iso
-                         :month-of-year   :month-of-year
-                         :quarter-of-year :quarter-of-year)]
-      (into [:!= extract-expr]
-            (map #(-> % u.time/coerce-to-timestamp (u.time/extract extract-unit)))
-            args))))
+     & (args :guard #(every? u.time/timestamp-coercible? %))]
+    (let [args (mapv u.time/coerce-to-timestamp args)]
+      (if (every? u.time/valid? args)
+        (let [unit         (temporal-unit field)
+              field        (remove-temporal-unit field)
+              extract-expr (case unit
+                             :day-of-week     [:get-day-of-week field :iso]
+                             :month-of-year   [:get-month field]
+                             :quarter-of-year [:get-quarter field])
+              extract-unit (if (= unit :day-of-week) :day-of-week-iso unit)]
+          (into [:!= extract-expr]
+                (map #(u.time/extract extract-unit))
+                args))
+        &match))))
 
 (defn- replace-legacy-filters
   "Replaces legacy filter clauses with modern alternatives."
