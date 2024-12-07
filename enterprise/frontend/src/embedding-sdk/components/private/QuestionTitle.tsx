@@ -10,10 +10,14 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 type QuestionTitleProps = {
-  question: Question;
+  question?: Question;
 };
 
-const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
+export const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
+  if (!question) {
+    return t`New question`;
+  }
+
   const isSaved = question.isSaved();
   const displayName = question.displayName();
 
