@@ -199,6 +199,8 @@
   coordinate-filter-parts
   boolean-filter-clause
   boolean-filter-parts
+  specific-date-filter-clause
+  specific-date-filter-parts
   relative-date-filter-clause
   relative-date-filter-parts
   exclude-date-filter-clause
