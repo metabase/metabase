@@ -10,6 +10,9 @@
     "yarn": "^1.12.3"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.18.3",
+    "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-sql": "^6.8.0",
     "@dnd-kit/core": "^6.0.8",
     "@dnd-kit/modifiers": "^6.0.1",
     "@dnd-kit/sortable": "^8.0.0",
@@ -18,6 +21,7 @@
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@juggle/resize-observer": "^3.4.0",
+    "@lezer/highlight": "^1.2.1",
     "@mantine/core": "^6.0.13",
     "@mantine/dates": "^6.0.13",
     "@mantine/hooks": "^6.0.13",
@@ -28,6 +32,7 @@
     "@tippyjs/react": "^4.2.6",
     "@types/react-router": "3.0.27",
     "@types/redux-auth-wrapper": "^2.0.16",
+    "@uiw/react-codemirror": "^4.23.6",
     "@visx/axis": "^3.10.1",
     "@visx/clip-path": "^3.3.0",
     "@visx/grid": "^3.5.0",
