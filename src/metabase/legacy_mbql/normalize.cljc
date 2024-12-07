@@ -947,7 +947,7 @@
                          :month-of-year   :month-of-year
                          :quarter-of-year :quarter-of-year)]
       (into [:!= extract-expr]
-            (mapv #(-> % u.time/coerce-to-timestamp (u.time/extract extract-unit)) args)))))
+            (map #(-> % u.time/coerce-to-timestamp (u.time/extract extract-unit)) args)))))
 
 (defn- replace-legacy-filters
   "Replaces legacy filter clauses with modern alternatives."
