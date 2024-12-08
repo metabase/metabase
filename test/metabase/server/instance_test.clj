@@ -1,8 +1,8 @@
-(ns metabase.server-test
+(ns metabase.server.instance-test
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.server :as server]))
+   [metabase.server.instance :as server.instance]))
 
 (deftest config-test
   (testing "Make sure our Jetty config functions work as expected/we don't accidentally break things (#9333)"
@@ -24,4 +24,4 @@
               :max-threads         10
               :max-idle-time       10
               :ssl-port            10}
-             (#'server/jetty-config))))))
+             (#'server.instance/jetty-config))))))

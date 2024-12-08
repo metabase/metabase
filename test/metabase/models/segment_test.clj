@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models.database :refer [Database]]
    [metabase.models.revision :as revision]
-   [metabase.models.segment :as segment :refer [Segment]]
+   [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
