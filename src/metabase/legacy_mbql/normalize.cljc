@@ -928,6 +928,39 @@
   [field]
   (mbql.u/update-field-options field dissoc :temporal-unit :original-temporal-unit))
 
+(mu/defn ^:private replace-relative-date-filters :- mbql.s/Filter
+  "Replaces broken relative date filter clauses with `:relative-time-interval` calls.
+
+  Previously we generated a complex expression for relative date filters with an offset on the FE. It turned out that
+  the expression was wrong by 1 offset unit, e.g. if the offset was by months, it was wrong by 1 month. To fix the issue
+  we introduced a new `:relative-time-interval` function that surved several purposes. It captured the user intent
+  clearly while hiding the implementation details; it also fixed the underlying expression. Here we match the old
+  expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
+  #46438 for details."
+  [filter-clause :- mbql.s/Filter]
+  (lib.util.match/replace filter-clause
+    [:between
+     [:+
+      field
+      [:internal (offset-value :guard integer?) (offset-unit :guard keyword?)]]
+     [:relative-datetime
+      (start-value :guard integer?)
+      (start-unit :guard keyword?)]
+     [:relative-datetime
+      (end-value :guard integer?)
+      (end-unit :guard keyword?)]]
+    (let [offset-value (- offset-value)]
+      (if (and (= start-unit end-unit)
+               (or (and (pos? offset-value) (zero? start-value) (pos? end-value))
+                   (and (neg? offset-value) (neg? start-value) (zero? end-value))))
+        [:relative-time-interval
+         field
+         (if (neg? offset-value) start-value end-value)
+         start-unit
+         offset-value
+         offset-unit]
+        &match))))
+
 (mu/defn ^:private replace-exclude-date-filters :- mbql.s/Filter
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause :- mbql.s/Filter]
@@ -960,7 +993,9 @@
   (try
     (lib.util.match/replace query
       (filter-clause :guard mbql.preds/Filter?)
-      (replace-exclude-date-filters filter-clause))
+      (-> filter-clause
+          replace-relative-date-filters
+          replace-exclude-date-filters))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (i18n/tru "Error replacing legacy filters")
                       {:query query}
