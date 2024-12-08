@@ -21,6 +21,14 @@ export const canManageSubscriptions = createSelector(
   (isAdmin, canManageSubscriptions) => isAdmin || canManageSubscriptions,
 );
 
+export const canAccessSettings = createSelector(
+  [
+    getUserIsAdmin,
+    state => PLUGIN_APPLICATION_PERMISSIONS.selectors.canAccessSettings(state),
+  ],
+  (isAdmin, canAccessSettings) => isAdmin || canAccessSettings,
+);
+
 export const getUserAttributes = createSelector(
   [getUser],
   user => user?.login_attributes || {},
