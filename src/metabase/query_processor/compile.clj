@@ -47,13 +47,10 @@
   this under `:native`, but that causes the MBQL schema to blow up. We can't just change this to a regular native
   query outright and remove the MBQL `:query`, because that would break perms checks."
   [preprocessed :- ::qp.schema/query]
-  (let [preprocessed (dissoc preprocessed :qp/compiled :qp/compiled-inline)]
+  (let [preprocessed (dissoc preprocessed :qp/compiled)]
     (case (:type preprocessed)
       :native preprocessed
-      :query  (assoc preprocessed
-                     :qp/compiled        (compile-preprocessed preprocessed)
-                     :qp/compiled-inline (binding [driver/*compile-with-inline-parameters* true]
-                                           (compile-preprocessed preprocessed))))))
+      :query  (assoc preprocessed :qp/compiled (compile-preprocessed preprocessed)))))
 
 (mr/def ::compiled-with-inlined-parameters
   [:map
@@ -63,12 +60,7 @@
 
 (mu/defn compile-with-inline-parameters :- ::compiled-with-inlined-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
-  itself as literals. This is used to power features such as 'Convert this Question to SQL'.
-
-  (Currently, this function is mostly used by tests and a few API endpoints;
-  REPL; [[metabase.query-processor.middleware.splice-params-in-response/splice-params-in-response]] middleware handles
-  similar functionality for queries that are actually executed.)"
+  itself as literals. This is used to power features such as 'Convert this Question to SQL'."
   [query :- ::qp.schema/query]
-  (or (:qp/compiled-inline query)
-      (binding [driver/*compile-with-inline-parameters* true]
-        (compile (dissoc query :qp/compiled)))))
+  (binding [driver/*compile-with-inline-parameters* true]
+    (compile (dissoc query :qp/compiled))))
