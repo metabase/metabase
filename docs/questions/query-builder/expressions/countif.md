@@ -111,13 +111,13 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `CountIf` |
-| ------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
-| String                                                                                                                         | ❌                   |
-| Number                                                                                                                         | ❌                   |
-| Timestamp                                                                                                                      | ❌                   |
-| Boolean                                                                                                                        | ✅                   |
-| JSON                                                                                                                           | ❌                   |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `CountIf`                  |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| String                                                                                                                         | {% include svg-icons/cross.svg %}     |
+| Number                                                                                                                         | {% include svg-icons/cross.svg %}     |
+| Timestamp                                                                                                                      | {% include svg-icons/cross.svg %}     |
+| Boolean                                                                                                                        | {% include svg-icons/checkmark.svg %} |
+| JSON                                                                                                                           | {% include svg-icons/cross.svg %}     |
 
 `CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
