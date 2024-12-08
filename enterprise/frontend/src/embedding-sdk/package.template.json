@@ -8,6 +8,22 @@
   },
   "license": "SEE LICENSE IN LICENSE.txt",
   "main": "./dist/main.bundle.js",
+  "exports": {
+    ".": {
+      "types": "./dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
+      "default": "./dist/main.bundle.js"
+    },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "require": "./dist/next.cjs",
+      "import": "./dist/next.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "next": ["./dist/next.d.ts"]
+    }
+  },
   "types": "./dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
   "peerDependencies": {
     "react": ">=17 <=18",
