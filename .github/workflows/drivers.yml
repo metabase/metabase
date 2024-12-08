@@ -634,6 +634,12 @@ jobs:
         test-args: >-
           :partition/total 4
           :partition/index ${{ matrix.partition-index }}
+    - name: Upload Test Results as artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: "junit-mysql-latest-${{ matrix.partition-index }}"
+        path: ./target/junit/
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
