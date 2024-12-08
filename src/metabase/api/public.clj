@@ -31,7 +31,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
@@ -74,7 +74,7 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
-  ;; We need to check this to resolve params - we set `mw.session/as-admin` there
+  ;; We need to check this to resolve params - we set `request/as-admin` there
   (if qp.perms/*param-values-query*
     card
     (mi/instance
@@ -136,7 +136,7 @@
   (fn run [query info]
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
       (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
-        (mw.session/as-admin
+        (request/as-admin
           (qp (update query :info merge info) rff))))))
 
 (mu/defn- export-format->context :- ::lib.schema.info/context
@@ -161,7 +161,7 @@
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
-  (mw.session/as-admin
+  (request/as-admin
     (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
               :context    (export-format->context export-format)
@@ -286,7 +286,7 @@
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
-    (mw.session/as-admin
+    (request/as-admin
       (m/mapply qp.dashboard/process-query-for-dashcard options))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
@@ -372,7 +372,7 @@
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
           ;; you're by definition allowed to run it without a perms check anyway
-          (mw.session/as-admin
+          (request/as-admin
             ;; Undo middleware string->keyword coercion
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
@@ -588,7 +588,7 @@
    param-key ms/NonBlankString}
   (validation/check-public-sharing-enabled)
   (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
-    (mw.session/as-admin
+    (request/as-admin
       (api.card/param-values card param-key))))
 
 (api/defendpoint GET "/card/:uuid/params/:param-key/search/:query"
@@ -599,7 +599,7 @@
    query     ms/NonBlankString}
   (validation/check-public-sharing-enabled)
   (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
-    (mw.session/as-admin
+    (request/as-admin
       (api.card/param-values card param-key query))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
@@ -608,7 +608,7 @@
   {uuid      ms/UUIDString
    param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
-    (mw.session/as-admin
+    (request/as-admin
       (binding [qp.perms/*param-values-query* true]
         (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
@@ -619,7 +619,7 @@
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
-    (mw.session/as-admin
+    (request/as-admin
       (binding [qp.perms/*param-values-query* true]
         (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
@@ -688,7 +688,7 @@
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
-        (mw.session/as-admin
+        (request/as-admin
           (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
             (snowplow/track-event! ::snowplow/action
                                    {:event     :action-executed

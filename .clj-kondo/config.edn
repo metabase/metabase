@@ -1,25 +1,61 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src"]
  :linters
- {:aliased-namespace-symbol     {:level :warning}
-  :invalid-arity                {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
+ {
+  ;;
+  ;; enabled optional linters (these are disabled by default)
+  ;;
+
+  :aliased-namespace-symbol     {:level :warning}
+  :case-symbol-test             {:level :warning}
+  :condition-always-true        {:level :warning}
+  :def-fn                       {:level :warning}
+  :dynamic-var-not-earmuffed    {:level :warning}
+  :equals-expected-position     {:level :warning, :only-in-test-assertion true}
   :keyword-binding              {:level :warning}
   :main-without-gen-class       {:level :warning}
+  :minus-one                    {:level :warning}
   :misplaced-docstring          {:level :warning}
   :missing-body-in-when         {:level :warning}
   :missing-docstring            {:level :warning}
   :missing-else-branch          {:level :warning}
   :namespace-name-mismatch      {:level :warning}
   :non-arg-vec-return-type-hint {:level :warning}
+  :plus-one                     {:level :warning}
   :reduce-without-init          {:level :warning}
+  :redundant-call               {:level :warning}
   :redundant-fn-wrapper         {:level :warning}
-  :refer-all                    {:level :warning, :exclude [clojure.test]}
+  :self-requiring-namespace     {:level :warning}
   :single-key-in                {:level :warning}
+  :unsorted-imports             {:level :warning}
   :unsorted-required-namespaces {:level :warning}
-  :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
+  :unused-alias                 {:level :warning}
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
 
+  ;;
+  ;; other disabled-by-default linters it would be nice to enable soon
+  ;;
+
+  ;; TODO (cam): most of these either have a ton of things that need to be fixed or cause issues
+  ;; with [[metabase.lib.util.match/match]] and friends -- we need to write a custom hook for those macros so Kondo
+  ;; can understand them.
+
+  #_:docstring-leading-trailing-whitespace
+  #_:equals-false
+  #_:equals-true
+  #_:used-underscored-binding
+
+  ;;
+  ;; disabled linters
+  ;;
+
+  :redundant-ignore {:level :off} ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
+  :unexpected-recur {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
+
+  ;;
+  ;; globally-enabled custom linters
+  ;;
   :metabase/defsetting-must-specify-export             {:level :warning}
   :metabase/mbql-query-first-arg                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
@@ -168,20 +204,12 @@
               :vertica}}
 
   ;;
-  ;; disabled linters
+  ;; misc config for built-in linters
   ;;
 
-  :unexpected-recur         {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
-  :used-underscored-binding {:level :off} ; false positives: see https://github.com/clj-kondo/clj-kondo/issues/2152
-
-  ;;
-  ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
-  ;;
-
-  ;; :docstring-leading-trailing-whitespace {:level :warning}
-  ;; :docstring-no-summary                  {:level :warning}
-  ;; :shadowed-var                          {:level :warning}
-  ;; :def-fn                                {:level :warning}
+  :invalid-arity       {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
+  :refer-all           {:level :warning, :exclude [clojure.test]}
+  :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
   :unresolved-symbol
   {:exclude
@@ -344,20 +372,25 @@
     metabase.query-analysis        #{metabase.query-analysis
                                      metabase.query-analysis.failure-map}
     metabase.related               #{metabase.related}
+    metabase.request               #{metabase.request.core}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search.core
                                      ;; Need to expose this submodule, to break circular dependencies with models.
                                      metabase.search.spec}
-    metabase.server                #{metabase.server
-                                     metabase.server.handler
-                                     metabase.server.middleware.auth
-                                     metabase.server.middleware.exceptions
+    metabase.server                #{metabase.server.core
+                                     ;;
+                                     ;; TODO FIXME -- this is loaded for side effects since it contains the JSON
+                                     ;; encoder logic for stuff like `java.time` classes. As a
+                                     ;; result, [[metabase.models.setting]] (and thus the `metabase.models` module)
+                                     ;; has to depend on the `metabase.server` module...we should create either a new
+                                     ;; `metabase.json` or `metabase.encoders` module for stuff like this to live. Or
+                                     ;; maybe it just belongs in a generic `metabase.config` module.
                                      metabase.server.middleware.json
-                                     metabase.server.middleware.misc
-                                     metabase.server.middleware.offset-paging
-                                     metabase.server.middleware.session
-                                     metabase.server.protocols
-                                     metabase.server.request.util}                                  ; TODO -- consolidate these into a real API namespace.
+                                     ;;
+                                     ;; TODO -- we can't make this part of [[metabase.server.core]] YET because it
+                                     ;; causes circular dependencies. Maybe in the future once we tease apart more of
+                                     ;; the modules tangle we can.
+                                     metabase.server.protocols}
     metabase.setup                 #{metabase.setup}
     metabase.sync                  #{metabase.sync
                                      metabase.sync.analyze
@@ -432,6 +465,10 @@
                                      metabase.util}
     metabase.query-processor       :any
     metabase.related               :any
+    metabase.request               #{metabase.config
+                                     metabase.models
+                                     metabase.public-settings
+                                     metabase.util}
     metabase.sample-data           :any
     metabase.search                :any
     metabase.server                :any
@@ -441,7 +478,7 @@
     metabase.troubleshooting       :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
-    metabase.util                  :any
+    metabase.util                  :any ; TODO -- this should probably be #{}
     metabase.xrays                 :any}
 
    ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
@@ -668,25 +705,16 @@
     metabase.query-processor.timezone                             qp.timezone
     metabase.query-processor.util                                 qp.util
     metabase.related                                              related
+    metabase.request.core                                         request
     metabase.search.config                                        search.config
     metabase.search.filter                                        search.filter
     metabase.search.in-place.filter                               search.in-place.filter
     metabase.search.in-place.util                                 search.util
     metabase.search.in-place.scoring                              scoring
-    metabase.server.middleware.auth                               mw.auth
-    metabase.server.middleware.browser-cookie                     mw.browser-cookie
-    metabase.server.middleware.exceptions                         mw.exceptions
-    metabase.server.middleware.json                               mw.json
-    metabase.server.middleware.log                                mw.log
-    metabase.server.middleware.misc                               mw.misc
-    metabase.server.middleware.offset-paging                      mw.offset-paging
-    metabase.server.middleware.security                           mw.security
-    metabase.server.middleware.session                            mw.session
-    metabase.server.middleware.ssl                                mw.ssl
-    metabase.server.request.util                                  req.util
+    metabase.server.core                                          server
     metabase.server.protocols                                     server.protocols
     metabase.sync.analyze.fingerprint                             sync.fingerprint
-    metabase.sync.field-values                                    field-values
+    metabase.sync.field-values                                    sync.field-values
     metabase.sync.interface                                       i
     metabase.sync.schedules                                       sync.schedules
     metabase.sync.sync-metadata.fields.our-metadata               fields.our-metadata
@@ -889,6 +917,9 @@
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache!                                                           hooks.common/with-two-bindings
+   metabase.request.core/with-current-request                                                                                hooks.common/with-used-first-arg
+   metabase.request.core/with-current-user                                                                                   hooks.common/with-used-first-arg
+   metabase.request.core/with-limit-and-offset                                                                               hooks.common/with-used-first-two-args
    metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
    metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test.data.datasets/test-driver                                                                                   hooks.metabase.test.data.datasets/test-driver
@@ -935,6 +966,7 @@
    metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color}
 
   :macroexpand

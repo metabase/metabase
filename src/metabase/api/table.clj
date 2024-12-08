@@ -18,10 +18,9 @@
    [metabase.models.table :as table :refer [Table]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.related :as related]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
-   ^{:clj-kondo/ignore [:consistent-alias]}
    [metabase.sync.field-values :as sync.field-values]
    [metabase.types :as types]
    [metabase.upload :as upload]
@@ -576,7 +575,7 @@
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (mw.session/as-admin
+    (request/as-admin
       ;; async so as not to block the UI
       (sync.concurrent/submit-task
        (fn []

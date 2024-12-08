@@ -516,7 +516,8 @@
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
         date-arg-1 "2023-11-02"
-        date-arg-2 "2024-01-03"]
+        date-arg-2 "2024-01-03"
+        datetime-arg "2024-12-05T22:50:27"]
     (are [expected clause] (=? expected (lib/filter-args-display-name lib.tu/venues-query -1 clause))
       "4 AM" (lib/= (lib/get-hour created-at) 4)
       "Excludes 12 PM" (lib/!= (lib/get-hour created-at) 12)
@@ -537,7 +538,12 @@
       "Previous 10 Days" (lib/time-interval created-at -10 :day)
       "Next 10 Days" (lib/time-interval created-at 10 :day)
       "Today" (lib/time-interval created-at :current :day)
-      "This Month" (lib/time-interval created-at :current :month))))
+      "This Month" (lib/time-interval created-at :current :month)
+      "Dec 5, 2024, 10:50 PM" (lib.filter/during created-at datetime-arg :minute)
+      "Dec 5, 2024, 10:00 PM – 10:59 PM" (lib.filter/during created-at datetime-arg :hour)
+      "Dec 5, 2024" (lib.filter/during created-at datetime-arg :day)
+      "Nov 1–30, 2023" (lib.filter/during created-at date-arg-1 :month)
+      "Jan 1 – Dec 31, 2024" (lib.filter/during created-at date-arg-2 :year))))
 
 (deftest ^:parallel dependent-metadata-test
   (testing "native query"
