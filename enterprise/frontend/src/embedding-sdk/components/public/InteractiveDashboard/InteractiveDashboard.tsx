@@ -85,7 +85,7 @@ const InteractiveDashboardInner = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          withTitle={withTitle}
+          title={withTitle}
           height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
