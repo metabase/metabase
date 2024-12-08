@@ -942,7 +942,7 @@
     [:between
      [:+
       field
-      [:internal (offset-value :guard integer?) (offset-unit :guard keyword?)]]
+      [:interval (offset-value :guard integer?) (offset-unit :guard keyword?)]]
      [:relative-datetime
       (start-value :guard integer?)
       (start-unit :guard keyword?)]

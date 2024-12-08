@@ -1026,6 +1026,42 @@
 ;;; |                                              REPLACE LEGACY FILTERS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(t/deftest ^:parallel replace-relative-date-filters-test
+  (tests 'replace-relative-date-filters #'mbql.normalize/replace-relative-date-filters
+         {"date range in the past"
+          {[:between
+            [:+ [:field 1 nil] [:interval 7 :year]]
+            [:relative-datetime -30 :day]
+            [:relative-datetime 0 :day]]
+           [:relative-time-interval [:field 1 nil] -30 :day -7 :year]}
+
+          "date range in the future"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :day]]
+           [:relative-time-interval [:field 1 nil] 30 :day 7 :year]}
+
+          "date range that is not entirely in the past or in the future should be skipped"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime -5 :day]
+            [:relative-datetime 30 :day]]
+           [:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime -5 :day]
+            [:relative-datetime 30 :day]]}
+
+          "date range with different units for start and end of the interval should be skipped"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :quarter]]
+           [:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :quarter]]}}))
+
 (t/deftest ^:parallel replace-exclude-date-filters-test
   (tests 'replace-exclude-date-filters #'mbql.normalize/replace-exclude-date-filters
          {"`:hour-of-day`"
