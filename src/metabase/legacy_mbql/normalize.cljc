@@ -933,7 +933,7 @@
 
   Previously we generated a complex expression for relative date filters with an offset on the FE. It turned out that
   the expression was wrong by 1 offset unit, e.g. if the offset was by months, it was wrong by 1 month. To fix the issue
-  we introduced a new `:relative-time-interval` function that surved several purposes. It captured the user intent
+  we introduced a new `:relative-time-interval` function that served several purposes. It captured the user intent
   clearly while hiding the implementation details; it also fixed the underlying expression. Here we match the old
   expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
   #46438 for details."
