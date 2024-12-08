@@ -924,7 +924,7 @@
   [field]
   (mbql.u/update-field-options field dissoc :temporal-unit :original-temporal-unit))
 
-(mu/defn ^:private replace-exclude-date-filter :- mbql.s/Filter
+(mu/defn ^:private replace-exclude-date-filters :- mbql.s/Filter
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause :- mbql.s/Filter]
   (lib.util.match/replace filter-clause
@@ -956,7 +956,7 @@
   (try
     (lib.util.match/replace query
       (filter-clause :guard mbql.preds/Filter?)
-      (replace-exclude-date-filter filter-clause))
+      (replace-exclude-date-filters filter-clause))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (i18n/tru "Error replacing legacy filters")
                       {:query query}

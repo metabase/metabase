@@ -1026,9 +1026,9 @@
 ;;; |                                              REPLACE LEGACY FILTERS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(t/deftest ^:parallel replace-exclude-date-filter-test
-  (tests 'replace-exclude-date-filter #'mbql.normalize/replace-exclude-date-filter
-         { "`:hour-of-day`"
+(t/deftest ^:parallel replace-exclude-date-filters-test
+  (tests 'replace-exclude-date-filters #'mbql.normalize/replace-exclude-date-filters
+         {"`:hour-of-day`"
           {[:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
            [:!= [:get-hour [:field 1 nil]] 0 23]}
 
@@ -1044,17 +1044,29 @@
           {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "2024-12-08"]
            [:!= [:get-quarter [:field 1 nil]] 1 4]}
 
-           "field options should be preserved"
-           {[:!= [:field 1 {:base-type :type/DateTime :temporal-unit :hour-of-day}] 10]
-            [:!= [:get-hour [:field 1 {:base-type :type/DateTime}]] 10]}
+          "field options should be preserved"
+          {[:!= [:field 1 {:base-type :type/DateTime :temporal-unit :hour-of-day}] 10]
+           [:!= [:get-hour [:field 1 {:base-type :type/DateTime}]] 10]}
 
-           "filters with invalid dates should be ignored"
-           {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]
-            [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]}
+          "filters with invalid dates should be ignored"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]
+           [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]}
 
-           "filters with non-date string arguments should be ignored"
-           {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]
-            [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]}}))
+          "filters with non-date string arguments should be ignored"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]
+           [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]}}))
+
+(t/deftest ^:parallel replace-legacy-filters-test
+  (tests 'replace-legacy-filters-test #'mbql.normalize/replace-legacy-filters
+         {"exclude date filters"
+          {{:type  :query,
+            :query {:filters [:and
+                              [:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+                              [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "2024-12-08"]]}}
+           {:type  :query,
+            :query {:filters [:and
+                              [:!= [:get-hour [:field 1 nil]] 0 23]
+                              [:!= [:get-quarter [:field 1 nil]] 1 4]]}}}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              REMOVE EMPTY CLAUSES                                              |
@@ -1536,3 +1548,15 @@
                1
                {"base-type" "type/Float", "effective-type" "type/Float"}]
               -1]))))
+
+(t/deftest ^:parallel normalize-legacy-filters-test
+  (t/is (= {:database 1
+            :type     :query
+            :query   {:filters [:and
+                                [:!= [:get-hour [:field 1 nil]] 0 23]
+                                [:between [:field 1 nil] "2024-10-05" "2024-12-08"]]}}
+           (mbql.normalize/normalize {:database 1
+                                      :type     :query
+                                      :query   {:filters [:and
+                                                          [:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+                                                          [:between [:field 1 nil] "2024-10-05" "2024-12-08"]]}}))))
