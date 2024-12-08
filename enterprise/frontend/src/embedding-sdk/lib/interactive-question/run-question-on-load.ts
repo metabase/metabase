@@ -1,8 +1,12 @@
+import { mapObject } from "underscore";
+
 import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk/types/question";
 import { resolveCards } from "metabase/query_builder/actions";
+import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
+import { syncCardParametersWithTemplateTags } from "metabase/query_builder/actions/core/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
@@ -16,6 +20,7 @@ export const runQuestionOnLoadSdk =
     deserializedCard,
     cardId,
     cancelDeferred,
+    initialSqlParameters,
   }: LoadSdkQuestionParams) =>
   async (
     dispatch: Dispatch,
@@ -35,8 +40,26 @@ export const runQuestionOnLoadSdk =
     const originalQuestion =
       originalCard && new Question(originalCard, metadata);
 
+    let question = new Question(card, metadata);
+
+    question = syncCardParametersWithTemplateTags(question);
+
+    const queryParams = initialSqlParameters
+      ? mapObject(initialSqlParameters, String)
+      : {};
+
+    const parameterValues = getParameterValuesForQuestion({
+      card,
+      metadata,
+      queryParams,
+    });
+
+    if (parameterValues) {
+      question = question.setParameterValues(parameterValues);
+    }
+
     const result = await runQuestionQuerySdk({
-      question: new Question(card, metadata),
+      question,
       originalQuestion,
       cancelDeferred,
     });
