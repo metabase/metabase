@@ -21,12 +21,13 @@ And then run:
 ```bash
 yarn build-embedding-sdk:watch
 ```
+
 `build-embedding-sdk:watch` is the original command, the js output is fast, but the dts output is extremely slow and is not fixed by the fixup script on watch.
 
 ## Build incrementally
 
 ```bash
-yarn build-embedding-sdk:dev
+yarn embedding-sdk:dev
 ```
 
 This is an _experimental_ command that should be much faster, it uses `tsc --incremental` to to generate the dts files and fixes them automatically by running the fixup script on watch.
@@ -48,7 +49,7 @@ yarn storybook-embedding-sdk
 
 1. Set JWT secret to be "`0000000000000000000000000000000000000000000000000000000000000000`" in Admin > Authentication >
    JWT > String used by the JWT signing key
-1. Make sure "User Provisioning" setting is set to "`on`".
+1. Make sure "User Provisioning" is enabled.
 1. Set Authorized Origins to "`*`" in Admin > Embedding > Interactive embedding
 
 ## Using the local build
