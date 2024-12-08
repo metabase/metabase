@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 
-import type { FetchRequestTokenFn } from "embedding-sdk";
+import type { MetabaseFetchRequestTokenFn } from "embedding-sdk";
 import type { SdkErrorComponent } from "embedding-sdk/store/types";
 
 type BaseSDKConfig = {
@@ -12,7 +12,7 @@ type BaseSDKConfig = {
    * Specifies a function to fetch the refresh token.
    * The refresh token should be in the format of { id: string, exp: number }
    */
-  fetchRequestToken?: FetchRequestTokenFn;
+  fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
   /** Whether to allow logging to the DevTools console. Defaults to true. */
   allowConsoleLog?: boolean;

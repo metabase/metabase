@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import _ from "underscore";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   SdkError,
@@ -23,8 +23,10 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = {
-  plugins?: SdkPluginsConfig;
-
+  className?: string;
+  style?: CSSProperties;
+  plugins?: MetabasePluginsConfig;
+  
   /**
    * A custom React component to render the question layout.
    * Use namespaced InteractiveQuestion components to build the layout.

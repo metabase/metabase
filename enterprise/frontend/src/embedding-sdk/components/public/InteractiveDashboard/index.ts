@@ -1,2 +1,8 @@
-export { InteractiveDashboard } from "./InteractiveDashboard";
-export { EditableDashboard } from "./EditableDashboard";
+export {
+  InteractiveDashboard,
+  type InteractiveDashboardProps,
+} from "./InteractiveDashboard";
+export {
+  EditableDashboard,
+  type EditableDashboardProps,
+} from "./EditableDashboard";
