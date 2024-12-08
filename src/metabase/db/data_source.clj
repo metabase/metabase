@@ -162,6 +162,7 @@
         properties                              (some-> (not-empty (dissoc spec :classname :subprotocol :subname))
                                                         remove-shadowed-azure-managed-identity-client-id
                                                         connection-pool/map->properties)]
-
+    (println "url:" url) ; NOCOMMIT
+    (println "(pr-str spec):" (pr-str spec)) ; NOCOMMIT
     (update-h2/update-if-needed! url)
     (->DataSource url properties)))
