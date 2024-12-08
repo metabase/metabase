@@ -24,6 +24,7 @@ import {
   getDocsUrl,
   getSettings,
 } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, type IconName } from "metabase/ui";
 import {
@@ -44,6 +45,7 @@ export const useCommandPalette = ({
   const docsUrl = useSelector(state => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isSearchTypeaheadEnabled = useSetting("search-typeahead-enabled");
+  const isAdmin = useSelector(getUserIsAdmin);
 
   // Used for finding actions within the list
   const { searchQuery } = useKBar(state => ({
@@ -258,9 +260,9 @@ export const useCommandPalette = ({
   const adminActions = useMemo<PaletteAction[]>(() => {
     // Subpaths - i.e. paths to items within the main Admin tabs - are needed
     // in the command palette but are not part of the main list of admin paths
-    const adminSubpaths = getPerformanceAdminPaths(
-      PLUGIN_CACHING.getTabMetadata(),
-    );
+    const adminSubpaths = isAdmin
+      ? getPerformanceAdminPaths(PLUGIN_CACHING.getTabMetadata())
+      : [];
     const paths = [...adminPaths, ...adminSubpaths];
     return paths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
@@ -269,25 +271,31 @@ export const useCommandPalette = ({
       perform: () => dispatch(push(adminPath.path)),
       section: "admin",
     }));
-  }, [adminPaths, dispatch]);
+  }, [adminPaths, dispatch, isAdmin]);
 
   const adminSettingsActions = useMemo<PaletteAction[]>(() => {
-    return Object.entries(settingsSections)
-      .filter(([slug, section]) => {
-        if (section.getHidden?.(settingValues)) {
-          return false;
-        }
+    const hasSettingsPath = adminPaths.find(path => path.key === "settings");
 
-        return !slug.includes("/");
-      })
-      .map(([slug, section]) => ({
-        id: `admin-settings-${slug}`,
-        name: `${t`Settings`} - ${section.name}`,
-        icon: "gear",
-        perform: () => dispatch(push(`/admin/settings/${slug}`)),
-        section: "admin",
-      }));
-  }, [settingsSections, settingValues, dispatch]);
+    if (hasSettingsPath) {
+      return Object.entries(settingsSections)
+        .filter(([slug, section]) => {
+          if (section.getHidden?.(settingValues)) {
+            return false;
+          }
+
+          return !slug.includes("/");
+        })
+        .map(([slug, section]) => ({
+          id: `admin-settings-${slug}`,
+          name: `${t`Settings`} - ${section.name}`,
+          icon: "gear",
+          perform: () => dispatch(push(`/admin/settings/${slug}`)),
+          section: "admin",
+        }));
+    } else {
+      return [];
+    }
+  }, [settingsSections, settingValues, adminPaths, dispatch]);
 
   useRegisterActions(
     hasQuery ? [...adminActions, ...adminSettingsActions] : [],
