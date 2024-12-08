@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.version :as version]
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
@@ -111,14 +112,31 @@
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
   (classloader/require 'metabase.driver.sql-jdbc.connection)
-  (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
-    (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
-         (catch Throwable e
-           (throw (ex-info error-msg {} e)))))
-  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-    (let [metadata (.getMetaData conn)]
-      (log/infof "Successfully verified %s %s application database connection. %s"
-                 (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
+
+  ;; Define the minimum version requirements per database type
+  (let [min-versions {:postgres [12 0]
+                      :mysql    [8 0]
+                      :mariadb  [10 4]}
+        required-version (get min-versions db-type)]
+
+    (let [error-msg (format "Unable to connect to Metabase %s DB." (name db-type))]
+      ;; First verify basic connectivity
+      (try
+        (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?)
+                 {:datasource data-source})
+                error-msg)
+        (catch Throwable e
+          (throw (ex-info error-msg {} e)))))
+
+    ;; Then check version requirements
+    (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
+      (let [version-info (version/get-db-version conn)]
+        (log/infof "Successfully connected to %s %s. %s"
+                  (:flavor version-info)
+                  (:version version-info)
+                  (u/emoji "✅"))
+
+        (version/check-min-version db-type version-info required-version)))))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
