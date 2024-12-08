@@ -491,11 +491,11 @@
     :second-of-minute (.second t)
     :minute-of-hour   (.minute t)
     :hour-of-day      (.hour t)
-    :day-of-week      (.weekday t)
+    :day-of-week      (inc (.weekday t)) ;; `weekday` is 0-6, where 0 corresponds to the first day of week
     :day-of-week-iso  (.isoWeekday t)
     :day-of-month     (.date t)
     :day-of-year      (.dayOfYear t)
     :week-of-year     (.week t)
-    :month-of-year    (.month t)
+    :month-of-year    (inc (.month t)) ;; `month` is 0-11
     :quarter-of-year  (.quarter t)
     :year             (.year t)))

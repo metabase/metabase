@@ -208,7 +208,6 @@
     :minute-of-hour
     :hour-of-day
     :day-of-week
-    :day-of-week-iso
     :day-of-month
     :day-of-year
     :week-of-year
@@ -253,7 +252,7 @@
    (extract (t/zoned-date-time) unit))
 
   ([t    :- TemporalInstance
-    unit :- (into [:enum] extract-units)]
+    unit :- (into [:enum] (concat extract-units [:day-of-week-iso]))]
    (t/as t (case unit
              :second-of-minute :second-of-minute
              :minute-of-hour   :minute-of-hour
