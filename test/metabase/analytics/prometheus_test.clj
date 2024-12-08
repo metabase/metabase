@@ -75,7 +75,7 @@
   jvm_threads_state{state=\"TERMINATED\",} 0.0
   jvm_threads_peak 141.0
   ```
-  Returns #{\"jvm_threads_state\" \"jvm_threads_peak\"}. "
+  Returns #{\"jvm_threads_state\" \"jvm_threads_peak\"}."
   [port]
   (->> (http/get (format "http://localhost:%s/metrics"
                          port))

@@ -22,11 +22,11 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
-(def ^:dynamic *capture-logs-fn*
+(def ^:dynamic ^{:arglists '([namespace-str level-int])} *capture-logs-fn*
   "Function with the signature that given a namespace string and log level (as an int), returns a function that should
   be used to capture a log message, if messages at that level should be captured. Its signature is
 
-    (f namespace-str level-int) => (f e message) "
+    (f namespace-str level-int) => (f e message)"
   (constantly nil))
 
 ;;; Code below converts log levels to integers right away, because a simple int comparison like `(<= 5 4)` is super
