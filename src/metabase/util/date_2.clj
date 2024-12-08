@@ -208,6 +208,7 @@
     :minute-of-hour
     :hour-of-day
     :day-of-week
+    :day-of-week-iso
     :day-of-month
     :day-of-year
     :week-of-year

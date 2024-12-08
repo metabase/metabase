@@ -1023,6 +1023,40 @@
                     :fields   [[:field 3 nil]]}}}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              REPLACE LEGACY FILTERS                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(t/deftest ^:parallel replace-exclude-date-filter-test
+  (tests 'replace-exclude-date-filter #'mbql.normalize/replace-exclude-date-filter
+         { "`:hour-of-day`"
+          {[:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+           [:!= [:get-hour [:field 1 nil]] 0 23]}
+
+          "`:day-of-week`"
+          {[:!= [:field 1 {:temporal-unit :day-of-week}] "2024-12-02" "2024-12-08"]
+           [:!= [:get-day-of-week [:field 1 nil] :iso] 1 7]}
+
+          "`:month-of-year`"
+          {[:!= [:field 1 {:temporal-unit :month-of-year}] "2024-01-02" "2024-12-08"]
+           [:!= [:get-month [:field 1 nil]] 1 12]}
+
+          "`:quarter-of-year`"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "2024-12-08"]
+           [:!= [:get-quarter [:field 1 nil]] 1 4]}
+
+           "field options should be preserved"
+           {[:!= [:field 1 {:base-type :type/DateTime :temporal-unit :hour-of-day}] 10]
+            [:!= [:get-hour [:field 1 {:base-type :type/DateTime}]] 10]}
+
+           "filters with invalid dates should be ignored"
+           {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]
+            [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]}
+
+           "filters with non-date string arguments should be ignored"
+           {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]
+            [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]}}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              REMOVE EMPTY CLAUSES                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
