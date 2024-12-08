@@ -98,7 +98,7 @@
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   methodical/methodical                     {:mvn/version "1.0.124"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
-  metosin/malli                             {:mvn/version "0.16.4"}             ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:mvn/version "0.17.0"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.1.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.clojars.wkok/openai-clojure           {:mvn/version "0.22.0"
