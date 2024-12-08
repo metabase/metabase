@@ -91,6 +91,9 @@ export function filterToUrlEncoded(filter: any[]) {
 }
 
 const prefixedOperators = new Set([
+  "previous",
+  "next",
+  "current",
   "exclude",
   "before",
   "after",
