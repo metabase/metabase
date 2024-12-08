@@ -4,12 +4,11 @@ import type { ChecklistItemValue } from "metabase/home/components/Onboarding/typ
 describe("Onboarding checklist page", () => {
   beforeEach(() => {
     H.restore();
+    cy.signInAsNormalUser();
+    cy.visit("/getting-started");
   });
 
   it("should let non-admins access this page", () => {
-    cy.signInAsNormalUser();
-    cy.visit("/getting-started");
-
     cy.get("[data-accordion=true]").within(() => {
       cy.findByRole("heading", { name: "Start visualizing your data" }).should(
         "be.visible",
@@ -27,6 +26,44 @@ describe("Onboarding checklist page", () => {
       ).should("not.exist");
     });
   });
+
+  it("the link should be dismissible from the sidebar", () => {
+    cy.get("[data-accordion=true]")
+      .as("accordionElement")
+      .findByRole("heading", { name: "Start visualizing your data" })
+      .should("be.visible");
+
+    cy.findByTestId("main-navbar-root")
+      .findByRole("listitem", { name: "How to use Metabase" })
+      .as("sidebarOnboardingLink")
+      .realHover()
+      .icon("eye_crossed_out")
+      .as("dismissIcon")
+      .should("be.visible")
+      .trigger("mouseenter");
+    cy.findByRole("tooltip", { name: "Hide page" }).should("be.visible");
+    cy.get("@dismissIcon").click();
+
+    cy.log("The link should be removed from the sidebar");
+    cy.get("@sidebarOnboardingLink").should("not.exist");
+
+    cy.log("Navigation is redirected to the home page");
+    cy.get("@accordionElement").should("not.exist");
+    cy.location("pathname").should("eq", "/");
+
+    cy.log("The informative toast appears");
+    cy.findByRole("status")
+      .should("contain", "Page hidden from the navigation sidebar")
+      .and(
+        "contain",
+        "Access it later anytime by clicking the gear icon at the top right of the screen.",
+      );
+
+    cy.log("The link should now live in the main settings menu");
+    cy.findByLabelText("Settings menu").click();
+    H.popover().should("contain", "How to use Metabase").click();
+    cy.location("pathname").should("eq", "/getting-started");
+  });
 });
 
 H.describeEE("Inaccessible Onboarding checklist", () => {
@@ -36,7 +73,7 @@ H.describeEE("Inaccessible Onboarding checklist", () => {
     H.setTokenFeatures("all");
   });
 
-  it("should not render when embedded in an iframe or when the instance is whitelabelled", () => {
+  it("should not render when embedded in an iframe", () => {
     H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
     cy.findByTestId("main-navbar-root").within(() => {
       cy.findByRole("listitem", { name: "Home" }).should("be.visible");
@@ -64,6 +101,12 @@ H.describeEE("Inaccessible Onboarding checklist", () => {
     cy.log("Redirects to the home page");
     cy.visit("/getting-started");
     cy.location("pathname").should("eq", "/");
+
+    cy.log("The link should not exist in the main settings menu either");
+    cy.findByLabelText("Settings menu").click();
+    H.popover()
+      .should("contain", "About Acme, corp.")
+      .and("not.contain", "How to use Metabase");
   });
 });
 

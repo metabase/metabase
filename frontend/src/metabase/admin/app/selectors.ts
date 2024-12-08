@@ -28,3 +28,7 @@ export const hasDeprecatedDatabase = (state: State, props: Props): boolean => {
 export const getAdminPaths = (state: State) => {
   return state.admin?.app?.paths ?? [];
 };
+
+export const getIsOnboardingSidebarLinkDismissed = (state: State) => {
+  return getSetting(state, "dismissed-onboarding-sidebar-link");
+};
