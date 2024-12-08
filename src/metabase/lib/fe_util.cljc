@@ -492,6 +492,33 @@
         (when (and (u.time/valid? start) (u.time/valid? end))
           {:operator op, :column (ref->col col-ref), :values [start end]})))))
 
+(def ^:private DefaultFilterParts
+  [:map
+   [:operator ::lib.schema.filter/default-filter-operator]
+   [:column   ::lib.schema.metadata/column]])
+
+(mu/defn default-filter-clause :- ::lib.schema.expression/expression
+  "Creates a default filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[default-filter-parts]]. This clause works as a fallback for more specialized column types."
+  [operator :- ::lib.schema.filter/default-filter-operator
+   column   :- ::lib.schema.metadata/column]
+  (expression-clause operator [column] {}))
+
+(mu/defn default-filter-parts :- [:maybe DefaultFilterParts]
+  "Destructures a default filter clause created by [[default-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape or if the clause uses a string column; the FE allows only `:is-empty` and `:not-empty` operators
+  for string columns."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col       #(column-metadata-from-ref query stage-number %)
+        supported-col? #(and (lib.util/ref-clause? %)
+                             (not (lib.util/original-isa? % :type/Text))
+                             (not (lib.util/original-isa? % :type/TextLike)))]
+    (lib.util.match/match-one filter-clause
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
+      {:operator op, :column (ref->col col-ref)})))
+
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
    Can be expanded as needed but only currently defined for a narrow set of date filters.

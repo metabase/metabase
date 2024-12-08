@@ -193,7 +193,7 @@ describe("DefaultFilterEditor", () => {
 });
 
 interface QueryWithFilterOpts {
-  operator: Lib.DefaultFilterOperatorName;
+  operator: Lib.DefaultFilterOperator;
 }
 
 function createQueryWithFilter({ operator }: QueryWithFilterOpts) {
