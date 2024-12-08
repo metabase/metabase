@@ -1,5 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import {
+  InteractiveQuestion,
+  type MetabaseQuestion,
+} from "@metabase/embedding-sdk-react";
 import type { ComponentProps } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -23,7 +26,6 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Flex, Modal, Popover } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -213,11 +215,11 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
 
       const handleSave = (
-        question: Question | undefined,
+        question: MetabaseQuestion | undefined,
         context: { isNewQuestion: boolean },
       ) => {
         if (context.isNewQuestion) {
-          onSave(question?.displayName() ?? "");
+          onSave(question?.name ?? "");
         }
 
         close();
