@@ -262,18 +262,14 @@
             {:source-table 1
              :breakout     [[:field Integer/MAX_VALUE nil]]})))))
 
-(deftest ^:parallel do-not-auto-bucket-time-interval-test
+(deftest ^:parallel do-not-auto-bucket-relative-time-interval-test
   (testing "does a :type/DateTime breakout Field that is already bucketed pass thru unchanged?"
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:source-table (meta/id :orders)
-              :filter       [:between [:+ [:field (meta/id :orders :created-at) nil] [:interval 1 :minute]]
-                             [:relative-datetime -10 :minute]
-                             [:relative-datetime 0 :minute]]}
+              :filter       [:relative-time-interval [:field (meta/id :orders :created-at) nil] 1 :day 2 :month]}
              (auto-bucket-mbql
               {:source-table (meta/id :orders)
-               :filter       [:between [:+ [:field (meta/id :orders :created-at) nil] [:interval 1 :minute]]
-                              [:relative-datetime -10 :minute]
-                              [:relative-datetime 0 :minute]]}))))))
+               :filter      [:relative-time-interval [:field (meta/id :orders :created-at) nil] 1 :day 2 :month]}))))))
 
 (deftest ^:parallel auto-bucket-unix-timestamp-fields-test
   (testing "do UNIX TIMESTAMP fields get auto-bucketed?"
