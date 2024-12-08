@@ -100,7 +100,7 @@ export function SearchValuePicker({
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}
-      rightSection={isSearching ? <Loader /> : undefined}
+      rightSection={isSearching ? <Loader size="xs" /> : undefined}
       nothingFound={notFoundMessage}
       onChange={onChange}
       onSearchChange={handleSearchChange}
