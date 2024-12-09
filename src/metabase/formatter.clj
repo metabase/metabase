@@ -288,7 +288,7 @@
 
      (or (isa? (:semantic_type col) :type/SerializedJSON)
          (isa? ((some-fn :effective_type :base_type) col) :type/Dictionary))
-     (partial dictionary-formatter)
+     dictionary-formatter
 
      :else
      (if apply-formatting? str identity))))

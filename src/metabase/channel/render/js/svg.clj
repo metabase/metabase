@@ -31,6 +31,12 @@
   "frontend_shared/static_viz_interface.js")
 
 (defn- load-viz-bundle [^Context context]
+  ;; make sure people don't try to load the static viz bundle as a side-effect of loading namespaces, because it might
+  ;; not have been built! If it's not built, we want to be able to give people a meaningful error (see the fixture
+  ;; in [[metabase.channel.render.js.svg-test]]) rather than have the test runner fail to start with a meaningless
+  ;; compilation error.
+  (when config/tests-available?
+    ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "(mt/id ...) or (data/id ...)"))
   (doto context
     (js.engine/load-resource bundle-path)
     (js.engine/load-resource interface-path)))

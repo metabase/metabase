@@ -522,7 +522,7 @@
               (client/client :get 202 (str "public/card/" uuid "/query"))
               (is (= :public-question (:context (qe))))))))
 
-      (let [query (merge (mt/mbql-query venues))]
+      (let [query (mt/mbql-query venues)]
         (with-temp-public-card [{uuid :public_uuid} {:dataset_query query}]
           (testing ":json download response format"
             (process-userland-query-test/with-query-execution! [qe query]

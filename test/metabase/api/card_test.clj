@@ -35,7 +35,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.task :as task]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -258,8 +258,8 @@
              (card-returned? :database db      card-2))))))
 
 (deftest ^:parallel authentication-test
-  (is (= (get req.util/response-unauthentic :body) (client/client :get 401 "card")))
-  (is (= (get req.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
+  (is (= (get request/response-unauthentic :body) (client/client :get 401 "card")))
+  (is (= (get request/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
 (deftest ^:parallel model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
@@ -1035,7 +1035,8 @@
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
                                                                        query))]
-              (is (= @called 1))
+              (is (= 1
+                     @called))
               (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
                       card))
               (mt/user-http-request
@@ -1046,7 +1047,8 @@
                       :cache_ttl 20000
                       :display "table"
                       :collection_position 1))
-              (is (= @called 1)))))))))
+              (is (= 1
+                     @called)))))))))
 
 (deftest updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]

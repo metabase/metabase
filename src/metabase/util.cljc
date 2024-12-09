@@ -2,7 +2,7 @@
   "Common utility functions useful throughout the codebase."
   (:refer-clojure :exclude [group-by])
   (:require
-   #?@(:clj ([clojure.core.protocols :as core.protocols]
+   #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
              [metabase.config :as config]
@@ -20,7 +20,7 @@
    [flatland.ordered.map :refer [ordered-map]]
    [medley.core :as m]
    [metabase.util.format :as u.format]
-   [metabase.util.i18n :refer [tru] :as i18n]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
@@ -29,8 +29,8 @@
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep])
   #?(:clj (:import
-           (clojure.lang Reflector)
            (clojure.core.protocols CollReduce)
+           (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
            (java.util Locale Random)
            (org.apache.commons.validator.routines RegexValidator UrlValidator)))
@@ -38,6 +38,8 @@
                             [metabase.util])))
 
 #?(:clj (set! *warn-on-reflection* true))
+
+#?(:clj (comment clojure.core.protocols/keep-me))
 
 (u.ns/import-fns
  [u.format
@@ -153,7 +155,20 @@
 
      (u/qualified-name :type/FK) -> \"type/FK\""
   [k]
-  (when (some? k)
+  (cond
+    (nil? k)
+    nil
+
+    ;; optimization in Clojure: calling [[symbol]] on a keyword returns the underlying symbol, and [[str]] on a symbol
+    ;; is cached internally (see `clojure.lang.Symbol/toString()`). So we can avoid constructing a new string here.
+    ;; Not sure whether this is cached in ClojureScript as well.
+    (keyword? k)
+    (str (symbol k))
+
+    (symbol? k)
+    (str k)
+
+    :else
     (if-let [namespac (when #?(:clj  (instance? clojure.lang.Named k)
                                :cljs (satisfies? INamed k))
                         (namespace k))]
@@ -184,7 +199,7 @@
       (str/blank? text) text
       (#{\. \? \!} (last text)) text
       (str/ends-with? text "```") text
-      (str/ends-with? text ":") (str (subs text 0 (- (count text) 1)) ".")
+      (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
       :else (str text "."))))
 
 (defn lower-case-en
@@ -523,7 +538,7 @@
 
    The values of `keyseq` can be either regular keys, which work the same way as `select-keys`,
    or vectors of the form `[k & nested-keys]`, which call `select-nested-keys` recursively
-   on the value of `k`. "
+   on the value of `k`."
   [m keyseq]
   ;; TODO - use (empty m) once supported by model instances
   (into {} (for [k     keyseq

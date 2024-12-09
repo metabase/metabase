@@ -112,23 +112,28 @@
 ;;; ----------------------------------------------- DYNAMIC VARIABLES ------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic ^Integer *current-user-id*
   "Int ID or `nil` of user associated with current API call."
   nil)
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user*
   "Delay that returns the `User` (or nil) associated with the current API call.
    ex. `@*current-user*`"
   (atom nil)) ; default binding is just something that will return nil when dereferenced
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic ^Boolean *is-superuser?*
   "Is the current user a superuser?"
   false)
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic ^Boolean *is-group-manager?*
   "Is the current user a group manager of at least one group?"
   false)
 
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user-permissions-set*
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
   more information about the Metabase permissions system."
@@ -291,6 +296,8 @@
   [arg]
   (check arg generic-500))
 
+;;; TODO -- why does this live here but other 'generic' responses live in [[metabase.request.util]]. We should move this
+;;; so it lives with its friends
 (def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})

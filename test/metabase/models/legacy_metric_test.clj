@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Database Table]]
-   [metabase.models.legacy-metric :as metric :refer [LegacyMetric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.revision :as revision]
    [metabase.test :as mt]
    [toucan2.core :as t2]

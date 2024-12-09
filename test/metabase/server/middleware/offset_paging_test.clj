@@ -2,8 +2,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.request.core :as request]
    [metabase.server.handler :as handler]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response])
@@ -12,9 +12,9 @@
 
 (defn- handler [request]
   (let [handler  (fn [request respond _]
-                   (respond (response/response {:limit  mw.offset-paging/*limit*
-                                                :offset mw.offset-paging/*offset*
-                                                :paged? mw.offset-paging/*paged?*
+                   (respond (response/response {:limit  (request/limit)
+                                                :offset (request/offset)
+                                                :paged? (request/paged?)
                                                 :params (:params request)})))
         handler* (#'handler/apply-middleware handler)
         respond  identity

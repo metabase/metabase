@@ -15,3 +15,17 @@
                                                     actual-arg-count)
                                    :type :format))))))
   x)
+
+(defn case-enum
+  "Lint `(case-enum ...)` like `(condp = ...)`."
+  [x]
+  (letfn [(update-node [node]
+            (let [[_case-enum x & more] (:children node)]
+              (-> (api/list-node
+                   (list*
+                    (api/token-node 'clojure.core/condp)
+                    (api/token-node 'clojure.core/=)
+                    x
+                    more))
+                  (with-meta (meta node)))))]
+    (update x :node update-node)))

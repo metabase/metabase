@@ -1496,12 +1496,12 @@
 ;; That's why we use a set of helper functions that get setting directly from DB during tests
 (deftest migrate-remove-admin-from-group-mapping-if-needed-test
   (let [admin-group-id        (u/the-id (perms-group/admin))
-        sso-group-mappings    {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
-                               "group-mapping-b" [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
-        ldap-group-mappings   {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
-        sso-expected-mapping  {"group-mapping-a" [(+ 1 admin-group-id)]
-                               "group-mapping-b" [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
-        ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
+        sso-group-mappings    {"group-mapping-a" [admin-group-id (inc admin-group-id)]
+                               "group-mapping-b" [admin-group-id (inc admin-group-id) (+ 2 admin-group-id)]}
+        ldap-group-mappings   {"dc=metabase,dc=com" [admin-group-id (inc admin-group-id)]}
+        sso-expected-mapping  {"group-mapping-a" [(inc admin-group-id)]
+                               "group-mapping-b" [(inc admin-group-id) (+ 2 admin-group-id)]}
+        ldap-expected-mapping {"dc=metabase,dc=com" [(inc admin-group-id)]}]
 
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings

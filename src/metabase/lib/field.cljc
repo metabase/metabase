@@ -259,7 +259,8 @@
                                       lib.util/strip-id)
                                   (let [table (lib.metadata/table-or-card query table-id)]
                                     (lib.metadata.calculation/display-name query stage-number table style))))
-                              (or join-alias (lib.join.util/current-join-alias field-metadata))))
+                              join-alias
+                              (lib.join.util/current-join-alias field-metadata)))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)

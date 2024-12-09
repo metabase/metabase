@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
    [metabase.models.task-history :as task-history :refer [TaskHistory]]

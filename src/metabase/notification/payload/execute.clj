@@ -11,7 +11,7 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -228,7 +228,7 @@
 (mu/defn execute-dashboard :- [:sequential Part]
   "Execute a dashboard and return its parts."
   [dashboard-id user-id parameters]
-  (mw.session/with-current-user user-id
+  (request/with-current-user user-id
     (if (render-tabs? dashboard-id)
       (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
             tabs-with-cards    (filter #(seq (:cards %)) tabs)
@@ -273,7 +273,7 @@
                                        {:visualization-settings (:visualization_settings card)}
                                        options)))))
             result        (if creator-id
-                            (mw.session/with-current-user creator-id
+                            (request/with-current-user creator-id
                               (process-query))
                             (process-query))]
         {:card   card

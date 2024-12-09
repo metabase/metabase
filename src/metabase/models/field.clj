@@ -15,7 +15,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features
-    :as premium-features
     :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

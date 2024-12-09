@@ -474,7 +474,7 @@
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
 (defn- expand**
-  "Expand parameters inside a top-level native `query`. Not recursive. "
+  "Expand parameters inside a top-level native `query`. Not recursive."
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
     (mt/with-metadata-provider meta/metadata-provider

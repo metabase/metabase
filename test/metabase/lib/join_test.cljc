@@ -839,14 +839,14 @@
     (is (=? [{:alias "Checkins"}
              {:alias "Checkins_2"}]
             (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
-                (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
-                                               [(lib/=
-                                                 (meta/field-metadata :users :id)
-                                                 (meta/field-metadata :checkins :user-id))])))
-                (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
-                                               [(lib/=
-                                                 (meta/field-metadata :users :id)
-                                                 (meta/field-metadata :checkins :user-id))])))
+                (lib/join (lib/join-clause (meta/table-metadata :checkins)
+                                           [(lib/=
+                                             (meta/field-metadata :users :id)
+                                             (meta/field-metadata :checkins :user-id))]))
+                (lib/join (lib/join-clause (meta/table-metadata :checkins)
+                                           [(lib/=
+                                             (meta/field-metadata :users :id)
+                                             (meta/field-metadata :checkins :user-id))]))
                 :stages first :joins)))))
 
 (deftest ^:parallel suggested-join-conditions-test

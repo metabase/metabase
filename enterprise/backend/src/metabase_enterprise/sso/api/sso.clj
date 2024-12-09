@@ -10,7 +10,7 @@
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -69,8 +69,8 @@
 (api/defendpoint POST "/logout"
   "Logout."
   [:as {cookies :cookies}]
-  {cookies [:map [mw.session/metabase-session-cookie [:map [:value ms/NonBlankString]]]]}
-  (let [metabase-session-id (get-in cookies [mw.session/metabase-session-cookie :value])]
+  {cookies [:map [request/metabase-session-cookie [:map [:value ms/NonBlankString]]]]}
+  (let [metabase-session-id (get-in cookies [request/metabase-session-cookie :value])]
     (api/check-exists? :model/Session metabase-session-id)
     (let [{:keys [email sso_source]}
           (t2/query-one {:select [:u.email :u.sso_source]

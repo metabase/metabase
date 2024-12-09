@@ -10,10 +10,9 @@
    [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features
-    :as premium-features
     :refer [defenterprise]]
    [metabase.task :as task]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 

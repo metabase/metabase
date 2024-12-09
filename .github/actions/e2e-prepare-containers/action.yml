@@ -90,7 +90,7 @@ runs:
 
         if ${{ inputs.webhook }}; then
           echo -e "${Y}Starting webhook test container..." &&
-          docker run -d -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000 &&
+          docker run -d -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000 &&
           while ! nc -z localhost 9080; do sleep 1; done &&
           echo -e "${G}Webhook tester is up and running!"
         fi

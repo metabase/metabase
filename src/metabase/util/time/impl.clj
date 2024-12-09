@@ -28,6 +28,8 @@
   "Given a datetime, check that it's valid."
   [value]
   (or (datetime?      value)
+      (t/local-date?  value)
+      (t/local-date-time?  value)
       (t/offset-time? value)
       (t/local-time?  value)))
 
@@ -472,6 +474,15 @@
 
 (defn format-for-base-type
   "Clojure implementation of [[metabase.util.time/format-for-base-type]]; format a temporal value as an ISO-8601
-  string. `base-type` is ignored for the Clojure implementation; this simply calls [[clojure.core/str]]."
-  [t _base-type]
-  (str t))
+  string appropriate for a value of the given `base-type`, e.g. a `:type/Time` gets formatted as a `HH:mm:ss.SSS`
+  string."
+  [t base-type]
+  (if (string? t)
+    t
+    (let [format (condp #(isa? %2 %1) base-type
+                   :type/TimeWithTZ     "HH:mm:ss.SSSZ"
+                   :type/Time           "HH:mm:ss.SSS"
+                   :type/DateTimeWithTZ "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+                   :type/DateTime       "yyyy-MM-dd'T'HH:mm:ss.SSS"
+                   :type/Date           "yyyy-MM-dd")]
+      (t/format format t))))

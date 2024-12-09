@@ -12,7 +12,7 @@
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
@@ -69,7 +69,7 @@
                                       :unaggregated-query-row-limit 2000}  ; visibility: :authenticated
                         :id          3})]
     (testing "authenticated users should see settings with authenticated visibility"
-      (mw.session/with-current-user
+      (request/with-current-user
         (mt/user->id :rasta)
         (is (= {"description" nil
                 "name"        "testpg"
@@ -78,7 +78,7 @@
                 "id"          3}
                (encode-decode pg-db)))))
     (testing "non-authenticated users shouldn't see settings with authenticated visibility"
-      (mw.session/with-current-user nil
+      (request/with-current-user nil
         (is (= {"description" nil
                 "name"        "testpg"
                 "settings"    {"database-enable-actions" true}
@@ -140,7 +140,7 @@
                         :engine      :bigquery-cloud-sdk})]
     (testing "sensitive fields are redacted when database details are encoded"
       (testing "details removed for non-admin users"
-        (mw.session/with-current-user
+        (request/with-current-user
           (mt/user->id :rasta)
           (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider {:database pg-db})
             (is (= {"description" nil
@@ -157,7 +157,7 @@
                  (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
-        (mw.session/with-current-user
+        (request/with-current-user
           (mt/user->id :crowberto)
           (is (= {"description" nil
                   "name"        "testpg"

@@ -1717,15 +1717,14 @@
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
   (mr/validator Query))
 
-(def ^{:arglists '([query])} validate-query
+(defn validate-query
   "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
   valid."
-  (let [explainer (mr/explainer Query)]
-    (fn [query]
-      (if (valid-query? query)
-        query
-        (let [error     (explainer query)
-              humanized (me/humanize error)]
-          (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
-                          {:error    humanized
-                           :original error})))))))
+  [query]
+  (if (valid-query? query)
+    query
+    (let [error     (mr/explain Query query)
+          humanized (me/humanize error)]
+      (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
+                      {:error    humanized
+                       :original error})))))

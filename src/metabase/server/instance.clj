@@ -1,7 +1,6 @@
-(ns metabase.server
+(ns metabase.server.instance
   "Code related to configuring, starting, and stopping the Metabase Jetty web server."
   (:require
-   [clojure.core :as core]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.config :as config]

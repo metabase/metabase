@@ -18,7 +18,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 

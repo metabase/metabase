@@ -138,7 +138,7 @@
                     (pr-str (.toPattern message-format))
                     (str/join ", " (map (partial format "{%d}") (range expected-num-args-by-index)))))
     (assert (= expected-num-args actual-num-args)
-            (str (format (str "(deferred-)trs/tru with format string %s expects %d args, got %d.")
+            (str (format "(deferred-)trs/tru with format string %s expects %d args, got %d."
                          (pr-str (.toPattern message-format)) expected-num-args actual-num-args)
                  " Did you forget to escape a single quote?"))))
 

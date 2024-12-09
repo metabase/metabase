@@ -8,7 +8,7 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.user-parameter-value :as user-parameter-value]

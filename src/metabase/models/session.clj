@@ -2,8 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.nonce :as nonce]
-   [metabase.server.middleware.misc :as mw.misc]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -29,7 +28,7 @@
 (t2/define-before-insert :model/Session
   [session]
   (cond-> session
-    (some-> mw.misc/*request* req.util/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token))))
+    (some-> (request/current-request) request/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token))))
 
 (t2/define-after-insert :model/Session
   [{anti-csrf-token :anti_csrf_token, :as session}]

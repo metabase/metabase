@@ -238,11 +238,12 @@
                   (cond
                     (hooks/vector-node? node)
                     ;; propagate the metadata attached to this vector in case there's a `:clj-kondo/ignore` form.
-                    (vary-meta (first (:children node)) (partial merge (meta require-node) (meta node)))
+                    (let [symbol-node (first (:children node))]
+                      (hooks.common/merge-ignored-linters symbol-node require-node node))
 
                     ;; this should also be dead code since we require requires to be vectors
                     (hooks/token-node? node)
-                    (vary-meta node (partial merge (meta require-node)))
+                    (hooks.common/merge-ignored-linters node require-node)
 
                     :else
                     (printf "Don't know how to figure out what namespace is being required in %s\n" (pr-str node)))))
@@ -294,8 +295,7 @@
                                                 ns-form-node->require-node
                                                 require-node->namespace-symb-nodes)]
           (doseq [node  required-namespace-symb-nodes
-                  :let  [clj-kondo-ignore (some-> (meta node) :clj-kondo/ignore hooks/sexpr set)]
-                  :when (not (contains? clj-kondo-ignore :metabase/ns-module-checker))
+                  :when (not (contains? (hooks.common/ignored-linters node) :metabase/ns-module-checker))
                   :let  [required-namespace (hooks/sexpr node)
                          required-module    (module required-namespace)]
                   ;; ignore stuff not in a module i.e. non-Metabase stuff.

@@ -38,9 +38,9 @@
   ([field-name base-type value-type value]
    (field-filter field-name base-type value-type value nil))
   ([field-name base-type value-type value options]
-   (params/->FieldFilter (merge {:lib/type  :metadata/column
-                                 :name      (name field-name)
-                                 :base-type (or base-type :type/*)})
+   (params/->FieldFilter {:lib/type  :metadata/column
+                          :name      (name field-name)
+                          :base-type (or base-type :type/*)}
                          (cond-> {:type value-type, :value value}
                            (map? options) (assoc :options options)))))
 

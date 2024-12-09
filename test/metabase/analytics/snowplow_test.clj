@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.models.setting :as setting :refer [Setting]]
+   [metabase.models.setting :refer [Setting]]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

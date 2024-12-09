@@ -8,13 +8,12 @@
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.async.util :as async.u]
    [metabase.db :as mdb]
-   [metabase.driver.sql-jdbc.execute.diagnostic
-    :as sql-jdbc.execute.diagnostic]
+   [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.server :as server]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
+   [metabase.server.instance :as server]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -209,7 +208,7 @@
 (defn- should-log-request? [{:keys [uri], :as request}]
   ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
-  (and (req.util/api-call? request)
+  (and (request/api-call? request)
        (not ((logging-disabled-uris) uri))))
 
 (defn log-api-call

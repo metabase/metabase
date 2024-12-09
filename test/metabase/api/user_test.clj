@@ -14,7 +14,7 @@
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -53,10 +53,10 @@
 (deftest user-list-authentication-test
   (testing "authentication"
     (testing "GET /api/user"
-      (is (= (get req.util/response-unauthentic :body)
+      (is (= (get request/response-unauthentic :body)
              (client/client :get 401 "user"))))
     (testing "GET /api/user/current"
-      (is (= (get req.util/response-unauthentic :body)
+      (is (= (get request/response-unauthentic :body)
              (client/client :get 401 "user/current"))))))
 
 (deftest user-list-test
@@ -544,13 +544,11 @@
                                                 :email            email
                                                 :login_attributes {:test "value"}})]
                 (is (= (merge @user-defaults
-                              (merge
-                               @user-defaults
-                               {:email                  email
-                                :first_name             user-name
-                                :last_name              user-name
-                                :common_name            (str user-name " " user-name)
-                                :login_attributes       {:test "value"}}))
+                              {:email                  email
+                               :first_name             user-name
+                               :last_name              user-name
+                               :common_name            (str user-name " " user-name)
+                               :login_attributes       {:test "value"}})
                        (-> resp
                            mt/boolean-ids-and-timestamps
                            (dissoc :user_group_memberships))))

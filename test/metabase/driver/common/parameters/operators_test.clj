@@ -6,23 +6,23 @@
 
 (deftest ^:parallel to-clause-test
   (testing "number operations"
-    (is (= (params.ops/to-clause {:type   :number/=
+    (is (= [:= [:field 26 {:source-field 5}] 3]
+           (params.ops/to-clause {:type   :number/=
                                   :target [:dimension
                                            [:field
                                             26
                                             {:source-field 5}]]
-                                  :value  [3]})
-           [:= [:field 26 {:source-field 5}] 3]))))
+                                  :value  [3]})))))
 
 (deftest ^:parallel to-clause-test-2
   (testing "number operations"
-    (is (= (params.ops/to-clause {:type   :number/between
+    (is (= [:between [:field 26 {:source-field 5}] 3 9]
+           (params.ops/to-clause {:type   :number/between
                                   :target [:dimension
                                            [:field
                                             26
                                             {:source-field 5}]]
-                                  :value  [3 9]})
-           [:between [:field 26 {:source-field 5}] 3 9]))))
+                                  :value  [3 9]})))))
 
 (deftest ^:parallel to-clause-test-3
   (testing "number operations"
@@ -37,50 +37,59 @@
 
 (deftest ^:parallel to-clause-test-4
   (testing "string operations"
-    (is (= (params.ops/to-clause {:type   :string/starts-with
+    (is (= [:starts-with [:field 26 {:source-field 5}] "foo"]
+           (params.ops/to-clause {:type   :string/starts-with
                                   :target [:dimension
                                            [:field
                                             26
                                             {:source-field 5}]]
-                                  :value  ["foo"]})
-           [:starts-with [:field 26 {:source-field 5}] "foo"]))
+                                  :value  ["foo"]})))))
+
+(deftest ^:parallel to-clause-test-4b
+  (testing "string operations"
     (testing "with options"
-      (is (= (params.ops/to-clause {:type   :string/starts-with
+      (is (= [:starts-with [:field 26 {:source-field 5}] "foo" {:case-insensitive false}]
+             (params.ops/to-clause {:type   :string/starts-with
                                     :target [:dimension
                                              [:field
                                               26
                                               {:source-field 5}]]
                                     :value  ["foo"]
-                                    :options {:case-insensitive false}})
-             [:starts-with [:field 26 {:source-field 5}] "foo" {:case-insensitive false}])))
+                                    :options {:case-insensitive false}}))))))
+
+(deftest ^:parallel to-clause-test-4c
+  (testing "string operations"
     (testing "with multiple arguments"
-      (is (= (params.ops/to-clause {:type   :string/starts-with
+      (is (= [:starts-with {} [:field 26 {:source-field 5}] "foo" "bar"]
+             (params.ops/to-clause {:type   :string/starts-with
                                     :target [:dimension
                                              [:field
                                               26
                                               {:source-field 5}]]
-                                    :value  ["foo" "bar"]})
-             [:starts-with {} [:field 26 {:source-field 5}] "foo" "bar"]))
+                                    :value  ["foo" "bar"]}))))))
 
+(deftest ^:parallel to-clause-test-4d
+  (testing "string operations"
+    (testing "with multiple arguments"
       (testing "with options"
-        (is (= (params.ops/to-clause {:type   :string/starts-with
+        (is (= [:starts-with {:case-insensitive false} [:field 26 {:source-field 5}] "foo" "bar"]
+               (params.ops/to-clause {:type   :string/starts-with
                                       :target [:dimension
                                                [:field
                                                 26
                                                 {:source-field 5}]]
                                       :value  ["foo" "bar"]
-                                      :options {:case-insensitive false}})
-               [:starts-with {:case-insensitive false} [:field 26 {:source-field 5}] "foo" "bar"]))))))
+                                      :options {:case-insensitive false}})))))))
 
 (deftest ^:parallel to-clause-test-5
   (testing "string operations"
-    (is (= (params.ops/to-clause {:type   :string/does-not-contain
+    (is (= [:does-not-contain [:field 26 {:source-field 5}] "foo"]
+           (params.ops/to-clause {:type   :string/does-not-contain
                                   :target [:dimension
                                            [:field
                                             26
                                             {:source-field 5}]]
-                                  :value  ["foo"]})
-           [:does-not-contain [:field 26 {:source-field 5}] "foo"]))))
+                                  :value  ["foo"]})))))
 
 (deftest ^:parallel to-clause-test-6
   (testing "arity errors"

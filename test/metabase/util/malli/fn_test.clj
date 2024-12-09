@@ -327,7 +327,7 @@
             (if (= mode "prod")
               (is (false? (mu.fn/instrument-ns? n)))
               (is (true? (mu.fn/instrument-ns? n))))))
-        (testing (str "\na namespace with :instrument/always meta should not be skipped")
+        (testing "\na namespace with :instrument/always meta should not be skipped"
           (let [n (doto ^clojure.lang.Namespace (create-ns (symbol (mt/random-name)))
                     (.resetMeta {:instrument/always true}))]
             (is (true? (mu.fn/instrument-ns? n)))))))))
@@ -337,12 +337,13 @@
     (testing "returns a simple fn*"
       (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
-          (is (= expansion '(fn* ([] "foo")))))))
+          (is (= '(fn* ([] "foo"))
+                 expansion)))))
     (testing "returns an instrumented fn"
       (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
-          (is (= (take 2 expansion)
-                 '(let* [&f (clojure.core/fn [] "foo")])))))))
+          (is (= '(let* [&f (clojure.core/fn [] "foo")])
+                 (take 2 expansion)))))))
   (testing "by default, instrumented forms are emitted"
     (let [f (mu.fn/fn :- :int [] "schemas aren't checked if this is returned")]
       (try (f)

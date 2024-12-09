@@ -763,7 +763,7 @@
       (with-mysql-local-infile-on-and-off
         (let [length-limit (driver/table-name-length-limit driver/*driver*)
               ;; Ensure the name is unique as table names can collide when using redshift
-              long-name    (->> "abc" str cycle (take (inc length-limit)) shuffle (apply str))
+              long-name    (->> "abc" cycle (take (inc length-limit)) shuffle (apply str))
               short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))
               table-name   (u/upper-case-en (@#'upload/unique-table-name driver/*driver* long-name))]
           (is (pos? length-limit) "driver/table-name-length-limit has been set")
@@ -2359,9 +2359,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string (str (str/join (repeat 1000 "really_")) "long")
-              header      (str (str "a_" long-string ",")
-                               (str "b_" long-string ",")
-                               (str "b_" long-string "_with_a"))]
+              header      (str "a_" long-string ","
+                               "b_" long-string ","
+                               "b_" long-string "_with_a")]
           (with-upload-table!
             [table (create-from-csv-and-sync-with-defaults!
                     :file (csv-file-with [header
@@ -2384,8 +2384,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
-              header       (str (str "a_" long-string ",")
-                                (str "b_" long-string))
+              header       (str "a_" long-string ","
+                                "b_" long-string)
               original-row "a,b"
               appended-row "A,B"]
           (with-upload-table!
@@ -2434,9 +2434,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
-              header       (str (str "a_" long-string ",")
-                                (str "b_" long-string ",")
-                                (str "b_" long-string "_with_a"))
+              header       (str "a_" long-string ","
+                                "b_" long-string ","
+                                "b_" long-string "_with_a")
               original-row "a,b1,b2"
               appended-row "A,B1,B2"]
           (with-upload-table!

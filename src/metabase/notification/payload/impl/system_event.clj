@@ -4,7 +4,7 @@
    [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]))
 
 (defn- join-url

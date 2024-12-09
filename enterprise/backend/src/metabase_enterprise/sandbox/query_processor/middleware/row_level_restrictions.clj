@@ -25,7 +25,7 @@
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -125,7 +125,7 @@
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
-          preprocessed (mw.session/as-admin
+          preprocessed (request/as-admin
                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
@@ -145,7 +145,7 @@
 
 (mu/defn- mbql-query-metadata :- [:+ :map]
   [inner-query]
-  (mw.session/as-admin
+  (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
      {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
       :type     :query
@@ -178,7 +178,7 @@
         ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
         ;; to a custom handler, and we don't want to accidentally terminate the stream here!
         (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
-          (mw.session/as-admin
+          (request/as-admin
             ((requiring-resolve 'metabase.query-processor/process-query)
              {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
               :type     :query
@@ -353,7 +353,7 @@
         (assoc &match ::gtap? true)))))
 
 (defn- expected-cols [query]
-  (mw.session/as-admin
+  (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
 (defn- gtapped-query

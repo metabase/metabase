@@ -8,7 +8,6 @@
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
    [metabase.util.json :as json]
    [stencil.core :as stencil]))
 
@@ -29,7 +28,6 @@
     (with-redefs [config/is-dev? false]
       (is (str/includes? (csp-directive "script-src") "sha256"))
       (is (not (str/includes? (csp-directive "script-src") "'unsafe-inline'")))))
-
   (testing "Any inline scripts are allowed in dev environment (#16375)"
     (with-redefs [config/is-dev? true]
       (is (not (str/includes? (csp-directive "script-src") "sha256")))
@@ -39,27 +37,25 @@
   (mt/with-premium-features #{:embedding}
     (testing "Frame ancestors from `embedding-app-origin` setting"
       (let [multiple-ancestors "https://*.metabase.com http://metabase.internal"]
-        (tu/with-temporary-setting-values [enable-embedding-interactive true
+        (mt/with-temporary-setting-values [enable-embedding-interactive true
                                            embedding-app-origins-interactive multiple-ancestors]
           (is (= (str "frame-ancestors " multiple-ancestors)
                  (csp-directive "frame-ancestors"))))))
-
     (testing "Frame ancestors is 'none' for nil `embedding-app-origin`"
-      (tu/with-temporary-setting-values [enable-embedding-interactive true
+      (mt/with-temporary-setting-values [enable-embedding-interactive true
                                          embedding-app-origins-interactive nil
                                          embedding-app-origin nil]
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))
-
     (testing "Frame ancestors is 'none' if embedding is disabled"
-      (tu/with-temporary-setting-values [enable-embedding-interactive false
+      (mt/with-temporary-setting-values [enable-embedding-interactive false
                                          embedding-app-origin "https: http:"]
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))))
 
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
-    (tu/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
+    (mt/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
       (is (= (str "frame-src 'self' https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
                   "https://metabase.com https://*.metabase.com https://www.metabase.com "
                   "https://clojure.org https://*.clojure.org")
@@ -71,13 +67,12 @@
 (deftest xframeoptions-header-tests
   (mt/with-premium-features #{:embedding}
     (testing "`DENY` when embedding is disabled"
-      (tu/with-temporary-setting-values [enable-embedding-interactive false
+      (mt/with-temporary-setting-values [enable-embedding-interactive false
                                          embedding-app-origin "https://somesite.metabase.com"]
         (is (= "DENY" (x-frame-options-header)))))
-
     (testing "Only the first of multiple embedding origins are used in `X-Frame-Options`"
       (let [embedding-app-origins ["https://site1.metabase.com" "https://our_metabase.internal"]]
-        (tu/with-temporary-setting-values [enable-embedding-interactive true
+        (mt/with-temporary-setting-values [enable-embedding-interactive true
                                            embedding-app-origins-interactive (str/join " " embedding-app-origins)]
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))
@@ -106,20 +101,22 @@
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
 
-(deftest test-parse-url
+(deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"
-    (is (= (mw.security/parse-url "http://example.com") {:protocol "http" :domain "example.com" :port nil}))
-    (is (= (mw.security/parse-url "https://example.com") {:protocol "https" :domain "example.com" :port nil}))
-    (is (= (mw.security/parse-url "http://example.com:8080") {:protocol "http" :domain "example.com" :port "8080"}))
-    (is (= (mw.security/parse-url "example.com:80") {:protocol nil :domain "example.com" :port "80"}))
-    (is (= (mw.security/parse-url "example.com:*") {:protocol nil :domain "example.com" :port "*"})))
-
+    (are [url expected] (= expected
+                           (mw.security/parse-url url))
+      "http://example.com"      {:protocol "http" :domain "example.com" :port nil}
+      "https://example.com"     {:protocol "https" :domain "example.com" :port nil}
+      "http://example.com:8080" {:protocol "http" :domain "example.com" :port "8080"}
+      "example.com:80"          {:protocol nil :domain "example.com" :port "80"}
+      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}))
   (testing "Should return nil for invalid urls"
-    (is (nil? (mw.security/parse-url "ftp://example.com")))
-    (is (nil? (mw.security/parse-url "://example.com")))
-    (is (nil? (mw.security/parse-url "example:com")))))
+    (are [url] (nil? (mw.security/parse-url url))
+      "ftp://example.com"
+      "://example.com"
+      "example:com")))
 
-(deftest test-parse-approved-origins
+(deftest ^:parallel test-parse-approved-origins
   (testing "Should not break on multiple spaces in a row"
     (is (= 2 (count (mw.security/parse-approved-origins "example.com      example.org"))))
     (is (= 2 (count (mw.security/parse-approved-origins "   example.com      example.org   ")))))
@@ -127,88 +124,75 @@
     (is (= 1 (count (mw.security/parse-approved-origins "example.org ://example.com"))))
     (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com"))))))
 
-(deftest test-approved-domain?
+(deftest ^:parallel test-approved-domain?
   (testing "Exact match"
-    (is (true? (mw.security/approved-domain? "example.com" "example.com")))
-    (is (false? (mw.security/approved-domain? "example.com" "example.org"))))
-
+    (is (mw.security/approved-domain? "example.com" "example.com"))
+    (is (not (mw.security/approved-domain? "example.com" "example.org"))))
   (testing "Should support wildcards for subdomains"
-    (is (true? (mw.security/approved-domain? "sub.example.com" "*.example.com")))
-    (is (false? (mw.security/approved-domain? "example.com" "*.example.com")))
-    (is (false? (mw.security/approved-domain? "sub.example.org" "*.example.com"))))
-
+    (is (mw.security/approved-domain? "sub.example.com" "*.example.com"))
+    (is (not (mw.security/approved-domain? "example.com" "*.example.com")))
+    (is (not (mw.security/approved-domain? "sub.example.org" "*.example.com"))))
   (testing "Should not allow subdomains if no wildcard is present"
-    (is (false? (mw.security/approved-domain? "sub.example.com" "example.com")))))
+    (is (not (mw.security/approved-domain? "sub.example.com" "example.com")))))
 
-(deftest test-approved-protocol?
+(deftest ^:parallel test-approved-protocol?
   (testing "Exact protocol match"
-    (is (true? (mw.security/approved-protocol? "http" "http")))
-    (is (true? (mw.security/approved-protocol? "https" "https")))
-    (is (false? (mw.security/approved-protocol? "http" "https"))))
-
+    (is (mw.security/approved-protocol? "http" "http"))
+    (is (mw.security/approved-protocol? "https" "https"))
+    (is (not (mw.security/approved-protocol? "http" "https"))))
   (testing "Nil reference should allow any protocol"
-    (is (true? (mw.security/approved-protocol? "http" nil)))
-    (is (true? (mw.security/approved-protocol? "https" nil)))))
+    (is (mw.security/approved-protocol? "http" nil))
+    (is (mw.security/approved-protocol? "https" nil))))
 
-(deftest test-approved-port?
+(deftest ^:parallel test-approved-port?
   (testing "Exact port match"
-    (is (true? (mw.security/approved-port? "80" "80")))
-    (is (false? (mw.security/approved-port? "80" "8080"))))
-
+    (is (mw.security/approved-port? "80" "80"))
+    (is (not (mw.security/approved-port? "80" "8080"))))
   (testing "Wildcard port match"
-    (is (true? (mw.security/approved-port? "80" "*")))
-    (is (true? (mw.security/approved-port? "8080" "*")))))
+    (is (mw.security/approved-port? "80" "*"))
+    (is (mw.security/approved-port? "8080" "*"))))
 
-(deftest test-approved-origin?
+(deftest ^:parallel test-approved-origin?
   (testing "Should return false if parameters are nil"
-    (is (false? (mw.security/approved-origin? nil "example.com")))
-    (is (false? (mw.security/approved-origin? "example.com" nil))))
-
+    (is (not (mw.security/approved-origin? nil "example.com")))
+    (is (not (mw.security/approved-origin? "example.com" nil))))
   (testing "Approved origins with exact protocol and port match"
     (let [approved "http://example1.com http://example2.com:3000 https://example3.com"]
-      (is (true? (mw.security/approved-origin? "http://example1.com" approved)))
-      (is (true? (mw.security/approved-origin? "http://example2.com:3000" approved)))
-      (is (true? (mw.security/approved-origin? "https://example3.com" approved)))))
-
+      (is (mw.security/approved-origin? "http://example1.com" approved))
+      (is (mw.security/approved-origin? "http://example2.com:3000" approved))
+      (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
-    (is (false? (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
-
+    (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
   (testing "Origins without protocol should accept both http and https"
     (let [approved "example.com"]
-      (is (true? (mw.security/approved-origin? "http://example.com" approved)))
-      (is (true? (mw.security/approved-origin? "https://example.com" approved)))))
-
+      (is (mw.security/approved-origin? "http://example.com" approved))
+      (is (mw.security/approved-origin? "https://example.com" approved))))
   (testing "Different ports should fail"
-    (is (false? (mw.security/approved-origin? "http://example.com:3000" "http://example.com:3003"))))
-
+    (is (not (mw.security/approved-origin? "http://example.com:3000" "http://example.com:3003"))))
   (testing "Should allow anything with *"
-    (is (true? (mw.security/approved-origin? "http://example.com" "*")))
-    (is (true? (mw.security/approved-origin? "http://example.com" "http://somethingelse.com *"))))
-
+    (is (mw.security/approved-origin? "http://example.com" "*"))
+    (is (mw.security/approved-origin? "http://example.com" "http://somethingelse.com *")))
   (testing "Should allow subdomains when *.example.com"
-    (is (true? (mw.security/approved-origin? "http://subdomain.example.com" "*.example.com")))
-    (is (false? (mw.security/approved-origin? "http://subdomain.example.com" "*.somethingelse.com"))))
-
+    (is (mw.security/approved-origin? "http://subdomain.example.com" "*.example.com"))
+    (is (not (mw.security/approved-origin? "http://subdomain.example.com" "*.somethingelse.com"))))
   (testing "Should allow any port with example.com:*"
-    (is (true? (mw.security/approved-origin? "http://example.com" "example.com:*")))
-    (is (true? (mw.security/approved-origin? "http://example.com:8080" "example.com:*"))))
-
+    (is (mw.security/approved-origin? "http://example.com" "example.com:*"))
+    (is (mw.security/approved-origin? "http://example.com:8080" "example.com:*")))
   (testing "Should handle invalid origins"
-    (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com")))))
+    (is (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com"))))
 
 (deftest test-access-control-headers
   (mt/with-premium-features #{:embedding-sdk}
     (testing "Should always allow localhost:*"
-      (tu/with-temporary-setting-values [enable-embedding-sdk true
+      (mt/with-temporary-setting-values [enable-embedding-sdk true
                                          embedding-app-origins-sdk "localhost:*"]
         (is (= "http://localhost:8080" (-> "http://localhost:8080"
                                            (mw.security/access-control-headers
                                             (embed.settings/enable-embedding-sdk)
                                             (embed.settings/embedding-app-origins-sdk))
                                            (get "Access-Control-Allow-Origin"))))))
-
     (testing "Should disable CORS when enable-embedding-sdk is disabled"
-      (tu/with-temporary-setting-values [enable-embedding-sdk false]
+      (mt/with-temporary-setting-values [enable-embedding-sdk false]
         (is (= nil (get (mw.security/access-control-headers
                          "http://localhost:8080"
                          (embed.settings/enable-embedding-sdk)
@@ -220,10 +204,9 @@
                        false
                        "localhost:*")
                       "Access-Control-Allow-Origin"))))
-
     (testing "Should work with embedding-app-origin"
       (mt/with-premium-features #{:embedding-sdk}
-        (tu/with-temporary-setting-values [enable-embedding-sdk      true
+        (mt/with-temporary-setting-values [enable-embedding-sdk      true
                                            embedding-app-origins-sdk "https://example.com"]
           (is (= "https://example.com"
                  (get (mw.security/access-control-headers "https://example.com"
@@ -231,7 +214,7 @@
                                                           (embed.settings/embedding-app-origins-sdk))
                       "Access-Control-Allow-Origin"))))))))
 
-(deftest allowed-iframe-hosts-test
+(deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."
     (let [default-hosts @#'public-settings/default-allowed-iframe-hosts]
       (testing "The defaults hosts parse correctly"

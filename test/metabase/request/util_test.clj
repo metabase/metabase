@@ -1,9 +1,9 @@
-(ns ^:mb/once metabase.server.request.util-test
+(ns ^:mb/once metabase.request.util-test
   (:require
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.util :as req.util]
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]))
 

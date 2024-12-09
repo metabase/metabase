@@ -410,20 +410,19 @@
   {:in  validate-cron-string
    :out identity})
 
-(def ^:private LegacyMetricSegmentDefinition
+(mr/def ::legacy-metric-segment-definition
   [:map
    [:filter      {:optional true} [:maybe mbql.s/Filter]]
    [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
-(def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
-  (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]
-    (fn [definition]
-      (if-let [error (explainer definition)]
-        (let [humanized (me/humanize error)]
-          (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
-                          {:error     error
-                           :humanized humanized})))
-        definition))))
+(defn- validate-legacy-metric-segment-definition
+  [definition]
+  (if-let [error (mr/explain ::legacy-metric-segment-definition definition)]
+    (let [humanized (me/humanize error)]
+      (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
+                      {:error     error
+                       :humanized humanized})))
+    definition))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-legacy-metric-segment-definition [definition]
