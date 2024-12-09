@@ -6,7 +6,7 @@
 
 (defmulti table-schema
   "The HoneySQL definition for the shape of the index table for this appdb."
-  {:arglists '([])}
+  {:arglists '([base-schema])}
   db-type)
 
 (defmulti post-create-statements

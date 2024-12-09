@@ -1,6 +1,7 @@
 (ns metabase.search.appdb.scoring-test
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.db :as mdb]
    [metabase.search.appdb.index :as search.index]
@@ -9,8 +10,10 @@
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.time Instant)
@@ -55,6 +58,15 @@
   [ranker-key search-string & {:as raw-ctx}]
   (= (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
      (with-weights {ranker-key -1} (search-results* search-string raw-ctx))))
+
+(deftest ^:parallel used-fields-text
+  (testing "We have defined all the fields that we reference within our ranking expressions"
+    (is (set/subset? (into #{}
+                           (comp (mapcat #'search.spec/find-fields-expr)
+                                 (filter (comp #{:this :search_index} first))
+                                 (map (comp keyword u/->kebab-case-en name second)))
+                           (vals (scoring/scorers {:search-string ""})))
+                     (set (cons :model (keys search.spec/attr-types)))))))
 
 ;; ---- index-ony rankers ----
 ;; These are the easiest to test, as they don't depend on other appdb state.
