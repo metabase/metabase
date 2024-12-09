@@ -157,14 +157,14 @@ You can add custom actions to the dashcard menu by adding an object to the `cust
     iconName: string;
     label: string;
     onClick: () => void;
-    disabled ? : boolean;
+    disabled?: boolean;
 }
 ```
 
 Here's an example:
 
 ```typescript
-const plugins: SdkPluginsConfig = {
+const plugins: MetabasePluginsConfig = {
   dashboard: {
     dashcardMenu: {
       customItems: [
@@ -195,7 +195,7 @@ const plugins: SdkPluginsConfig = {
 If you want to replace the existing menu with your own component, you can do so by providing a function that returns a React component. This function also can receive the question as an argument.
 
 ```typescript
-const plugins: SdkPluginsConfig = {
+const plugins: MetabasePluginsConfig = {
   dashboard: {
     dashcardMenu: ({ question }) => (
       <button onClick={() => console.log(question.name)}>Click me</button>
