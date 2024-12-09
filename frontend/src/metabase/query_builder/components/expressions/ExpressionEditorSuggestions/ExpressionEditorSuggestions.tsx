@@ -267,7 +267,7 @@ function ExpressionEditorSuggestionsListItem({
   }, [index, onHighlightSuggestion]);
 
   return (
-    <HoverParent as="li" className={ExpressionEditorSuggestionsS.HoverParent}>
+    <HoverParent as="li">
       <Flex
         className={cx(ExpressionEditorSuggestionsS.ExpressionListItem, {
           [ExpressionEditorSuggestionsS.isHighlighted]: isHighlighted,
