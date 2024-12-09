@@ -182,7 +182,7 @@
             (testing "strategy = schedule"
               (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                 (mt/with-clock (t 0)
-                  (is (pos? (#'task.cache/refresh-schedule-configs!)))
+                  (is (pos? (#'task.cache/refresh-cache-configs!)))
                   (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
                     (is (=? {:type :schedule}
                             (:cache-strategy q)))
@@ -193,7 +193,7 @@
                               (-> (qp/process-query q) (dissoc :data)))))))
                 (testing "No cache after job ran again"
                   (mt/with-clock (t 121)
-                    (is (pos? (#'task.cache/refresh-schedule-configs!)))
+                    (is (pos? (#'task.cache/refresh-cache-configs!)))
                     (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
                       (is (=? (mkres nil)
                               (-> (qp/process-query q) (dissoc :data)))))))))
