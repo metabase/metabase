@@ -5,7 +5,7 @@ import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-import { PLUGIN_DASHBOARD_HEADER, PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { Dashboard } from "metabase-types/api";
 
 export const DashboardActionMenu = (props: { items: any[] }) => (
@@ -98,8 +98,6 @@ export const useGetExtraButtons = ({
       separator: true,
       key: "separator-before-ee-buttons-and-trash",
     });
-
-    extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
     extraButtons.push({
       title: t`Move to trash`,

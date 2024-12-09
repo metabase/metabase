@@ -19,7 +19,7 @@ import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Alert } from "metabase-types/api";
 
 import { AlertEditForm } from "./AlertEditForm";
-import { AlertModalTitle } from "./AlertModalTitle";
+// import { AlertModalTitle } from "./AlertModalTitle";
 import { AlertModalFooter } from "./AlertModals.styled";
 import { DeleteAlertSection } from "./DeleteAlertSection";
 
@@ -36,7 +36,7 @@ export const UpdateAlertModalContent = ({
 }: UpdateAlertModalContentProps) => {
   const dispatch = useDispatch();
 
-  const user = useSelector(getUser);
+  // const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const question = useSelector(getQuestion);
   const visualizationSettings = useSelector(getVisualizationSettings);
@@ -58,8 +58,8 @@ export const UpdateAlertModalContent = ({
     onAlertUpdated();
   };
 
-  const isCurrentUser = alert?.creator.id === user?.id;
-  const title = isCurrentUser ? t`Edit your alert` : t`Edit alert`;
+  // const isCurrentUser = alert?.creator.id === user?.id;
+  // const title = isCurrentUser ? t`Edit your alert` : t`Edit alert`;
   const isValid = alertIsValid(modifiedAlert, channelSpec);
 
   // TODO: Remove PulseEdit css hack
@@ -69,7 +69,7 @@ export const UpdateAlertModalContent = ({
         className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
         style={{ maxWidth: "550px" }}
       >
-        <AlertModalTitle text={title} />
+        {/*<AlertModalTitle text={title} />*/}
         <AlertEditForm
           alertType={question?.alertType(visualizationSettings)}
           alert={modifiedAlert}
