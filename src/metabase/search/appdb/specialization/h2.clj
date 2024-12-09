@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 (defmethod specialization/table-schema :h2 []
-  [[:id :bigint :auto-increment :primary-key ]
+  [[:id :bigint :auto-increment :primary-key]
    ;; entity
    [:model_id :int :not-null]
    ;; TODO We could shrink this to just what we need.
