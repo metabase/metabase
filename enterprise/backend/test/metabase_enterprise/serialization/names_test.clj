@@ -9,7 +9,7 @@
    [toucan2.core :as t2]))
 
 (deftest safe-name-test
-  (are [s expected] (= (names/safe-name {:name s}) expected)
+  (are [s expected] (= expected (names/safe-name {:name s}))
     "foo"         "foo"
     "foo/bar baz" "foo%2Fbar baz"))
 

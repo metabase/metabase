@@ -567,9 +567,8 @@
           ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
           (is (< show-count base-count)))))))
 
-(deftest query-metadata-test
+(deftest ^:parallel query-metadata-test
   (is (=?
        {:tables (sort-by :id [{:id (mt/id :venues)}
                               {:id (mt/id :categories)}])}
-       (-> (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata"))
-           #_(api.test-util/select-query-metadata-keys-for-debugging)))))
+       (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata")))))

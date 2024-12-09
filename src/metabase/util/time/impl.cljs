@@ -356,19 +356,19 @@
 
 (def ^:private temporal-formats
   {:offset-date-time {:regex   common/offset-datetime-regex
-                      :formats #js ["yyyy-MM-DDTHH:mm:ss.SSS[Z]"
-                                    "yyyy-MM-DDTHH:mm:ss[Z]"
-                                    "yyyy-MM-DDTHH:mm[Z]"
-                                    "yyyy-MM-DDTHH[Z]"]}
+                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS[Z]"
+                                    "YYYY-MM-DDTHH:mm:ss[Z]"
+                                    "YYYY-MM-DDTHH:mm[Z]"
+                                    "YYYY-MM-DDTHH[Z]"]}
    :local-date-time  {:regex   common/local-datetime-regex
-                      :formats #js ["yyyy-MM-DDTHH:mm:ss.SSS"
-                                    "yyyy-MM-DDTHH:mm:ss"
-                                    "yyyy-MM-DDTHH:mm"
-                                    "yyyy-MM-DDTHH"]}
+                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS"
+                                    "YYYY-MM-DDTHH:mm:ss"
+                                    "YYYY-MM-DDTHH:mm"
+                                    "YYYY-MM-DDTHH"]}
    :local-date       {:regex   common/local-date-regex
-                      :formats #js ["yyyy-MM-DD"
-                                    "yyyy-MM"
-                                    "yyyy"]}
+                      :formats #js ["YYYY-MM-DD"
+                                    "YYYY-MM"
+                                    "YYYY"]}
    :offset-time      {:regex   common/offset-time-regex
                       :formats #js ["HH:mm:ss.SSS[Z]"
                                     "HH:mm:ss[Z]"
@@ -397,22 +397,22 @@
 (defmethod moment+type->iso-8601 :offset-date-time
   [[^moment/Moment t _value-type]]
   (let [format-string (cond
-                        (pos? (.milliseconds t)) "yyyy-MM-DDTHH:mm:ss.SSS[Z]"
-                        (pos? (.seconds t))      "yyyy-MM-DDTHH:mm:ss[Z]"
-                        :else                    "yyyy-MM-DDTHH:mm[Z]")]
+                        (pos? (.milliseconds t)) "YYYY-MM-DDTHH:mm:ss.SSS[Z]"
+                        (pos? (.seconds t))      "YYYY-MM-DDTHH:mm:ss[Z]"
+                        :else                    "YYYY-MM-DDTHH:mm[Z]")]
     (.format t format-string)))
 
 (defmethod moment+type->iso-8601 :local-date-time
   [[^moment/Moment t _value-type]]
   (let [format-string (cond
-                        (pos? (.milliseconds t)) "yyyy-MM-DDTHH:mm:ss.SSS"
-                        (pos? (.seconds t))      "yyyy-MM-DDTHH:mm:ss"
-                        :else                    "yyyy-MM-DDTHH:mm")]
+                        (pos? (.milliseconds t)) "YYYY-MM-DDTHH:mm:ss.SSS"
+                        (pos? (.seconds t))      "YYYY-MM-DDTHH:mm:ss"
+                        :else                    "YYYY-MM-DDTHH:mm")]
     (.format t format-string)))
 
 (defmethod moment+type->iso-8601 :local-date
   [[^moment/Moment t _value-type]]
-  (.format t "yyyy-MM-DD"))
+  (.format t "YYYY-MM-DD"))
 
 (defmethod moment+type->iso-8601 :offset-time
   [[^moment/Moment t _value-type]]

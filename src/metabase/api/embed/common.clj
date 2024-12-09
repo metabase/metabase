@@ -14,14 +14,13 @@
    [metabase.eid-translation :as eid-translation]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n
-    :as i18n
     :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]

@@ -1,7 +1,6 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
-import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
@@ -11,6 +10,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
+import { fetchAlertsForQuestion } from "metabase/notifications/redux/alert";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";

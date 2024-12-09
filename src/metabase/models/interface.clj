@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -254,7 +255,8 @@
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
     (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
               ;; This is necessary, because in the wild, there may be cards created prior to this change.
-              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)))))
+              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
+              (map lib.binning/ensure-binning-in-display-name)))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
@@ -408,20 +410,19 @@
   {:in  validate-cron-string
    :out identity})
 
-(def ^:private LegacyMetricSegmentDefinition
+(mr/def ::legacy-metric-segment-definition
   [:map
    [:filter      {:optional true} [:maybe mbql.s/Filter]]
    [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
-(def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
-  (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]
-    (fn [definition]
-      (if-let [error (explainer definition)]
-        (let [humanized (me/humanize error)]
-          (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
-                          {:error     error
-                           :humanized humanized})))
-        definition))))
+(defn- validate-legacy-metric-segment-definition
+  [definition]
+  (if-let [error (mr/explain ::legacy-metric-segment-definition definition)]
+    (let [humanized (me/humanize error)]
+      (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
+                      {:error     error
+                       :humanized humanized})))
+    definition))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-legacy-metric-segment-definition [definition]

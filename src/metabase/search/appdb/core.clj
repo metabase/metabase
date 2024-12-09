@@ -24,6 +24,9 @@
 
 (set! *warn-on-reflection* true)
 
+;; Make sure the legacy cookies still work.
+(derive :search.engine/fulltext :search.engine/appdb)
+
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or (not config/is-prod?)
            (= "appdb" (some-> (public-settings/search-engine) name)))
@@ -57,11 +60,13 @@
   [search-ctx qry]
   (let [collection-id-col :search_index.collection_id
         permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
-        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
+        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
+        excluded-models   (search.filter/models-without-collection)
+        or-null           #(vector :or [:in :search_index.model excluded-models] %)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
-      true (sql.helpers/where permitted-clause)
-      personal-clause (sql.helpers/where personal-clause))))
+      true (sql.helpers/where (or-null permitted-clause))
+      personal-clause (sql.helpers/where (or-null personal-clause)))))
 
 (defmethod search.engine/results :search.engine/appdb
   [{:keys [search-string] :as search-ctx}]
