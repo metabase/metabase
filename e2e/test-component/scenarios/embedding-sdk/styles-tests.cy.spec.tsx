@@ -292,7 +292,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       cy.mount(
         <div>
           {elements.map(({ jsx }) => jsx)}
-          <MetabaseProvider config={DEFAULT_SDK_PROVIDER_CONFIG}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
             <StaticQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </div>,
