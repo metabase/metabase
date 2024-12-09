@@ -12,9 +12,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 describeEE("scenarios > embedding-sdk > interactive-question > native", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
-  });
 
-  it("supports passing sql parameters to native questions", () => {
     createNativeQuestion(
       {
         native: {
@@ -37,6 +35,9 @@ describeEE("scenarios > embedding-sdk > interactive-question > native", () => {
 
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
+  });
+
+  it("supports passing sql parameters to native questions", () => {
     mountInteractiveQuestion({ initialSqlParameters: { ID: ORDERS_ID } });
 
     // Should find a single row with the ID we passed in to the initial SQL parameters

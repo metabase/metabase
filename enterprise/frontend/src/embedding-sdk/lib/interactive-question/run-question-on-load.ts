@@ -1,4 +1,4 @@
-import { mapObject } from "underscore";
+import _ from "underscore";
 
 import type {
   LoadSdkQuestionParams,
@@ -45,7 +45,7 @@ export const runQuestionOnLoadSdk =
     question = syncCardParametersWithTemplateTags(question);
 
     const queryParams = initialSqlParameters
-      ? mapObject(initialSqlParameters, String)
+      ? _.mapObject(initialSqlParameters, String)
       : {};
 
     const parameterValues = getParameterValuesForQuestion({
