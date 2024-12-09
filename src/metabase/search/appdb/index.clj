@@ -155,7 +155,12 @@
 (def ^:private base-schema
   (into [[:model [:varchar 32] :not-null]
          [:display_data :text :not-null]
-         [:legacy_input :text :not-null]]
+         [:legacy_input :text :not-null]
+         ;; useful for tracking the speed and age of the index
+         [:created_at :timestamp-with-time-zone
+          [:default [:raw "CURRENT_TIMESTAMP"]]
+          :not-null]
+         [:updated_at :timestamp-with-time-zone :not-null]]
         (keep (fn [[k t]]
                 (when t
                   (into [(->db-column k) (->db-type t)]
