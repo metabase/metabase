@@ -842,6 +842,17 @@ class Question {
     return this.card().can_manage_db || false;
   }
 
+  /** Applies the template tag parameters from the card to the question. */
+  applyTemplateTagParameters(): Question {
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+
+    if (!isNative) {
+      return this;
+    }
+
+    return this.setParameters(getTemplateTagParametersFromCard(this.card()));
+  }
+
   /**
    * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value

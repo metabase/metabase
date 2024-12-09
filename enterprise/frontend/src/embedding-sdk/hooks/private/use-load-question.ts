@@ -1,6 +1,7 @@
 import { useReducer, useRef } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
+import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
   runQuestionOnLoadSdk,
   runQuestionOnNavigateSdk,
@@ -51,6 +52,7 @@ export function useLoadQuestion({
   cardId,
   options,
   deserializedCard,
+  initialSqlParameters,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useSdkDispatch();
 
@@ -74,6 +76,9 @@ export function useLoadQuestion({
     deferredRef.current?.resolve();
   });
 
+  // Avoid re-running the query if the parameters haven't changed.
+  const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
+
   const [loadQuestionState, loadQuestion] = useAsyncFn(async () => {
     const state = await dispatch(
       runQuestionOnLoadSdk({
@@ -81,13 +86,14 @@ export function useLoadQuestion({
         deserializedCard,
         cardId,
         cancelDeferred: deferred(),
+        initialSqlParameters,
       }),
     );
 
     setQuestionState(state);
 
     return state;
-  }, [dispatch, options, deserializedCard, cardId]);
+  }, [dispatch, options, deserializedCard, cardId, sqlParameterKey]);
 
   const [runQuestionState, runQuestion] = useAsyncFn(async () => {
     if (!question) {
@@ -177,3 +183,11 @@ const questionReducer = (state: SdkQuestionState, next: SdkQuestionState) => ({
   ...state,
   ...next,
 });
+
+export const getParameterDependencyKey = (
+  parameters?: ParameterValues,
+): string =>
+  Object.entries(parameters ?? {})
+    .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+    .map(([key, value]) => `${key}=${value}`)
+    .join(":");
