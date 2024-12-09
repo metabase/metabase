@@ -1,3 +1,5 @@
+import * as Yup from "yup";
+
 import type {
   EmbeddingSessionToken,
   FetchRequestTokenFn,
@@ -121,8 +123,8 @@ export const refreshTokenAsync = createAsyncThunk(
           );
         }
       }
-      // Lastly if we don't have an error message or status, check if we actually got the session ID
-      if (!("id" in session)) {
+      // Lastly if we don't have an error message or status, check if we actually got the session ID and expiration
+      if (!sessionSchema.isValidSync(session)) {
         throw new Error(
           `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
         );
@@ -170,3 +172,10 @@ export const defaultGetRefreshTokenFn: FetchRequestTokenFn = async url => {
     return asText;
   }
 };
+
+const sessionSchema = Yup.object({
+  id: Yup.string().required(),
+  exp: Yup.number().required(),
+  // We should also receive `iat` and `status` in the response, but we don't actually need them
+  // as we don't use them, so we don't throw an error if they are missing
+});
