@@ -62,16 +62,16 @@
 (defn- drop-table! [table-name]
   (boolean
    (when (and table-name (exists? table-name))
-     (t2/query (sql.helpers/drop-table table-name)))))
+     (t2/query (sql.helpers/drop-table (keyword (u/upper-case-en (name table-name))))))))
 
 (defn- existing-indexes []
-  (map (comp keyword :table_name)
+  (map (comp keyword u/lower-case-en :table_name)
        (t2/query {:select [:table_name]
                   :from   :information_schema.tables
                   :where  [:or
-                           [:like :table_name "search\\_index\\_\\_%"]
+                           [:like [:lower :table_name] "search\\_index\\_\\_%"]
                            ;; legacy table names
-                           [:in :table_name ["search_index" "search_index_next" "search_index_retired"]]]})))
+                           [:in [:lower :table_name] ["search_index" "search_index_next" "search_index_retired"]]]})))
 
 (defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by not converting keys
