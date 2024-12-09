@@ -1,21 +1,13 @@
 import { type Ref, forwardRef } from "react";
 
-import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { AlertPopover } from "metabase/notifications/AlertListPopoverContent/AlertPopover";
-import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
+import type {
+  DashboardNotificationsModalType,
+  QuestionNotificationsModalType,
+} from "metabase/notifications/types";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
-
-import {
-  DashboardPublicLinkPopover,
-  QuestionPublicLinkPopover,
-} from "../PublicLinkPopover";
-
-import type {
-  DashboardSharingModalType,
-  QuestionSharingModalType,
-} from "./types";
 
 const MenuTarget = forwardRef(function _MenuTarget(
   _props,
@@ -31,12 +23,12 @@ type BaseSharingModalProps = {
 type SharingModalProps = BaseSharingModalProps &
   (
     | {
-        modalType: QuestionSharingModalType;
+        modalType: QuestionNotificationsModalType;
         question: Question;
         dashboard?: never;
       }
     | {
-        modalType: DashboardSharingModalType;
+        modalType: DashboardNotificationsModalType;
         dashboard: Dashboard;
         question?: never;
       }
@@ -63,42 +55,52 @@ export const SharingModals = ({
     );
   }
 
-  if (modalType === "question-public-link") {
+  if (modalType === "question-subscription") {
     return (
-      <QuestionPublicLinkPopover
+      <AlertPopover
         question={question}
         target={<MenuTarget />}
         onClose={onClose}
-        isOpen
       />
     );
   }
 
-  if (modalType === "question-embed" && question) {
-    return <QuestionEmbedWidget card={question._card} onClose={onClose} />;
-  }
-
-  if (modalType === "dashboard-public-link") {
-    return (
-      <DashboardPublicLinkPopover
-        dashboard={dashboard}
-        target={<MenuTarget />}
-        onClose={onClose}
-        isOpen
-      />
-    );
-  }
-
-  if (modalType === "dashboard-embed" && dashboard) {
-    return (
-      <DashboardSharingEmbeddingModal
-        key="dashboard-embed"
-        dashboard={dashboard}
-        onClose={onClose}
-        isOpen
-      />
-    );
-  }
+  // if (modalType === "question-public-link") {
+  //   return (
+  //     <QuestionPublicLinkPopover
+  //       question={question}
+  //       target={<MenuTarget />}
+  //       onClose={onClose}
+  //       isOpen
+  //     />
+  //   );
+  // }
+  //
+  // if (modalType === "question-embed" && question) {
+  //   return <QuestionEmbedWidget card={question._card} onClose={onClose} />;
+  // }
+  //
+  // if (modalType === "dashboard-public-link") {
+  //   return (
+  //     <DashboardPublicLinkPopover
+  //       dashboard={dashboard}
+  //       target={<MenuTarget />}
+  //       onClose={onClose}
+  //       isOpen
+  //     />
+  //   );
+  // }
+  //
+  // if (modalType === "dashboard-embed" && dashboard) {
+  //   return (
+  //     <DashboardSharingEmbeddingModal
+  //       key="dashboard-embed"
+  //       dashboard={dashboard}
+  //       onClose={onClose}
+  //       isOpen
+  //     />
+  //   );
+  // }
 
   return null;
 };

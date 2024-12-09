@@ -2,37 +2,26 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { QuestionAlertsMenuItem } from "metabase/notifications/QuestionAlertsMenuItem";
+import { QuestionSubscriptionsMenuItem } from "metabase/notifications/QuestionSubscriptionsMenuItem";
+import type { QuestionNotificationsModalType } from "metabase/notifications/types";
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import {
-  canManageSubscriptions as canManageSubscriptionsSelector,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
-import { Flex, Menu } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
-import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
 import { SharingButton, SharingMenu } from "./SharingMenu";
 import { SharingModals } from "./SharingModals";
-import type { QuestionSharingModalType } from "./types";
 
 export function QuestionSharingMenu({ question }: { question: Question }) {
   const dispatch = useDispatch();
-  const [modalType, setModalType] = useState<QuestionSharingModalType | null>(
-    null,
-  );
-  const hasPublicLink = !!question?.publicUUID?.();
+  const [modalType, setModalType] =
+    useState<QuestionNotificationsModalType | null>(null);
   const isModel = question.type() === "model";
   const isArchived = question.isArchived();
-  const isPublicSharingEnabled = useSetting("enable-public-sharing");
-  const isAdmin = useSelector(getUserIsAdmin);
   const collection = question.collection();
   const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
-  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   if (isModel || isArchived || isAnalytics) {
     return null;
@@ -53,35 +42,6 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
     );
   }
 
-  if (
-    !isAdmin &&
-    (!isPublicSharingEnabled || !hasPublicLink) &&
-    !canManageSubscriptions
-  ) {
-    return (
-      <SharingButton
-        tooltip={t`Ask your admin to create a public link`}
-        disabled
-      />
-    );
-  }
-
-  if (!isAdmin && hasPublicLink && !canManageSubscriptions) {
-    return (
-      <Flex>
-        <SharingButton
-          tooltip={t`Public link`}
-          onClick={() => setModalType("question-public-link")}
-        />
-        <SharingModals
-          modalType={modalType}
-          question={question}
-          onClose={() => setModalType(null)}
-        />
-      </Flex>
-    );
-  }
-
   return (
     <Flex>
       <SharingMenu>
@@ -89,13 +49,10 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
           question={question}
           onClick={() => setModalType("question-alert")}
         />
-
-        <Menu.Divider />
-        <PublicLinkMenuItem
-          hasPublicLink={hasPublicLink}
-          onClick={() => setModalType("question-public-link")}
+        <QuestionSubscriptionsMenuItem
+          question={question}
+          onClick={() => setModalType("question-subscription")}
         />
-        <EmbedMenuItem onClick={() => setModalType("question-embed")} />
       </SharingMenu>
       <SharingModals
         modalType={modalType}
