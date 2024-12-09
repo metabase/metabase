@@ -1,0 +1,82 @@
+.EditorEqualsSign {
+  font:
+    12px / normal Monaco,
+    monospace;
+  height: 12px;
+  font-weight: 700;
+  margin: 0 3px 0 4px;
+}
+
+.ErrorMessageContainer {
+  color: var(--mb-color-error);
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+}
+
+.EditorContainer {
+  border: 1px solid;
+  border-color: var(--mb-color-border);
+  border-radius: 0.5rem;
+  display: flex;
+  position: relative;
+  margin: 0.5rem 0;
+  padding: 0.625rem 0.75rem;
+  transition: border 0.3s linear;
+
+  &.isFocused {
+    border-color: var(--mb-color-brand);
+  }
+
+  &.hasError {
+    border-color: var(--mb-color-error);
+  }
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
+  :global(.ace_editor) {
+    overflow: initial;
+  }
+
+  textarea {
+    min-height: 5px;
+  }
+
+  :global(.ace_content *) {
+    font-family: monospace !important;
+  }
+
+  :global(.ace_hidpi .ace_content) {
+    color: var(--mb-color-text-dark);
+    font-weight: 700;
+  }
+
+  :global(.ace-tm .ace_keyword),
+  :global(.ace-tm .ace_constant.ace_numeric) {
+    color: var(--mb-color-text-dark);
+  }
+
+  :global(.ace-tm .ace_variable) {
+    color: var(--mb-color-brand);
+  }
+
+  :global(.ace-tm .ace_string) {
+    color: var(--mb-color-syntax-parameters);
+  }
+
+  :global(.ace_cursor) {
+    border-left-width: 1px;
+  }
+
+  :global(.ace_hidden-cursors .ace_cursor) {
+    opacity: 0;
+  }
+
+  :global(.ace_content .error) {
+    position: absolute;
+    border-bottom: 2px solid var(--mb-color-error);
+    border-radius: 0;
+    background-color: var(--mb-color-bg-error);
+  }
+}

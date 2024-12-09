@@ -1,0 +1,60 @@
+.ArgumentsGrid {
+  margin: 1rem 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(4rem, max-content));
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.BlockSubtitleText {
+  margin-bottom: 0.5rem;
+  color: var(--mb-color-text-light);
+}
+
+.ExampleCode {
+  padding: 0.5rem;
+  background-color: var(--mb-color-bg-light);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.065rem;
+  font-family: Monaco, monospace;
+}
+
+.DocumentationLink {
+  display: flex;
+  align-items: center;
+  margin-top: 1rem;
+  color: var(--mb-color-brand);
+  font-weight: 700;
+}
+
+.Divider {
+  height: 1px;
+  background-color: var(--mb-color-border);
+  margin: 1.25rem -1rem 1rem -1rem;
+}
+
+.Container {
+  padding: 1.25rem 1rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+.FunctionHelpCode {
+  color: var(--mb-color-text-dark);
+  font-family: Monaco, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.065rem;
+}
+
+.FunctionHelpCodeArgument {
+  color: var(--mb-base-color-lobster-50);
+}
+
+.ArgumentTitle {
+  color: var(--mb-base-color-lobster-50);
+  font-family: Monaco, monospace;
+  font-size: 0.8125rem;
+  text-align: right;
+}
