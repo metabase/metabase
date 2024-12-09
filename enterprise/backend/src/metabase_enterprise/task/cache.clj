@@ -24,7 +24,7 @@
 
 (defsetting preemptive-caching-thread-pool-size
   (deferred-tru "The size of the thread pool used to preemptively re-run cached queries.")
-  :default    5
+  :default    10
   :export?    false
   :type       :integer
   :visibility :internal)
@@ -36,11 +36,15 @@
            (doto (BasicThreadFactory$Builder.)
              (.namingPattern "preemptive-caching-thread-pool-%d"))))))
 
-(def ^:dynamic *queries-to-rerun-per-card*
+(def ^:dynamic *parameterized-queries-to-rerun-per-card*
   "Number of query variations (e.g. with different parameters) to run for a single cached card."
   10)
 
-(defn- submit-refresh-task!
+(def ^:dynamic *run-cache-refresh-async*
+  "Should cache refresh jobs be run asynchronously? Defaults to true, can be set to false for testing."
+  true)
+
+(defn- submit-refresh-task-async!
   "Submits a job to the thread pool to run a sequence of queries for a single card or dashboard being refreshed.
   This is best-effort; we try each query once and discard failures."
   [refresh-task-fn]
@@ -60,7 +64,7 @@
           {:executed-by  nil
            :context      :cache-refresh
            :card-id      card-id
-           :dasbhoard-id dashboard-id}))
+           :dashboard-id dashboard-id}))
         (catch Exception e
           (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e)))))))
 
@@ -78,6 +82,7 @@
               [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
    :where    [:and
               [:not= :qe.context (name :cache-refresh)]
+              [:= :qe.cache_hit true]
               (into [:or]
                     (map
                      (fn [{:keys [config model model_id]}]
@@ -86,7 +91,7 @@
                           ;; Is the query_execution row associated with a cached card or dashboard?
                           (if (= model "question")
                             [:= :qe.card_id model_id]
-                            [:= :qe.database_id model_id])
+                            [:= :qe.dashboard_id model_id])
                           ;; Is the existing cache entry for the query expired?
                           [:<= :qc.updated_at rerun-cutoff]
                           ;; Was the query executed at least once within the most recent cache duration?
@@ -108,12 +113,15 @@
 
 (defn- maybe-refresh-duration-caches!
   []
-  (when-let [refresh-defs (duration-queries-to-rerun)]
-    (submit-refresh-task! refresh-defs)))
+  (when-let [refresh-defs (seq (duration-queries-to-rerun))]
+    (let [task (refresh-task refresh-defs)]
+      (if *run-cache-refresh-async*
+       (submit-refresh-task-async! task)
+       (task)))))
 
 (defn- scheduled-queries-to-rerun
-  "Returns a list containing all of the query definitions that we should preemptively rerun for a given card that uses
-  :schedule caching."
+  "Returns a list containing all of the parameterized query definitions that we should preemptively rerun for a given
+  card that uses :schedule caching."
   [card rerun-cutoff]
   (let [queries (t2/select :model/Query
                            {:select   [:q.query_hash :q.query [[:count :q.query_hash]]]
@@ -126,8 +134,9 @@
                             :group-by [:q.query_hash :q.query]
                             :order-by [[[:count :q.query_hash] :desc]
                                        [[:min :qe.started_at] :asc]]
-                            :limit    *queries-to-rerun-per-card*})]
-    (map :query queries)))
+                            :limit    *parameterized-queries-to-rerun-per-card*})]
+    (->> queries
+         (map :query))))
 
 (defn- cards-to-refresh
   [model model-id]
@@ -154,17 +163,17 @@
   (let [rerun-cutoff (or last-run-at created-at)
         cards        (cards-to-refresh model model-id)
         dashboard-id (when (= model "dashboard") model-id)
-        refresh-defs (dedupe
+        refresh-defs (distinct
                       (map
                        (fn [card]
                          {:dashboard-id dashboard-id
                           :card-id      (u/the-id card)
-                          :queries      (cons
-                                         ;; Always try to rerun the card's base query first
-                                         (:dataset_query card)
-                                         (scheduled-queries-to-rerun card rerun-cutoff))})
-                       cards))]
-    (submit-refresh-task! (refresh-task refresh-defs))))
+                          :queries      (scheduled-queries-to-rerun card rerun-cutoff)})
+                       cards))
+        task         (refresh-task refresh-defs)]
+    (if *run-cache-refresh-async*
+     (submit-refresh-task-async! task)
+     (task))))
 
 ;;; ------------------------------------------- Cache invalidation task ------------------------------------------------
 
@@ -186,9 +195,9 @@
     (-> (.getFireTimeAfter cron (t/java-date now))
         (t/offset-date-time (t/zone-offset)))))
 
-(defn- refresh-schedule-configs!
+(defn- refresh-cache-configs!
   "Update `invalidated_at` for every cache config with `:schedule` strategy, and maybe rerun cached queries
-  if preemptive caching is enabled."
+  for both `:schedule` and `:duration` caches if preemptive caching is enabled."
   []
   (let [now (t/offset-date-time)]
     (doseq [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
@@ -201,7 +210,7 @@
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc                                   "Refresh 'schedule' caches"}
   Cache [_ctx]
-  (refresh-schedule-configs!))
+  (refresh-cache-configs!))
 
 (def ^:private cache-job
   (jobs/build
