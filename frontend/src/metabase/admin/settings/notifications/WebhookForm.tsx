@@ -226,39 +226,49 @@ export const WebhookForm = ({
               </ExternalLink>
             )}`}</Text>
           </Alert>
-          <Flex align="end" mb="1.5rem" gap="1rem">
-            <FormTextInput
-              name="url"
-              label={t`Webhook URL`}
-              placeholder="http://hooks.example.com/hooks/catch/"
-              style={{ flexGrow: 1 }}
-              {...styles}
-              maw="21rem"
-            />
-            <Button
-              h="2.5rem"
-              onClick={() => handleTest(values, setFieldError)}
-            >
-              {testButtonLabel}
-            </Button>
-          </Flex>
-          {testData && (
-            //@ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. It seems to want every single style prop for Box
-            <ScrollArea.Autosize
-              mah={300}
-              pt="0.75rem"
-              px="0.5rem"
-              bg="bg-light"
-              mb="0.75rem"
-            >
-              <Title order={5}>Test Response</Title>
-              <Box py="1rem">
-                <pre style={{ margin: 0 }}>
-                  {JSON.stringify(testData, null, 2)}
-                </pre>
-              </Box>
-            </ScrollArea.Autosize>
-          )}
+          <Box mb="1.5rem">
+            <Flex align="end" gap="1rem">
+              <FormTextInput
+                name="url"
+                label={t`Webhook URL`}
+                placeholder="http://hooks.example.com/hooks/catch/"
+                style={{ flexGrow: 1 }}
+                {...styles}
+                maw="21rem"
+              />
+              <Button
+                h="2.5rem"
+                onClick={() => handleTest(values, setFieldError)}
+              >
+                {testButtonLabel}
+              </Button>
+            </Flex>
+            {testData && (
+              //@ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. It seems to want every single style prop for Box
+              <ScrollArea.Autosize mah={300} mt="0.75rem">
+                <Title order={6} mb="0.75rem" lh="1rem">
+                  Test Response
+                </Title>
+                <Box
+                  py="0.5rem"
+                  px="1.5rem"
+                  bg="bg-light"
+                  style={{ borderRadius: "0.5rem" }}
+                >
+                  <pre
+                    style={{
+                      margin: 0,
+                      fontSize: "0.75rem",
+                      lineHeight: "1rem",
+                    }}
+                  >
+                    {JSON.stringify(testData, null, 2)}
+                  </pre>
+                </Box>
+              </ScrollArea.Autosize>
+            )}
+          </Box>
+
           <FormTextInput
             name="name"
             label={t`Give it a name`}
