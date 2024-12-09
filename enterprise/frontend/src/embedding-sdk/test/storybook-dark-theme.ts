@@ -1,4 +1,4 @@
-import { defineEmbeddingSdkTheme } from "embedding-sdk";
+import { defineMetabaseTheme } from "embedding-sdk";
 
 export function getSdkStorybookDarkTheme() {
   const darkColors = {
@@ -10,7 +10,7 @@ export function getSdkStorybookDarkTheme() {
     background: "#151C20",
   };
 
-  return defineEmbeddingSdkTheme({
+  return defineMetabaseTheme({
     fontFamily: "Lato",
     fontSize: "14px",
     colors: {
