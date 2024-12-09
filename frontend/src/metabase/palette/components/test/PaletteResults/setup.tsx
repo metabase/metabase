@@ -24,6 +24,7 @@ import {
   createMockDatabase,
   createMockRecentCollectionItem,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
@@ -106,6 +107,7 @@ export interface CommonSetupProps {
   settings?: Partial<Settings>;
   recents?: RecentItem[];
   isEE?: boolean;
+  isAdmin?: boolean;
 }
 
 export const commonSetup = ({
@@ -113,6 +115,7 @@ export const commonSetup = ({
   settings = {},
   recents = [recents_1, recents_2],
   isEE,
+  isAdmin = false,
 }: CommonSetupProps = {}) => {
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
@@ -125,6 +128,9 @@ export const commonSetup = ({
       }),
     }),
     settings: mockSettings({ ...settings, "token-features": TOKEN_FEATURES }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+    }),
   });
 
   if (isEE) {
