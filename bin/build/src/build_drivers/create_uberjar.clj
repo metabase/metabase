@@ -4,6 +4,7 @@
    [build-drivers.common :as c]
    [clojure.java.io :as io]
    [clojure.tools.build.api :as b]
+   [clojure.tools.build.tasks.uber] ;; workaround for (#50940)
    [clojure.tools.deps.alpha :as deps]
    [clojure.tools.deps.alpha.util.dir :as deps.dir]
    [colorize.core :as colorize]

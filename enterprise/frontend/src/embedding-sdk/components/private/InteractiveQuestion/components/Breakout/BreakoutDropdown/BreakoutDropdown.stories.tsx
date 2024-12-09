@@ -7,7 +7,7 @@ import { BreakoutDropdown } from "./BreakoutDropdown";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/BreakoutDropdown",
+  title: "EmbeddingSDK/InteractiveQuestion/Breakout/BreakoutDropdown",
   component: BreakoutDropdown,
   parameters: {
     layout: "fullscreen",

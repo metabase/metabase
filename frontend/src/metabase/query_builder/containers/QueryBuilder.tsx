@@ -10,10 +10,10 @@ import _ from "underscore";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
-import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { useFavicon } from "metabase/hooks/use-favicon";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
@@ -217,6 +217,8 @@ type QueryBuilderInnerProps = ReduxProps &
   };
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  useFavicon({ favicon: props.pageFavicon ?? null });
+
   const {
     question,
     originalQuestion,
@@ -436,7 +438,6 @@ export const QueryBuilder = _.compose(
   Bookmark.loadList(),
   Timelines.loadList(timelineProps),
   connector,
-  favicon(({ pageFavicon }: { pageFavicon: string }) => pageFavicon),
   title(({ card, documentTitle }: { card: Card; documentTitle: string }) => ({
     title: documentTitle || card?.name || t`Question`,
     titleIndex: 1,

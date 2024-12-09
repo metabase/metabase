@@ -6,7 +6,6 @@ import {
   type MultiStepState,
 } from "embedding-sdk/components/private/util/MultiStepPopover";
 import type { QuestionStateParams } from "embedding-sdk/types/question";
-import { Button, Stack } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../../context";
 import { ToolbarButton } from "../../util/ToolbarButton";
@@ -58,13 +57,10 @@ export const BreakoutDropdownInner = ({
         />
       </MultiStepPopover.Target>
       <MultiStepPopover.Step value="picker">
-        <Stack>
-          <Button onClick={() => setStep("list")}>Back</Button>
-          <BreakoutPicker
-            breakoutItem={selectedBreakout}
-            onClose={() => setStep("list")}
-          />
-        </Stack>
+        <BreakoutPicker
+          breakoutItem={selectedBreakout}
+          onClose={() => setStep("list")}
+        />
       </MultiStepPopover.Step>
       <MultiStepPopover.Step value="list">
         <BreakoutBadgeList

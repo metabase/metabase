@@ -5,6 +5,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -118,6 +119,11 @@
    options  :- [:maybe :map]]
   (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
 
+(defn- ref-clause-with-type?
+  [maybe-ref types]
+  (and (lib.util/ref-clause? maybe-ref)
+       (some #(lib.util/original-isa? maybe-ref %) types)))
+
 (def ^:private StringFilterParts
   [:map
    [:operator ::lib.schema.filter/string-filter-operator]
@@ -146,10 +152,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        string-col? (fn [maybe-ref]
-                      (and (lib.util/ref-clause? maybe-ref)
-                           (or (lib.util/original-isa? maybe-ref :type/Text)
-                               (lib.util/original-isa? maybe-ref :type/TextLike))))]
+        string-col? #(ref-clause-with-type? % [:type/Text :type/TextLike])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
@@ -184,9 +187,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        number-col? (fn [maybe-ref]
-                      (and (lib.util/ref-clause? maybe-ref)
-                           (lib.util/original-isa? maybe-ref :type/Number)))]
+        number-col? #(ref-clause-with-type? % [:type/Number])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
@@ -230,10 +231,8 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col        #(column-metadata-from-ref query stage-number %)
-        coordinate-col? (fn [maybe-ref]
-                          (and (lib.util/ref-clause? maybe-ref)
-                               (lib.util/original-isa? maybe-ref :type/Number)
-                               (lib.types.isa/coordinate? (ref->col maybe-ref))))]
+        coordinate-col? #(and (ref-clause-with-type? % [:type/Number])
+                              (lib.types.isa/coordinate? (ref->col %)))]
     (lib.util.match/match-one filter-clause
       ;; multiple arguments
       [(op :guard #{:= :!=}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
@@ -279,9 +278,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col     #(column-metadata-from-ref query stage-number %)
-        boolean-col? (fn [maybe-ref]
-                       (and (lib.util/ref-clause? maybe-ref)
-                            (lib.util/original-isa? maybe-ref :type/Boolean)))]
+        boolean-col? #(ref-clause-with-type? % [:type/Boolean])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?)]
@@ -321,10 +318,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        date-col? (fn [maybe-ref]
-                    (and (lib.util/ref-clause? maybe-ref)
-                         (or (lib.util/original-isa? maybe-ref :type/Date)
-                             (lib.util/original-isa? maybe-ref :type/DateTime))))]
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
     (lib.util.match/match-one filter-clause
       [:time-interval
        opts
@@ -343,7 +337,7 @@
        (unit :guard keyword?)
        (offset-value :guard number?)
        (offset-unit :guard keyword?)]
-      {:column (ref->col col-ref)
+      {:column       (ref->col col-ref)
        :value        value
        :unit         unit
        :offset-value offset-value
@@ -368,6 +362,52 @@
        :offset-unit  offset-unit
        :options      {}})))
 
+(def ^:private ExcludeDateFilterParts
+  [:map
+   [:operator ::lib.schema.filter/exclude-date-filter-operator]
+   [:column   ::lib.schema.metadata/column]
+   [:unit     {:optional true} [:maybe ::lib.schema.filter/exclude-date-filter-unit]]
+   [:values   [:sequential number?]]])
+
+(mu/defn exclude-date-filter-clause :- ::lib.schema.expression/expression
+  "Creates an exclude date filter clause based on FE-friendly filter parts. It should be possible to destructure each
+   created expression with [[exclude-date-filter-parts]]."
+  [operator :- ::lib.schema.filter/exclude-date-filter-operator
+   column   :- ::lib.schema.metadata/column
+   unit     :- [:maybe ::lib.schema.filter/exclude-date-filter-unit]
+   values   :- [:maybe [:sequential number?]]]
+  (let [column (lib.temporal-bucket/with-temporal-bucket column nil)
+        expr   (if (= operator :!=)
+                 (case unit
+                   :hour-of-day (lib.expression/get-hour column)
+                   :day-of-week (lib.expression/get-day-of-week column :iso)
+                   :month-of-year (lib.expression/get-month column)
+                   :quarter-of-year (lib.expression/get-quarter column))
+                 column)]
+    (expression-clause operator (into [expr] values) {})))
+
+(mu/defn exclude-date-filter-parts :- [:maybe ExcludeDateFilterParts]
+  "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
+  does not match the expected shape."
+  [query stage-number filter-clause]
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
+        date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
+        op->unit  {:get-hour :hour-of-day
+                   :get-month :month-of-year
+                   :get-quarter :quarter-of-year}]
+    (lib.util.match/match-one filter-clause
+      ;; no arguments
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
+      {:operator op, :column (ref->col col-ref), :values []}
+
+      ;; without `mode`
+      [:!= _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard #(every? int? %))]
+      {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
+
+      ;; with `:mode`
+      [:!= _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
+      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args})))
+
 (def ^:private TimeFilterParts
   [:map
    [:operator ::lib.schema.filter/time-filter-operator]
@@ -390,9 +430,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
-        time-col? (fn [maybe-ref]
-                    (and (lib.util/ref-clause? maybe-ref)
-                         (lib.util/original-isa? maybe-ref :type/Time)))]
+        time-col? #(ref-clause-with-type? % [:type/Time])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?)]

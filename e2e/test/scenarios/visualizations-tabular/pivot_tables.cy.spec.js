@@ -165,7 +165,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("Subtotal");
+      cy.findByText("Subtotal: 8 bins");
       cy.findByText("Count");
       cy.findByText("2,720");
       cy.findByText(/Grand totals/i);
@@ -446,13 +446,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // open settings and expand Total column settings
     cy.findByTestId("viz-settings-button").click();
 
-    sortColumnResults("Total", "descending");
+    sortColumnResults("Total: 100 bins", "descending");
     cy.findAllByTestId("pivot-table").within(() => {
       cy.findByText("158 – 160").should("be.visible");
       cy.findByText("8 – 10").should("not.exist");
     });
 
-    sortColumnResults("Total", "ascending");
+    sortColumnResults("Total: 100 bins", "ascending");
     cy.findAllByTestId("pivot-table").within(() => {
       cy.findByText("8 – 10").should("be.visible");
       cy.findByText("158 – 160").should("not.exist");
