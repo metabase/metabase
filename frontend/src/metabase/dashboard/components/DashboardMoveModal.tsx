@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { MoveModal } from "metabase/containers/MoveModal";
-import Link from "metabase/core/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import { color } from "metabase/lib/colors";
@@ -13,7 +12,7 @@ import { Icon } from "metabase/ui";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { ToastRoot } from "./DashboardMoveModal.styled";
+import { CollectionLink, ToastRoot } from "./DashboardMoveModal.styled";
 
 const mapDispatchToProps = {
   setDashboardCollection: Dashboards.actions.setCollection,
@@ -70,13 +69,13 @@ const DashboardMoveToast = ({
       {c("{0} is a location where the dashboard was moved to")
         .jt`Dashboard moved to ${
         collection ? (
-          <Link
+          <CollectionLink
             to={Urls.collection(collection)}
             style={{ marginInlineStart: ".25em" }}
             color={color("brand")}
           >
             {collection.name}
-          </Link>
+          </CollectionLink>
         ) : null
       }`}
     </ToastRoot>

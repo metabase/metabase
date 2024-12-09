@@ -16,5 +16,4 @@ export const StyledIcon = styled(Icon)`
 
 export const CollectionLink = styled(Link)`
   color: var(--mb-color-brand);
-  margin-left: ${space(0)};
 `;
