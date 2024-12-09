@@ -1,6 +1,7 @@
 (ns metabase.api.notification-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.test-util :as notification.tu]
    [metabase.sync.sync-metadata]
@@ -119,15 +120,9 @@
             notification-id     (:id @notification)
             update-notification (fn [new-notification]
                                   (reset! notification
-                                          (update (mt/user-http-request :crowberto :put 200
-                                                                        (format "notification/%d" notification-id)
-                                                                        new-notification)
-                                                  :handlers
-                                                  (fn [handlers]
-                                                    (->> handlers
-                                                         (map (fn [handler]
-                                                                (update handler :recipients (fn [recipients] (sort-by :type recipients)))))
-                                                         (sort-by :channel_type))))))]
+                                          (mt/user-http-request :crowberto :put 200
+                                                                (format "notification/%d" notification-id)
+                                                                new-notification)))]
         (testing "can update subscription schedule"
           (is (=? [{:type          "notification-subscription/cron"
                     :cron_schedule "1 1 1 * * ?"}]
@@ -139,9 +134,9 @@
                   (:payload (update-notification (assoc-in @notification [:payload :send_condition] "goal_above"))))))
 
         (testing "can add add a new recipient and modify the existing one"
-          (let [existing-email-handler  (-> @notification :handlers first)
-                existing-user-recipient (first (filter #(= "notification-recipient/user" (:type %))
-                                                       (:recipients existing-email-handler)))
+          (let [existing-email-handler  (->> @notification :handlers (m/find-first #(= "channel/email" (:channel_type %))))
+                existing-user-recipient (m/find-first #(= "notification-recipient/user" (:type %))
+                                                      (:recipients existing-email-handler))
                 new-recipients          [(assoc existing-user-recipient :user_id (mt/user->id :rasta))
                                          {:id                      -1
                                           :type                    :notification-recipient/group
@@ -152,12 +147,12 @@
                       :permissions_group_id (:id (perms-group/admin))}
                      {:type    "notification-recipient/user"
                       :user_id (mt/user->id :rasta)}]
-                    (-> (update-notification (assoc @notification :handlers new-handlers))
-                        :handlers first :recipients)))
+                    (->> (update-notification (assoc @notification :handlers new-handlers))
+                         :handlers (m/find-first #(= "channel/email" (:channel_type %))) :recipients)))
             (testing "can remove all recipients"
               (is (= []
-                     (-> (update-notification (assoc @notification :handlers [(assoc existing-email-handler :recipients [])]))
-                         :handlers first :recipients))))))
+                     (->> (update-notification (assoc @notification :handlers [(assoc existing-email-handler :recipients [])]))
+                          :handlers (m/find-first #(= "channel/email" (:channel_type %))) :recipients))))))
 
         (testing "can add new handler"
           (let [new-handler {:id              -1
@@ -170,8 +165,8 @@
             (is (=?  {:channel_type "channel/slack"
                       :recipients   [{:type    "notification-recipient/user"
                                       :user_id (mt/user->id :rasta)}]}
-                    (-> (update-notification (assoc @notification :handlers new-handlers))
-                        :handlers last)))))))))
+                    (->> (update-notification (assoc @notification :handlers new-handlers))
+                        :handlers (m/find-first #(= "channel/slack" (:channel_type %))))))))))))
 
 (deftest update-notification-error-test
   (testing "require auth"
