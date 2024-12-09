@@ -534,14 +534,6 @@ export const PLUGIN_CONTENT_VERIFICATION = {
   MetricFilterControls: (_props: MetricFilterControlsProps) => null,
 };
 
-export const PLUGIN_DASHBOARD_HEADER = {
-  extraButtons: (_dashboard: Dashboard) => [],
-};
-
-export const PLUGIN_QUERY_BUILDER_HEADER = {
-  extraButtons: (_question: Question) => [],
-};
-
 export type InsightsLinkProps = (
   | {
       question: Pick<Question, "id" | "collection">;

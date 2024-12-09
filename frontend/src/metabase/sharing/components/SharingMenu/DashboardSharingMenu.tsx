@@ -4,6 +4,7 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { DashboardNotificationsModalType } from "metabase/notifications/types";
 import { Flex, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
@@ -13,7 +14,6 @@ import { ExportPdfMenuItem } from "./MenuItems/ExportPdfMenuItem";
 import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
 import { SharingMenu } from "./SharingMenu";
 import { SharingModals } from "./SharingModals";
-import type { DashboardSharingModalType } from "./types";
 
 export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const dispatch = useDispatch();
@@ -26,9 +26,8 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
       setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
     );
 
-  const [modalType, setModalType] = useState<DashboardSharingModalType | null>(
-    null,
-  );
+  const [modalType, setModalType] =
+    useState<DashboardNotificationsModalType | null>(null);
 
   const hasPublicLink = !!dashboard?.public_uuid;
   const isArchived = dashboard.archived;
