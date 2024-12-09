@@ -36,7 +36,7 @@ const NodeListTitleText = ({ children, ...rest }: BoxProps) => {
   );
 };
 
-const QuestionId = ({ children, ...rest }: BoxProps) => {
+const NodeListItemId = ({ children, ...rest }: BoxProps) => {
   return (
     <Box
       component="span"
@@ -88,7 +88,7 @@ export {
   NodeListTitle,
   NodeListContainer,
   NodeListTitleText,
-  QuestionId,
+  NodeListItemId,
   NodeListItemName,
   NodeListIcon,
   NodeListItemIcon,

@@ -12,11 +12,11 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListItemIcon,
+  NodeListItemId,
   NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-  QuestionId,
 } from "./NodeList";
 
 export interface DatabaseTablesPaneProps {
@@ -77,7 +77,7 @@ export const DatabaseTablesPane = ({
                     >
                       <NodeListItemIcon name="model" />
                       <NodeListItemName>{model.name}</NodeListItemName>
-                      <QuestionId>{`#${model.id}`}</QuestionId>
+                      <NodeListItemId>{`#${model.id}`}</NodeListItemId>
                     </NodeListItemLink>
                   </li>
                 ))}

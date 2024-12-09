@@ -17,11 +17,11 @@ import FieldList from "./FieldList";
 import {
   NodeListIcon,
   NodeListItemIcon,
+  NodeListItemId,
   NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-  QuestionId,
 } from "./NodeList";
 import TableInfoLoader from "./TableInfoLoader";
 
@@ -90,7 +90,7 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
                         <NodeListItemName>
                           {metric.card().name}
                         </NodeListItemName>
-                        <QuestionId>{`#${metric.id()}`}</QuestionId>
+                        <NodeListItemId>{`#${metric.id()}`}</NodeListItemId>
                       </NodeListItemLink>
                     </li>
                   ))}

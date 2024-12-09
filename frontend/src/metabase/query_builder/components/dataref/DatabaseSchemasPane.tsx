@@ -11,11 +11,11 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListItemIcon,
+  NodeListItemId,
   NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-  QuestionId,
 } from "./NodeList";
 
 interface DatabaseSchemasPaneProps {
@@ -67,7 +67,7 @@ const DatabaseSchemasPane = ({
                     >
                       <NodeListItemIcon name="model" />
                       <NodeListItemName>{model.name}</NodeListItemName>
-                      <QuestionId>{`#${model.id}`}</QuestionId>
+                      <NodeListItemId>{`#${model.id}`}</NodeListItemId>
                     </NodeListItemLink>
                   </li>
                 ))}
