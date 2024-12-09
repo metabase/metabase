@@ -14,9 +14,9 @@ import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
   StaticQuestion,
-  defineEmbeddingSdkConfig,
+  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
   createMockCard,
   createMockSettings,
@@ -27,16 +27,16 @@ import {
 const METABASE_INSTANCE_URL = "path:";
 const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
-const defaultAuthUriConfig = defineEmbeddingSdkConfig({
+const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: AUTH_PROVIDER_URL,
 });
 
 const MOCK_CARD = createMockCard({ id: 1 });
 
-const setup = async (config: SDKConfig) => {
+const setup = async (config: MetabaseAuthConfig) => {
   render(
-    <MetabaseProvider config={config}>
+    <MetabaseProvider authConfig={config}>
       <StaticQuestion questionId={1} />
     </MetabaseProvider>,
   );
@@ -103,7 +103,7 @@ describe("SDK auth errors", () => {
         body: "not a json object",
       });
 
-      await setup(defaultAuthUriConfig);
+      await setup(defaultAuthConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
@@ -117,7 +117,7 @@ describe("SDK auth errors", () => {
         body: { id: { id: "123" } },
       });
 
-      await setup(defaultAuthUriConfig);
+      await setup(defaultAuthConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
@@ -127,13 +127,13 @@ describe("SDK auth errors", () => {
     });
 
     it("should show a message when fetchRequestToken doesn't return a json object", async () => {
-      const config = defineEmbeddingSdkConfig({
-        ...defaultAuthUriConfig,
+      const authConfig = defineMetabaseAuthConfig({
+        ...defaultAuthConfig,
         // @ts-expect-error -- testing error path
         fetchRequestToken: async () => "not a json object",
       });
 
-      await setup(config);
+      await setup(authConfig);
 
       await expectErrorMessage(
         `The "fetchRequestToken" must return an object with the shape {id:string, exp:number, iat:number, status:string}, got "not a json object" instead`,
@@ -145,7 +145,7 @@ describe("SDK auth errors", () => {
         JSON.stringify({ status: "error-embedding-sdk-disabled" }),
       );
 
-      await setup(defaultAuthUriConfig);
+      await setup(defaultAuthConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
@@ -153,14 +153,14 @@ describe("SDK auth errors", () => {
     });
 
     it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
-      const config = defineEmbeddingSdkConfig({
-        ...defaultAuthUriConfig,
+      const authConfig = defineMetabaseAuthConfig({
+        ...defaultAuthConfig,
         fetchRequestToken: async () => {
           throw new Error("Custom error message");
         },
       });
 
-      await setup(config);
+      await setup(authConfig);
 
       await expectErrorMessage("Custom error message");
     });
