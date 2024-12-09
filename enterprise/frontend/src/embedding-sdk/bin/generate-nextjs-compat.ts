@@ -144,29 +144,29 @@ const generateAllComponents = (type: "cjs" | "js") => {
 
 // next uses either cjs or esm, it uses cjs for when running on the server on pages router
 
-// next.{cjs,js} => "index file" that re-exports the helpers and the components
-// next-no-ssr.{cjs,js} => file marked as "use client" that re-exports the components wrapped in dynamic import with no ssr
+// nextjs.{cjs,js} => "index file" that re-exports the helpers and the components
+// nextjs-no-ssr.{cjs,js} => file marked as "use client" that re-exports the components wrapped in dynamic import with no ssr
 
 // we need to re-export these helpers so they can be used without importing the entire bundle, that will make next crash because window is undefined
 const defineEmbeddingSdkConfig = "config => config";
 const defineEmbeddingSdkTheme = "theme => theme";
 
-const next_cjs = `
+const nextjs_cjs = `
 module.exports.defineEmbeddingSdkConfig = ${defineEmbeddingSdkConfig};
 module.exports.defineEmbeddingSdkTheme = ${defineEmbeddingSdkTheme};
 
-module.exports = { ...module.exports, ...require("./next-no-ssr.cjs") };
+module.exports = { ...module.exports, ...require("./nextjs-no-ssr.cjs") };
 `;
 
-const next_js = `
+const nextjs_js = `
 export const defineEmbeddingSdkConfig = ${defineEmbeddingSdkConfig};
 export const defineEmbeddingSdkTheme = ${defineEmbeddingSdkTheme};
 
-export * from "./next-no-ssr.js";
+export * from "./nextjs-no-ssr.js";
 `;
 
 // eslint-disable-next-line no-literal-metabase-strings -- it's code
-const next_no_ssr_cjs = `"use client";
+const nextjs_no_ssr_cjs = `"use client";
 
 const React = require("react");
 
@@ -180,7 +180,7 @@ ${generateAllComponents("cjs")}
 `;
 
 // eslint-disable-next-line no-literal-metabase-strings -- it's code
-const next_no_ssr_js = `"use client";
+const nextjs_no_ssr_js = `"use client";
 
 import dynamic from "next/dynamic";
 
@@ -192,13 +192,13 @@ export { MetabaseProvider };
 ${generateAllComponents("js")}
 `;
 
-writeToFile("next.cjs", next_cjs);
-writeToFile("next.js", next_js);
+writeToFile("nextjs.cjs", nextjs_cjs);
+writeToFile("nextjs.js", nextjs_js);
 
-writeToFile("next-no-ssr.cjs", next_no_ssr_cjs);
-writeToFile("next-no-ssr.js", next_no_ssr_js);
+writeToFile("nextjs-no-ssr.cjs", nextjs_no_ssr_cjs);
+writeToFile("nextjs-no-ssr.js", nextjs_no_ssr_js);
 
 writeToFile(
-  "next.d.ts",
+  "nextjs.d.ts",
   `export * from "./enterprise/frontend/src/embedding-sdk/index.d.ts";`,
 );
