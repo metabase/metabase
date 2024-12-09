@@ -6,9 +6,10 @@ import {
   type TimeValue,
   useTimeFilter,
 } from "metabase/querying/filters/hooks/use-time-filter";
-import { Flex, Grid, Text, TimeInput } from "metabase/ui";
+import { Flex, Text, TimeInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
+import ItemGrid from "../FilterModalBody/poc.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
@@ -68,32 +69,32 @@ export function TimeFilterEditor({
 
   return (
     <HoverParent data-testid="time-filter-editor">
-      <Grid grow>
-        <Grid.Col span="auto">
+      <ItemGrid
+        operatorPicker={
+          <FilterOperatorPicker
+            value={operator}
+            options={availableOptions}
+            onChange={handleOperatorChange}
+          />
+        }
+        title={
           <FilterTitle
             query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
             isSearching={isSearching}
-          >
-            <FilterOperatorPicker
-              value={operator}
-              options={availableOptions}
-              onChange={handleOperatorChange}
-            />
-          </FilterTitle>
-        </Grid.Col>
-        <Grid.Col span={4}>
-          <TimeValueInput
-            values={values}
-            valueCount={valueCount}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            onBlur={handleInputBlur}
           />
-        </Grid.Col>
-      </Grid>
+        }
+      >
+        <TimeValueInput
+          values={values}
+          valueCount={valueCount}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+        />
+      </ItemGrid>
     </HoverParent>
   );
 }

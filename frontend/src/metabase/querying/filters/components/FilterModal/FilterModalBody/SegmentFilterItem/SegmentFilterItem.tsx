@@ -25,8 +25,7 @@ export function SegmentFilterItem({
   return (
     <FilterTabItem
       component="li"
-      px="2rem"
-      py="1rem"
+      px="1rem"
       data-testid="filter-column-segments"
     >
       <SegmentFilterEditor

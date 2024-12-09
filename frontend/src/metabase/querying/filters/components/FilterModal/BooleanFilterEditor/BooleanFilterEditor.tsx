@@ -3,9 +3,11 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useBooleanOperatorFilter } from "metabase/querying/filters/hooks/use-boolean-operator-filter";
-import { Checkbox, Grid, Group } from "metabase/ui";
+import { Group } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
+import { ToggleButton } from "../DateFilterEditor/DateFilterEditor.styled";
+import ItemGrid from "../FilterModalBody/poc.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
@@ -26,7 +28,6 @@ export function BooleanFilterEditor({
     operator,
     availableOptions,
     values,
-    valueCount,
     isExpanded,
     getDefaultValues,
     getFilterClause,
@@ -53,47 +54,51 @@ export function BooleanFilterEditor({
     onChange(getFilterClause(newOperator, newValues));
   };
 
+  const isTrueChecked = values.length > 0 ? values[0] : false;
+  const isFalseChecked = values.length > 0 ? !values[0] : false;
+
   return (
     <HoverParent data-testid="boolean-filter-editor">
-      <Grid grow>
-        <Grid.Col span="auto">
+      <ItemGrid
+        operatorPicker={
+          isExpanded ? (
+            <FilterOperatorPicker
+              value={operator}
+              options={availableOptions}
+              onChange={handleOperatorChange}
+            />
+          ) : undefined
+        }
+        title={
           <FilterTitle
             query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
             isSearching={isSearching}
+          />
+        }
+      >
+        <Group spacing="md">
+          <ToggleButton
+            radius="xl"
+            variant={isTrueChecked ? "filled" : "subtle"}
+            aria-selected={isTrueChecked}
+            onClick={() => handleValuesChange(isTrueChecked ? [] : [true])}
           >
-            {isExpanded && (
-              <FilterOperatorPicker
-                value={operator}
-                options={availableOptions}
-                onChange={handleOperatorChange}
-              />
-            )}
-          </FilterTitle>
-        </Grid.Col>
-        <Grid.Col span={4}>
-          <Group spacing="md">
-            <Checkbox
-              label={t`True`}
-              checked={values.length > 0 ? values[0] : false}
-              indeterminate={valueCount === 0}
-              onChange={event =>
-                handleValuesChange(event.target.checked ? [true] : [])
-              }
-            />
-            <Checkbox
-              label={t`False`}
-              checked={values.length > 0 ? !values[0] : false}
-              indeterminate={valueCount === 0}
-              onChange={event =>
-                handleValuesChange(event.target.checked ? [false] : [])
-              }
-            />
-          </Group>
-        </Grid.Col>
-      </Grid>
+            {t`True`}
+          </ToggleButton>
+
+          <ToggleButton
+            radius="xl"
+            variant={isFalseChecked ? "filled" : "subtle"}
+            aria-selected={isFalseChecked}
+            onClick={() => handleValuesChange(isFalseChecked ? [] : [false])}
+          >
+            {t`False`}
+          </ToggleButton>
+        </Group>
+      </ItemGrid>
     </HoverParent>
   );
 }

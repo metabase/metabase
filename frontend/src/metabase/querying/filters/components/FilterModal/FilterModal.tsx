@@ -1,13 +1,20 @@
-import { Flex, Modal } from "metabase/ui";
+import { Box, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { useFilterModal } from "../../hooks/use-filter-modal";
 
-import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
+import { FieldGroupPicker } from "./FieldGroupPicker";
+import S from "./FilterModal.module.css";
+import {
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "./FilterModal.styled";
 import { FilterModalBody } from "./FilterModalBody";
 import { FilterModalFooter } from "./FilterModalFooter";
-import { FilterModalHeader } from "./FilterModalHeader";
+import { FilterSearchInput } from "./FilterModalHeader/FilterSearchInput";
 import { getModalTitle, getModalWidth } from "./utils";
 
 export interface FilterModalProps {
@@ -41,17 +48,36 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
   };
 
   return (
-    <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
+    <Modal.Root opened size={getModalWidth()} onClose={onClose}>
       <Modal.Overlay />
-      <Modal.Content>
-        <ModalHeader p="lg">
-          <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <Flex mx="md" justify="end" style={{ flex: 1 }}>
-            <FilterModalHeader value={searchText} onChange={handleSearch} />
-          </Flex>
-          <Modal.CloseButton />
+
+      <ModalContent>
+        <ModalHeader px={48} pt="xl" pb="md">
+          <Box w="100%">
+            <Flex justify="space-between" mb="md" style={{ flex: 1 }}>
+              <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
+              <Modal.CloseButton autoFocus={false} className={S.close} />
+            </Flex>
+
+            <FilterSearchInput
+              className={S.search}
+              searchText={searchText}
+              onChange={handleSearch}
+            />
+
+            {groupItems.length > 1 && !searchText && (
+              <Box mt="md">
+                <FieldGroupPicker
+                  groupItems={groupItems}
+                  value={tab}
+                  onChange={setTab}
+                />
+              </Box>
+            )}
+          </Box>
         </ModalHeader>
-        <ModalBody p={0}>
+
+        <ModalBody className={S.content} p={0}>
           <FilterModalBody
             groupItems={visibleItems}
             query={query}
@@ -63,7 +89,8 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
             onTabChange={setTab}
           />
         </ModalBody>
-        <ModalFooter p="md" direction="row" justify="space-between">
+
+        <ModalFooter px={48} py="lg" direction="row" justify="space-between">
           <FilterModalFooter
             canRemoveFilters={canRemoveFilters}
             onClearFilters={handleReset}
@@ -71,7 +98,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
             onApplyFilters={onSubmitFilters}
           />
         </ModalFooter>
-      </Modal.Content>
+      </ModalContent>
     </Modal.Root>
   );
 }

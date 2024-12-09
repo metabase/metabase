@@ -1,0 +1,44 @@
+.content {
+  :global(button),
+  :global(.emotion-Input-input),
+  :global(input) {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+  }
+
+  :global(.emotion-MultiSelect-input) {
+    max-height: initial !important;
+  }
+
+  :global(.emotion-Input-input > div:first-child) {
+    min-height: initial !important;
+  }
+
+  :global(.emotion-Input-input > div:first-child > input) {
+    max-height: initial !important;
+    min-height: 20px !important;
+    height: 20px;
+  }
+
+  :global(.emotion-MultiSelect-value) {
+    min-height: 22px !important;
+    max-height: 22px !important;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+}
+
+.search {
+  width: 100%;
+}
+
+.close {
+  width: 24px !important;
+  height: 24px !important;
+
+  svg {
+    color: var(--mb-color-text-dark);
+  }
+}
