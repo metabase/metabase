@@ -2,8 +2,6 @@ import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Center, Popover } from "metabase/ui";
 
-import { BreakoutPicker } from "../Breakout";
-
 import { SummarizePicker } from "./SummarizePicker";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
@@ -26,10 +24,10 @@ export const SummarizePickerStory = {
           {/* so the styles are messed up */}
           <Popover opened={true}>
             <Popover.Target>
-              <button>hello</button>
+              <button>Open the Summarize Picker</button>
             </Popover.Target>
             <Popover.Dropdown>
-              <BreakoutPicker />
+              <SummarizePicker />
             </Popover.Dropdown>
           </Popover>
         </InteractiveQuestion>
