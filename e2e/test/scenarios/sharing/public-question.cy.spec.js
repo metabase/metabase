@@ -176,7 +176,9 @@ describe("scenarios > public > question", () => {
           cy.signInAsNormalUser().then(() => {
             cy.visit(`/public/question/${uuid}`);
             // Check the name of the first person in the PEOPLE table
-            cy.get("[data-testid=cell-data]").contains("Hudson Borer");
+            cy.findAllByTestId("cell-data")
+              .contains("Hudson Borer")
+              .should("be.visible");
           });
         });
       });
