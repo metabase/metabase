@@ -374,6 +374,13 @@
                       [:<  exp-field-ref expected-upper]]
                      (mbql.u/desugar-filter-clause [:during exp-field-ref value unit])))))))))
 
+(t/deftest ^:parallel desugar-if-test
+  (t/testing "Desugaring if produces expected [:case ..] expression"
+    (t/is (= [:case [[[:< [:field 1 nil] 1] 2] [[:< [:field 3 nil] 4] 5]]]
+             (mbql.u/desugar-filter-clause [:if [[[:< [:field 1 nil] 1] 2] [[:< [:field 3 nil] 4] 5]]])))
+    (t/is (= [:case [[[:< [:field 1 nil] 1] 2]] {:default 3}]
+             (mbql.u/desugar-filter-clause [:if [[[:< [:field 1 nil] 1] 2]] {:default 3}])))))
+
 (t/deftest ^:parallel desugar-relative-time-interval-positive-test
   (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
     (let [value           10
