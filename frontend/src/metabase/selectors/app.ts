@@ -68,6 +68,23 @@ export const getIsCollectionPathVisible = createSelector(
   },
 );
 
+export const getIsContainingDashboardPathVisible = createSelector(
+  [getIsCollectionPathVisible, getQuestion, getRouterPath],
+  (isCollectionPathVisible, question, path) => {
+    if (!isCollectionPathVisible) {
+      return false;
+    }
+
+    const isOnQuestionPage = /\/question\//.test(path);
+    const isSavedDashboardQuestion =
+      question != null &&
+      question.isSaved() &&
+      typeof question?.dashboardId() === "number";
+
+    return isSavedDashboardQuestion && isOnQuestionPage;
+  },
+);
+
 export const getIsQuestionLineageVisible = createSelector(
   [getIsSavedQuestionChanged, getRouterPath],
   (isSavedQuestionChanged, path) =>
@@ -187,16 +204,6 @@ export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
   return errorPage?.data?.message || errorPage?.data;
 };
-
-// TODO: ask Nick for advice on this...
-export const getViewedItem = createSelector(
-  [getQuestion, getDashboard, getDashboardId],
-  (question, dashboard, dashboardId) => {
-    return dashboardId
-      ? ({ model: "dashboard" as const, dashboard } as const)
-      : ({ model: "question" as const, question } as const);
-  },
-);
 
 export const getCollectionId = createSelector(
   [getQuestion, getDashboard, getDashboardId],
