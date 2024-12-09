@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
-   [metabase.db :as mdb]
-   [metabase.search.appdb.core :as search.appdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
