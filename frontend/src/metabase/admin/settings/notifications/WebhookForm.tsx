@@ -1,5 +1,5 @@
 import type { FormikHelpers } from "formik";
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
@@ -247,7 +247,8 @@ export const WebhookForm = ({
               //@ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. It seems to want every single style prop for Box
               <ScrollArea.Autosize mah={300} mt="0.75rem">
                 <Title order={6} mb="0.75rem" lh="1rem">
-                  Test Response
+                  {c("The response returned by an API Request")
+                    .t`Test response`}
                 </Title>
                 <Box
                   py="0.5rem"

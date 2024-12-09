@@ -1235,6 +1235,10 @@ describe("notifications", { tags: "@external" }, () => {
       cy.findByLabelText("Give it a name").type("Awesome Hook");
       cy.findByLabelText("Description").type("The best hook ever");
       cy.findByLabelText("Webhook URL").clear().type(H.WEBHOOK_TEST_URL);
+      cy.button("Send a test").click();
+
+      cy.findByText("Test response").should("exist");
+
       cy.button("Create destination").click();
     });
 
