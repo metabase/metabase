@@ -5,7 +5,7 @@
 
 (def ^:private impossible? search.util/impossible-condition?)
 
-(deftest impossible-condition?-test
+(deftest ^:parallel impossible-condition?-test
   (is (not (impossible? [:= "card" :this.type])))
   (is (not (impossible? [:= :that.type :this.type])))
   (is (impossible? [:= "card" "dashboard"]))
@@ -18,11 +18,13 @@
   (is (not (impossible? [:or [:= 1 :this.id] [:!= "card" "dashboard"]])))
   (is (impossible? [:or [:= "oh" "no"] [:= "card" "dashboard"]])))
 
-(deftest cycle-recent-indexes-test
-  (is (= (search.util/cycle-recent-versions nil "a") ["a"]))
-  (is (= (search.util/cycle-recent-versions ["a"] "a") ["a"]))
-  (is (= (search.util/cycle-recent-versions ["b"] "a") ["a" "b"]))
-  (is (= (search.util/cycle-recent-versions '("b" "a") "a") ["a" "b"]))
-  (is (= (search.util/cycle-recent-versions '("a" "b") "a") ["a" "b"]))
-  (is (= (search.util/cycle-recent-versions '("b" "c") "a") ["a" "b"]))
-  (is (= (search.util/cycle-recent-versions '("b" "c" "d") "a") ["a" "b"])))
+(deftest ^:parallel cycle-recent-indexes-test
+  (are [previous-id active-id expected] (= expected
+                                           (search.util/cycle-recent-versions previous-id active-id))
+    nil            "a" ["a"]
+    ["a"]          "a" ["a"]
+    ["b"]          "a" ["a" "b"]
+    '("b" "a")     "a" ["a" "b"]
+    '("a" "b")     "a" ["a" "b"]
+    '("b" "c")     "a" ["a" "b"]
+    '("b" "c" "d") "a" ["a" "b"]))

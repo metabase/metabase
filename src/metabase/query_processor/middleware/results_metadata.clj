@@ -57,7 +57,8 @@
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :base_type :effective_type
-                              :remapped_from :remapped_to :coercion_strategy :visibility_type])
+                              :remapped_from :remapped_to :coercion_strategy :visibility_type
+                              :was_binned])
       insights-col
       {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)

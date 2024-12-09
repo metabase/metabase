@@ -118,28 +118,34 @@
   [_ database]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     {:tables (set (for [collection (mongo.util/list-collection-names db)
-                        :when (not= collection "system.indexes")]
+                        :when (not (contains? #{"system.indexes" "system.views"} collection))]
                     {:schema nil, :name collection}))}))
 
 (defmethod driver/describe-table-indexes :mongo
   [_ database table]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     (let [collection (mongo.util/collection db (:name table))]
-      (->> (mongo.util/list-indexes collection)
-           (map (fn [index]
-                ;; for text indexes, column names are specified in the weights
-                  (if (contains? index "textIndexVersion")
-                    (get index "weights")
-                    (get index "key"))))
-           (map (comp name first keys))
-           ;; mongo support multi key index, aka nested fields index, so we need to split the keys
-           ;; and represent it as a list of field names
-           (map #(if (str/includes? % ".")
-                   {:type  :nested-column-index
-                    :value (str/split % #"\.")}
-                   {:type  :normal-column-index
-                    :value %}))
-           set))))
+      (try
+        (->> (mongo.util/list-indexes collection)
+             (map (fn [index]
+                    ;; for text indexes, column names are specified in the weights
+                    (if (contains? index "textIndexVersion")
+                      (get index "weights")
+                      (get index "key"))))
+             (map (comp name first keys))
+             ;; mongo support multi key index, aka nested fields index, so we need to split the keys
+             ;; and represent it as a list of field names
+             (map #(if (str/includes? % ".")
+                     {:type  :nested-column-index
+                      :value (str/split % #"\.")}
+                     {:type  :normal-column-index
+                      :value %}))
+             set)
+        (catch com.mongodb.MongoCommandException e
+          ;; com.mongodb.MongoCommandException: Command failed with error 166 (CommandNotSupportedOnView): 'Namespace test-data.orders_m is a view, not a collection' on server bee:27017. The full response is {"ok": 0.0, "errmsg": "Namespace test-data.orders_m is a view, not a collection", "code": 166, "codeName": "CommandNotSupportedOnView"}
+          (if (= (.getErrorCode e) 166)
+            #{}
+            (throw e)))))))
 
 (defn- describe-table-query-step
   "A single reduction step in the [[describe-table-query]] pipeline.

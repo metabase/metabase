@@ -1,6 +1,7 @@
 (ns metabase.search.appdb.core
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.public-settings :as public-settings]
    [metabase.search.appdb.index :as search.index]
@@ -23,8 +24,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod search.engine/supported-engine? :search.engine/fulltext [_]
-  (and (public-settings/experimental-fulltext-search-enabled)
+;; Make sure the legacy cookies still work.
+(derive :search.engine/fulltext :search.engine/appdb)
+
+(defmethod search.engine/supported-engine? :search.engine/appdb [_]
+  (and (or (not config/is-prod?)
+           (= "appdb" (some-> (public-settings/search-engine) name)))
        (= (mdb/db-type) :postgres)))
 
 (defn- parse-datetime [s]
@@ -55,13 +60,15 @@
   [search-ctx qry]
   (let [collection-id-col :search_index.collection_id
         permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
-        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
+        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
+        excluded-models   (search.filter/models-without-collection)
+        or-null           #(vector :or [:in :search_index.model excluded-models] %)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
-      true (sql.helpers/where permitted-clause)
-      personal-clause (sql.helpers/where personal-clause))))
+      true (sql.helpers/where (or-null permitted-clause))
+      personal-clause (sql.helpers/where (or-null personal-clause)))))
 
-(defmethod search.engine/results :search.engine/fulltext
+(defmethod search.engine/results :search.engine/appdb
   [{:keys [search-string] :as search-ctx}]
   (when-not (search.index/active-table)
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
@@ -75,7 +82,7 @@
          t2/query
          (map (partial rehydrate weights (keys scorers))))))
 
-(defmethod search.engine/model-set :search.engine/fulltext
+(defmethod search.engine/model-set :search.engine/appdb
   [search-ctx]
   ;; We ignore any current models filter
   (let [unfiltered-context (assoc search-ctx :models search.config/all-models)
@@ -87,15 +94,15 @@
          t2/query
          (into #{} (map :model)))))
 
-(defmethod search.engine/init! :search.engine/fulltext
+(defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [force-reset? re-populate?]}]
   (let [created? (search.index/ensure-ready! force-reset?)]
     (when (or created? re-populate?)
-      (search.ingestion/populate-index! :search.engine/fulltext))))
+      (search.ingestion/populate-index! :search.engine/appdb))))
 
-(defmethod search.engine/reindex! :search.engine/fulltext
+(defmethod search.engine/reindex! :search.engine/appdb
   [_]
   (search.index/ensure-ready! false)
   (search.index/maybe-create-pending!)
-  (u/prog1 (search.ingestion/populate-index! :search.engine/fulltext)
+  (u/prog1 (search.ingestion/populate-index! :search.engine/appdb)
     (search.index/activate-table!)))

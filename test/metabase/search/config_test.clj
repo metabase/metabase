@@ -4,7 +4,7 @@
    [metabase.search.config :as search.config]))
 
 ;; All that matters is that this is not legacy search.
-(def ^:private search-engine :search.engine/fulltext)
+(def ^:private search-engine :search.engine/appdb)
 
 (deftest filter-default-test
   (testing "Default values"

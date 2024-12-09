@@ -112,16 +112,16 @@
   "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
   (u/hours->ms 12))
 
-(def ^{:arglists '([token base-url site-uuid active-users-count])} fetch-token-and-parse-body*
+(def ^{:arglists '([token base-url site-uuid])} fetch-token-and-parse-body*
   "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
   cached, but may trigger the *store-circuit-breaker*."
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[token base-url site-uuid _active-users-count]]
+   ^{::memoize/args-fn (fn [[token base-url site-uuid]]
                          [token base-url site-uuid])}
-   (fn [token base-url site-uuid active-users-count]
+   (fn [token base-url site-uuid]
      (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
      (let [{:keys [body status] :as resp} (some-> (token-status-url token base-url)
-                                                  (http/get {:query-params     {:users      active-users-count
+                                                  (http/get {:query-params     {:users      (active-users-count)
                                                                                 :site-uuid  site-uuid
                                                                                 :mb-version (:tag config/mb-version-info)}
                                                              :throw-exceptions false}))]
@@ -163,7 +163,7 @@
     (dh/with-circuit-breaker *store-circuit-breaker*
       (dh/with-timeout {:timeout-ms fetch-token-status-timeout-ms
                         :interrupt? true}
-        (try (fetch-token-and-parse-body* token base-url site-uuid (active-users-count))
+        (try (fetch-token-and-parse-body* token base-url site-uuid)
              (catch Exception e
                (throw e)))))
     (catch dev.failsafe.TimeoutExceededException _e
@@ -237,12 +237,12 @@
            :status        "invalid"
            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
-(def ^{:arglists '([token])} fetch-token-status
-  "Locked version of `fetch-token-status` allowing one request at a time."
-  (let [lock (Object.)]
-    (fn [token]
-      (locking lock
-        (fetch-token-status* token)))))
+(let [lock (Object.)]
+  (defn fetch-token-status
+    "Locked version of `fetch-token-status` allowing one request at a time."
+    [token]
+    (locking lock
+      (fetch-token-status* token))))
 
 (declare token-valid-now?)
 
