@@ -118,9 +118,16 @@
       (let [notification        (atom notification)
             notification-id     (:id @notification)
             update-notification (fn [new-notification]
-                                  (reset! notification (mt/user-http-request :crowberto :put 200
-                                                                             (format "notification/%d" notification-id)
-                                                                             new-notification)))]
+                                  (reset! notification
+                                          (update (mt/user-http-request :crowberto :put 200
+                                                                        (format "notification/%d" notification-id)
+                                                                        new-notification)
+                                                  :handlers
+                                                  (fn [handlers]
+                                                    (->> handlers
+                                                         (map (fn [handler]
+                                                                (update handler :recipients (fn [recipients] (sort-by :type recipients)))))
+                                                         (sort-by :channel_type))))))]
         (testing "can update subscription schedule"
           (is (=? [{:type          "notification-subscription/cron"
                     :cron_schedule "1 1 1 * * ?"}]
@@ -146,7 +153,7 @@
                      {:type    "notification-recipient/user"
                       :user_id (mt/user->id :rasta)}]
                     (-> (update-notification (assoc @notification :handlers new-handlers))
-                        :handlers (#(sort-by :channel_type %)) first :recipients)))
+                        :handlers first :recipients)))
             (testing "can remove all recipients"
               (is (= []
                      (-> (update-notification (assoc @notification :handlers [(assoc existing-email-handler :recipients [])]))
@@ -164,7 +171,7 @@
                       :recipients   [{:type    "notification-recipient/user"
                                       :user_id (mt/user->id :rasta)}]}
                     (-> (update-notification (assoc @notification :handlers new-handlers))
-                        :handlers (#(sort-by :channel_type %)) last)))))))))
+                        :handlers last)))))))))
 
 (deftest update-notification-error-test
   (testing "require auth"
