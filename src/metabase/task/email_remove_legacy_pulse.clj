@@ -14,7 +14,7 @@
 (defn- has-legacy-pulse? []
   (pos? (t2/count :model/Pulse :dashboard_id nil :alert_condition nil :archived false)))
 
-(def ^:private template-path (str "metabase/email/warn_deprecate_pulse.hbs"))
+(def ^:private template-path "metabase/email/warn_deprecate_pulse.hbs")
 
 (defn- email-remove-legacy-pulse []
   (when (and (email/email-configured?)

@@ -5,7 +5,7 @@
    [metabase.models.bookmark
     :refer [BookmarkOrdering CardBookmark CollectionBookmark DashboardBookmark]]
    [metabase.models.card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]

@@ -811,7 +811,8 @@
                        (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
         price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
         aggs       (lib/aggregations query)]
-    (is (= (count aggs) 2))
+    (is (= 2
+           (count aggs)))
     (testing "aggregations like COUNT have no column"
       (is (nil? (lib.aggregation/aggregation-column query -1 (first aggs)))))
     (testing "aggregations like SUM return the column of interest"
