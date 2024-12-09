@@ -1,5 +1,6 @@
 import { MetabaseProvider, defineEmbeddingSdkTheme } from "embedding-sdk";
 import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { getSdkStorybookDarkTheme } from "embedding-sdk/test/storybook-dark-theme";
 
 import {
   EditableDashboard,
@@ -7,6 +8,8 @@ import {
 } from "./EditableDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
+
+const darkTheme = getSdkStorybookDarkTheme();
 
 export default {
   title: "EmbeddingSDK/EditableDashboard",
@@ -25,37 +28,13 @@ export const Default = {
     );
   },
 
-  args: {
-    dashboardId: DASHBOARD_ID,
-  },
+  args: { dashboardId: DASHBOARD_ID },
 };
 
-export const WithDarkTheme = {
+export const WithCustomGridColor = {
   render(args: EditableDashboardProps) {
-    const darkColors = {
-      primary: "#DF75E9",
-      filter: "#7ABBF9",
-      lighterGrey: "#E3E7E4",
-      lightGrey: "#ADABA9",
-      darkGrey: "#3B3F3F",
-      background: "#151C20",
-    };
-
     const theme = defineEmbeddingSdkTheme({
-      colors: {
-        brand: darkColors.primary,
-        border: darkColors.darkGrey,
-        "brand-hover": darkColors.darkGrey,
-        "brand-hover-light": darkColors.darkGrey,
-        filter: darkColors.filter,
-        "text-primary": darkColors.lighterGrey,
-        "text-secondary": darkColors.lighterGrey,
-        "text-tertiary": darkColors.lighterGrey,
-        background: darkColors.background,
-        "background-secondary": darkColors.darkGrey,
-        "background-hover": darkColors.background,
-        "background-disabled": darkColors.darkGrey,
-      },
+      components: { dashboard: { gridBorderColor: "#95A5A6" } },
     });
 
     return (
@@ -65,7 +44,17 @@ export const WithDarkTheme = {
     );
   },
 
-  args: {
-    dashboardId: DASHBOARD_ID,
+  args: { dashboardId: DASHBOARD_ID },
+};
+
+export const WithDarkTheme = {
+  render(args: EditableDashboardProps) {
+    return (
+      <MetabaseProvider config={storybookSdkDefaultConfig} theme={darkTheme}>
+        <EditableDashboard {...args} />
+      </MetabaseProvider>
+    );
   },
+
+  args: { dashboardId: DASHBOARD_ID },
 };
