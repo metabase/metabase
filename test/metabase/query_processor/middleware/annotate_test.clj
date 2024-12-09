@@ -209,7 +209,8 @@
                                                             :num-bins  10
                                                             :bin-width 5
                                                             :min-value -100
-                                                            :max-value 100}}]}]
+                                                            :max-value 100}}]
+             :was_binned true}]
            (annotate/column-info
             {:type  :query
              :query {:fields [[:field "price" {:base-type     :type/Number

@@ -1,5 +1,7 @@
 (ns metabase.lib.binning
   (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -8,6 +10,8 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.formatting.numbers :as fmt.num]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -110,14 +114,19 @@
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
   It's called directly by `:field` or `:metadata/column`'s [[lib.metadata.calculation/display-name]]."
   [{:keys [bin-width num-bins strategy] :as binning-options} :- ::lib.schema.binning/binning
-   column-metadata                                           :- ::lib.schema.metadata/column]
+   x                                                         :- [:maybe
+                                                                 [:or
+                                                                  ::lib.schema.metadata/column
+                                                                  ::lib.schema.common/semantic-or-relation-type]]]
   (when binning-options
-    (case strategy
-      :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
-      :bin-width (str (fmt.num/format-number bin-width {})
-                      (when (isa? (:semantic-type column-metadata) :type/Coordinate)
-                        "°"))
-      :default   (i18n/tru "Auto binned"))))
+    (let [semantic-type (cond-> x
+                          (and (map? x) (= :metadata/column (:lib/type x))) :semantic-type)]
+      (case strategy
+        :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
+        :bin-width (str (fmt.num/format-number bin-width {})
+                        (when (isa? semantic-type :type/Coordinate)
+                          "°"))
+        :default   (i18n/tru "Auto binned")))))
 
 (defmethod lib.metadata.calculation/display-info-method :option/binning
   [_query _stage-number binning-option]
@@ -194,3 +203,32 @@
           {:bin-width bin-width
            :min-value value
            :max-value (+ value bin-width)})))))
+
+(defn- binning_info->binning-options
+  [binning_info]
+  (-> binning_info
+      u/normalize-map
+      (set/rename-keys {:binning-strategy :strategy})))
+
+(defn ends-with-binning?
+  "Decide whether string `s` has binning suffix based on `binning-options`."
+  [s binning-options semantic-type]
+  (str/ends-with? s (str ": " (binning-display-name binning-options semantic-type))))
+
+(defn ensure-ends-with-binning
+  "Ensure that `s` is suffixed by appropriate binning info."
+  [s binning-options semantic-type]
+  (if (or (not (string? s))
+          (not (:strategy binning-options))
+          (ends-with-binning? s binning-options semantic-type))
+    s
+    (lib.util/format "%s: %s" s (binning-display-name binning-options semantic-type))))
+
+(defn ensure-binning-in-display-name
+  "Update results column so binning is contained in its display_name."
+  [column]
+  (if (:binning_info column)
+    (update column :display_name #(ensure-ends-with-binning %1
+                                                            (binning_info->binning-options (:binning_info column))
+                                                            (:semantic_type column)))
+    column))
