@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders } from "__support__/ui";
+import Collections from "metabase/entities/collections";
+import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type {
   Collection,
@@ -11,15 +14,17 @@ import type {
   Database,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
+  createMockDashboard,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
-import ActionMenu from "./ActionMenu";
+import ActionMenu, { getParentEntityLink } from "./ActionMenu";
 
 interface SetupOpts {
   item: CollectionItem;
@@ -174,6 +179,43 @@ describe("ActionMenu", () => {
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+
+    describe("getParentEntityLink", () => {
+      it("should generate collection link for collection question", () => {
+        const updatedCollection = Collections.wrapEntity(
+          createMockCollectionItem({ archived: false }),
+        );
+        const link = getParentEntityLink(updatedCollection, undefined);
+        expect(link).toBe("/collection/root");
+      });
+
+      it("should generate collection link for dashboards", () => {
+        const updatedDashboard = Dashboards.wrapEntity(
+          createMockDashboard({ archived: false }),
+        );
+        const parentCollection = Collections.wrapEntity(
+          createMockCollectionItem({ id: 123 }),
+        );
+        const link = getParentEntityLink(updatedDashboard, parentCollection);
+        expect(link).toBe("/collection/123-question");
+      });
+
+      it("should generate collection link for normal question", () => {
+        const updatedQuestion = Questions.wrapEntity(
+          createMockCard({ archived: false }),
+        );
+        const link = getParentEntityLink(updatedQuestion, undefined);
+        expect(link).toBe("/collection/root");
+      });
+
+      it("should generate collection link for dashboard question", () => {
+        const updatedQuestion = Questions.wrapEntity(
+          createMockCard({ archived: false, dashboard_id: 123 }),
+        );
+        const link = getParentEntityLink(updatedQuestion, undefined);
+        expect(link).toBe("/dashboard/123");
+      });
     });
   });
 
