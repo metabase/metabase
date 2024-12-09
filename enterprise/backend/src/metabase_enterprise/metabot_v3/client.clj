@@ -57,7 +57,7 @@
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string]
   (encode-request-body
-   {:messages      (into messages (metabot-v3.dummy-tools/invoke-dummy-tools context))
+   {:messages      (into (metabot-v3.dummy-tools/invoke-dummy-tools context) messages)
     :context       context
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :session-id    session-id
