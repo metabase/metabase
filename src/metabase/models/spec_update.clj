@@ -14,7 +14,7 @@
   []
   (str (str/join #" / " (map #(if (keyword? %) (name %) %) *current-path*)) ":"))
 
-;; TODO: add :id-column, and also assert that all rows has an id
+;; TODO: add :id-column, currently it assumes all models use :id
 (def ^:private Spec
   [:schema {:registry {::spec [:map {:closed true}
                                [:model                         [:fn #(isa? % :metabase/model)]]
@@ -142,16 +142,27 @@
       (with-enter-path (:id new-data)
         (handle-nested-updates! existing-data new-data nested-specs)))))
 
+(defn- check-id-exists
+  "if x is a map, check if it has :id key, if x is a seq, check if all elements have :id key."
+  [x]
+  (when x
+    (assert (if (sequential? x)
+              (every? :id x)
+              (:id x))
+            (format ":id is missing in %s" x))))
+
 (defn- do-update!*
   [existing-data new-data spec]
+  (check-id-exists existing-data)
+  (check-id-exists new-data)
   (with-enter-path "root"
-    (if (:multi-row? spec)
-      (do
-        (log/debugf "%s multi-row spec found" (current-path))
-        (do-sequential-updates! existing-data new-data spec))
-      (do
-        (log/debugf "%s single row spec found" (current-path))
-        (do-map-update! existing-data new-data spec)))))
+   (if (:multi-row? spec)
+     (do
+       (log/debugf "%s multi-row spec found" (current-path))
+       (do-sequential-updates! existing-data new-data spec))
+     (do
+       (log/debugf "%s single row spec found" (current-path))
+       (do-map-update! existing-data new-data spec)))))
 
 (mu/defn do-update!
   "Update data in the database based on the diff between existing and new data.
