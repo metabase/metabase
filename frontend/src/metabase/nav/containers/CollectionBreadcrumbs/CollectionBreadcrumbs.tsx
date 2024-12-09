@@ -1,10 +1,6 @@
 import _ from "underscore";
 
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useGetDashboardQuery,
-} from "metabase/api";
+import { useGetCollectionQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getCollectionId } from "metabase/selectors/app";
@@ -21,7 +17,6 @@ type CollectionBreadcrumbsProps = Omit<
 > & {
   collectionId?: CollectionId;
   baseCollectionId?: CollectionId | null;
-  showContainingDashboard?: boolean;
 };
 
 export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
@@ -31,20 +26,12 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
   const question = useSelector(getQuestion);
-  const dashboardId = question?.dashboardId();
-  const isDashboardQuestion = _.isNumber(dashboardId);
-  const shouldShowDashboard =
-    props.showContainingDashboard && isDashboardQuestion;
-  const dashboardReq = useGetDashboardQuery(
-    shouldShowDashboard ? { id: dashboardId } : skipToken,
-  );
-  const dashboard = shouldShowDashboard ? dashboardReq?.data : undefined;
 
   return (
     <Breadcrumbs
       {...props}
       collection={collection}
-      dashboard={dashboard}
+      dashboard={question?.dashboard()}
       baseCollectionId={props.baseCollectionId ?? null}
     />
   );
