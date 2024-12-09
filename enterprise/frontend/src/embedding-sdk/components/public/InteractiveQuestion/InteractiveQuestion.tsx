@@ -41,6 +41,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "entityTypeFilter"
     | "isSaveEnabled"
     | "saveToCollectionId"
+    | "initialSqlParameters"
   >;
 
 export const _InteractiveQuestion = ({
@@ -60,6 +61,7 @@ export const _InteractiveQuestion = ({
   isSaveEnabled,
   saveToCollectionId,
   withChartTypeSelector = true,
+  initialSqlParameters,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
@@ -71,6 +73,7 @@ export const _InteractiveQuestion = ({
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
     saveToCollectionId={saveToCollectionId}
+    initialSqlParameters={initialSqlParameters}
   >
     {children ?? (
       <InteractiveQuestionResult
