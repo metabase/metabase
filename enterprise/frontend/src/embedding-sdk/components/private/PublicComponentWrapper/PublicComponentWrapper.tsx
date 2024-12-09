@@ -55,6 +55,7 @@ export const PublicComponentWrapper = React.forwardRef<
   // sdk components is rendered outside of the sdk provider
   const isInSdkProvider = useIsInSdkProvider();
   if (!isInSdkProvider) {
+    // eslint-disable-next-line no-literal-metabase-strings -- error message
     return "This component requires the MetabaseProvider parent component. Please wrap it within <MetabaseProvider>...</MetabaseProvider> in your component tree.";
   }
 
