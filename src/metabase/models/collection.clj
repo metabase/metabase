@@ -44,7 +44,7 @@
 (def ^:private RootCollection
   "Schema for things that are instances of [[metabase.models.collection.root.RootCollection]]."
   [:fn
-   {:error/message (str "an instance of the root Collection")}
+   {:error/message "an instance of the root Collection"}
    #'collection.root/is-root-collection?])
 
 (def ^:private ^:const archived-directly-models #{:model/Card :model/Dashboard})

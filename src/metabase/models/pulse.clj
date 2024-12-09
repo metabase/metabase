@@ -159,8 +159,8 @@
   (if (is-alert? notification)
     (mi/current-user-has-full-permissions? :read notification)
     (or api/*is-superuser?*
-        (or (current-user-is-creator? notification)
-            (current-user-is-recipient? notification)))))
+        (current-user-is-creator? notification)
+        (current-user-is-recipient? notification))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).

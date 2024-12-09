@@ -220,12 +220,12 @@
 (defn- start-of-week []
   (keyword ((requiring-resolve 'metabase.public-settings/start-of-week))))
 
-(def ^:private ^{:arglists '(^java.time.DayOfWeek [k])} day-of-week*
-  (let [m (u.date.common/static-instances DayOfWeek)]
-    (fn [k]
-      (or (get m k)
-          (throw (ex-info (tru "Invalid day of week: {0}" (pr-str k))
-                          {:k k, :allowed (keys m)}))))))
+(let [m (u.date.common/static-instances DayOfWeek)]
+  (defn- day-of-week*
+    ^java.time.DayOfWeek [k]
+    (or (get m k)
+        (throw (ex-info (tru "Invalid day of week: {0}" (pr-str k))
+                        {:k k, :allowed (keys m)})))))
 
 (defn- week-fields
   "Create a new instance of a `WeekFields`, which is used for localized day-of-week, week-of-month, and week-of-year.
