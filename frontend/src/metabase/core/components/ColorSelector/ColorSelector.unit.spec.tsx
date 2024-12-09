@@ -16,7 +16,7 @@ describe("ColorSelector", () => {
     );
 
     await userEvent.click(screen.getByLabelText("white"));
-    const tooltip = await screen.findByRole("tooltip");
+    const tooltip = await screen.findByRole("dialog");
     await userEvent.click(within(tooltip).getByLabelText("blue"));
 
     expect(onChange).toHaveBeenCalledWith("blue");
