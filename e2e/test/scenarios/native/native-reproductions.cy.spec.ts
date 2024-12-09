@@ -55,10 +55,9 @@ describe("issue 16584", () => {
       "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
     );
 
-    H.focusNativeEditor().realPress(["Meta", "A"]);
-
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
+    H.nativeEditorSelectAll();
     H.runNativeQuery();
 
     cy.findByTestId("query-visualization-root")
