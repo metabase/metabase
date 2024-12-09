@@ -293,6 +293,10 @@ For [questions](../questions/start.md), dashboards, and [models](../data-modelin
 
 See [History](../exploration-and-organization/history.md).
 
+## Verifying a dashboard
+
+See [content verification](../exploration-and-organization/content-verification.md).
+
 ## Deleting a dashboard
 
 You can move a dashboard to Trash or permanently delete a dashboard that you no longer need.

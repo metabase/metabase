@@ -8,11 +8,11 @@
    [metabase.channel.core :as channel]
    [metabase.notification.test-util :as notification.tu]
    [metabase.server.handler :as server.handler]
+   [metabase.server.middleware.json :as mw.json]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
    [ring.adapter.jetty :as jetty]
-   [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
    [ring.middleware.params :refer [wrap-params]]
    [toucan2.core :as t2])
   (:import
@@ -49,8 +49,8 @@
    handler
    middlewares))
 
-(def middlewares [#(wrap-json-body % {:keywords? true})
-                  wrap-json-response
+(def middlewares [mw.json/wrap-json-body
+                  mw.json/wrap-streamed-json-response
                   wrap-params])
 
 (defn do-with-server

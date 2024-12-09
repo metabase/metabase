@@ -312,7 +312,7 @@ describe("StringFilterEditor", () => {
 interface QueryWithFilterOpts {
   tableName: string;
   columnName: string;
-  operator: Lib.NumberFilterOperatorName;
+  operator: Lib.NumberFilterOperator;
   values: number[];
 }
 

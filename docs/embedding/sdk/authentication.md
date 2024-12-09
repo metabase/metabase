@@ -155,7 +155,7 @@ First, create an [API key](../../people-and-groups/api-keys.md).
 Then you can then use the API key to authenticate with Metabase in your application. All you need to do is include your API key in the config object using the key: `apiKey`.
 
 ```typescript
-const metabaseConfig = {
+const authConfig = {
     ...
     apiKey: "YOUR_API_KEY"
     ...
@@ -163,7 +163,7 @@ const metabaseConfig = {
 
 export default function App() {
   return (
-    <MetabaseProvider config={metabaseConfig} className="optional-class">
+    <MetabaseProvider authConfig={authConfig} className="optional-class">
       Hello World!
     </MetabaseProvider>
   );

@@ -1,7 +1,6 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -19,8 +18,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Card CardBookmark Collection Database
-                            PersistedInfo Table]]
+   [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
    [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
@@ -37,12 +35,13 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.request.core :as request]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -412,7 +411,7 @@
      {:exclude-ids exclude_ids
       :query       query
       :last-cursor last_cursor
-      :page-size   mw.offset-paging/*limit*})))
+      :page-size   (request/limit)})))
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
@@ -713,7 +712,7 @@
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
-   :parameters  (json/parse-string parameters keyword)
+   :parameters  (json/decode+kw parameters)
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true

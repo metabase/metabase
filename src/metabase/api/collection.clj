@@ -4,7 +4,6 @@
   `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
   endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`)."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [compojure.core :refer [GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
@@ -18,7 +17,7 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
@@ -28,14 +27,13 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -464,7 +462,7 @@
 (defmethod post-process-collection-children :dataset
   [_ collection rows]
   (let [queries-before (map :dataset_query rows)
-        queries-parsed (map (comp mbql.normalize/normalize json/parse-string) queries-before)]
+        queries-parsed (map (comp mbql.normalize/normalize json/decode) queries-before)]
     ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
@@ -509,7 +507,7 @@
   "Given a Card, returns `true` if its query is fully parameterized."
   [row]
   (let [parsed-query (cond-> (:dataset_query row)
-                       (string? (:dataset_query row)) json/parse-string)
+                       (string? (:dataset_query row)) json/decode)
         ;; TODO TB handle pMBQL native queries
         native-query (when (contains? parsed-query "native")
                        (-> parsed-query mbql.normalize/normalize :native))]
@@ -885,19 +883,19 @@
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
         limit-query (if (or
-                         (nil? mw.offset-paging/*limit*)
-                         (nil? mw.offset-paging/*offset*)
+                         (nil? (request/limit))
+                         (nil? (request/offset))
                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
-                             :limit  mw.offset-paging/*limit*
-                             :offset mw.offset-paging/*offset*))
+                             :limit  (request/limit)
+                             :offset (request/offset)))
         res         {:total  (->> (mdb.query/query total-query) first :count)
                      :data   (->> (mdb.query/query limit-query) (post-process-rows collection))
                      :models models}
         limit-res   (assoc res
-                           :limit  mw.offset-paging/*limit*
-                           :offset mw.offset-paging/*offset*)]
+                           :limit  (request/limit)
+                           :offset (request/offset))]
     (if (= (:collection-namespace options) "snippets")
       res
       limit-res)))
@@ -918,8 +916,8 @@
       (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
       {:total  0
        :data   []
-       :limit  mw.offset-paging/*limit*
-       :offset mw.offset-paging/*offset*
+       :limit  (request/limit)
+       :offset (request/offset)
        :models valid-models})))
 
 (mu/defn- collection-detail

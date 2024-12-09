@@ -146,10 +146,6 @@ class EntityObjectLoaderInner extends Component {
       },
     );
   };
-
-  remove = () => {
-    return this.props.delete(this.props.object);
-  };
 }
 
 const EntityObjectLoader = _.compose(

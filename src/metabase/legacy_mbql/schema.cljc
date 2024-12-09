@@ -422,7 +422,7 @@
 (def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
   #{:and :or :not :< :<= :> :>= := :!= :between :starts-with :ends-with :contains :does-not-contain :inside :is-empty
-    :not-empty :is-null :not-null :relative-time-interval :time-interval})
+    :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
@@ -639,7 +639,7 @@
 (defclause ^{:requires-features #{:temporal-extract}} temporal-extract
   datetime DateTimeExpressionArg
   unit     [:ref ::TemporalExtractUnit]
-  mode     (optional [:ref ::ExtractWeekMode])) ;; only for get-week
+  mode     (optional [:ref ::ExtractWeekMode])) ;; only for get-week and get-day-of-week
 
 ;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:temporal-extract column :year]
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-year
@@ -865,6 +865,11 @@
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
 
+(defclause ^:sugar during
+  field   Field
+  value   [:or ::lib.schema.literal/date ::lib.schema.literal/datetime]
+  unit    ::DateTimeUnit)
+
 (defclause ^:sugar relative-time-interval
   col           Field
   value         :int
@@ -888,7 +893,7 @@
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
     ;; SUGAR filters drivers do not need to implement
-   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval))
+   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during))
 
 (mr/def ::Filter
   [:multi
@@ -1712,15 +1717,14 @@
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
   (mr/validator Query))
 
-(def ^{:arglists '([query])} validate-query
+(defn validate-query
   "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
   valid."
-  (let [explainer (mr/explainer Query)]
-    (fn [query]
-      (if (valid-query? query)
-        query
-        (let [error     (explainer query)
-              humanized (me/humanize error)]
-          (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
-                          {:error    humanized
-                           :original error})))))))
+  [query]
+  (if (valid-query? query)
+    query
+    (let [error     (mr/explain Query query)
+          humanized (me/humanize error)]
+      (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
+                      {:error    humanized
+                       :original error})))))

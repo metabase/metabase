@@ -41,13 +41,13 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "entityTypeFilter"
     | "isSaveEnabled"
     | "saveToCollectionId"
+    | "initialSqlParameters"
   >;
 
 export const _InteractiveQuestion = ({
   questionId,
   withResetButton = true,
-  withTitle = false,
-  customTitle,
+  title,
   plugins,
   height,
   width,
@@ -59,6 +59,8 @@ export const _InteractiveQuestion = ({
   entityTypeFilter,
   isSaveEnabled,
   saveToCollectionId,
+  withChartTypeSelector = true,
+  initialSqlParameters,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
@@ -70,6 +72,7 @@ export const _InteractiveQuestion = ({
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
     saveToCollectionId={saveToCollectionId}
+    initialSqlParameters={initialSqlParameters}
   >
     {children ?? (
       <InteractiveQuestionResult
@@ -77,9 +80,9 @@ export const _InteractiveQuestion = ({
         width={width}
         className={className}
         style={style}
-        customTitle={customTitle}
+        title={title}
         withResetButton={withResetButton}
-        withTitle={withTitle}
+        withChartTypeSelector={withChartTypeSelector}
       />
     )}
   </InteractiveQuestionProvider>

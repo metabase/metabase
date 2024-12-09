@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -36,7 +35,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.task :as task]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -44,6 +43,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -258,8 +258,8 @@
              (card-returned? :database db      card-2))))))
 
 (deftest ^:parallel authentication-test
-  (is (= (get req.util/response-unauthentic :body) (client/client :get 401 "card")))
-  (is (= (get req.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
+  (is (= (get request/response-unauthentic :body) (client/client :get 401 "card")))
+  (is (= (get request/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
 (deftest ^:parallel model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
@@ -1035,7 +1035,8 @@
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
                                                                        query))]
-              (is (= @called 1))
+              (is (= 1
+                     @called))
               (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
                       card))
               (mt/user-http-request
@@ -1046,7 +1047,8 @@
                       :cache_ttl 20000
                       :display "table"
                       :collection_position 1))
-              (is (= @called 1)))))))))
+              (is (= 1
+                     @called)))))))))
 
 (deftest updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]
@@ -2041,9 +2043,9 @@
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 (def ^:private ^:const ^String encoded-params
-  (json/generate-string [{:type   :number
-                          :target [:variable [:template-tag :category]]
-                          :value  2}]))
+  (json/encode [{:type   :number
+                 :target [:variable [:template-tag :category]]
+                 :value  2}]))
 
 (deftest csv-download-test
   (testing "no parameters"
@@ -2462,7 +2464,7 @@
   [url]
   (-> (client/client-full-response (test.users/username->token :rasta)
                                    :post 200 url
-                                   :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+                                   :query (json/encode (mt/mbql-query checkins {:limit 1})))
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
