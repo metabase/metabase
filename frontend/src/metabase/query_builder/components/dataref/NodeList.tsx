@@ -41,8 +41,8 @@ const NodeListItemId = ({ children, ...rest }: BoxProps) => {
     <Box
       component="span"
       fz="0.75em"
-      color="var(--mb-color-text-medium)"
       ml="xs"
+      className={S.NodeListItemId}
       {...rest}
     >
       {children}

@@ -43,3 +43,7 @@
     padding-right: 0;
   }
 }
+
+.NodeListItemId {
+  color: var(--mb-color-text-medium);
+}
