@@ -591,7 +591,7 @@
               :dataset_query :table_id :query_type :is_upload)))
 
 (defn annotate-dashboards
-  "Populates 'here' and 'below' on dashboard"
+  "Populates 'here' on dashboards (`below` is impossible since they can't contain collections)"
   [dashboards]
   (let [dashboard-ids (into #{} (map :id dashboards))
         dashboards-containing-cards (->> (when (seq dashboard-ids)
