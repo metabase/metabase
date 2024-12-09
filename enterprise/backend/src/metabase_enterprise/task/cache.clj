@@ -116,8 +116,8 @@
   (when-let [refresh-defs (seq (duration-queries-to-rerun))]
     (let [task (refresh-task refresh-defs)]
       (if *run-cache-refresh-async*
-       (submit-refresh-task-async! task)
-       (task)))))
+        (submit-refresh-task-async! task)
+        (task)))))
 
 (defn- scheduled-queries-to-rerun
   "Returns a list containing all of the parameterized query definitions that we should preemptively rerun for a given
@@ -172,8 +172,8 @@
                        cards))
         task         (refresh-task refresh-defs)]
     (if *run-cache-refresh-async*
-     (submit-refresh-task-async! task)
-     (task))))
+      (submit-refresh-task-async! task)
+      (task))))
 
 ;;; ------------------------------------------- Cache invalidation task ------------------------------------------------
 
@@ -199,13 +199,17 @@
   "Update `invalidated_at` for every cache config with `:schedule` strategy, and maybe rerun cached queries
   for both `:schedule` and `:duration` caches if preemptive caching is enabled."
   []
-  (let [now (t/offset-date-time)]
-    (doseq [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
-      (t2/update! :model/CacheConfig {:id id}
-                  {:next_run_at     (calc-next-run (:schedule config) now)
-                   :invalidated_at now})
-      (when refresh_automatically (refresh-schedule-cache! cache-config)))
-    (maybe-refresh-duration-caches!)))
+  (let [now (t/offset-date-time)
+        invalidated-count
+        (count
+         (for [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
+           (do
+             (t2/update! :model/CacheConfig {:id id}
+                         {:next_run_at     (calc-next-run (:schedule config) now)
+                          :invalidated_at now})
+             (when refresh_automatically (refresh-schedule-cache! cache-config)))))]
+    (maybe-refresh-duration-caches!)
+    invalidated-count))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc                                   "Refresh 'schedule' caches"}
