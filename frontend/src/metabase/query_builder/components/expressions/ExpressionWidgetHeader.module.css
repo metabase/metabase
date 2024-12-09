@@ -4,8 +4,8 @@
   border-bottom: 1px solid var(--mb-color-border);
   display: flex;
   align-items: center;
-}
 
-.HeaderButton {
-  color: var(--mb-color-text-light);
+  .HeaderButton {
+    color: var(--mb-color-text-light);
+  }
 }

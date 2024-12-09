@@ -52,7 +52,8 @@
     font-weight: 700;
   }
 
-  :global(.ace-tm .ace_keyword, .ace-tm .ace_constant.ace_numeric) {
+  :global(.ace-tm .ace_keyword),
+  :global(.ace-tm .ace_constant.ace_numeric) {
     color: var(--mb-color-text-dark);
   }
 
