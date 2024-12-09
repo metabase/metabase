@@ -48,7 +48,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -517,23 +517,22 @@
   ;; the case, but if you change one, you'll want to change both.
   (let [dashboard  (api/read-check :model/Dashboard id)
         query      (merge
-                    {:select    (cond->
-                                 [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                                  :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
-                                  :c.dashboard_id
-                                  [nil :location]
-                                  [(h2x/literal "card")  :model]
-                                  [{:select   [:status]
-                                    :from     [:moderation_review]
-                                    :where    [:and
-                                               [:= :moderated_item_type "card"]
-                                               [:= :moderated_item_id :c.id]
-                                               [:= :most_recent true]]
-                                       ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                                       ;; protecting against potential bugs
-                                    :order-by [[:id :desc]]
-                                    :limit    1}
-                                   :moderated_status]])
+                    {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                              :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
+                              :c.dashboard_id
+                              [nil :location]
+                              [(h2x/literal "card")  :model]
+                              [{:select   [:status]
+                                :from     [:moderation_review]
+                                :where    [:and
+                                           [:= :moderated_item_type "card"]
+                                           [:= :moderated_item_id :c.id]
+                                           [:= :most_recent true]]
+                                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                ;; protecting against potential bugs
+                                :order-by [[:id :desc]]
+                                :limit    1}
+                               :moderated_status]]
                      :from      [[:report_card :c]]
                      :where     [:and
                                  [:= :c.dashboard_id id]
@@ -541,16 +540,16 @@
                                            :from [[:report_dashboardcard :dc]]
                                            :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
                                  [:= :c.archived false]]}
-                    (when mw.offset-paging/*paged?*
-                      {:limit mw.offset-paging/*limit*
-                       :offset mw.offset-paging/*offset*}))
+                    (when (request/paged?)
+                      {:limit (request/limit)
+                       :offset (request/offset)}))
         cards      (mdb.query/query query)]
     {:total  (count cards)
      :data   (api.collection/post-process-rows {}
                                                (t2/select-one :model/Collection :id (:collection_id dashboard))
                                                cards)
-     :limit mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*
+     :limit (request/limit)
+     :offset (request/offset)
      :models (if (seq cards) ["card"] [])}))
 
 (defn- check-allowed-to-change-embedding
