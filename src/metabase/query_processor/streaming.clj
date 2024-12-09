@@ -152,7 +152,7 @@
       (try
         (qp.si/finish! results-writer result)
         (catch EofException _e
-          (log/error "Client closed connection prematurely")))
+          (log/warn "Client closed connection prematurely")))
       (u/ignore-exceptions
         (.flush os)
         (.close os)))
