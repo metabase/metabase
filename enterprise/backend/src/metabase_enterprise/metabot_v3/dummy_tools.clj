@@ -12,7 +12,7 @@
   {:output (if-let [{:keys [id email first_name last_name]}
                     (or (some-> api/*current-user* deref)
                         (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
-             {:user_id id
+             {:id id
               :name (str first_name " " last_name)
               :email_address email}
              {:error "current user not found"})
