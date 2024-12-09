@@ -10,7 +10,7 @@ import {
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-} from "./NodeList.styled";
+} from "./NodeList";
 
 interface ConnectedTableListProps {
   tables: Table[];

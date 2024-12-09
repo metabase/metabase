@@ -130,10 +130,10 @@ export const alpha = (c: string, a: number) => {
 
 /**
  * @deprecated use the color-mix method with CSS variables instead
- * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-light), white 10%)`
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-light), white 50%)`
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-light"), 0.1)`
+ * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-light"), 0.5)`
  */
 export const lighten = (c: string, f: number = 0.5) => {
   return Color(color(c)).lighten(f).string();
@@ -141,10 +141,10 @@ export const lighten = (c: string, f: number = 0.5) => {
 
 /**
  * @deprecated use the color-mix method with CSS variables instead
- * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-light), black 10%)`
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-light), black 25%)`
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-light"), 0.1)`
+ * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-light"), 0.25)`
  */
 export const darken = (c: string, f: number = 0.25) => {
   return Color(color(c)).darken(f).string();

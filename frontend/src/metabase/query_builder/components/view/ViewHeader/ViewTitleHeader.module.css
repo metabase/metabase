@@ -63,3 +63,81 @@
     background-color: color-mix(in srgb, var(--mb-color-summarize) 15%, white);
   }
 }
+
+.backButton {
+  color: var(--mb-color-brand);
+  padding: 0.75rem;
+}
+
+.headerDivider {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 700;
+  color: var(--mb-color-text-medium);
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.adHocViewHeading {
+  margin-bottom: 0.25rem;
+  margin-top: 0.25rem;
+  margin-right: 1rem;
+}
+
+.SaveButton {
+  border-radius: 8px;
+
+  &[data-disabled="true"] {
+    pointer-events: all;
+  }
+
+  :hover {
+    background-color: var(--mb-color-bg-light);
+  }
+}
+
+.ViewHeaderActionPanel {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 0.5rem;
+
+  @media screen and (max-width: 40em) {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--mb-color-border);
+    margin-top: 1rem;
+    padding: 0.5rem 2.5rem 0 2rem;
+  }
+}
+
+.ViewRunButtonWithTooltip {
+  color: var(--mb-color-text-dark);
+
+  &:hover {
+    color: var(--mb-color-brand);
+
+    &.isDirty {
+      color: var(--mb-color-text-white);
+    }
+  }
+}
+
+.ViewHeaderContainer {
+  --app-subheader-height: 48px;
+
+  border-bottom: 1px solid var(--mb-color-border);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+
+  @media screen and (max-width: 40em) {
+    flex-direction: column;
+    align-items: start;
+    padding: 0.5rem 0;
+
+    &.isNavBarOpen {
+      margin-top: var(--app-subheader-height);
+    }
+  }
+}

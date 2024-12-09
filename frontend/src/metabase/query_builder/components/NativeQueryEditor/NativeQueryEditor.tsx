@@ -10,7 +10,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";

@@ -1,0 +1,26 @@
+.StyledSyncedParametersList {
+  margin-top: 1rem;
+  margin-left: 1.5rem;
+}
+
+.StyledDebouncedFrame {
+  flex: 1 0 auto;
+  flex-grow: 1;
+}
+
+.QueryBuilderMain {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  flex-basis: 0;
+
+  @media screen and (max-width: 40em) {
+    position: relative;
+  }
+
+  &.isSidebarOpen {
+    @media screen and (max-width: 40em) {
+      display: none !important;
+    }
+  }
+}

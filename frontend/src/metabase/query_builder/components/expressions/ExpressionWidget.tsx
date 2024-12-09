@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import DeprecatedButton from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { isNotNull } from "metabase/lib/types";
-import { Button, TextInput } from "metabase/ui";
+import { Box, Button, Flex, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
@@ -20,15 +21,7 @@ import {
   ExpressionEditorTextfield,
   type SuggestionShortcut,
 } from "./ExpressionEditorTextfield";
-import {
-  ActionButtonsWrapper,
-  Container,
-  ExpressionFieldWrapper,
-  FieldLabel,
-  FieldWrapper,
-  Footer,
-  RemoveLink,
-} from "./ExpressionWidget.styled";
+import ExpressionWidgetS from "./ExpressionWidget.module.css";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
@@ -156,7 +149,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     };
 
     return (
-      <Container data-testid="expression-editor">
+      <Box w={472} data-testid="expression-editor">
         <ExpressionWidgetHeader
           title={t`Select columns to combine`}
           onBack={handleCancel}
@@ -166,7 +159,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           stageIndex={stageIndex}
           onSubmit={handleSubmit}
         />
-      </Container>
+      </Box>
     );
   }
 
@@ -188,25 +181,29 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     };
 
     return (
-      <Container data-testid="expression-editor">
+      <Box w={472} data-testid="expression-editor">
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
           onCancel={() => setIsExtractingColumn(false)}
           onSubmit={handleSubmit}
         />
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container data-testid="expression-editor">
+    <Box w={472} data-testid="expression-editor">
       {header}
-      <ExpressionFieldWrapper>
-        <FieldLabel htmlFor="expression-content">
+      <Box p="1.5rem 1.5rem 1rem">
+        <Box
+          component="label"
+          className={ExpressionWidgetS.FieldLabel}
+          htmlFor="expression-content"
+        >
           {t`Expression`}
           <ExpressionWidgetInfo />
-        </FieldLabel>
+        </Box>
         <ExpressionEditorTextfield
           expression={expression}
           expressionIndex={expressionIndex}
@@ -245,10 +242,14 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
             return Boolean(shortcut);
           })}
         />
-      </ExpressionFieldWrapper>
+      </Box>
       {withName && (
-        <FieldWrapper>
-          <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
+        <Box p="0 1.5rem 1.5rem">
+          <Box
+            component="label"
+            className={ExpressionWidgetS.FieldLabel}
+            htmlFor="expression-name"
+          >{t`Name`}</Box>
           <TextInput
             classNames={{
               input: CS.textBold,
@@ -267,11 +268,11 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
               }
             }}
           />
-        </FieldWrapper>
+        </Box>
       )}
 
-      <Footer>
-        <ActionButtonsWrapper>
+      <Flex className={ExpressionWidgetS.Footer}>
+        <Flex ml="auto" gap="md">
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button
             variant={isValid ? "filled" : "default"}
@@ -282,16 +283,17 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           </Button>
 
           {initialName && onRemoveExpression ? (
-            <RemoveLink
+            <DeprecatedButton
+              className={ExpressionWidgetS.RemoveLink}
               onlyText
               onClick={() => {
                 onRemoveExpression(initialName);
                 onClose && onClose();
               }}
-            >{t`Remove`}</RemoveLink>
+            >{t`Remove`}</DeprecatedButton>
           ) : null}
-        </ActionButtonsWrapper>
-      </Footer>
-    </Container>
+        </Flex>
+      </Flex>
+    </Box>
   );
 };

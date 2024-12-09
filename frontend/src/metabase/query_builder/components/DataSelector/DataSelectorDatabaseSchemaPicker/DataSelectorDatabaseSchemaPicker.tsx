@@ -63,9 +63,9 @@ const DataSelectorDatabaseSchemaPicker = ({
     items:
       !database.is_saved_questions && database.getSchemas().length > 1
         ? database.getSchemas().map(schema => ({
-            schema,
-            name: schema.displayName() ?? "",
-          }))
+          schema,
+          name: schema.displayName() ?? "",
+        }))
         : [],
     className: database.is_saved_questions ? CS.bgLight : null,
     icon: database.is_saved_questions ? "collection" : "database",

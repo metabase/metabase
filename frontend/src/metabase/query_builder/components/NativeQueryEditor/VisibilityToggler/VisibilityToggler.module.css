@@ -1,0 +1,29 @@
+.ToggleRoot {
+  align-items: center;
+  color: var(--mb-color-text-medium);
+  display: flex;
+  margin-left: auto;
+  padding-right: 4px;
+  min-height: 3rem;
+}
+
+.ToggleContent {
+  display: flex;
+  color: var(--mb-color-text-medium);
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  text-transform: uppercase;
+  align-items: center;
+  margin-left: 1.5rem;
+  margin-right: 1.5rem;
+  transition: all 0.2s linear;
+
+  &.isReadOnly {
+    display: none;
+  }
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

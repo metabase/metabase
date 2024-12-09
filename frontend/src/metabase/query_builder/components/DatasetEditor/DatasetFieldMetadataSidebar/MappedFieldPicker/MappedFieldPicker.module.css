@@ -1,0 +1,9 @@
+.StyledSelectButton {
+  color: var(--mb-color-text-white) !important;
+  background-color: var(--mb-color-brand);
+  border-color: var(--mb-color-brand);
+
+  :global(.Icon) {
+    color: var(--mb-color-text-white);
+  }
+}

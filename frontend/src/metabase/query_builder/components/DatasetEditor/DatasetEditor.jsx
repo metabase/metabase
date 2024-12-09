@@ -9,6 +9,7 @@ import { t } from "ttag";
 import { useListModelIndexesQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
+import EditBar from "metabase/components/EditBar";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
@@ -34,23 +35,14 @@ import {
 } from "metabase/query_builder/selectors";
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   checkCanBeModel,
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
 
-import {
-  DatasetEditBar,
-  FieldTypeIcon,
-  MainContainer,
-  QueryEditorContainer,
-  Root,
-  TabHintToastContainer,
-  TableContainer,
-  TableHeaderColumnName,
-} from "./DatasetEditor.styled";
+import DatasetEditorS from "./DatasetEditor.module.css";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
@@ -415,17 +407,22 @@ function DatasetEditor(props) {
     (element, column, columnIndex) => {
       const isSelected = columnIndex === focusedFieldIndex;
       return (
-        <TableHeaderColumnName
+        <Flex
+          className={cx(DatasetEditorS.TableHeaderColumnName, {
+            [DatasetEditorS.isSelected]: isSelected,
+          })}
           tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
           onFocus={() => handleColumnSelect(column)}
-          isSelected={isSelected}
         >
-          <FieldTypeIcon
+          <Icon
+            className={cx(DatasetEditorS.FieldTypeIcon, {
+              [DatasetEditorS.isSelected]: isSelected,
+            })}
+            size={14}
             name={getSemanticTypeIcon(column.semantic_type, "ellipsis")}
-            isSelected={isSelected}
           />
           <span>{column.display_name}</span>
-        </TableHeaderColumnName>
+        </Flex>
       );
     },
     [focusedFieldIndex, handleColumnSelect],
@@ -471,7 +468,8 @@ function DatasetEditor(props) {
 
   return (
     <>
-      <DatasetEditBar
+      <EditBar
+        className={DatasetEditorS.DatasetEditBar}
         data-testid="dataset-edit-bar"
         title={question.displayName()}
         center={
@@ -510,9 +508,13 @@ function DatasetEditor(props) {
           </Tooltip>,
         ]}
       />
-      <Root>
-        <MainContainer>
-          <QueryEditorContainer isResizable={isEditingQuery}>
+      <Flex className={DatasetEditorS.Root}>
+        <Flex className={DatasetEditorS.MainContainer}>
+          <Box
+            className={cx(DatasetEditorS.QueryEditorContainer, {
+              [DatasetEditorS.isResizable]: isEditingQuery,
+            })}
+          >
             {/**
              * Optimization: DatasetQueryEditor can be expensive to re-render
              * and we don't need it on the "Metadata" tab.
@@ -528,8 +530,12 @@ function DatasetEditor(props) {
                 onResizeStop={handleResize}
               />
             )}
-          </QueryEditorContainer>
-          <TableContainer isSidebarOpen={!!sidebar}>
+          </Box>
+          <Box
+            className={cx(DatasetEditorS.TableContainer, {
+              [DatasetEditorS.isSidebarOpen]: sidebar,
+            })}
+          >
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
@@ -545,17 +551,20 @@ function DatasetEditor(props) {
                 renderEmptyMessage={isEditingMetadata}
               />
             </DebouncedFrame>
-            <TabHintToastContainer
-              isVisible={isEditingMetadata && isTabHintVisible && !result.error}
+            <Box
+              className={cx(DatasetEditorS.TabHintToastContainer, {
+                [DatasetEditorS.isVisible]:
+                  isEditingMetadata && isTabHintVisible && !result.error,
+              })}
             >
               <TabHintToast onClose={hideTabHint} />
-            </TabHintToastContainer>
-          </TableContainer>
-        </MainContainer>
+            </Box>
+          </Box>
+        </Flex>
         <ViewSidebar side="right" isOpen={!!sidebar}>
           {sidebar}
         </ViewSidebar>
-      </Root>
+      </Flex>
 
       <Modal isOpen={showCancelEditWarning}>
         <LeaveConfirmationModalContent
