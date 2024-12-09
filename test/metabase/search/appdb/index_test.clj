@@ -32,7 +32,7 @@
   `(search.tu/with-temp-index-table
      (binding [search.ingestion/*force-sync* true]
        (mt/dataset ~(symbol "test-data")
-         (mt/with-temp [:model/User       {} {:id 1}
+         (mt/with-temp [:model/User       {}            {:id 1}
                         :model/Collection {col-id# :id} {:name "Collection"}
                         :model/Card       {}            {:name "Customer Satisfaction"          :collection_id col-id#}
                         :model/Card       {}            {:name "The Latest Revenue Projections" :collection_id col-id#}
