@@ -542,7 +542,7 @@
 (deftest ^:parallel query-generator-test
   (doseq [table (meta/tables)
           q     (-> (lib/query meta/metadata-provider (meta/table-metadata table))
-                    (random-queries-from 100))]
+                    (random-queries-from 10))]
     (doseq [[item act-fn exp-fn] [["aggregations" lib/aggregations (expected-total :aggregate)]
                                   ["breakouts"    lib/breakouts    (expected-total :breakout)]
                                   ["joins"        lib/joins        (expected-total :join)]

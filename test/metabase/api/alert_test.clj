@@ -13,7 +13,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-test :as pulse-test]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
@@ -139,10 +139,10 @@
 ;; authentication test on every single individual endpoint
 
 (deftest auth-tests
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :get 401 "alert")))
 
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :put 401 "alert/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

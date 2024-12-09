@@ -1,19 +1,20 @@
 (ns metabase-enterprise.stale.api
   "API endpoints for retrieving or archiving stale (unused) items.
   Currently supports Dashboards and Cards."
-  (:require [compojure.core :refer [POST]]
-            [java-time.api :as t]
-            [metabase-enterprise.stale :as stale]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.collection :as api.collection]
-            [metabase.api.common :as api]
-            [metabase.models.card :as card]
-            [metabase.models.collection :as collection]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.malli.schema :as ms]
-            [toucan2.core :as t2]))
+  (:require
+   [compojure.core :refer [GET]]
+   [java-time.api :as t]
+   [metabase-enterprise.stale :as stale]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.collection :as api.collection]
+   [metabase.api.common :as api]
+   [metabase.models.card :as card]
+   [metabase.models.collection :as collection]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.request.core :as request]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- effective-children-ids
   "Returns effective children ids for collection."
@@ -138,8 +139,8 @@
         {:keys [total rows]}
         (stale/find-candidates {:collection-ids collection-ids
                                 :cutoff-date    before-date
-                                :limit          mw.offset-paging/*limit*
-                                :offset         mw.offset-paging/*offset*
+                                :limit          (request/limit)
+                                :offset         (request/offset)
                                 :sort-column    sort_column
                                 :sort-direction sort_direction})
 
@@ -151,7 +152,7 @@
     (snowplow/track-event! ::snowplow/cleanup snowplow-payload)
     {:total  total
      :data   (api/present-items present-model-items rows)
-     :limit  mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*}))
+     :limit  (request/limit)
+     :offset (request/offset)}))
 
 (api/define-routes)

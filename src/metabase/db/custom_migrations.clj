@@ -462,8 +462,8 @@
        (dissoc card :sizeX :sizeY) ;; remove those legacy keys if exists
        {:size_x (- (+ size_x
                       (quot (+ col size_x 1) 3))
-                   (quot (+ col 1) 3))
-        :col    (+ col (quot (+ col 1) 3))
+                   (quot (inc col) 3))
+        :col    (+ col (quot (inc col) 3))
         :size_y size_y
         :row    row})
       (catch Throwable _
@@ -483,8 +483,8 @@
                   (- size_x
                      (-
                       (quot (+ size_x col 1) 4)
-                      (quot (+ col 1) 4))))
-        :col    (- col (quot (+ col 1) 4))
+                      (quot (inc col) 4))))
+        :col    (- col (quot (inc col) 4))
         :size_y size_y
         :row    row})
       (catch Throwable _
