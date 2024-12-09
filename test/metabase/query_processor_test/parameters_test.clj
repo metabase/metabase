@@ -537,7 +537,8 @@
                   (is (t/after?  (u.date/parse orders-created-at) #t "2019-04-01T00:00:00-00:00"))
                   (is (t/before? (u.date/parse orders-created-at) #t "2019-07-01T00:00:00-00:00")))
                 (testing "source = Organic"
-                  (is (= people-source "Organic")))
+                  (is (= "Organic"
+                         people-source)))
                 (testing "state != OR"
                   (is (not= people-state "OR")))))
             (testing "Should contain row with 'Emilie Goyette'"

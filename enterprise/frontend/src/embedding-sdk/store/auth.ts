@@ -1,7 +1,9 @@
+import * as Yup from "yup";
+
 import type {
   EmbeddingSessionToken,
   FetchRequestTokenFn,
-  SDKConfig,
+  MetabaseAuthConfig,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -18,27 +20,27 @@ import { getFetchRefreshTokenFn } from "./selectors";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
-  async (sdkConfig: SDKConfig, { dispatch }) => {
+  async (authConfig: MetabaseAuthConfig, { dispatch }) => {
     // Setup JWT or API key
     const isValidAuthProviderUri =
-      sdkConfig.authProviderUri && sdkConfig.authProviderUri?.length > 0;
-    const isValidApiKeyConfig = sdkConfig.apiKey && getIsLocalhost();
+      authConfig.authProviderUri && authConfig.authProviderUri?.length > 0;
+    const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
 
     if (isValidAuthProviderUri) {
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(sdkConfig.authProviderUri!),
+          getOrRefreshSession(authConfig.authProviderUri!),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
         }
       };
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(sdkConfig.authProviderUri!)).unwrap();
+      await dispatch(getOrRefreshSession(authConfig.authProviderUri!)).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
-      api.apiKey = sdkConfig.apiKey;
+      api.apiKey = authConfig.apiKey;
     }
     // Fetch user and site settings
     const [user, siteSettings] = await Promise.all([
@@ -121,8 +123,8 @@ export const refreshTokenAsync = createAsyncThunk(
           );
         }
       }
-      // Lastly if we don't have an error message or status, check if we actually got the session ID
-      if (!("id" in session)) {
+      // Lastly if we don't have an error message or status, check if we actually got the session ID and expiration
+      if (!sessionSchema.isValidSync(session)) {
         throw new Error(
           `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
         );
@@ -170,3 +172,10 @@ export const defaultGetRefreshTokenFn: FetchRequestTokenFn = async url => {
     return asText;
   }
 };
+
+const sessionSchema = Yup.object({
+  id: Yup.string().required(),
+  exp: Yup.number().required(),
+  // We should also receive `iat` and `status` in the response, but we don't actually need them
+  // as we don't use them, so we don't throw an error if they are missing
+});

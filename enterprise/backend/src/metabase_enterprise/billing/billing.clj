@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [compojure.core :as compojure :refer [GET]]
+   [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.public-settings.premium-features :as premium-features]

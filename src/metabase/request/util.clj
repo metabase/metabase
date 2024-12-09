@@ -1,5 +1,5 @@
-(ns metabase.server.request.util
-  "Utility functions for Ring requests."
+(ns metabase.request.util
+  "Utility functions for HTTP (Ring) requests, and for getting device/location info from `User-Agent`/IP Address, etc."
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
