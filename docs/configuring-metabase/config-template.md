@@ -7,7 +7,7 @@ title: "Metabase config file template"
 You can generate the following config file template by changing into the top-level Metabase directory and running:
 
 ```
-clojure -M:run:ee config-template
+clojure -M:doc:ee config-template
 ```
 
 The template lists example `database`, `user`, and `settings` sections for the [config file](./config-file.md).
