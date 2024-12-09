@@ -1,18 +1,13 @@
 import { useMemo } from "react";
 
-import type {
-  BaseEntity,
-  EntityDefinition,
-  EntityId,
-  EntityType,
-} from "./rtk-query";
+import type { EntityDefinition, EntityId, EntityType } from "./rtk-query";
 
 interface Props {
   entityId: EntityId;
   entityType: EntityType;
 }
 
-export const EntityName = <Entity extends BaseEntity, EntityWrapper>({
+export const EntityName = <Entity, EntityWrapper>({
   entityType,
   entityId,
 }: Props) => {
