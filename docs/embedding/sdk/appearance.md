@@ -13,7 +13,7 @@ You can style your embedded Metabase components with a theme.
 Here's an example that includes the various styling options available:
 
 ```js
-import {defineMetabaseTheme} from "@metabase/embedding-sdk-react";
+import { defineMetabaseTheme } from "@metabase/embedding-sdk-react";
 
 const theme = defineMetabaseTheme({
   // Specify a font to use from the set of fonts supported by Metabase.
