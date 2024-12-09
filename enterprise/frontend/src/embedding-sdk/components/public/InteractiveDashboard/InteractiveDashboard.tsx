@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
@@ -26,7 +26,7 @@ export type InteractiveDashboardProps = {
   className?: string;
   style?: CSSProperties;
   plugins?: MetabasePluginsConfig;
-  
+
   /**
    * A custom React component to render the question layout.
    * Use namespaced InteractiveQuestion components to build the layout.
