@@ -17,8 +17,8 @@ export type { MetabaseAuthConfig } from "./types";
 export type { MetabaseQuestion } from "./types/public/question";
 
 export type {
-  FetchRequestTokenFn,
-  EmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
+  MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
 
 export type {
@@ -27,4 +27,4 @@ export type {
   MetabaseComponentTheme,
 } from "./types/theme";
 
-export type { Dashboard } from "metabase-types/api";
+export type { Dashboard as MetabaseDashboard } from "metabase-types/api";
