@@ -117,7 +117,7 @@ describe("SDK auth errors", () => {
         body: { id: { id: "123" } },
       });
 
-      await setup(defaultAuthUriConfig);
+      await setup(defaultAuthConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
