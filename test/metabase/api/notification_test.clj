@@ -148,7 +148,7 @@
                      {:type    "notification-recipient/user"
                       :user_id (mt/user->id :rasta)}]
                     (->> (update-notification (assoc @notification :handlers new-handlers))
-                         :handlers (m/find-first #(= "channel/email" (:channel_type %))) :recipients)))
+                         :handlers (m/find-first #(= "channel/email" (:channel_type %))) :recipients (#(sort-by :type %)))))
             (testing "can remove all recipients"
               (is (= []
                      (->> (update-notification (assoc @notification :handlers [(assoc existing-email-handler :recipients [])]))
