@@ -7,7 +7,7 @@ import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvi
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -16,8 +16,11 @@ import {
   setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
-import type { SdkStoreState } from "embedding-sdk/store/types";
-import type { SDKConfig } from "embedding-sdk/types";
+import type {
+  SdkErrorComponent,
+  SdkStoreState,
+} from "embedding-sdk/store/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
@@ -25,6 +28,7 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { Box } from "metabase/ui";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
+import { SdkContextProvider } from "../private/SdkContext";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 import {
   FullPagePortalContainer,
@@ -37,12 +41,26 @@ import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
   children: ReactNode;
-  config: SDKConfig;
-  pluginsConfig?: SdkPluginsConfig;
+  authConfig: MetabaseAuthConfig;
+  pluginsConfig?: MetabasePluginsConfig;
   eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
   className?: string;
+
+  /**
+   * Defines the display language. Accepts an ISO language code such as `en` or `de`.
+   * Defaults to `en`. Does not support country code suffixes (i.e. `en-US`)
+   **/
   locale?: string;
+
+  /** A custom loader component to display while the SDK is loading. */
+  loaderComponent?: () => JSX.Element;
+
+  /** A custom error component to display when the SDK encounters an error. */
+  errorComponent?: SdkErrorComponent;
+
+  /** Whether to allow logging to the DevTools console. Defaults to true. */
+  allowConsoleLog?: boolean;
 }
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
@@ -51,16 +69,19 @@ interface InternalMetabaseProviderProps extends MetabaseProviderProps {
 
 export const MetabaseProviderInternal = ({
   children,
-  config,
+  authConfig,
   pluginsConfig,
   eventHandlers,
   theme,
   store,
   className,
   locale = "en",
+  errorComponent,
+  loaderComponent,
+  allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
-  useInitData({ config });
+  useInitData({ authConfig, allowConsoleLog });
 
   useEffect(() => {
     if (fontFamily) {
@@ -77,30 +98,35 @@ export const MetabaseProviderInternal = ({
   }, [store, eventHandlers]);
 
   useEffect(() => {
-    store.dispatch(setLoaderComponent(config.loaderComponent ?? null));
-  }, [store, config.loaderComponent]);
+    store.dispatch(setLoaderComponent(loaderComponent ?? null));
+  }, [store, loaderComponent]);
 
   useEffect(() => {
-    store.dispatch(setErrorComponent(config.errorComponent ?? null));
-  }, [store, config.errorComponent]);
+    store.dispatch(setErrorComponent(errorComponent ?? null));
+  }, [store, errorComponent]);
 
   useEffect(() => {
-    store.dispatch(setMetabaseClientUrl(config.metabaseInstanceUrl));
-  }, [store, config.metabaseInstanceUrl]);
+    store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
+  }, [store, authConfig.metabaseInstanceUrl]);
 
   return (
-    <EmotionCacheProvider>
-      <Global styles={SCOPED_CSS_RESET} />
-      <SdkThemeProvider theme={theme}>
-        <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
-        <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-          <LocaleProvider locale={locale}>{children}</LocaleProvider>
-          <SdkUsageProblemDisplay config={config} />
-          <PortalContainer />
-          <FullPagePortalContainer />
-        </Box>
-      </SdkThemeProvider>
-    </EmotionCacheProvider>
+    <SdkContextProvider>
+      <EmotionCacheProvider>
+        <Global styles={SCOPED_CSS_RESET} />
+        <SdkThemeProvider theme={theme}>
+          <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
+          <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
+            <LocaleProvider locale={locale}>{children}</LocaleProvider>
+            <SdkUsageProblemDisplay
+              authConfig={authConfig}
+              allowConsoleLog={allowConsoleLog}
+            />
+            <PortalContainer />
+            <FullPagePortalContainer />
+          </Box>
+        </SdkThemeProvider>
+      </EmotionCacheProvider>
+    </SdkContextProvider>
   );
 };
 

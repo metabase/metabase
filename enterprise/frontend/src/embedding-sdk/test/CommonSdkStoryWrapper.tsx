@@ -1,7 +1,7 @@
 import type { Story } from "@storybook/react";
 import * as jose from "jose";
 
-import { MetabaseProvider, type SDKConfig } from "embedding-sdk";
+import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 const METABASE_INSTANCE_URL =
@@ -12,9 +12,9 @@ const METABASE_JWT_SHARED_SECRET =
 const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
 
 /**
- * SDK config that signs the jwt on the FE
+ * SDK auth config that signs the jwt on the FE
  */
-export const storybookSdkDefaultConfig: SDKConfig = {
+export const storybookSdkAuthDefaultConfig: MetabaseAuthConfig = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
@@ -42,7 +42,7 @@ export const storybookSdkDefaultConfig: SDKConfig = {
 };
 
 export const CommonSdkStoryWrapper = (Story: Story) => (
-  <MetabaseProvider config={storybookSdkDefaultConfig}>
+  <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
     <Story />
   </MetabaseProvider>
 );

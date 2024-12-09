@@ -347,8 +347,8 @@
                    (expensive-fn 1)
                    (expensive-fn 2)
                    (expensive-fn 3))]
-      (is (= [result @counter]
-             [2 [1 2]]))))
+      (is (= [2 [1 2]]
+             [result @counter]))))
   (testing "failure"
     (is (nil? (u/or-with even? 1 3 5)))))
 
@@ -501,20 +501,21 @@
 #?(:clj
    (deftest ^:parallel case-enum-test
      (testing "case does not work"
+       #_{:clj-kondo/ignore [:case-symbol-test]}
        (is (= 3 (case Month/MAY
                   Month/APRIL 1
                   Month/MAY   2
                   3))))
      (testing "case-enum works"
        (is (= 2 (u/case-enum Month/MAY
-                             Month/APRIL 1
-                             Month/MAY   2
-                             3))))
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
      (testing "checks for type of cases"
        (is (thrown? Exception #"`case-enum` only works.*"
                     (u/case-enum Month/JANUARY
-                                 Month/JANUARY    1
-                                 DayOfWeek/SUNDAY 2))))))
+                      Month/JANUARY    1
+                      DayOfWeek/SUNDAY 2))))))
 
 (deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]

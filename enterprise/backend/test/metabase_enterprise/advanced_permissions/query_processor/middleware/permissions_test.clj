@@ -46,10 +46,10 @@
    (mbql-download-query 'venues))
 
   ([table-name]
-   (-> {:database (mt/id)
-        :type     :query
-        :query    {:source-table (mt/id table-name)}
-        :info     {:context (api.dataset/export-format->context :csv)}})))
+   {:database (mt/id)
+    :type     :query
+    :query    {:source-table (mt/id table-name)}
+    :info     {:context (api.dataset/export-format->context :csv)}}))
 
 (defn- native-download-query []
   {:database (mt/id)
