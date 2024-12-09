@@ -46,7 +46,10 @@ export interface MetabaseProviderProps {
   theme?: MetabaseTheme;
   className?: string;
 
-  /** Defines the display language. Accepts an ISO language code such as `en` or `de`. Defaults to `en`. */
+  /**
+   * Defines the display language. Accepts an ISO language code such as `en` or `de`.
+   * Defaults to `en`. Does not support country code suffixes (i.e. `en-US`)
+   **/
   locale?: string;
 
   /** A custom loader component to display while the SDK is loading. */
