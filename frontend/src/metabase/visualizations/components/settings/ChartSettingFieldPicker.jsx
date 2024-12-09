@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ActionIcon, Box, Group, Icon, Select } from "metabase/ui";
+import { ActionIcon, Group, Icon, Select } from "metabase/ui";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
@@ -119,7 +119,7 @@ const ChartSettingFieldPicker = ({
           options.length === 0 ? t`No valid fields` : t`Select a field`
         }
         pl="xs"
-        pr="sm"
+        pr="xs"
         w="100%"
         initiallyOpened={autoOpenWhenUnset && value === undefined}
         styles={{
@@ -138,17 +138,20 @@ const ChartSettingFieldPicker = ({
           },
         }}
         iconWidth="auto"
+        rightSectionWidth="auto"
         rightSection={
-          <Group noWrap spacing="xs" pl="xs" pr="sm">
+          <Group noWrap spacing="xs" pl="xs" pr="xs">
             {!disabled && (
-              <Box px="xs" mt="xs">
-                <Icon c="text-medium" name="chevrondown" />
-              </Box>
+              <ActionIcon c="text-medium" size="sm" radius="xl">
+                <Icon name="chevrondown" />
+              </ActionIcon>
             )}
             {menuWidgetInfo && (
               <ActionIcon
                 c="text-medium"
                 style={{ pointerEvents: "all" }}
+                size="sm"
+                radius="xl"
                 data-testid={`settings-${value}`}
                 onClick={e => {
                   onShowWidget(menuWidgetInfo, e.target);
@@ -160,6 +163,8 @@ const ChartSettingFieldPicker = ({
             {onRemove && (
               <ActionIcon
                 c="text-medium"
+                size="sm"
+                radius="xl"
                 data-testid={`remove-${value}`}
                 onClick={onRemove}
                 style={{ pointerEvents: "all" }}

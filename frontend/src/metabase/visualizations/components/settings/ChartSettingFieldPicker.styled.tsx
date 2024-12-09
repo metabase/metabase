@@ -25,7 +25,7 @@ export const ChartSettingFieldPickerRoot = styled(
   border: 1px solid var(--mb-color-border);
   border-radius: ${({ theme }) => theme.radius.md};
   cursor: ${props => (props.showDragHandle ? "grab" : "default")};
-
+  overflow: hidden;
   ${Triggerable.Trigger} {
     flex: 1;
     overflow: hidden;
