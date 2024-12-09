@@ -91,7 +91,7 @@
     pointer-events: all;
   }
 
-  :hover {
+  &:hover {
     background-color: var(--mb-color-bg-light);
   }
 }
@@ -109,6 +109,13 @@
     border-top: 1px solid var(--mb-color-border);
     margin-top: 1rem;
     padding: 0.5rem 2.5rem 0 2rem;
+  }
+
+  /* increase specificity */
+  .SaveButton {
+    &[data-disabled="true"] {
+      pointer-events: all;
+    }
   }
 }
 
