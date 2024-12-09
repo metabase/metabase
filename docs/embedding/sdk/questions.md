@@ -37,14 +37,6 @@ export default function App() {
 }
 ```
 
-You can pass parameter values to questions defined with SQL via `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
-
-```jsx
-{% raw %}
-<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
-{% endraw %}
-```
-
 ## Embedding an interactive question
 
 You can embed an interactive question using the `InteractiveQuestion` component.
@@ -82,6 +74,17 @@ export default function App() {
 | onBeforeSave          | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
 | onSave                | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
 | saveToCollectionId    | number                                                               | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to static questions.                                                                                                                                                           |
+| initialSqlParameters  | `Record<string, string \| string[]>`                                 | (optional) A mapping of [SQL parameters names](../../questions/native-editor/sql-parameters.md) to parameter values, such as `{ product_id: "42" }`.                                                                                                                                                               |
+
+## Passing SQL parameters to questions
+
+You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
+
+```typescript
+{% raw %}
+<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
+{% endraw %}
+```
 
 ## Customizing interactive questions
 
