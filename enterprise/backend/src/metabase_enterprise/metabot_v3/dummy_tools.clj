@@ -56,7 +56,6 @@
           (:user-is-viewing context)))
 
 (def ^:private dummy-tool-registry
-  "Get metadata about the available dummy tools. "
   [dummy-get-current-user
    dummy-get-dashboard-details])
 
@@ -64,7 +63,7 @@
   "Invoke `tool` with `context` if applicable and return the resulting context."
   [context]
   (let [context (or (not-empty context)
-                    ;; hallucinate the user is viewing dashboard with ID 14
+                    ;; for testing purposes, pretend the user is viewing dashboard with ID 14
                     {:user-is-viewing [{:type :dashboard
                                         :ref 14
                                         :parameters []
