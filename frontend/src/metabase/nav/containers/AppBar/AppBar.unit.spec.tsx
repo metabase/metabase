@@ -246,6 +246,7 @@ describe("AppBar", () => {
               dashboards: {
                 [BAR_DASHBOARD.id]: createMockStoreDashboard({
                   id: BAR_DASHBOARD.id,
+                  collection_id: FOO_COLLECTION.id,
                 }),
               },
             }),
