@@ -15,7 +15,7 @@
                 (-> card
                     (select-keys [:id :name :collection_id :description :display :parameter_mappings])
                     (assoc :dashboard_card_id id :dashboard_id dashboard-id)))
-        recipient {:id (t2/select-one-fn :id :model/User :email email)} ; the real input is not the email address, but the user
+        recipient {:id (t2/select-one-fn :id :model/User :email email)}
         {:keys [frequency hour day_of_week day_of_month]} schedule
         channel {:channel_type :email
                  :enabled true
@@ -33,6 +33,9 @@
                        (assoc :dashboard_id  dashboard-id
                               :creator_id    api/*current-user-id*
                               :skip_if_empty false))]
-    (models.pulse/create-pulse! (map models.pulse/card->ref cards) [channel] pulse-data))
-  {:output "success"
-   :context context})
+    (if recipient
+      (do (models.pulse/create-pulse! (map models.pulse/card->ref cards) [channel] pulse-data)
+          {:output "success"
+           :context context})
+      {:output "no user with this email found"
+       :context context})))
