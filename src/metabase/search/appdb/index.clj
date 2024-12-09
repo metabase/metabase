@@ -137,7 +137,6 @@
     (doseq [stmt (specialization/post-create-statements table-name table-name)]
       (t2/query stmt))))
 
-
 (defn maybe-create-pending!
   "Create a search index table."
   []

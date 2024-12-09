@@ -151,7 +151,7 @@
     {:model       [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:text         (specialization/text-score )
+    {:text         (specialization/text-score)
      :view-count   (view-count-expr search.config/view-count-scaling-percentile)
      :pinned       (truthy :pinned)
      :bookmarked   bookmark-score-expr
