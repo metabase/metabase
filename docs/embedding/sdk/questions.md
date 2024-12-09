@@ -24,14 +24,14 @@ The component has a default height, which can be customized by using the `height
 import React from "react";
 import {MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
 
     return (
-        <MetabaseProvider config={config}>
-            <StaticQuestion questionId={questionId} showVisualizationSelector={false}/>
+        <MetabaseProvider authConfig={authConfig}>
+            <StaticQuestion questionId={questionId} withChartTypeSelector={false}/>
         </MetabaseProvider>
     );
 }
@@ -53,13 +53,13 @@ You can embed an interactive question using the `InteractiveQuestion` component.
 import React from "react";
 import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
 
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <InteractiveQuestion questionId={questionId}/>
         </MetabaseProvider>
     );
@@ -69,7 +69,7 @@ export default function App() {
 ## Question props
 
 | Prop                  | Type                                                                 | Description                                                                                                                                                                                                                                                                                                        |
-|-----------------------|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | questionId            | number or string                                                     | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.<br>- The `entity_id` key of the question object. You can find a question's entity ID in the info panel when viewing a question. |
 | plugins               | `{ mapQuestionClickActions: Function }` or null                      | Additional mapper function to override or add drill-down menu.                                                                                                                                                                                                                                                     |
 | height                | number or string                                                     | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
@@ -213,7 +213,7 @@ const plugins = {
 const questionId = 1; // This is the question ID you want to embed
 
 return (
-  <MetabaseProvider config={config} pluginsConfig={plugins}>
+  <MetabaseProvider authConfig={authConfig} pluginsConfig={plugins}>
     <InteractiveQuestion questionId={questionId} />
   </MetabaseProvider>
 );
@@ -227,11 +227,11 @@ You can edit an existing question using the query builder by passing the `isSave
 import React from "react";
 import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <InteractiveQuestion questionId={1} isSaveEnabled />
         </MetabaseProvider>
     );
@@ -250,11 +250,11 @@ To customize the question editor's layout, use the `InteractiveQuestion` compone
 import React from "react";
 import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <CreateQuestion />
         </MetabaseProvider>
     );
