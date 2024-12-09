@@ -3,10 +3,15 @@ import { type PropsWithChildren, useEffect, useState } from "react";
 import { setLocaleHeader } from "metabase/lib/api";
 import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
 
+import locales from "../../../../resources/locales.json";
+
 export const LocaleProvider = ({
   children,
   locale,
 }: PropsWithChildren<{ locale?: string | null }>) => {
+  // TODO: Remove this console.log
+  // eslint-disable-next-line no-console
+  console.log("available locales", locales);
   // The state is not used explicitly, but we need to trigger a re-render when the locale changes
   // as changing the locale in ttag doesn't trigger react components to update
   const [_isLoadingLocale, setIsLoadingLocale] = useState(false);
