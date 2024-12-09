@@ -112,6 +112,20 @@ describe("SDK auth errors", () => {
       );
     });
 
+    it("should show a message when the auth provider returns the id as an object", async () => {
+      mockAuthUriProviderResponse({
+        body: { id: { id: "123" } },
+      });
+
+      await setup(defaultAuthUriConfig);
+
+      await waitForRequest(() => getLastAuthProviderApiCall());
+
+      await expectErrorMessage(
+        `The authProviderUri endpoint must return an object with the shape {id:string, exp:number, iat:number, status:string}, got`,
+      );
+    });
+
     it("should show a message when fetchRequestToken doesn't return a json object", async () => {
       const config = defineEmbeddingSdkConfig({
         ...defaultAuthUriConfig,
