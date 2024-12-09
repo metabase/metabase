@@ -99,7 +99,8 @@
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))
 
 (deftest ^:parallel remove-lib-uuids-test
-  (are [x expected] (= (lib.schema.util/remove-lib-uuids x) expected)
+  (are [x expected] (= expected
+                       (lib.schema.util/remove-lib-uuids x))
     {:lib/uuid "00000000-0000-0000-0000-000000000000"}
     {}
 

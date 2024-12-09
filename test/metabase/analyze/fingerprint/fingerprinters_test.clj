@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.driver :as driver]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.json :as json]

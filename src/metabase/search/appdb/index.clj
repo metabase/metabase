@@ -70,7 +70,7 @@
                            [:in :table_name ["search_index" "search_index_next" "search_index_retired"]]]})))
 
 (defn- sync-metadata [_old-setting-raw new-setting-raw]
-  ;; Oh dear, we get the raw setting. Save a little bit of overhead by no keywordizing the keys.
+  ;; Oh dear, we get the raw setting. Save a little bit of overhead by not converting keys
   (let [new-setting                          (json/decode new-setting-raw)
         this-index-metadata                  #(get-in % ["versions" *index-version-id*])
         {:strs [active-table pending-table]} (this-index-metadata new-setting)
@@ -237,14 +237,16 @@
 (defn ensure-ready!
   "Ensure the index is ready to be populated. Return false if it was already ready."
   [force-recreation?]
-  (when-not *mocking-tables*
-    (when (nil? (active-table))
-      ;; double check that we're initialized from the current shared metadata
-      (when-let [raw-state (settings/get-raw-value :search-engine-appdb-index-state)]
-        (sync-metadata raw-state raw-state))))
+  ;; Be extra careful against races on initializing the setting
+  (locking *active-table*
+    (when-not *mocking-tables*
+      (when (nil? (active-table))
+        ;; double check that we're initialized from the current shared metadata
+        (when-let [raw-state (settings/get-raw-value :search-engine-appdb-index-state)]
+          (sync-metadata raw-state raw-state))))
 
-  (when (or force-recreation? (not (exists? (active-table))))
-    (reset-index!)))
+    (when (or force-recreation? (not (exists? (active-table))))
+      (reset-index!))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
