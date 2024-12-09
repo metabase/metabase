@@ -13,6 +13,12 @@ export type FetchType = string;
 
 export type EntityId = string | number;
 
+export type BaseEntity = {
+  id: EntityId;
+  name?: string;
+  display_name?: string;
+};
+
 export type EntityIdSelector = (
   state: State,
   props: unknown,
@@ -33,7 +39,7 @@ export interface EntityOptions {
   requestType: RequestType;
 }
 
-export interface EntityDefinition<Entity, EntityWrapper> {
+export interface EntityDefinition<Entity extends BaseEntity, EntityWrapper> {
   actions: {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
