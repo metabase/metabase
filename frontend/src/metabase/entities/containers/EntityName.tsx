@@ -28,8 +28,7 @@ export const EntityName = <Entity extends BaseEntity, EntityWrapper>({
     /**
      * Hack: this hook appears to be acquired conditionally, which in
      * normal circumstances would violate the rules of React hooks.
-     * As long as fetchType never changes during component's lifecycle
-     * and getUseGetQuery is a pure function, we have a guarantee that
+     * As long as getUseGetQuery is a pure function we have a guarantee that
      * the same hook will be used and rules of hooks are not violated.
      */
     useGetQuery,
