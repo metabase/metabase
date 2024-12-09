@@ -58,6 +58,29 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
+    allowed-iframe-hosts: |-
+      youtube.com,
+      youtu.be,
+      loom.com,
+      vimeo.com,
+      docs.google.com,
+      calendar.google.com,
+      airtable.com,
+      typeform.com,
+      canva.com,
+      codepen.io,
+      figma.com,
+      grafana.com,
+      miro.com,
+      excalidraw.com,
+      notion.com,
+      atlassian.com,
+      trello.com,
+      asana.com,
+      gist.github.com,
+      linkedin.com,
+      twitter.com,
+      x.com
     anon-tracking-enabled: true
     api-key: null
     application-colors: {}
@@ -77,22 +100,29 @@ config:
     custom-homepage: false
     custom-homepage-dashboard: null
     db-connection-timeout-ms: 10000
+    db-query-timeout-minutes: 20
+    download-row-limit: null
     ee-ai-features-enabled: false
     ee-openai-api-key: null
     ee-openai-model: gpt-4-turbo-preview
     email-from-address: notifications@metabase.com
     email-from-name: null
+    email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null
     email-smtp-password: null
     email-smtp-port: null
     email-smtp-security: none
     email-smtp-username: null
-    embedding-app-origin: null
+    embedding-app-origins-interactive: null
+    embedding-app-origins-sdk: localhost:*
     embedding-homepage: hidden
     embedding-secret-key: null
-    enable-embedding: false
+    enable-embedding-interactive: false
+    enable-embedding-sdk: false
+    enable-embedding-static: false
     enable-password-login: true
+    enable-pivoted-exports: true
     enable-public-sharing: true
     enable-query-caching: true
     enable-xrays: true
@@ -147,11 +177,13 @@ config:
     metabot-get-prompt-templates-url: https://stkxezsr2kcnkhusi3fgcc5nqm0ttgfx.lambda-url.us-east-1.on.aws/
     metabot-prompt-generator-token-limit: 6000
     native-query-autocomplete-match-style: substring
+    nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
     no-data-illustration-custom: null
     no-object-illustration: default
     no-object-illustration-custom: null
     notification-link-base-url: null
+    notification-thread-pool-size: 10
     num-metabot-choices: 1
     openai-api-key: null
     openai-model: gpt-4-turbo-preview
@@ -159,6 +191,7 @@ config:
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
+    query-analysis-enabled: true
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     redirect-all-requests-to-https: false
@@ -185,6 +218,8 @@ config:
     saml-keystore-path: null
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
+    scim-enabled: null
+    search-engine: in-place
     search-typeahead-enabled: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
@@ -202,6 +237,7 @@ config:
     site-name: Metabase
     site-url: null
     slack-app-token: null
+    slack-bug-report-channel: metabase-bugs
     slack-files-channel: metabase_files
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
@@ -210,7 +246,9 @@ config:
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true
+    synchronous-batch-updates: false
     unaggregated-query-row-limit: null
+    update-channel: latest
     uploads-settings: null
     user-visibility: all
 ```
