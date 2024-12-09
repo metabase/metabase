@@ -60,13 +60,13 @@ datetimeDiff([Aging Start], now, "day")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeDiff` |
-| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
-| String                                                                                                                         | ❌                        |
-| Number                                                                                                                         | ❌                        |
-| Timestamp                                                                                                                      | ✅                        |
-| Boolean                                                                                                                        | ❌                        |
-| JSON                                                                                                                           | ❌                        |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeDiff`             |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| String                                                                                                                         | {% include svg-icons/cross.svg %}     |
+| Number                                                                                                                         | {% include svg-icons/cross.svg %}     |
+| Timestamp                                                                                                                      | {% include svg-icons/checkmark.svg %} |
+| Boolean                                                                                                                        | {% include svg-icons/cross.svg %}     |
+| JSON                                                                                                                           | {% include svg-icons/cross.svg %}     |
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 

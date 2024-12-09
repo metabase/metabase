@@ -90,13 +90,13 @@ For example, if we want to count the unique number of orders for each order date
 
 ## Accepted data types
 
-| [Data type][data-types] | Works with `case` |
-| ----------------------- | ----------------- |
-| String                  | ✅                |
-| Number                  | ✅                |
-| Timestamp               | ✅                |
-| Boolean                 | ✅                |
-| JSON                    | ❌                |
+| [Data type][data-types] | Works with `case`                     |
+| ----------------------- | ------------------------------------- |
+| String                  | {% include svg-icons/checkmark.svg %} |
+| Number                  | {% include svg-icons/checkmark.svg %} |
+| Timestamp               | {% include svg-icons/checkmark.svg %} |
+| Boolean                 | {% include svg-icons/checkmark.svg %} |
+| JSON                    | {% include svg-icons/cross.svg %}     |
 
 ## Limitations
 

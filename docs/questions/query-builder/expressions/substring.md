@@ -56,13 +56,13 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `substring` |
-| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
-| String                                                                                                                         | ✅                     |
-| Number                                                                                                                         | ❌                     |
-| Timestamp                                                                                                                      | ❌                     |
-| Boolean                                                                                                                        | ❌                     |
-| JSON                                                                                                                           | ❌                     |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `substring`                |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| String                                                                                                                         | {% include svg-icons/checkmark.svg %} |
+| Number                                                                                                                         | {% include svg-icons/cross.svg %}     |
+| Timestamp                                                                                                                      | {% include svg-icons/cross.svg %}     |
+| Boolean                                                                                                                        | {% include svg-icons/cross.svg %}     |
+| JSON                                                                                                                           | {% include svg-icons/cross.svg %}     |
 
 ## Limitations
 

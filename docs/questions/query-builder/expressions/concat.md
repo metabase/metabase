@@ -38,13 +38,13 @@ For example, if you formatted a number to display only the first two decimal dig
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `concat` |
-| ------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
-| String                                                                                                                         | ✅                  |
-| Number                                                                                                                         | ✅                  |
-| Timestamp                                                                                                                      | ✅                  |
-| Boolean                                                                                                                        | ✅                  |
-| JSON                                                                                                                           | ✅                  |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `concat`                   |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| String                                                                                                                         | {% include svg-icons/checkmark.svg %} |
+| Number                                                                                                                         | {% include svg-icons/checkmark.svg %} |
+| Timestamp                                                                                                                      | {% include svg-icons/checkmark.svg %} |
+| Boolean                                                                                                                        | {% include svg-icons/checkmark.svg %} |
+| JSON                                                                                                                           | {% include svg-icons/checkmark.svg %} |
 
 Non-string types will be converted to strings. Regardless of the type of the value passed to `concat`, the result will be a string.
 

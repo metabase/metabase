@@ -34,10 +34,10 @@ Data sandboxes show specific data to each person based on their [user attributes
 
 |                                                | Basic sandbox (filter by a column in the table) | Custom sandbox (use a saved SQL question) |
 | ---------------------------------------------- | ----------------------------------------------- | ----------------------------------------- |
-| Restrict rows by filtering on a single column  | ✅                                              | ✅                                        |
-| Restrict rows by filtering on multiple columns | ❌                                              | ✅                                        |
-| Restrict columns                               | ❌                                              | ✅                                        |
-| Edit columns                                   | ❌                                              | ✅                                        |
+| Restrict rows by filtering on a single column  | {% include svg-icons/checkmark.svg %}           | {% include svg-icons/checkmark.svg %}     |
+| Restrict rows by filtering on multiple columns | {% include svg-icons/cross.svg %}               | {% include svg-icons/checkmark.svg %}     |
+| Restrict columns                               | {% include svg-icons/cross.svg %}               | {% include svg-icons/checkmark.svg %}     |
+| Edit columns                                   | {% include svg-icons/cross.svg %}               | {% include svg-icons/checkmark.svg %}     |
 
 ### Basic data sandboxes: filter by a column in the table
 
