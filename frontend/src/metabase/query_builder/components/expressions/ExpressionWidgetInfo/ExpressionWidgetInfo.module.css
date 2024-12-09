@@ -2,7 +2,7 @@
   margin-left: 4px;
 
   &:hover,
-  :focus {
+  &:focus {
     color: var(--mb-color-brand);
   }
 }

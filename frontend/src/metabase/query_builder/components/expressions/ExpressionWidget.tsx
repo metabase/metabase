@@ -26,6 +26,8 @@ import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 
+const WIDGET_WIDTH = 472;
+
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
   stageIndex: number;
@@ -149,7 +151,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     };
 
     return (
-      <Box w={472} data-testid="expression-editor">
+      <Box w={WIDGET_WIDTH} data-testid="expression-editor">
         <ExpressionWidgetHeader
           title={t`Select columns to combine`}
           onBack={handleCancel}
@@ -181,7 +183,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     };
 
     return (
-      <Box w={472} data-testid="expression-editor">
+      <Box w={WIDGET_WIDTH} data-testid="expression-editor">
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
@@ -193,7 +195,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   }
 
   return (
-    <Box w={472} data-testid="expression-editor">
+    <Box w={WIDGET_WIDTH} data-testid="expression-editor">
       {header}
       <Box p="1.5rem 1.5rem 1rem">
         <Box
