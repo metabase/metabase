@@ -64,7 +64,7 @@ function SidebarContent({
 }
 
 const PaneContent = (props: BoxProps) => {
-  return <Box pl="lg" pr="lg" {...props} />;
+  return <Box px="lg" {...props} />;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
