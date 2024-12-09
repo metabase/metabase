@@ -23,7 +23,7 @@ export const ChartSettingFieldPickerRoot = styled(
   Group,
 )<ChartSettingFieldPickerRootProps>`
   border: 1px solid var(--mb-color-border);
-  border-radius: 0.5rem;
+  border-radius: ${({ theme }) => theme.radius.md};
   cursor: ${props => (props.showDragHandle ? "grab" : "default")};
 
   ${Triggerable.Trigger} {
