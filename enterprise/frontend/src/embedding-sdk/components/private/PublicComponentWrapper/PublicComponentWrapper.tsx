@@ -55,7 +55,7 @@ export const PublicComponentWrapper = React.forwardRef<
   // sdk components is rendered outside of the sdk provider
   const isInSdkProvider = useIsInSdkProvider();
   if (!isInSdkProvider) {
-    return "SDK component rendered outside of sdk provider";
+    return "This component requires the MetabaseProvider parent component. Please wrap it within <MetabaseProvider>...</MetabaseProvider> in your component tree.";
   }
 
   return <PublicComponentWrapperInner ref={ref} {...props} />;
