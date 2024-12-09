@@ -1,58 +1,42 @@
-import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+import { useMemo } from "react";
 
-import { EntityObjectLoader, type EntityType } from "./rtk-query";
+import type { BaseEntity, EntityDefinition, EntityType } from "./rtk-query";
 
 type EntityId = string | number;
 
-interface EntityNameProps {
+interface Props {
   entityType: EntityType;
   entityId: EntityId;
-  property?: string;
 }
 
-interface EntityWrapper {
-  getName: () => string;
-}
+export const EntityName = <Entity extends BaseEntity, EntityWrapper>({
+  entityType,
+  entityId,
+}: Props) => {
+  const entityDefinition: EntityDefinition<Entity, EntityWrapper> =
+    useMemo(() => {
+      // dynamic require due to circular dependencies
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const entitiesDefinitions = require("metabase/entities");
+      return entitiesDefinitions[entityType];
+    }, [entityType]);
 
-const isEntityWrapper = (value: unknown): value is EntityWrapper =>
-  isObject(value) && "getName" in value && typeof value.getName === "function";
+  const {
+    /**
+     * Hack: this hook appears to be acquired conditionally, which in
+     * normal circumstances would violate the rules of React hooks.
+     * As long as fetchType never changes during component's lifecycle
+     * and getUseGetQuery is a pure function, we have a guarantee that
+     * the same hook will be used and rules of hooks are not violated.
+     */
+    useGetQuery,
+  } = entityDefinition.rtk.getUseGetQuery("fetch");
 
-const isQuestion = (value: unknown): value is Question =>
-  value instanceof Question;
+  const { data: entity } = useGetQuery({ id: entityId });
 
-export const EntityName = ({ entityType, entityId }: EntityNameProps) => {
-  // This is a special case for questions, because we're returning `metabase-lib/v1/Question`
-  // from question entity's `getObject` in https://github.com/metabase/metabase/pull/30729.
-  // If we wrap it in `EntityWrapper`, we'd lose all properties from `metabase-lib/v1/Question`.
-  if (entityType === "questions") {
-    return (
-      <EntityObjectLoader<Card, Question>
-        ComposedComponent={({ object: question }) => {
-          const name = isQuestion(question)
-            ? question.displayName()
-            : question?.name;
-          return name ? <span>{name}</span> : null;
-        }}
-        entityQuery={{}}
-        entityType={entityType}
-        entityId={entityId}
-        loadingAndErrorWrapper={false}
-      />
-    );
+  if (!entity) {
+    return null;
   }
 
-  return (
-    <EntityObjectLoader<unknown, EntityWrapper>
-      ComposedComponent={({ object }) => {
-        return isEntityWrapper(object) ? <span>{object.getName()}</span> : null;
-      }}
-      entityQuery={{}}
-      entityType={entityType}
-      entityId={entityId}
-      loadingAndErrorWrapper={false}
-      wrapped
-    />
-  );
+  return <span>{entity.display_name ?? entity.name}</span>;
 };

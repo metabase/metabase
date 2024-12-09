@@ -13,6 +13,7 @@ import {
 import type { Dispatch } from "metabase-types/store";
 
 import type {
+  BaseEntity,
   EntityDefinition,
   EntityId,
   EntityIdSelector,
@@ -69,7 +70,7 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  *
  * @deprecated use "metabase/api" instead
  */
-export function EntityObjectLoader<Entity, EntityWrapper>({
+export function EntityObjectLoader<Entity extends BaseEntity, EntityWrapper>({
   ComposedComponent,
   dispatchApiErrorEvent = true,
   entityAlias,
