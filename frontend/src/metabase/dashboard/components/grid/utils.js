@@ -24,7 +24,13 @@ export function generateMobileLayout({
   return mobile;
 }
 
-export function generateGridBackground({ cellSize, margin, cols, gridWidth }) {
+export function generateGridBackground({
+  cellSize,
+  margin,
+  cols,
+  gridWidth,
+  cellStrokeColor,
+}) {
   const XMLNS = "http://www.w3.org/2000/svg";
   const [horizontalMargin, verticalMargin] = margin;
   const rowHeight = cellSize.height + verticalMargin;
@@ -35,7 +41,7 @@ export function generateGridBackground({ cellSize, margin, cols, gridWidth }) {
 
   const rectangles = _(cols).times(i => {
     const x = i * (cellSize.width + horizontalMargin);
-    return `<rect style='stroke: var(--mb-color-border)' stroke-width='1' fill='none' x='${x}' y='${y}' width='${w}' height='${h}'/>`;
+    return `<rect stroke='${cellStrokeColor}' stroke-width='1' fill='none' x='${x}' y='${y}' width='${w}' height='${h}'/>`;
   });
 
   const svg = [
