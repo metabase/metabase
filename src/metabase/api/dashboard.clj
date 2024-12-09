@@ -513,7 +513,8 @@
   "Get Dashboard with ID."
   [id]
   {id ms/PositiveInt}
-  ;; query copied from metabase.api.collection to match the shape of api/collection/<:id|root>/items
+  ;; Output should match the shape of api/collection/<:id|root>/items. There's a test that asserts that this remains
+  ;; the case, but if you change one, you'll want to change both.
   (let [dashboard  (api/read-check :model/Dashboard id)
         query      (merge
                     {:select    (cond->
@@ -540,8 +541,7 @@
                                            :from [[:report_dashboardcard :dc]]
                                            :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
                                  [:= :c.archived false]]}
-                    (when (and mw.offset-paging/*limit*
-                               mw.offset-paging/*offset*)
+                    (when mw.offset-paging/*paged?*
                       {:limit mw.offset-paging/*limit*
                        :offset mw.offset-paging/*offset*}))
         cards      (mdb.query/query query)]

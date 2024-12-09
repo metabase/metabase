@@ -194,7 +194,7 @@
                     :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
-        (update :dashboard #(when % (select-keys % [:name :id :moderation_status])))
+        (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
                                         ;; can_manage_db determines whether we should enable model persistence settings

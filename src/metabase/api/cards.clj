@@ -9,22 +9,17 @@
             [toucan2.core :as t2]))
 
 (mu/defn get-dashboards
-  "Get dashboards that a card appears in. The result looks like
-  ```
-  {:card_id 123
-   :dashboards [{:error :unwritable-dashboard :name \"foo\" :id 456}
-                {:error :unreadable-dashboard}
-                {:name \"foo\" :id 678}]}
-  ```"
+  "Get dashboards that a card with id `card-id` appears in."
   [card-id :- ms/PositiveInt]
-  (let [card (t2/select-one :model/Card :id card-id)
-        dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
-    {:card_id card-id :dashboards (->> dashboards
-                                       (map #(cond
-                                               (not (mi/can-read? %)) {:error :unreadable-dashboard}
-                                               (not (mi/can-write? %)) (merge % {:error :unwritable-dashboard})
-                                               :else %))
-                                       (map #(dissoc % :collection_id)))}))
+  (let [card (t2/select-one :model/Card :id card-id)]
+    (:in_dashboards (t2/hydrate card :in_dashboards))))
+
+(defn- present-dashboard [dashboard]
+  (-> (cond
+        (not (mi/can-read? dashboard)) {:error :unreadable-dashboard}
+        (not (mi/can-write? dashboard)) (merge dashboard {:error :unwritable-dashboard})
+        :else dashboard)
+      (dissoc :collection_id)))
 
 (api/defendpoint POST "/dashboards"
   "Get the dashboards that multiple cards appear in. The response is a sequence of maps, each of which has a `card_id`
@@ -33,7 +28,9 @@
   present."
   [:as {{:keys [card_ids]} :body}]
   {card_ids [:sequential ms/PositiveInt]}
-  (map get-dashboards card_ids))
+  (->> card_ids
+       (mapv (fn [card-id]
+               {:card_id card-id :dashboards (map present-dashboard (get-dashboards card-id))}))))
 
 (api/defendpoint POST "/move"
   "Moves a number of Cards to a single collection or dashboard.

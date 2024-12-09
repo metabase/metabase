@@ -128,12 +128,13 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select    [[:%count.* :count] :card_id]
-                    :from      [:report_dashboardcard]
-                    :where     [:in :card_id (map :id cards)]
-                    :group-by  [:card_id]})
-         (map (juxt :card_id :count))
-         (into {}))
+   (fn []
+     (->> (t2/query {:select    [[:%count.* :count] :card_id]
+                     :from      [:report_dashboardcard]
+                     :where     [:in :card_id (map :id cards)]
+                     :group-by  [:card_id]})
+          (map (juxt :card_id :count))
+          (into {})))
    :id
    {:default 0}))
 
@@ -141,31 +142,32 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select [:card_id
-                             :name
-                             :collection_id
-                             :id]
-                    :from [[{:union-all [{:select [[:dc.card_id :card_id]
-                                                   [:d.name :name]
-                                                   [:d.collection_id :collection_id]
-                                                   [:d.id :id]]
-                                          :from [[:report_dashboardcard :dc]]
-                                          :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
-                                          :where [:in :dc.card_id (map :id cards)]}
-                                         {:select [[:dcs.card_id :card_id]
-                                                   [:d.name :name]
-                                                   [:d.collection_id :collection_id]
-                                                   [:d.id :id]]
-                                          :from [[:dashboardcard_series :dcs]]
-                                          :where [:in :dcs.card_id (map :id cards)]
-                                          :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}
-                            :dummy_alias]]})
-         (group-by :card_id)
-         (m/map-vals (fn [dashes] (->> dashes
-                                       (map (fn [dash] (dissoc dash :card_id)))
-                                       distinct
-                                       (mapv (fn [dash] (t2/instance :model/Dashboard dash)))))))
+   (fn []
+     (->> (t2/query {:select [:card_id
+                              :name
+                              :collection_id
+                              :id]
+                     :from [[{:union-all [{:select [[:dc.card_id :card_id]
+                                                    [:d.name :name]
+                                                    [:d.collection_id :collection_id]
+                                                    [:d.id :id]]
+                                           :from [[:report_dashboardcard :dc]]
+                                           :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
+                                           :where [:in :dc.card_id (map :id cards)]}
+                                          {:select [[:dcs.card_id :card_id]
+                                                    [:d.name :name]
+                                                    [:d.collection_id :collection_id]
+                                                    [:d.id :id]]
+                                           :from [[:dashboardcard_series :dcs]]
+                                           :where [:in :dcs.card_id (map :id cards)]
+                                           :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
+                                                  [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]}]}
+                             :dummy_alias]]})
+          (group-by :card_id)
+          (m/map-vals (fn [dashes] (->> dashes
+                                        (map (fn [dash] (dissoc dash :card_id)))
+                                        distinct
+                                        (mapv (fn [dash] (t2/instance :model/Dashboard dash))))))))
    :id
    {:default []}))
 
@@ -490,9 +492,11 @@
                                 (map (juxt :id :name))
                                 (into {}))]
     (when (and (:dashboard_id changes) (seq dashboard-id->name))
-      (throw (ex-info (tru "Cannot convert to dashboard question: appears in other dashboards ({0})" (str/join "," (vals dashboard-id->name)))
-                      {:status-code 400
-                       :other-dashboards dashboard-id->name}))))
+      (throw (ex-info
+              (tru "Cannot convert to dashboard question: appears in other dashboards ({0})"
+                   (str/join "," (vals dashboard-id->name)))
+              {:status-code 400
+               :other-dashboards dashboard-id->name}))))
   (when-let [reason (invalid-dashboard-internal-card-update-reason? card changes)]
     (throw (ex-info reason {:status-code 400
                             :changes changes
@@ -772,7 +776,6 @@
                            dashboard-id-update)
         on-dashboard-before? (boolean old-dashboard-id)
         on-dashboard-after? (boolean new-dashboard-id)
-
         archived-changes? (api/column-will-change? :archived card-before-update card-updates)
         new-archived (if-not archived-changes?
                        old-archived
