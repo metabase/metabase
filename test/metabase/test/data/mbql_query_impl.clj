@@ -44,7 +44,7 @@
        (map keyword parts)))))
 
 (defn- token->type+args
-  "Given a token string, return the matching Field clause "
+  "Given a token string, return the matching Field clause"
   [token-str]
   (if-let [[_ source-token-str dest-token-str] (re-matches #"(^.*)->(.*$)" token-str)]
     [:-> source-token-str dest-token-str]

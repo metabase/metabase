@@ -236,26 +236,25 @@
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number unique-name-fn)
            ;; 1b or 1c
-           (or
-            ;; 1b: default visible Fields for the source Table
-            (when source-table
-              (assert (integer? source-table))
-              (let [table-metadata (lib.metadata/table query source-table)]
-                (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
-            ;; 1e. Metadata associated with a Metric
-            (when metric-based?
-              (metric-metadata query stage-number card options))
-            ;; 1c. Metadata associated with a saved Question
-            (when source-card
-              (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
-            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-            (for [col (:columns (:lib/stage-metadata this-stage))]
-              (assoc col
-                     :lib/source :source/native
-                     :lib/source-column-alias  (:name col)
-                     ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-                     ;; that gets added later gets deduplicated from these.
-                     :lib/desired-column-alias (unique-name-fn (:name col)))))))))
+           ;; 1b: default visible Fields for the source Table
+           (when source-table
+             (assert (integer? source-table))
+             (let [table-metadata (lib.metadata/table query source-table)]
+               (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+           ;; 1e. Metadata associated with a Metric
+           (when metric-based?
+             (metric-metadata query stage-number card options))
+           ;; 1c. Metadata associated with a saved Question
+           (when source-card
+             (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+           ;; 1d: `:lib/stage-metadata` for the (presumably native) query
+           (for [col (:columns (:lib/stage-metadata this-stage))]
+             (assoc col
+                    :lib/source :source/native
+                    :lib/source-column-alias  (:name col)
+                    ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
+                    ;; that gets added later gets deduplicated from these.
+                    :lib/desired-column-alias (unique-name-fn (:name col))))))))
 
 (mu/defn- existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query

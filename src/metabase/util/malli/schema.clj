@@ -1,8 +1,7 @@
 (ns metabase.util.malli.schema
   "TODO: Consider refacor this namespace by defining custom schema with [[mr/def]] instead.
 
-  For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)
-  "
+  For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
    [malli.core :as mc]

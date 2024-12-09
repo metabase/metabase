@@ -14,20 +14,14 @@ import {
   DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
 import { removeClause } from "./query";
-import {
-  availableTemporalBuckets,
-  temporalBucket,
-  withTemporalBucket,
-} from "./temporal_bucket";
+import { temporalBucket, withTemporalBucket } from "./temporal_bucket";
 import type {
   BooleanFilterParts,
-  Bucket,
   ColumnMetadata,
   CoordinateFilterParts,
   DefaultFilterOperatorName,
@@ -46,7 +40,6 @@ import type {
   Query,
   RelativeDateFilterParts,
   SegmentMetadata,
-  SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
   StringFilterParts,
   TimeFilterParts,
@@ -163,22 +156,12 @@ export function specificDateFilterClause(
   stageIndex: number,
   { operator, column, values, hasTime }: SpecificDateFilterParts,
 ): ExpressionClause {
-  const serializedValues = hasTime
-    ? values.map(value => serializeDateTime(value))
-    : values.map(value => serializeDate(value));
-
-  const minuteBucket = hasTime
-    ? findTemporalBucket(query, stageIndex, column, "minute")
-    : undefined;
-  const columnWithOrWithoutBucket =
-    hasTime && minuteBucket
-      ? withTemporalBucket(column, minuteBucket)
-      : withTemporalBucket(column, null);
-
-  return expressionClause(operator, [
-    columnWithOrWithoutBucket,
-    ...serializedValues,
-  ]);
+  return ML.specific_date_filter_clause(
+    operator,
+    column,
+    values.map(value => moment(value)),
+    hasTime,
+  );
 }
 
 export function specificDateFilterParts(
@@ -186,41 +169,20 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  const { operator, args } = expressionParts(query, stageIndex, filterClause);
-  if (!isSpecificDateOperator(operator) || args.length < 1) {
+  const filterParts = ML.specific_date_filter_parts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (!filterParts) {
     return null;
   }
-
-  const [column, ...serializedValues] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isDateOrDateTime(column) ||
-    !isStringLiteralArray(serializedValues)
-  ) {
-    return null;
-  }
-
-  const dateValues = serializedValues.map(deserializeDate);
-  if (isDefinedArray(dateValues)) {
-    return {
-      operator,
-      column,
-      values: dateValues,
-      hasTime: false,
-    };
-  }
-
-  const dateTimeValues = serializedValues.map(deserializeDateTime);
-  if (isDefinedArray(dateTimeValues)) {
-    return {
-      operator,
-      column,
-      values: dateTimeValues,
-      hasTime: true,
-    };
-  }
-
-  return null;
+  return {
+    ...filterParts,
+    values: filterParts.values.map((value: Moment) =>
+      value.local(true).toDate(),
+    ),
+  };
 }
 
 export function relativeDateFilterClause({
@@ -415,18 +377,6 @@ export function isSegmentFilter(
   return operator === "segment";
 }
 
-function findTemporalBucket(
-  query: Query,
-  stageIndex: number,
-  column: ColumnMetadata,
-  temporalUnit: TemporalUnit,
-): Bucket | undefined {
-  return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
-    const bucketInfo = displayInfo(query, stageIndex, bucket);
-    return bucketInfo.shortName === temporalUnit;
-  });
-}
-
 function isDefined<T>(arg: T | undefined | null): arg is T {
   return arg != null;
 }
@@ -439,19 +389,8 @@ function isStringLiteral(arg: unknown): arg is string {
   return typeof arg === "string";
 }
 
-function isStringLiteralArray(arg: unknown): arg is string[] {
-  return Array.isArray(arg) && arg.every(isStringLiteral);
-}
-
 function isNumberLiteral(arg: unknown): arg is number {
   return typeof arg === "number";
-}
-
-function isSpecificDateOperator(
-  operator: ExpressionOperatorName,
-): operator is SpecificDateFilterOperatorName {
-  const operators: ReadonlyArray<string> = SPECIFIC_DATE_FILTER_OPERATORS;
-  return operators.includes(operator);
 }
 
 function isExcludeDateOperator(
@@ -476,34 +415,6 @@ function isExcludeDateBucket(
 }
 
 const DATE_FORMAT = "YYYY-MM-DD";
-const TIME_FORMAT = "HH:mm:ss";
-const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
-
-function serializeDate(date: Date): string {
-  return moment(date).format(DATE_FORMAT);
-}
-
-function serializeDateTime(date: Date): string {
-  return moment(date).format(DATE_TIME_FORMAT);
-}
-
-function deserializeDate(value: string): Date | null {
-  const date = moment(value, DATE_FORMAT, true);
-  if (!date.isValid()) {
-    return null;
-  }
-
-  return date.toDate();
-}
-
-function deserializeDateTime(value: string): Date | null {
-  const dateTime = moment.parseZone(value, moment.ISO_8601, true);
-  if (!dateTime.isValid()) {
-    return null;
-  }
-
-  return dateTime.local(true).toDate();
-}
 
 function deserializeExcludeDatePart(
   value: ExpressionArg | ExpressionParts,
