@@ -8,7 +8,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]

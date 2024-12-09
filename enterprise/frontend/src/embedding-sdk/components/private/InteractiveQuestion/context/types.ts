@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
+import type { MetabaseQuestion } from "embedding-sdk/types/public/question";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
@@ -15,11 +16,11 @@ type InteractiveQuestionConfig = {
   componentPlugins?: MetabasePluginsConfig;
   onNavigateBack?: () => void;
   onBeforeSave?: (
-    question: Question | undefined,
+    question: MetabaseQuestion | undefined,
     context: { isNewQuestion: boolean },
   ) => Promise<void>;
   onSave?: (
-    question: Question | undefined,
+    question: MetabaseQuestion | undefined,
     context: { isNewQuestion: boolean },
   ) => void;
   entityTypeFilter?: EntityTypeFilterKeys[];

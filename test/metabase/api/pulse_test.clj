@@ -27,7 +27,7 @@
    [metabase.models.pulse-test :as pulse-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -105,8 +105,8 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (:body req.util/response-unauthentic) (client/client :get 401 "pulse")))
-  (is (= (:body req.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
+  (is (= (:body request/response-unauthentic) (client/client :get 401 "pulse")))
+  (is (= (:body request/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/pulse                                                 |

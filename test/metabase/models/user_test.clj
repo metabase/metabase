@@ -5,8 +5,7 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.schema-migrations-test.impl
-    :as schema-migrations-test.impl]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
@@ -28,7 +27,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -536,7 +535,7 @@
   (testing "last-acknowledged-version is automatically set for new users"
     (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.47.1")]
       (t2.with-temp/with-temp [User {user-id :id} {}]
-        (mw.session/with-current-user user-id
+        (request/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
 (deftest last-used-native-database-id-can-be-read-and-set
