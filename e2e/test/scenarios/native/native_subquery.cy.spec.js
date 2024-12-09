@@ -1,21 +1,12 @@
+import { H } from "e2e/support";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createNativeQuestion,
-  createQuestion,
-  focusNativeEditor,
-  openNativeEditor,
-  restore,
-  runNativeQuery,
-  startNewNativeQuestion,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -76,7 +67,7 @@ describe("scenarios > question > native subquery", () => {
         type: "model",
         collection_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body: { id: questionId2 } }) => {
-        openNativeEditor();
+        H.openNativeEditor();
         cy.get(".ace_editor").should("be.visible").realType("{{#people");
 
         // Wait until another explicit autocomplete is triggered
@@ -261,13 +252,13 @@ describe("scenarios > question > native subquery", () => {
     cy.signIn("nodata");
 
     // They should be able to access both questions
-    visitQuestion("@nestedQuestionId");
+    H.visitQuestion("@nestedQuestionId");
     cy.findByTestId("question-row-count").should(
       "have.text",
       "Showing 41 rows",
     );
 
-    visitQuestion("@toplevelQuestionId");
+    H.visitQuestion("@toplevelQuestionId");
     cy.get("#main-data-grid [data-testid=cell-data]").should("have.text", "41");
   });
 
@@ -280,20 +271,20 @@ describe("scenarios > question > native subquery", () => {
       },
     };
 
-    createQuestion(questionDetails).then(
+    H.createQuestion(questionDetails).then(
       ({ body: { id: nestedQuestionId } }) => {
         const tagID = `#${nestedQuestionId}`;
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
-        startNewNativeQuestion();
-        focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
+        H.startNewNativeQuestion();
+        H.focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
           questionDetails.name,
         );
 
-        runNativeQuery();
+        H.runNativeQuery();
         cy.findAllByTestId("cell-data").should("contain", "37.65");
       },
     );
@@ -305,14 +296,14 @@ describe("scenarios > question > native subquery", () => {
       native: { query: "select 1;" }, // semicolon is important here
     };
 
-    createNativeQuestion(questionDetails).then(
+    H.createNativeQuestion(questionDetails).then(
       ({ body: { id: baseQuestionId } }) => {
         const tagID = `#${baseQuestionId}`;
 
-        startNewNativeQuestion();
-        focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
+        H.startNewNativeQuestion();
+        H.focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
 
-        runNativeQuery();
+        H.runNativeQuery();
         cy.findAllByTestId("cell-data").should("contain", "1");
       },
     );
