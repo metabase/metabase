@@ -649,7 +649,7 @@ describe("issue 21665", () => {
 
     H.visitDashboard("@dashboardId");
 
-    cy.get("@dashboardLoaded").should("have.callCount", 6);
+    cy.get("@dashboardLoaded").should("have.callCount", 3);
     cy.findByTestId("dashcard")
       .findByText("There was a problem displaying this chart.")
       .should("be.visible");

@@ -723,8 +723,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.queryBuilderHeader().button("Save").click();
 
       // should not show dashboard you can't write to
-      // why are there 3 requests? 😵‍💫
-      cy.wait(["@getADashboard", "@getADashboard"]);
+      cy.wait(["@getADashboard"]);
 
       H.modal()
         .findByText(/Orders in a dashboard/)
