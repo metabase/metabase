@@ -309,6 +309,7 @@ describe("Notebook", () => {
         });
       });
 
+      // eslint-disable-next-line jest/expect-expect
       it("should show tabs if more than one type is chosen", async () => {
         const models: DataPickerValue["model"][] = ["dataset", "card"];
 
