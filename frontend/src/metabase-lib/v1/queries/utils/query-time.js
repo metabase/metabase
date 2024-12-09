@@ -120,7 +120,8 @@ export function generateTimeFilterValuesDescriptions(filter) {
 
   if (operator === "time-interval") {
     const [n, unit] = values;
-    return [Lib.describeTemporalInterval(n, unit)];
+    const temporalParts = Lib.describeTemporalInterval(n, unit).split(" ");
+    return [temporalParts.slice(1).join(" ")];
   } else if (isStartingFrom(filter)) {
     const [interval, unit] = getRelativeDatetimeInterval(filter);
     const prefix = Lib.describeTemporalInterval(interval, unit);
