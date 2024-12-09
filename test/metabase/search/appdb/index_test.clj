@@ -92,8 +92,8 @@
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest partial-word-test
-  (with-fulltext-filtering
-    (with-index
+  (with-index
+    (with-fulltext-filtering
       (testing "It does not match partial words"
       ;; does not include revenue
         (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
@@ -114,8 +114,8 @@
         (is (empty? (search.index/search "emp satisfaction")))))))
 
 (deftest either-test
-  (with-fulltext-filtering
-    (with-index
+  (with-index
+    (with-fulltext-filtering
       (testing "We get results for both terms"
         (is (= 3 (index-hits "satisfaction")))
         (is (<= 1 (index-hits "user"))))
@@ -129,8 +129,8 @@
                (index-hits "satisfaction or user")))))))
 
 (deftest negation-test
-  (with-fulltext-filtering
-    (with-index
+  (with-index
+    (with-fulltext-filtering
       (testing "We can filter out results"
         (is (= 3 (index-hits "satisfaction")))
         (is (= 1 (index-hits "customer")))
@@ -138,8 +138,8 @@
         (is (= 2 (index-hits "satisfaction -customer")))))))
 
 (deftest phrase-test
-  (with-fulltext-filtering
-    (with-index
+  (with-index
+    (with-fulltext-filtering
     ;; Less matches without an english dictionary
       (is (= #_2 3 (index-hits "projected")))
       (is (= 2 (index-hits "revenue")))
