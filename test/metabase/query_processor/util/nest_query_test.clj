@@ -762,3 +762,51 @@
                     (-> query'
                         nest-query/nest-expressions
                         readable-query)))))))))
+
+(deftest ^:parallel nest-expressions-ignores-temporal-units-from-joined-fields
+  (testing "clear temporal units from joined fields #48058"
+    (driver/with-driver :h2
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (=? {:source-query
+                 {:fields
+                  [[:field
+                    (meta/id :orders :user-id)
+                    {::add/source-table (meta/id :orders),
+                     ::add/source-alias "USER_ID",
+                     ::add/desired-alias "USER_ID",
+                     ::add/position 0}]
+                   [:field
+                    (meta/id :orders :total)
+                    {::add/source-table (meta/id :orders),
+                     ::add/source-alias "TOTAL",
+                     ::add/desired-alias "TOTAL",
+                     ::add/position 1}]
+                   [:expression
+                    "double_total"
+                    {::add/desired-alias "double_total", ::add/position 2}]
+                   [:field
+                    (meta/id :people :created-at)
+                    {:temporal-unit (symbol "nil #_\"key is not present.\"")
+                     ::add/source-alias "CREATED_AT",
+                     :join-alias "p",
+                     ::add/desired-alias "p__CREATED_AT",
+                     ::add/position 3,
+                     ::add/source-table "p"}]
+                   [:field
+                    (meta/id :people :id)
+                    {:join-alias "p",
+                     ::add/source-table "p",
+                     ::add/source-alias "ID",
+                     ::add/desired-alias "p__ID",
+                     ::add/position 4}]]}}
+                (->> (lib.tu.macros/mbql-query orders
+                       {:expressions {"double_total" [:* $total 2]}
+                        :breakout    [!hour-of-day.people.created-at
+                                      [:expression "double_total"]]
+                        :aggregation [[:count]]
+                        :joins [{:source-table $$people
+                                 :alias        "p"
+                                 :condition    [:= $user-id &p.people.id]}]})
+                     qp.preprocess/preprocess
+                     add/add-alias-info
+                     nest-expressions)))))))
