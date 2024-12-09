@@ -11,13 +11,12 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListItemIcon,
+  NodeListItemId,
   NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-  QuestionId,
-} from "./NodeList.styled";
-import { PaneContent } from "./Pane.styled";
+} from "./NodeList";
 
 interface DatabaseSchemasPaneProps {
   onBack: () => void;
@@ -46,7 +45,7 @@ const DatabaseSchemasPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <PaneContent>
+      <SidebarContent.Pane>
         <NodeListContainer>
           {sortedModels.length ? (
             <>
@@ -68,7 +67,7 @@ const DatabaseSchemasPane = ({
                     >
                       <NodeListItemIcon name="model" />
                       <NodeListItemName>{model.name}</NodeListItemName>
-                      <QuestionId>{`#${model.id}`}</QuestionId>
+                      <NodeListItemId>{`#${model.id}`}</NodeListItemId>
                     </NodeListItemLink>
                   </li>
                 ))}
@@ -97,7 +96,7 @@ const DatabaseSchemasPane = ({
             ))}
           </ul>
         </NodeListContainer>
-      </PaneContent>
+      </SidebarContent.Pane>
     </SidebarContent>
   );
 };
