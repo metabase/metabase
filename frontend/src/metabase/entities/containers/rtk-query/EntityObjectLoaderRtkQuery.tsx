@@ -13,6 +13,7 @@ import {
 import type { Dispatch } from "metabase-types/store";
 
 import type {
+  BaseEntity,
   EntityDefinition,
   EntityId,
   EntityIdSelector,
@@ -45,7 +46,7 @@ interface LoadingAndErrorWrapperProps {
 }
 
 export interface Props<Entity, EntityWrapper> {
-  children: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
+  ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
   dispatchApiErrorEvent?: boolean;
   entityAlias?: string;
   entityId: EntityId | EntityIdSelector | undefined;
@@ -69,8 +70,11 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  *
  * @deprecated use "metabase/api" instead
  */
-export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
-  children,
+export function EntityObjectLoaderRtkQuery<
+  Entity extends BaseEntity,
+  EntityWrapper,
+>({
+  ComposedComponent,
   dispatchApiErrorEvent = true,
   entityAlias,
   entityId: entityIdProp,
@@ -134,7 +138,7 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   const {
     data,
     error: rtkError,
-    isLoading,
+    isFetching,
     refetch,
   } = useGetQuery(entityId != null ? finalQuery : skipToken, {
     refetchOnMountOrArgChange: reload,
@@ -158,11 +162,11 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
   }, [objectStatePath, requestType]);
 
   useEffect(() => {
-    if (isLoading) {
+    if (isFetching) {
       // @ts-expect-error - invalid typings in redux-actions package
       dispatch(setRequestLoading(requestStatePath, queryKey));
     }
-  }, [dispatch, isLoading, requestStatePath, queryKey]);
+  }, [dispatch, isFetching, requestStatePath, queryKey]);
 
   useEffect(() => {
     if (rtkError) {
@@ -230,18 +234,22 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
     return entityDefinition.wrapEntity(object, dispatch);
   }, [dispatch, object, entityDefinition, wrapped]);
 
-  const renderedChildren = children({
-    ...actionCreators,
-    ...props,
-    dispatch,
-    dispatchApiErrorEvent,
-    error,
-    fetched,
-    loading,
-    object: wrappedObject,
-    [entityAlias || entityDefinition.nameOne]: wrappedObject,
-    reload: refetch,
-  });
+  const children = (
+    <ComposedComponent
+      {...actionCreators}
+      {...props}
+      {...{
+        [entityAlias || entityDefinition.nameOne]: wrappedObject,
+      }}
+      dispatch={dispatch}
+      dispatchApiErrorEvent={dispatchApiErrorEvent}
+      error={error}
+      fetched={fetched}
+      loading={loading || isFetching}
+      object={wrappedObject}
+      reload={refetch}
+    />
+  );
 
   if (loadingAndErrorWrapper) {
     return (
@@ -250,12 +258,12 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
         error={error}
         noWrapper
       >
-        {renderedChildren}
+        {children}
       </LoadingAndErrorWrapper>
     );
   }
 
-  return renderedChildren;
+  return children;
 }
 
 /**
@@ -266,7 +274,9 @@ export const entityObjectLoaderRtkQuery =
   (ComposedComponent: (props: any) => ReactNode) =>
   // eslint-disable-next-line react/display-name
   (props: any): ReactNode => (
-    <EntityObjectLoaderRtkQuery {...props} {...eolProps}>
-      {childProps => <ComposedComponent {...childProps} />}
-    </EntityObjectLoaderRtkQuery>
+    <EntityObjectLoaderRtkQuery
+      ComposedComponent={ComposedComponent}
+      {...props}
+      {...eolProps}
+    />
   );

@@ -1,6 +1,8 @@
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
+import type { IconName } from "metabase/ui";
+import type { Collection } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import type { UseQuery } from "./rtk";
@@ -13,6 +15,12 @@ export type FetchType = string;
 
 export type EntityId = string | number;
 
+export type BaseEntity = {
+  id: EntityId;
+  name?: string;
+  display_name?: string;
+};
+
 export type EntityIdSelector = (
   state: State,
   props: unknown,
@@ -22,9 +30,33 @@ export type EntityQuery = any;
 
 export type EntityQuerySelector = (state: State, props: unknown) => EntityQuery;
 
-// TODO: add more entity types
-// https://github.com/metabase/metabase/issues/50323
-export type EntityType = "database" | "table" | string;
+/**
+ * Corresponds to the "name" parameter passed to "createEntity" function.
+ * There should be an entry here for every "createEntity" function call.
+ */
+export type EntityType =
+  | "actions"
+  | "alerts"
+  | "bookmarks"
+  | "collections"
+  | "dashboards"
+  | "databases"
+  | "fields"
+  | "groups"
+  | "indexedEntities"
+  | "persistedModels"
+  | "pulses"
+  | "questions"
+  | "revisions"
+  | "schemas"
+  | "search"
+  | "segments"
+  | "snippetCollections"
+  | "snippets"
+  | "tables"
+  | "timelineEvents"
+  | "timelines"
+  | "users";
 
 export type EntityTypeSelector = (state: State, props: unknown) => EntityType;
 
@@ -33,16 +65,23 @@ export interface EntityOptions {
   requestType: RequestType;
 }
 
-export interface EntityDefinition<Entity, EntityWrapper> {
+export interface EntityDefinition<Entity extends BaseEntity, EntityWrapper> {
   actions: {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
   actionTypes: Record<string, string>;
   getQueryKey: (entityQuery: EntityQuery) => string;
   getObjectStatePath: (entityId: EntityId) => string;
+  name: string;
   nameOne: string;
   normalize: (object: unknown) => {
     object: unknown;
+  };
+  objectSelectors: {
+    getName: (entity: Entity) => string;
+    getIcon: (entity: Entity) => { name: IconName };
+    getColor: (entity: Entity) => string | undefined;
+    getCollection: (entity: Entity) => Collection | undefined;
   };
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
