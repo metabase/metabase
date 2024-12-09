@@ -844,10 +844,10 @@ class Question {
 
   /** Applies the template tag parameters from the card to the question. */
   applyTemplateTagParameters(): Question {
-    const isQuestionNative = Lib.queryDisplayInfo(this.query()).isNative;
+    const { isNative } = Lib.queryDisplayInfo(this.query());
 
-    if (!isQuestionNative) {
-      return question;
+    if (!isNative) {
+      return this;
     }
 
     return this.setParameters(getTemplateTagParametersFromCard(this.card()));
