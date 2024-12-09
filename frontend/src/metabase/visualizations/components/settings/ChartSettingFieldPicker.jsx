@@ -118,7 +118,8 @@ const ChartSettingFieldPicker = ({
         placeholder={
           options.length === 0 ? t`No valid fields` : t`Select a field`
         }
-        px="xs"
+        pl="xs"
+        pr="sm"
         w="100%"
         initiallyOpened={autoOpenWhenUnset && value === undefined}
         styles={{
@@ -138,14 +139,15 @@ const ChartSettingFieldPicker = ({
         }}
         iconWidth="auto"
         rightSection={
-          <Group noWrap spacing="xs" px="xs">
+          <Group noWrap spacing="xs" pl="xs" pr="sm">
             {!disabled && (
-              <Box px="xs">
-                <Icon name="chevrondown" />
+              <Box px="xs" mt="xs">
+                <Icon c="text-medium" name="chevrondown" />
               </Box>
             )}
             {menuWidgetInfo && (
               <ActionIcon
+                c="text-medium"
                 style={{ pointerEvents: "all" }}
                 data-testid={`settings-${value}`}
                 onClick={e => {
@@ -157,6 +159,7 @@ const ChartSettingFieldPicker = ({
             )}
             {onRemove && (
               <ActionIcon
+                c="text-medium"
                 data-testid={`remove-${value}`}
                 onClick={onRemove}
                 style={{ pointerEvents: "all" }}
