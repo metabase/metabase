@@ -99,6 +99,28 @@ H.describeWithSnowplow("scenarios > browse", () => {
       "not.exist",
     );
   });
+
+  it("The Browse models page shows an error message if the search endpoint throws an error", () => {
+    cy.visit("/");
+    cy.intercept("GET", "/api/search*", req => {
+      req.reply({ statusCode: 400 });
+    });
+    navigationSidebar().findByLabelText("Browse models").click();
+    cy.findByLabelText("Models")
+      .findAllByText("An error occurred")
+      .should("have.length", 2);
+  });
+
+  it("The Browse metrics page shows an error message if the search endpoint throws an error", () => {
+    cy.visit("/");
+    cy.intercept("GET", "/api/search*", req => {
+      req.reply({ statusCode: 400 });
+    });
+    navigationSidebar().findByLabelText("Browse metrics").click();
+    cy.findByLabelText("Metrics")
+      .findByText("An error occurred")
+      .should("be.visible");
+  });
 });
 
 H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
