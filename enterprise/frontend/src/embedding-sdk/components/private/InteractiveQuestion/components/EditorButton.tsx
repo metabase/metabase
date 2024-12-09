@@ -1,5 +1,6 @@
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
+import { ActionIcon, Icon } from "metabase/ui";
 
 export const EditorButton = ({
   isOpen,
@@ -16,10 +17,16 @@ export const EditorButton = ({
       question,
       isActionListVisible: true,
     }) && (
-      <QuestionNotebookButton
-        isShowingNotebook={isOpen}
-        setQueryBuilderMode={onClick}
-      />
+      <ActionIcon
+        data-testid="notebook-button"
+        size="lg"
+        c={isOpen ? "text-white" : "text-dark"}
+        color="brand"
+        variant={isOpen ? "filled" : "default"}
+        onClick={onClick}
+      >
+        <Icon name="notebook" />
+      </ActionIcon>
     )
   );
 };
