@@ -1188,3 +1188,8 @@
                             ba)))]
               (gen))
       :cljs (throw (ex-info "Seeded NanoIDs are not supported in CLJS" {:seed-str seed-str})))))
+
+(defn intov
+  "WIP"
+  [to & args]
+  (apply into (vec to) args))
