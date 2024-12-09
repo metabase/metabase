@@ -93,7 +93,7 @@ import {
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
-import { useRegisterMetabotContext } from "./use-register-metabot-context";
+import { useRegisterQueryBuilderMetabotContext } from "./use-register-query-builder-metabot-context";
 import { useSaveQuestion } from "./use-save-question";
 
 const timelineProps = {
@@ -295,7 +295,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB(location, params);
   });
 
-  useRegisterMetabotContext();
+  useRegisterQueryBuilderMetabotContext();
 
   useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
