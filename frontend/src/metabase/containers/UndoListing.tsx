@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import BodyComponent from "metabase/components/BodyComponent";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -12,7 +11,7 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Progress, Transition } from "metabase/ui";
+import { Portal, Progress, Transition } from "metabase/ui";
 import type { Undo } from "metabase-types/store/undo";
 
 import CS from "./UndoListing.module.css";
@@ -154,12 +153,13 @@ export function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
     </Transition>
   );
 }
-function UndoListingInner() {
+
+export function UndoListing() {
   const dispatch = useDispatch();
   const undos = useSelector(state => state.undo);
 
   return (
-    <UndoList data-testid="undo-list" aria-label="undo-list">
+    <FloatingUndoList>
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}
@@ -168,8 +168,16 @@ function UndoListingInner() {
           onDismiss={() => dispatch(dismissUndo({ undoId: undo.id }))}
         />
       ))}
-    </UndoList>
+    </FloatingUndoList>
   );
 }
 
-export const UndoListing = BodyComponent(UndoListingInner);
+export const FloatingUndoList = ({ children }: { children: ReactNode }) => {
+  return (
+    <Portal>
+      <UndoList data-testid="undo-list" aria-label="undo-list">
+        {children}
+      </UndoList>
+    </Portal>
+  );
+};
