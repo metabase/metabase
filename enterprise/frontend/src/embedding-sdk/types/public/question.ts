@@ -1,6 +1,6 @@
 export interface MetabaseQuestion {
   id: number;
-  name: string | null;
+  name: string;
   description: string | null;
   entityId: string;
 

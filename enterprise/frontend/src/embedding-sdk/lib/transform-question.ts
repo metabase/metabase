@@ -6,7 +6,7 @@ export function transformSdkQuestion(question: Question): MetabaseQuestion {
 
   return {
     id: question.id(),
-    name: question.displayName() ?? null,
+    name: question.displayName() ?? "",
     description: question.description(),
     entityId: card.entity_id,
 
