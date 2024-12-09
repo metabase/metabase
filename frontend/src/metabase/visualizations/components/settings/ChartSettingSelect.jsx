@@ -38,6 +38,8 @@ export const ChartSettingSelect = ({
 
   return (
     <Select
+      id={id}
+      data-testid="chart-setting-select"
       className={cx(className, CS.block)}
       data={data}
       dropdownComponent={dropdownComponent}
@@ -46,7 +48,6 @@ export const ChartSettingSelect = ({
       onChange={e => onChange(e)}
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
       initiallyOpened={isInitiallyOpen}
-      wrapperProps={{ id }}
       searchable={!!searchProp}
       styles={{
         input: {

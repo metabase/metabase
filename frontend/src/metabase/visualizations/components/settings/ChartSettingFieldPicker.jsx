@@ -85,6 +85,7 @@ const ChartSettingFieldPicker = ({
       align="center"
     >
       <Select
+        data-testid="chartsettings-field-picker-select"
         data={data}
         disabled={disabled}
         value={value}
@@ -131,9 +132,11 @@ const ChartSettingFieldPicker = ({
             border: "none",
             lineHeight: "1rem",
           },
+          rightSection: {
+            pointerEvents: "none",
+          },
         }}
         iconWidth="auto"
-        rightSectionWidth="auto"
         rightSection={
           <Group noWrap spacing="xs" px="xs">
             {!disabled && (
@@ -143,6 +146,7 @@ const ChartSettingFieldPicker = ({
             )}
             {menuWidgetInfo && (
               <ActionIcon
+                style={{ pointerEvents: "all" }}
                 data-testid={`settings-${value}`}
                 onClick={e => {
                   onShowWidget(menuWidgetInfo, e.target);
@@ -152,7 +156,11 @@ const ChartSettingFieldPicker = ({
               </ActionIcon>
             )}
             {onRemove && (
-              <ActionIcon data-testid={`remove-${value}`} onClick={onRemove}>
+              <ActionIcon
+                data-testid={`remove-${value}`}
+                onClick={onRemove}
+                style={{ pointerEvents: "all" }}
+              >
                 <Icon name="close" />
               </ActionIcon>
             )}
