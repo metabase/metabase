@@ -130,10 +130,13 @@ function ActionMenu({
       Entity.actions.update({ id: item.id, archived: false }),
     );
     await dispatch(BookmarkEntity.actions.invalidateLists());
-    const parent = HACK_getParentCollectionFromEntityUpdateAction(item, result);
 
-    // FIXME: doesn't work for dashboard questions
-    const redirect = parent ? Urls.collection(parent) : `/collection/root`;
+    const entity = Entity.HACK_getObjectFromAction(result);
+    const parentCollection = HACK_getParentCollectionFromEntityUpdateAction(
+      item,
+      result,
+    );
+    const redirect = getParentEntityLink(entity, parentCollection);
 
     dispatch(
       addUndo({
@@ -183,6 +186,25 @@ function ActionMenu({
       )}
     </>
   );
+}
+
+export function getParentEntityLink(
+  updatedEntity: any,
+  parentCollection: Pick<Collection, "id" | "name"> | undefined,
+) {
+  // get link for parent collection
+  const parentCollectionLink = parentCollection
+    ? Urls.collection(parentCollection)
+    : `/collection/root`;
+
+  // get link for parent dashboard if we're dealing with a dashboard question
+  const parentDashboardId =
+    updatedEntity.type === "question" ? updatedEntity.dashboard_id : undefined;
+  const parentDashboardLink = parentDashboardId
+    ? Urls.dashboard({ id: parentDashboardId, name: "" })
+    : undefined;
+
+  return parentDashboardLink ? parentDashboardLink : parentCollectionLink;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
