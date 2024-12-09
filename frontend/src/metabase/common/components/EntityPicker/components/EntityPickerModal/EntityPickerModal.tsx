@@ -360,12 +360,11 @@ export function EntityPickerModal<
       h="100vh"
       trapFocus={trapFocus}
       closeOnEscape={false} // we're doing this manually in useWindowEvent
-      xOffset="10vw"
       yOffset="10dvh"
       zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
-      <ModalContent h="100%" maw="57.5rem">
+      <ModalContent h="100%" maw="57.5rem" mah="40rem">
         <Modal.Header
           px="2.5rem"
           pt="1rem"

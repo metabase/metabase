@@ -165,6 +165,10 @@ export const createShouldShowItem = (
 ) => {
   return (item: QuestionPickerItem & { database_id?: DatabaseId }) => {
     if (item.model === "collection") {
+      if (item.id === "root" || item.is_personal) {
+        return true;
+      }
+
       const below = item.below ?? [];
       const here = item.here ?? [];
       const contents = [...below, ...here];
@@ -172,7 +176,7 @@ export const createShouldShowItem = (
         contents.includes(model as CollectionItemModel),
       );
 
-      return item.id === "root" && !!item.is_personal && hasCards;
+      return hasCards;
     }
     if (
       (isNullOrUndefined(databaseId) ||
