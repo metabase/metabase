@@ -108,9 +108,11 @@ export function GridLayout({
 
         // We cannot use CSS variables here, as the svg data in background-image
         // lives a separate style tree from the rest of the app.
-        cellStrokeColor: theme.fn.themeColor("border"),
+        cellStrokeColor:
+          theme.other?.dashboard?.gridBorderColor ??
+          theme.fn.themeColor("border"),
       }),
-    [cellSize, gridWidth, margin, cols, theme.fn],
+    [cellSize, gridWidth, margin, cols, theme],
   );
 
   const style = useMemo(
