@@ -127,8 +127,7 @@
   This is a delay so that the settings for a user are loaded only if and when they are actually needed during a given
   API request.
 
-  This is normally bound automatically by session middleware, in
-  [[metabase.server.middleware.session/do-with-current-user]]."
+  This is normally bound automatically by session middleware, in [[metabase.server.middleware.session]]."
   (delay (atom nil)))
 
 (def ^:private retired-setting-names
@@ -1031,7 +1030,12 @@
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
       (when-let [registered-setting (core/get @registered-settings setting-name)]
         (when (not= setting-ns (:namespace registered-setting))
-          (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
+          ;; not i18n'ed because this is supposed to be developer-facing only.
+          (throw (ex-info (format "Setting %s already registered in %s. You can remove the old definition with (swap! %s dissoc %s)"
+                                  setting-name
+                                  (:namespace registered-setting)
+                                  `registered-settings
+                                  (keyword setting-name))
                           {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
       (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
                                            (vals @registered-settings)))]

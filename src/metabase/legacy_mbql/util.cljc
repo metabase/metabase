@@ -262,6 +262,21 @@
        [:>= col-default-bucket lower-with-offset]
        [:<  col-default-bucket upper-with-offset]])))
 
+(defn desugar-during
+  "Transform a `:during` expression to an `:and` expression."
+  [m]
+  (lib.util.match/replace
+    m
+    [:during col value unit]
+    (let [col-default-bucket (cond-> col
+                               (and (vector? col) (= 3 (count col)))
+                               (update 2 assoc :temporal-unit :default))
+          lower-bound (u.time/truncate value unit)
+          upper-bound (u.time/add lower-bound unit 1)]
+      [:and
+       [:>= col-default-bucket lower-bound]
+       [:<  col-default-bucket upper-bound]])))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -411,6 +426,7 @@
       desugar-inside
       simplify-compound-filter
       desugar-temporal-extract
+      desugar-during
       maybe-desugar-expression))
 
 (defmulti ^:private negate* first)

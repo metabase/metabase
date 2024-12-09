@@ -1,10 +1,13 @@
 ;; The interface encapsulating the various search engine backends.
-(ns metabase.search.engine
-  (:require [metabase.config :as config]))
+(ns metabase.search.engine)
 
 (defmulti supported-engine?
   "Does this instance support the given engine?"
   identity)
+
+(defmethod supported-engine? :default [engine]
+  (throw (ex-info (format "Unknown search engine: %s" engine)
+                  {:engine engine})))
 
 (defmulti results
   "Return a reducible of the search result matching a given query."
@@ -43,18 +46,10 @@
 (defn active-engines
   "List the search engines that are supported. Does not mention the legacy in-place engine."
   []
-  (for [[k p] (dissoc (methods supported-engine?) :search.engine/in-place) :when (p k)] k))
+  (for [[k p] (dissoc (methods supported-engine?) :default :search.engine/in-place) :when (p k)] k))
 
 (defn known-engine?
   "Is the given engine recognized?"
   [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
     (some registered? (cons engine (ancestors engine)))))
-
-(defn default-engine
-  "In the absence of an explicit engine argument in a request, which engine should be used?"
-  []
-  (if config/is-test?
-    ;; The API tests have not yet been ported to reflect the new search's results.
-    :search.engine/in-place
-    (first (filter supported-engine? [:search.engine/fulltext :search.engine/in-place]))))

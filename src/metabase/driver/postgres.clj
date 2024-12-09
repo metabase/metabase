@@ -63,6 +63,7 @@
 (doseq [[feature supported?] {:connection-impersonation true
                               :describe-fields          true
                               :describe-fks             true
+                              :describe-indexes         true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -285,7 +286,12 @@
   (sql/format
    {:union-all
     [{:select [[:c.column_name :name]
-               [:c.udt_name :database-type]
+               [[:case
+                 [:in :c.udt_schema [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :c.udt_name]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :c.udt_schema :c.udt_name]]
+                :database-type]
                [[:- :c.ordinal_position [:inline 1]] :database-position]
                [:c.table_schema :table-schema]
                [:c.table_name :table-name]
@@ -327,7 +333,12 @@
               (when schema-names [:in :c.table_schema schema-names])
               (when table-names [:in :c.table_name table-names])]}
      {:select [[:pa.attname :name]
-               [:pt.typname :database-type]
+               [[:case
+                 [:in :ptn.nspname [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :pt.typname]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :ptn.nspname :pt.typname]]
+                :database-type]
                [[:- :pa.attnum [:inline 1]] :database-position]
                [:pn.nspname :table-schema]
                [:pc.relname :table-name]
@@ -338,10 +349,11 @@
       :from [[:pg_catalog.pg_class :pc]]
       :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
              [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
-             [:pg_catalog.pg_type :pt] [:= :pt.oid :pa.atttypid]]
+             [:pg_catalog.pg_type :pt] [:= :pt.oid :pa.atttypid]
+             [:pg_catalog.pg_namespace :ptn] [:= :ptn.oid :pt.typnamespace]]
       :where [:and
               [:= :pc.relkind [:inline "m"]]
-              [:>= :pa.attnum 1]
+              [:>= :pa.attnum [:inline 1]]
               (when schema-names [:in :pn.nspname schema-names])
               (when table-names [:in :pc.relname table-names])]}]
     :order-by [:table-schema :table-name :database-position]}
@@ -371,6 +383,31 @@
                         (when table-names [:in :fk_table.relname table-names])
                         (when schema-names [:in :fk_ns.nspname schema-names])]
                :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-indexes-sql :postgres
+  [driver & {:keys [schema-names table-names]}]
+  ;; From https://github.com/pgjdbc/pgjdbc/blob/master/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L2662
+  (sql/format {:select [:tmp.table-schema
+                        :tmp.table-name
+                        [[:trim :!both [:inline "\""] :!from [:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false]] :field-name]]
+               :from [[{:select [[:n.nspname :table-schema]
+                                 [:ct.relname :table-name]
+                                 [:ci.oid :ci_oid]
+                                 [[:. [:composite [:information_schema._pg_expandarray :i.indkey]] :n] :pos]]
+                        :from [[:pg_catalog.pg_class :ct]]
+                        :join [[:pg_catalog.pg_namespace :n] [:= :ct.relnamespace :n.oid]
+                               [:pg_catalog.pg_index :i] [:= :ct.oid :i.indrelid]
+                               [:pg_catalog.pg_class :ci] [:= :ci.oid :i.indexrelid]]
+                        :where [:and
+                                ;; No filtered indexes
+                                [:= [:pg_catalog.pg_get_expr :i.indpred :i.indrelid] nil]
+                                [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
+                                (when (seq schema-names) [:in :n.nspname schema-names])
+                                (when (seq table-names) [:in :ct.relname table-names])]}
+                       :tmp]]
+               ;; The only column or the first column in a composite index
+               :where [:= :tmp.pos 1]}
               :dialect (sql.qp/quote-style driver)))
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same

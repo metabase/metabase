@@ -104,7 +104,7 @@
            The identifier should be 'This', not 'it' "
     ;; metabase.models.revision.diff/diff-string does not know how to generate diff string for :collection_unknown_field
     ;; and it'll return nil. in that case the identifier should not be changed to "made it card public"
-    (is (= (str "made this Card public.")
+    (is (= "made this Card public."
            (u/build-sentence
             ((get-method revision/diff-strings :default)
              Card

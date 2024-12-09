@@ -129,10 +129,6 @@ export const refreshTokenAsync = createAsyncThunk(
       }
       return session;
     } catch (exception: unknown) {
-      if (exception instanceof Error) {
-        Error.captureStackTrace(exception, refreshTokenAsync);
-      }
-
       // The host app may have a lot of logs (and the sdk logs a lot too), so we
       // make a big red error message to make it visible as this is 90% a blocking error
       console.error(...bigErrorHeader("Failed to get auth session"), exception);
