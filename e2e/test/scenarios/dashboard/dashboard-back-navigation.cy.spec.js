@@ -134,9 +134,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.getDashboardCard(1).findByText("Text card").should("be.visible");
     H.getDashboardCard(2).findByText("Action card").should("be.visible");
 
-    // TODO: Dashboard requests are being made twice due to breadcrumbs. Need to find a solution
-    // This should be 1
-    cy.get("@dashboard.all").should("have.length", 2);
+    cy.get("@dashboard.all").should("have.length", 1);
     cy.get("@dashcardQuery.all").should("have.length", 1);
 
     H.appBar().findByText("Our analytics").click();
@@ -182,9 +180,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.queryBuilderHeader().within(() => {
       cy.findByLabelText("Back to Orders in a dashboard").click();
       cy.wait("@dashcardQuery");
-      // TODO: Extra Dashboard requests are being made due to breadcrumbs. Need to find a solution
-      // This should be 1
-      cy.get("@dashboard.all").should("have.length", 3);
+      cy.get("@dashboard.all").should("have.length", 1);
     });
 
     H.getDashboardCard().within(() => {
@@ -209,9 +205,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
       .click();
 
     H.getDashboardCard(1).findByText(PERMISSION_ERROR);
-    // TODO: Extra Dashboard requests are being made due to breadcrumbs. Need to find a solution
-    // This should be 1
-    cy.get("@dashboard.all").should("have.length", 2);
+    cy.get("@dashboard.all").should("have.length", 1);
     cy.get("@dashcardQuery.all").should("have.length", 1);
   });
 
@@ -326,9 +320,7 @@ describe(
       });
 
       // dashboard is taken from the cache, no re-fetch
-      // TODO: Extra Dashboard requests are being made due to breadcrumbs. Need to find a solution
-      // This should be 1
-      cy.get("@dashboard.all").should("have.length", 2);
+      cy.get("@dashboard.all").should("have.length", 1);
       // the query is triggered second time as first one never loaded - no value in the cache
       cy.get("@dashcardQuery.all").should("have.length", 2);
     });

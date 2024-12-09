@@ -1,15 +1,13 @@
-import { type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
 
 import {
   skipToken,
-  useGetCardQuery,
   useGetCollectionQuery,
   useGetDashboardQuery,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
-import { getViewedItem } from "metabase/selectors/app";
+import { getQuestion } from "metabase/query_builder/selectors";
+import { getCollectionId } from "metabase/selectors/app";
 import type { CollectionId } from "metabase-types/api";
 
 import {
@@ -17,56 +15,40 @@ import {
   type CollectionBreadcrumbsProps as BreadcrumbsProps,
 } from "../../components/CollectionBreadcrumbs/CollectionBreadcrumbs";
 
-type CollectionBreadcrumbsProps = WithRouterProps &
-  Omit<BreadcrumbsProps, "collection" | "dashboard" | "baseCollectionId"> & {
-    collectionId?: CollectionId;
-    baseCollectionId?: CollectionId | null;
-  };
+type CollectionBreadcrumbsProps = Omit<
+  BreadcrumbsProps,
+  "collection" | "dashboard" | "baseCollectionId"
+> & {
+  collectionId?: CollectionId;
+  baseCollectionId?: CollectionId | null;
+  showContainingDashboard?: boolean;
+};
 
-// TODO: not sure how these changes will work for the embedding folks
-export const CollectionBreadcrumbs = withRouter(
-  (props: CollectionBreadcrumbsProps) => {
-    const viewedItem = useSelector(getViewedItem);
+export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
+  const statefulCollectionId = useSelector(getCollectionId);
+  const collectionId = props.collectionId ?? statefulCollectionId ?? "root";
 
-    const { currentData: viewedQuestion } = useGetCardQuery(
-      viewedItem.model === "question" && viewedItem.question?.id
-        ? { id: viewedItem.question.id() }
-        : skipToken,
-    );
+  const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
-    const { currentData: viewedDashboard } = useGetDashboardQuery(
-      viewedItem.model === "dashboard" && viewedItem.dashboard?.id
-        ? { id: viewedItem.dashboard.id }
-        : skipToken,
-    );
+  const question = useSelector(getQuestion);
+  const dashboardId = question?.dashboardId();
+  const isDashboardQuestion = _.isNumber(dashboardId);
+  const shouldShowDashboard =
+    props.showContainingDashboard && isDashboardQuestion;
+  const dashboardReq = useGetDashboardQuery(
+    shouldShowDashboard ? { id: dashboardId } : skipToken,
+  );
+  const dashboard = shouldShowDashboard ? dashboardReq?.data : undefined;
 
-    const viewedItemParentCollectionId =
-      viewedDashboard?.collection_id ?? viewedQuestion?.collection_id;
-    const collectionId =
-      props.collectionId ?? viewedItemParentCollectionId ?? ROOT_COLLECTION.id;
-    const { data: collection } = useGetCollectionQuery({ id: collectionId });
-
-    const dashboardId = viewedQuestion?.dashboard_id;
-    const isDashboardQuestion = _.isNumber(dashboardId);
-    const isQuestionPage = props.location.pathname.startsWith("/question");
-
-    const shouldShowDashboard = isDashboardQuestion && isQuestionPage;
-
-    const { currentData: viewedDashboardQuestionDashboard } =
-      useGetDashboardQuery(
-        shouldShowDashboard ? { id: dashboardId } : skipToken,
-      );
-
-    return (
-      <Breadcrumbs
-        {...props}
-        collection={collection}
-        dashboard={viewedDashboardQuestionDashboard}
-        baseCollectionId={props.baseCollectionId ?? null}
-      />
-    );
-  },
-);
+  return (
+    <Breadcrumbs
+      {...props}
+      collection={collection}
+      dashboard={dashboard}
+      baseCollectionId={props.baseCollectionId ?? null}
+    />
+  );
+};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionBreadcrumbs;

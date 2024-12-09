@@ -30,6 +30,7 @@ export interface AppBarLargeProps {
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isContainingDashboardPathVisible?: boolean;
   onToggleNavbar: () => void;
   onLogout: () => void;
 }
@@ -45,6 +46,7 @@ const AppBarLarge = ({
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  isContainingDashboardPathVisible,
   onToggleNavbar,
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
@@ -68,7 +70,9 @@ const AppBarLarge = ({
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs />
+            <CollectionBreadcrumbs
+              showContainingDashboard={isContainingDashboardPathVisible}
+            />
           ) : null}
         </AppBarInfoContainer>
       </AppBarLeftContainer>

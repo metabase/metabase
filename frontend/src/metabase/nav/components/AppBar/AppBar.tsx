@@ -20,6 +20,7 @@ export interface AppBarProps {
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isContainingDashboardPathVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
   onLogout: () => void;
