@@ -130,30 +130,21 @@ describe("scenarios > question > native subquery", () => {
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
           cy.findByText("Open Editor").click();
-          H.focusNativeEditor().realType(" ").realType(" a_");
+          H.nativeEditorType(" a_");
 
-          // Wait until another explicit autocomplete is triggered
-          // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
-          // See https://github.com/metabase/metabase/pull/20970
-          cy.wait(1000);
-
-          H.nativeEditorCompletions().findByText("A_UNIQUE");
+          H.nativeEditorCompletion("A_UNIQUE_COLUMN_NAME").should("be.visible");
 
           // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
           // so type it in two parts
-          H.focusNativeEditor().realType(" {{#");
-          H.focusNativeEditor()
-            .type("{leftarrow}{leftarrow}")
-            .realType(`{{#${questionId2}`);
-
-          // Wait until another explicit autocomplete is triggered
-          cy.wait(1000);
+          H.nativeEditorType(` {{#${questionId2}}}`);
 
           // Again, typing in in one go doesn't always work
           // so type it in two parts
-          H.focusNativeEditor().realType(" ").realType("another");
+          H.nativeEditorType(" another");
 
-          H.nativeEditorCompletions().findByText("ANOTHER");
+          H.nativeEditorCompletion("ANOTHER_UNIQUE_COLUMN_NAME").should(
+            "be.visible",
+          );
         });
       });
     });
