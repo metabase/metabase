@@ -134,7 +134,7 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByText(`Search documentation for "setu"`),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("Admin")).not.toBeInTheDocument();
+    expect(screen.queryByText("Admin")).not.toBeInTheDocument();
     expect(screen.queryByText("Settings - Setup")).not.toBeInTheDocument();
   });
 
@@ -149,7 +149,7 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByText(`Search documentation for "permi"`),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("Admin")).not.toBeInTheDocument();
+    expect(screen.queryByText("Admin")).not.toBeInTheDocument();
     expect(screen.queryByText("Permissions")).not.toBeInTheDocument();
   });
 

@@ -120,13 +120,16 @@ export const commonSetup = ({
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
   setupRecentViewsEndpoints(recents);
+  const adminState = isAdmin
+    ? createMockAdminState({
+        app: createMockAdminAppState({
+          paths: getAdminPaths(),
+        }),
+      })
+    : createMockAdminState();
 
   const storeInitialState = createMockState({
-    admin: createMockAdminState({
-      app: createMockAdminAppState({
-        paths: getAdminPaths(),
-      }),
-    }),
+    admin: adminState,
     settings: mockSettings({ ...settings, "token-features": TOKEN_FEATURES }),
     currentUser: createMockUser({
       is_superuser: isAdmin,
