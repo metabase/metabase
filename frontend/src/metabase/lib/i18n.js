@@ -12,13 +12,17 @@ export async function loadLocalization(locale) {
   // we need to be sure to set the initial localization before loading any files
   // so load metabase/services only when we need it
   // load and parse the locale
+
+  // Locales like xx-YY are stored as xx_YY.json
+  const localeFileName = locale.replace("-", "_");
+
   const translationsObject =
     locale !== "en"
       ? // We don't use I18NApi.locale/the GET helper because those helpers adds custom headers,
         // which will make the browser do the pre-flight request on the SDK.
         // The backend doesn't seem to support pre-flight request on the static assets, but even
         // if it supported them it's more performant to skip the pre-flight request
-        await fetch(`${api.basename}/app/locales/${locale}.json`).then(
+        await fetch(`${api.basename}/app/locales/${localeFileName}.json`).then(
           response => response.json(),
         )
       : // We don't serve en.json. Instead, use this object to fall back to theliterals.
