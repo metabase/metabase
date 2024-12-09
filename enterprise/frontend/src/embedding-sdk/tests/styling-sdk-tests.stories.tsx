@@ -2,14 +2,14 @@ import {
   MetabaseProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
-import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import type { SDKConfig } from "embedding-sdk/types";
+import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 
 export default {
   title: "EmbeddingSDK/styles tests",
 };
 
-const configThatWillError: SDKConfig = {
+const configThatWillError: MetabaseAuthConfig = {
   apiKey: "TEST",
   metabaseInstanceUrl: "http://fake-host:1234",
 };
@@ -25,7 +25,7 @@ export const NoStylesError = () => (
       <h1>This is outside of the provider</h1>
     </div>
 
-    <MetabaseProvider config={configThatWillError}>
+    <MetabaseProvider authConfig={configThatWillError}>
       <div style={{ border: "1px solid black" }}>
         <h1>This is inside of the provider</h1>
       </div>
@@ -42,7 +42,7 @@ export const NoStylesSuccess = () => (
       <h1>This is outside of the provider</h1>
     </div>
 
-    <MetabaseProvider config={storybookSdkDefaultConfig}>
+    <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
       <div style={{ border: "1px solid black" }}>
         <h1>This is inside of the provider</h1>
       </div>
@@ -55,7 +55,7 @@ export const NoStylesSuccess = () => (
 export const FontFromConfig = () => (
   <div>
     <MetabaseProvider
-      config={storybookSdkDefaultConfig}
+      authConfig={storybookSdkAuthDefaultConfig}
       theme={{ fontFamily: "Impact" }}
     >
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />

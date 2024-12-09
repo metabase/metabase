@@ -6,7 +6,7 @@ import {
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { describeEE } from "e2e/support/helpers";
 import {
-  JWT_PROVIDER_URL,
+  AUTH_PROVIDER_URL,
   METABASE_INSTANCE_URL,
   sdkJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdkForComponentTests,
@@ -27,8 +27,8 @@ describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
 
     cy.mount(
       <MetabaseProvider
-        config={{
-          authProviderUri: JWT_PROVIDER_URL,
+        authConfig={{
+          authProviderUri: AUTH_PROVIDER_URL,
           metabaseInstanceUrl: METABASE_INSTANCE_URL,
         }}
         locale="de"
