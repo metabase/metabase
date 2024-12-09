@@ -25,7 +25,7 @@ export function nativeEditorCompletion(label: string) {
 
 export function nativeEditorSelectAll() {
   focusNativeEditor();
-  cy.realPress(["Meta", "A"]);
+  cy.realPress(["Meta", "a"]);
   cy.get(".cm-selectionBackground").should("exist");
 }
 
