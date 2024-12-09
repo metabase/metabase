@@ -313,6 +313,7 @@ describe("scenarios > question > joined questions", () => {
             joins: [
               {
                 alias: "Products",
+                ident: "NdSHf6rWkuSm0yffTuKlI",
                 condition: [
                   "=",
                   ["field", ORDERS.PRODUCT_ID, null],
