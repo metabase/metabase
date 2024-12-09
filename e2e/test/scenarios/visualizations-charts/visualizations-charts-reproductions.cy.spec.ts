@@ -164,7 +164,10 @@ describe("issue 49529", () => {
 
     cy.findByTestId("viz-settings-button").click();
 
-    cy.findAllByTestId("select-button").eq(0).as("dimensionSelect").click();
+    cy.findAllByTestId("chartsettings-field-picker-select")
+      .eq(0)
+      .as("dimensionSelect")
+      .click();
     H.popover().findByText("ID").click();
 
     H.leftSidebar().findByText("Add series breakout").click();
