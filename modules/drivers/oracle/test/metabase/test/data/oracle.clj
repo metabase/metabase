@@ -305,3 +305,15 @@
                (into #{}
                      (map :name)
                      (:tables (driver/describe-database :oracle (mt/db))))))))))
+
+(defmethod tx/drop-view! :oracle
+  [driver database view-name {:keys [materialized?]}]
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
+    (u/ignore-exceptions
+      ;; If exists does not exist in oracle
+      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                     (sql/format
+                      {(if materialized? :drop-materialized-view :drop-view) [[[:raw qualified-view]]]}
+                      :dialect (sql.qp/quote-style driver))
+                     {:transaction? false}))))

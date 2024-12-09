@@ -1,14 +1,8 @@
+import { H } from "e2e/support";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  editDashboard,
-  restore,
-  selectDashboardFilter,
-  setFilter,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 function filterDashboard(suggests = true) {
-  visitDashboard(ORDERS_DASHBOARD_ID);
+  H.visitDashboard(ORDERS_DASHBOARD_ID);
   cy.contains("Orders");
   cy.contains("Text").click();
 
@@ -36,18 +30,18 @@ describe("support > permissions (metabase#8472)", () => {
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/params/*/search/*").as("search`,
     );
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     // Setup a dashboard with a text filter
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    editDashboard();
+    H.editDashboard();
 
-    setFilter("Text or Category", "Is");
+    H.setFilter("Text or Category", "Is");
 
     // Filter the first card by User Address
-    selectDashboardFilter(
+    H.selectDashboardFilter(
       cy.findByTestId("dashcard-container").first(),
       "Address",
     );

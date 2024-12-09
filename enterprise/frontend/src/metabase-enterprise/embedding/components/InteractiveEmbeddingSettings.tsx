@@ -7,7 +7,10 @@ import { SwitchWithSetByEnvVar } from "metabase/admin/settings/components/widget
 import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
 import { useMergeSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { Box, Stack } from "metabase/ui";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl } from "metabase/selectors/settings";
+import { Box, Button, Stack } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
@@ -30,12 +33,27 @@ const SAME_SITE_SETTING = {
   widget: SameSiteSelectWidget,
 } as const;
 
+const utmTags = {
+  utm_source: "product",
+  utm_medium: "docs",
+  utm_campaign: "embedding-interactive",
+  utm_content: "embedding-interactive-admin",
+};
+
 export function InteractiveEmbeddingSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
   function handleToggleInteractiveEmbedding(value: boolean) {
     updateSetting({ key: "enable-embedding-interactive" }, value);
   }
+
+  const quickStartUrl = useSelector(state =>
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
+    getDocsUrl(state, {
+      page: "embedding/interactive-embedding-quick-start-guide",
+      utm: utmTags,
+    }),
+  );
 
   const interactiveEmbeddingOriginsSetting = useMergeSetting(
     INTERACTIVE_EMBEDDING_ORIGINS_SETTING,
@@ -66,6 +84,21 @@ export function InteractiveEmbeddingSettings({
           onChange={handleToggleInteractiveEmbedding}
           label={t`Enable Interactive embedding`}
         />
+
+        <Box>
+          <SettingHeader
+            id="get-started"
+            setting={{
+              display_name: t`Get started`,
+            }}
+          />
+          <Button
+            variant="outline"
+            component={ExternalLink}
+            href={quickStartUrl}
+          >{t`Check out the Quick Start`}</Button>
+        </Box>
+
         <Box>
           <SettingHeader
             id={interactiveEmbeddingOriginsSetting.key}
@@ -80,6 +113,7 @@ export function InteractiveEmbeddingSettings({
             />
           </SetByEnvVarWrapper>
         </Box>
+
         <Box>
           <SettingHeader id={sameSiteSetting.key} setting={sameSiteSetting} />
           <SetByEnvVarWrapper setting={sameSiteSetting}>

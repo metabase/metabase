@@ -4,7 +4,7 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :refer [Field]]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.util :as sync-util]

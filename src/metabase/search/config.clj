@@ -81,7 +81,8 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(def ^:private static-weights
+(def static-weights
+  "Strength of the various scorers."
   {:default
    {:pinned              0
     :bookmarked          1

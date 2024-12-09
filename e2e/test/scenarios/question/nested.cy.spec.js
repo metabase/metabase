@@ -1,24 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  assertQueryBuilderRowCount,
-  chartPathWithFillColor,
-  createNativeQuestion,
-  entityPickerModal,
-  entityPickerModalTab,
-  filter,
-  filterField,
-  getDimensionByName,
-  openNotebook,
-  popover,
-  remapDisplayValueToFK,
-  restore,
-  summarize,
-  tableHeaderClick,
-  visitQuestion,
-  visitQuestionAdhoc,
-  visualize,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -40,7 +22,7 @@ const ordersJoinProductsQuery = {
 
 describe("scenarios > question > nested", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -64,19 +46,19 @@ describe("scenarios > question > nested", () => {
       { loadBaseQuestionMetadata: true },
     );
 
-    tableHeaderClick("Total");
+    H.tableHeaderClick("Total");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by Total: Auto binned");
-    chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 8);
+    H.chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 8);
 
     // Go back to the nested question and make sure Sum over time works
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested GUI").click();
 
-    tableHeaderClick("Total");
+    H.tableHeaderClick("Total");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -102,18 +84,18 @@ describe("scenarios > question > nested", () => {
       { loadBaseQuestionMetadata: true },
     );
 
-    tableHeaderClick("COUNT");
+    H.tableHeaderClick("COUNT");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by COUNT: Auto binned");
-    chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 5);
+    H.chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 5);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested SQL").click();
 
-    tableHeaderClick("COUNT");
+    H.tableHeaderClick("COUNT");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
     cy.wait("@dataset");
@@ -193,7 +175,7 @@ describe("scenarios > question > nested", () => {
       createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
       cy.log("Reported failing since v0.35.2");
-      assertQueryBuilderRowCount(5);
+      H.assertQueryBuilderRowCount(5);
     });
   });
 
@@ -203,7 +185,7 @@ describe("scenarios > question > nested", () => {
     );
 
     cy.log("Remap Product ID's display value to `title`");
-    remapDisplayValueToFK({
+    H.remapDisplayValueToFK({
       display_value: ORDERS.PRODUCT_ID,
       name: "Product ID",
       fk: PRODUCTS.TITLE,
@@ -228,7 +210,7 @@ describe("scenarios > question > nested", () => {
     ["default", "remapped"].forEach(scenario => {
       if (scenario === "remapped") {
         cy.log("Remap Product ID's display value to `title`");
-        remapDisplayValueToFK({
+        H.remapDisplayValueToFK({
           display_value: ORDERS.PRODUCT_ID,
           name: "Product ID",
           fk: PRODUCTS.TITLE,
@@ -261,12 +243,12 @@ describe("scenarios > question > nested", () => {
     createNestedQuestion({ baseQuestionDetails });
 
     // The column title
-    tableHeaderClick("Products → Category");
+    H.tableHeaderClick("Products → Category");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distribution").click();
     cy.wait("@dataset");
 
-    summarize();
+    H.summarize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Group by")
@@ -278,11 +260,11 @@ describe("scenarios > question > nested", () => {
 
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
-    openNotebook();
+    H.openNotebook();
     cy.findAllByTestId("notebook-cell-item")
       .contains(/^Products → Category$/) /* [1] */
       .click();
-    popover().within(() => {
+    H.popover().within(() => {
       isSelected("Products → Category"); /* [2] */
     });
 
@@ -292,7 +274,7 @@ describe("scenarios > question > nested", () => {
      *  Extract it if we have the need for it anywhere else
      */
     function isSelected(text) {
-      getDimensionByName({ name: text }).should(
+      H.getDimensionByName({ name: text }).should(
         "have.attr",
         "aria-selected",
         "true",
@@ -308,25 +290,25 @@ describe("scenarios > question > nested", () => {
           "select count(*), orders.product_id from orders group by orders.product_id;",
       },
     }).then(({ body: { id } }) => {
-      visitQuestion(id);
+      H.visitQuestion(id);
 
       visitNestedQueryAdHoc(id);
 
       // Count
-      summarize();
+      H.summarize();
 
       cy.findByText("Group by").parent().findByText("COUNT(*)").click();
       cy.wait("@dataset");
 
-      chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 5);
+      H.chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 5);
 
       // Replace "Count" with the "Average"
       cy.findByTestId("aggregation-item").contains("Count").click();
       cy.findByText("Average of ...").click();
-      popover().findByText("COUNT(*)").click();
+      H.popover().findByText("COUNT(*)").click();
       cy.wait("@dataset");
 
-      chartPathWithFillColor("#A989C5").should("have.length.of.at.least", 5);
+      H.chartPathWithFillColor("#A989C5").should("have.length.of.at.least", 5);
     });
   });
 
@@ -375,7 +357,7 @@ describe("scenarios > question > nested", () => {
         type: "query",
         display: "scalar",
       }).then(({ body: { id } }) => {
-        visitQuestion(id);
+        H.visitQuestion(id);
         cy.findByTestId("scalar-value").findByText(value);
 
         visitNestedQueryAdHoc(id);
@@ -402,8 +384,8 @@ describe("scenarios > question > nested", () => {
       cy.findByText("New").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").should("be.visible").click();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Saved questions").click();
         cy.findByText("15725").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -425,7 +407,7 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CAT").click();
 
-      visualize();
+      H.visualize();
 
       cy.get("@consoleWarn").should(
         "not.be.calledWith",
@@ -441,13 +423,13 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CAT").click();
 
-      visualize();
+      H.visualize();
 
-      summarize();
+      H.summarize();
       cy.findByTestId("add-aggregation-button").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
-      popover().findByText("VAL").click();
+      H.popover().findByText("VAL").click();
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
@@ -464,7 +446,7 @@ describe("scenarios > question > nested", () => {
       native: { query: "select * from products limit 3" },
     };
 
-    createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
     cy.findAllByTestId("cell-data").should(
       "contain",
       "Swaniawski, Casper and Hilll",
@@ -494,8 +476,8 @@ describe("scenarios > question > nested", () => {
     cy.log(
       "Should be able to use integer filter on a nested query based on a saved native question (metabase#15808)",
     );
-    filter();
-    filterField("RATING", {
+    H.filter();
+    H.filterField("RATING", {
       operator: "Equal to",
       value: "4",
     });
@@ -523,7 +505,7 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should create a nested question with post-aggregation filter (metabase#11561)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -539,7 +521,7 @@ describe("scenarios > question > nested", () => {
     cy.findByText("Filter").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summaries").click();
-    filterField("Count", {
+    H.filterField("Count", {
       operator: "Equal to",
       value: "5",
     });
@@ -557,7 +539,7 @@ describe("scenarios > question > nested", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 100 rows");
 
-    openNotebook();
+    H.openNotebook();
     cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
 
     function saveQuestion() {
@@ -591,7 +573,7 @@ function createNestedQuestion(
   }
 
   createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
-    loadBaseQuestionMetadata && visitQuestion(id);
+    loadBaseQuestionMetadata && H.visitQuestion(id);
 
     const { query: nestedQuery, ...details } = nestedQuestionDetails;
 
@@ -619,7 +601,7 @@ function createNestedQuestion(
 }
 
 function visitNestedQueryAdHoc(id) {
-  return visitQuestionAdhoc({
+  return H.visitQuestionAdhoc({
     dataset_query: {
       database: SAMPLE_DB_ID,
       type: "query",

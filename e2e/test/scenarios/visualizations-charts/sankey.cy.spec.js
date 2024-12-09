@@ -1,18 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  addOrUpdateDashboardCard,
-  assertEChartsTooltip,
-  chartPathWithFillColor,
-  createDashboard,
-  createNativeQuestion,
-  echartsContainer,
-  modal,
-  popover,
-  restore,
-  sankeyEdge,
-  visitDashboard,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const SANKEY_QUERY = `
 SELECT 'Social Media' AS source, 'Landing Page' AS target, 30000 AS metric
@@ -42,12 +29,12 @@ SELECT 'Active Users', 'Cancelled Subscription', 5000;
 
 describe("scenarios > visualizations > sankey", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("should render sankey charts in query builder", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       display: "table",
       dataset_query: {
         type: "native",
@@ -63,7 +50,7 @@ describe("scenarios > visualizations > sankey", () => {
     cy.findByTestId("Sankey-button").click();
 
     // Ensure it shows node labels
-    echartsContainer().findByText("Social Media");
+    H.echartsContainer().findByText("Social Media");
 
     // Edit viz settings
     cy.findByTestId("viz-settings-button").click();
@@ -73,32 +60,32 @@ describe("scenarios > visualizations > sankey", () => {
       .click();
 
     // Shows colored edges by default
-    sankeyEdge("#509EE3");
+    H.sankeyEdge("#509EE3");
 
     // Set edge colors to Gray
     cy.get("@settings-sidebar").findByText("Gray").click();
 
     // Ensure it shows gray edges
-    sankeyEdge("#81898e");
+    H.sankeyEdge("#81898e");
 
     // Ensure it does not show edge labels by default
-    echartsContainer().findByText("60,000").should("not.exist");
+    H.echartsContainer().findByText("60,000").should("not.exist");
 
     // Enable edge labels
     cy.get("@settings-sidebar").findByLabelText("Show edge labels").click();
 
     // Ensure it shows edge labels
-    echartsContainer().findByText("60,000");
+    H.echartsContainer().findByText("60,000");
 
     // Apply compact formatting
     cy.get("@settings-sidebar").findByText("Compact").click();
 
     // Ensure it shows compact labels
-    echartsContainer().findByText("60.0k");
+    H.echartsContainer().findByText("60.0k");
 
     // Ensure tooltip shows correct values
-    sankeyEdge("#81898e").eq(0).realHover();
-    assertEChartsTooltip({
+    H.sankeyEdge("#81898e").eq(0).realHover();
+    H.assertEChartsTooltip({
       header: "Social Media → Landing Page",
       rows: [
         {
@@ -108,8 +95,8 @@ describe("scenarios > visualizations > sankey", () => {
       ],
     });
 
-    chartPathWithFillColor("#509EE3").realHover();
-    assertEChartsTooltip({
+    H.chartPathWithFillColor("#509EE3").realHover();
+    H.assertEChartsTooltip({
       header: "Social Media",
       rows: [
         {
@@ -125,14 +112,14 @@ describe("scenarios > visualizations > sankey", () => {
       "My Sankey chart",
     );
     cy.findByTestId("save-question-modal").findByText("Save").click();
-    modal().findByText("Saved! Add this to a dashboard?");
+    H.modal().findByText("Saved! Add this to a dashboard?");
   });
 
   it("should render sankey charts in dashboard context", () => {
-    createDashboard({
+    H.createDashboard({
       name: "Sankey Dashboard",
     }).then(({ body: dashboard }) => {
-      createNativeQuestion({
+      H.createNativeQuestion({
         name: "Sankey Question",
         native: {
           query: SANKEY_QUERY,
@@ -143,7 +130,7 @@ describe("scenarios > visualizations > sankey", () => {
           "graph.label_value_formatting": "compact",
         },
       }).then(({ body: card }) => {
-        addOrUpdateDashboardCard({
+        H.addOrUpdateDashboardCard({
           card_id: card.id,
           dashboard_id: dashboard.id,
           card: {
@@ -152,15 +139,15 @@ describe("scenarios > visualizations > sankey", () => {
           },
         });
 
-        visitDashboard(dashboard.id);
+        H.visitDashboard(dashboard.id);
       });
     });
 
-    echartsContainer().findByText("Social Media");
+    H.echartsContainer().findByText("Social Media");
 
     // Ensure drill-through works
-    chartPathWithFillColor("#ED8535").first().click();
-    popover().within(() => {
+    H.chartPathWithFillColor("#ED8535").first().click();
+    H.popover().within(() => {
       cy.findByText("=").should("be.visible");
       cy.findByText("≠").should("be.visible");
 

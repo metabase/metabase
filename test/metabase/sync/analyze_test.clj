@@ -9,7 +9,7 @@
     :as classifiers.text-fingerprint]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
    [metabase.sync.analyze :as analyze]
@@ -18,7 +18,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.sync :as test.sync :refer [sync-survives-crash?!]]
+   [metabase.test.sync :refer [sync-survives-crash?!]]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
