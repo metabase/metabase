@@ -44,9 +44,3 @@
   padding: 0.3125rem 0;
   visibility: hidden;
 }
-
-.HoverParent:hover {
-  .PopoverHoverTarget {
-    visibility: visible;
-  }
-}
