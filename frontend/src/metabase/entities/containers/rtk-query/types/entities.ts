@@ -1,6 +1,8 @@
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
+import type { IconName } from "metabase/ui";
+import type { Collection } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import type { UseQuery } from "./rtk";
@@ -12,6 +14,12 @@ export type RequestType = "fetch" | string;
 export type FetchType = string;
 
 export type EntityId = string | number;
+
+export type BaseEntity = {
+  id: EntityId;
+  name?: string;
+  display_name?: string;
+};
 
 export type EntityIdSelector = (
   state: State,
@@ -57,7 +65,7 @@ export interface EntityOptions {
   requestType: RequestType;
 }
 
-export interface EntityDefinition<Entity, EntityWrapper> {
+export interface EntityDefinition<Entity extends BaseEntity, EntityWrapper> {
   actions: {
     [actionName: string]: (...args: unknown[]) => unknown;
   };
@@ -68,6 +76,12 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   nameOne: string;
   normalize: (object: unknown) => {
     object: unknown;
+  };
+  objectSelectors: {
+    getName: (entity: Entity) => string;
+    getIcon: (entity: Entity) => { name: IconName };
+    getColor: (entity: Entity) => string | undefined;
+    getCollection: (entity: Entity) => Collection | undefined;
   };
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
