@@ -212,7 +212,7 @@ const PublicOrEmbeddedDashboardInner = ({
   });
 
   return (
-    <LocaleProvider locale={locale}>
+    <LocaleProvider locale={locale} shouldWaitForLocale>
       <PublicOrEmbeddedDashboardView
         dashboard={dashboard}
         hasNightModeToggle={hasNightModeToggle}
