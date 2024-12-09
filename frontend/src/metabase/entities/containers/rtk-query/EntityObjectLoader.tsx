@@ -13,6 +13,7 @@ import {
 import type { Dispatch } from "metabase-types/store";
 
 import type {
+  BaseEntity,
   EntityDefinition,
   EntityId,
   EntityIdSelector,
@@ -53,7 +54,7 @@ export interface Props<Entity, EntityWrapper> {
   entityType: EntityType | EntityTypeSelector;
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
-  LoadingAndErrorWrapper: ComponentType<LoadingAndErrorWrapperProps>;
+  LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   reload?: boolean;
   requestType?: RequestType;
   selectorName?: string;
@@ -69,7 +70,7 @@ const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
  *
  * @deprecated use "metabase/api" instead
  */
-export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
+export function EntityObjectLoader<Entity extends BaseEntity, EntityWrapper>({
   ComposedComponent,
   dispatchApiErrorEvent = true,
   entityAlias,
@@ -265,12 +266,12 @@ export function EntityObjectLoaderRtkQuery<Entity, EntityWrapper>({
 /**
  * @deprecated HOCs are deprecated
  */
-export const entityObjectLoaderRtkQuery =
+export const entityObjectLoader =
   (eolProps: any) =>
   (ComposedComponent: (props: any) => ReactNode) =>
   // eslint-disable-next-line react/display-name
   (props: any): ReactNode => (
-    <EntityObjectLoaderRtkQuery
+    <EntityObjectLoader
       ComposedComponent={ComposedComponent}
       {...props}
       {...eolProps}

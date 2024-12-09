@@ -309,11 +309,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
               )} question`
             : jt`rows in the ${(
                 <strong key="table-name">
-                  <EntityName
-                    entityType="tables"
-                    entityId={policy.table_id}
-                    property="display_name"
-                  />
+                  <EntityName entityType="tables" entityId={policy.table_id} />
                 </strong>
               )} table`
         }
