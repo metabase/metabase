@@ -1,5 +1,5 @@
-import { MetabaseProvider, defineEmbeddingSdkTheme } from "embedding-sdk";
-import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { MetabaseProvider, defineMetabaseTheme } from "embedding-sdk";
+import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { getSdkStorybookDarkTheme } from "embedding-sdk/test/storybook-dark-theme";
 
 import {
@@ -22,7 +22,7 @@ export default {
 export const Default = {
   render(args: EditableDashboardProps) {
     return (
-      <MetabaseProvider config={storybookSdkDefaultConfig}>
+      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
         <EditableDashboard {...args} />
       </MetabaseProvider>
     );
@@ -33,12 +33,15 @@ export const Default = {
 
 export const WithCustomGridColor = {
   render(args: EditableDashboardProps) {
-    const theme = defineEmbeddingSdkTheme({
+    const theme = defineMetabaseTheme({
       components: { dashboard: { gridBorderColor: "#95A5A6" } },
     });
 
     return (
-      <MetabaseProvider config={storybookSdkDefaultConfig} theme={theme}>
+      <MetabaseProvider
+        authConfig={storybookSdkAuthDefaultConfig}
+        theme={theme}
+      >
         <EditableDashboard {...args} />
       </MetabaseProvider>
     );
@@ -50,7 +53,10 @@ export const WithCustomGridColor = {
 export const WithDarkTheme = {
   render(args: EditableDashboardProps) {
     return (
-      <MetabaseProvider config={storybookSdkDefaultConfig} theme={darkTheme}>
+      <MetabaseProvider
+        authConfig={storybookSdkAuthDefaultConfig}
+        theme={darkTheme}
+      >
         <EditableDashboard {...args} />
       </MetabaseProvider>
     );

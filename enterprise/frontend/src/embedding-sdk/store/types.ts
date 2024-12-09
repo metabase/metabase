@@ -8,7 +8,7 @@ import type { JSX, ReactNode } from "react";
 import type {
   EmbeddingSessionToken,
   FetchRequestTokenFn,
-  SDKConfig,
+  MetabaseAuthConfig,
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
@@ -49,7 +49,7 @@ export type SdkErrorComponent = ({
 }: SdkErrorComponentProps) => JSX.Element;
 
 export type SdkState = {
-  metabaseInstanceUrl: SDKConfig["metabaseInstanceUrl"];
+  metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
   plugins: null | SdkPluginsConfig;

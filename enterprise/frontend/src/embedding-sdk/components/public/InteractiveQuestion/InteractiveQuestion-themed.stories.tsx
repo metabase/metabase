@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import {
   MetabaseProvider,
   type MetabaseTheme,
-  defineEmbeddingSdkTheme,
+  defineMetabaseTheme,
 } from "embedding-sdk";
-import { storybookSdkDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { getSdkStorybookDarkTheme } from "embedding-sdk/test/storybook-dark-theme";
 import { Box } from "metabase/ui";
 
@@ -30,7 +30,7 @@ const Wrapper = ({
   children: ReactNode;
   theme: MetabaseTheme;
 }) => (
-  <MetabaseProvider config={storybookSdkDefaultConfig} theme={theme}>
+  <MetabaseProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
     <Box p="xl" bg={theme.colors?.background}>
       {children}
     </Box>
@@ -62,7 +62,7 @@ export const DarkThemeEditor = {
 export const WithWhiteTooltip = {
   render: DefaultTemplate,
 
-  args: defineEmbeddingSdkTheme({
+  args: defineMetabaseTheme({
     components: {
       tooltip: {
         textColor: "#2f3542",
