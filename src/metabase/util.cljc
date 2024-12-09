@@ -1202,3 +1202,8 @@
     (if res
       (assoc m k res)
       (dissoc m k))))
+
+(defn intov
+  "WIP"
+  [to & args]
+  (apply into (vec to) args))

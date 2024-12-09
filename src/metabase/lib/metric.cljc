@@ -44,6 +44,11 @@
                   effective-type (assoc :effective-type effective-type))]
     [:metric options id]))
 
+;; TODO: Is this really necessary?
+(defmethod lib.ref/ref-method :metric
+  [metric]
+  metric)
+
 (defmethod lib.metadata.calculation/type-of-method :metadata/metric
   [query stage-number metric-metadata]
   (or

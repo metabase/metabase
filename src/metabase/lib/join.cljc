@@ -26,6 +26,7 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.stage.util :as lib.stage.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -312,10 +313,11 @@
   a-join-clause)
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.query]]
+;; TODO: Is the missing stage here a bug?
 (defmethod join-clause-method :mbql/query
   [another-query]
   (-> {:lib/type :mbql/join
-       :stages   (:stages (lib.util/pipeline another-query))}
+       :stages   (:stages (lib.stage.util/append-stage #_(requiring-resolve 'lib.stage/append-stage) (lib.util/pipeline another-query)))}
       lib.options/ensure-uuid))
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.stage]]
@@ -488,11 +490,11 @@
      (as-> (calculate-join-alias query a-join home-col) s
        (generate-unique-name query s (keep :alias (:joins stage)))))))
 
-(mu/defn add-default-alias :- ::lib.schema.join/join
+(mu/defn add-default-alias :- lib.join.util/PartialJoin #_::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   a-join       :- lib.join.util/JoinWithOptionalAlias]
+   a-join       :- lib.join.util/PartialJoin]
   (if (contains? a-join :alias)
     ;; if the join clause comes with an alias, keep it and assume that the
     ;; condition fields have the right join-aliases too
@@ -503,10 +505,10 @@
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
       (-> a-join
-          (update :conditions
-                  (fn [conditions]
-                    (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
-                          conditions)))
+          (m/update-existing :conditions
+                             (fn [conditions]
+                               (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
+                                     conditions)))
           (with-join-alias join-alias)))))
 
 (declare join-conditions
