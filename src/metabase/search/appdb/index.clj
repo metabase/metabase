@@ -5,10 +5,12 @@
    [metabase.config :as config]
    [metabase.models.setting :as settings :refer [defsetting]]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -17,6 +19,7 @@
    (org.postgresql.util PSQLException)))
 
 (comment
+  h2/keep-me
   postgres/keep-me)
 
 (def ^:private insert-batch-size 150)
@@ -53,21 +56,22 @@
 
 (defn- exists? [table-name]
   (when table-name
-    (t2/exists? :information_schema.tables :table_name (name table-name))))
+    ;; TODO specialize the case based on the driver
+    (t2/exists? :information_schema.tables :table_name (u/upper-case-en (name table-name)))))
 
 (defn- drop-table! [table-name]
   (boolean
    (when (and table-name (exists? table-name))
-     (t2/query (sql.helpers/drop-table table-name)))))
+     (t2/query (sql.helpers/drop-table (keyword (u/upper-case-en (name table-name))))))))
 
 (defn- existing-indexes []
-  (map (comp keyword :table_name)
+  (map (comp keyword u/lower-case-en :table_name)
        (t2/query {:select [:table_name]
                   :from   :information_schema.tables
                   :where  [:or
-                           [:like :table_name "search\\_index\\_\\_%"]
+                           [:like [:lower :table_name] "search\\_index\\_\\_%"]
                            ;; legacy table names
-                           [:in :table_name ["search_index" "search_index_next" "search_index_retired"]]]})))
+                           [:in [:lower :table_name] ["search_index" "search_index_next" "search_index_retired"]]]})))
 
 (defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by not converting keys
