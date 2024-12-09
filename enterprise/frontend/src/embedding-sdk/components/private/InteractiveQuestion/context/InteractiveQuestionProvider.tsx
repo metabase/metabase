@@ -66,11 +66,11 @@ export const InteractiveQuestionProvider = ({
   const handleSave = async (question: Question) => {
     if (isSaveEnabled) {
       const saveContext = { isNewQuestion: false };
-      const publicQuestion = transformSdkQuestion(question);
+      const sdkQuestion = transformSdkQuestion(question);
 
-      await onBeforeSave?.(publicQuestion, saveContext);
+      await onBeforeSave?.(sdkQuestion, saveContext);
       await handleSaveQuestion(question);
-      onSave?.(publicQuestion, saveContext);
+      onSave?.(sdkQuestion, saveContext);
       await loadQuestion();
     }
   };
@@ -78,12 +78,12 @@ export const InteractiveQuestionProvider = ({
   const handleCreate = async (question: Question) => {
     if (isSaveEnabled) {
       const saveContext = { isNewQuestion: true };
-      const publicQuestion = transformSdkQuestion(question);
+      const sdkQuestion = transformSdkQuestion(question);
 
-      await onBeforeSave?.(publicQuestion, saveContext);
+      await onBeforeSave?.(sdkQuestion, saveContext);
 
       const createdQuestion = await handleCreateQuestion(question);
-      onSave?.(publicQuestion, saveContext);
+      onSave?.(sdkQuestion, saveContext);
 
       // Set the latest saved question object to update the question title.
       replaceQuestion(createdQuestion);
