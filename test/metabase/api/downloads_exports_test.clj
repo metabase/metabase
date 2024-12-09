@@ -1623,3 +1623,40 @@
                     ["5" "5" "165" "33.0" "11" "55"]
                     ["Grand totals" "25" "490" "19.6" "-5" "55"]]
                    result))))))))
+
+(deftest table-exports-with-non-integral-scale
+  (testing "Non integral scale values should be respected in table exports (csv, xlsx, json)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card  {:display                :table
+                                        :type                   :model
+                                        :dataset_query          {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :orders)
+                                                                            :expressions {"Quantity Scaled" [:field (mt/id :orders :quantity) {:base-type :type/Integer}]}
+                                                                            :limit        1}}
+                                        :visualization_settings {:table.columns
+                                                                         [{:name "ID" :enabled false}
+                                                                          {:name "USER_ID" :enabled false}
+                                                                          {:name "PRODUCT_ID" :enabled false}
+                                                                          {:name "SUBTOTAL" :enabled false}
+                                                                          {:name "TAX" :enabled false}
+                                                                          {:name "TOTAL" :enabled false}
+                                                                          {:name "DISCOUNT" :enabled false}
+                                                                          {:name "CREATED_AT" :enabled false}
+                                                                          {:name "QUANTITY" :enabled true}                                                                      {:name "QUANTITY_SCALED" :enabled true}]
+                                                                 :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
+                                                                                     {:currency_in_header false}
+                                                                                     "[\"name\",\"Quantity Scaled\"]"
+                                                                                     {:scale 2.134}}}}]
+        (testing "for csv"
+          (is (= [(take-last 2 ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "Quantity Scaled"])
+                  (take-last 2 ["1" "1" "14" "37.65" "2.07" "39.72" "" "February 11, 2019, 9:40 PM" "2" "4.27"])]
+                 (mapv (partial take-last 2) (card-download card {:export-format :json :format-rows true})))))
+        #_(testing "for json"
+          (is (= [(take-last 2 ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "Quantity Scaled"])
+                  (take-last 2 ["1" "1" "14" "37.65" "2.07" "39.72" "" "February 11, 2019, 9:40 PM" "2" "4.27"])]
+                 (card-download card {:export-format :json :format-rows true})))))
+        #_(testing "for xlsx"
+          ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
+          (is (= [["Discount"] ["[$$]6.42"]]
+                 (card-download card {:export-format :xlsx :format-rows true})))))))
