@@ -15,7 +15,7 @@
    [metabase.models.table :as table]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
-   [metabase.sync.field-values :as field-values]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
@@ -37,7 +37,7 @@
 (def ^:private phase->fn
   {:metadata     sync-metadata/sync-db-metadata!
    :analyze      analyze/analyze-db!
-   :field-values field-values/update-field-values!})
+   :field-values sync.field-values/update-field-values!})
 
 (defn- scan-phases [scan]
   (if (not= :full scan)
@@ -80,7 +80,7 @@
   (doto table
     sync-metadata/sync-table-metadata!
     analyze/analyze-table!
-    field-values/update-field-values-for-table!
+    sync.field-values/update-field-values-for-table!
     sync-util/set-initial-table-sync-complete!))
 
 (mu/defn refingerprint-field!

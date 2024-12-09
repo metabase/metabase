@@ -26,7 +26,8 @@
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :image_url "http://uploaded/b.png"}]
                processed))
-        (is (= @titles ["a.png" "b.png"]))))
+        (is (= ["a.png" "b.png"]
+               @titles))))
     (testing "Uses the raw text when present"
       (let [titles         (atom [])
             attachments    [{:title           "a"
@@ -45,4 +46,5 @@
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :text "hi again"}]
                processed))
-        (is (= @titles ["a.png"]))))))
+        (is (= ["a.png"]
+               @titles))))))

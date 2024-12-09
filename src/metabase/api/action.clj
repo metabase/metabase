@@ -1,7 +1,7 @@
 (ns metabase.api.action
   "`/api/action/` endpoints."
   (:require
-   [compojure.core :as compojure :refer [POST]]
+   [compojure.core :refer [POST]]
    [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]

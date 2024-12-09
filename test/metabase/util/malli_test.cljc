@@ -1,23 +1,25 @@
 (ns ^:mb/once metabase.util.malli-test
-  "Tests for [[metabase.util.malli/defn]] live in [[metabase.util.malli.defn-test]]."
-  (:require
-   #?@(:clj
-       [[clojure.test :refer [deftest is testing]]
-        [malli.core :as mc]
-        [malli.error :as me]
-        [metabase.test :as mt]
-        [metabase.util.i18n :refer [deferred-tru]]
-        [metabase.util.malli :as mu]
-        [metabase.util.malli.describe :as umd]])))
+  "Tests for [[metabase.util.malli/defn]] live in [[metabase.util.malli.defn-test]].
+
+  I know these tests are (currently) clj-only, but the parent file is `.cljc` so this is a `.cljc` file as well."
+  #?(:clj
+     (:require
+      [clojure.test :refer [deftest is testing]]
+      [malli.core :as mc]
+      [malli.error :as me]
+      [metabase.test :as mt]
+      [metabase.util.i18n :refer [deferred-tru]]
+      [metabase.util.malli :as mu]
+      [metabase.util.malli.describe :as umd])))
 
 #?(:clj
    (deftest with-api-error-message
      (let [less-than-four-fxn (fn [x] (< x 4))]
        (testing "outer schema"
          (let [special-lt-4-schema (mu/with-api-error-message
-                                     [:fn less-than-four-fxn]
-                                     (deferred-tru "Special Number that has to be less than four description")
-                                     (deferred-tru "Special Number that has to be less than four error"))]
+                                    [:fn less-than-four-fxn]
+                                    (deferred-tru "Special Number that has to be less than four description")
+                                    (deferred-tru "Special Number that has to be less than four error"))]
 
            (is (= [(deferred-tru "Special Number that has to be less than four error")]
                   (me/humanize (mc/explain special-lt-4-schema 8))))
@@ -44,8 +46,8 @@
 
        (testing "inner schema"
          (let [special-lt-4-schema [:map [:ltf-key (mu/with-api-error-message
-                                                     [:fn less-than-four-fxn]
-                                                     (deferred-tru "Special Number that has to be less than four"))]]]
+                                                    [:fn less-than-four-fxn]
+                                                    (deferred-tru "Special Number that has to be less than four"))]]]
            (is (= {:ltf-key ["missing required key"]}
                   (me/humanize (mc/explain special-lt-4-schema {}))))
 

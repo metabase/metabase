@@ -13,7 +13,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload-test :as upload-test]
@@ -28,9 +28,9 @@
 ;; authentication test on every single individual endpoint
 
 (deftest ^:parallel unauthenticated-test
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :get 401 "table")))
-  (is (= (get req.util/response-unauthentic :body)
+  (is (= (get request/response-unauthentic :body)
          (client/client :get 401 (format "table/%d" (mt/id :users))))))
 
 (defn- db-details []
@@ -492,7 +492,8 @@
             (is (= @unhidden-ids #{id-2}))
 
             (set-many-vis! [id-1 id-2] "hidden")
-            (is (= @unhidden-ids #{})) ;; no syncing when they are hidden
+            (is (= #{}
+                   @unhidden-ids)) ;; no syncing when they are hidden
 
             (set-many-vis! [id-1 id-2] nil) ;; both are made unhidden so both synced
             (is (= @unhidden-ids #{id-1 id-2}))))))))

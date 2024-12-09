@@ -36,7 +36,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]

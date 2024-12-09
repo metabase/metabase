@@ -178,8 +178,10 @@
                            :emails [{:value "rasta@metabase.com"}]
                            :active true}
             response      (scim-client :post 409 "ee/scim/v2/Users" existing-user)]
-        (is (= (get response :schemas) ["urn:ietf:params:scim:api:messages:2.0:Error"]))
-        (is (= (get response :detail) "Email address is already in use"))))))
+        (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"]
+               (get response :schemas)))
+        (is (= "Email address is already in use"
+               (get response :detail)))))))
 
 (deftest update-user-test
   (with-scim-setup!

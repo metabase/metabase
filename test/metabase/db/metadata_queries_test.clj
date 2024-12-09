@@ -5,7 +5,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
-   [metabase.models :as models :refer [Database Field Table]]
+   [metabase.models :refer [Database Field Table]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]

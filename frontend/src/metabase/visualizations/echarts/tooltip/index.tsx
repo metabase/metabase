@@ -142,6 +142,7 @@ export const useCartesianChartSeriesColorsClasses = (
     const settingColors = [
       settings["waterfall.increase_color"],
       settings["waterfall.decrease_color"],
+      settings["waterfall.total_color"],
     ].filter(isNotNull);
 
     return [...seriesColors, ...settingColors];

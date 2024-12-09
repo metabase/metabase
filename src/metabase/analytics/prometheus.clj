@@ -11,7 +11,7 @@
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.server :as server]
+   [metabase.server.core :as server]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [potemkin :as p]

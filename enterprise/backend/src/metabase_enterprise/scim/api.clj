@@ -5,7 +5,7 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.api.common :as api :refer [defendpoint]]
    [metabase.models.api-key :as api-key]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.secret :as u.secret]

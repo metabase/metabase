@@ -603,61 +603,23 @@
                                  (mt/db)
                                  (t2/select-one Table :db_id (mt/id) :name "json_without_pk")))))))))))))
 
-(deftest describe-table-indexes-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
-                                     (mt/sql-jdbc-drivers))
-    (mt/dataset (mt/dataset-definition "indexes"
-                                       ["single_index"
-                                        [{:field-name "indexed" :indexed? true :base-type :type/Integer}
-                                         {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
-                                        [[1 2]]]
-                                       ["composite_index"
-                                        [{:field-name "first" :indexed? false :base-type :type/Integer}
-                                         {:field-name "second" :indexed? false :base-type :type/Integer}]
-                                        [[1 2]]])
-      (try
-        (let [describe-table-indexes (fn [table]
-                                       (->> (driver/describe-table-indexes
-                                             driver/*driver*
-                                             (mt/db)
-                                             table)
-                                            (map (fn [index]
-                                                   (update index :value #(if (string? %)
-                                                                           (u/lower-case-en %)
-                                                                           (map u/lower-case-en %)))))
-                                            set))]
-          (testing "single column indexes are synced correctly"
-            (is (= #{{:type :normal-column-index :value "id"}
-                     {:type :normal-column-index :value "indexed"}}
-                   (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
-
-          (testing "for composite indexes, we only care about the 1st column"
-            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                           (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
-            (sync/sync-database! (mt/db))
-            (is (= #{{:type :normal-column-index :value "id"}
-                     {:type :normal-column-index :value "first"}}
-                   (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))
-        (finally
-        ;; clean the db so this test is repeatable
-          (t2/delete! :model/Database (mt/id)))))))
-
-(defn- describe-table-indexes [table]
-  (into #{}
-        (map (fn [index]
-               (update index :value #(if (string? %)
-                                       (u/lower-case-en %)
-                                       (map u/lower-case-en %)))))
-        (driver/describe-table-indexes driver/*driver* (mt/db) table)))
-
-(defmethod driver/database-supports? [::driver/driver ::unique-index]
-  [_driver _feature _database]
-  true)
-
-(doseq [driver [:h2 :sqlite :sqlserver]]
-  (defmethod driver/database-supports? [driver ::unique-index]
-    [_driver _feature _database]
-    false))
+(defn- describe-table-indexes
+  [table]
+  (let [database (mt/db)
+        driver driver/*driver*
+        lowercase-value (fn [index]
+                          (update index :value #(if (string? %)
+                                                  (u/lower-case-en %)
+                                                  (map u/lower-case-en %))))]
+    (if (driver/database-supports? driver :describe-indexes database)
+      (into #{}
+            (comp
+             (map (fn [{:keys [field-name]}] {:type :normal-column-index :value field-name}))
+             (map lowercase-value))
+            (driver/describe-indexes driver database {:table-names [(:name table)]}))
+      (into #{}
+            (map lowercase-value)
+            (driver/describe-table-indexes driver database table)))))
 
 (defn- do-with-temporary-dataset [dataset thunk]
   (mt/dataset dataset
@@ -668,6 +630,42 @@
         (t2/delete! :model/Database (mt/id))
         (u/ignore-exceptions
           (tx/destroy-db! driver/*driver* dataset))))))
+
+(deftest describe-table-indexes-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
+                                     (mt/sql-jdbc-drivers))
+    (do-with-temporary-dataset
+     (mt/dataset-definition "indexes"
+                            ["single_index"
+                             [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+                              {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+                             [[1 2]]]
+                            ["composite_index"
+                             [{:field-name "first" :indexed? false :base-type :type/Integer}
+                              {:field-name "second" :indexed? false :base-type :type/Integer}]
+                             [[1 2]]])
+     (fn []
+       (testing "single column indexes are synced correctly"
+         (is (= #{{:type :normal-column-index :value "id"}
+                  {:type :normal-column-index :value "indexed"}}
+                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
+
+       (testing "for composite indexes, we only care about the 1st column"
+         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
+         (sync/sync-database! (mt/db))
+         (is (= #{{:type :normal-column-index :value "id"}
+                  {:type :normal-column-index :value "first"}}
+                (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index))))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::unique-index]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:h2 :sqlite :sqlserver]]
+  (defmethod driver/database-supports? [driver ::unique-index]
+    [_driver _feature _database]
+    false))
 
 (deftest describe-table-indexes-unique-index-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::unique-index)

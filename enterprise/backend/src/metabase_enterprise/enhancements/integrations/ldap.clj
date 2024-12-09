@@ -4,11 +4,9 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.default-implementation :as default-impl]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise-schema]]
+   [metabase.public-settings.premium-features :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]

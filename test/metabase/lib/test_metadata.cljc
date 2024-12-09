@@ -41,7 +41,7 @@
   ;; * Field ID is starts with the same number the corresponding Table ID starts with. E.g.
   ;; * `venues` is table xx040, and `venues.name` is Field xx401.
   ([]
-   (+ random-id-offset 1))
+   (inc random-id-offset))
 
   ([table-name]
    (+ random-id-offset

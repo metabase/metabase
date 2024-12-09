@@ -63,6 +63,7 @@
 (doseq [[feature supported?] {:connection-impersonation true
                               :describe-fields          true
                               :describe-fks             true
+                              :describe-indexes         true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -382,6 +383,31 @@
                         (when table-names [:in :fk_table.relname table-names])
                         (when schema-names [:in :fk_ns.nspname schema-names])]
                :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-indexes-sql :postgres
+  [driver & {:keys [schema-names table-names]}]
+  ;; From https://github.com/pgjdbc/pgjdbc/blob/master/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L2662
+  (sql/format {:select [:tmp.table-schema
+                        :tmp.table-name
+                        [[:trim :!both [:inline "\""] :!from [:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false]] :field-name]]
+               :from [[{:select [[:n.nspname :table-schema]
+                                 [:ct.relname :table-name]
+                                 [:ci.oid :ci_oid]
+                                 [[:. [:composite [:information_schema._pg_expandarray :i.indkey]] :n] :pos]]
+                        :from [[:pg_catalog.pg_class :ct]]
+                        :join [[:pg_catalog.pg_namespace :n] [:= :ct.relnamespace :n.oid]
+                               [:pg_catalog.pg_index :i] [:= :ct.oid :i.indrelid]
+                               [:pg_catalog.pg_class :ci] [:= :ci.oid :i.indexrelid]]
+                        :where [:and
+                                ;; No filtered indexes
+                                [:= [:pg_catalog.pg_get_expr :i.indpred :i.indrelid] nil]
+                                [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
+                                (when (seq schema-names) [:in :n.nspname schema-names])
+                                (when (seq table-names) [:in :ct.relname table-names])]}
+                       :tmp]]
+               ;; The only column or the first column in a composite index
+               :where [:= :tmp.pos 1]}
               :dialect (sql.qp/quote-style driver)))
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same

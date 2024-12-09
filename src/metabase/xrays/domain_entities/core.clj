@@ -5,7 +5,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

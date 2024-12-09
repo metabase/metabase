@@ -15,10 +15,10 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.field-values :as field-values]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task :as task]
@@ -121,7 +121,7 @@
                               (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
                               (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
       (if (:is_full_sync database)
-        (field-values/update-field-values! database)
+        (sync.field-values/update-field-values! database)
         (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
@@ -322,7 +322,7 @@
   [database]
   (not (-> database :details :let-user-control-scheduling)))
 
-(defn- randomize-db-schedules-if-needed
+(defn- randomize-db-schedules-if-needed!
   []
   ;; todo: when we can use json operations on h2 we can check details in the query and drop the transducer
   (transduce (comp (map (partial mi/do-after-select Database))
@@ -355,4 +355,4 @@
 (defmethod task/init! ::SyncDatabases
   [_]
   (job-init)
-  (randomize-db-schedules-if-needed))
+  (randomize-db-schedules-if-needed!))

@@ -5,6 +5,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
@@ -48,6 +49,10 @@
 (mr/def ::boolean-filter-operator
   "Boolean filter operators supported by the FE. Note that `:!=` is not supported."
   [:enum :is-null :not-null :=])
+
+(mr/def ::specific-date-filter-operator
+  "Specific date filter operators supported by the FE."
+  [:enum := :> :< :between])
 
 (mr/def ::exclude-date-filter-operator
   "Exclude date filter operators supported by the FE."
@@ -144,6 +149,14 @@
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
            [false [:ref ::expression/integer]]]
    #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
+
+(mbql-clause/define-mbql-clause :during :- :type/Boolean
+  [:tuple
+   [:= {:decode/normalize common/normalize-keyword} :during]
+   ::common/options
+   #_expr  [:ref ::expression/temporal]
+   #_value [:or [:ref ::literal/string.date] [:ref ::literal/string.datetime]]
+   #_unit  [:ref ::temporal-bucketing/unit.date-time.interval]])
 
 (mbql-clause/define-mbql-clause :relative-time-interval :- :type/Boolean
   [:tuple

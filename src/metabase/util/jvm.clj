@@ -40,7 +40,7 @@
     (catch Throwable _ false)))
 
 (defn host-up?
-  "Returns true if the host given by hostname is reachable, false otherwise "
+  "Returns true if the host given by hostname is reachable, false otherwise"
   [^String hostname]
   (try
     (let [host-addr (InetAddress/getByName hostname)]
@@ -98,8 +98,7 @@
   (=
     (take-last 2 (sort-by identity kompare coll))
     (transduce (map identity) (u/sorted-take 2 kompare) coll))
-  But the entire collection is not in memory, just at most
-  "
+  But the entire collection is not in memory, just at most"
   [size kompare]
   (fn bounded-heap-acc
     ([] (PriorityQueue. size kompare))

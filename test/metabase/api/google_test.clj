@@ -16,6 +16,8 @@
         (mt/user-http-request :crowberto :put 200 "google/settings" {:google-auth-client-id test-client-id
                                                                      :google-auth-enabled true
                                                                      :google-auth-auto-create-accounts-domain "foo.com"})
-        (is (= (google/google-auth-enabled) true))
-        (is (= (google/google-auth-client-id) test-client-id))
-        (is (= (google.i/google-auth-auto-create-accounts-domain) "foo.com"))))))
+        (is (google/google-auth-enabled))
+        (is (= test-client-id
+               (google/google-auth-client-id)))
+        (is (= "foo.com"
+               (google.i/google-auth-auto-create-accounts-domain)))))))

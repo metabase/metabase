@@ -7,7 +7,7 @@
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions :refer [Permissions]]
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]

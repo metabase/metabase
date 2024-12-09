@@ -37,8 +37,7 @@
    Metric definitions.
 
    Note that the binding process is 1:N, where a single dimension may match to multiple fields.
-   A field can only bind to one dimension.
-   "
+   A field can only bind to one dimension."
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
@@ -330,8 +329,7 @@
         ancestors for both table and field are counted);
      2) Number of fields in the definition, which would include additional filters
         (`named`, `max_cardinality`, `links_to`, ...) etc.;
-     3) The manually assigned score for the binding definition
-  "
+     3) The manually assigned score for the binding definition"
   [candidate-binding-values]
   (letfn [(score [a]
             (let [[_ definition] a]
@@ -367,8 +365,7 @@
                     :matches [\"CREATED_AT\"]}}
     {\"CreateTimestamp\" {:field_type [:type/CreationTimestamp],
                           :score 80
-                          :matches [\"CREATED_AT\"]}})
-   "
+                          :matches [\"CREATED_AT\"]}})"
   [candidate-binding-values]
   (let [scored-bindings (score-bindings candidate-binding-values)]
     (second (last (sort-by first scored-bindings)))))

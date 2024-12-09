@@ -1,6 +1,8 @@
 (ns hooks.metabase.test.data.datasets
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.set :as set]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.set :as set]
+   [hooks.common]))
 
 (defn- only-core-drivers?
   "Whether we're for sure only testing against the 'core' drivers that are also app DB types: `:postgres`, `:mysql`, or
@@ -45,7 +47,7 @@
                     (hooks/token-node 'do)
                     test-drivers
                     (-> drivers-expr
-                        (vary-meta update :clj-kondo/ignore #(conj (vec %) :unused-value)))
+                        (hooks.common/update-ignored-linters conj :unused-value))
                     body))
                   (with-meta (meta node)))))]
     (update x :node update-node)))

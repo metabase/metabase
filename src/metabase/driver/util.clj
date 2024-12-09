@@ -243,14 +243,13 @@
    accidental coupling between tests."
   (not (or config/is-test? config/is-dev?)))
 
-(def ^:private supports?*
-  (fn [driver feature database]
-    (try
-      (u/with-timeout supports?-timeout-ms
-        (driver/database-supports? driver feature database))
-      (catch Throwable e
-        (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (u/qualified-name feature) (:name database)))
-        false))))
+(defn- supports?* [driver feature database]
+  (try
+    (u/with-timeout supports?-timeout-ms
+      (driver/database-supports? driver feature database))
+    (catch Throwable e
+      (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (u/qualified-name feature) (:name database)))
+      false)))
 
 (def ^:private memoized-supports?*
   (memoize/memo

@@ -34,7 +34,7 @@
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.pulse :as models.pulse]
-   [metabase.models.query :as query :refer [Query]]
+   [metabase.models.query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.revision.last-edit :as last-edit]

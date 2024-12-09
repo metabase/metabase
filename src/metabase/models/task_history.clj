@@ -97,7 +97,8 @@
    [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
    [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
 
-(def ^:private ns->ms #(int (/ % 1e6)))
+(defn- ns->ms [nanoseconds]
+  (long (/ nanoseconds 1e6)))
 
 (defn- update-task-history!
   [th-id startime-ns info]

@@ -22,7 +22,7 @@
    [metabase.api.embed.common :as api.embed.common]
    [metabase.api.public :as api.public]
    [metabase.events :as events]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]

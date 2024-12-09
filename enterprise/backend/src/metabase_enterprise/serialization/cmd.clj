@@ -14,7 +14,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.db :as mdb]
    [metabase.models.card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]

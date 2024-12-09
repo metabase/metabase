@@ -12,7 +12,7 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -99,7 +99,7 @@
 (defn successful-login?
   "Return true if the response indicates a successful user login"
   [resp]
-  (string? (get-in resp [:cookies mw.session/metabase-session-cookie :value])))
+  (string? (get-in resp [:cookies request/metabase-session-cookie :value])))
 
 (defn- do-with-some-validators-disabled!
   "The sample responses all have `InResponseTo=\"_1\"` and invalid assertion signatures (they were edited by hand) so
@@ -724,9 +724,9 @@
                                      (saml-slo-test-response)
                                      (saml/str->base64 default-redirect-uri))
                                   ;; Client sends their session cookie during the SLO request redirect from the IDP.
-                                    (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))
+                                    (assoc-in [:request-options :cookies request/metabase-session-cookie :value] session-id))
                     response    (client/client-real-response :post 302 "/auth/sso/handle_slo" req-options)]
-                (is (str/blank? (get-in response [:cookies mw.session/metabase-session-cookie :value]))
+                (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
                     "After a successful log-out, you don't have a session")
                 (is (not (t2/exists? :model/Session :id session-id))
                     "After a successful log-out, the session is deleted")))))))))
@@ -744,9 +744,9 @@
                                      (saml-slo-test-response)
                                      (saml/str->base64 default-redirect-uri))
                                   ;; Client sends their session cookie during the SLO request redirect from the IDP.
-                                    (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))
+                                    (assoc-in [:request-options :cookies request/metabase-session-cookie :value] session-id))
                     response    (client/client-real-response :post 403 "/auth/sso/handle_slo" req-options)]
-                (is (str/blank? (get-in response [:cookies mw.session/metabase-session-cookie :value]))
+                (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
                     "After a successful log-out, you don't have a session")
                 (is (t2/exists? :model/Session :id session-id)
                     "After a successful log-out, the session is deleted")))))))))
@@ -761,6 +761,6 @@
           (let [req-options (-> (saml-post-request-options
                                  (saml-test-response)
                                  (saml/str->base64 default-redirect-uri))
-                                (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))]
+                                (assoc-in [:request-options :cookies request/metabase-session-cookie :value] session-id))]
             (client/client :post "/auth/sso/logout" req-options)
             (is (not (t2/exists? :model/Session :id session-id)))))))))

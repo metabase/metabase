@@ -15,7 +15,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -50,7 +50,7 @@
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
-  (into {} (for [col (mw.session/with-current-user nil
+  (into {} (for [col (request/with-current-user nil
                        ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                         {:database (database/table-id->database-id table-id)
                          :type     :query

@@ -30,10 +30,10 @@
          (some-> (slurp "/tmp/out.edn")
                  (str/split-lines)))))
 
-(deftest backend-message?
+(deftest ^:parallel backend-message?
   (testing "messages present in any .clj and .cljc files are detected as backend messages"
-    (are [source-references expected] (= (@#'backend/backend-message? {:source-references source-references})
-                                         expected)
+    (are [source-references expected] (= expected
+                                         (@#'backend/backend-message? {:source-references source-references}))
       ;; Simple .clj and .cljc files with and without line numbers
       ["test.clj"]                                                                  true
       ["test.clj:123"]                                                              true
@@ -46,7 +46,7 @@
       ["backend/mbql/src/metabase/mbql/normalize.clj"]                              true
       ["metabase_enterprise/audit_app/interface.clj:25"]                            true
       ["enterprise/backend/test/metabase_enterprise/serialization/load_test.clj"]   true
-      ["target/classes/metabase/server/request/util.clj"]                           true
+      ["target/classes/metabase/request/util.clj"]                                  true
       ;; Both a FE and a BE path
       ["frontend/src/metabase/browse/components/TableBrowser/TableBrowser.jsx:145"
        "metabase/api/database.clj:178"]                                             true

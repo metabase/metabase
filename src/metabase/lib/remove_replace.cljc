@@ -235,10 +235,10 @@
           changing-breakout? (= [:breakout] location)
           sync-breakout-ordering? (and replace?
                                        changing-breakout?
-                                       (and (= (first target-clause)
-                                               (first replacement-clause))
-                                            (= (last target-clause)
-                                               (last replacement-clause))))
+                                       (= (first target-clause)
+                                          (first replacement-clause))
+                                       (= (last target-clause)
+                                          (last replacement-clause)))
           new-query (cond
                       sync-breakout-ordering?
                       (sync-order-by-options-with-breakout

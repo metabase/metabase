@@ -18,8 +18,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Card CardBookmark Collection Database
-                            PersistedInfo Table]]
+   [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
    [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
@@ -36,7 +35,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.request.core :as request]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -412,7 +411,7 @@
      {:exclude-ids exclude_ids
       :query       query
       :last-cursor last_cursor
-      :page-size   mw.offset-paging/*limit*})))
+      :page-size   (request/limit)})))
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."

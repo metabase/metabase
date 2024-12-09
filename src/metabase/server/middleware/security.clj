@@ -8,7 +8,7 @@
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
    [metabase.public-settings :as public-settings]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
@@ -262,8 +262,8 @@
   (update response :headers #(merge %2 %1) (security-headers
                                             :origin         ((:headers request) "origin")
                                             :nonce          (:nonce request)
-                                            :allow-iframes? ((some-fn req.util/public? req.util/embed?) request)
-                                            :allow-cache?   (req.util/cacheable? request))))
+                                            :allow-iframes? ((some-fn request/public? request/embed?) request)
+                                            :allow-cache?   (request/cacheable? request))))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers."

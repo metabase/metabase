@@ -68,6 +68,16 @@
   "Schema for a given Table as provided in [[metabase.driver/describe-table-indexes]]."
   [:ref ::TableIndexMetadata])
 
+(mr/def ::FieldIndexMetadata
+  [:map
+   [:table-schema [:maybe ::lib.schema.common/non-blank-string]]
+   [:table-name   ::lib.schema.common/non-blank-string]
+   [:field-name   ::lib.schema.common/non-blank-string]])
+
+(def FieldIndexMetadata
+  "Schema for a given result provided by [[metabase.driver/describe-indexes]]."
+  [:ref ::FieldIndexMetadata])
+
 (mr/def ::FieldMetadataEntry
   (-> (mr/schema ::TableMetadataField)
       (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])

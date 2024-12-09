@@ -35,10 +35,10 @@
   {:pre [((some-fn sequential? set?) drivers)]}
   (reset! default-test-drivers (set drivers)))
 
-(def ^:private ^:dynamic *test-drivers*
-  (fn []
-    (or @default-test-drivers
-        @env-test-drivers)))
+(defn- ^:dynamic *test-drivers*
+  []
+  (or @default-test-drivers
+      @env-test-drivers))
 
 (defn do-with-test-drivers [drivers thunk]
   {:pre [((some-fn sequential? set?) drivers)]}

@@ -270,6 +270,75 @@
         (lib.filter/!= column true)
         (lib.filter/is-null (meta/field-metadata :venues :name))))))
 
+(defn- format-date-filter-parts
+  [{:keys [with-time?], :as parts}]
+  (update parts :values
+          (fn [values] (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values))))
+
+(deftest ^:parallel specific-date-filter-parts-test
+  (let [query  lib.tu/venues-query
+        column (meta/field-metadata :checkins :date)]
+    (testing "clause to parts roundtrip"
+      (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
+                              {:operator   :=
+                               :column     column
+                               :values     [(u.time/local-date 2024 11 28)]
+                               :with-time? false}
+
+                              (lib.filter/= column "2024-11-28T00:00:00")
+                              {:operator   :=
+                               :column     column
+                               :values     [(u.time/local-date-time 2024 11 28 0 0 0)]
+                               :with-time? true}
+
+                              (lib.filter/= column "2024-11-28T10:20:30")
+                              {:operator   :=
+                               :column     column
+                               :values     [(u.time/local-date-time 2024 11 28 10 20 30)]
+                               :with-time? true}
+
+                              (lib.filter/> column "2024-11-28")
+                              {:operator   :>
+                               :column     column
+                               :values     [(u.time/local-date 2024 11 28)]
+                               :with-time? false}
+
+                              (lib.filter/< column "2024-11-28")
+                              {:operator   :<
+                               :column     column
+                               :values     [(u.time/local-date 2024 11 28)]
+                               :with-time? false}
+
+                              (lib.filter/between column "2024-11-28" "2024-12-04")
+                              {:operator   :between
+                               :column     column
+                               :values     [(u.time/local-date 2024 11 28) (u.time/local-date 2024 12 4)]
+                               :with-time? false}
+
+                              (lib.filter/between column "2024-11-28T00:00:00" "2024-12-04T00:00:00")
+                              {:operator   :between
+                               :column     column
+                               :values     [(u.time/local-date-time 2024 11 28 0 0 0) (u.time/local-date-time 2024 12 4 0 0 0)]
+                               :with-time? true}
+
+                              (lib.filter/between column "2024-11-28T10:20:30" "2024-12-04T11:21:31")
+                              {:operator   :between
+                               :column     column
+                               :values     [(u.time/local-date-time 2024 11 28 10 20 30) (u.time/local-date-time 2024 12 4 11 21 31)]
+                               :with-time? true}}]
+        (let [{:keys [operator column values with-time?]} parts]
+          (is (=? (format-date-filter-parts parts)
+                  (format-date-filter-parts (lib.fe-util/specific-date-filter-parts query -1 clause))))
+          (is (=? (format-date-filter-parts parts)
+                  (format-date-filter-parts
+                   (lib.fe-util/specific-date-filter-parts
+                    query -1 (lib.fe-util/specific-date-filter-clause operator column values with-time?))))))))
+    (testing "unsupported clauses"
+      (are [clause] (nil? (lib.fe-util/specific-date-filter-parts query -1 clause))
+        (lib.filter/is-null column)
+        (lib.filter/< "2024-11-28" column)
+        (lib.filter/> (meta/field-metadata :venues :price) 10)))))
+
 (deftest ^:parallel relative-date-filter-parts-test
   (let [query  lib.tu/venues-query
         column (meta/field-metadata :checkins :date)]
@@ -431,7 +500,8 @@
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
         date-arg-1 "2023-11-02"
-        date-arg-2 "2024-01-03"]
+        date-arg-2 "2024-01-03"
+        datetime-arg "2024-12-05T22:50:27"]
     (are [expected clause] (=? expected (lib/filter-args-display-name lib.tu/venues-query -1 clause))
       "4 AM" (lib/= (lib/get-hour created-at) 4)
       "Excludes 12 PM" (lib/!= (lib/get-hour created-at) 12)
@@ -452,7 +522,12 @@
       "Previous 10 Days" (lib/time-interval created-at -10 :day)
       "Next 10 Days" (lib/time-interval created-at 10 :day)
       "Today" (lib/time-interval created-at :current :day)
-      "This Month" (lib/time-interval created-at :current :month))))
+      "This Month" (lib/time-interval created-at :current :month)
+      "Dec 5, 2024, 10:50 PM" (lib.filter/during created-at datetime-arg :minute)
+      "Dec 5, 2024, 10:00 PM – 10:59 PM" (lib.filter/during created-at datetime-arg :hour)
+      "Dec 5, 2024" (lib.filter/during created-at datetime-arg :day)
+      "Nov 1–30, 2023" (lib.filter/during created-at date-arg-1 :month)
+      "Jan 1 – Dec 31, 2024" (lib.filter/during created-at date-arg-2 :year))))
 
 (deftest ^:parallel dependent-metadata-test
   (testing "native query"

@@ -23,10 +23,11 @@
 ;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
 
 (def ^:private ^:const tile-size             256.0)
-(def ^:private ^:const pixel-origin          (float (/ tile-size 2)))
+(def ^:private ^:const pixel-origin          (double (/ tile-size 2)))
 (def ^:private ^:const pin-size              6)
-(def ^:private ^:const pixels-per-lon-degree (float (/ tile-size 360)))
-(def ^:private ^:const pixels-per-lon-radian (float (/ tile-size (* 2 Math/PI))))
+(def ^:private ^:const pixels-per-lon-degree (double (/ tile-size 360)))
+(def ^:private ^:const pixels-per-lon-radian (double (/ tile-size (* 2 Math/PI))))
+
 (def ^:private ^:const tile-coordinate-limit
   "Limit for number of pins to query for per tile."
   2000)
@@ -43,7 +44,7 @@
 
 (defn- x+y+zoom->lat-lon
   "Get the latitude & longitude of the upper left corner of a given tile."
-  [^double x, ^double y, ^long zoom]
+  [^double x ^double y ^long zoom]
   (let [num-tiles   (bit-shift-left 1 zoom)
         corner-x    (/ (* x tile-size) num-tiles)
         corner-y    (/ (* y tile-size) num-tiles)
@@ -77,7 +78,7 @@
         color-blue (new Color 76 157 230)
         color-white (Color/white)]
     (try
-      (doseq [[^double lat, ^double lon] points]
+      (doseq [[^double lat ^double lon] points]
         (let [sin-y      (-> (Math/sin (degrees->radians lat))
                              (Math/max -0.9999)                           ; bound sin-y between -0.9999 and 0.9999 (why ?))
                              (Math/min 0.9999))
@@ -85,9 +86,10 @@
                                 (* lon pixels-per-lon-degree))
                           :y (+ pixel-origin
                                 (* 0.5
-                                   (Math/log (/ (+ 1 sin-y)
+                                   (Math/log (/ (inc sin-y)
                                                 (- 1 sin-y)))
-                                   (* pixels-per-lon-radian -1.0)))}      ; huh?
+                                   pixels-per-lon-radian
+                                   -1.0))}         ; huh?
               map-pixel  {:x (int (Math/floor (* (point :x) num-tiles)))
                           :y (int (Math/floor (* (point :y) num-tiles)))}
               tile-pixel {:x (mod (map-pixel :x) tile-size)

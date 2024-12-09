@@ -18,7 +18,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.models :refer [Field Table]]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]

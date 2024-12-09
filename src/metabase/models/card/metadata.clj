@@ -10,7 +10,7 @@
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util :as qp.util]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -190,7 +190,7 @@ saved later when it is ready."
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (let [inferred-metadata (not-empty (mw.session/with-current-user nil
+      (let [inferred-metadata (not-empty (request/with-current-user nil
                                            (u/ignore-exceptions
                                              (qp.preprocess/query->expected-cols query))))]
         (assoc card :result_metadata inferred-metadata)))))

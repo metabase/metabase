@@ -5,7 +5,7 @@
   they log in."
   (:require
    [java-time.api :as t]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -25,7 +25,7 @@
           :path      "/"
           ;; Set the cookie to expire 20 years from now. That should be sufficient
           :expires   (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20)))}
-         (if (req.util/https? request)
+         (if (request/https? request)
            {:same-site :none, :secure true}
            {:same-site :lax})))
 

@@ -9,7 +9,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.timeline :refer [Timeline]]
    [metabase.models.timeline-event :refer [TimelineEvent]]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -17,9 +17,9 @@
 
 (deftest auth-tests
   (testing "Authentication"
-    (is (= (get req.util/response-unauthentic :body)
+    (is (= (get request/response-unauthentic :body)
            (client/client :get 401 "/timeline")))
-    (is (= (get req.util/response-unauthentic :body)
+    (is (= (get request/response-unauthentic :body)
            (client/client :get 401 "/timeline/1")))))
 
 (deftest list-timelines-test
@@ -163,7 +163,7 @@
                      (-> (t2/select-one Timeline :collection_id id) :name))))
             (testing "Check that the icon is 'star' by default"
               (is (= "star"
-                     (-> (t2/select-one-fn :icon Timeline :collection_id id)))))))))))
+                     (t2/select-one-fn :icon Timeline :collection_id id))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"

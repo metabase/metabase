@@ -22,12 +22,9 @@
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
-   [metabase.server :as server]
-   [metabase.server.handler :as handler]
+   [metabase.server.core :as server]
    [metabase.setup :as setup]
    [metabase.task :as task]
    [metabase.troubleshooting :as troubleshooting]
@@ -187,7 +184,7 @@
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver async
-    (server/start-web-server! handler/app)
+    (server/start-web-server! (server/handler))
     ;; run our initialization process
     (init!)
     ;; Ok, now block forever while Jetty does its thing

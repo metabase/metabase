@@ -85,9 +85,7 @@
    (triggers/with-identity (triggers/key "metabase-enterprise.cache.trigger"))
    (triggers/start-now)
    (triggers/with-schedule
-    (cron/schedule
-      ;; run every minute
-     (cron/cron-schedule "0 * * * * ? *")))))
+    (cron/cron-schedule "0 * * * * ? *"))))
 
 (defenterprise init-cache-task!
   "Inits periodical task checking for cache expiration"

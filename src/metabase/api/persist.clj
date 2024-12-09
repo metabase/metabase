@@ -9,11 +9,9 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info
-    :as persisted-info
-    :refer [PersistedInfo]]
+   [metabase.models.persisted-info :refer [PersistedInfo]]
    [metabase.public-settings :as public-settings]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.request.core :as request]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -70,7 +68,7 @@
                                (filter mi/can-write?)
                                (map :id)
                                set))
-        persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} mw.offset-paging/*limit* mw.offset-paging/*offset*)]
+        persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
                (t2/count PersistedInfo {:from [[:persisted_info :p]]
@@ -80,8 +78,8 @@
                                                 [:= :c.type "model"]
                                                 [:not :c.archived]]})
                0)
-     :limit  mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*}))
+     :limit  (request/limit)
+     :offset (request/offset)}))
 
 (api/defendpoint GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."

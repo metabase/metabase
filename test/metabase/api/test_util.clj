@@ -43,7 +43,7 @@
          {:archived    true
           :can_delete  true
           :id          card-id}
-         (-> (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})))))
+         (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true}))))
 
   (before-delete)
 

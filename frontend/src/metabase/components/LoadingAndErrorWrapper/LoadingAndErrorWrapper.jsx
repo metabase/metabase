@@ -22,7 +22,7 @@ export default class LoadingAndErrorWrapper extends Component {
     children: PropTypes.any,
     style: PropTypes.object,
     showSpinner: PropTypes.bool,
-    loadingMessages: PropTypes.array,
+    getLoadingMessages: PropTypes.func,
     messageInterval: PropTypes.number,
     loadingScenes: PropTypes.array,
     renderError: PropTypes.func,
@@ -35,7 +35,7 @@ export default class LoadingAndErrorWrapper extends Component {
     noBackground: true,
     noWrapper: false,
     showSpinner: true,
-    loadingMessages: [t`Loading...`],
+    getLoadingMessages: () => [t`Loading...`],
     messageInterval: 6000,
   };
 
@@ -73,9 +73,9 @@ export default class LoadingAndErrorWrapper extends Component {
   }
 
   componentDidMount() {
-    const { loadingMessages, messageInterval } = this.props;
+    const { getLoadingMessages, messageInterval } = this.props;
     // only start cycling if multiple messages are provided
-    if (loadingMessages.length > 1) {
+    if (getLoadingMessages().length > 1) {
       this.cycle = setInterval(this.loadingInterval, messageInterval);
     }
   }
@@ -103,7 +103,7 @@ export default class LoadingAndErrorWrapper extends Component {
   cycleLoadingMessage = () => {
     this.setState({
       messageIndex:
-        this.state.messageIndex + 1 < this.props.loadingMessages.length
+        this.state.messageIndex + 1 < this.props.getLoadingMessages().length
           ? this.state.messageIndex + 1
           : 0,
     });
@@ -116,7 +116,7 @@ export default class LoadingAndErrorWrapper extends Component {
       noBackground,
       noWrapper,
       showSpinner,
-      loadingMessages,
+      getLoadingMessages,
       loadingScenes,
       style,
       className,
@@ -154,7 +154,7 @@ export default class LoadingAndErrorWrapper extends Component {
             {loadingScenes && loadingScenes[sceneIndex]}
             {!loadingScenes && showSpinner && <LoadingSpinner />}
             <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
-              {loadingMessages[messageIndex]}
+              {getLoadingMessages()[messageIndex]}
             </h2>
           </div>
         ) : (
