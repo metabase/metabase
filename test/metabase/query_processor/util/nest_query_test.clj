@@ -793,20 +793,20 @@
                     "double_total"
                     {::add/desired-alias "double_total", ::add/position 2}]
                    [:field
-                    (meta/id :people :created-at)
-                    {:temporal-unit (symbol "nil #_\"key is not present.\"")
-                     ::add/source-alias "CREATED_AT",
-                     :join-alias "p",
-                     ::add/desired-alias "p__CREATED_AT",
-                     ::add/position 3,
-                     ::add/source-table "p"}]
-                   [:field
                     (meta/id :people :id)
                     {:join-alias "p",
                      ::add/source-table "p",
                      ::add/source-alias "ID",
                      ::add/desired-alias "p__ID",
-                     ::add/position 4}]]}}
+                     ::add/position 3}]
+                   [:field
+                    (meta/id :people :created-at)
+                    {:temporal-unit (symbol "nil #_\"key is not present.\"")
+                     ::add/source-alias "CREATED_AT",
+                     :join-alias "p",
+                     ::add/desired-alias "p__CREATED_AT",
+                     ::add/position 4,
+                     ::add/source-table "p"}]]}}
                 (->> (lib.tu.macros/mbql-query orders
                        {:expressions {"double_total" [:* $total 2]}
                         :breakout    [!hour-of-day.people.created-at

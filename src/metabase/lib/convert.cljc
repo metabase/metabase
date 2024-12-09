@@ -62,10 +62,12 @@
                                      ;; if `error-type` is missing, which seems to happen sometimes,
                                      ;; fall back to humanizing the entire error.
                                      (me/humanize (mr/explain ::lib.schema/stage.mbql almost-stage))))]
-          (when (= (last error-location) :ident)
-            (throw (ex-info "Ident error" {:loc error-location
-                                           :error-desc error-desc
-                                           :diff (first (data/diff almost-stage new-stage))})))
+          ;; TODO: Bring this back, for all the idents. We can't enforce this strictly when they're not being added
+          ;; by the BE for pre-existing queries.
+          #_(when (= (last error-location) :ident)
+              (throw (ex-info "Ident error" {:loc error-location
+                                             :error-desc error-desc
+                                             :diff (first (data/diff almost-stage new-stage))})))
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
              :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
