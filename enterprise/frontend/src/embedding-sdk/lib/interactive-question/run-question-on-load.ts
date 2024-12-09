@@ -6,7 +6,6 @@ import type {
 } from "embedding-sdk/types/question";
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
-import { syncCardParametersWithTemplateTags } from "metabase/query_builder/actions/core/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
@@ -42,7 +41,7 @@ export const runQuestionOnLoadSdk =
 
     let question = new Question(card, metadata);
 
-    question = syncCardParametersWithTemplateTags(question);
+    question = question.applyTemplateTagParameters();
 
     const queryParams = initialSqlParameters
       ? _.mapObject(initialSqlParameters, String)

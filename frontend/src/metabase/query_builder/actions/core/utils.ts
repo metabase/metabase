@@ -5,7 +5,6 @@ import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/s
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type { Series } from "metabase-types/api";
 
 /**
@@ -69,16 +68,4 @@ export function getAdHocQuestionWithVizSettings(options: {
   }
 
   return question;
-}
-
-export function syncCardParametersWithTemplateTags(question: Question) {
-  const isNewQuestionNative = Lib.queryDisplayInfo(question.query()).isNative;
-
-  if (!isNewQuestionNative) {
-    return question;
-  }
-
-  const parameters = getTemplateTagParametersFromCard(question.card());
-
-  return question.setParameters(parameters);
 }

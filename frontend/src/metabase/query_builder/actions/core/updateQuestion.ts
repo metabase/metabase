@@ -27,10 +27,7 @@ import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
 
 import { computeQuestionPivotTable } from "./pivot-table";
-import {
-  getAdHocQuestionWithVizSettings,
-  syncCardParametersWithTemplateTags,
-} from "./utils";
+import { getAdHocQuestionWithVizSettings } from "./utils";
 
 function shouldTemplateTagEditorBeVisible({
   currentQuestion,
@@ -128,7 +125,7 @@ export const updateQuestion = (
       );
     }
 
-    newQuestion = syncCardParametersWithTemplateTags(newQuestion);
+    newQuestion = newQuestion.applyTemplateTagParameters();
 
     await dispatch({
       type: UPDATE_QUESTION,
