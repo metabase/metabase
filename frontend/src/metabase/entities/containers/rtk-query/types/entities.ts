@@ -72,10 +72,10 @@ export interface EntityDefinition<Entity, EntityWrapper> {
     object: unknown;
   };
   objectSelectors: {
-    getName: (entity: Entity) => string;
-    getIcon: (entity: Entity) => { name: IconName };
-    getColor: (entity: Entity) => string | undefined;
-    getCollection: (entity: Entity) => Collection | undefined;
+    getName: (entity: Entity | EntityWrapper) => string;
+    getIcon: (entity: Entity | EntityWrapper) => { name: IconName };
+    getColor: (entity: Entity | EntityWrapper) => string | undefined;
+    getCollection: (entity: Entity | EntityWrapper) => Collection | undefined;
   };
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
